@@ -847,6 +847,44 @@ def test_tracked_interbank_v4_binds_the_full_reviewed_role_to_rnid_matrix() -> N
         "INTERBANK_LOAN_OTHER": 591,
         "TOTAL_INTERBANK_PROVISION": 5718,
     }
+    expected_parent_by_role = {
+        "INTERBANK_DEPOSIT_GROUP": 575,
+        "DEMAND_DEPOSIT_GROUP": 576,
+        "DEMAND_DEPOSIT_VND": 576,
+        "DEMAND_DEPOSIT_FOREIGN_CURRENCY": 576,
+        "TERM_DEPOSIT_GROUP": 576,
+        "TERM_DEPOSIT_VND": 576,
+        "TERM_DEPOSIT_FOREIGN_CURRENCY": 576,
+        "INTERBANK_DEPOSIT_PROVISION": 576,
+        "INTERBANK_DEPOSIT_OTHER": 576,
+        "INTERBANK_LOAN_GROUP": 575,
+        "INTERBANK_LOAN_VND": 585,
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": 585,
+        "INTERBANK_LOAN_FOREIGN_CURRENCY": 585,
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY": 585,
+        "INTERBANK_LOAN_PROVISION": 585,
+        "INTERBANK_LOAN_OTHER": 585,
+        "TOTAL_INTERBANK_PROVISION": 575,
+    }
+    binding_by_role = {item["role"]: item for item in parsed_binding["role_bindings"]}
+    assert {
+        role: item["parent_report_norm_id"] for role, item in binding_by_role.items()
+    } == expected_parent_by_role
+    assert {role: node["parent_id"] for role, node in direct.items()} == expected_parent_by_role
+    assert {
+        role: (
+            item["source_subscope_role"],
+            item["preceding_schema_sibling_id"],
+        )
+        for role, item in binding_by_role.items()
+        if "source_subscope_role" in item
+    } == {
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": ("INTERBANK_LOAN_VND", 586),
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY": (
+            "INTERBANK_LOAN_FOREIGN_CURRENCY",
+            588,
+        ),
+    }
     assert binding["ignored_roles"] == [
         "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
         "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
@@ -856,6 +894,41 @@ def test_tracked_interbank_v4_binds_the_full_reviewed_role_to_rnid_matrix() -> N
         "EXPLICIT_FAMILY_TOTAL",
     ]
     assert aggregates == []
+
+    attacked_without_parents = copy.deepcopy(binding)
+    for item in attacked_without_parents["role_bindings"]:
+        item.pop("parent_report_norm_id")
+        item.pop("source_subscope_role", None)
+        item.pop("preceding_schema_sibling_id", None)
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="schema role binding",
+    ):
+        subject._schema_spec(attacked_without_parents, family)
+
+    attacked_parent = copy.deepcopy(parsed_binding)
+    next(
+        item
+        for item in attacked_parent["role_bindings"]
+        if item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )["parent_report_norm_id"] = 585
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="role ReportNormId",
+    ):
+        subject._bind_schema(nodes, attacked_parent)
+
+    attacked_subscope = copy.deepcopy(parsed_binding)
+    next(
+        item
+        for item in attacked_subscope["role_bindings"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )["preceding_schema_sibling_id"] = 588
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="exact preceding live schema sibling",
+    ):
+        subject._bind_schema(nodes, attacked_subscope)
 
 
 def test_tracked_trading_securities_specs_partition_variants_without_bank_routes() -> None:

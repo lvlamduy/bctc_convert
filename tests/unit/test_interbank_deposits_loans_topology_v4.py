@@ -105,6 +105,8 @@ def test_v4_schema_exact_roles_partition_ambiguous_and_context_bound_sources() -
             role
         ] == report_norm_id
         assert role not in source_only
+    assert roles["INTERBANK_LOAN_VND"]["role_kind"] == "ADDITIVE_CHILD"
+    assert roles["INTERBANK_LOAN_FOREIGN_CURRENCY"]["role_kind"] == "ADDITIVE_CHILD"
 
     assert "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS" in source_only
     assert "INTERBANK_PROVISION_AMBIGUOUS" in source_only
@@ -116,6 +118,11 @@ def test_v4_schema_exact_roles_partition_ambiguous_and_context_bound_sources() -
     assert "Dự phòng rủi ro" not in roles["TOTAL_INTERBANK_PROVISION"]["matchers"][0]["aliases"]
     assert "Dự phòng rủi ro" in roles["INTERBANK_PROVISION_AMBIGUOUS"]["matchers"][0]["aliases"]
     assert source_only <= set(binding["ignored_roles"])
+    assert "Tiền gửi và vay từ NHNN và các TCTD khác" in family["hard_negative_aliases"]
+    assert (
+        "Các công cụ tài chính phái sinh và các tài sản tài chính khác"
+        in family["structural_reset_aliases"]
+    )
 
 
 def test_money_table_stops_before_interest_percentage_and_quality_subtables() -> None:
@@ -196,6 +203,48 @@ def test_wrapped_provision_and_exact_owner_total_stay_inside_next_family_fence()
         parent["end_source_line_index"],
     )
     assert all(item["surface"] != "9" for item in projected["child_matches"])
+
+
+def test_wrapped_derivative_heading_is_an_exact_multiline_reset_not_family_other() -> None:
+    labels = [
+        "Tiền gửi và cho vay các TCTD khác",
+        "Tiền gửi tại các TCTD khác",
+        "Cho vay các TCTD khác",
+        "Bằng VND",
+        "Các công cụ tài chính phái sinh và các tài sản tài chính",
+        "khác",
+        "Giá trị hợp lý",
+    ]
+    pages = _page([_line(index, text, top=100 + index * 28) for index, text in enumerate(labels)])
+
+    scan = topology_v1.build_accounting_family_topology_scan_v1(pages, _spec())
+
+    assert scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = scan["regions"][0]
+    assert region["cluster_end_document_line_ordinal_exclusive"] == 4
+    assert "INTERBANK_DEPOSIT_OTHER" not in region["observed_roles"]
+    assert "INTERBANK_LOAN_OTHER" not in region["observed_roles"]
+
+
+def test_bid_liability_gold_and_foreign_currency_table_is_not_a_family3_region() -> None:
+    labels = [
+        "8. TIỀN GỬI VÀ VAY CÁC TCTD KHÁC",
+        "Tiền gửi không kỳ hạn",
+        "Bằng VND",
+        "Bằng vàng và ngoại tệ",
+        "Tiền gửi có kỳ hạn",
+        "Bằng VND",
+        "Bằng vàng và ngoại tệ",
+        "Vay các TCTD khác",
+        "Bằng VND",
+        "Bằng vàng và ngoại tệ",
+    ]
+    pages = _page([_line(index, text) for index, text in enumerate(labels)])
+
+    scan = topology_v1.build_accounting_family_topology_scan_v1(pages, _spec())
+
+    assert scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert scan["regions"] == []
 
 
 def test_repeated_currency_aliases_bind_to_nearest_structural_parent() -> None:

@@ -138,6 +138,66 @@ def _hierarchy_v2(*, source_only_veto_roles: list[str] | None = None) -> dict[st
     return hierarchy
 
 
+_ROUNDING_COMPONENT_LABELS = [
+    "Khoản Alpha",
+    "Khoản Bravo",
+    "Khoản Charlie",
+    "Khoản Delta",
+    "Khoản Echo",
+    "Khoản Foxtrot",
+]
+_ROUNDING_COMPONENT_ROLES = [f"COMPONENT_{ordinal}" for ordinal in range(1, 7)]
+
+
+def _rounding_topology() -> dict[str, object]:
+    topology = copy.deepcopy(_topology())
+    topology["children"] = [
+        {
+            "matchers": [_matcher(label)],
+            "presence": "OPTIONAL",
+            "role": f"COMPONENT_{ordinal}",
+            "role_kind": "ADDITIVE_CHILD",
+        }
+        for ordinal, label in enumerate(_ROUNDING_COMPONENT_LABELS, start=1)
+    ] + [
+        {
+            "matchers": [_matcher("Tổng cộng")],
+            "presence": "OPTIONAL",
+            "role": "EXPLICIT_FAMILY_TOTAL",
+            "role_kind": "TOTAL",
+        }
+    ]
+    topology["required_role_combinations"] = [["COMPONENT_1", "COMPONENT_2"]]
+    return topology
+
+
+def _rounding_hierarchy(*, v2: bool = True) -> dict[str, object]:
+    hierarchy = {
+        "equations": [
+            {
+                "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+                "component_role_alternatives": [
+                    _alternative([f"COMPONENT_{ordinal}" for ordinal in range(1, 7)])
+                ],
+                "result_role": "INTERBANK",
+                "trailing_result_policy": "CORROBORATE_IF_PRESENT",
+                "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS",
+            }
+        ],
+        "family_id": "INTERBANK",
+        "format_version": subject.SPEC_FORMAT_VERSION,
+        "repeated_role_policy": {"aggregate_roles": [], "local_subtotal_roles": []},
+    }
+    if v2:
+        hierarchy["format_version"] = subject.SPEC_FORMAT_VERSION_V2
+        hierarchy["source_role_policy"] = {
+            "one_edit_role_or_scope_match_policy": "VETO",
+            "source_only_veto_roles": [],
+        }
+    return hierarchy
+
+
 def _line(ordinal: int, text: str, numeric: str, bbox: list[int]) -> dict[str, object]:
     return {
         "bbox": bbox,
@@ -491,7 +551,7 @@ def test_declared_source_only_role_is_typed_but_never_accounting_resolved() -> N
             "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
             True,
         ),
-        ("Dự phòng rủi ro", "INTERBANK_PROVISION_AMBIGUOUS", True),
+        ("Dự phòng rủi ro", "TOTAL_INTERBANK_PROVISION", False),
         (
             "Bằng vàng và ngoại tệ",
             "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
@@ -513,17 +573,22 @@ def test_real_family3_currency_specific_roles_close_but_ambiguous_roles_veto(
             project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
         ).read_text()
     )["hierarchical_closure_spec"]
+    provision_is_total = label == "Dự phòng rủi ro"
     pages = _pages(
         [
             ("Tiền gửi tại các TCTD khác", "100", "90"),
             ("Cho vay các TCTD khác", "50", "40"),
-            (label, "5", "4"),
+            (
+                label,
+                "-5" if provision_is_total else "5",
+                "-4" if provision_is_total else "4",
+            ),
         ]
     )
     pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
     for ordinal, token, bbox in (
-        (1, "150", [610, 15, 700, 38]),
-        (2, "130", [810, 15, 900, 38]),
+        (1, "145" if provision_is_total else "150", [610, 15, 700, 38]),
+        (2, "126" if provision_is_total else "130", [810, 15, 900, 38]),
     ):
         pages[0]["lines"][ordinal]["vietocr_text"] = token
         pages[0]["lines"][ordinal]["numeric_recognition"]["raw_prediction"] = token
@@ -539,7 +604,12 @@ def test_real_family3_currency_specific_roles_close_but_ambiguous_roles_veto(
         assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
         assert expected_role not in {record["role"] for record in closure["resolved_roles"]}
     else:
-        assert receipt["disposition"] == "NONADDITIVE_VISIBLE_SOURCE_ROLE"
+        expected_disposition = (
+            "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE"
+            if expected_role == "TOTAL_INTERBANK_PROVISION"
+            else "NONADDITIVE_VISIBLE_SOURCE_ROLE"
+        )
+        assert receipt["disposition"] == expected_disposition
         assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
         assert expected_role in {record["role"] for record in closure["resolved_roles"]}
 
@@ -1041,56 +1111,602 @@ def test_empty_local_subtotal_without_children_is_typed_instead_of_raising() -> 
     )
 
 
-def test_printed_residual_two_is_persisted_and_never_backsolved() -> None:
+def test_v4_printed_residual_two_with_six_components_is_rounding_corroborated_without_backsolve() -> (
+    None
+):
+    component_values = ["10000000", "11000000", "12000000", "13000000", "14000000", "12305188"]
     pages = _pages(
         [
-            ("Tiền gửi tại TCTD khác", "50000000", "50000000"),
-            ("Cho vay TCTD khác", "22305188", "22305188"),
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
         ],
         trailing=[("72305188", "72305186")],
     )
-    _axis_value, closure = _closure(pages)
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
 
-    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
     root = next(
         item for item in closure["equations"]["global"] if item["result_role"] == "INTERBANK"
     )
-    assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+    assert root["status"] == (
+        "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    )
     evidence = root["residual_evidence"][0]
     assert evidence["convention"] == "PRINTED_RESULT_MINUS_EXHAUSTIVE_COMPONENT_SUM"
     assert [lane["residual_number"]["coefficient"] for lane in evidence["lanes"]] == [
         0,
         -2,
     ]
-    assert "INTERBANK" not in {item["role"] for item in closure["resolved_roles"]}
-    assert all(
-        item["resolution_kind"] != "DERIVED_EXACT_COMPONENT_SUM" or item["role"] != "INTERBANK"
-        for item in closure["resolved_roles"]
+    rounding = root["rounding_evidence"][0]
+    assert rounding["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+    assert [lane["independently_printed_component_count"] for lane in rounding["lanes"]] == [
+        6,
+        6,
+    ]
+    assert [lane["bound_component_count_plus_one"] for lane in rounding["lanes"]] == [7, 7]
+    assert [lane["twice_absolute_residual"] for lane in rounding["lanes"]] == [0, 4]
+    resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+    assert resolved["resolution_kind"] == (
+        "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS"
     )
-    mapping = mapping_v1._trial(
-        {
-            "additive_closure": closure,
-            "column_context": None,
-            "document_ordinal": 18,
-            "evidence_status": "UNRESOLVED_EVIDENCE_GATES",
-            "private_provenance": {"scope": "CONSOLIDATED"},
-            "row_axis": None,
-            "source_pdf_ref": {
-                "path": "fixture/trial-18.pdf",
-                "sha256": "2" * 64,
-                "size_bytes": 2,
-            },
-            "unresolved_reasons": closure["unresolved_reasons"],
+    assert [value["number"]["coefficient"] for value in resolved["values"]] == [
+        72305188,
+        72305186,
+    ]
+    assert [value["number"]["coefficient"] for value in resolved["values"]] != [
+        72305188,
+        72305188,
+    ]
+    receipt = next(
+        item for item in closure["coverage_receipt"] if item["row_kind"] == "TRAILING_VALUE_ROW"
+    )
+    assert receipt["disposition"] == ("SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE")
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure,
+            _axis_value,
+            _rounding_topology(),
+            _rounding_hierarchy(),
+        )
+        == closure
+    )
+    nodes, _schema_ref = mapping_v1._schema_graph(Path(__file__).resolve().parents[2])
+    trial = {
+        "additive_closure": closure,
+        "column_context": {
+            "period_axis": [
+                {"column_ordinal": 0, "resolved_period": "31/12/2025"},
+                {"column_ordinal": 1, "resolved_period": "31/12/2024"},
+            ],
+            "period_semantics": "BALANCE_COMPARATIVE",
+            "status": "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY",
+            "unit_axis": [
+                {
+                    "column_ordinal": lane,
+                    "currency": "VND",
+                    "magnitude_power10": 6,
+                    "unit_kind": "MONEY",
+                }
+                for lane in range(2)
+            ],
         },
-        {},
+        "document_ordinal": 18,
+        "evidence_status": "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+        "private_provenance": {"scope": "CONSOLIDATED"},
+        "row_axis": _axis_value["row_axis"],
+        "source_pdf_ref": {
+            "path": "fixture/mbb-trial-18.pdf",
+            "sha256": "1" * 64,
+            "size_bytes": 1,
+        },
+        "unresolved_reasons": [],
+    }
+    mapping = mapping_v1._trial(
+        trial,
+        nodes[575],
         {},
         [],
         schema_period_type="SNAPSHOT",
-        schema_binding_spec={},
+        schema_binding_spec={
+            "family_id": "INTERBANK",
+            "family_report_norm_id": 575,
+            "family_root_mapping_policy": "REQUIRE_HIERARCHICALLY_RESOLVED",
+            "format_version": mapping_v1.SPEC_FORMAT_VERSION_V4,
+            "ignored_roles": [*_ROUNDING_COMPONENT_ROLES, "EXPLICIT_FAMILY_TOTAL"],
+            "role_bindings": [],
+        },
     )
-    assert mapping["mapping_status"] == "UNRESOLVED"
-    assert mapping["mappings"] == []
-    assert root["residual_evidence"][0]["lanes"][1]["residual_number"]["coefficient"] == -2
+    assert mapping["mapping_status"] == "VERIFIED_BY_CODEX"
+    root_mapping = next(item for item in mapping["mappings"] if item["report_norm_id"] == 575)
+    assert [item["numeric_value"]["coefficient"] for item in root_mapping["values"]] == [
+        72305188,
+        72305186,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("residual", "expected_status"),
+    [
+        (3, "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"),
+        (4, "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"),
+    ],
+)
+def test_v4_rounding_bound_is_exact_at_boundary_and_vetoes_over_bound(
+    residual: int, expected_status: str
+) -> None:
+    component_values = ["10", "20", "30", "40", "50", "60"]
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[("210", str(210 + residual))],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    root = closure["equations"]["global"][0]
+    assert closure["status"] == expected_status
+    lane = root["rounding_evidence"][0]["lanes"][1]
+    assert lane["twice_absolute_residual"] == 2 * residual
+    assert lane["bound_component_count_plus_one"] == 7
+    if residual == 3:
+        assert root["status"] == (
+            "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        )
+        resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+        assert resolved["values"][1]["number"]["coefficient"] == 213
+    else:
+        assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+        assert "INTERBANK" not in {item["role"] for item in closure["resolved_roles"]}
+
+
+@pytest.mark.parametrize(
+    "disallowed_classification",
+    [
+        "DASH_ZERO",
+        "MIXED_GROUPED_INTEGER_CANDIDATE",
+        "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+    ],
+)
+def test_v4_only_signed_number_cells_may_support_integer_rounding_bound(
+    disallowed_classification: str,
+) -> None:
+    component_cells = [
+        {
+            "classification": "SIGNED_NUMBER",
+            "number": {
+                "coefficient": 10 if ordinal < 4 else 0,
+                "percentage_mark_present": False,
+                "scale": 0,
+            },
+            "source_sample_id": f"component-{ordinal}",
+        }
+        for ordinal in range(6)
+    ]
+    component = {
+        subject._PRINTED_SOURCE_CELLS_KEY: [component_cells],
+        "values": [
+            {
+                "column_ordinal": 0,
+                "number": {
+                    "coefficient": 40,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+                "source_sample_ids": [cell["source_sample_id"] for cell in component_cells],
+            }
+        ],
+    }
+    printed = {
+        subject._PRINTED_SOURCE_CELLS_KEY: [
+            [
+                {
+                    "classification": "SIGNED_NUMBER",
+                    "number": {
+                        "coefficient": 43,
+                        "percentage_mark_present": False,
+                        "scale": 0,
+                    },
+                    "source_sample_id": "printed-result",
+                }
+            ]
+        ],
+        "source": {
+            "kind": "ROLE_ROW",
+            "record": {
+                "label_match": {"occurrence_id": "printed-result-occurrence"},
+                "role": "EXPLICIT_FAMILY_TOTAL",
+            },
+        },
+        "values": [
+            {
+                "column_ordinal": 0,
+                "number": {
+                    "coefficient": 43,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+                "source_sample_ids": ["printed-result"],
+            }
+        ],
+    }
+
+    accepted = subject._rounding_assessment(
+        result_role="INTERBANK",
+        printed=printed,
+        component=component,
+        component_roles=_ROUNDING_COMPONENT_ROLES,
+    )
+    assert accepted is not None
+    assert accepted["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+
+    for cell in component_cells[-2:]:
+        cell["classification"] = disallowed_classification
+    assert (
+        subject._rounding_assessment(
+            result_role="INTERBANK",
+            printed=printed,
+            component=component,
+            component_roles=_ROUNDING_COMPONENT_ROLES,
+        )
+        is None
+    )
+
+    for cell in component_cells:
+        cell["classification"] = "SIGNED_NUMBER"
+    printed[subject._PRINTED_SOURCE_CELLS_KEY][0][0]["classification"] = disallowed_classification
+    assert (
+        subject._rounding_assessment(
+            result_role="INTERBANK",
+            printed=printed,
+            component=component,
+            component_roles=_ROUNDING_COMPONENT_ROLES,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "candidate_token",
+    ["1.000,000", "1.000.000 0UNG"],
+)
+def test_v4_candidate_numeric_classifications_cannot_resolve_by_rounding(
+    candidate_token: str,
+) -> None:
+    component_values = [candidate_token, "20", "30", "40", "50", "60"]
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[("1.000.202", "1.000.202")],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    root = closure["equations"]["global"][0]
+    assert root["rounding_evidence"] == []
+    assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_v1_does_not_enable_v4_rounding_corroboration() -> None:
+    component_values = ["10", "20", "30", "40", "50", "60"]
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[("210", "212")],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(v2=False),
+    )
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    root = closure["equations"]["global"][0]
+    assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+    assert "rounding_evidence" not in root
+
+
+def test_v4_exact_equality_has_precedence_over_rounding_path() -> None:
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(
+                _ROUNDING_COMPONENT_LABELS,
+                ["10", "20", "30", "40", "50", "60"],
+                strict=True,
+            )
+        ],
+        trailing=[("210", "210")],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    root = closure["equations"]["global"][0]
+    assert root["status"] == "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    assert root["rounding_evidence"] == []
+    resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+    assert resolved["resolution_kind"] == "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+    receipt = next(
+        item for item in closure["coverage_receipt"] if item["row_kind"] == "TRAILING_VALUE_ROW"
+    )
+    assert receipt["disposition"] == "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+
+
+def test_v4_global_visible_labeled_result_uses_rounding_receipt_without_backsolve() -> None:
+    rows = [
+        (label, value, value)
+        for label, value in zip(
+            _ROUNDING_COMPONENT_LABELS,
+            ["10", "20", "30", "40", "50", "60"],
+            strict=True,
+        )
+    ]
+    rows.append(("Tổng cộng", "212", "212"))
+
+    _axis_value, closure = _closure(
+        _pages(rows),
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    root = closure["equations"]["global"][0]
+    assert root["status"] == "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+    assert resolved["resolution_kind"] == "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS"
+    assert [value["number"]["coefficient"] for value in resolved["values"]] == [212, 212]
+
+    attacked = copy.deepcopy(closure)
+    attacked_root = attacked["equations"]["global"][0]
+    attacked_root["status"] = "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    attacked_root["rounding_evidence"] = []
+    attacked_resolved = next(
+        item for item in attacked["resolved_roles"] if item["role"] == "INTERBANK"
+    )
+    attacked_resolved["resolution_kind"] = "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="resolved arithmetic authority",
+    ):
+        subject._validate_result(attacked)
+
+    attacked = copy.deepcopy(closure)
+    attacked["equations"]["global"][0]["status"] = "VISIBLE_RESULT_MISMATCH_VETO"
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="failure status retained selected",
+    ):
+        subject._validate_result(attacked)
+
+    attacked = copy.deepcopy(closure)
+    attacked_root = attacked["equations"]["global"][0]
+    printed_owner = attacked_root["rounding_evidence"][0]["printed_result_owner"]
+    printed_owner["occurrence_id"] = next(
+        record["owner_id"]
+        for record in attacked["numeric_sample_universe"]
+        if record["owner_kind"] == "ROLE_OCCURRENCE"
+        and record["owner_id"] != printed_owner["occurrence_id"]
+    )
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="rounding printed result owner receipt",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_v4_multiple_rounding_trailing_candidates_remain_ambiguous_and_veto() -> None:
+    component_values = ["10", "20", "30", "40", "50", "60"]
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[("212", "212"), ("211", "211")],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    root = closure["equations"]["global"][0]
+    assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+    assert root["selected_trailing_candidate_ordinal"] is None
+    assert len(root["rounding_evidence"]) == 2
+
+
+def test_v4_local_subtotal_uses_same_integer_rounding_bound() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "51", "41"),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "20", "15"),
+            ("Tổng cộng", "151", "131"),
+        ]
+    )
+
+    _axis_value, closure = _closure(pages, hierarchy=_hierarchy_v2())
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "LOAN_GROUP"
+    )
+    assert local["status"] == (
+        "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS"
+    )
+    assert [lane["twice_absolute_residual"] for lane in local["rounding_evidence"][0]["lanes"]] == [
+        2,
+        2,
+    ]
+
+    attacked = copy.deepcopy(closure)
+    attacked_local = next(
+        equation
+        for equation in attacked["equations"]["local"]
+        if equation["result_role"] == "LOAN_GROUP"
+    )
+    attacked_local["status"] = "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+    attacked_local["rounding_evidence"] = []
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="local equation status",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_v4_rounding_receipt_cannot_be_forged_with_a_coherent_closure_rehash() -> None:
+    component_values = ["10", "20", "30", "40", "50", "60"]
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[("210", "213")],
+    )
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+    attacked = copy.deepcopy(closure)
+    lane = attacked["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    lane["bound_component_count_plus_one"] = 8
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="integer rounding lane",
+    ):
+        subject._validate_result(attacked)
+
+
+@pytest.mark.parametrize(
+    ("component_values", "printed"),
+    [
+        (["1.2", "1.8", "10", "20", "30", "40"], "104"),
+        (["-1", "0", "0", "0", "0", "0"], "1"),
+    ],
+)
+def test_v4_rounding_rejects_decimal_precision_and_opposite_nonzero_sign(
+    component_values: list[str], printed: str
+) -> None:
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(_ROUNDING_COMPONENT_LABELS, component_values, strict=True)
+        ],
+        trailing=[(printed, printed)],
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    root = closure["equations"]["global"][0]
+    assert root["status"] == "TRAILING_NUMERIC_CHALLENGER_VETO"
+    assert root["rounding_evidence"] == []
+
+
+def test_v4_rounding_validator_cross_binds_cells_count_and_arithmetic_to_numeric_universe() -> None:
+    pages = _pages(
+        [
+            (label, value, value)
+            for label, value in zip(
+                _ROUNDING_COMPONENT_LABELS,
+                ["10", "20", "30", "40", "50", "60"],
+                strict=True,
+            )
+        ],
+        trailing=[("210", "213")],
+    )
+    _axis_value, closure = _closure(
+        pages,
+        topology=_rounding_topology(),
+        hierarchy=_rounding_hierarchy(),
+    )
+
+    correlated = copy.deepcopy(closure)
+    residual_lane = correlated["equations"]["global"][0]["residual_evidence"][0]["lanes"][1]
+    rounding_lane = correlated["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    residual_lane["component_sum_number"]["coefficient"] = 212
+    residual_lane["residual_number"]["coefficient"] = 1
+    rounding_lane["printed_component_cells"][0]["number"]["coefficient"] = 12
+    rounding_lane["residual_number"]["coefficient"] = 1
+    rounding_lane["twice_absolute_residual"] = 2
+    _coherently_rehash_closure(correlated)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="numeric universe sample",
+    ):
+        subject._validate_result(correlated)
+
+    padded = copy.deepcopy(closure)
+    residual_lane = padded["equations"]["global"][0]["residual_evidence"][0]["lanes"][1]
+    rounding_lane = padded["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    residual_lane["component_source_sample_ids"].append("forged-padding-sample")
+    rounding_lane["printed_component_cells"].append(
+        {
+            "number": {
+                "coefficient": 0,
+                "percentage_mark_present": False,
+                "scale": 0,
+            },
+            "source_sample_id": "forged-padding-sample",
+        }
+    )
+    rounding_lane["independently_printed_component_count"] = 7
+    rounding_lane["bound_component_count_plus_one"] = 8
+    _coherently_rehash_closure(padded)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="selected source roles",
+    ):
+        subject._validate_result(padded)
+
+    boolean = copy.deepcopy(closure)
+    boolean["equations"]["global"][0]["rounding_evidence"][0]["lanes"][0][
+        "twice_absolute_residual"
+    ] = False
+    _coherently_rehash_closure(boolean)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="integer rounding lane",
+    ):
+        subject._validate_result(boolean)
 
 
 @pytest.mark.parametrize(

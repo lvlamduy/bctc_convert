@@ -13,70 +13,91 @@
   ],
   "role_bindings": [
     {
+      "parent_report_norm_id": 575,
       "report_norm_id": 576,
       "role": "INTERBANK_DEPOSIT_GROUP"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 577,
       "role": "DEMAND_DEPOSIT_GROUP"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 578,
       "role": "DEMAND_DEPOSIT_VND"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 579,
       "role": "DEMAND_DEPOSIT_FOREIGN_CURRENCY"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 580,
       "role": "TERM_DEPOSIT_GROUP"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 581,
       "role": "TERM_DEPOSIT_VND"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 582,
       "role": "TERM_DEPOSIT_FOREIGN_CURRENCY"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 583,
       "role": "INTERBANK_DEPOSIT_PROVISION"
     },
     {
+      "parent_report_norm_id": 576,
       "report_norm_id": 584,
       "role": "INTERBANK_DEPOSIT_OTHER"
     },
     {
+      "parent_report_norm_id": 575,
       "report_norm_id": 585,
       "role": "INTERBANK_LOAN_GROUP"
     },
     {
+      "parent_report_norm_id": 585,
       "report_norm_id": 586,
       "role": "INTERBANK_LOAN_VND"
     },
     {
+      "parent_report_norm_id": 585,
+      "preceding_schema_sibling_id": 586,
       "report_norm_id": 587,
-      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+      "source_subscope_role": "INTERBANK_LOAN_VND"
     },
     {
+      "parent_report_norm_id": 585,
       "report_norm_id": 588,
       "role": "INTERBANK_LOAN_FOREIGN_CURRENCY"
     },
     {
+      "parent_report_norm_id": 585,
+      "preceding_schema_sibling_id": 588,
       "report_norm_id": 589,
-      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+      "source_subscope_role": "INTERBANK_LOAN_FOREIGN_CURRENCY"
     },
     {
+      "parent_report_norm_id": 585,
       "report_norm_id": 590,
       "role": "INTERBANK_LOAN_PROVISION"
     },
     {
+      "parent_report_norm_id": 585,
       "report_norm_id": 591,
       "role": "INTERBANK_LOAN_OTHER"
     },
     {
+      "parent_report_norm_id": 575,
       "report_norm_id": 5718,
       "role": "TOTAL_INTERBANK_PROVISION"
     }

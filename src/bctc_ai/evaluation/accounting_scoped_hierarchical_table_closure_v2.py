@@ -3,7 +3,8 @@
 The sealed hierarchical closure V1 intentionally requires one row per role.
 This opt-in primitive handles a different source structure: the same semantic
 child may repeat under the nearest repeated structural parent.  Local printed
-subtotals are checked only against children bound to that exact parent
+subtotals are checked exactly or by the V2 integer display-unit rounding
+receipt only against children bound to that exact parent
 occurrence; declared repeatable roles are then aggregated once across disjoint
 scopes.  Every component alternative is exhaustive -- there is no
 ``minimum_component_count`` escape hatch and no source digit is backsolved.
@@ -42,6 +43,7 @@ SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V2"
 CLAIM_BOUNDARY = (
     "VISIBLE_COMPLETE_ROLE_OCCURRENCES_NEAREST_PARENT_LOCAL_SUBTOTAL_AND_"
     "DECLARED_DISJOINT_SCOPE_AGGREGATION_WITH_EXHAUSTIVE_COMPONENT_ALTERNATIVES_"
+    "EXACT_OR_INTEGER_DISPLAY_UNIT_ROUNDING_CORROBORATION_PRESERVING_PRINTED_VALUES_"
     "NO_DIGIT_REPAIR_BACKSOLVE_MISSING_CELL_PERIOD_UNIT_SCHEMA_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
@@ -55,7 +57,8 @@ _SAFETY = {
     "schema_authority": False,
     "source_printed_residual_can_be_backsolved": False,
     "unbound_or_undeclared_repeated_rows_fail_closed": True,
-    "visible_mismatch_is_veto": True,
+    "visible_mismatch_over_declared_rounding_bound_is_veto": True,
+    "within_bound_rounding_never_changes_printed_source_digits": True,
 }
 _SPEC_FIELDS_V1 = {
     "equations",
@@ -88,6 +91,7 @@ _TRAILING_POLICIES = {
     "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
 }
 _APPLICATION_POLICY = "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE"
+_PRINTED_SOURCE_CELLS_KEY = "_printed_source_cells_by_lane"
 _VISIBLE_SOURCE_POLICIES = {
     "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE",
     "REQUIRE_EXHAUSTIVE_COMPONENTS",
@@ -134,6 +138,30 @@ _COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS = {
     "source_sample_ids",
     "status",
 }
+_GLOBAL_EQUATION_FIELDS_V1 = {
+    "component_roles_present",
+    "residual_evidence",
+    "result_role",
+    "selected_trailing_candidate_ordinal",
+    "status",
+    "trailing_candidate_evidence",
+}
+_GLOBAL_EQUATION_FIELDS_V2 = {
+    *_GLOBAL_EQUATION_FIELDS_V1,
+    "rounding_evidence",
+    "visible_result_roles",
+}
+_LOCAL_EQUATION_FIELDS_V1 = {
+    "component_roles_present",
+    "result_occurrence_id",
+    "result_role",
+    "status",
+}
+_LOCAL_EQUATION_FIELDS_V2 = {
+    *_LOCAL_EQUATION_FIELDS_V1,
+    "residual_evidence",
+    "rounding_evidence",
+}
 _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS = "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
 _COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS = (
     "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO"
@@ -141,12 +169,40 @@ _COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS = (
 _MAX_EQUATIONS = 128
 _MAX_COVERAGE_RECORDS = 16_384
 _MAX_RESOLVED_ROLES = 4_096
+_GLOBAL_EQUATION_STATUSES = {
+    "AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP_VETO",
+    "AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO",
+    "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+    "EXHAUSTIVE_COMPONENT_ALTERNATIVES_DISAGREE_VETO",
+    "NOT_APPLICABLE_NO_SOURCE_OR_EXHAUSTIVE_COMPONENT_SET",
+    "REQUIRED_EQUATION_INCOMPLETE_COMPONENT_SET_VETO",
+    "TRAILING_NUMERIC_CHALLENGER_VETO",
+    "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+    "VISIBLE_RESULT_INCOMPLETE_COMPONENT_SET_VETO",
+    "VISIBLE_RESULT_MISMATCH_VETO",
+    "VISIBLE_RESULT_REQUIRED_FOR_COMPONENT_ALTERNATIVE_VETO",
+    "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+    "VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+    "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+    "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+}
+_LOCAL_EQUATION_STATUSES = {
+    "LOCAL_AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO",
+    "LOCAL_SINGLE_SCOPE_WITHOUT_VISIBLE_SUBTOTAL_DEFERRED_TO_EXHAUSTIVE_GLOBAL_EQUATION",
+    "LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
+    "LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES_VETO",
+    "LOCAL_VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+    "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
+    "LOCAL_VISIBLE_SUBTOTAL_INCOMPLETE_COMPONENT_SET_VETO",
+    "LOCAL_VISIBLE_SUBTOTAL_MISMATCH_VETO",
+    "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS",
+}
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "59b20c9946d3ff72dcc754af4aff0a5a290556901bee916aba3a7ef75e0bba5c",
-        "size_bytes": 73_750,
+        "sha256": "bd55ea3195f86c00ef9a141ab644525989cce442bc346a8a54d8bf9239558efe",
+        "size_bytes": 130_314,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -409,9 +465,21 @@ def _source_role_vetoes(
         if type(occurrence_id) is not str or type(occurrence) is not dict:
             raise _error("schema-eligibility source row lost its exact occurrence")
         role = row["role"]
-        if role in source_only_roles:
+        scope_binding = occurrence.get("source_scope_binding")
+        ambiguous_wrapped_label = (
+            type(scope_binding) is dict
+            and scope_binding.get("status") == occurrence_v2._AMBIGUOUS_WRAPPED_LABEL_STATUS  # noqa: SLF001
+        )
+        if role in source_only_roles or ambiguous_wrapped_label:
             source_only_occurrences.add(occurrence_id)
-            reasons.append(f"SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE:{role}:{occurrence_id}")
+            reasons.append(
+                (
+                    "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
+                    if ambiguous_wrapped_label
+                    else "SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
+                )
+                + f":{role}:{occurrence_id}"
+            )
         if veto_one_edit and (
             str(row["label_match"].get("match_kind", "")).startswith("ONE_EDIT_")
             or str(occurrence["scope_owner_match_kind"]).startswith("ONE_EDIT_")
@@ -451,6 +519,16 @@ def _source_resolution(row: Mapping[str, Any]) -> dict[str, Any]:
     ):
         raise _error("scoped hierarchical role row does not cover one complete lane axis")
     return {
+        _PRINTED_SOURCE_CELLS_KEY: [
+            [
+                {
+                    "classification": value["parsed_token"]["classification"],
+                    "number": _number(value),
+                    "source_sample_id": value["sample_id"],
+                }
+            ]
+            for value in values
+        ],
         "component_roles": [],
         "resolution_kind": "VISIBLE_SOURCE_ROLE",
         "role": row["role"],
@@ -476,6 +554,16 @@ def _trailing_resolution(candidate: Mapping[str, Any]) -> dict[str, Any]:
     ):
         raise _error("scoped hierarchical trailing candidate axis drifted")
     return {
+        _PRINTED_SOURCE_CELLS_KEY: [
+            [
+                {
+                    "classification": value["parsed_token"]["classification"],
+                    "number": _number(value),
+                    "source_sample_id": value["sample_id"],
+                }
+            ]
+            for value in values
+        ],
         "component_roles": [],
         "resolution_kind": "VISIBLE_TRAILING_TOTAL",
         "role": "",
@@ -489,6 +577,43 @@ def _trailing_resolution(candidate: Mapping[str, Any]) -> dict[str, Any]:
             for value in values
         ],
     }
+
+
+def _printed_source_cells_by_lane(
+    records: Sequence[Mapping[str, Any]],
+) -> list[list[dict[str, Any]]]:
+    axes = [record.get(_PRINTED_SOURCE_CELLS_KEY) for record in records]
+    if (
+        not axes
+        or any(type(axis) is not list for axis in axes)
+        or any(len(axis) != len(axes[0]) for axis in axes)
+    ):
+        raise _error("rounding component precision provenance axis drifted")
+    result = []
+    for lane in range(len(axes[0])):
+        cells = [canonical_clone_v1(cell) for axis in axes for cell in axis[lane]]
+        sample_ids = [cell.get("source_sample_id") for cell in cells]
+        if (
+            not cells
+            or any(
+                type(cell) is not dict
+                or set(cell) != {"classification", "number", "source_sample_id"}
+                or cell["classification"]
+                not in {
+                    "DASH_ZERO",
+                    "MIXED_GROUPED_INTEGER_CANDIDATE",
+                    "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+                    "SIGNED_NUMBER",
+                }
+                or type(cell["number"]) is not dict
+                for cell in cells
+            )
+            or any(type(sample_id) is not str or not sample_id for sample_id in sample_ids)
+            or len(sample_ids) != len(set(sample_ids))
+        ):
+            raise _error("rounding component precision provenance repeats or drifted")
+        result.append(cells)
+    return result
 
 
 def _sum_records(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -597,6 +722,153 @@ def _typed_residual_evidence(
     }
 
 
+def _rounding_assessment(
+    *,
+    result_role: str,
+    printed: Mapping[str, Any],
+    component: Mapping[str, Any],
+    component_roles: Sequence[str],
+) -> dict[str, Any] | None:
+    """Test one exhaustive printed sum in integer display-unit space.
+
+    Every contributing source sample is one independently printed component.
+    The separately printed result contributes the final half-unit uncertainty,
+    giving the exact rational bound ``2 * abs(residual) <= n + 1``.  No value
+    is replaced by the component sum and no floating-point tolerance enters.
+    """
+
+    residuals = _residuals(printed["values"], component["values"])
+    source = printed.get("source")
+    if residuals is None or source is None:
+        return None
+    candidate_ordinal = (
+        source["record"]["candidate_ordinal"] if source["kind"] == "TRAILING_VALUE_ROW" else None
+    )
+    printed_result_owner = {
+        "candidate_ordinal": candidate_ordinal,
+        "occurrence_id": (
+            source["record"]["label_match"]["occurrence_id"]
+            if source["kind"] == "ROLE_ROW"
+            else None
+        ),
+        "role": source["record"]["role"] if source["kind"] == "ROLE_ROW" else None,
+        "source_kind": source["kind"],
+    }
+    lanes = []
+    component_precision_axis = component.get(_PRINTED_SOURCE_CELLS_KEY)
+    printed_precision_axis = printed.get(_PRINTED_SOURCE_CELLS_KEY)
+    if (
+        type(component_precision_axis) is not list
+        or len(component_precision_axis) != len(residuals)
+        or type(printed_precision_axis) is not list
+        or len(printed_precision_axis) != len(residuals)
+    ):
+        return None
+    for (
+        residual,
+        printed_value,
+        component_value,
+        printed_component_cells,
+        printed_result_cells,
+    ) in zip(
+        residuals,
+        printed["values"],
+        component["values"],
+        component_precision_axis,
+        printed_precision_axis,
+        strict=True,
+    ):
+        printed_number = printed_value["number"]
+        component_number = component_value["number"]
+        residual_number = residual["number"]
+        printed_samples = printed_value["source_sample_ids"]
+        component_samples = component_value["source_sample_ids"]
+        if (
+            type(printed_component_cells) is not list
+            or type(printed_result_cells) is not list
+            or len(printed_result_cells) != 1
+        ):
+            return None
+        precision_sample_ids = [cell.get("source_sample_id") for cell in printed_component_cells]
+        precision_numbers = [cell.get("number") for cell in printed_component_cells]
+        if (
+            printed_number["percentage_mark_present"]
+            or component_number["percentage_mark_present"]
+            or residual_number["percentage_mark_present"]
+            or printed_number["scale"] != 0
+            or component_number["scale"] != 0
+            or residual_number["scale"] != 0
+            or len(printed_samples) != 1
+            or not component_samples
+            or len(component_samples) != len(set(component_samples))
+            or set(printed_samples) & set(component_samples)
+            or precision_sample_ids != component_samples
+            or any(
+                cell.get("classification") != "SIGNED_NUMBER" for cell in printed_component_cells
+            )
+            or printed_result_cells[0].get("classification") != "SIGNED_NUMBER"
+            or any(
+                type(number) is not dict
+                or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+                or type(number["coefficient"]) is not int
+                or number["percentage_mark_present"] is not False
+                or number["scale"] != 0
+                for number in precision_numbers
+            )
+            or (
+                printed_number["coefficient"] != 0
+                and component_number["coefficient"] != 0
+                and (printed_number["coefficient"] > 0) is not (component_number["coefficient"] > 0)
+            )
+        ):
+            return None
+        component_count = len(component_samples)
+        twice_absolute_residual = 2 * abs(residual_number["coefficient"])
+        bound = component_count + 1
+        lanes.append(
+            {
+                "bound_component_count_plus_one": bound,
+                "column_ordinal": residual["column_ordinal"],
+                "independently_printed_component_count": component_count,
+                "printed_component_cells": [
+                    {
+                        "number": canonical_clone_v1(cell["number"]),
+                        "source_sample_id": cell["source_sample_id"],
+                    }
+                    for cell in printed_component_cells
+                ],
+                "printed_result_cell": {
+                    "number": canonical_clone_v1(printed_number),
+                    "source_sample_id": printed_samples[0],
+                },
+                "residual_number": canonical_clone_v1(residual_number),
+                "status": (
+                    "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND"
+                    if twice_absolute_residual <= bound
+                    else "OVER_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND"
+                ),
+                "twice_absolute_residual": twice_absolute_residual,
+            }
+        )
+    within = all(lane["status"] == "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND" for lane in lanes)
+    return {
+        "candidate_ordinal": candidate_ordinal,
+        "component_roles": list(component_roles),
+        "lanes": lanes,
+        "policy": (
+            "ALL_PRINTED_CELLS_INTEGER_DISPLAY_UNIT_AND_SAME_NONZERO_RESULT_SUM_SIGN;"
+            "2*ABS(PRINTED_MINUS_COMPONENT_SUM)<=INDEPENDENTLY_PRINTED_COMPONENT_COUNT+1"
+        ),
+        "printed_result_owner": printed_result_owner,
+        "result_role": result_role,
+        "status": (
+            "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            if within
+            else "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
+        ),
+    }
+
+
 def _aggregate_source_roles(
     rows: Sequence[Mapping[str, Any]],
     aggregate_roles: set[str],
@@ -661,12 +933,14 @@ def _aggregate_source_roles(
         elif repeated_scope_is_not_disjoint:
             continue
         else:
+            source_resolutions = [record["resolution"] for record in records]
             resolved[role] = {
+                _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(source_resolutions),
                 "component_roles": [],
                 "resolution_kind": "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM",
                 "role": role,
                 "source": None,
-                "values": _sum_records([record["resolution"] for record in records]),
+                "values": _sum_records(source_resolutions),
             }
     return resolved, occurrences, reasons
 
@@ -685,6 +959,9 @@ def _complete_alternatives(
             continue
         result.append(
             {
+                _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(
+                    [resolved[role] for role in roles]
+                ),
                 "component_roles": list(roles),
                 "derivation_policy": alternative["derivation_policy"],
                 "values": _sum_records([resolved[role] for role in roles]),
@@ -697,7 +974,28 @@ def _local_equations(
     equation: Mapping[str, Any],
     rows: Sequence[Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
+    *,
+    allow_rounding: bool,
 ) -> tuple[list[dict[str, Any]], set[str], set[str], set[str], list[str]]:
+    def equation_record(
+        *,
+        component_roles: Sequence[str],
+        result_occurrence_id: str,
+        status: str,
+        residual_evidence: Sequence[Mapping[str, Any]] = (),
+        rounding_evidence: Sequence[Mapping[str, Any]] = (),
+    ) -> dict[str, Any]:
+        result = {
+            "component_roles_present": list(component_roles),
+            "result_occurrence_id": result_occurrence_id,
+            "result_role": equation["result_role"],
+            "status": status,
+        }
+        if allow_rounding:
+            result["residual_evidence"] = canonical_clone_v1(list(residual_evidence))
+            result["rounding_evidence"] = canonical_clone_v1(list(rounding_evidence))
+        return result
+
     rows_by_occurrence: dict[str, Mapping[str, Any]] = {}
     for row in rows:
         occurrence_id = row["label_match"].get("occurrence_id")
@@ -759,12 +1057,11 @@ def _local_equations(
             and result_row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
         ):
             records.append(
-                {
-                    "component_roles_present": [],
-                    "result_occurrence_id": result_occurrence,
-                    "result_role": equation["result_role"],
-                    "status": "LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES_VETO",
-                }
+                equation_record(
+                    component_roles=[],
+                    result_occurrence_id=result_occurrence,
+                    status="LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES_VETO",
+                )
             )
             reasons.append(
                 f"LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES:"
@@ -775,24 +1072,22 @@ def _local_equations(
             if len(active_local_scope_ids) == 1:
                 authorized_component_scopes.add(result_occurrence)
                 records.append(
-                    {
-                        "component_roles_present": [],
-                        "result_occurrence_id": result_occurrence,
-                        "result_role": equation["result_role"],
-                        "status": (
+                    equation_record(
+                        component_roles=[],
+                        result_occurrence_id=result_occurrence,
+                        status=(
                             "LOCAL_SINGLE_SCOPE_WITHOUT_VISIBLE_SUBTOTAL_"
                             "DEFERRED_TO_EXHAUSTIVE_GLOBAL_EQUATION"
                         ),
-                    }
+                    )
                 )
                 continue
             records.append(
-                {
-                    "component_roles_present": [],
-                    "result_occurrence_id": result_occurrence,
-                    "result_role": equation["result_role"],
-                    "status": "LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
-                }
+                equation_record(
+                    component_roles=[],
+                    result_occurrence_id=result_occurrence,
+                    status="LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
+                )
             )
             reasons.append(
                 f"LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE:"
@@ -801,12 +1096,11 @@ def _local_equations(
             continue
         if result_row is not None and result_row["status"] != "VISIBLE_VALUE_LANES_BOUND":
             records.append(
-                {
-                    "component_roles_present": [],
-                    "result_occurrence_id": result_occurrence,
-                    "result_role": equation["result_role"],
-                    "status": "LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
-                }
+                equation_record(
+                    component_roles=[],
+                    result_occurrence_id=result_occurrence,
+                    status="LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
+                )
             )
             reasons.append(
                 f"LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE:"
@@ -833,6 +1127,9 @@ def _local_equations(
                 continue
             alternatives.append(
                 {
+                    _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(
+                        [scoped_by_role[role][0] for role in roles]
+                    ),
                     "component_roles": list(roles),
                     "component_occurrence_ids": [
                         next(
@@ -847,6 +1144,28 @@ def _local_equations(
             )
         visible = _source_resolution(result_row)
         exact = [item for item in alternatives if _same_values(visible["values"], item["values"])]
+        residual_evidence = []
+        rounding_evidence = []
+        rounding_alternatives = []
+        if allow_rounding and not exact:
+            for alternative in alternatives:
+                residual = _typed_residual_evidence(
+                    result_role=equation["result_role"],
+                    printed=visible,
+                    component=alternative,
+                    component_roles=alternative["component_roles"],
+                )
+                if residual is not None:
+                    residual_evidence.append(residual)
+                assessment = _rounding_assessment(
+                    result_role=equation["result_role"],
+                    printed=visible,
+                    component=alternative,
+                    component_roles=alternative["component_roles"],
+                )
+                if assessment is not None:
+                    rounding_evidence.append(assessment)
+                    rounding_alternatives.append((alternative, assessment))
         if exact:
             selected = max(exact, key=lambda item: len(item["component_roles"]))
             status = "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
@@ -854,6 +1173,31 @@ def _local_equations(
             valid_results.add(result_occurrence)
             authorized_component_scopes.add(result_occurrence)
             covered_components.update(selected["component_occurrence_ids"])
+        elif within_rounding := [
+            item
+            for item in rounding_alternatives
+            if item[1]["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+        ]:
+            maximum = max(len(item[0]["component_roles"]) for item in within_rounding)
+            strongest = [
+                item for item in within_rounding if len(item[0]["component_roles"]) == maximum
+            ]
+            if len(strongest) == 1:
+                selected = strongest[0][0]
+                status = (
+                    "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS"
+                )
+                component_roles = selected["component_roles"]
+                valid_results.add(result_occurrence)
+                authorized_component_scopes.add(result_occurrence)
+                covered_components.update(selected["component_occurrence_ids"])
+            else:
+                status = "LOCAL_AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO"
+                component_roles = []
+                reasons.append(
+                    f"LOCAL_AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP:"
+                    f"{equation['result_role']}:{result_occurrence}"
+                )
         elif alternatives:
             status = "LOCAL_VISIBLE_SUBTOTAL_MISMATCH_VETO"
             component_roles = []
@@ -877,12 +1221,13 @@ def _local_equations(
                 f"{equation['result_role']}:{result_occurrence}"
             )
         records.append(
-            {
-                "component_roles_present": component_roles,
-                "result_occurrence_id": result_occurrence,
-                "result_role": equation["result_role"],
-                "status": status,
-            }
+            equation_record(
+                component_roles=component_roles,
+                residual_evidence=residual_evidence,
+                result_occurrence_id=result_occurrence,
+                rounding_evidence=rounding_evidence,
+                status=status,
+            )
         )
     return (
         records,
@@ -897,6 +1242,8 @@ def _select_global_equation(
     equation: Mapping[str, Any],
     resolved: dict[str, dict[str, Any]],
     trailing_rows: Sequence[Mapping[str, Any]],
+    *,
+    allow_rounding: bool,
 ) -> tuple[dict[str, Any], list[str]]:
     result_role = equation["result_role"]
     component_universe = {
@@ -917,8 +1264,10 @@ def _select_global_equation(
         visible_candidates.insert(0, resolved[result_role])
     reasons: list[str] = []
     residual_evidence: list[dict[str, Any]] = []
+    rounding_evidence: list[dict[str, Any]] = []
     trailing_candidate_evidence: list[dict[str, Any]] = []
     selected_trailing_candidate_ordinal: int | None = None
+    precomputed_trailing_residuals = False
     if visible_candidates and any(
         not _same_values(visible_candidates[0]["values"], item["values"])
         for item in visible_candidates[1:]
@@ -926,6 +1275,7 @@ def _select_global_equation(
         reasons.append(f"VISIBLE_RESULT_ROLES_DISAGREE:{result_role}")
     visible = visible_candidates[0] if visible_candidates else None
     selected: dict[str, Any] | None = None
+    selected_by_rounding = False
     source = visible
     status = "NOT_APPLICABLE_NO_SOURCE_OR_EXHAUSTIVE_COMPONENT_SET"
     if visible is not None:
@@ -940,7 +1290,7 @@ def _select_global_equation(
                 status = "AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP_VETO"
                 reasons.append(f"AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP:{result_role}")
         elif alternatives:
-            status = "VISIBLE_RESULT_MISMATCH_VETO"
+            rounding_alternatives = []
             for alternative in alternatives:
                 evidence = _typed_residual_evidence(
                     result_role=result_role,
@@ -950,7 +1300,36 @@ def _select_global_equation(
                 )
                 if evidence is not None:
                     residual_evidence.append(evidence)
-            reasons.append(f"VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM:{result_role}")
+                if allow_rounding:
+                    assessment = _rounding_assessment(
+                        result_role=result_role,
+                        printed=visible,
+                        component=alternative,
+                        component_roles=alternative["component_roles"],
+                    )
+                    if assessment is not None:
+                        rounding_evidence.append(assessment)
+                        rounding_alternatives.append((alternative, assessment))
+            within_rounding = [
+                item
+                for item in rounding_alternatives
+                if item[1]["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            ]
+            if within_rounding:
+                maximum = max(len(item[0]["component_roles"]) for item in within_rounding)
+                strongest = [
+                    item for item in within_rounding if len(item[0]["component_roles"]) == maximum
+                ]
+                if len(strongest) == 1:
+                    selected = strongest[0][0]
+                    selected_by_rounding = True
+                    status = "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                else:
+                    status = "AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO"
+                    reasons.append(f"AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP:{result_role}")
+            else:
+                status = "VISIBLE_RESULT_MISMATCH_VETO"
+                reasons.append(f"VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM:{result_role}")
         elif (
             not ((component_universe - set(equation["shared_component_roles"])) & set(resolved))
             and equation["visible_source_policy"]
@@ -976,6 +1355,34 @@ def _select_global_equation(
         exact_candidate_ordinals = {
             row["candidate_ordinal"] for _alternative, row, _candidate in exact_pairs
         }
+        rounding_pairs = []
+        if (
+            allow_rounding
+            and claimed_trailing
+            and alternatives
+            and complete_trailing
+            and not exact_pairs
+        ):
+            precomputed_trailing_residuals = True
+            for alternative in alternatives:
+                for row, candidate in complete_trailing:
+                    evidence = _typed_residual_evidence(
+                        result_role=result_role,
+                        printed=candidate,
+                        component=alternative,
+                        component_roles=alternative["component_roles"],
+                    )
+                    if evidence is not None:
+                        residual_evidence.append(evidence)
+                    assessment = _rounding_assessment(
+                        result_role=result_role,
+                        printed=candidate,
+                        component=alternative,
+                        component_roles=alternative["component_roles"],
+                    )
+                    if assessment is not None:
+                        rounding_evidence.append(assessment)
+                        rounding_pairs.append((alternative, row, candidate, assessment))
         if claimed_trailing and len(trailing_rows) == 1 and len(exact_candidate_ordinals) == 1:
             exact = [
                 (alternative, row, candidate)
@@ -991,6 +1398,30 @@ def _select_global_equation(
             else:
                 status = "AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP_VETO"
                 reasons.append(f"AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP:{result_role}")
+        elif claimed_trailing and len(trailing_rows) == 1 and rounding_pairs:
+            within_rounding = [
+                item
+                for item in rounding_pairs
+                if item[3]["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            ]
+            if within_rounding:
+                maximum = max(len(item[0]["component_roles"]) for item in within_rounding)
+                strongest = [
+                    item for item in within_rounding if len(item[0]["component_roles"]) == maximum
+                ]
+                if len(strongest) == 1:
+                    selected, selected_row, source, _assessment = strongest[0]
+                    selected_by_rounding = True
+                    selected_trailing_candidate_ordinal = selected_row["candidate_ordinal"]
+                    status = (
+                        "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                    )
+                else:
+                    status = "AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO"
+                    reasons.append(f"AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP:{result_role}")
+            else:
+                status = "TRAILING_NUMERIC_CHALLENGER_VETO"
+                reasons.append(f"TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:{result_role}:0")
         elif claimed_trailing and trailing_rows:
             status = "TRAILING_NUMERIC_CHALLENGER_VETO"
             reasons.append(
@@ -1039,7 +1470,9 @@ def _select_global_equation(
             candidate_ordinal = row["candidate_ordinal"]
             is_selected = candidate_ordinal == selected_trailing_candidate_ordinal
             candidate_status = (
-                "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+                "SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE"
+                if is_selected and selected_by_rounding
+                else "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
                 if is_selected
                 else "UNRESOLVED_PARTIAL_TRAILING_NUMERIC_CHALLENGER"
                 if row["status"] != "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
@@ -1055,7 +1488,10 @@ def _select_global_equation(
             )
             if not is_selected:
                 reasons.append(f"{candidate_status}:{result_role}:{candidate_ordinal}")
-                if row["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW":
+                if (
+                    row["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+                    and not precomputed_trailing_residuals
+                ):
                     candidate = _trailing_resolution(row)
                     residual_evidence.extend(
                         evidence
@@ -1073,6 +1509,7 @@ def _select_global_equation(
     if selected is not None:
         if source is None:
             resolved[result_role] = {
+                _PRINTED_SOURCE_CELLS_KEY: canonical_clone_v1(selected[_PRINTED_SOURCE_CELLS_KEY]),
                 "component_roles": selected["component_roles"],
                 "resolution_kind": "DERIVED_EXACT_COMPONENT_SUM",
                 "role": result_role,
@@ -1085,22 +1522,30 @@ def _select_global_equation(
                 **canonical_clone_v1(source),
                 "component_roles": selected["component_roles"],
                 "resolution_kind": (
-                    "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+                    "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS"
+                    if source_kind == "TRAILING_VALUE_ROW" and selected_by_rounding
+                    else "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
                     if source_kind == "TRAILING_VALUE_ROW"
                     else "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM_CORROBORATED_BY_COMPONENTS"
                     if source_kind is None
+                    else "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS"
+                    if selected_by_rounding
                     else "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
                 ),
                 "role": result_role,
             }
-    return {
+    record = {
         "component_roles_present": selected["component_roles"] if selected is not None else [],
         "residual_evidence": residual_evidence,
         "result_role": result_role,
         "selected_trailing_candidate_ordinal": selected_trailing_candidate_ordinal,
         "status": status,
         "trailing_candidate_evidence": trailing_candidate_evidence,
-    }, reasons
+    }
+    if allow_rounding:
+        record["rounding_evidence"] = rounding_evidence
+        record["visible_result_roles"] = canonical_clone_v1(equation["visible_result_roles"])
+    return record, reasons
 
 
 def _metrics(
@@ -1125,7 +1570,9 @@ def _metrics(
         "visible_corroborated_role_count": sum(
             record["resolution_kind"]
             in {
+                "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+                "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS",
             }
             for record in resolved
@@ -1209,6 +1656,382 @@ def _validate_resolution_record(record: Any) -> None:
             raise _error("scoped hierarchical resolved numeric lane drifted")
     if source_values is not None and len(source_values) != len(record["values"]):
         raise _error("scoped hierarchical resolved source lane axis differs")
+
+
+def _validate_residual_evidence_axis(evidence_axis: Any, *, result_role: str) -> None:
+    if type(evidence_axis) is not list:
+        raise _error("scoped hierarchical typed residual evidence axis drifted")
+    keys = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence)
+            != {
+                "candidate_ordinal",
+                "component_roles",
+                "convention",
+                "lanes",
+                "result_role",
+            }
+            or evidence["result_role"] != result_role
+            or evidence["convention"] != "PRINTED_RESULT_MINUS_EXHAUSTIVE_COMPONENT_SUM"
+            or (
+                evidence["candidate_ordinal"] is not None
+                and (
+                    type(evidence["candidate_ordinal"]) is not int
+                    or evidence["candidate_ordinal"] < 0
+                )
+            )
+            or type(evidence["component_roles"]) is not list
+            or not evidence["component_roles"]
+            or len(evidence["component_roles"]) != len(set(evidence["component_roles"]))
+            or any(type(role) is not str or not role for role in evidence["component_roles"])
+            or type(evidence["lanes"]) is not list
+            or not evidence["lanes"]
+        ):
+            raise _error("scoped hierarchical typed residual evidence drifted")
+        keys.append((evidence["candidate_ordinal"], tuple(evidence["component_roles"])))
+        for expected_lane, lane in enumerate(evidence["lanes"]):
+            component_number = lane.get("component_sum_number") if type(lane) is dict else None
+            printed_number = lane.get("printed_result_number") if type(lane) is dict else None
+            residual_number = lane.get("residual_number") if type(lane) is dict else None
+            if (
+                type(lane) is not dict
+                or set(lane)
+                != {
+                    "column_ordinal",
+                    "component_source_sample_ids",
+                    "component_sum_number",
+                    "printed_result_number",
+                    "printed_result_source_sample_ids",
+                    "residual_number",
+                }
+                or lane["column_ordinal"] != expected_lane
+                or any(
+                    type(number) is not dict
+                    or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+                    or type(number["coefficient"]) is not int
+                    or type(number["percentage_mark_present"]) is not bool
+                    or type(number["scale"]) is not int
+                    or number["scale"] < 0
+                    for number in (
+                        lane["component_sum_number"],
+                        lane["printed_result_number"],
+                        lane["residual_number"],
+                    )
+                )
+                or component_number["percentage_mark_present"]
+                is not printed_number["percentage_mark_present"]
+                or not same_typed_json_v1(
+                    residual_number,
+                    _canonical_number(
+                        printed_number["coefficient"]
+                        * 10
+                        ** max(
+                            0,
+                            component_number["scale"] - printed_number["scale"],
+                        )
+                        - component_number["coefficient"]
+                        * 10
+                        ** max(
+                            0,
+                            printed_number["scale"] - component_number["scale"],
+                        ),
+                        max(printed_number["scale"], component_number["scale"]),
+                        printed_number["percentage_mark_present"],
+                    ),
+                )
+                or any(
+                    type(samples) is not list
+                    or not samples
+                    or len(samples) != len(set(samples))
+                    or any(type(sample) is not str or not sample for sample in samples)
+                    for samples in (
+                        lane["component_source_sample_ids"],
+                        lane["printed_result_source_sample_ids"],
+                    )
+                )
+            ):
+                raise _error("scoped hierarchical residual lane evidence drifted")
+    if len(keys) != len(set(keys)):
+        raise _error("scoped hierarchical residual evidence ownership repeats")
+
+
+def _validate_rounding_evidence_axis(
+    evidence_axis: Any,
+    *,
+    local_result_occurrence_id: str | None,
+    numeric_sample_by_id: Mapping[str, Mapping[str, Any]],
+    resolved_by_role: Mapping[str, Mapping[str, Any]],
+    residual_axis: Sequence[Mapping[str, Any]],
+    role_occurrence_by_id: Mapping[str, Mapping[str, Any]],
+    result_role: str,
+    visible_result_roles: set[str],
+) -> None:
+    if type(evidence_axis) is not list:
+        raise _error("scoped hierarchical rounding evidence axis drifted")
+    residual_by_key = {
+        (evidence["candidate_ordinal"], tuple(evidence["component_roles"])): evidence
+        for evidence in residual_axis
+    }
+    keys = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence)
+            != {
+                "candidate_ordinal",
+                "component_roles",
+                "lanes",
+                "policy",
+                "printed_result_owner",
+                "result_role",
+                "status",
+            }
+            or evidence["result_role"] != result_role
+            or type(evidence["printed_result_owner"]) is not dict
+            or set(evidence["printed_result_owner"])
+            != {"candidate_ordinal", "occurrence_id", "role", "source_kind"}
+            or evidence["policy"]
+            != (
+                "ALL_PRINTED_CELLS_INTEGER_DISPLAY_UNIT_AND_SAME_NONZERO_RESULT_SUM_SIGN;"
+                "2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
+                "INDEPENDENTLY_PRINTED_COMPONENT_COUNT+1"
+            )
+            or (
+                evidence["candidate_ordinal"] is not None
+                and (
+                    type(evidence["candidate_ordinal"]) is not int
+                    or evidence["candidate_ordinal"] < 0
+                )
+            )
+            or type(evidence["component_roles"]) is not list
+            or not evidence["component_roles"]
+            or len(evidence["component_roles"]) != len(set(evidence["component_roles"]))
+            or any(type(role) is not str or not role for role in evidence["component_roles"])
+            or type(evidence["lanes"]) is not list
+            or not evidence["lanes"]
+            or evidence["status"]
+            not in {
+                "ROUNDING_BOUND_SATISFIED_ALL_LANES",
+                "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE",
+            }
+        ):
+            raise _error("scoped hierarchical rounding assessment drifted")
+        key = (evidence["candidate_ordinal"], tuple(evidence["component_roles"]))
+        keys.append(key)
+        residual = residual_by_key.get(key)
+        if type(residual) is not dict or len(residual["lanes"]) != len(evidence["lanes"]):
+            raise _error("rounding assessment lost its exact typed residual evidence")
+        lane_statuses = []
+        component_counts = set()
+        printed_owner = evidence["printed_result_owner"]
+        if printed_owner["source_kind"] == "TRAILING_VALUE_ROW":
+            printed_owner_valid = (
+                printed_owner["candidate_ordinal"] == evidence["candidate_ordinal"]
+                and type(printed_owner["candidate_ordinal"]) is int
+                and printed_owner["occurrence_id"] is None
+                and printed_owner["role"] is None
+            )
+        elif printed_owner["source_kind"] == "ROLE_ROW":
+            owner_occurrence = role_occurrence_by_id.get(printed_owner["occurrence_id"])
+            printed_owner_valid = (
+                evidence["candidate_ordinal"] is None
+                and printed_owner["candidate_ordinal"] is None
+                and type(owner_occurrence) is dict
+                and owner_occurrence.get("role") == printed_owner["role"]
+                and printed_owner["role"] in visible_result_roles
+                and (
+                    local_result_occurrence_id is None
+                    or printed_owner["occurrence_id"] == local_result_occurrence_id
+                )
+            )
+        else:
+            printed_owner_valid = False
+        if not printed_owner_valid:
+            raise _error("rounding printed result owner receipt drifted")
+        for expected_lane, (lane, residual_lane) in enumerate(
+            zip(evidence["lanes"], residual["lanes"], strict=True)
+        ):
+            number = lane.get("residual_number") if type(lane) is dict else None
+            component_samples = residual_lane["component_source_sample_ids"]
+            printed_samples = residual_lane["printed_result_source_sample_ids"]
+            expected_count = len(component_samples)
+            printed_component_cells = (
+                lane.get("printed_component_cells") if type(lane) is dict else None
+            )
+            printed_result_cell = lane.get("printed_result_cell") if type(lane) is dict else None
+            if (
+                type(lane) is not dict
+                or set(lane)
+                != {
+                    "bound_component_count_plus_one",
+                    "column_ordinal",
+                    "independently_printed_component_count",
+                    "printed_component_cells",
+                    "printed_result_cell",
+                    "residual_number",
+                    "status",
+                    "twice_absolute_residual",
+                }
+                or lane["column_ordinal"] != expected_lane
+                or type(number) is not dict
+                or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+                or type(number["coefficient"]) is not int
+                or number["percentage_mark_present"] is not False
+                or number["scale"] != 0
+                or not same_typed_json_v1(number, residual_lane["residual_number"])
+                or residual_lane["component_sum_number"]["percentage_mark_present"] is not False
+                or residual_lane["component_sum_number"]["scale"] != 0
+                or residual_lane["printed_result_number"]["percentage_mark_present"] is not False
+                or residual_lane["printed_result_number"]["scale"] != 0
+                or len(printed_samples) != 1
+                or set(printed_samples) & set(component_samples)
+                or type(printed_component_cells) is not list
+                or len(printed_component_cells) != expected_count
+                or any(
+                    type(cell) is not dict
+                    or set(cell) != {"number", "source_sample_id"}
+                    or type(cell["source_sample_id"]) is not str
+                    or not cell["source_sample_id"]
+                    or type(cell["number"]) is not dict
+                    or set(cell["number"]) != {"coefficient", "percentage_mark_present", "scale"}
+                    or type(cell["number"]["coefficient"]) is not int
+                    or cell["number"]["percentage_mark_present"] is not False
+                    or cell["number"]["scale"] != 0
+                    for cell in printed_component_cells
+                )
+                or [cell["source_sample_id"] for cell in printed_component_cells]
+                != component_samples
+                or sum(cell["number"]["coefficient"] for cell in printed_component_cells)
+                != residual_lane["component_sum_number"]["coefficient"]
+                or type(printed_result_cell) is not dict
+                or set(printed_result_cell) != {"number", "source_sample_id"}
+                or printed_result_cell["source_sample_id"] != printed_samples[0]
+                or not same_typed_json_v1(
+                    printed_result_cell["number"], residual_lane["printed_result_number"]
+                )
+                or (
+                    residual_lane["printed_result_number"]["coefficient"] != 0
+                    and residual_lane["component_sum_number"]["coefficient"] != 0
+                    and (residual_lane["printed_result_number"]["coefficient"] > 0)
+                    is not (residual_lane["component_sum_number"]["coefficient"] > 0)
+                )
+                or type(lane["independently_printed_component_count"]) is not int
+                or lane["independently_printed_component_count"] != expected_count
+                or type(lane["bound_component_count_plus_one"]) is not int
+                or lane["bound_component_count_plus_one"] != expected_count + 1
+                or type(lane["twice_absolute_residual"]) is not int
+                or lane["twice_absolute_residual"] != 2 * abs(number["coefficient"])
+                or lane["status"]
+                != (
+                    "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND"
+                    if lane["twice_absolute_residual"] <= lane["bound_component_count_plus_one"]
+                    else "OVER_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND"
+                )
+            ):
+                raise _error("scoped hierarchical integer rounding lane drifted")
+            component_ids = [cell["source_sample_id"] for cell in printed_component_cells]
+            if local_result_occurrence_id is None:
+                expected_component_ids = []
+                for component_role in evidence["component_roles"]:
+                    component_record = resolved_by_role.get(component_role)
+                    component_values = (
+                        component_record.get("values") if type(component_record) is dict else None
+                    )
+                    if type(component_values) is not list or expected_lane >= len(component_values):
+                        raise _error("rounding component role lost its resolved source sample axis")
+                    expected_component_ids.extend(
+                        component_values[expected_lane]["source_sample_ids"]
+                    )
+            else:
+                expected_component_ids = []
+                for component_role in evidence["component_roles"]:
+                    owners = [
+                        occurrence
+                        for occurrence in role_occurrence_by_id.values()
+                        if occurrence.get("role") == component_role
+                        and occurrence.get("scope_owner_occurrence_id")
+                        == local_result_occurrence_id
+                    ]
+                    if len(owners) != 1:
+                        raise _error("local rounding component scope is not one exact occurrence")
+                    owner_id = owners[0]["occurrence_id"]
+                    owned_lane_samples = [
+                        sample["sample_id"]
+                        for sample in numeric_sample_by_id.values()
+                        if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+                        and sample.get("owner_id") == owner_id
+                        and sample.get("column_ordinal") == expected_lane
+                    ]
+                    if len(owned_lane_samples) != 1:
+                        raise _error(
+                            "local rounding component occurrence lost one exact lane sample"
+                        )
+                    expected_component_ids.extend(owned_lane_samples)
+            if component_ids != expected_component_ids:
+                raise _error("rounding component count is not derived from selected source roles")
+            for cell in [*printed_component_cells, printed_result_cell]:
+                sample = numeric_sample_by_id.get(cell["source_sample_id"])
+                parsed = sample.get("parsed_token") if type(sample) is dict else None
+                sample_number = (
+                    {
+                        "coefficient": parsed.get("coefficient"),
+                        "percentage_mark_present": parsed.get("percentage_mark_present"),
+                        "scale": parsed.get("scale"),
+                    }
+                    if type(parsed) is dict
+                    else None
+                )
+                if (
+                    type(sample) is not dict
+                    or sample.get("column_ordinal") != expected_lane
+                    or type(parsed) is not dict
+                    or parsed.get("classification") != "SIGNED_NUMBER"
+                    or not same_typed_json_v1(cell["number"], sample_number)
+                ):
+                    raise _error("rounding printed cell differs from its numeric universe sample")
+            result_sample = numeric_sample_by_id[printed_result_cell["source_sample_id"]]
+            if evidence["candidate_ordinal"] is not None:
+                result_owner_valid = (
+                    result_sample["owner_kind"] == "TRAILING_VALUE_ROW"
+                    and result_sample["owner_id"]
+                    == f"aforav2:trailing:{evidence['candidate_ordinal']}"
+                )
+            elif local_result_occurrence_id is not None:
+                result_owner_valid = (
+                    result_sample["owner_kind"] == "ROLE_OCCURRENCE"
+                    and result_sample["owner_id"] == local_result_occurrence_id
+                )
+            else:
+                result_record = resolved_by_role.get(result_role)
+                result_values = result_record.get("values") if type(result_record) is dict else None
+                selected_result_owner_valid = (
+                    type(result_values) is list
+                    and expected_lane < len(result_values)
+                    and result_values[expected_lane]["source_sample_ids"]
+                    == [printed_result_cell["source_sample_id"]]
+                )
+                declared_visible_owner_valid = (
+                    result_sample["owner_kind"] == "ROLE_OCCURRENCE"
+                    and result_sample["owner_id"] == printed_owner["occurrence_id"]
+                )
+                result_owner_valid = selected_result_owner_valid or declared_visible_owner_valid
+            if not result_owner_valid:
+                raise _error("rounding printed result lost its exact selected source owner")
+            lane_statuses.append(lane["status"])
+            component_counts.add(expected_count)
+        expected_status = (
+            "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            if all(
+                status == "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND" for status in lane_statuses
+            )
+            else "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
+        )
+        if len(component_counts) != 1 or evidence["status"] != expected_status:
+            raise _error("scoped hierarchical integer rounding assessment drifted")
+    if len(keys) != len(set(keys)):
+        raise _error("scoped hierarchical rounding assessment ownership repeats")
 
 
 def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
@@ -1328,6 +2151,132 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         raise _error("source-only numeric cluster did not veto closure")
 
 
+def _exact_sum_matches(
+    result_numbers: Sequence[Mapping[str, Any]],
+    component_number_axes: Sequence[Sequence[Mapping[str, Any]]],
+) -> bool:
+    if (
+        not result_numbers
+        or not component_number_axes
+        or any(len(axis) != len(result_numbers) for axis in component_number_axes)
+    ):
+        return False
+    for lane, result in enumerate(result_numbers):
+        components = [axis[lane] for axis in component_number_axes]
+        if any(
+            type(number) is not dict
+            or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+            for number in [result, *components]
+        ):
+            return False
+        percentages = {number["percentage_mark_present"] for number in [result, *components]}
+        if len(percentages) != 1:
+            return False
+        scale = max(number["scale"] for number in [result, *components])
+        component_sum = sum(
+            number["coefficient"] * 10 ** (scale - number["scale"]) for number in components
+        )
+        if result["coefficient"] * 10 ** (scale - result["scale"]) != component_sum:
+            return False
+    return True
+
+
+def _resolved_number_axis(record: Mapping[str, Any] | None) -> list[Mapping[str, Any]]:
+    values = record.get("values") if type(record) is dict else None
+    if type(values) is not list:
+        return []
+    return [value.get("number") for value in values]
+
+
+def _occurrence_number_axis(
+    occurrence_id: str, numeric_sample_by_id: Mapping[str, Mapping[str, Any]]
+) -> list[Mapping[str, Any]]:
+    samples = sorted(
+        (
+            sample
+            for sample in numeric_sample_by_id.values()
+            if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+            and sample.get("owner_id") == occurrence_id
+        ),
+        key=lambda sample: sample["column_ordinal"],
+    )
+    if [sample["column_ordinal"] for sample in samples] != list(range(len(samples))):
+        return []
+    return [
+        {
+            "coefficient": sample["parsed_token"]["coefficient"],
+            "percentage_mark_present": sample["parsed_token"]["percentage_mark_present"],
+            "scale": sample["parsed_token"]["scale"],
+        }
+        for sample in samples
+    ]
+
+
+def _global_equation_exact_arithmetic(
+    equation: Mapping[str, Any], resolved_by_role: Mapping[str, Mapping[str, Any]]
+) -> bool:
+    result = resolved_by_role.get(equation["result_role"])
+    components = [resolved_by_role.get(role) for role in equation["component_roles_present"]]
+    if type(result) is not dict or any(type(component) is not dict for component in components):
+        return False
+    return _exact_sum_matches(
+        _resolved_number_axis(result),
+        [_resolved_number_axis(component) for component in components],
+    )
+
+
+def _resolved_source_owner(record: Mapping[str, Any]) -> dict[str, Any] | None:
+    source = record.get("source")
+    if type(source) is not dict or source.get("kind") not in {
+        "ROLE_ROW",
+        "TRAILING_VALUE_ROW",
+    }:
+        return None
+    source_record = source.get("record")
+    if type(source_record) is not dict:
+        return None
+    return {
+        "candidate_ordinal": (
+            source_record.get("candidate_ordinal")
+            if source["kind"] == "TRAILING_VALUE_ROW"
+            else None
+        ),
+        "occurrence_id": (
+            source_record.get("label_match", {}).get("occurrence_id")
+            if source["kind"] == "ROLE_ROW"
+            else None
+        ),
+        "role": source_record.get("role") if source["kind"] == "ROLE_ROW" else None,
+        "source_kind": source["kind"],
+    }
+
+
+def _local_equation_exact_arithmetic(
+    equation: Mapping[str, Any],
+    *,
+    numeric_sample_by_id: Mapping[str, Mapping[str, Any]],
+    role_occurrence_by_id: Mapping[str, Mapping[str, Any]],
+) -> bool:
+    result_occurrence_id = equation["result_occurrence_id"]
+    component_axes = []
+    for role in equation["component_roles_present"]:
+        owners = [
+            occurrence
+            for occurrence in role_occurrence_by_id.values()
+            if occurrence.get("role") == role
+            and occurrence.get("scope_owner_occurrence_id") == result_occurrence_id
+        ]
+        if len(owners) != 1:
+            return False
+        component_axes.append(
+            _occurrence_number_axis(owners[0]["occurrence_id"], numeric_sample_by_id)
+        )
+    return _exact_sum_matches(
+        _occurrence_number_axis(result_occurrence_id, numeric_sample_by_id),
+        component_axes,
+    )
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -1391,18 +2340,25 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("scoped hierarchical resolved role axis repeats or drifted")
     for record in value["resolved_roles"]:
         _validate_resolution_record(record)
+    numeric_sample_by_id = {}
+    try:
+        for sample in value["numeric_sample_universe"]:
+            occurrence_v2._validate_numeric_sample_record(sample)
+            if sample["sample_id"] in numeric_sample_by_id:
+                raise _error("scoped hierarchical numeric universe repeats one sample")
+            numeric_sample_by_id[sample["sample_id"]] = sample
+    except occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("scoped hierarchical numeric universe record drifted") from exc
+    resolved_by_role = {record["role"]: record for record in value["resolved_roles"]}
+    role_occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in value["role_occurrences"]
+        if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
+    }
     for equation in value["equations"]["global"]:
         if (
             type(equation) is not dict
-            or set(equation)
-            != {
-                "component_roles_present",
-                "residual_evidence",
-                "result_role",
-                "selected_trailing_candidate_ordinal",
-                "status",
-                "trailing_candidate_evidence",
-            }
+            or set(equation) not in (_GLOBAL_EQUATION_FIELDS_V1, _GLOBAL_EQUATION_FIELDS_V2)
             or type(equation["component_roles_present"]) is not list
             or type(equation["residual_evidence"]) is not list
             or type(equation["result_role"]) is not str
@@ -1414,9 +2370,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     or equation["selected_trailing_candidate_ordinal"] < 0
                 )
             )
-            or type(equation["status"]) is not str
-            or not equation["status"]
+            or equation["status"] not in _GLOBAL_EQUATION_STATUSES
             or type(equation["trailing_candidate_evidence"]) is not list
+            or (
+                "visible_result_roles" in equation
+                and (
+                    type(equation["visible_result_roles"]) is not list
+                    or len(equation["visible_result_roles"])
+                    != len(set(equation["visible_result_roles"]))
+                    or any(
+                        type(role) is not str or not role
+                        for role in equation["visible_result_roles"]
+                    )
+                )
+            )
         ):
             raise _error("scoped hierarchical global equation record drifted")
         trailing_ordinals = []
@@ -1438,6 +2405,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 != [item.get("sample_id") for item in candidate["source_record"].get("values", [])]
                 or candidate["status"]
                 not in {
+                    "SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE",
                     "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
                     "UNRESOLVED_PARTIAL_TRAILING_NUMERIC_CHALLENGER",
                     "UNRESOLVED_UNSELECTED_COMPLETE_TRAILING_NUMERIC_CHALLENGER",
@@ -1445,7 +2413,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
             ):
                 raise _error("scoped hierarchical trailing challenger evidence drifted")
             trailing_ordinals.append(candidate["candidate_ordinal"])
-            if candidate["status"] == "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE":
+            if candidate["status"] in {
+                "SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE",
+                "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
+            }:
                 selected_ordinals.append(candidate["candidate_ordinal"])
         if trailing_ordinals != sorted(set(trailing_ordinals)) or selected_ordinals != (
             []
@@ -1453,89 +2424,162 @@ def _validate_result(value: Any) -> dict[str, Any]:
             else [equation["selected_trailing_candidate_ordinal"]]
         ):
             raise _error("scoped hierarchical selected trailing candidate axis drifted")
-        for evidence in equation["residual_evidence"]:
+        _validate_residual_evidence_axis(
+            equation["residual_evidence"], result_role=equation["result_role"]
+        )
+        if "rounding_evidence" in equation:
+            _validate_rounding_evidence_axis(
+                equation["rounding_evidence"],
+                local_result_occurrence_id=None,
+                numeric_sample_by_id=numeric_sample_by_id,
+                resolved_by_role=resolved_by_role,
+                residual_axis=equation["residual_evidence"],
+                role_occurrence_by_id=role_occurrence_by_id,
+                result_role=equation["result_role"],
+                visible_result_roles={equation["result_role"], *equation["visible_result_roles"]},
+            )
+            satisfied = [
+                evidence
+                for evidence in equation["rounding_evidence"]
+                if evidence["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+                and evidence["component_roles"] == equation["component_roles_present"]
+                and evidence["candidate_ordinal"] == equation["selected_trailing_candidate_ordinal"]
+            ]
+            if ("ROUNDING_CORROBORATED" in equation["status"] and len(satisfied) != 1) or (
+                "ROUNDING_CORROBORATED" not in equation["status"]
+                and any(
+                    candidate["status"]
+                    == "SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE"
+                    for candidate in equation["trailing_candidate_evidence"]
+                )
+            ):
+                raise _error("scoped hierarchical rounding selection drifted")
+        successful_global_kinds = {
+            "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM": {"DERIVED_EXACT_COMPONENT_SUM"},
+            "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
+                "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM_CORROBORATED_BY_COMPONENTS",
+                "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+            },
+            "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
+                "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS"
+            },
+            "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
+                "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+            },
+            "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
+                "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS"
+            },
+        }
+        expected_resolution_kinds = successful_global_kinds.get(equation["status"])
+        if expected_resolution_kinds is not None:
+            result_record = resolved_by_role.get(equation["result_role"])
+            rounding_selected = "ROUNDING_CORROBORATED" in equation["status"]
+            arithmetic_is_exact = _global_equation_exact_arithmetic(equation, resolved_by_role)
+            selected_rounding = [
+                evidence
+                for evidence in equation.get("rounding_evidence", [])
+                if evidence["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+                and evidence["component_roles"] == equation["component_roles_present"]
+                and evidence["candidate_ordinal"] == equation["selected_trailing_candidate_ordinal"]
+            ]
+            selected_rounding_has_nonzero_residual = len(selected_rounding) == 1 and any(
+                lane["residual_number"]["coefficient"] != 0
+                for lane in selected_rounding[0]["lanes"]
+            )
+            selected_rounding_owner_matches_result = len(
+                selected_rounding
+            ) == 1 and same_typed_json_v1(
+                selected_rounding[0]["printed_result_owner"],
+                _resolved_source_owner(result_record),
+            )
             if (
-                type(evidence) is not dict
-                or set(evidence)
-                != {
-                    "candidate_ordinal",
-                    "component_roles",
-                    "convention",
-                    "lanes",
-                    "result_role",
-                }
-                or evidence["result_role"] != equation["result_role"]
-                or evidence["convention"] != "PRINTED_RESULT_MINUS_EXHAUSTIVE_COMPONENT_SUM"
+                type(result_record) is not dict
+                or result_record["resolution_kind"] not in expected_resolution_kinds
+                or result_record["component_roles"] != equation["component_roles_present"]
+                or arithmetic_is_exact is rounding_selected
                 or (
-                    evidence["candidate_ordinal"] is not None
+                    rounding_selected
                     and (
-                        type(evidence["candidate_ordinal"]) is not int
-                        or evidence["candidate_ordinal"] < 0
+                        not selected_rounding_has_nonzero_residual
+                        or not selected_rounding_owner_matches_result
                     )
                 )
-                or type(evidence["component_roles"]) is not list
-                or not evidence["component_roles"]
-                or type(evidence["lanes"]) is not list
-                or not evidence["lanes"]
+                or (not rounding_selected and equation.get("rounding_evidence", []))
             ):
-                raise _error("scoped hierarchical typed residual evidence drifted")
-            for expected_lane, lane in enumerate(evidence["lanes"]):
-                if (
-                    type(lane) is not dict
-                    or set(lane)
-                    != {
-                        "column_ordinal",
-                        "component_source_sample_ids",
-                        "component_sum_number",
-                        "printed_result_number",
-                        "printed_result_source_sample_ids",
-                        "residual_number",
-                    }
-                    or lane["column_ordinal"] != expected_lane
-                    or any(
-                        type(number) is not dict
-                        or set(number) != {"coefficient", "percentage_mark_present", "scale"}
-                        or type(number["coefficient"]) is not int
-                        or type(number["percentage_mark_present"]) is not bool
-                        or type(number["scale"]) is not int
-                        or number["scale"] < 0
-                        for number in (
-                            lane["component_sum_number"],
-                            lane["printed_result_number"],
-                            lane["residual_number"],
-                        )
-                    )
-                    or any(
-                        type(samples) is not list
-                        or not samples
-                        or len(samples) != len(set(samples))
-                        or any(type(sample) is not str or not sample for sample in samples)
-                        for samples in (
-                            lane["component_source_sample_ids"],
-                            lane["printed_result_source_sample_ids"],
-                        )
-                    )
-                ):
-                    raise _error("scoped hierarchical residual lane evidence drifted")
+                raise _error("global equation status and resolved arithmetic authority drifted")
+        else:
+            result_record = resolved_by_role.get(equation["result_role"])
+            selected_resolution_kinds = {
+                kind for kinds in successful_global_kinds.values() for kind in kinds
+            }
+            if equation["component_roles_present"] or (
+                type(result_record) is dict
+                and result_record["resolution_kind"] in selected_resolution_kinds
+                and result_record["component_roles"]
+            ):
+                raise _error("global failure status retained selected accounting authority")
     for equation in value["equations"]["local"]:
         if (
             type(equation) is not dict
-            or set(equation)
-            != {
-                "component_roles_present",
-                "result_occurrence_id",
-                "result_role",
-                "status",
-            }
+            or set(equation) not in (_LOCAL_EQUATION_FIELDS_V1, _LOCAL_EQUATION_FIELDS_V2)
             or type(equation["component_roles_present"]) is not list
             or type(equation["result_occurrence_id"]) is not str
             or not equation["result_occurrence_id"]
             or type(equation["result_role"]) is not str
             or not equation["result_role"]
-            or type(equation["status"]) is not str
-            or not equation["status"]
+            or equation["status"] not in _LOCAL_EQUATION_STATUSES
         ):
             raise _error("scoped hierarchical local equation record drifted")
+        if "rounding_evidence" in equation:
+            _validate_residual_evidence_axis(
+                equation["residual_evidence"], result_role=equation["result_role"]
+            )
+            _validate_rounding_evidence_axis(
+                equation["rounding_evidence"],
+                local_result_occurrence_id=equation["result_occurrence_id"],
+                numeric_sample_by_id=numeric_sample_by_id,
+                resolved_by_role=resolved_by_role,
+                residual_axis=equation["residual_evidence"],
+                role_occurrence_by_id=role_occurrence_by_id,
+                result_role=equation["result_role"],
+                visible_result_roles={equation["result_role"]},
+            )
+            selected = [
+                evidence
+                for evidence in equation["rounding_evidence"]
+                if evidence["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+                and evidence["component_roles"] == equation["component_roles_present"]
+            ]
+            if "ROUNDING_CORROBORATED" in equation["status"] and len(selected) != 1:
+                raise _error("scoped hierarchical local rounding selection drifted")
+        if equation["status"] in {
+            "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
+            "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS",
+        }:
+            rounding_selected = "ROUNDING_CORROBORATED" in equation["status"]
+            arithmetic_is_exact = _local_equation_exact_arithmetic(
+                equation,
+                numeric_sample_by_id=numeric_sample_by_id,
+                role_occurrence_by_id=role_occurrence_by_id,
+            )
+            selected_rounding = [
+                evidence
+                for evidence in equation.get("rounding_evidence", [])
+                if evidence["status"] == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+                and evidence["component_roles"] == equation["component_roles_present"]
+            ]
+            selected_rounding_has_nonzero_residual = len(selected_rounding) == 1 and any(
+                lane["residual_number"]["coefficient"] != 0
+                for lane in selected_rounding[0]["lanes"]
+            )
+            if (
+                arithmetic_is_exact is rounding_selected
+                or (rounding_selected and not selected_rounding_has_nonzero_residual)
+                or (not rounding_selected and equation.get("rounding_evidence", []))
+            ):
+                raise _error("local equation status and exact arithmetic authority drifted")
+        elif equation["component_roles_present"]:
+            raise _error("local failure status retained selected accounting authority")
     occurrence_ids = {record.get("occurrence_id") for record in value["role_occurrences"]}
     coverage_ids = [record.get("coverage_id") for record in value["coverage_receipt"]]
     role_coverage_occurrence_ids = [
@@ -1558,6 +2602,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "UNBOUND_VISIBLE_ACCOUNTING_OCCURRENCE",
         "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE",
         "UNRESOLVED_HIERARCHY_SOURCE_OCCURRENCE",
+        "SELECTED_ROUNDING_CORROBORATED_VISIBLE_TRAILING_ROOT_SOURCE",
         "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
         "UNRESOLVED_PARTIAL_TRAILING_NUMERIC_CHALLENGER",
         "UNRESOLVED_UNSELECTED_COMPLETE_TRAILING_NUMERIC_CHALLENGER",
@@ -1671,11 +2716,22 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if type(record) is dict and type(record.get("occurrence_id")) is str
     }
     for receipt in value["coverage_receipt"]:
-        if receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE" and (
-            f"SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE:{receipt['role']}:"
-            f"{receipt['occurrence_id']}" not in value["unresolved_reasons"]
-        ):
-            raise _error("source-only schema-ineligible receipt did not veto closure")
+        if receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE":
+            occurrence = occurrence_by_id.get(receipt["occurrence_id"])
+            scope_binding = (
+                occurrence.get("source_scope_binding") if type(occurrence) is dict else None
+            )
+            reason_prefix = (
+                "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
+                if type(scope_binding) is dict
+                and scope_binding.get("status") == occurrence_v2._AMBIGUOUS_WRAPPED_LABEL_STATUS  # noqa: SLF001
+                else "SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
+            )
+            if (
+                f"{reason_prefix}:{receipt['role']}:{receipt['occurrence_id']}"
+                not in value["unresolved_reasons"]
+            ):
+                raise _error("source-only schema-ineligible receipt did not veto closure")
         if receipt["disposition"] == "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH":
             occurrence = occurrence_by_id.get(receipt["occurrence_id"])
             if (
@@ -1887,6 +2943,7 @@ def _build(
     ):
         reasons.append("VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE")
     aggregate_roles = set(spec["repeated_role_policy"]["aggregate_roles"])
+    allow_rounding = spec["format_version"] == SPEC_FORMAT_VERSION_V2
     local_records = []
     local_roles = set(spec["repeated_role_policy"]["local_subtotal_roles"])
     locally_valid_results: set[str] = set()
@@ -1900,7 +2957,12 @@ def _build(
                 authorized_component_scopes,
                 covered_components,
                 local_reasons,
-            ) = _local_equations(equation, accounting_rows, axis["role_occurrences"])
+            ) = _local_equations(
+                equation,
+                accounting_rows,
+                axis["role_occurrences"],
+                allow_rounding=allow_rounding,
+            )
             local_records.extend(records)
             locally_valid_results.update(valid_results)
             locally_authorized_component_scopes.update(authorized_component_scopes)
@@ -1925,6 +2987,7 @@ def _build(
             equation,
             resolved,
             row_axis["trailing_value_rows"],
+            allow_rounding=allow_rounding,
         )
         global_records.append(record)
         reasons.extend(equation_reasons)
@@ -2077,7 +3140,11 @@ def _build(
             }
         )
     reasons = list(dict.fromkeys(reasons))
-    resolved_axis = [canonical_clone_v1(record) for record in resolved.values()]
+    resolved_axis = []
+    for record in resolved.values():
+        public_record = canonical_clone_v1(record)
+        public_record.pop(_PRINTED_SOURCE_CELLS_KEY, None)
+        resolved_axis.append(public_record)
     equation_axis = {"global": global_records, "local": local_records}
     material = {
         "authenticated_existing_dash_evidence": canonical_clone_v1(
@@ -2130,7 +3197,7 @@ def build_accounting_scoped_hierarchical_table_closure_v2(
     family_topology_spec: Any,
     hierarchy_spec: Any,
 ) -> dict[str, Any]:
-    """Close exact local subtotals and declared disjoint repeated roles."""
+    """Close exact-or-receipted-rounding subtotals and disjoint repeated roles."""
 
     return _build(occurrence_axis, family_topology_spec, hierarchy_spec)
 
@@ -2149,7 +3216,7 @@ def validate_accounting_scoped_hierarchical_table_closure_replay_v2(
     family_topology_spec: Any,
     hierarchy_spec: Any,
 ) -> dict[str, Any]:
-    """Rebuild exact local/global exhaustive equations from the occurrence axis."""
+    """Rebuild exact-or-rounding local/global equations from the occurrence axis."""
 
     persisted = _validate_result(value)
     expected = build_accounting_scoped_hierarchical_table_closure_v2(

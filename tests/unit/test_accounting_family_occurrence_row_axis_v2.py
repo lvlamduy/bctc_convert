@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+import json
+from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
@@ -12,12 +14,19 @@ from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as subje
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as closure_v2
 from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     propose_missing_value_lane_regions_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_F3_TOPOLOGY_PATH = _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-topology-v4.json"
+_F3_EVALUATION_PATH = (
+    _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+)
 
 
 def _matcher(alias: str, within: str | None = None) -> dict[str, object]:
@@ -454,6 +463,43 @@ def test_numeric_universe_owns_internal_money_samples_but_excludes_header_dates(
         subject._validate_result(attacked)
 
 
+def test_prose_candidate_with_empty_v1_grid_is_typed_unresolved_without_margin_numeric() -> None:
+    pages = [
+        {
+            "lines": [
+                _line(0, "Tiền gửi và cho vay TCTD khác", "", [45, 70, 460, 92]),
+                _line(1, "Tiền gửi tại TCTD khác", "", [45, 110, 430, 132]),
+                _line(2, "được ghi nhận theo giá gốc", "", [45, 140, 500, 162]),
+                _line(3, "Cho vay TCTD khác", "", [45, 180, 430, 202]),
+                _line(
+                    4,
+                    "được phân loại vào tài sản tài chính",
+                    "",
+                    [45, 210, 520, 232],
+                ),
+                _line(5, "1", "1", [10, 760, 22, 780]),
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        }
+    ]
+
+    _scan, axis = _build(pages)
+
+    assert axis["row_axis"]["column_grids"] == [
+        {
+            "column_centers": [],
+            "geometry_status": "BODY_DERIVED_NUMERIC_COLUMN_GRID",
+            "header_evidence_source_line_indices": [],
+            "page_sequence": 1,
+        }
+    ]
+    assert axis["numeric_sample_universe"] == []
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    assert axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+    assert axis["unresolved_reasons"] == ["VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE"]
+
+
 def test_projected_owner_and_wrapped_provision_bind_but_reset_footer_does_not() -> None:
     pages = _pages(
         [
@@ -772,3 +818,616 @@ def test_prepared_candidate_binding_skips_document_topology_replay(monkeypatch) 
             topology_candidates=candidates,
             prepared_topology_binding=bindings[0],
         )
+
+
+def _f3_spec() -> dict:
+    return json.loads(_F3_TOPOLOGY_PATH.read_text(encoding="utf-8"))
+
+
+def _f3_hierarchy() -> dict:
+    return json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))["hierarchical_closure_spec"]
+
+
+def _f3_pages(rows: list[tuple[str, str, str]]) -> list[dict[str, object]]:
+    pages = _pages(rows)
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    return pages
+
+
+def _reindex_page_lines(lines: list[dict[str, object]]) -> None:
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+
+def _insert_wrapped_other(
+    pages: list[dict[str, object]],
+    *,
+    prefix: str,
+) -> None:
+    lines = pages[0]["lines"]
+    insert_at = 8
+    top = 205
+    wrapped = [
+        _line(900, prefix, "", [45, top, 430, top + 20]),
+        _line(901, "Khác", "", [47, top + 19, 180, top + 39]),
+        _line(902, "7", "7", [610, top + 19, 700, top + 39]),
+        _line(903, "6", "6", [810, top + 19, 900, top + 39]),
+    ]
+    lines[insert_at:insert_at] = wrapped
+    _reindex_page_lines(lines)
+
+
+def _build_f3(pages: list[dict[str, object]]) -> tuple[dict, dict]:
+    spec = _f3_spec()
+    topology_pages = row_v1._topology_pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
+    assert scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = scan["regions"][0]
+    effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
+        spec, scan, region
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        spec,
+        scan,
+        region,
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+    )
+    return scan, axis
+
+
+def _coherently_rehash_occurrence(axis: dict) -> None:
+    material = copy.deepcopy(axis)
+    material.pop("occurrence_axis_id")
+    axis["occurrence_axis_id"] = "aforav2:axis:" + canonical_json_sha256_v1(material)
+
+
+def _coherently_replace_source_scope_binding(
+    axis: dict, occurrence: dict, receipt: dict | None
+) -> None:
+    occurrence["source_scope_binding"] = copy.deepcopy(receipt)
+    occurrence["label_match"]["source_scope_binding"] = copy.deepcopy(receipt)
+    for row in axis["row_axis"]["rows"]:
+        if row["label_match"].get("occurrence_id") == occurrence["occurrence_id"]:
+            row["label_match"]["source_scope_binding"] = copy.deepcopy(receipt)
+    axis["row_axis"] = subject._regenerate_v1_axis(axis["row_axis"])
+
+
+def test_f3_blank_discount_does_not_steal_vnd_total_at_close_row_gaps() -> None:
+    for gap in (18, 20):
+        pages = _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Chiết khấu, tái chiết khấu", "", ""),
+                ("Bằng ngoại tệ", "0", "0"),
+            ]
+        )
+        lines = pages[0]["lines"]
+        vnd_label = next(line for line in lines if line["vietocr_text"] == "Bằng VND")
+        discount_label = next(
+            line for line in lines if line["vietocr_text"] == "Chiết khấu, tái chiết khấu"
+        )
+        discount_top = vnd_label["bbox"][3] + gap
+        delta = discount_top - discount_label["bbox"][1]
+        for line in lines:
+            if line is discount_label or (
+                line["bbox"][1] == discount_label["bbox"][1] and line["vietocr_text"] == ""
+            ):
+                line["bbox"][1] += delta
+                line["bbox"][3] += delta
+
+        _scan, axis = _build_f3(pages)
+
+        rows = {row["role"]: row for row in axis["row_axis"]["rows"]}
+        assert [
+            value["parsed_token"]["coefficient"] for value in rows["INTERBANK_LOAN_VND"]["values"]
+        ] == [50, 40]
+        discount_occurrence = next(
+            item
+            for item in axis["role_occurrences"]
+            if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+        )
+        assert discount_occurrence["source_scope_binding"]["binding_kind"] == (
+            "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL"
+        )
+        discount_row = next(
+            row
+            for row in axis["row_axis"]["rows"]
+            if row["label_match"]["occurrence_id"] == discount_occurrence["occurrence_id"]
+        )
+        assert discount_row["values"] == []
+
+
+def test_f3_generic_discount_requires_nearest_exact_currency_interval() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Chiết khấu, tái chiết khấu", "5", "4"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+
+    _scan, axis = _build_f3(pages)
+
+    ambiguous = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    )
+    assert ambiguous["source_scope_binding"] is None
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith(
+            "SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE:INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS:"
+        )
+        for reason in closure["unresolved_reasons"]
+    )
+
+
+def test_f3_touching_wrapped_explicit_vnd_discount_overrides_prior_fx_scope() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng ngoại tệ", "20", "10"),
+            ("Chiết khấu, tái chiết khấu", "", ""),
+            ("Bằng VND", "5", "4"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    prefix = next(line for line in lines if line["vietocr_text"] == "Chiết khấu, tái chiết khấu")
+    suffix = next(
+        line
+        for line in lines
+        if line["vietocr_text"] == "Bằng VND" and line["line_ordinal"] > prefix["line_ordinal"]
+    )
+    delta = prefix["bbox"][3] - suffix["bbox"][1]
+    suffix_top = suffix["bbox"][1]
+    for line in lines:
+        if line["bbox"][1] == suffix_top:
+            line["bbox"][1] += delta
+            line["bbox"][3] += delta
+
+    _scan, axis = _build_f3(pages)
+
+    explicit = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+        and item["source_scope_binding"] is not None
+        and item["source_scope_binding"]["binding_kind"]
+        == "EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL"
+    )
+    assert explicit["source_scope_binding"]["source_scope_role"] == "INTERBANK_LOAN_VND"
+    assert not any(
+        item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"
+        and item["label_match"]["document_line_ordinal"]
+        == explicit["label_match"]["document_line_ordinal"]
+        for item in axis["role_occurrences"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("rows", "expected_role", "expected_kind"),
+    [
+        (
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Bằng VND", "40", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ],
+            "INTERBANK_DEPOSIT_PROVISION",
+            "EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
+        ),
+        (
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ],
+            "TOTAL_INTERBANK_PROVISION",
+            "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES",
+        ),
+        (
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Dự phòng rủi ro cho vay các TCTD khác", "-2", "-1"),
+                ("Bằng VND", "50", "40"),
+            ],
+            "INTERBANK_LOAN_PROVISION",
+            None,
+        ),
+    ],
+)
+def test_f3_provision_schema_role_is_bound_by_exact_parent_interval(
+    rows: list[tuple[str, str, str]], expected_role: str, expected_kind: str | None
+) -> None:
+    _scan, axis = _build_f3(_f3_pages(rows))
+
+    occurrence = next(item for item in axis["role_occurrences"] if item["role"] == expected_role)
+    if expected_kind is None:
+        assert occurrence["source_scope_binding"] is None
+    else:
+        assert occurrence["source_scope_binding"]["binding_kind"] == expected_kind
+
+
+def test_f3_bare_provision_before_loan_leaf_remains_source_only_ambiguous() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+
+    occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert occurrence["source_scope_binding"] is None
+
+
+def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leaves() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    assert occurrence["source_scope_binding"]["binding_kind"] == (
+        "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES"
+    )
+    loan = next(item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_GROUP")
+    loan_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == loan["occurrence_id"]
+    )
+    assert loan_row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+
+
+def test_f3_other_requires_noncontinuation_geometry_and_exact_parent_scope() -> None:
+    known = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_wrapped_other(known, prefix="Tiền gửi tại các TCTD")
+    _scan, known_axis = _build_f3(known)
+    assert "INTERBANK_DEPOSIT_OTHER" not in {
+        item["role"] for item in known_axis["role_occurrences"]
+    }
+
+    unknown = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_wrapped_other(unknown, prefix="Khoản diễn giải chưa có trong schema")
+    _scan, unknown_axis = _build_f3(unknown)
+    ambiguous = next(
+        item
+        for item in unknown_axis["role_occurrences"]
+        if item["role"] == "INTERBANK_DEPOSIT_OTHER"
+    )
+    assert ambiguous["source_scope_binding"]["status"] == (
+        "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        unknown_axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert any(
+        reason.startswith("SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL:")
+        for reason in closure["unresolved_reasons"]
+    )
+
+    standalone = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Khác", "7", "6"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _scan, standalone_axis = _build_f3(standalone)
+    other = next(
+        item
+        for item in standalone_axis["role_occurrences"]
+        if item["role"] == "INTERBANK_DEPOSIT_OTHER"
+    )
+    assert other["source_scope_binding"] is None
+    other_row = next(
+        row for row in standalone_axis["row_axis"]["rows"] if row["role"] == other["role"]
+    )
+    assert [value["parsed_token"]["coefficient"] for value in other_row["values"]] == [7, 6]
+
+
+def test_f3_known_total_provision_wrap_suppresses_interleaved_other_suffix() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    lines.extend(
+        [
+            _line(
+                900,
+                "Dự phòng rủi ro tiền gửi và cho vay các TCTD",
+                "",
+                [45, 400, 500, 420],
+            ),
+            _line(901, "-2", "-2", [610, 400, 700, 420]),
+            _line(902, "-1", "-1", [810, 400, 900, 420]),
+            _line(903, "|", "", [950, 402, 990, 418]),
+            _line(904, "Khác", "", [47, 419, 180, 439]),
+        ]
+    )
+    _reindex_page_lines(lines)
+
+    _scan, axis = _build_f3(pages)
+
+    assert "INTERBANK_LOAN_OTHER" not in {item["role"] for item in axis["role_occurrences"]}
+    total = next(
+        item for item in axis["role_occurrences"] if item["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    total_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == total["occurrence_id"]
+    )
+    assert [value["parsed_token"]["coefficient"] for value in total_row["values"]] == [
+        -2,
+        -1,
+    ]
+
+
+def test_heading_only_parent_total_clone_is_pruned_but_same_row_values_are_retained() -> None:
+    heading_only = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    for line in heading_only[0]["lines"][3:5]:
+        line["vietocr_text"] = ""
+        line["numeric_recognition"]["raw_prediction"] = ""
+    _scan, heading_axis = _build_f3(heading_only)
+    assert "EXPLICIT_FAMILY_TOTAL" not in {
+        item["role"] for item in heading_axis["role_occurrences"]
+    }
+
+    with_values = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _scan, valued_axis = _build_f3(with_values)
+    total = next(
+        item for item in valued_axis["role_occurrences"] if item["role"] == "EXPLICIT_FAMILY_TOTAL"
+    )
+    total_row = next(
+        row
+        for row in valued_axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == total["occurrence_id"]
+    )
+    assert [value["parsed_token"]["coefficient"] for value in total_row["values"]] == [
+        150,
+        130,
+    ]
+
+
+def test_f3_scope_receipts_reject_coherent_status_anchor_and_explicit_surface_forgery() -> None:
+    unknown = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_wrapped_other(unknown, prefix="Khoản diễn giải chưa có trong schema")
+    _scan, unknown_axis = _build_f3(unknown)
+    attacked = copy.deepcopy(unknown_axis)
+    occurrence = next(
+        item for item in attacked["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_OTHER"
+    )
+    occurrence["source_scope_binding"]["status"] = (
+        "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
+    )
+    material = copy.deepcopy(occurrence["source_scope_binding"])
+    material.pop("binding_id")
+    occurrence["source_scope_binding"]["binding_id"] = (
+        "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    )
+    _coherently_replace_source_scope_binding(
+        attacked, occurrence, occurrence["source_scope_binding"]
+    )
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="semantic matrix",
+    ):
+        subject._validate_result(attacked)
+
+    _scan, discount_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Chiết khấu, tái chiết khấu", "5", "4"),
+                ("Bằng ngoại tệ", "0", "0"),
+            ]
+        )
+    )
+    split_brain = copy.deepcopy(discount_axis)
+    split_occurrence = next(
+        item
+        for item in split_brain["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )
+    split_occurrence["source_scope_binding"] = None
+    _coherently_rehash_occurrence(split_brain)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="nearest-parent scope axis",
+    ):
+        subject._validate_result(split_brain)
+
+    attacked = copy.deepcopy(discount_axis)
+    occurrence = next(
+        item
+        for item in attacked["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )
+    receipt = occurrence["source_scope_binding"]
+    receipt["anchor_span"]["source_line_index"] += 1
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    _coherently_replace_source_scope_binding(attacked, occurrence, receipt)
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="actual occurrence",
+    ):
+        subject._validate_result(attacked)
+
+    bare_occurrence = next(
+        item
+        for item in discount_axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )
+    receipt = copy.deepcopy(bare_occurrence["source_scope_binding"])
+    receipt.update(
+        {
+            "anchor_span": None,
+            "binding_kind": "EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL",
+            "interval": {
+                "end_document_line_ordinal_exclusive": bare_occurrence["label_match"][
+                    "end_document_line_ordinal"
+                ]
+                + 1,
+                "start_document_line_ordinal": bare_occurrence["label_match"][
+                    "document_line_ordinal"
+                ],
+            },
+            "source_role": bare_occurrence["role"],
+        }
+    )
+    receipt["source_span"]["role"] = bare_occurrence["role"]
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="semantic matrix",
+    ):
+        subject._validate_source_scope_binding(
+            receipt,
+            label_match=bare_occurrence["label_match"],
+            role=bare_occurrence["role"],
+        )
+
+
+def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> None:
+    _scan, deposit_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Bằng VND", "40", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+    attacked = copy.deepcopy(deposit_axis)
+    provision = next(
+        item
+        for item in attacked["role_occurrences"]
+        if item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    deposit_group = next(
+        item for item in attacked["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    receipt = provision["source_scope_binding"]
+    receipt["anchor_span"] = subject._source_span(deposit_group["label_match"])
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    _coherently_replace_source_scope_binding(attacked, provision, receipt)
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="exact deposit interval",
+    ):
+        subject._validate_result(attacked)
+
+    _scan, total_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+    attacked = copy.deepcopy(total_axis)
+    provision = next(
+        item for item in attacked["role_occurrences"] if item["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    receipt = provision["source_scope_binding"]
+    receipt["geometry"]["source_left"] += 1
+    receipt["geometry"]["absolute_left_delta"] = abs(
+        receipt["geometry"]["source_left"] - receipt["geometry"]["anchor_left"]
+    )
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    _coherently_replace_source_scope_binding(attacked, provision, receipt)
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="semantic matrix",
+    ):
+        subject._validate_result(attacked)

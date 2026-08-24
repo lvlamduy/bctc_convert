@@ -52,7 +52,8 @@ POLICY_FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1"
 CLAIM_BOUNDARY = (
     "EXACT_SELECTED_TOPOLOGY_REGION_CONTEXT_BOUND_ROLE_OCCURRENCE_EXPANSION_"
     "SEALED_V1_ROW_GEOMETRY_AUTHENTICATED_EXISTING_CELL_PIXEL_DASH_GATE_AND_"
-    "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_"
+    "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_AND_REVIEWED_EXACT_"
+    "SOURCE_SUBSCOPE_INTERVAL_SCHEMA_ROLE_TYPING_"
     "PROPOSAL_ONLY_NO_ACCOUNTING_PERIOD_UNIT_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
@@ -66,6 +67,7 @@ _SAFETY = {
     "preceding_scope_subtotal_may_be_reused_by_next_structural_group": False,
     "repeated_roles_may_be_silently_collapsed": False,
     "schema_authority": False,
+    "schema_role_typing_requires_exact_source_scope_receipt": True,
     "sealed_row_axis_v1_bytes_changed": False,
     "visible_existing_dash_requires_authenticated_exact_cell_pixels": True,
 }
@@ -101,6 +103,7 @@ _OCCURRENCE_FIELDS = {
     "scope_owner_occurrence_id",
     "scope_owner_match_kind",
     "scope_owner_role",
+    "source_scope_binding",
 }
 _DASH_PROJECTION_FIELDS = {
     "dash_evidence",
@@ -140,6 +143,42 @@ _NUMERIC_SAMPLE_OWNER_KINDS = {
     "ROLE_OCCURRENCE",
     "SOURCE_ONLY_INTERNAL_CLUSTER",
     "TRAILING_VALUE_ROW",
+}
+_SOURCE_SCOPE_BINDING_FIELDS = {
+    "anchor_span",
+    "binding_id",
+    "binding_kind",
+    "geometry",
+    "interval",
+    "source_role",
+    "source_scope_role",
+    "source_span",
+    "status",
+    "target_role",
+}
+_SOURCE_SCOPE_BINDING_STATUS = "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
+_AMBIGUOUS_WRAPPED_LABEL_STATUS = "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
+_DISCOUNT_GENERIC_ROLE = "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+_DISCOUNT_SCOPE_TARGETS = {
+    "INTERBANK_LOAN_VND": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+    "INTERBANK_LOAN_FOREIGN_CURRENCY": ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"),
+}
+_PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
+_DEPOSIT_SCOPE_ROLES = {
+    "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+    "DEMAND_DEPOSIT_GROUP",
+    "DEMAND_DEPOSIT_VND",
+    "INTERBANK_DEPOSIT_GROUP",
+    "TERM_DEPOSIT_FOREIGN_CURRENCY",
+    "TERM_DEPOSIT_GROUP",
+    "TERM_DEPOSIT_VND",
+}
+_LOAN_LEAF_ROLES = {
+    *_DISCOUNT_SCOPE_TARGETS,
+    *_DISCOUNT_SCOPE_TARGETS.values(),
+    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+    "INTERBANK_LOAN_OTHER",
+    "INTERBANK_LOAN_PROVISION",
 }
 _INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
     "cluster_id",
@@ -378,24 +417,295 @@ def _expanded_matches(
             item["role"],
         ),
     )
+
     # A compound matcher can end on the same exact leaf as a narrower
     # contextual matcher (``group label`` + ``Bằng VND`` versus the exact
     # contextual ``Bằng VND`` line).  Prefer the contextual narrower twin.
     # A genuinely flattened one-line compound remains because it has no such
     # contextual challenger.
+    def context_depth(candidate: Mapping[str, Any]) -> int:
+        depth = 0
+        cursor = candidate
+        visited: set[str] = set()
+        while (within_role := cursor.get("matched_within_role")) is not None:
+            if within_role in visited:
+                raise _error("contextual role occurrence ancestry contains a cycle")
+            visited.add(within_role)
+            owners = [
+                other
+                for other in candidates
+                if other["role"] == within_role
+                and other["document_line_ordinal"] <= candidate["document_line_ordinal"]
+                and other is not cursor
+            ]
+            if not owners:
+                return depth
+            cursor = max(
+                owners,
+                key=lambda item: (
+                    item["document_line_ordinal"],
+                    item["end_document_line_ordinal"],
+                ),
+            )
+            depth += 1
+        return depth
+
+    context_depths = {id(candidate): context_depth(candidate) for candidate in candidates}
+    composed_suffix_evidence = [*candidates]
+    if type(selected.get("parent_match")) is dict:
+        composed_suffix_evidence.append(selected["parent_match"])
+    composed_suffix_evidence.extend(selected.get("hard_negative_matches", []))
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    compiled_for_wrapped_labels = topology_v1._spec(family_spec)
+    aliases_by_role = {
+        child["role"]: {alias for matcher in child["matchers"] for alias in matcher["aliases"]}
+        for child in compiled_for_wrapped_labels["children"]
+    }
+
+    def fragments_touch(first: Mapping[str, Any], second: Mapping[str, Any]) -> bool:
+        page = page_by_sequence.get(first["page_sequence"])
+        if type(page) is not dict or second["page_sequence"] != first["page_sequence"]:
+            return False
+        first_bbox = page["lines"][first["end_source_line_index"]]["bbox"]
+        second_bbox = page["lines"][second["source_line_index"]]["bbox"]
+        text_height = max(
+            first_bbox[3] - first_bbox[1],
+            second_bbox[3] - second_bbox[1],
+        )
+        vertical_gap = second_bbox[1] - first_bbox[3]
+        return 2 * vertical_gap >= -text_height and 4 * vertical_gap <= text_height
+
+    def has_same_row_money(match: Mapping[str, Any]) -> bool:
+        page = page_by_sequence.get(match["page_sequence"])
+        if type(page) is not dict:
+            return False
+        label_bbox = page["lines"][match["end_source_line_index"]]["bbox"]
+        label_center_twice = label_bbox[1] + label_bbox[3]
+        label_height = label_bbox[3] - label_bbox[1]
+        return any(
+            row_v1._is_numeric(line)  # noqa: SLF001
+            and line["bbox"][0] >= label_bbox[2]
+            and abs(line["bbox"][1] + line["bbox"][3] - label_center_twice)
+            <= max(label_height, line["bbox"][3] - line["bbox"][1])
+            for line in page["lines"]
+        )
+
+    def is_wrapped_explicit_discount(bare: Mapping[str, Any], suffix: Mapping[str, Any]) -> bool:
+        return fragments_touch(bare, suffix) and not has_same_row_money(bare)
+
+    def typed_discount_wraps_bare(bare: Mapping[str, Any], typed: Mapping[str, Any]) -> bool:
+        return any(
+            typed["role"] == target_role
+            and suffix["role"] == scope_role
+            and suffix["page_sequence"] == typed["page_sequence"]
+            and suffix["end_document_line_ordinal"] == typed["end_document_line_ordinal"]
+            and is_wrapped_explicit_discount(bare, suffix)
+            for scope_role, target_role in _DISCOUNT_SCOPE_TARGETS.items()
+            for suffix in candidates
+        )
+
+    def visual_preceding_label_fragment(
+        candidate: Mapping[str, Any],
+    ) -> Mapping[str, Any] | None:
+        page = page_by_sequence.get(candidate["page_sequence"])
+        source_index = candidate["source_line_index"]
+        if type(page) is not dict or source_index <= 0:
+            return None
+        current_bbox = page["lines"][source_index]["bbox"]
+        preceding_candidates = []
+        for preceding in page["lines"][max(0, source_index - 12) : source_index]:
+            preceding_bbox = preceding["bbox"]
+            text_height = max(
+                preceding_bbox[3] - preceding_bbox[1],
+                current_bbox[3] - current_bbox[1],
+            )
+            vertical_gap = current_bbox[1] - preceding_bbox[3]
+            if (
+                preceding["vietocr_text"].strip()
+                and not row_v1._is_numeric(preceding)  # noqa: SLF001
+                and abs(preceding_bbox[0] - current_bbox[0]) <= 6
+                and 2 * vertical_gap >= -text_height
+                and 4 * vertical_gap <= text_height
+            ):
+                preceding_candidates.append(preceding)
+        return max(
+            preceding_candidates,
+            key=lambda item: (item["bbox"][3], item["line_ordinal"]),
+            default=None,
+        )
+
+    def known_visual_owner_composes_other(
+        candidate: Mapping[str, Any], preceding: Mapping[str, Any] | None
+    ) -> bool:
+        if preceding is None:
+            return False
+        page = page_by_sequence[candidate["page_sequence"]]
+        page_width = page.get("page_width")
+        for owner in composed_suffix_evidence:
+            if (
+                owner.get("role") == candidate["role"]
+                or owner["page_sequence"] != candidate["page_sequence"]
+                or owner["end_source_line_index"] != preceding["line_ordinal"]
+                or not str(owner.get("match_kind", "")).startswith("EXACT_")
+                or (
+                    f"{owner['normalized_surface']} {candidate['normalized_surface']}"
+                    not in aliases_by_role.get(owner.get("role"), set())
+                )
+            ):
+                continue
+            owner_bbox = preceding["bbox"]
+            owner_center_twice = owner_bbox[1] + owner_bbox[3]
+            owner_height = owner_bbox[3] - owner_bbox[1]
+            intervening = page["lines"][
+                preceding["line_ordinal"] + 1 : candidate["source_line_index"]
+            ]
+            if all(
+                (
+                    line["bbox"][0] >= owner_bbox[2]
+                    and (
+                        not line["vietocr_text"].strip() or row_v1._is_numeric(line)  # noqa: SLF001
+                    )
+                    and abs(line["bbox"][1] + line["bbox"][3] - owner_center_twice)
+                    <= max(owner_height, line["bbox"][3] - line["bbox"][1])
+                )
+                or (type(page_width) is int and 4 * line["bbox"][0] >= 3 * page_width)
+                for line in intervening
+            ):
+                return True
+        return False
+
     result = []
     for candidate in candidates:
-        superseded = any(
-            other is not candidate
-            and other["role"] == candidate["role"]
-            and other["page_sequence"] == candidate["page_sequence"]
-            and other["end_document_line_ordinal"] == candidate["end_document_line_ordinal"]
-            and other.get("matched_within_role") is not None
-            and candidate.get("matched_within_role") is None
-            and other["document_line_ordinal"] >= candidate["document_line_ordinal"]
-            for other in candidates
+        visual_preceding_fragment = (
+            visual_preceding_label_fragment(candidate)
+            if candidate["document_line_ordinal"] == candidate["end_document_line_ordinal"]
+            and candidate["normalized_surface"] in {"cac khoan khac", "khac"}
+            and candidate["role"] in {"INTERBANK_DEPOSIT_OTHER", "INTERBANK_LOAN_OTHER"}
+            else None
         )
-        if not superseded:
+        same_source_twins = [
+            other
+            for other in candidates
+            if other["page_sequence"] == candidate["page_sequence"]
+            and other["document_line_ordinal"] == candidate["document_line_ordinal"]
+            and other["end_document_line_ordinal"] == candidate["end_document_line_ordinal"]
+            and other["normalized_surface"] == candidate["normalized_surface"]
+        ]
+        superseded = (
+            any(
+                other is not candidate
+                and other["role"] == candidate["role"]
+                and other["page_sequence"] == candidate["page_sequence"]
+                and other["end_document_line_ordinal"] == candidate["end_document_line_ordinal"]
+                and other.get("matched_within_role") is not None
+                and candidate.get("matched_within_role") is None
+                and other["document_line_ordinal"] >= candidate["document_line_ordinal"]
+                for other in candidates
+            )
+            or (
+                candidate["role"] == _DISCOUNT_GENERIC_ROLE
+                and any(
+                    other["role"] in set(_DISCOUNT_SCOPE_TARGETS.values())
+                    and other["page_sequence"] == candidate["page_sequence"]
+                    and other["document_line_ordinal"] == candidate["document_line_ordinal"]
+                    and other["end_document_line_ordinal"] > candidate["end_document_line_ordinal"]
+                    and typed_discount_wraps_bare(candidate, other)
+                    for other in candidates
+                )
+            )
+            or context_depths[id(candidate)]
+            < max(context_depths[id(other)] for other in same_source_twins)
+        )
+        singleton_other_is_composed_suffix = (
+            candidate["document_line_ordinal"] == candidate["end_document_line_ordinal"]
+            and candidate["normalized_surface"] in {"cac khoan khac", "khac"}
+            and candidate["role"] in {"INTERBANK_DEPOSIT_OTHER", "INTERBANK_LOAN_OTHER"}
+            and (
+                any(
+                    other.get("role") != candidate["role"]
+                    and other["page_sequence"] == candidate["page_sequence"]
+                    and other["document_line_ordinal"] < candidate["document_line_ordinal"]
+                    and other["end_document_line_ordinal"] == candidate["end_document_line_ordinal"]
+                    and other["normalized_surface"].endswith(candidate["normalized_surface"])
+                    for other in composed_suffix_evidence
+                )
+                or known_visual_owner_composes_other(candidate, visual_preceding_fragment)
+            )
+        )
+        touching_unknown_preceding_fragment = None
+        touching_unknown_candidate_bbox = None
+        if (
+            not singleton_other_is_composed_suffix
+            and candidate["document_line_ordinal"] == candidate["end_document_line_ordinal"]
+            and candidate["normalized_surface"] in {"cac khoan khac", "khac"}
+            and candidate["role"] in {"INTERBANK_DEPOSIT_OTHER", "INTERBANK_LOAN_OTHER"}
+        ):
+            page = page_by_sequence.get(candidate["page_sequence"])
+            source_index = candidate["source_line_index"]
+            if type(page) is dict and source_index > 0:
+                current = page["lines"][source_index]
+                current_bbox = current["bbox"]
+                if visual_preceding_fragment is not None:
+                    touching_unknown_preceding_fragment = visual_preceding_fragment
+                    touching_unknown_candidate_bbox = current_bbox
+        # Do not let the generic surface compositor concatenate one complete
+        # bare discount row with a later, independently complete currency row
+        # and thereby manufacture an explicit-currency discount.  A genuinely
+        # wrapped explicit label has no exact bare-discount match ending before
+        # its currency suffix and therefore remains untouched, including valid
+        # interleaved source-line shapes.
+        bare_discount_starts = [
+            bare
+            for bare in candidates
+            if bare["role"] == _DISCOUNT_GENERIC_ROLE
+            and bare["page_sequence"] == candidate["page_sequence"]
+            and bare["document_line_ordinal"] == candidate["document_line_ordinal"]
+            and bare["end_document_line_ordinal"] < candidate["end_document_line_ordinal"]
+        ]
+        currency_suffixes = [
+            scope
+            for scope_role in _DISCOUNT_SCOPE_TARGETS
+            for scope in candidates
+            if _DISCOUNT_SCOPE_TARGETS[scope_role] == candidate["role"]
+            and scope["role"] == scope_role
+            and scope["page_sequence"] == candidate["page_sequence"]
+            and scope["document_line_ordinal"] > candidate["document_line_ordinal"]
+            and scope["end_document_line_ordinal"] == candidate["end_document_line_ordinal"]
+        ]
+        touching_explicit_discount_fragments = any(
+            is_wrapped_explicit_discount(bare, suffix)
+            for bare in bare_discount_starts
+            for suffix in currency_suffixes
+        )
+        synthetic_discount_currency_compound = (
+            candidate["role"] in set(_DISCOUNT_SCOPE_TARGETS.values())
+            and candidate["document_line_ordinal"] < candidate["end_document_line_ordinal"]
+            and bare_discount_starts
+            and currency_suffixes
+            and not touching_explicit_discount_fragments
+        )
+        parent_match = selected.get("parent_match")
+        coextensive_parent_total_without_values = (
+            candidate["role_kind"] == "TOTAL"
+            and type(parent_match) is dict
+            and candidate["page_sequence"] == parent_match["page_sequence"]
+            and candidate["document_line_ordinal"] == parent_match["document_line_ordinal"]
+            and candidate["end_document_line_ordinal"] == parent_match["end_document_line_ordinal"]
+            and not _same_row_numeric_samples(pages, candidate)
+        )
+        if (
+            not superseded
+            and not singleton_other_is_composed_suffix
+            and not synthetic_discount_currency_compound
+            and not coextensive_parent_total_without_values
+        ):
+            if touching_unknown_preceding_fragment is not None:
+                candidate["source_label_bbox"] = list(touching_unknown_candidate_bbox)
+                candidate["source_scope_binding"] = _ambiguous_wrapped_other_binding(
+                    candidate=candidate,
+                    candidate_bbox=touching_unknown_candidate_bbox,
+                    preceding_line=touching_unknown_preceding_fragment,
+                )
             result.append(candidate)
     ordinals: dict[str, int] = {}
     for match in result:
@@ -403,6 +713,421 @@ def _expanded_matches(
         match["role_occurrence_ordinal"] = ordinal
         ordinals[match["role"]] = ordinal + 1
     return result, selected, expected_effective, topology_candidates_id
+
+
+def _source_span(match: Mapping[str, Any]) -> dict[str, Any]:
+    result = {
+        "document_line_ordinal": match["document_line_ordinal"],
+        "end_document_line_ordinal": match["end_document_line_ordinal"],
+        "end_source_line_index": match["end_source_line_index"],
+        "match_kind": match["match_kind"],
+        "normalized_surface": match["normalized_surface"],
+        "page_sequence": match["page_sequence"],
+        "role": match["role"],
+        "source_line_index": match["source_line_index"],
+    }
+    if "source_label_bbox" in match:
+        result["source_label_bbox"] = canonical_clone_v1(match["source_label_bbox"])
+    return result
+
+
+def _scope_binding(
+    *,
+    anchor: Mapping[str, Any] | None,
+    binding_kind: str,
+    geometry: Mapping[str, Any] | None,
+    interval_end_exclusive: int,
+    interval_start: int,
+    source: Mapping[str, Any],
+    source_role: str,
+    source_scope_role: str,
+    status: str = _SOURCE_SCOPE_BINDING_STATUS,
+    target_role: str,
+) -> dict[str, Any]:
+    material = {
+        "anchor_span": _source_span(anchor) if anchor is not None else None,
+        "binding_kind": binding_kind,
+        "geometry": canonical_clone_v1(geometry) if geometry is not None else None,
+        "interval": {
+            "end_document_line_ordinal_exclusive": interval_end_exclusive,
+            "start_document_line_ordinal": interval_start,
+        },
+        "source_role": source_role,
+        "source_scope_role": source_scope_role,
+        "source_span": _source_span(source),
+        "status": status,
+        "target_role": target_role,
+    }
+    return {
+        **material,
+        "binding_id": "aforav2:scope-binding:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _ambiguous_wrapped_other_binding(
+    *,
+    candidate: Mapping[str, Any],
+    candidate_bbox: Sequence[int],
+    preceding_line: Mapping[str, Any],
+) -> dict[str, Any]:
+    preceding_bbox = preceding_line["bbox"]
+    skipped_source_line_indices = list(
+        range(preceding_line["line_ordinal"] + 1, candidate["source_line_index"])
+    )
+    geometry = {
+        "absolute_left_delta": abs(preceding_bbox[0] - candidate_bbox[0]),
+        "candidate_bbox": list(candidate_bbox),
+        "candidate_source_line_index": candidate["source_line_index"],
+        "preceding_bbox": list(preceding_bbox),
+        "preceding_source_line_index": preceding_line["line_ordinal"],
+        "skipped_source_line_indices": skipped_source_line_indices,
+        "vertical_gap": candidate_bbox[1] - preceding_bbox[3],
+    }
+    return _scope_binding(
+        anchor=None,
+        binding_kind="AMBIGUOUS_TOUCHING_PRECEDING_LABEL_FRAGMENT",
+        geometry=geometry,
+        interval_end_exclusive=candidate["end_document_line_ordinal"] + 1,
+        interval_start=(
+            candidate["document_line_ordinal"]
+            - candidate["source_line_index"]
+            + preceding_line["line_ordinal"]
+        ),
+        source=candidate,
+        source_role=candidate["role"],
+        source_scope_role=candidate.get("matched_within_role") or "SELECTED_FAMILY_ROOT",
+        status=_AMBIGUOUS_WRAPPED_LABEL_STATUS,
+        target_role=candidate["role"],
+    )
+
+
+def _source_line_bbox(pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]) -> list[int]:
+    page_sequence = match["page_sequence"]
+    source_line_index = match["source_line_index"]
+    page = next((item for item in pages if item["page_sequence"] == page_sequence), None)
+    if type(page) is not dict or not 0 <= source_line_index < len(page["lines"]):
+        raise _error("schema scope source locator is absent from the selected pages")
+    bbox = page["lines"][source_line_index]["bbox"]
+    if type(bbox) is not list or len(bbox) != 4:
+        raise _error("schema scope source locator lost its exact bbox")
+    return list(bbox)
+
+
+def _same_row_numeric_samples(
+    pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
+) -> list[Mapping[str, Any]]:
+    page = next(
+        (item for item in pages if item["page_sequence"] == match["page_sequence"]),
+        None,
+    )
+    if type(page) is not dict:
+        return []
+    label_bbox = _source_line_bbox(pages, match)
+    label_center_twice = label_bbox[1] + label_bbox[3]
+    label_height = label_bbox[3] - label_bbox[1]
+    return sorted(
+        (
+            line
+            for line in page["lines"]
+            if row_v1._is_numeric(line)  # noqa: SLF001
+            and line["bbox"][0] >= label_bbox[2]
+            and abs(line["bbox"][1] + line["bbox"][3] - label_center_twice)
+            <= max(label_height, line["bbox"][3] - line["bbox"][1])
+        ),
+        key=lambda line: (line["bbox"][0], line["line_ordinal"]),
+    )
+
+
+def _project_reviewed_schema_source_scopes(
+    pages: Sequence[Mapping[str, Any]],
+    compiled_family: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    selected_region: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Type only generic rows with one exact, reviewed semantic source scope.
+
+    The topology matcher remains retrieval-only for bare discount/provision
+    labels.  This V2 adapter uses their exact position among already selected
+    semantic occurrences; it never changes the sealed V1 structural-group
+    assignment heuristic and never guesses by a repeated-label ordinal.
+    """
+
+    by_role_definition = {child["role"]: child for child in compiled_family["children"]}
+    required_roles = {
+        _DISCOUNT_GENERIC_ROLE,
+        _PROVISION_GENERIC_ROLE,
+        *_DISCOUNT_SCOPE_TARGETS,
+        *_DISCOUNT_SCOPE_TARGETS.values(),
+        "INTERBANK_DEPOSIT_PROVISION",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    }
+    projected = [canonical_clone_v1(match) for match in matches]
+    if not required_roles <= set(by_role_definition):
+        return projected
+    for match in projected:
+        match["source_label_bbox"] = _source_line_bbox(pages, match)
+        binding = match.get("source_scope_binding")
+        if type(binding) is dict and binding.get("status") == _AMBIGUOUS_WRAPPED_LABEL_STATUS:
+            match["source_scope_binding"] = _scope_binding(
+                anchor=None,
+                binding_kind=binding["binding_kind"],
+                geometry=binding["geometry"],
+                interval_end_exclusive=binding["interval"]["end_document_line_ordinal_exclusive"],
+                interval_start=binding["interval"]["start_document_line_ordinal"],
+                source=match,
+                source_role=binding["source_role"],
+                source_scope_role=binding["source_scope_role"],
+                status=_AMBIGUOUS_WRAPPED_LABEL_STATUS,
+                target_role=binding["target_role"],
+            )
+
+    def retype(
+        match: dict[str, Any],
+        target_role: str,
+        receipt: Mapping[str, Any],
+        *,
+        matched_within_role: str | None,
+    ) -> None:
+        definition = by_role_definition[target_role]
+        match.update(
+            {
+                "matched_within_role": matched_within_role,
+                "preferred_ordinal": definition["preferred_ordinal"],
+                "presence": definition["presence"],
+                "role": target_role,
+                "role_kind": definition["role_kind"],
+                "source_scope_binding": canonical_clone_v1(receipt),
+            }
+        )
+
+    region_end = selected_region["cluster_end_document_line_ordinal_exclusive"]
+    loan_groups = sorted(
+        (match for match in projected if match["role"] == "INTERBANK_LOAN_GROUP"),
+        key=lambda item: item["document_line_ordinal"],
+    )
+    currency_scopes = sorted(
+        (match for match in projected if match["role"] in _DISCOUNT_SCOPE_TARGETS),
+        key=lambda item: (
+            item["document_line_ordinal"],
+            item["end_document_line_ordinal"],
+            item["role"],
+        ),
+    )
+
+    # Explicit currency words are independently sufficient source-subscope
+    # evidence.  Persist the same reviewed receipt shape used by interval-bound
+    # generic rows so the schema mapper can fail closed on a missing/tampered
+    # source-scope proof.
+    for match in projected:
+        reverse_scope = {target: scope for scope, target in _DISCOUNT_SCOPE_TARGETS.items()}
+        source_scope_role = reverse_scope.get(match["role"])
+        if source_scope_role is None or not str(match["match_kind"]).startswith("EXACT_"):
+            continue
+        match["source_scope_binding"] = _scope_binding(
+            anchor=None,
+            binding_kind="EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL",
+            geometry=None,
+            interval_end_exclusive=match["end_document_line_ordinal"] + 1,
+            interval_start=match["document_line_ordinal"],
+            source=match,
+            source_role=match["role"],
+            source_scope_role=source_scope_role,
+            target_role=match["role"],
+        )
+
+    for match in projected:
+        if match["role"] != _DISCOUNT_GENERIC_ROLE or not str(match["match_kind"]).startswith(
+            "EXACT_"
+        ):
+            continue
+        preceding_loan = [
+            group
+            for group in loan_groups
+            if group["document_line_ordinal"] <= match["document_line_ordinal"]
+        ]
+        if not preceding_loan:
+            continue
+        loan = max(preceding_loan, key=lambda item: item["document_line_ordinal"])
+        next_loan = min(
+            (
+                group["document_line_ordinal"]
+                for group in loan_groups
+                if group["document_line_ordinal"] > match["document_line_ordinal"]
+            ),
+            default=region_end,
+        )
+        preceding_scopes = [
+            scope
+            for scope in currency_scopes
+            if loan["document_line_ordinal"] <= scope["document_line_ordinal"]
+            and scope["end_document_line_ordinal"] < match["document_line_ordinal"]
+            and scope["document_line_ordinal"] < next_loan
+        ]
+        if not preceding_scopes:
+            continue
+        nearest_end = max(scope["end_document_line_ordinal"] for scope in preceding_scopes)
+        nearest = [
+            scope for scope in preceding_scopes if scope["end_document_line_ordinal"] == nearest_end
+        ]
+        if len({scope["role"] for scope in nearest}) != 1 or not all(
+            str(scope["match_kind"]).startswith("EXACT_") for scope in nearest
+        ):
+            continue
+        anchor = max(nearest, key=lambda item: item["document_line_ordinal"])
+        next_currency = min(
+            (
+                scope["document_line_ordinal"]
+                for scope in currency_scopes
+                if scope["document_line_ordinal"] > anchor["document_line_ordinal"]
+                and scope["document_line_ordinal"] < next_loan
+            ),
+            default=next_loan,
+        )
+        if match["document_line_ordinal"] >= next_currency:
+            continue
+        target_role = _DISCOUNT_SCOPE_TARGETS[anchor["role"]]
+        receipt = _scope_binding(
+            anchor=anchor,
+            binding_kind="UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL",
+            geometry=None,
+            interval_end_exclusive=next_currency,
+            interval_start=anchor["document_line_ordinal"],
+            source=match,
+            source_role=_DISCOUNT_GENERIC_ROLE,
+            source_scope_role=anchor["role"],
+            target_role=target_role,
+        )
+        retype(match, target_role, receipt, matched_within_role=anchor["role"])
+
+    deposit_matches = sorted(
+        (match for match in projected if match["role"] in _DEPOSIT_SCOPE_ROLES),
+        key=lambda item: item["document_line_ordinal"],
+    )
+    for match in projected:
+        if match["role"] != _PROVISION_GENERIC_ROLE or not str(match["match_kind"]).startswith(
+            "EXACT_"
+        ):
+            continue
+        before = match["document_line_ordinal"]
+        prior_deposits = [
+            item
+            for item in deposit_matches
+            if item["document_line_ordinal"] < before
+            and str(item["match_kind"]).startswith("EXACT_")
+        ]
+        prior_loans = [item for item in loan_groups if item["document_line_ordinal"] < before]
+        later_loans = [item for item in loan_groups if item["document_line_ordinal"] > before]
+        if prior_deposits and not prior_loans and later_loans:
+            anchor = max(
+                prior_deposits,
+                key=lambda item: (
+                    item["document_line_ordinal"],
+                    item["end_document_line_ordinal"],
+                    item["preferred_ordinal"],
+                    item["role"],
+                ),
+            )
+            if not str(anchor["match_kind"]).startswith("EXACT_"):
+                continue
+            receipt = _scope_binding(
+                anchor=anchor,
+                binding_kind="EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
+                geometry=None,
+                interval_end_exclusive=min(item["document_line_ordinal"] for item in later_loans),
+                interval_start=min(item["document_line_ordinal"] for item in prior_deposits),
+                source=match,
+                source_role=_PROVISION_GENERIC_ROLE,
+                source_scope_role="INTERBANK_DEPOSIT_GROUP",
+                target_role="INTERBANK_DEPOSIT_PROVISION",
+            )
+            deposit_group = next(
+                (
+                    item
+                    for item in reversed(prior_deposits)
+                    if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+                ),
+                None,
+            )
+            retype(
+                match,
+                "INTERBANK_DEPOSIT_PROVISION",
+                receipt,
+                matched_within_role=(
+                    "INTERBANK_DEPOSIT_GROUP" if deposit_group is not None else None
+                ),
+            )
+            continue
+        if prior_deposits and prior_loans and not later_loans:
+            loan = max(prior_loans, key=lambda item: item["document_line_ordinal"])
+            prior_loan_leaves = [
+                item
+                for item in projected
+                if item["role"] in _LOAN_LEAF_ROLES
+                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < before
+                and str(item["match_kind"]).startswith("EXACT_")
+            ]
+            later_loan_leaves = [
+                item
+                for item in projected
+                if item["role"] in _LOAN_LEAF_ROLES
+                and before < item["document_line_ordinal"] < region_end
+            ]
+            all_loan_leaves = [
+                item
+                for item in projected
+                if item["role"] in _LOAN_LEAF_ROLES
+                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
+            ]
+            exact_group_total_without_leaf_labels = not all_loan_leaves and bool(
+                _same_row_numeric_samples(pages, loan)
+            )
+            if (
+                not prior_loan_leaves and not exact_group_total_without_leaf_labels
+            ) or later_loan_leaves:
+                continue
+            if not str(loan["match_kind"]).startswith("EXACT_"):
+                continue
+            source_bbox = match["source_label_bbox"]
+            loan_bbox = loan["source_label_bbox"]
+            absolute_left_delta = abs(source_bbox[0] - loan_bbox[0])
+            maximum_delta = max(source_bbox[3] - source_bbox[1], loan_bbox[3] - loan_bbox[1])
+            if absolute_left_delta > maximum_delta:
+                continue
+            geometry = {
+                "absolute_left_delta": absolute_left_delta,
+                "anchor_left": loan_bbox[0],
+                "maximum_root_sibling_left_delta": maximum_delta,
+                "source_left": source_bbox[0],
+                "status": "EXACT_ROOT_SIBLING_ALIGNMENT_WITHIN_ONE_LABEL_HEIGHT",
+            }
+            receipt = _scope_binding(
+                anchor=loan,
+                binding_kind="EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES",
+                geometry=geometry,
+                interval_end_exclusive=region_end,
+                interval_start=loan["document_line_ordinal"],
+                source=match,
+                source_role=_PROVISION_GENERIC_ROLE,
+                source_scope_role=compiled_family["family_id"],
+                target_role="TOTAL_INTERBANK_PROVISION",
+            )
+            retype(match, "TOTAL_INTERBANK_PROVISION", receipt, matched_within_role=None)
+
+    projected.sort(
+        key=lambda item: (
+            item["document_line_ordinal"],
+            item["end_document_line_ordinal"],
+            item["preferred_ordinal"],
+            item["role"],
+        )
+    )
+    ordinals: dict[str, int] = {}
+    for match in projected:
+        ordinal = ordinals.get(match["role"], 0)
+        match["role_occurrence_ordinal"] = ordinal
+        ordinals[match["role"]] = ordinal + 1
+    return projected
 
 
 def _decorate_scopes(
@@ -426,21 +1151,50 @@ def _decorate_scopes(
         }
         occurrence_id = "aforav2:occurrence:" + canonical_json_sha256_v1(occurrence_material)
         decorated.append({**canonical_clone_v1(match), "occurrence_id": occurrence_id})
+
+    def parent_precedes(candidate: Mapping[str, Any], child: Mapping[str, Any]) -> bool:
+        if candidate["document_line_ordinal"] <= child["document_line_ordinal"]:
+            return True
+        candidate_bbox = candidate.get("source_label_bbox")
+        child_bbox = child.get("source_label_bbox")
+        if (
+            candidate["page_sequence"] != child["page_sequence"]
+            or type(candidate_bbox) is not list
+            or type(child_bbox) is not list
+        ):
+            return False
+        text_height = max(
+            candidate_bbox[3] - candidate_bbox[1],
+            child_bbox[3] - child_bbox[1],
+        )
+        vertical_gap = child_bbox[1] - candidate_bbox[3]
+        return (
+            candidate_bbox[1] <= child_bbox[1]
+            and candidate_bbox[3] <= child_bbox[3]
+            and 2 * vertical_gap >= -text_height
+        )
+
+    def parent_order(candidate: Mapping[str, Any]) -> tuple[int, int, int, int]:
+        bbox = candidate.get("source_label_bbox")
+        return (
+            candidate["page_sequence"],
+            bbox[1] if type(bbox) is list else candidate["document_line_ordinal"],
+            bbox[3] if type(bbox) is list else candidate["end_document_line_ordinal"],
+            candidate["document_line_ordinal"],
+        )
+
     for match in decorated:
         within_role = match.get("matched_within_role")
         parents = [
             candidate
             for candidate in decorated
             if candidate["role"] == within_role
-            and candidate["document_line_ordinal"] <= match["document_line_ordinal"]
+            and parent_precedes(candidate, match)
             and candidate["occurrence_id"] != match["occurrence_id"]
         ]
         owner = max(
             parents,
-            key=lambda item: (
-                item["document_line_ordinal"],
-                item["end_document_line_ordinal"],
-            ),
+            key=parent_order,
             default=None,
         )
         if within_role is not None and owner is None:
@@ -450,6 +1204,225 @@ def _decorate_scopes(
         )
         match["scope_owner_role"] = owner["role"] if owner is not None else None
     return decorated
+
+
+def _validate_source_scope_binding(
+    value: Any, *, label_match: Mapping[str, Any], role: str
+) -> None:
+    if value is None:
+        return
+    expected_source_span = _source_span(label_match)
+    if type(value) is dict and type(value.get("source_role")) is str:
+        expected_source_span["role"] = value["source_role"]
+    if (
+        type(value) is not dict
+        or set(value) != _SOURCE_SCOPE_BINDING_FIELDS
+        or value["status"] not in {_SOURCE_SCOPE_BINDING_STATUS, _AMBIGUOUS_WRAPPED_LABEL_STATUS}
+        or type(value["binding_kind"]) is not str
+        or not value["binding_kind"]
+        or type(value["source_role"]) is not str
+        or not value["source_role"]
+        or type(value["source_scope_role"]) is not str
+        or not value["source_scope_role"]
+        or value["target_role"] != role
+        or type(value["source_span"]) is not dict
+        or not same_typed_json_v1(value["source_span"], expected_source_span)
+        or type(value["source_span"].get("source_label_bbox")) is not list
+        or len(value["source_span"]["source_label_bbox"]) != 4
+        or any(
+            type(coordinate) is not int for coordinate in value["source_span"]["source_label_bbox"]
+        )
+        or (value["anchor_span"] is not None and type(value["anchor_span"]) is not dict)
+        or (
+            type(value["anchor_span"]) is dict
+            and (
+                type(value["anchor_span"].get("source_label_bbox")) is not list
+                or len(value["anchor_span"]["source_label_bbox"]) != 4
+                or any(
+                    type(coordinate) is not int
+                    for coordinate in value["anchor_span"]["source_label_bbox"]
+                )
+            )
+        )
+        or (value["geometry"] is not None and type(value["geometry"]) is not dict)
+        or type(value["interval"]) is not dict
+        or set(value["interval"])
+        != {"end_document_line_ordinal_exclusive", "start_document_line_ordinal"}
+        or type(value["interval"]["start_document_line_ordinal"]) is not int
+        or type(value["interval"]["end_document_line_ordinal_exclusive"]) is not int
+        or not (
+            value["interval"]["start_document_line_ordinal"]
+            <= label_match["document_line_ordinal"]
+            < value["interval"]["end_document_line_ordinal_exclusive"]
+        )
+    ):
+        raise _error("reviewed schema source-scope binding drifted")
+    anchor = value["anchor_span"]
+    interval = value["interval"]
+    geometry = value["geometry"]
+    exact_source = str(value["source_span"].get("match_kind", "")).startswith("EXACT_")
+    exact_anchor = type(anchor) is dict and str(anchor.get("match_kind", "")).startswith("EXACT_")
+    discount_pair = {
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY": ("INTERBANK_LOAN_FOREIGN_CURRENCY"),
+    }
+    kind = value["binding_kind"]
+    reviewed_matrix_valid = False
+    if value["status"] == _SOURCE_SCOPE_BINDING_STATUS:
+        expected_subscope = discount_pair.get(role)
+        if kind == "EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL":
+            normalized = value["source_span"]["normalized_surface"]
+            explicit_scope_surface = (
+                "bang vnd" in normalized
+                if expected_subscope == "INTERBANK_LOAN_VND"
+                else ("bang ngoai te" in normalized or "bang ngoai hoi" in normalized)
+            )
+            reviewed_matrix_valid = (
+                expected_subscope is not None
+                and value["source_role"] == role
+                and value["source_scope_role"] == expected_subscope
+                and exact_source
+                and explicit_scope_surface
+                and anchor is None
+                and geometry is None
+                and interval["start_document_line_ordinal"] == label_match["document_line_ordinal"]
+                and interval["end_document_line_ordinal_exclusive"]
+                == label_match["end_document_line_ordinal"] + 1
+            )
+        elif kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
+            reviewed_matrix_valid = (
+                expected_subscope is not None
+                and value["source_role"] == _DISCOUNT_GENERIC_ROLE
+                and value["source_scope_role"] == expected_subscope
+                and exact_source
+                and exact_anchor
+                and anchor.get("role") == expected_subscope
+                and geometry is None
+                and anchor["end_document_line_ordinal"] < label_match["document_line_ordinal"]
+                and interval["start_document_line_ordinal"] == anchor["document_line_ordinal"]
+            )
+        elif kind == "EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY":
+            reviewed_matrix_valid = (
+                role == "INTERBANK_DEPOSIT_PROVISION"
+                and value["source_role"] == _PROVISION_GENERIC_ROLE
+                and value["source_scope_role"] == "INTERBANK_DEPOSIT_GROUP"
+                and exact_source
+                and exact_anchor
+                and anchor.get("role") in _DEPOSIT_SCOPE_ROLES
+                and geometry is None
+                and anchor["document_line_ordinal"] < label_match["document_line_ordinal"]
+            )
+        elif kind == "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES":
+            reviewed_matrix_valid = (
+                role == "TOTAL_INTERBANK_PROVISION"
+                and value["source_role"] == _PROVISION_GENERIC_ROLE
+                and value["source_scope_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+                and exact_source
+                and exact_anchor
+                and anchor.get("role") == "INTERBANK_LOAN_GROUP"
+                and type(geometry) is dict
+                and set(geometry)
+                == {
+                    "absolute_left_delta",
+                    "anchor_left",
+                    "maximum_root_sibling_left_delta",
+                    "source_left",
+                    "status",
+                }
+                and geometry["status"] == "EXACT_ROOT_SIBLING_ALIGNMENT_WITHIN_ONE_LABEL_HEIGHT"
+                and all(
+                    type(geometry[field]) is int
+                    for field in (
+                        "absolute_left_delta",
+                        "anchor_left",
+                        "maximum_root_sibling_left_delta",
+                        "source_left",
+                    )
+                )
+                and geometry["absolute_left_delta"]
+                == abs(geometry["source_left"] - geometry["anchor_left"])
+                and geometry["source_left"] == value["source_span"]["source_label_bbox"][0]
+                and geometry["anchor_left"] == anchor["source_label_bbox"][0]
+                and geometry["maximum_root_sibling_left_delta"]
+                == max(
+                    value["source_span"]["source_label_bbox"][3]
+                    - value["source_span"]["source_label_bbox"][1],
+                    anchor["source_label_bbox"][3] - anchor["source_label_bbox"][1],
+                )
+                and 0
+                <= geometry["absolute_left_delta"]
+                <= geometry["maximum_root_sibling_left_delta"]
+                and interval["start_document_line_ordinal"] == anchor["document_line_ordinal"]
+            )
+    ambiguous_matrix_valid = False
+    if value["status"] == _AMBIGUOUS_WRAPPED_LABEL_STATUS:
+        if type(geometry) is dict and set(geometry) == {
+            "absolute_left_delta",
+            "candidate_bbox",
+            "candidate_source_line_index",
+            "preceding_bbox",
+            "preceding_source_line_index",
+            "skipped_source_line_indices",
+            "vertical_gap",
+        }:
+            candidate_bbox = geometry["candidate_bbox"]
+            preceding_bbox = geometry["preceding_bbox"]
+            valid_bboxes = all(
+                type(bbox) is list and len(bbox) == 4 and all(type(item) is int for item in bbox)
+                for bbox in (candidate_bbox, preceding_bbox)
+            )
+            text_height = (
+                max(
+                    preceding_bbox[3] - preceding_bbox[1],
+                    candidate_bbox[3] - candidate_bbox[1],
+                )
+                if valid_bboxes
+                else -1
+            )
+            ambiguous_matrix_valid = (
+                valid_bboxes
+                and role.endswith("_OTHER")
+                and value["source_role"] == role
+                and value["target_role"] == role
+                and value["source_scope_role"]
+                in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                and kind == "AMBIGUOUS_TOUCHING_PRECEDING_LABEL_FRAGMENT"
+                and anchor is None
+                and exact_source
+                and type(geometry["absolute_left_delta"]) is int
+                and geometry["absolute_left_delta"] == abs(preceding_bbox[0] - candidate_bbox[0])
+                and geometry["absolute_left_delta"] <= 6
+                and geometry["candidate_source_line_index"] == label_match["source_line_index"]
+                and candidate_bbox == value["source_span"]["source_label_bbox"]
+                and type(geometry["preceding_source_line_index"]) is int
+                and geometry["preceding_source_line_index"]
+                < geometry["candidate_source_line_index"]
+                and type(geometry["skipped_source_line_indices"]) is list
+                and geometry["skipped_source_line_indices"]
+                == list(
+                    range(
+                        geometry["preceding_source_line_index"] + 1,
+                        geometry["candidate_source_line_index"],
+                    )
+                )
+                and geometry["vertical_gap"] == candidate_bbox[1] - preceding_bbox[3]
+                and 2 * geometry["vertical_gap"] >= -text_height
+                and 4 * geometry["vertical_gap"] <= text_height
+                and interval["start_document_line_ordinal"]
+                == (
+                    label_match["document_line_ordinal"]
+                    - label_match["source_line_index"]
+                    + geometry["preceding_source_line_index"]
+                )
+                and interval["end_document_line_ordinal_exclusive"]
+                == label_match["end_document_line_ordinal"] + 1
+            )
+    if not (reviewed_matrix_valid or ambiguous_matrix_valid):
+        raise _error("schema source-scope binding status and semantic matrix drifted")
+    material = canonical_clone_v1(value)
+    binding_id = material.pop("binding_id")
+    if binding_id != "aforav2:scope-binding:" + canonical_json_sha256_v1(material):
+        raise _error("reviewed schema source-scope binding identity drifted")
 
 
 def _expanded_region(
@@ -1046,7 +2019,14 @@ def _build_numeric_sample_universe(
         centers = grid["column_centers"]
         local_lines = body_by_page.get(page_sequence, [])
         page = next(page for page in pages if page["page_sequence"] == page_sequence)
-        if not centers or not local_lines or type(page["page_width"]) is not int:
+        if not centers:
+            # The sealed V1 axis uses an empty grid for prose/non-table
+            # candidates.  With no admitted body MONEY lane there is no
+            # numeric-universe projection to perform; in particular, margin
+            # numerals must not manufacture a lane.  The incomplete V1 rows
+            # remain the typed occurrence-level veto.
+            continue
+        if not local_lines or type(page["page_width"]) is not int:
             raise _error("numeric sample universe lost its exact body lane grid")
         scale = row_v1.median_text_height_v1(local_lines)
         lane_tolerance = (
@@ -1364,7 +2344,16 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or item["label_match"].get("role_kind") != item["role_kind"]
         or item["label_match"].get("scope_owner_occurrence_id") != item["scope_owner_occurrence_id"]
         or item["label_match"].get("scope_owner_role") != item["scope_owner_role"]
+        or not same_typed_json_v1(
+            item["source_scope_binding"], item["label_match"].get("source_scope_binding")
+        )
         or item["has_bound_value_row"] is not (item["occurrence_id"] in row_occurrence_ids)
+        or (
+            item["has_bound_value_row"]
+            and not same_typed_json_v1(
+                item["label_match"], row_by_occurrence[item["occurrence_id"]]["label_match"]
+            )
+        )
         or (
             item["scope_owner_role"] is not None
             and (
@@ -1380,6 +2369,265 @@ def _validate_result(value: Any) -> dict[str, Any]:
         for item in value["role_occurrences"]
     ):
         raise _error("role occurrence nearest-parent scope axis drifted")
+    for item in value["role_occurrences"]:
+        if item["scope_owner_role"] is None:
+            continue
+        child = item["label_match"]
+        eligible = []
+        for candidate in value["role_occurrences"]:
+            if (
+                candidate["role"] != item["scope_owner_role"]
+                or candidate["occurrence_id"] == item["occurrence_id"]
+            ):
+                continue
+            parent = candidate["label_match"]
+            source_precedes = parent["document_line_ordinal"] <= child["document_line_ordinal"]
+            parent_bbox = parent.get("source_label_bbox")
+            child_bbox = child.get("source_label_bbox")
+            visual_precedes = False
+            if (
+                parent["page_sequence"] == child["page_sequence"]
+                and type(parent_bbox) is list
+                and type(child_bbox) is list
+            ):
+                text_height = max(
+                    parent_bbox[3] - parent_bbox[1],
+                    child_bbox[3] - child_bbox[1],
+                )
+                visual_precedes = (
+                    parent_bbox[1] <= child_bbox[1]
+                    and parent_bbox[3] <= child_bbox[3]
+                    and 2 * (child_bbox[1] - parent_bbox[3]) >= -text_height
+                )
+            if source_precedes or visual_precedes:
+                eligible.append(candidate)
+        expected_owner = max(
+            eligible,
+            key=lambda candidate: (
+                candidate["label_match"]["page_sequence"],
+                candidate["label_match"].get(
+                    "source_label_bbox",
+                    [
+                        0,
+                        candidate["label_match"]["document_line_ordinal"],
+                        0,
+                        candidate["label_match"]["end_document_line_ordinal"],
+                    ],
+                )[1],
+                candidate["label_match"].get(
+                    "source_label_bbox",
+                    [
+                        0,
+                        candidate["label_match"]["document_line_ordinal"],
+                        0,
+                        candidate["label_match"]["end_document_line_ordinal"],
+                    ],
+                )[3],
+                candidate["label_match"]["document_line_ordinal"],
+            ),
+            default=None,
+        )
+        if (
+            expected_owner is None
+            or expected_owner["occurrence_id"] != item["scope_owner_occurrence_id"]
+        ):
+            raise _error("role occurrence nearest visual parent replay drifted")
+    for item in value["role_occurrences"]:
+        _validate_source_scope_binding(
+            item["source_scope_binding"],
+            label_match=item["label_match"],
+            role=item["role"],
+        )
+    actual_span_occurrences: dict[str, list[Mapping[str, Any]]] = {}
+    for occurrence in value["role_occurrences"]:
+        span = _source_span(occurrence["label_match"])
+        actual_span_occurrences.setdefault(canonical_json_sha256_v1(span), []).append(occurrence)
+    currency_roles = set(_DISCOUNT_SCOPE_TARGETS)
+    for occurrence in value["role_occurrences"]:
+        receipt = occurrence["source_scope_binding"]
+        anchor_span = receipt.get("anchor_span") if type(receipt) is dict else None
+        if anchor_span is None:
+            continue
+        anchors = actual_span_occurrences.get(canonical_json_sha256_v1(anchor_span), [])
+        if len(anchors) != 1 or not same_typed_json_v1(
+            _source_span(anchors[0]["label_match"]), anchor_span
+        ):
+            raise _error("reviewed schema source-scope anchor is not one actual occurrence")
+        anchor = anchors[0]
+        source_match = occurrence["label_match"]
+        anchor_match = anchor["label_match"]
+        if (
+            anchor_match["page_sequence"] != source_match["page_sequence"]
+            or anchor_match["end_document_line_ordinal"] >= source_match["document_line_ordinal"]
+        ):
+            raise _error("reviewed schema source-scope anchor does not precede its source")
+        kind = receipt["binding_kind"]
+        if kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
+            preceding_currency = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in currency_roles
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
+                and item["label_match"]["end_document_line_ordinal"]
+                < source_match["document_line_ordinal"]
+            ]
+            nearest_end = max(
+                (item["label_match"]["end_document_line_ordinal"] for item in preceding_currency),
+                default=-1,
+            )
+            nearest = [
+                item
+                for item in preceding_currency
+                if item["label_match"]["end_document_line_ordinal"] == nearest_end
+            ]
+            if (
+                len(nearest) != 1
+                or nearest[0]["occurrence_id"] != anchor["occurrence_id"]
+                or occurrence["scope_owner_occurrence_id"] != anchor["occurrence_id"]
+            ):
+                raise _error(
+                    "discount source subscope is not the nearest exact currency occurrence"
+                )
+        elif kind == "EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY":
+            source_ordinal = source_match["document_line_ordinal"]
+            prior_deposits = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _DEPOSIT_SCOPE_ROLES
+                and item["label_match"]["document_line_ordinal"] < source_ordinal
+                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+            ]
+            prior_loans = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["document_line_ordinal"] < source_ordinal
+            ]
+            later_loans = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            expected_anchor = max(
+                prior_deposits,
+                key=lambda item: (
+                    item["label_match"]["document_line_ordinal"],
+                    item["label_match"]["end_document_line_ordinal"],
+                    item["label_match"]["preferred_ordinal"],
+                    item["role"],
+                ),
+                default=None,
+            )
+            prior_deposit_groups = [
+                item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+            ]
+            expected_owner = max(
+                prior_deposit_groups,
+                key=lambda item: (
+                    item["label_match"]["document_line_ordinal"],
+                    item["label_match"]["end_document_line_ordinal"],
+                ),
+                default=None,
+            )
+            if (
+                expected_anchor is None
+                or expected_anchor["occurrence_id"] != anchor["occurrence_id"]
+                or prior_loans
+                or not later_loans
+                or receipt["interval"]["start_document_line_ordinal"]
+                != min(item["label_match"]["document_line_ordinal"] for item in prior_deposits)
+                or receipt["interval"]["end_document_line_ordinal_exclusive"]
+                != min(item["label_match"]["document_line_ordinal"] for item in later_loans)
+                or (
+                    expected_owner is not None
+                    and occurrence["scope_owner_occurrence_id"] != expected_owner["occurrence_id"]
+                )
+                or (expected_owner is None and occurrence["scope_owner_role"] is not None)
+            ):
+                raise _error("deposit provision source does not occupy the exact deposit interval")
+        elif kind == "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES":
+            source_ordinal = source_match["document_line_ordinal"]
+            anchor_ordinal = anchor_match["document_line_ordinal"]
+            prior_deposits = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _DEPOSIT_SCOPE_ROLES
+                and item["label_match"]["document_line_ordinal"] < source_ordinal
+                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+            ]
+            prior_loans = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["document_line_ordinal"] < source_ordinal
+            ]
+            later_loans = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            expected_loan = max(
+                prior_loans,
+                key=lambda item: (
+                    item["label_match"]["document_line_ordinal"],
+                    item["label_match"]["end_document_line_ordinal"],
+                ),
+                default=None,
+            )
+            prior_leaves = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _LOAN_LEAF_ROLES
+                and anchor_ordinal <= item["label_match"]["document_line_ordinal"] < source_ordinal
+                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+            ]
+            later_leaves = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _LOAN_LEAF_ROLES
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            all_loan_leaf_occurrences = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _LOAN_LEAF_ROLES
+                and anchor_ordinal <= item["label_match"]["document_line_ordinal"]
+            ]
+            topology_region = axis["topology_region"]
+            region_end = (
+                topology_region.get("cluster_end_document_line_ordinal_exclusive")
+                if type(topology_region) is dict
+                else None
+            )
+            anchor_row = row_by_occurrence.get(anchor["occurrence_id"])
+            exact_leaf_completion = (
+                bool(prior_leaves)
+                and not later_leaves
+                and len(all_loan_leaf_occurrences) == len(prior_leaves)
+            )
+            exact_group_total_completion = (
+                not all_loan_leaf_occurrences
+                and type(anchor_row) is dict
+                and anchor_row.get("role") == "INTERBANK_LOAN_GROUP"
+                and anchor_row.get("status") == "VISIBLE_VALUE_LANES_BOUND"
+                and type(anchor_row.get("values")) is list
+                and bool(anchor_row["values"])
+            )
+            if (
+                not prior_deposits
+                or expected_loan is None
+                or expected_loan["occurrence_id"] != anchor["occurrence_id"]
+                or not str(anchor_match["match_kind"]).startswith("EXACT_")
+                or not (exact_leaf_completion or exact_group_total_completion)
+                or later_loans
+                or occurrence["scope_owner_role"] is not None
+                or receipt["interval"]["start_document_line_ordinal"] != anchor_ordinal
+                or type(region_end) is not int
+                or receipt["interval"]["end_document_line_ordinal_exclusive"] != region_end
+            ):
+                raise _error("total provision source does not follow one complete loan subtree")
     retained_sample_ids = {
         source_value.get("sample_id")
         for row in [*axis["rows"], *axis["trailing_value_rows"]]
@@ -1553,11 +2801,18 @@ def _build(
             prepared_topology_binding,
         )
     )
+    expanded_matches = _project_reviewed_schema_source_scopes(
+        parsed_pages,
+        compiled_family,
+        expanded_matches,
+        selected_region,
+    )
     matches = _decorate_scopes(
         expanded_matches,
         selected_region,
     )
-    expanded = _expanded_region(expected_effective, matches)
+    row_matches = matches
+    expanded = _expanded_region(expected_effective, row_matches)
     try:
         raw_axis = row_v1._build_axis(
             parsed_pages,
@@ -1576,7 +2831,7 @@ def _build(
         axis, coextensive_evidence = (
             total_v1.project_accounting_family_coextensive_structural_numeric_rows_v1(
                 axis,
-                matches,
+                row_matches,
             )
         )
         if coextensive_evidence:
@@ -1586,7 +2841,7 @@ def _build(
     numeric_sample_universe, internal_unassigned_numeric_clusters = _build_numeric_sample_universe(
         parsed_pages,
         expanded,
-        matches,
+        row_matches,
         axis,
         coextensive_evidence,
     )
@@ -1609,6 +2864,7 @@ def _build(
                 else selected_region["parent_match"]["match_kind"]
             ),
             "scope_owner_role": match["scope_owner_role"],
+            "source_scope_binding": canonical_clone_v1(match.get("source_scope_binding")),
         }
         for match in matches
     ]

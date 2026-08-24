@@ -74,6 +74,12 @@ _SPEC_V2_FIELDS = {*_SPEC_FIELDS, "aggregate_role_bindings"}
 _SPEC_V3_FIELDS = {*_SPEC_FIELDS, "ignored_roles"}
 _SPEC_V4_FIELDS = {*_SPEC_V3_FIELDS, "family_root_mapping_policy"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
+_ROLE_BINDING_PARENT_FIELDS = {*_ROLE_BINDING_FIELDS, "parent_report_norm_id"}
+_ROLE_BINDING_SUBSCOPE_FIELDS = {
+    *_ROLE_BINDING_PARENT_FIELDS,
+    "preceding_schema_sibling_id",
+    "source_subscope_role",
+}
 _AGGREGATE_ROLE_BINDING_FIELDS = {
     "operation",
     "report_norm_id",
@@ -176,13 +182,36 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         raise _error("family schema-binding specification drifted")
     direct = []
     for raw in value["role_bindings"]:
+        allowed_role_binding_fields = (
+            [_ROLE_BINDING_PARENT_FIELDS, _ROLE_BINDING_SUBSCOPE_FIELDS]
+            if spec_version == SPEC_FORMAT_VERSION_V4
+            else [_ROLE_BINDING_FIELDS]
+        )
         if (
             type(raw) is not dict
-            or set(raw) != _ROLE_BINDING_FIELDS
+            or not any(set(raw) == fields for fields in allowed_role_binding_fields)
             or type(raw["role"]) is not str
             or not raw["role"]
             or type(raw["report_norm_id"]) is not int
             or raw["report_norm_id"] <= 0
+            or (
+                "parent_report_norm_id" in raw
+                and (
+                    type(raw["parent_report_norm_id"]) is not int
+                    or raw["parent_report_norm_id"] <= 0
+                    or raw["parent_report_norm_id"] == raw["report_norm_id"]
+                )
+            )
+            or (
+                "source_subscope_role" in raw
+                and (
+                    type(raw["source_subscope_role"]) is not str
+                    or not raw["source_subscope_role"]
+                    or type(raw["preceding_schema_sibling_id"]) is not int
+                    or raw["preceding_schema_sibling_id"] <= 0
+                    or raw["preceding_schema_sibling_id"] == raw["report_norm_id"]
+                )
+            )
         ):
             raise _error("family schema role binding drifted")
         direct.append(canonical_clone_v1(raw))
@@ -232,6 +261,12 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             or ignored_roles != sorted(ignored_roles, key=role_order.__getitem__)
             or len(target_ids) != len(set(target_ids))
             or value["family_report_norm_id"] in target_ids
+            or any(
+                item.get("source_subscope_role") not in role_order
+                or item["source_subscope_role"] == item["role"]
+                for item in direct
+                if "source_subscope_role" in item
+            )
         ):
             raise _error("hierarchical schema binding must partition the exact role axis")
         if spec_version == SPEC_FORMAT_VERSION_V4 and value["family_root_mapping_policy"] not in {
@@ -335,6 +370,7 @@ def _bind_schema(
 
     for binding in bindings:
         node = nodes.get(binding["report_norm_id"])
+        declared_parent = nodes.get(binding.get("parent_report_norm_id"))
         if (
             type(node) is not dict
             or node.get("statement_type") != "TM"
@@ -342,6 +378,15 @@ def _bind_schema(
             or type(node.get("canonical_name")) is not str
             or not node["canonical_name"]
             or not _schema_contract_axes_are_closed(node)
+            or (
+                "parent_report_norm_id" in binding
+                and (
+                    type(declared_parent) is not dict
+                    or node.get("parent_id") != binding["parent_report_norm_id"]
+                    or type(declared_parent.get("children")) is not list
+                    or node["schema_id"] not in declared_parent["children"]
+                )
+            )
         ):
             raise _error(
                 "role ReportNormId is not an admitted live descendant of its family"
@@ -352,6 +397,23 @@ def _bind_schema(
             aggregate_bindings.append((binding, node))
         else:
             by_role[binding["role"]] = node
+    direct_binding_by_role = {binding["role"]: binding for binding in spec["role_bindings"]}
+    for binding in spec["role_bindings"]:
+        source_subscope_role = binding.get("source_subscope_role")
+        if source_subscope_role is None:
+            continue
+        source_binding = direct_binding_by_role.get(source_subscope_role)
+        source_node = nodes.get(binding["preceding_schema_sibling_id"])
+        target_node = nodes[binding["report_norm_id"]]
+        if (
+            type(source_binding) is not dict
+            or source_binding["report_norm_id"] != binding["preceding_schema_sibling_id"]
+            or type(source_node) is not dict
+            or source_node.get("parent_id") != binding["parent_report_norm_id"]
+            or target_node.get("previous_id") != source_node["schema_id"]
+            or source_node["schema_id"] not in target_node.get("siblings", [])
+        ):
+            raise _error("reviewed source subscope is not the exact preceding live schema sibling")
     return parent, by_role, aggregate_bindings
 
 
@@ -758,6 +820,37 @@ def _trial(
             == "REQUIRE_HIERARCHICALLY_RESOLVED"
         ):
             raise _error("schema-ready hierarchical closure lost its family root")
+        reviewed_subscope_reasons = []
+        binding_by_role = {
+            binding["role"]: binding for binding in schema_binding_spec["role_bindings"]
+        }
+        for role, record in resolved.items():
+            binding = binding_by_role.get(role)
+            if type(binding) is not dict or "source_subscope_role" not in binding:
+                continue
+            source = record.get("source")
+            source_record = source.get("record") if type(source) is dict else None
+            receipt = (
+                source_record.get("label_match", {}).get("source_scope_binding")
+                if type(source_record) is dict
+                else None
+            )
+            if (source.get("kind") != "ROLE_ROW" if type(source) is dict else True) or (
+                type(receipt) is not dict
+                or receipt.get("status") != "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
+                or receipt.get("target_role") != role
+                or receipt.get("source_scope_role") != binding["source_subscope_role"]
+            ):
+                reviewed_subscope_reasons.append(
+                    f"MISSING_REVIEWED_EXACT_SOURCE_SUBSCOPE_BINDING:{role}"
+                )
+        if reviewed_subscope_reasons:
+            return {
+                **base,
+                "mapping_status": "UNRESOLVED",
+                "mappings": [],
+                "unresolved_reasons": reviewed_subscope_reasons,
+            }
         mappings = (
             [_hierarchical_mapping(family_record, parent, contexts)]
             if family_record is not None
