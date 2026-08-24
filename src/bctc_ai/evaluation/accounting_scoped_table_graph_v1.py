@@ -1118,6 +1118,20 @@ def _semantic_matches(
         )
     ]
     scopes = _collapse_axis_matches(closed_scopes, scale=scale)
+    # An owner phrase printed inside a longer population/scope heading is not
+    # independent owner evidence.  Without this fence, the nested phrase is
+    # visually closer to the roles than the real preceding owner and shadows
+    # it; scope resolution then fails because that synthetic owner overlaps
+    # its own scope.  A combined heading with no prior owner remains ownerless.
+    scope_line_sets = [set(item["source_line_indices_in_visual_order"]) for item in scopes]
+    owners = [
+        owner
+        for owner in owners
+        if not any(
+            set(owner["source_line_indices_in_visual_order"]).issubset(scope_lines)
+            for scope_lines in scope_line_sets
+        )
+    ]
     continuations = _minimal_line_axis_matches(_deduplicate_matches(by_category["CONTINUATION"]))
     resets = _minimal_line_axis_matches(_deduplicate_matches(by_category["STRUCTURAL_RESET"]))
     totals = _collapse_axis_matches(

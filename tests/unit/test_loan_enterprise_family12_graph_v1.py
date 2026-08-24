@@ -4,6 +4,11 @@ import copy
 
 import pytest
 
+import bctc_ai.evaluation.accounting_semantic_region_graph_v1 as semantic_region_module
+import bctc_ai.evaluation.loan_enterprise_family12_graph_v1 as family12_graph_module
+from bctc_ai.evaluation.accounting_scoped_table_graph_v1 import (
+    AccountingScopedTableGraphV1Error,
+)
 from bctc_ai.evaluation.loan_enterprise_family12_graph_v1 import (
     LoanEnterpriseFamily12GraphV1Error,
     build_loan_enterprise_family12_graph_v1,
@@ -450,6 +455,54 @@ def test_exact_replay_accepts_original_and_rejects_tamper() -> None:
     tampered["metrics"]["region_count"] = 0
     with pytest.raises(LoanEnterpriseFamily12GraphV1Error, match="content identity drifted"):
         validate_loan_enterprise_family12_graph_replay_v1(tampered, pages)
+
+
+def test_historical_84_56_metadata_never_changes_matching_or_projection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = [_page(1, _table_lines())]
+    baseline = build_loan_enterprise_family12_graph_v1(pages)
+    altered_spec = build_loan_enterprise_family12_spec_v1()
+    altered_spec["historical_evidence_summary"] = {
+        "bounded_absence_filing_count": 140,
+        "exact_child_absence_report_norm_ids": [],
+        "owner_carried_at_most_two_pages_present_count": 0,
+        "present_filing_count": 0,
+        "same_page_owner_present_count": 0,
+        "studied_filing_count": 140,
+    }
+    monkeypatch.setattr(
+        family12_graph_module,
+        "build_loan_enterprise_family12_spec_v1",
+        lambda: copy.deepcopy(altered_spec),
+    )
+
+    changed = build_loan_enterprise_family12_graph_v1(pages)
+
+    assert changed["regions"] == baseline["regions"]
+    assert changed["metrics"] == baseline["metrics"]
+    assert changed["safety"]["historical_evidence_metadata_used_for_matching"] is False
+    assert changed["historical_evidence_summary"] != baseline["historical_evidence_summary"]
+
+
+def test_shared_scoped_failure_cannot_create_family12_binding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _reject(*_args: object, **_kwargs: object) -> dict:
+        raise AccountingScopedTableGraphV1Error("synthetic scoped failure")
+
+    monkeypatch.setattr(
+        semantic_region_module,
+        "build_accounting_scoped_table_graph_v1",
+        _reject,
+    )
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines())])
+
+    assert result["regions"] == []
+    assert result["near_regions"][0]["reason"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
+    assert result["metrics"]["unique_binding_proposal_count"] == 0
+    assert result["safety"]["shared_semantic_region_failure_can_promote_mapping"] is False
 
 
 def test_no_branch_is_only_bounded_absence() -> None:

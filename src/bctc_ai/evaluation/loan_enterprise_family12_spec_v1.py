@@ -50,7 +50,6 @@ _BRANCH_ALIASES = [
 
 _OWNER_ALIASES = [
     "Cho vay khách hàng",
-    "Cho vay khách hàng tiếp theo",
     "Cho vay khách hàng (tiếp theo)",
     "Các khoản cho vay khách hàng",
     "Dư nợ cho vay khách hàng",
@@ -158,7 +157,7 @@ _CHILDREN = [
     _child(
         767,
         "Doanh nghiệp nhà nước",
-        ["Doanh nghiệp nhà nước", "Công ty nhà nước", "Doanh nghiệp Nhà nước"],
+        ["Doanh nghiệp nhà nước", "Công ty nhà nước"],
     ),
     _child(
         768,
