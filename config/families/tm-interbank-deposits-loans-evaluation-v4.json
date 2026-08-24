@@ -97,6 +97,25 @@
           },
           {
             "component_roles": [
+              "DEMAND_DEPOSIT_GROUP",
+              "TERM_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          },
+          {
+            "component_roles": [
+              "DEMAND_DEPOSIT_GROUP",
+              "TERM_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_PROVISION",
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          },
+          {
+            "component_roles": [
               "DEMAND_DEPOSIT_GROUP"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
@@ -121,6 +140,55 @@
             "component_roles": [
               "TERM_DEPOSIT_GROUP",
               "INTERBANK_DEPOSIT_PROVISION"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_DEPOSIT_OTHER",
+              "INTERBANK_DEPOSIT_PROVISION"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "DEMAND_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "TERM_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "DEMAND_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_PROVISION",
+              "INTERBANK_DEPOSIT_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "TERM_DEPOSIT_GROUP",
+              "INTERBANK_DEPOSIT_PROVISION",
+              "INTERBANK_DEPOSIT_OTHER"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
@@ -155,6 +223,25 @@
           },
           {
             "component_roles": [
+              "INTERBANK_LOAN_VND",
+              "INTERBANK_LOAN_FOREIGN_CURRENCY",
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_VND",
+              "INTERBANK_LOAN_FOREIGN_CURRENCY",
+              "INTERBANK_LOAN_PROVISION",
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          },
+          {
+            "component_roles": [
               "INTERBANK_LOAN_VND"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
@@ -179,6 +266,55 @@
             "component_roles": [
               "INTERBANK_LOAN_FOREIGN_CURRENCY",
               "INTERBANK_LOAN_PROVISION"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_OTHER",
+              "INTERBANK_LOAN_PROVISION"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_VND",
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_FOREIGN_CURRENCY",
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_VND",
+              "INTERBANK_LOAN_PROVISION",
+              "INTERBANK_LOAN_OTHER"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_LOAN_FOREIGN_CURRENCY",
+              "INTERBANK_LOAN_PROVISION",
+              "INTERBANK_LOAN_OTHER"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
@@ -249,14 +385,16 @@
       }
     ],
     "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
-    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V1",
+    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V2",
     "repeated_role_policy": {
       "aggregate_roles": [
         "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
         "DEMAND_DEPOSIT_GROUP",
         "DEMAND_DEPOSIT_VND",
+        "INTERBANK_DEPOSIT_OTHER",
         "INTERBANK_LOAN_FOREIGN_CURRENCY",
         "INTERBANK_LOAN_GROUP",
+        "INTERBANK_LOAN_OTHER",
         "INTERBANK_LOAN_VND",
         "TERM_DEPOSIT_FOREIGN_CURRENCY",
         "TERM_DEPOSIT_GROUP",
@@ -266,6 +404,16 @@
         "DEMAND_DEPOSIT_GROUP",
         "INTERBANK_LOAN_GROUP",
         "TERM_DEPOSIT_GROUP"
+      ]
+    },
+    "source_role_policy": {
+      "one_edit_role_or_scope_match_policy": "VETO",
+      "source_only_veto_roles": [
+        "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+        "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_PROVISION_AMBIGUOUS",
+        "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY"
       ]
     }
   },

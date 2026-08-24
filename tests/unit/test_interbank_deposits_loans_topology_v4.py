@@ -17,6 +17,12 @@ _EVALUATION_PATH = _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-
 _V3_EVALUATION_PATH = (
     _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-evaluation-v3.json"
 )
+_V3_SCHEMA_BINDING_PATH = (
+    _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-schema-binding-v3.json"
+)
+_SCHEMA_BINDING_PATH = (
+    _PROJECT_ROOT / "config/families/tm-interbank-deposits-loans-schema-binding-v4.json"
+)
 
 
 def _spec() -> dict:
@@ -49,6 +55,11 @@ def test_v4_is_add_only_and_historical_v3_remains_byte_exact() -> None:
     assert hashlib.sha256(v3_evaluation_payload).hexdigest() == (
         "0db7cfe8efe522822abf0ab8b716182300d0314c75f26af3197357a966aa9772"
     )
+    v3_schema_payload = _V3_SCHEMA_BINDING_PATH.read_bytes()
+    assert len(v3_schema_payload) == 1_386
+    assert hashlib.sha256(v3_schema_payload).hexdigest() == (
+        "e6e229e247d8dcb87870ce3a830992df60d82eb23ee748282969ae5bde216354"
+    )
     family = _spec()
     compiled = topology_v1._spec(family)
     evaluation = json.loads(_EVALUATION_PATH.read_text(encoding="utf-8"))
@@ -61,6 +72,50 @@ def test_v4_is_add_only_and_historical_v3_remains_byte_exact() -> None:
         )["format_version"]
         == sweep_v1.EVALUATION_SPEC_FORMAT_V4
     )
+
+
+def test_v4_schema_exact_roles_partition_ambiguous_and_context_bound_sources() -> None:
+    family = _spec()
+    evaluation = json.loads(_EVALUATION_PATH.read_text(encoding="utf-8"))
+    binding = json.loads(_SCHEMA_BINDING_PATH.read_text(encoding="utf-8"))
+    roles = {child["role"]: child for child in family["children"]}
+    source_only = set(
+        evaluation["hierarchical_closure_spec"]["source_role_policy"]["source_only_veto_roles"]
+    )
+
+    assert roles["INTERBANK_DEPOSIT_OTHER"]["matchers"][0]["within_role"] == (
+        "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert roles["INTERBANK_LOAN_OTHER"]["matchers"][0]["within_role"] == ("INTERBANK_LOAN_GROUP")
+    assert {item["role"]: item["report_norm_id"] for item in binding["role_bindings"]}[
+        "INTERBANK_DEPOSIT_OTHER"
+    ] == 584
+    assert {item["role"]: item["report_norm_id"] for item in binding["role_bindings"]}[
+        "INTERBANK_LOAN_OTHER"
+    ] == 591
+
+    for role, report_norm_id in (
+        ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND", 587),
+        ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY", 589),
+    ):
+        assert all(
+            matcher["within_role"] == "INTERBANK_LOAN_GROUP" for matcher in roles[role]["matchers"]
+        )
+        assert {item["role"]: item["report_norm_id"] for item in binding["role_bindings"]}[
+            role
+        ] == report_norm_id
+        assert role not in source_only
+
+    assert "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS" in source_only
+    assert "INTERBANK_PROVISION_AMBIGUOUS" in source_only
+    assert {
+        "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+    } <= source_only
+    assert "Dự phòng rủi ro" not in roles["TOTAL_INTERBANK_PROVISION"]["matchers"][0]["aliases"]
+    assert "Dự phòng rủi ro" in roles["INTERBANK_PROVISION_AMBIGUOUS"]["matchers"][0]["aliases"]
+    assert source_only <= set(binding["ignored_roles"])
 
 
 def test_money_table_stops_before_interest_percentage_and_quality_subtables() -> None:

@@ -81,6 +81,22 @@
       "matchers": [
         {
           "aliases": [
+            "Bằng vàng và ngoại tệ",
+            "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ và vàng",
+            "Bằng ngoại hối và vàng"
+          ],
+          "within_role": "DEMAND_DEPOSIT_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Tiền gửi có kỳ hạn",
             "Tiền vàng gửi có kỳ hạn",
             "Tiền gửi có kỳ hạn bằng VND",
@@ -143,6 +159,58 @@
       "matchers": [
         {
           "aliases": [
+            "Bằng vàng và ngoại tệ",
+            "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ và vàng",
+            "Bằng ngoại hối và vàng"
+          ],
+          "within_role": "TERM_DEPOSIT_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng rủi ro tiền gửi tại các TCTD khác",
+            "Dự phòng tiền gửi tại các TCTD khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_DEPOSIT_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Các khoản khác"
+          ],
+          "within_role": "INTERBANK_DEPOSIT_GROUP"
+        },
+        {
+          "aliases": [
+            "Tiền gửi khác",
+            "Tiền gửi tại các TCTD khác - Khác",
+            "Tiền gửi tại các tổ chức tín dụng khác - Khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_DEPOSIT_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Cho vay các TCTD khác",
             "Cho vay TCTD khác",
             "Cho vay các tổ chức tín dụng khác",
@@ -190,6 +258,21 @@
       "matchers": [
         {
           "aliases": [
+            "Chiết khấu, tái chiết khấu bằng VND",
+            "Trong đó: Chiết khấu, tái chiết khấu bằng VND",
+            "Trong đó: Cho vay chiết khấu, tái chiết khấu bằng VND"
+          ],
+          "within_role": "INTERBANK_LOAN_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Bằng ngoại tệ",
             "Bằng ngoại hối"
           ],
@@ -214,6 +297,40 @@
       "matchers": [
         {
           "aliases": [
+            "Chiết khấu, tái chiết khấu bằng ngoại tệ",
+            "Chiết khấu, tái chiết khấu bằng ngoại hối",
+            "Trong đó: Chiết khấu, tái chiết khấu bằng ngoại tệ",
+            "Trong đó: Chiết khấu, tái chiết khấu bằng ngoại hối",
+            "Trong đó: Cho vay chiết khấu, tái chiết khấu bằng ngoại tệ",
+            "Trong đó: Cho vay chiết khấu, tái chiết khấu bằng ngoại hối"
+          ],
+          "within_role": "INTERBANK_LOAN_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Bằng vàng và ngoại tệ",
+            "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ và vàng",
+            "Bằng ngoại hối và vàng"
+          ],
+          "within_role": "INTERBANK_LOAN_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Chiết khấu, tái chiết khấu",
             "Trong đó: Chiết khấu, tái chiết khấu",
             "Trong đó: Cho vay chiết khấu, tái chiết khấu"
@@ -222,22 +339,8 @@
         }
       ],
       "presence": "OPTIONAL",
-      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT",
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
       "role_kind": "NONADDITIVE_CHILD"
-    },
-    {
-      "matchers": [
-        {
-          "aliases": [
-            "Dự phòng rủi ro tiền gửi tại các TCTD khác",
-            "Dự phòng tiền gửi tại các TCTD khác"
-          ],
-          "within_role": null
-        }
-      ],
-      "presence": "OPTIONAL",
-      "role": "INTERBANK_DEPOSIT_PROVISION",
-      "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [
@@ -257,7 +360,29 @@
       "matchers": [
         {
           "aliases": [
-            "Dự phòng rủi ro",
+            "Khác",
+            "Các khoản khác"
+          ],
+          "within_role": "INTERBANK_LOAN_GROUP"
+        },
+        {
+          "aliases": [
+            "Cho vay khác",
+            "Cấp tín dụng khác",
+            "Cho vay các TCTD khác - Khác",
+            "Cho vay các tổ chức tín dụng khác - Khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_LOAN_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Dự phòng rủi ro tiền gửi và cho vay các TCTD",
             "Dự phòng rủi ro tiền gửi và cho vay các TCTD khác",
             "Dự phòng rủi ro tiền gửi tại và cho vay các TCTD khác"
@@ -268,6 +393,20 @@
       "presence": "OPTIONAL",
       "role": "TOTAL_INTERBANK_PROVISION",
       "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng rủi ro",
+            "Dự phòng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_PROVISION_AMBIGUOUS",
+      "role_kind": "NONADDITIVE_CHILD"
     },
     {
       "matchers": [

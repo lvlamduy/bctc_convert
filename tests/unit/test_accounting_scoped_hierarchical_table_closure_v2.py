@@ -128,6 +128,16 @@ def _hierarchy() -> dict[str, object]:
     }
 
 
+def _hierarchy_v2(*, source_only_veto_roles: list[str] | None = None) -> dict[str, object]:
+    hierarchy = copy.deepcopy(_hierarchy())
+    hierarchy["format_version"] = subject.SPEC_FORMAT_VERSION_V2
+    hierarchy["source_role_policy"] = {
+        "one_edit_role_or_scope_match_policy": "VETO",
+        "source_only_veto_roles": sorted(source_only_veto_roles or []),
+    }
+    return hierarchy
+
+
 def _line(ordinal: int, text: str, numeric: str, bbox: list[int]) -> dict[str, object]:
     return {
         "bbox": bbox,
@@ -272,6 +282,266 @@ def _coherently_rehash_closure(closure: dict) -> None:
     material = copy.deepcopy(closure)
     material.pop("closure_id")
     closure["closure_id"] = "ashtcv2:closure:" + canonical_json_sha256_v1(material)
+
+
+def _insert_internal_numeric_pair(pages: list[dict], token: str) -> None:
+    lines = pages[0]["lines"]
+    lines[7:7] = [
+        _line(999, token, token, [610, 185, 700, 205]),
+        _line(1_000, token, token, [810, 185, 900, 205]),
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+
+@pytest.mark.parametrize("token", ["0", "7", "-"])
+def test_internal_typed_money_lane_sample_is_source_only_and_always_vetoes(
+    token: str,
+) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_internal_numeric_pair(pages, token)
+
+    axis, closure = _closure(pages)
+
+    assert len(axis["internal_unassigned_numeric_clusters"]) == 1
+    cluster = axis["internal_unassigned_numeric_clusters"][0]
+    source_only = [
+        sample
+        for sample in axis["numeric_sample_universe"]
+        if sample["owner_kind"] == "SOURCE_ONLY_INTERNAL_CLUSTER"
+    ]
+    assert [sample["sample_id"] for sample in source_only] == cluster["sample_ids"]
+    assert {sample["parsed_token"]["classification"] for sample in source_only} == {
+        "DASH_ZERO" if token == "-" else "SIGNED_NUMBER"
+    }
+    receipt = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    )
+    assert receipt["sample_ids"] == cluster["sample_ids"]
+    assert receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert (
+        f"SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:{cluster['cluster_id']}"
+        in closure["unresolved_reasons"]
+    )
+    assert len(
+        [sample_id for record in closure["coverage_receipt"] for sample_id in record["sample_ids"]]
+    ) == len(axis["numeric_sample_universe"])
+
+
+def test_numeric_universe_sample_cannot_lose_its_only_receipt_after_coherent_rehash() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_internal_numeric_pair(pages, "7")
+    _axis_value, closure = _closure(pages)
+    attacked = copy.deepcopy(closure)
+    source_only = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    )
+    source_only["sample_ids"].pop()
+    source_only["source_record"]["sample_ids"].pop()
+    source_only["source_record"]["column_ordinals"].pop()
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="internal numeric cluster|exactly one owning coverage receipt",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_one_edit_role_match_cannot_close_while_exact_source_can() -> None:
+    exact_pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+            ("Tổng cộng", "150", "130"),
+        ]
+    )
+    typo_pages = copy.deepcopy(exact_pages)
+    typo_pages[0]["lines"][4]["vietocr_text"] = "Tiền gửi tại TCTD kháx"
+
+    _exact_axis, exact = _closure(exact_pages, hierarchy=_hierarchy_v2())
+    typo_axis, typo = _closure(typo_pages, hierarchy=_hierarchy_v2())
+
+    assert exact["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    deposit = next(row for row in typo_axis["row_axis"]["rows"] if row["role"] == "DEPOSIT_GROUP")
+    assert deposit["label_match"]["match_kind"].startswith("ONE_EDIT_")
+    receipt = next(
+        record for record in typo["coverage_receipt"] if record["role"] == "DEPOSIT_GROUP"
+    )
+    assert receipt["disposition"] == "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH"
+    assert typo["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_other_requires_an_exact_unique_scope_owner_before_it_can_close() -> None:
+    topology = copy.deepcopy(_topology())
+    topology["children"].insert(
+        -1,
+        {
+            "matchers": [_matcher("Khác", "LOAN_GROUP")],
+            "presence": "OPTIONAL",
+            "role": "LOAN_OTHER",
+            "role_kind": "ADDITIVE_CHILD",
+        },
+    )
+    hierarchy = _hierarchy_v2()
+    hierarchy["equations"][0]["component_role_alternatives"].append(
+        _alternative(["LOAN_OTHER"], derive=False)
+    )
+    hierarchy["repeated_role_policy"]["aggregate_roles"].append("LOAN_OTHER")
+    hierarchy["repeated_role_policy"]["aggregate_roles"].sort()
+    exact_pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "5", "4"),
+            ("Khác", "5", "4"),
+            ("Tổng cộng", "105", "94"),
+        ]
+    )
+    typo_pages = copy.deepcopy(exact_pages)
+    typo_pages[0]["lines"][7]["vietocr_text"] = "Cho vay TCTD kháx"
+
+    _exact_axis, exact = _closure(exact_pages, topology=topology, hierarchy=hierarchy)
+    typo_axis, typo = _closure(typo_pages, topology=topology, hierarchy=hierarchy)
+
+    assert exact["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    exact_other = next(
+        record for record in exact["coverage_receipt"] if record["role"] == "LOAN_OTHER"
+    )
+    assert exact_other["disposition"] == "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE"
+    typo_other_occurrence = next(
+        occurrence
+        for occurrence in typo_axis["role_occurrences"]
+        if occurrence["role"] == "LOAN_OTHER"
+    )
+    assert typo_other_occurrence["scope_owner_match_kind"].startswith("ONE_EDIT_")
+    typo_other = next(
+        record for record in typo["coverage_receipt"] if record["role"] == "LOAN_OTHER"
+    )
+    assert typo_other["disposition"] == "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH"
+    assert typo["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_declared_source_only_role_is_typed_but_never_accounting_resolved() -> None:
+    topology = copy.deepcopy(_topology())
+    topology["children"].insert(
+        -1,
+        {
+            "matchers": [_matcher("Dự phòng rủi ro")],
+            "presence": "OPTIONAL",
+            "role": "AMBIGUOUS_PROVISION",
+            "role_kind": "NONADDITIVE_CHILD",
+        },
+    )
+    hierarchy = _hierarchy_v2(source_only_veto_roles=["AMBIGUOUS_PROVISION"])
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+            ("Dự phòng rủi ro", "-5", "-4"),
+            ("Tổng cộng", "150", "130"),
+        ]
+    )
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    receipt = next(
+        record for record in closure["coverage_receipt"] if record["role"] == "AMBIGUOUS_PROVISION"
+    )
+    assert receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
+    assert "AMBIGUOUS_PROVISION" not in {record["role"] for record in closure["resolved_roles"]}
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_role", "source_only"),
+    [
+        (
+            "Chiết khấu, tái chiết khấu bằng VND",
+            "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+            False,
+        ),
+        (
+            "Chiết khấu, tái chiết khấu bằng ngoại tệ",
+            "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+            False,
+        ),
+        (
+            "Chiết khấu, tái chiết khấu",
+            "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+            True,
+        ),
+        ("Dự phòng rủi ro", "INTERBANK_PROVISION_AMBIGUOUS", True),
+        (
+            "Bằng vàng và ngoại tệ",
+            "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+            True,
+        ),
+    ],
+)
+def test_real_family3_currency_specific_roles_close_but_ambiguous_roles_veto(
+    label: str,
+    expected_role: str,
+    source_only: bool,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            (label, "5", "4"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    for ordinal, token, bbox in (
+        (1, "150", [610, 15, 700, 38]),
+        (2, "130", [810, 15, 900, 38]),
+    ):
+        pages[0]["lines"][ordinal]["vietocr_text"] = token
+        pages[0]["lines"][ordinal]["numeric_recognition"]["raw_prediction"] = token
+        pages[0]["lines"][ordinal]["bbox"] = bbox
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    receipt = next(
+        record for record in closure["coverage_receipt"] if record["role"] == expected_role
+    )
+    if source_only:
+        assert receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
+        assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+        assert expected_role not in {record["role"] for record in closure["resolved_roles"]}
+    else:
+        assert receipt["disposition"] == "NONADDITIVE_VISIBLE_SOURCE_ROLE"
+        assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+        assert expected_role in {record["role"] for record in closure["resolved_roles"]}
 
 
 @pytest.mark.parametrize(

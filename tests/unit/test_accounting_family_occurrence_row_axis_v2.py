@@ -393,6 +393,67 @@ def test_repeated_children_bind_nearest_parent_and_foreign_term_row_survives() -
     )
 
 
+def test_numeric_universe_owns_internal_money_samples_but_excludes_header_dates() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    lines[8:8] = [
+        _line(999, "7", "7", [610, 213, 700, 233]),
+        _line(1_000, "-2", "-2", [810, 213, 900, 233]),
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+    _scan, axis = _build(pages)
+
+    cluster = axis["internal_unassigned_numeric_clusters"]
+    assert len(cluster) == 1
+    assert cluster[0]["column_ordinals"] == [0, 1]
+    universe = {sample["sample_id"]: sample for sample in axis["numeric_sample_universe"]}
+    assert set(cluster[0]["sample_ids"]) <= set(universe)
+    assert {universe[sample_id]["owner_kind"] for sample_id in cluster[0]["sample_ids"]} == {
+        "SOURCE_ONLY_INTERNAL_CLUSTER"
+    }
+    assert lines[1]["sample_id"] not in universe
+    assert lines[2]["sample_id"] not in universe
+    owned_sample_ids = [
+        value["sample_id"] for row in axis["row_axis"]["rows"] for value in row["values"]
+    ]
+    owned_sample_ids.extend(
+        sample_id
+        for evidence in axis["coextensive_structural_numeric_evidence"]
+        if evidence["status"] == total_v1.COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS
+        for sample_id in evidence["source_sample_ids"]
+    )
+    assert set(universe) == {*owned_sample_ids, *cluster[0]["sample_ids"]}
+
+    attacked = copy.deepcopy(axis)
+    attacked_sample = next(
+        sample
+        for sample in attacked["numeric_sample_universe"]
+        if sample["owner_kind"] == "SOURCE_ONLY_INTERNAL_CLUSTER"
+    )
+    attacked_sample["owner_id"] = "aforav2:unassigned:forged"
+    material = copy.deepcopy(attacked)
+    material.pop("occurrence_axis_id")
+    attacked["occurrence_axis_id"] = "aforav2:axis:" + canonical_json_sha256_v1(material)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="internal cluster differs",
+    ):
+        subject._validate_result(attacked)
+
+
 def test_projected_owner_and_wrapped_provision_bind_but_reset_footer_does_not() -> None:
     pages = _pages(
         [

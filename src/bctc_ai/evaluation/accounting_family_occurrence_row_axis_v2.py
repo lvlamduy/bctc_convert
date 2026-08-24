@@ -81,6 +81,8 @@ _RESULT_FIELDS = {
     "dependency_content_refs",
     "family_id",
     "format_version",
+    "internal_unassigned_numeric_clusters",
+    "numeric_sample_universe",
     "occurrence_axis_id",
     "role_occurrences",
     "row_axis",
@@ -97,6 +99,7 @@ _OCCURRENCE_FIELDS = {
     "role",
     "role_kind",
     "scope_owner_occurrence_id",
+    "scope_owner_match_kind",
     "scope_owner_role",
 }
 _DASH_PROJECTION_FIELDS = {
@@ -118,8 +121,37 @@ _COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS = {
     "source_sample_ids",
     "status",
 }
+_NUMERIC_SAMPLE_FIELDS = {
+    "bbox",
+    "column_center",
+    "column_ordinal",
+    "crop_ref",
+    "line_ordinal",
+    "owner_id",
+    "owner_kind",
+    "page_sequence",
+    "parsed_token",
+    "raw_prediction",
+    "reader_score",
+    "sample_id",
+}
+_NUMERIC_SAMPLE_OWNER_KINDS = {
+    "COEXTENSIVE_SCOPE_TOTAL_REFERENCE",
+    "ROLE_OCCURRENCE",
+    "SOURCE_ONLY_INTERNAL_CLUSTER",
+    "TRAILING_VALUE_ROW",
+}
+_INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
+    "cluster_id",
+    "column_ordinals",
+    "page_sequence",
+    "sample_ids",
+    "status",
+}
+_INTERNAL_UNASSIGNED_CLUSTER_STATUS = "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
 _MAX_ROLE_OCCURRENCES = 4_096
 _MAX_EXISTING_DASH_CELLS = 16_384
+_MAX_NUMERIC_SAMPLES = 65_536
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "coextensive_parent_total_projector": {
@@ -930,6 +962,336 @@ def _authenticate_existing_dashes(
     return _regenerate_v1_axis(completed), projections, list(dict.fromkeys(reasons))
 
 
+def _numeric_universe_record(
+    value: Mapping[str, Any],
+    *,
+    owner_kind: str,
+    owner_id: str,
+) -> dict[str, Any]:
+    if owner_kind not in _NUMERIC_SAMPLE_OWNER_KINDS or not owner_id:
+        raise _error("numeric sample universe owner drifted")
+    return {
+        "bbox": canonical_clone_v1(value["bbox"]),
+        "column_center": float(value["column_center"]),
+        "column_ordinal": value["column_ordinal"],
+        "crop_ref": canonical_clone_v1(value["crop_ref"]),
+        "line_ordinal": value["line_ordinal"],
+        "owner_id": owner_id,
+        "owner_kind": owner_kind,
+        "page_sequence": value["page_sequence"],
+        "parsed_token": canonical_clone_v1(value["parsed_token"]),
+        "raw_prediction": value["raw_prediction"],
+        "reader_score": value["reader_score"],
+        "sample_id": value["sample_id"],
+    }
+
+
+def _build_numeric_sample_universe(
+    pages: Sequence[Mapping[str, Any]],
+    expanded_region: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    coextensive_evidence: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Own every typed body-lane sample or expose it as source-only.
+
+    The sealed V1 axis owns role rows and trailing challengers, but deliberately
+    does not expose numeric rows stranded *between* semantic labels.  V2 closes
+    that denominator without changing V1: it reuses the exact V1 role-body
+    fence and immutable body column grid, then groups only still-unowned,
+    same-baseline numeric boxes.  Header/unit/page furniture outside those
+    existing geometric fences never enters this universe.
+    """
+
+    universe_by_sample: dict[str, dict[str, Any]] = {}
+
+    def own(value: Mapping[str, Any], *, owner_kind: str, owner_id: str) -> None:
+        sample_id = value.get("sample_id")
+        if type(sample_id) is not str or not sample_id or sample_id in universe_by_sample:
+            raise _error("numeric sample universe repeats one physical source sample")
+        universe_by_sample[sample_id] = _numeric_universe_record(
+            value,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+        )
+
+    for row in axis["rows"]:
+        occurrence_id = row["label_match"].get("occurrence_id")
+        if type(occurrence_id) is not str or not occurrence_id:
+            raise _error("numeric role row lost its owning occurrence")
+        for value in row["values"]:
+            own(value, owner_kind="ROLE_OCCURRENCE", owner_id=occurrence_id)
+    for trailing in axis["trailing_value_rows"]:
+        owner_id = f"aforav2:trailing:{trailing['candidate_ordinal']}"
+        for value in trailing["values"]:
+            own(value, owner_kind="TRAILING_VALUE_ROW", owner_id=owner_id)
+    for evidence in coextensive_evidence:
+        if evidence["status"] != total_v1.COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS:
+            # Ambiguous coextensive evidence remains one ordinary role-row
+            # owner.  The evidence object is a reference and cannot become a
+            # second numeric owner.
+            continue
+        for value in evidence["source_record"]["values"]:
+            own(
+                value,
+                owner_kind="COEXTENSIVE_SCOPE_TOTAL_REFERENCE",
+                owner_id=evidence["owner_occurrence_id"],
+            )
+
+    body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    clusters: list[dict[str, Any]] = []
+    for page_sequence in sorted(grid_by_page):
+        grid = grid_by_page[page_sequence]
+        centers = grid["column_centers"]
+        local_lines = body_by_page.get(page_sequence, [])
+        page = next(page for page in pages if page["page_sequence"] == page_sequence)
+        if not centers or not local_lines or type(page["page_width"]) is not int:
+            raise _error("numeric sample universe lost its exact body lane grid")
+        scale = row_v1.median_text_height_v1(local_lines)
+        lane_tolerance = (
+            max(
+                scale * 1.6,
+                min(right - left for left, right in zip(centers, centers[1:], strict=False)) * 0.42,
+            )
+            if len(centers) > 1
+            else scale * 2.5
+        )
+        header_indices = set(grid["header_evidence_source_line_indices"])
+        candidates: list[dict[str, Any]] = []
+        lanes_by_sample: dict[str, int] = {}
+        for line in local_lines:
+            if (
+                line["sample_id"] in universe_by_sample
+                or line["line_ordinal"] in header_indices
+                or not row_v1._is_numeric(line)
+            ):
+                continue
+            center = (line["bbox"][0] + line["bbox"][2]) / 2
+            lane = min(range(len(centers)), key=lambda index: abs(center - centers[index]))
+            if abs(center - centers[lane]) > lane_tolerance:
+                continue
+            projected = {**canonical_clone_v1(line), "source_line_index": line["line_ordinal"]}
+            candidates.append(projected)
+            lanes_by_sample[line["sample_id"]] = lane
+        if not candidates:
+            continue
+        physical_clusters = row_v1.cluster_numeric_rows_v1(
+            candidates,
+            is_numeric=row_v1._is_numeric,
+            start_index=min(line["source_line_index"] for line in candidates) - 1,
+            stop_index=max(line["source_line_index"] for line in candidates) + 1,
+            page_width=page["page_width"],
+            minimum_x_ratio=0.0,
+            maximum_x_ratio=1.0,
+        )
+        for physical_cluster in physical_clusters:
+            ordered = sorted(
+                physical_cluster,
+                key=lambda line: (
+                    lanes_by_sample[line["sample_id"]],
+                    line["line_ordinal"],
+                    line["sample_id"],
+                ),
+            )
+            cluster_material = {
+                "column_ordinals": [lanes_by_sample[line["sample_id"]] for line in ordered],
+                "page_sequence": page_sequence,
+                "sample_ids": [line["sample_id"] for line in ordered],
+                "status": _INTERNAL_UNASSIGNED_CLUSTER_STATUS,
+            }
+            cluster_id = "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material)
+            cluster = {**cluster_material, "cluster_id": cluster_id}
+            clusters.append(cluster)
+            for line in ordered:
+                lane = lanes_by_sample[line["sample_id"]]
+                value = row_v1._value_record(
+                    page_sequence,
+                    line,
+                    column_center=centers[lane],
+                    column_ordinal=lane,
+                    row_affinity=None,
+                )
+                own(
+                    value,
+                    owner_kind="SOURCE_ONLY_INTERNAL_CLUSTER",
+                    owner_id=cluster_id,
+                )
+    universe = sorted(
+        universe_by_sample.values(),
+        key=lambda record: (
+            record["page_sequence"],
+            record["line_ordinal"],
+            record["column_ordinal"],
+            record["sample_id"],
+        ),
+    )
+    return universe, clusters
+
+
+def _validate_numeric_sample_record(record: Any) -> dict[str, Any]:
+    if type(record) is not dict or type(record.get("raw_prediction")) is not str:
+        raise _error("numeric sample universe record drifted")
+    parsed = row_v1.parse_visible_financial_numeric_token_v1(record["raw_prediction"])
+    if (
+        set(record) != _NUMERIC_SAMPLE_FIELDS
+        or type(record["sample_id"]) is not str
+        or not record["sample_id"]
+        or type(record["page_sequence"]) is not int
+        or record["page_sequence"] <= 0
+        or type(record["line_ordinal"]) is not int
+        or record["line_ordinal"] < 0
+        or type(record["bbox"]) is not list
+        or len(record["bbox"]) != 4
+        or any(type(item) is not int or item < 0 for item in record["bbox"])
+        or record["bbox"][2] <= record["bbox"][0]
+        or record["bbox"][3] <= record["bbox"][1]
+        or type(record["column_center"]) is not float
+        or record["column_center"] < 0
+        or type(record["column_ordinal"]) is not int
+        or record["column_ordinal"] < 0
+        or type(record["reader_score"]) is not float
+        or not 0 <= record["reader_score"] <= 1
+        or not same_typed_json_v1(record["parsed_token"], parsed)
+        or parsed["classification"]
+        not in {
+            "DASH_ZERO",
+            "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "SIGNED_NUMBER",
+        }
+        or record["owner_kind"] not in _NUMERIC_SAMPLE_OWNER_KINDS
+        or type(record["owner_id"]) is not str
+        or not record["owner_id"]
+    ):
+        raise _error("numeric sample universe record drifted")
+    try:
+        validated_ref = row_v1._ref(record["crop_ref"])
+    except row_v1.AccountingFamilyRowAxisV1Error as exc:
+        raise _error("numeric sample universe crop reference drifted") from exc
+    if not same_typed_json_v1(validated_ref, record["crop_ref"]):
+        raise _error("numeric sample universe crop reference drifted")
+    return canonical_clone_v1(record)
+
+
+def _validate_numeric_sample_universe(
+    value: Mapping[str, Any],
+    axis: Mapping[str, Any],
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
+) -> None:
+    universe = value["numeric_sample_universe"]
+    clusters = value["internal_unassigned_numeric_clusters"]
+    if (
+        type(universe) is not list
+        or len(universe) > _MAX_NUMERIC_SAMPLES
+        or type(clusters) is not list
+        or len(clusters) > _MAX_ROLE_OCCURRENCES
+    ):
+        raise _error("numeric sample universe or internal cluster axis drifted")
+    sample_ids: list[str] = []
+    by_sample: dict[str, Mapping[str, Any]] = {}
+    for record in universe:
+        _validate_numeric_sample_record(record)
+        sample_ids.append(record["sample_id"])
+        by_sample[record["sample_id"]] = record
+    if len(sample_ids) != len(set(sample_ids)) or universe != sorted(
+        universe,
+        key=lambda record: (
+            record["page_sequence"],
+            record["line_ordinal"],
+            record["column_ordinal"],
+            record["sample_id"],
+        ),
+    ):
+        raise _error("numeric sample universe identity or source order drifted")
+
+    expected_owned: dict[str, dict[str, Any]] = {}
+
+    def expect(value_record: Mapping[str, Any], *, owner_kind: str, owner_id: str) -> None:
+        expected = _numeric_universe_record(
+            value_record,
+            owner_kind=owner_kind,
+            owner_id=owner_id,
+        )
+        sample_id = expected["sample_id"]
+        if sample_id in expected_owned:
+            raise _error("numeric sample received more than one non-source-only owner")
+        expected_owned[sample_id] = expected
+
+    for row in axis["rows"]:
+        occurrence_id = row["label_match"].get("occurrence_id")
+        for value_record in row["values"]:
+            expect(value_record, owner_kind="ROLE_OCCURRENCE", owner_id=occurrence_id)
+    for trailing in axis["trailing_value_rows"]:
+        owner_id = f"aforav2:trailing:{trailing['candidate_ordinal']}"
+        for value_record in trailing["values"]:
+            expect(value_record, owner_kind="TRAILING_VALUE_ROW", owner_id=owner_id)
+    for evidence in value["coextensive_structural_numeric_evidence"]:
+        if evidence["status"] != total_v1.COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS:
+            continue
+        if evidence["owner_occurrence_id"] not in occurrence_by_id:
+            raise _error("coextensive numeric universe owner is absent")
+        for value_record in evidence["source_record"]["values"]:
+            expect(
+                value_record,
+                owner_kind="COEXTENSIVE_SCOPE_TOTAL_REFERENCE",
+                owner_id=evidence["owner_occurrence_id"],
+            )
+
+    cluster_ids: list[str] = []
+    source_only_ids: list[str] = []
+    for cluster in clusters:
+        if (
+            type(cluster) is not dict
+            or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster["status"] != _INTERNAL_UNASSIGNED_CLUSTER_STATUS
+            or type(cluster["page_sequence"]) is not int
+            or cluster["page_sequence"] <= 0
+            or type(cluster["sample_ids"]) is not list
+            or not cluster["sample_ids"]
+            or len(cluster["sample_ids"]) != len(set(cluster["sample_ids"]))
+            or any(type(item) is not str or not item for item in cluster["sample_ids"])
+            or type(cluster["column_ordinals"]) is not list
+            or len(cluster["column_ordinals"]) != len(cluster["sample_ids"])
+            or any(type(item) is not int or item < 0 for item in cluster["column_ordinals"])
+        ):
+            raise _error("internal unassigned numeric cluster drifted")
+        material = canonical_clone_v1(cluster)
+        cluster_id = material.pop("cluster_id", None)
+        if type(
+            cluster_id
+        ) is not str or cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(material):
+            raise _error("internal unassigned numeric cluster identity drifted")
+        for sample_id, column_ordinal in zip(
+            cluster["sample_ids"], cluster["column_ordinals"], strict=True
+        ):
+            sample = by_sample.get(sample_id)
+            if (
+                type(sample) is not dict
+                or sample["page_sequence"] != cluster["page_sequence"]
+                or sample["column_ordinal"] != column_ordinal
+                or sample["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or sample["owner_id"] != cluster_id
+            ):
+                raise _error("internal cluster differs from its source-only universe samples")
+            source_only_ids.append(sample_id)
+        cluster_ids.append(cluster_id)
+    if len(cluster_ids) != len(set(cluster_ids)) or len(source_only_ids) != len(
+        set(source_only_ids)
+    ):
+        raise _error("internal unassigned numeric cluster ownership repeats")
+    if set(expected_owned) & set(source_only_ids) or set(by_sample) != {
+        *expected_owned,
+        *source_only_ids,
+    }:
+        raise _error("numeric sample universe is not one exact owned/source-only partition")
+    if any(
+        not same_typed_json_v1(by_sample[sample_id], expected)
+        for sample_id, expected in expected_owned.items()
+    ):
+        raise _error("numeric sample universe differs from its exact source owner")
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -994,6 +1356,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
     }
     if len(root_scope_ids) != 1 or any(
         type(item["has_bound_value_row"]) is not bool
+        or type(item["scope_owner_match_kind"]) is not str
+        or not item["scope_owner_match_kind"]
         or type(item["label_match"]) is not dict
         or item["label_match"].get("occurrence_id") != item["occurrence_id"]
         or item["label_match"].get("role") != item["role"]
@@ -1007,6 +1371,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item["scope_owner_occurrence_id"] not in occurrence_by_id
                 or occurrence_by_id[item["scope_owner_occurrence_id"]]["role"]
                 != item["scope_owner_role"]
+                or occurrence_by_id[item["scope_owner_occurrence_id"]]["label_match"].get(
+                    "match_kind"
+                )
+                != item["scope_owner_match_kind"]
             )
         )
         for item in value["role_occurrences"]
@@ -1077,6 +1445,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         coextensive_sample_ids
     ) != len(set(coextensive_sample_ids)):
         raise _error("coextensive structural numeric evidence repeats source ownership")
+    _validate_numeric_sample_universe(value, axis, occurrence_by_id)
     dash_sample_ids = []
     for item in value["authenticated_existing_dash_evidence"]:
         embedded = item.get("dash_evidence") if type(item) is dict else None
@@ -1214,6 +1583,13 @@ def _build(
             axis = _regenerate_v1_axis(axis)
     except total_v1.AccountingFamilyCoextensiveParentTotalV1Error as exc:
         raise _error("coextensive structural numeric source projection failed") from exc
+    numeric_sample_universe, internal_unassigned_numeric_clusters = _build_numeric_sample_universe(
+        parsed_pages,
+        expanded,
+        matches,
+        axis,
+        coextensive_evidence,
+    )
     rows_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
     role_occurrences = [
         {
@@ -1223,6 +1599,15 @@ def _build(
             "role": match["role"],
             "role_kind": match["role_kind"],
             "scope_owner_occurrence_id": match["scope_owner_occurrence_id"],
+            "scope_owner_match_kind": (
+                next(
+                    owner["match_kind"]
+                    for owner in matches
+                    if owner["occurrence_id"] == match["scope_owner_occurrence_id"]
+                )
+                if match["scope_owner_role"] is not None
+                else selected_region["parent_match"]["match_kind"]
+            ),
             "scope_owner_role": match["scope_owner_role"],
         }
         for match in matches
@@ -1242,6 +1627,8 @@ def _build(
         "dependency_content_refs": _dependency_refs(),
         "family_id": compiled_family["family_id"],
         "format_version": FORMAT_VERSION,
+        "internal_unassigned_numeric_clusters": internal_unassigned_numeric_clusters,
+        "numeric_sample_universe": numeric_sample_universe,
         "role_occurrences": role_occurrences,
         "row_axis": axis,
         "safety": canonical_clone_v1(_SAFETY),

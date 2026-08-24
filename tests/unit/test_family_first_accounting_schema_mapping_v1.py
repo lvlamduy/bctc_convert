@@ -807,6 +807,57 @@ def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants
     assert binding["ignored_roles"] == ["EXPLICIT_FAMILY_TOTAL"]
 
 
+def test_tracked_interbank_v4_binds_the_full_reviewed_role_to_rnid_matrix() -> None:
+    config_root = _PROJECT_ROOT / "config/families"
+    family = json.loads(
+        (config_root / "tm-interbank-deposits-loans-topology-v4.json").read_text(encoding="utf-8")
+    )
+    evaluation = json.loads(
+        (config_root / "tm-interbank-deposits-loans-evaluation-v4.json").read_text(encoding="utf-8")
+    )
+    binding = json.loads(
+        (config_root / "tm-interbank-deposits-loans-schema-binding-v4.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    compiled = topology_v1._spec(family)
+    evidence_v1._evaluation_spec(evaluation, compiled, raw_family_spec=family)
+    parsed_binding = subject._schema_spec(binding, family)
+    nodes, _ = subject._schema_graph(_PROJECT_ROOT)
+    parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
+
+    assert parent["schema_id"] == 575
+    assert {role: node["schema_id"] for role, node in direct.items()} == {
+        "INTERBANK_DEPOSIT_GROUP": 576,
+        "DEMAND_DEPOSIT_GROUP": 577,
+        "DEMAND_DEPOSIT_VND": 578,
+        "DEMAND_DEPOSIT_FOREIGN_CURRENCY": 579,
+        "TERM_DEPOSIT_GROUP": 580,
+        "TERM_DEPOSIT_VND": 581,
+        "TERM_DEPOSIT_FOREIGN_CURRENCY": 582,
+        "INTERBANK_DEPOSIT_PROVISION": 583,
+        "INTERBANK_DEPOSIT_OTHER": 584,
+        "INTERBANK_LOAN_GROUP": 585,
+        "INTERBANK_LOAN_VND": 586,
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": 587,
+        "INTERBANK_LOAN_FOREIGN_CURRENCY": 588,
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY": 589,
+        "INTERBANK_LOAN_PROVISION": 590,
+        "INTERBANK_LOAN_OTHER": 591,
+        "TOTAL_INTERBANK_PROVISION": 5718,
+    }
+    assert binding["ignored_roles"] == [
+        "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+        "INTERBANK_PROVISION_AMBIGUOUS",
+        "EXPLICIT_FAMILY_TOTAL",
+    ]
+    assert aggregates == []
+
+
 def test_tracked_trading_securities_specs_partition_variants_without_bank_routes() -> None:
     config_root = _PROJECT_ROOT / "config/families"
     family = json.loads(

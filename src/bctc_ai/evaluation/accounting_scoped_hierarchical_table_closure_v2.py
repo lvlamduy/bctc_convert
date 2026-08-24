@@ -29,6 +29,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
+    "SPEC_FORMAT_VERSION_V2",
     "AccountingScopedHierarchicalTableClosureV2Error",
     "build_accounting_scoped_hierarchical_table_closure_v2",
     "validate_accounting_scoped_hierarchical_table_closure_replay_v2",
@@ -37,6 +38,7 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2"
 SPEC_FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V1"
+SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V2"
 CLAIM_BOUNDARY = (
     "VISIBLE_COMPLETE_ROLE_OCCURRENCES_NEAREST_PARENT_LOCAL_SUBTOTAL_AND_"
     "DECLARED_DISJOINT_SCOPE_AGGREGATION_WITH_EXHAUSTIVE_COMPONENT_ALTERNATIVES_"
@@ -55,13 +57,18 @@ _SAFETY = {
     "unbound_or_undeclared_repeated_rows_fail_closed": True,
     "visible_mismatch_is_veto": True,
 }
-_SPEC_FIELDS = {
+_SPEC_FIELDS_V1 = {
     "equations",
     "family_id",
     "format_version",
     "repeated_role_policy",
 }
+_SPEC_FIELDS_V2 = {*_SPEC_FIELDS_V1, "source_role_policy"}
 _REPEAT_POLICY_FIELDS = {"aggregate_roles", "local_subtotal_roles"}
+_SOURCE_ROLE_POLICY_FIELDS = {
+    "one_edit_role_or_scope_match_policy",
+    "source_only_veto_roles",
+}
 _EQUATION_FIELDS = {
     "application_policy",
     "component_role_alternatives",
@@ -95,7 +102,9 @@ _RESULT_FIELDS = {
     "equations",
     "family_id",
     "format_version",
+    "internal_unassigned_numeric_clusters",
     "metrics",
+    "numeric_sample_universe",
     "occurrence_axis_binding",
     "occurrence_axis_id",
     "resolved_roles",
@@ -136,8 +145,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "2cc337317371d1a3b60679eae8683258eeb4473a9324a3d41e084364be046bfc",
-        "size_bytes": 57_243,
+        "sha256": "59b20c9946d3ff72dcc754af4aff0a5a290556901bee916aba3a7ef75e0bba5c",
+        "size_bytes": 73_750,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -207,10 +216,18 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         topology = topology_v1._spec(family_topology_spec)
     except (ValueError, RuntimeError) as exc:
         raise _error("scoped hierarchical topology specification drifted") from exc
+    version = value.get("format_version") if type(value) is dict else None
+    expected_fields = (
+        _SPEC_FIELDS_V1
+        if version == SPEC_FORMAT_VERSION
+        else _SPEC_FIELDS_V2
+        if version == SPEC_FORMAT_VERSION_V2
+        else None
+    )
     if (
         type(value) is not dict
-        or set(value) != _SPEC_FIELDS
-        or value["format_version"] != SPEC_FORMAT_VERSION
+        or expected_fields is None
+        or set(value) != expected_fields
         or value["family_id"] != topology["family_id"]
         or type(value["equations"]) is not list
         or not value["equations"]
@@ -221,6 +238,28 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         raise _error("scoped hierarchical specification fields drifted")
     child_roles = {child["role"] for child in topology["children"]}
     known_roles = {topology["parent"]["role"], *child_roles}
+    source_role_policy = (
+        canonical_clone_v1(value["source_role_policy"])
+        if version == SPEC_FORMAT_VERSION_V2
+        else {
+            "one_edit_role_or_scope_match_policy": "ALLOW",
+            "source_only_veto_roles": [],
+        }
+    )
+    if (
+        type(source_role_policy) is not dict
+        or set(source_role_policy) != _SOURCE_ROLE_POLICY_FIELDS
+        or source_role_policy["one_edit_role_or_scope_match_policy"] not in {"ALLOW", "VETO"}
+        or (
+            version == SPEC_FORMAT_VERSION_V2
+            and source_role_policy["one_edit_role_or_scope_match_policy"] != "VETO"
+        )
+        or type(source_role_policy["source_only_veto_roles"]) is not list
+        or source_role_policy["source_only_veto_roles"]
+        != sorted(set(source_role_policy["source_only_veto_roles"]))
+        or any(role not in child_roles for role in source_role_policy["source_only_veto_roles"])
+    ):
+        raise _error("scoped hierarchical source-role policy drifted")
     repeat = value["repeated_role_policy"]
     for field in sorted(_REPEAT_POLICY_FIELDS):
         roles = repeat[field]
@@ -316,9 +355,10 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     return {
         "equations": equations,
         "family_id": topology["family_id"],
-        "format_version": SPEC_FORMAT_VERSION,
+        "format_version": version,
         "repeated_role_policy": canonical_clone_v1(repeat),
         "role_kind_by_role": {child["role"]: child["role_kind"] for child in topology["children"]},
+        "source_role_policy": source_role_policy,
     }
 
 
@@ -346,6 +386,39 @@ def _number(value: Mapping[str, Any]) -> dict[str, Any]:
         "percentage_mark_present": parsed["percentage_mark_present"],
         "scale": parsed["scale"],
     }
+
+
+def _source_role_vetoes(
+    rows: Sequence[Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    source_role_policy: Mapping[str, Any],
+) -> tuple[set[str], set[str], list[str]]:
+    """Separate typed source evidence that is ineligible for schema closure."""
+
+    source_only_roles = set(source_role_policy["source_only_veto_roles"])
+    veto_one_edit = source_role_policy["one_edit_role_or_scope_match_policy"] == "VETO"
+    occurrence_by_id = {occurrence["occurrence_id"]: occurrence for occurrence in role_occurrences}
+    source_only_occurrences: set[str] = set()
+    one_edit_occurrences: set[str] = set()
+    reasons: list[str] = []
+    for row in rows:
+        if not row.get("values"):
+            continue
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        occurrence = occurrence_by_id.get(occurrence_id)
+        if type(occurrence_id) is not str or type(occurrence) is not dict:
+            raise _error("schema-eligibility source row lost its exact occurrence")
+        role = row["role"]
+        if role in source_only_roles:
+            source_only_occurrences.add(occurrence_id)
+            reasons.append(f"SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE:{role}:{occurrence_id}")
+        if veto_one_edit and (
+            str(row["label_match"].get("match_kind", "")).startswith("ONE_EDIT_")
+            or str(occurrence["scope_owner_match_kind"]).startswith("ONE_EDIT_")
+        ):
+            one_edit_occurrences.add(occurrence_id)
+            reasons.append(f"ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE:{role}:{occurrence_id}")
+    return source_only_occurrences, one_edit_occurrences, reasons
 
 
 def _canonical_number(coefficient: int, scale: int, percentage: bool) -> dict[str, Any]:
@@ -528,6 +601,7 @@ def _aggregate_source_roles(
     rows: Sequence[Mapping[str, Any]],
     aggregate_roles: set[str],
     local_subtotal_roles: set[str],
+    nonadditive_roles: set[str],
     locally_valid_result_occurrences: set[str],
     locally_authorized_component_scopes: set[str],
 ) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]], list[str]]:
@@ -564,6 +638,7 @@ def _aggregate_source_roles(
                 record["scope_id"]
                 for record in records
                 if record["scope_owner_role"] in local_subtotal_roles
+                and role not in nonadditive_roles
                 and record["scope_id"] not in locally_authorized_component_scopes
             }
         )
@@ -1043,6 +1118,9 @@ def _metrics(
         "equation_count": len(equations),
         "local_equation_count": len(local_equations),
         "covered_occurrence_count": len(coverage_receipt),
+        "covered_numeric_sample_count": sum(
+            len(record["sample_ids"]) for record in coverage_receipt
+        ),
         "resolved_role_count": len(resolved),
         "visible_corroborated_role_count": sum(
             record["resolution_kind"]
@@ -1056,6 +1134,15 @@ def _metrics(
             record["disposition"].startswith("UNRESOLVED")
             or record["disposition"].startswith("UNBOUND")
             for record in coverage_receipt
+        ),
+        "source_only_numeric_sample_count": sum(
+            len(record["sample_ids"])
+            for record in coverage_receipt
+            if record["disposition"]
+            in {
+                "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
+                "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE",
+            }
         ),
     }
 
@@ -1124,6 +1211,123 @@ def _validate_resolution_record(record: Any) -> None:
         raise _error("scoped hierarchical resolved source lane axis differs")
 
 
+def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
+    universe = value["numeric_sample_universe"]
+    clusters = value["internal_unassigned_numeric_clusters"]
+    if (
+        type(universe) is not list
+        or len(universe) > occurrence_v2._MAX_NUMERIC_SAMPLES
+        or type(clusters) is not list
+        or len(clusters) > _MAX_COVERAGE_RECORDS
+    ):
+        raise _error("scoped hierarchical numeric universe axis drifted")
+    by_sample: dict[str, Mapping[str, Any]] = {}
+    try:
+        for sample in universe:
+            occurrence_v2._validate_numeric_sample_record(sample)
+            if sample["sample_id"] in by_sample:
+                raise _error("scoped hierarchical numeric universe repeats one sample")
+            by_sample[sample["sample_id"]] = sample
+    except occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("scoped hierarchical numeric universe record drifted") from exc
+    if universe != sorted(
+        universe,
+        key=lambda record: (
+            record["page_sequence"],
+            record["line_ordinal"],
+            record["column_ordinal"],
+            record["sample_id"],
+        ),
+    ):
+        raise _error("scoped hierarchical numeric universe source order drifted")
+
+    cluster_by_id: dict[str, Mapping[str, Any]] = {}
+    for cluster in clusters:
+        if (
+            type(cluster) is not dict
+            or set(cluster) != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster.get("status") != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+            or type(cluster.get("cluster_id")) is not str
+            or type(cluster.get("page_sequence")) is not int
+            or cluster["page_sequence"] <= 0
+            or type(cluster.get("sample_ids")) is not list
+            or not cluster["sample_ids"]
+            or len(cluster["sample_ids"]) != len(set(cluster["sample_ids"]))
+            or type(cluster.get("column_ordinals")) is not list
+            or len(cluster["column_ordinals"]) != len(cluster["sample_ids"])
+            or any(type(item) is not int or item < 0 for item in cluster["column_ordinals"])
+        ):
+            raise _error("scoped hierarchical internal numeric cluster drifted")
+        material = canonical_clone_v1(cluster)
+        cluster_id = material.pop("cluster_id")
+        if (
+            cluster_id in cluster_by_id
+            or cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(material)
+        ):
+            raise _error("scoped hierarchical internal numeric cluster identity drifted")
+        for sample_id, lane in zip(cluster["sample_ids"], cluster["column_ordinals"], strict=True):
+            sample = by_sample.get(sample_id)
+            if (
+                type(sample) is not dict
+                or sample["page_sequence"] != cluster["page_sequence"]
+                or sample["column_ordinal"] != lane
+                or sample["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or sample["owner_id"] != cluster_id
+            ):
+                raise _error("scoped hierarchical internal cluster source ownership drifted")
+        cluster_by_id[cluster_id] = cluster
+
+    coextensive_by_projected = {
+        item["projected_occurrence_id"]: item
+        for item in value["coextensive_structural_numeric_evidence"]
+        if item.get("status") == _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS
+    }
+    receipt_sample_ids: list[str] = []
+    source_only_receipts: set[str] = set()
+    for receipt in value["coverage_receipt"]:
+        for sample_id in receipt["sample_ids"]:
+            sample = by_sample.get(sample_id)
+            if type(sample) is not dict:
+                raise _error("coverage receipt cites a sample outside the numeric universe")
+            if receipt["row_kind"] == "ROLE_ROW" and (
+                sample["owner_kind"] != "ROLE_OCCURRENCE"
+                or sample["owner_id"] != receipt["occurrence_id"]
+            ):
+                raise _error("role receipt differs from numeric universe ownership")
+            if receipt["row_kind"] == "TRAILING_VALUE_ROW" and (
+                sample["owner_kind"] != "TRAILING_VALUE_ROW"
+                or sample["owner_id"] != f"aforav2:trailing:{receipt['candidate_ordinal']}"
+            ):
+                raise _error("trailing receipt differs from numeric universe ownership")
+            if receipt["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE":
+                evidence = coextensive_by_projected.get(receipt["occurrence_id"])
+                if (
+                    type(evidence) is not dict
+                    or sample["owner_kind"] != "COEXTENSIVE_SCOPE_TOTAL_REFERENCE"
+                    or sample["owner_id"] != evidence["owner_occurrence_id"]
+                ):
+                    raise _error("coextensive receipt differs from numeric universe ownership")
+            if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER" and (
+                sample["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or sample["owner_id"] != receipt["source_record"].get("cluster_id")
+            ):
+                raise _error("source-only receipt differs from numeric universe ownership")
+            receipt_sample_ids.append(sample_id)
+        if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER":
+            source_only_receipts.add(receipt["source_record"]["cluster_id"])
+    if (
+        len(receipt_sample_ids) != len(set(receipt_sample_ids))
+        or set(receipt_sample_ids) != set(by_sample)
+        or source_only_receipts != set(cluster_by_id)
+    ):
+        raise _error("numeric universe does not have exactly one owning coverage receipt")
+    if any(
+        f"SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:{cluster_id}" not in value["unresolved_reasons"]
+        for cluster_id in cluster_by_id
+    ):
+        raise _error("source-only numeric cluster did not veto closure")
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -1143,6 +1347,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or len(value["coverage_receipt"]) > _MAX_COVERAGE_RECORDS
         or type(value["coextensive_structural_numeric_evidence"]) is not list
         or len(value["coextensive_structural_numeric_evidence"]) > _MAX_COVERAGE_RECORDS
+        or type(value["numeric_sample_universe"]) is not list
+        or type(value["internal_unassigned_numeric_clusters"]) is not list
         or not same_typed_json_v1(value["dependency_content_refs"], _dependency_refs())
         or type(value["role_occurrences"]) is not list
         or type(value["authenticated_existing_dash_evidence"]) is not list
@@ -1356,6 +1562,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "UNRESOLVED_PARTIAL_TRAILING_NUMERIC_CHALLENGER",
         "UNRESOLVED_UNSELECTED_COMPLETE_TRAILING_NUMERIC_CHALLENGER",
         "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER",
+        "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE",
+        "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH",
+        "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER",
+        "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
     }
     if (
         None in occurrence_ids
@@ -1376,9 +1586,25 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or record["row_kind"]
             not in {
                 "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE",
+                "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
                 "ROLE_ROW",
                 "TRAILING_VALUE_ROW",
             }
+            or (
+                record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+                and (
+                    record["occurrence_id"] is not None
+                    or record["role"] is not None
+                    or record["candidate_ordinal"] is not None
+                    or record["disposition"] != "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+                    or record["source_record"].get("cluster_id")
+                    not in {
+                        cluster.get("cluster_id")
+                        for cluster in value["internal_unassigned_numeric_clusters"]
+                        if type(cluster) is dict
+                    }
+                )
+            )
             or (
                 record["row_kind"] == "ROLE_ROW"
                 and (
@@ -1401,7 +1627,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     or record["source_record"].get("role") != record["role"]
                     or record["source_record"].get("label_match", {}).get("occurrence_id")
                     != record["occurrence_id"]
-                    or record["disposition"] != "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
+                    or record["disposition"]
+                    not in {
+                        "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED",
+                        "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER",
+                    }
                 )
             )
             or (
@@ -1416,7 +1646,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 )
             )
             or record["sample_ids"]
-            != [item.get("sample_id") for item in record["source_record"].get("values", [])]
+            != (
+                record["source_record"].get("sample_ids", [])
+                if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+                else [item.get("sample_id") for item in record["source_record"].get("values", [])]
+            )
             for record in value["coverage_receipt"]
         )
     ):
@@ -1436,6 +1670,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
         for record in value["role_occurrences"]
         if type(record) is dict and type(record.get("occurrence_id")) is str
     }
+    for receipt in value["coverage_receipt"]:
+        if receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE" and (
+            f"SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE:{receipt['role']}:"
+            f"{receipt['occurrence_id']}" not in value["unresolved_reasons"]
+        ):
+            raise _error("source-only schema-ineligible receipt did not veto closure")
+        if receipt["disposition"] == "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH":
+            occurrence = occurrence_by_id.get(receipt["occurrence_id"])
+            if (
+                type(occurrence) is not dict
+                or not (
+                    str(
+                        receipt["source_record"].get("label_match", {}).get("match_kind", "")
+                    ).startswith("ONE_EDIT_")
+                    or str(occurrence.get("scope_owner_match_kind", "")).startswith("ONE_EDIT_")
+                )
+                or (
+                    f"ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE:{receipt['role']}:"
+                    f"{receipt['occurrence_id']}" not in value["unresolved_reasons"]
+                )
+            ):
+                raise _error("one-edit source receipt did not veto closure")
     coextensive_projected_ids: list[str] = []
     coextensive_sample_ids: list[str] = []
     owned_coextensive_ids: list[str] = []
@@ -1506,6 +1762,14 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or expected_receipt["sample_ids"] != source_sample_ids
             or not same_typed_json_v1(expected_receipt["source_record"], source_record)
             or (
+                expected_receipt["disposition"] == "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER"
+                and (
+                    f"ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER_SCHEMA_INELIGIBLE:"
+                    f"{evidence['projected_role']}:{projected_id}"
+                    not in value["unresolved_reasons"]
+                )
+            )
+            or (
                 is_ambiguous
                 and f"{_COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS}:{projected_id}"
                 not in value["unresolved_reasons"]
@@ -1522,6 +1786,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or set(coextensive_receipts) != set(owned_coextensive_ids)
     ):
         raise _error("scoped hierarchical coextensive source receipt drifted")
+    _validate_numeric_sample_coverage(value)
     trailing_evidence = {
         candidate["candidate_ordinal"]: candidate["status"]
         for equation in value["equations"]["global"]
@@ -1579,7 +1844,44 @@ def _build(
     row_axis = axis["row_axis"]
     reasons = list(axis["unresolved_reasons"])
     numeric_rows = [row for row in row_axis["rows"] if row["values"]]
-    valued_rows = [row for row in row_axis["rows"] if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
+    source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
+        numeric_rows,
+        axis["role_occurrences"],
+        spec["source_role_policy"],
+    )
+    reasons.extend(source_role_reasons)
+    occurrence_by_id = {
+        occurrence["occurrence_id"]: occurrence for occurrence in axis["role_occurrences"]
+    }
+    coextensive_one_edit_occurrences: set[str] = set()
+    if spec["source_role_policy"]["one_edit_role_or_scope_match_policy"] == "VETO":
+        for evidence in axis["coextensive_structural_numeric_evidence"]:
+            if evidence["status"] != _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS:
+                continue
+            projected = occurrence_by_id[evidence["projected_occurrence_id"]]
+            owner = occurrence_by_id[evidence["owner_occurrence_id"]]
+            if any(
+                str(match_kind).startswith("ONE_EDIT_")
+                for match_kind in (
+                    evidence["source_record"]["label_match"].get("match_kind"),
+                    projected["scope_owner_match_kind"],
+                    owner["label_match"].get("match_kind"),
+                    owner["scope_owner_match_kind"],
+                )
+            ):
+                occurrence_id = evidence["projected_occurrence_id"]
+                coextensive_one_edit_occurrences.add(occurrence_id)
+                reasons.append(
+                    "ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER_SCHEMA_INELIGIBLE:"
+                    f"{evidence['projected_role']}:{occurrence_id}"
+                )
+    accounting_rows = [
+        row
+        for row in row_axis["rows"]
+        if row["label_match"].get("occurrence_id")
+        not in source_only_occurrences | one_edit_occurrences
+    ]
+    valued_rows = [row for row in accounting_rows if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
     if axis["status"] != (
         "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
     ):
@@ -1598,7 +1900,7 @@ def _build(
                 authorized_component_scopes,
                 covered_components,
                 local_reasons,
-            ) = _local_equations(equation, row_axis["rows"], axis["role_occurrences"])
+            ) = _local_equations(equation, accounting_rows, axis["role_occurrences"])
             local_records.extend(records)
             locally_valid_results.update(valid_results)
             locally_authorized_component_scopes.update(authorized_component_scopes)
@@ -1608,6 +1910,11 @@ def _build(
         valued_rows,
         aggregate_roles,
         local_roles,
+        {
+            role
+            for role, role_kind in spec["role_kind_by_role"].items()
+            if role_kind == "NONADDITIVE_CHILD"
+        },
         locally_valid_results,
         locally_authorized_component_scopes,
     )
@@ -1675,7 +1982,11 @@ def _build(
         coverage_occurrences.add(occurrence_id)
         role = row["role"]
         role_kind = spec["role_kind_by_role"].get(role)
-        if row["status"] != "VISIBLE_VALUE_LANES_BOUND":
+        if occurrence_id in source_only_occurrences:
+            disposition = "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
+        elif occurrence_id in one_edit_occurrences:
+            disposition = "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH"
+        elif row["status"] != "VISIBLE_VALUE_LANES_BOUND":
             disposition = "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
             reasons.append(f"PARTIAL_VISIBLE_ACCOUNTING_ROW:{role}:{occurrence_id}")
         elif role_kind == "NONADDITIVE_CHILD":
@@ -1715,7 +2026,11 @@ def _build(
             {
                 "candidate_ordinal": None,
                 "coverage_id": "ashtcv2:coverage:coextensive:" + occurrence_id,
-                "disposition": "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED",
+                "disposition": (
+                    "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER"
+                    if occurrence_id in coextensive_one_edit_occurrences
+                    else "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
+                ),
                 "occurrence_id": occurrence_id,
                 "role": evidence["projected_role"],
                 "row_kind": "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE",
@@ -1746,6 +2061,21 @@ def _build(
                 "source_record": canonical_clone_v1(trailing),
             }
         )
+    for cluster in axis["internal_unassigned_numeric_clusters"]:
+        cluster_id = cluster["cluster_id"]
+        reasons.append(f"SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:{cluster_id}")
+        coverage_receipt.append(
+            {
+                "candidate_ordinal": None,
+                "coverage_id": "ashtcv2:coverage:source-only:" + cluster_id,
+                "disposition": "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
+                "occurrence_id": None,
+                "role": None,
+                "row_kind": "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+                "sample_ids": canonical_clone_v1(cluster["sample_ids"]),
+                "source_record": canonical_clone_v1(cluster),
+            }
+        )
     reasons = list(dict.fromkeys(reasons))
     resolved_axis = [canonical_clone_v1(record) for record in resolved.values()]
     equation_axis = {"global": global_records, "local": local_records}
@@ -1762,6 +2092,9 @@ def _build(
         "equations": equation_axis,
         "family_id": spec["family_id"],
         "format_version": FORMAT_VERSION,
+        "internal_unassigned_numeric_clusters": canonical_clone_v1(
+            axis["internal_unassigned_numeric_clusters"]
+        ),
         "metrics": _metrics(
             resolved_axis, global_records, local_records, coverage_receipt, reasons
         ),
@@ -1772,6 +2105,7 @@ def _build(
             "topology_scan_id": axis["topology_scan_id"],
         },
         "occurrence_axis_id": axis["occurrence_axis_id"],
+        "numeric_sample_universe": canonical_clone_v1(axis["numeric_sample_universe"]),
         "resolved_roles": resolved_axis,
         "role_occurrences": canonical_clone_v1(axis["role_occurrences"]),
         "row_axis_id": row_axis["row_axis_id"],
