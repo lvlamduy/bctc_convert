@@ -463,6 +463,33 @@ def test_detector_omitted_visible_dash_is_pixel_replayed_before_closure(monkeypa
     assert trial["row_axis"]["metrics"]["visible_dash_zero_count"] == 1
     assert len(crop_calls) == 1
 
+    assert (
+        subject.validate_authenticated_family_first_accounting_evidence_sweep_replay_v1(
+            result,
+            object(),
+            object(),
+            _family_spec(),
+            _evaluation_spec(),
+        )
+        == result
+    )
+    tampered = copy.deepcopy(result)
+    tampered["trials"][0]["row_axis"]["visible_dash_rescues"][0]["role"] = "CASH_VND"
+    material = copy.deepcopy(tampered)
+    material.pop("sweep_id")
+    tampered["sweep_id"] = "ffaesv1:sweep:" + canonical_json_sha256_v1(material)
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_authenticated_family_first_accounting_evidence_sweep_replay_v1(
+            tampered,
+            object(),
+            object(),
+            _family_spec(),
+            _evaluation_spec(),
+        )
+
 
 def test_inconsistent_visible_grid_skips_optional_dash_rescue_and_stays_unresolved(
     monkeypatch,
@@ -491,6 +518,94 @@ def test_inconsistent_visible_grid_skips_optional_dash_rescue_and_stays_unresolv
         "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE",
         "ADDITIVE_CLOSURE:ADDITIVE_CHILD_LANES_INCOMPLETE_OR_NUMERIC_TOKEN_UNRESOLVED",
     ]
+
+
+@pytest.mark.parametrize(
+    ("require_unique_owner", "reverse_rows", "expected_rescue_count"),
+    [(True, False, 0), (True, True, 0), (False, False, 1)],
+)
+def test_v4_repeated_role_page_dash_rescue_is_skipped_without_legacy_drift(
+    monkeypatch,
+    require_unique_owner: bool,
+    reverse_rows: bool,
+    expected_rescue_count: int,
+) -> None:
+    rows = [
+        {
+            "label_match": {
+                "end_source_line_index": 43,
+                "page_sequence": 34,
+                "source_line_index": 43,
+            },
+            "missing_column_ordinals": [0],
+            "role": "INTERBANK_LOAN_VND",
+        },
+        {
+            "label_match": {
+                "end_source_line_index": 48,
+                "page_sequence": 34,
+                "source_line_index": 48,
+            },
+            "missing_column_ordinals": [],
+            "role": "INTERBANK_LOAN_VND",
+        },
+    ]
+    if reverse_rows:
+        rows.reverse()
+    proposal = {
+        "column_center": 600.0,
+        "column_ordinal": 0,
+        "raw_pixel_bbox": [550, 100, 650, 130],
+    }
+    proposal_calls = []
+    crop_calls = []
+
+    def proposals(*_args, **_kwargs):
+        proposal_calls.append(True)
+        return [proposal]
+
+    def crop(snapshot, *, raw_pixel_bbox):
+        crop_calls.append(True)
+        return _dash_region(snapshot["document_ordinal"], snapshot["physical_page"], raw_pixel_bbox)
+
+    monkeypatch.setattr(subject.row_axis_v1, "_region_lines", lambda *_args: {34: []})
+    monkeypatch.setattr(
+        subject.row_axis_v1,
+        "_resolved_page_grid_inputs",
+        lambda *_args: ([600.0], []),
+    )
+    monkeypatch.setattr(
+        subject,
+        "propose_missing_value_lane_regions_v1",
+        proposals,
+    )
+    monkeypatch.setattr(
+        subject.render_v1,
+        "_crop_authenticated_family_first_page_render_snapshot_v1",
+        crop,
+    )
+
+    kwargs = {"require_unique_role_page_owner": True} if require_unique_owner else {}
+    rescues = subject._visible_dash_rescue_inputs(
+        joined_pages=[{"lines": [], "page_sequence": 34, "page_width": 1000}],
+        row_axis={
+            "column_grids": [],
+            "rows": rows,
+            "topology_region": {"page_sequence": 34},
+        },
+        render_snapshots=(_render(37, 34),),
+        **kwargs,
+    )
+
+    assert len(rescues) == expected_rescue_count
+    assert len(proposal_calls) == expected_rescue_count
+    assert len(crop_calls) == expected_rescue_count
+    if rescues:
+        assert (
+            rescues[0]["role"],
+            rescues[0]["page_sequence"],
+            rescues[0]["column_ordinal"],
+        ) == ("INTERBANK_LOAN_VND", 34, 0)
 
 
 def test_cached_evidence_without_render_pixels_defers_dash_rescue() -> None:

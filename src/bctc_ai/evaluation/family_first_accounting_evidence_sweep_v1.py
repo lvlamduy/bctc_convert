@@ -368,6 +368,7 @@ def _visible_dash_rescue_inputs(
     joined_pages: list[dict[str, Any]],
     row_axis: dict[str, Any],
     render_snapshots: tuple[dict[str, Any], ...],
+    require_unique_role_page_owner: bool = False,
 ) -> tuple[dict[str, Any], ...]:
     if not render_snapshots:
         # The document-store fast path intentionally carries authenticated
@@ -384,12 +385,32 @@ def _visible_dash_rescue_inputs(
         for snapshot in render_snapshots
     }
     region_lines = row_axis_v1._region_lines(joined_pages, region)
+    if type(require_unique_role_page_owner) is not bool:
+        raise _error("visible-dash rescue owner policy must be one exact boolean")
+    v1_role_page_owner_counts: dict[tuple[str, int], int] = {}
+    if require_unique_role_page_owner:
+        for observed_row in row_axis["rows"]:
+            owner_key = (
+                observed_row["role"],
+                observed_row["label_match"]["page_sequence"],
+            )
+            v1_role_page_owner_counts[owner_key] = v1_role_page_owner_counts.get(owner_key, 0) + 1
     rescues = []
     for row in row_axis["rows"]:
         if not row["missing_column_ordinals"]:
             continue
         match = row["label_match"]
         page_sequence = match["page_sequence"]
+        if (
+            require_unique_role_page_owner
+            and v1_role_page_owner_counts[(row["role"], page_sequence)] != 1
+        ):
+            # The sealed V1 rescue contract selects rows by role and page,
+            # not by the V2 occurrence identity.  A repeated role on one
+            # page therefore cannot receive an unambiguous V1 pixel hint.
+            # Keep its base missing lane so typed source-only evidence and
+            # ordinary closure vetoes remain authoritative.
+            continue
         page = by_page[page_sequence]
         page_height = heights.get(page_sequence)
         if type(page["page_width"]) is not int or type(page_height) is not int:
@@ -1432,6 +1453,7 @@ def _candidate_evidence_from_joined_pages(
                 joined_pages=joined_pages,
                 row_axis=base_row_axis,
                 render_snapshots=render_snapshots,
+                require_unique_role_page_owner=is_v4,
             )
             if is_v4:
                 if dash_rescues:
