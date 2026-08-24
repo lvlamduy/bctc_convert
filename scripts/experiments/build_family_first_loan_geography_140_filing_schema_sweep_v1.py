@@ -394,11 +394,14 @@ def _sparse_graph_worker_material(
 
     if type(source_index) is not int or source_index < 0 or type(snapshot) is not dict:
         raise _error("loan-geography sparse worker input drifted")
-    built = graph_v1.build_loan_geography_scoped_graphs_v1(receipt, (snapshot,))
+    prepared_snapshot = graph_v1._prepare_loan_geography_snapshot_v1(  # noqa: SLF001
+        snapshot
+    )
+    built = graph_v1.build_loan_geography_scoped_graphs_v1(receipt, (prepared_snapshot,))
     replayed = graph_v1.validate_loan_geography_scoped_graphs_replay_v1(
         built,
         receipt,
-        (snapshot,),
+        (prepared_snapshot,),
     )
     if not same_typed_json_v1(built, replayed):
         raise _error("loan-geography sparse graph public replay drifted")
@@ -671,14 +674,17 @@ def _direct_full_worker_material(
     packet = snapshot.get("document_packet")
     if type(packet) is not dict or type(packet.get("document_ordinal")) is not int:
         raise _error("loan-geography direct-full worker document packet drifted")
+    prepared_snapshot = graph_v1._prepare_loan_geography_snapshot_v1(  # noqa: SLF001
+        snapshot
+    )
     built_whole_document = graph_v1.build_loan_geography_whole_document_scoped_graph_v1(
         receipt,
-        snapshot,
+        prepared_snapshot,
     )
     whole_document = graph_v1.validate_loan_geography_whole_document_scoped_graph_replay_v1(
         built_whole_document,
         receipt,
-        snapshot,
+        prepared_snapshot,
     )
     if not same_typed_json_v1(built_whole_document, whole_document):
         raise _error("loan-geography direct-full graph public replay drifted")
@@ -686,17 +692,17 @@ def _direct_full_worker_material(
     total_control_requests = None
     total_controls: list[dict[str, Any]] = []
     if whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
-        built_context = graph_v1.build_loan_geography_document_context_v1(snapshot)
+        built_context = graph_v1.build_loan_geography_document_context_v1(prepared_snapshot)
         document_context = graph_v1.validate_loan_geography_document_context_replay_v1(
             built_context,
-            snapshot,
+            prepared_snapshot,
         )
         if not same_typed_json_v1(built_context, document_context):
             raise _error("loan-geography direct-full context public replay drifted")
         built_requests = graph_v1.build_loan_geography_customer_loan_total_control_requests_v1(
             whole_document,
             packet,
-            snapshot,
+            prepared_snapshot,
             document_context=document_context,
         )
         total_control_requests = (
@@ -704,7 +710,7 @@ def _direct_full_worker_material(
                 built_requests,
                 whole_document,
                 packet,
-                snapshot,
+                prepared_snapshot,
                 document_context=document_context,
             )
         )

@@ -18,7 +18,7 @@ import hashlib
 import stat
 import unicodedata
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -155,6 +155,26 @@ class _PreparedReceiptV1:
 _PREPARED_RECEIPT_SEAL = object()
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedSnapshotV1:
+    """Task-local detached snapshot proof; never persisted or shared across workers."""
+
+    document_evidence_root_sha256: str
+    document_id: str
+    document_line_count: int
+    document_ordinal: int
+    document_packet_id: str
+    document_page_count: int
+    page_axis: tuple[int, ...]
+    prepared_binding_sha256: str
+    snapshot_id: str
+    _typed_snapshot: dict[str, Any] = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_SNAPSHOT_SEAL = object()
+
+
 def _prepared_receipt_material(
     *,
     canonical_payload_sha256: str,
@@ -177,6 +197,29 @@ def _prepared_receipt_material(
         ],
         "query_spec_sha256": query_spec_sha256,
         "receipt_id": receipt_id,
+    }
+
+
+def _prepared_snapshot_material(
+    *,
+    document_evidence_root_sha256: str,
+    document_id: str,
+    document_line_count: int,
+    document_ordinal: int,
+    document_packet_id: str,
+    document_page_count: int,
+    page_axis: Sequence[int],
+    snapshot_id: str,
+) -> dict[str, Any]:
+    return {
+        "document_evidence_root_sha256": document_evidence_root_sha256,
+        "document_id": document_id,
+        "document_line_count": document_line_count,
+        "document_ordinal": document_ordinal,
+        "document_packet_id": document_packet_id,
+        "document_page_count": document_page_count,
+        "page_axis": list(page_axis),
+        "snapshot_id": snapshot_id,
     }
 
 
@@ -810,9 +853,7 @@ def _receipt(value: Any) -> _PreparedReceiptV1:
             or type(outcome.get("document_id")) is not str
             or type(outcome.get("document_packet_id")) is not str
             or type(outcome.get("selected_pages")) is not list
-            or any(
-                type(page) is not int or page <= 0 for page in outcome.get("selected_pages", [])
-            )
+            or any(type(page) is not int or page <= 0 for page in outcome.get("selected_pages", []))
             or outcome["selected_pages"] != sorted(set(outcome["selected_pages"]))
             or type(outcome.get("outcome_id")) is not str
         ):
@@ -856,7 +897,59 @@ def _prepare_loan_geography_receipt_v1(value: Mapping[str, Any]) -> _PreparedRec
     return _receipt(value)
 
 
-def _snapshot(value: Any) -> dict[str, Any]:
+def _validate_prepared_snapshot_v1(value: _PreparedSnapshotV1) -> dict[str, Any]:
+    if value.seal is not _PREPARED_SNAPSHOT_SEAL:
+        raise _error("Family 11 prepared snapshot seal drifted")
+    if (
+        type(value.document_evidence_root_sha256) is not str
+        or type(value.document_id) is not str
+        or type(value.document_line_count) is not int
+        or type(value.document_ordinal) is not int
+        or type(value.document_packet_id) is not str
+        or type(value.document_page_count) is not int
+        or type(value.page_axis) is not tuple
+        or any(type(page) is not int or page <= 0 for page in value.page_axis)
+        or type(value.prepared_binding_sha256) is not str
+        or type(value.snapshot_id) is not str
+    ):
+        raise _error("Family 11 prepared snapshot identity drifted")
+    material = _prepared_snapshot_material(
+        document_evidence_root_sha256=value.document_evidence_root_sha256,
+        document_id=value.document_id,
+        document_line_count=value.document_line_count,
+        document_ordinal=value.document_ordinal,
+        document_packet_id=value.document_packet_id,
+        document_page_count=value.document_page_count,
+        page_axis=value.page_axis,
+        snapshot_id=value.snapshot_id,
+    )
+    if value.prepared_binding_sha256 != canonical_json_sha256_v1(material):
+        raise _error("Family 11 prepared snapshot binding drifted")
+    typed = value._typed_snapshot  # noqa: SLF001
+    packet = typed.get("document_packet") if type(typed) is dict else None
+    pages = typed.get("joined_pages") if type(typed) is dict else None
+    dimensions = typed.get("selected_page_dimensions") if type(typed) is dict else None
+    if (
+        type(packet) is not dict
+        or type(pages) is not list
+        or type(dimensions) is not list
+        or any(type(page) is not dict for page in pages)
+        or any(type(item) is not dict for item in dimensions)
+        or typed.get("snapshot_id") != value.snapshot_id
+        or packet.get("document_evidence_root_sha256") != value.document_evidence_root_sha256
+        or packet.get("document_id") != value.document_id
+        or packet.get("line_count") != value.document_line_count
+        or packet.get("document_ordinal") != value.document_ordinal
+        or packet.get("packet_id") != value.document_packet_id
+        or packet.get("page_count") != value.document_page_count
+        or tuple(page.get("page_sequence") for page in pages) != value.page_axis
+        or tuple(item.get("physical_page") for item in dimensions) != value.page_axis
+    ):
+        raise _error("Family 11 prepared snapshot payload binding drifted")
+    return typed
+
+
+def _validated_raw_snapshot_v1(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
         or type(value.get("snapshot_id")) is not str
@@ -866,22 +959,28 @@ def _snapshot(value: Any) -> dict[str, Any]:
         or type(value.get("selected_page_dimensions")) is not list
     ):
         raise _error("Family 11 selected-page snapshot shape drifted")
-    material = canonical_clone_v1(value)
-    snapshot_id = material.pop("snapshot_id")
-    if snapshot_id != "ffdesv1:selected:" + canonical_json_sha256_v1(material):
+    typed = canonical_clone_v1(value)
+    snapshot_id = typed.pop("snapshot_id")
+    if snapshot_id != "ffdesv1:selected:" + canonical_json_sha256_v1(typed):
         raise _error("Family 11 selected-page snapshot content identity drifted")
-    packet = value["document_packet"]
+    typed["snapshot_id"] = snapshot_id
+    packet = typed["document_packet"]
     if (
         type(packet.get("document_ordinal")) is not int
+        or type(packet.get("document_evidence_root_sha256")) is not str
         or type(packet.get("document_id")) is not str
         or type(packet.get("packet_id")) is not str
         or type(packet.get("page_count")) is not int
         or type(packet.get("line_count")) is not int
     ):
         raise _error("Family 11 document packet identity drifted")
-    dimensions = value["selected_page_dimensions"]
-    pages = value["joined_pages"]
-    if len(dimensions) != len(pages):
+    dimensions = typed["selected_page_dimensions"]
+    pages = typed["joined_pages"]
+    if (
+        len(dimensions) != len(pages)
+        or any(type(page) is not dict for page in pages)
+        or any(type(item) is not dict for item in dimensions)
+    ):
         raise _error("Family 11 selected-page dimensions differ from joined pages")
     page_ids = [page.get("page_sequence") for page in pages]
     dimension_ids = [item.get("physical_page") for item in dimensions]
@@ -891,7 +990,44 @@ def _snapshot(value: Any) -> dict[str, Any]:
         or any(type(page_id) is not int or page_id <= 0 for page_id in page_ids)
     ):
         raise _error("Family 11 original physical page axis drifted")
-    return canonical_clone_v1(value)
+    return typed
+
+
+def _snapshot(value: Any) -> dict[str, Any]:
+    if type(value) is _PreparedSnapshotV1:
+        return _validate_prepared_snapshot_v1(value)
+    return _validated_raw_snapshot_v1(value)
+
+
+def _prepare_loan_geography_snapshot_v1(value: Mapping[str, Any]) -> _PreparedSnapshotV1:
+    """Validate and detach one hydrated snapshot exactly once for one worker task."""
+
+    typed = _snapshot(value)
+    packet = typed["document_packet"]
+    page_axis = tuple(page["page_sequence"] for page in typed["joined_pages"])
+    material = _prepared_snapshot_material(
+        document_evidence_root_sha256=packet["document_evidence_root_sha256"],
+        document_id=packet["document_id"],
+        document_line_count=packet["line_count"],
+        document_ordinal=packet["document_ordinal"],
+        document_packet_id=packet["packet_id"],
+        document_page_count=packet["page_count"],
+        page_axis=page_axis,
+        snapshot_id=typed["snapshot_id"],
+    )
+    return _PreparedSnapshotV1(
+        document_evidence_root_sha256=packet["document_evidence_root_sha256"],
+        document_id=packet["document_id"],
+        document_line_count=packet["line_count"],
+        document_ordinal=packet["document_ordinal"],
+        document_packet_id=packet["packet_id"],
+        document_page_count=packet["page_count"],
+        page_axis=page_axis,
+        prepared_binding_sha256=canonical_json_sha256_v1(material),
+        snapshot_id=typed["snapshot_id"],
+        _typed_snapshot=typed,
+        seal=_PREPARED_SNAPSHOT_SEAL,
+    )
 
 
 def _region_pages(
@@ -1062,9 +1198,14 @@ def validate_loan_geography_document_context_replay_v1(
     """Recompute PDF-internal period/unit features from the full snapshot."""
 
     rebuilt = build_loan_geography_document_context_v1(snapshot)
-    packet = snapshot["document_packet"]
     _document_context(
-        value, document={"document_id": packet["document_id"]}, document_packet=packet
+        value,
+        document={"document_id": rebuilt["document_id"]},
+        document_packet={
+            "document_evidence_root_sha256": rebuilt["document_evidence_root_sha256"],
+            "document_id": rebuilt["document_id"],
+            "packet_id": rebuilt["document_packet_id"],
+        },
     )
     if not same_typed_json_v1(value, rebuilt):
         raise _error("Family 11 PDF-internal document context does not replay exactly")
@@ -1257,8 +1398,7 @@ def _document(
         outcome.document_ordinal != ordinal
         or outcome.document_id != packet["document_id"]
         or outcome.document_packet_id != packet["packet_id"]
-        or outcome.document_evidence_root_sha256
-        != packet.get("document_evidence_root_sha256")
+        or outcome.document_evidence_root_sha256 != packet.get("document_evidence_root_sha256")
         or (require_selected_axis and page_axis != list(outcome.selected_pages))
         or (not require_selected_axis and page_axis != list(range(1, packet["page_count"] + 1)))
     ):
@@ -1452,9 +1592,10 @@ def validate_loan_geography_scoped_graphs_replay_v1(
     if not same_typed_json_v1(value, rebuilt):
         raise _error("Family 11 adapter batch does not replay exactly")
     for document, snapshot in zip(rebuilt["documents"], selected_pages, strict=True):
+        replay_snapshot = _snapshot(snapshot) if type(snapshot) is _PreparedSnapshotV1 else snapshot
         validate_accounting_scoped_table_graph_replay_v1(
             document["scoped_table_graph"],
-            _region_pages(snapshot)[0],
+            _region_pages(replay_snapshot)[0],
             LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1,
         )
     return rebuilt
@@ -2361,10 +2502,11 @@ def validate_loan_geography_customer_loan_total_control_requests_replay_v1(
         _region_pages(snapshot)[0],
         LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1,
     )
+    rebuild_snapshot = source_snapshot if type(source_snapshot) is _PreparedSnapshotV1 else snapshot
     rebuilt = build_loan_geography_customer_loan_total_control_requests_v1(
         document,
         document_packet,
-        snapshot,
+        rebuild_snapshot,
         document_context=document_context,
     )
     if not same_typed_json_v1(persisted, rebuilt):
