@@ -491,9 +491,14 @@ def test_immutable_build_cache_invalidates_on_exact_page_spec_and_engine_content
     scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
 
     first = build_accounting_scoped_table_graph_v1(pages, spec)
-    assert not scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
-        "build_cache_hit"
-    ]
+    cold_telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    assert not cold_telemetry["build_cache_hit"]
+    assert cold_telemetry["build_cache_admitted_this_call"]
+    assert cold_telemetry["build_cache_entry_resident"]
+    assert (
+        cold_telemetry["build_cache_retained_payload_bytes"]
+        == cold_telemetry["build_cache_entry_payload_bytes"]
+    )
     first["metrics"]["complete_graph_count"] = 999
     warm = build_accounting_scoped_table_graph_v1(pages, spec)
     assert scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()["build_cache_hit"]
@@ -603,6 +608,93 @@ def test_concurrent_cache_miss_and_hit_have_exact_per_call_telemetry(
     assert first_result == second_result
     assert first_telemetry["build_cache_hit"] is False
     assert second_telemetry["build_cache_hit"] is True
+    assert first_telemetry["build_cache_admitted_this_call"] is True
+    assert second_telemetry["build_cache_admitted_this_call"] is False
+    assert (
+        first_telemetry["build_cache_retained_payload_bytes"]
+        <= (first_telemetry["build_cache_max_bytes"])
+    )
+    assert (
+        second_telemetry["build_cache_retained_payload_bytes"]
+        == (first_telemetry["build_cache_retained_payload_bytes"])
+    )
+
+
+def test_oversized_build_payload_is_never_retained_or_reused() -> None:
+    oversized_source = "x" * (scoped_table_module._BUILD_CACHE_MAX_BYTES + 1_024)
+    pages = [
+        _page(
+            1,
+            [_line(0, "Chuỗi nhiễu omega zeta", [20, 20, 360, 48], oversized_source)],
+        )
+    ]
+    spec = _spec()
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    first = build_accounting_scoped_table_graph_v1(pages, spec)
+    first_telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    second = build_accounting_scoped_table_graph_v1(pages, spec)
+    second_telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+
+    assert first == second
+    assert first_telemetry["build_cache_bypassed_oversized"]
+    assert second_telemetry["build_cache_bypassed_oversized"]
+    assert not first_telemetry["build_cache_entry_resident"]
+    assert not second_telemetry["build_cache_hit"]
+    assert second_telemetry["build_cache_misses"] == 2
+    assert second_telemetry["build_cache_oversized_bypasses"] == 2
+    assert second_telemetry["build_cache_size"] == 0
+    assert second_telemetry["build_cache_retained_payload_bytes"] == 0
+
+
+def test_oversized_feature_surfaces_bypass_every_process_lru() -> None:
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+    feature = "x" * (scoped_table_module._FEATURE_CACHE_MAX_TEXT_CHARS + 1)
+    qgram_feature = "y" * (scoped_table_module._QGRAM_CACHE_MAX_TEXT_CHARS + 1)
+
+    scoped_table_module._accented_surface(feature)
+    scoped_table_module._accentless_surface(feature)
+    scoped_table_module._semantic_prefix(feature)
+    scoped_table_module._qgrams(qgram_feature)
+    scoped_table_module._is_value({"source_text": None, "vietocr_text": feature})
+
+    assert scoped_table_module._accented_surface_cached.cache_info().currsize == 0
+    assert scoped_table_module._accentless_surface_cached.cache_info().currsize == 0
+    assert scoped_table_module._semantic_prefix_cached.cache_info().currsize == 0
+    assert scoped_table_module._qgrams_cached.cache_info().currsize == 0
+    assert scoped_table_module._is_value_surfaces_cached.cache_info().currsize == 0
+
+
+def test_byte_budget_evicts_lru_entries_before_count_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = _spec()
+    first_pages = [_row_layout_page(period="31/12/2025")]
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+    build_accounting_scoped_table_graph_v1(first_pages, spec)
+    one_entry_bytes = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+        "build_cache_entry_payload_bytes"
+    ]
+    byte_budget = one_entry_bytes + one_entry_bytes // 2
+    monkeypatch.setattr(scoped_table_module, "_BUILD_CACHE_MAX_BYTES", byte_budget)
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    first = build_accounting_scoped_table_graph_v1(first_pages, spec)
+    second = build_accounting_scoped_table_graph_v1(
+        [_row_layout_page(period="31/12/2024")],
+        spec,
+    )
+    second_telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    rebuilt_first = build_accounting_scoped_table_graph_v1(first_pages, spec)
+    final_telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+
+    assert first != second
+    assert rebuilt_first == first
+    assert second_telemetry["build_cache_evictions"] == 1
+    assert final_telemetry["build_cache_evictions"] == 2
+    assert not final_telemetry["build_cache_hit"]
+    assert final_telemetry["build_cache_size"] == 1
+    assert final_telemetry["build_cache_retained_payload_bytes"] <= byte_budget
 
 
 def test_branchless_owner_role_rescue_and_reset_stay_fail_closed_and_exact() -> None:
@@ -677,6 +769,13 @@ def test_region_first_perf_guard_reduces_geometry_lines_and_caches_public_replay
     assert not cold["build_cache_hit"]
     assert not warm["build_cache_hit"]
     assert warm["authoritative_replay_rebuilt"]
+    assert not warm["build_cache_admitted_this_call"]
+    assert warm["build_cache_bypassed_authoritative_replay"]
+    assert warm["build_cache_entry_payload_bytes"] == 0
+    assert warm["build_cache_retained_payload_bytes"] == cold["build_cache_retained_payload_bytes"]
+    assert {key for key in warm if key.startswith("build_cache_")} == {
+        key for key in cold if key.startswith("build_cache_")
+    }
 
 
 def test_randomized_coarse_index_has_no_semantic_false_negative_against_exhaustive() -> None:

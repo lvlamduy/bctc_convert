@@ -106,8 +106,18 @@ _ENGINE_CACHE_REVISION = "ACCOUNTING_SCOPED_TABLE_GRAPH_REGION_FIRST_CACHE_V2"
 _MATCHER_METRICS_FORMAT_VERSION = "ACCOUNTING_SCOPED_TABLE_MATCHER_METRICS_V2"
 _SURFACE_CACHE_MAXSIZE = 8_192
 _BUILD_CACHE_MAXSIZE = 8
-_BUILD_CACHE: OrderedDict[tuple[bytes, bytes, tuple[Any, ...]], tuple[bytes, bytes]] = OrderedDict()
+_BUILD_CACHE_MAX_BYTES = 4 * 1024 * 1024
+_FEATURE_CACHE_MAXSIZE = 2_048
+_FEATURE_CACHE_MAX_TEXT_CHARS = 512
+_QGRAM_CACHE_MAXSIZE = 512
+_QGRAM_CACHE_MAX_TEXT_CHARS = 256
+_BUILD_CACHE: OrderedDict[tuple[bytes, bytes, tuple[Any, ...]], tuple[bytes, bytes, int]] = (
+    OrderedDict()
+)
 _BUILD_CACHE_LOCK = RLock()
+_BUILD_CACHE_BYTES = 0
+_BUILD_CACHE_BYPASSES = 0
+_BUILD_CACHE_EVICTIONS = 0
 _BUILD_CACHE_HITS = 0
 _BUILD_CACHE_MISSES = 0
 _LAST_BUILD_TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar(
@@ -132,13 +142,23 @@ def _nfc(value: Any, label: str, *, nonempty: bool = True) -> str:
     return value
 
 
-@lru_cache(maxsize=65_536)
-def _accented_surface(value: str) -> str:
+def _accented_surface_uncached(value: str) -> str:
     value = unicodedata.normalize("NFC", value.casefold())
     return " ".join(re.sub(r"[^0-9a-zà-ỹđ%]+", " ", value).split())
 
 
-@lru_cache(maxsize=65_536)
+@lru_cache(maxsize=_FEATURE_CACHE_MAXSIZE)
+def _accented_surface_cached(value: str) -> str:
+    return _accented_surface_uncached(value)
+
+
+def _accented_surface(value: str) -> str:
+    if len(value) > _FEATURE_CACHE_MAX_TEXT_CHARS:
+        return _accented_surface_uncached(value)
+    return _accented_surface_cached(value)
+
+
+@lru_cache(maxsize=_FEATURE_CACHE_MAXSIZE)
 def _accentless_surface_cached(value: str, normalizer: Any) -> str:
     """Cache the pure semantic normalization shared by overlapping windows."""
 
@@ -146,6 +166,8 @@ def _accentless_surface_cached(value: str, normalizer: Any) -> str:
 
 
 def _accentless_surface(value: str) -> str:
+    if len(value) > _FEATURE_CACHE_MAX_TEXT_CHARS:
+        return normalize_vietnamese_anchor_v1(value)
     return _accentless_surface_cached(value, normalize_vietnamese_anchor_v1)
 
 
@@ -498,15 +520,35 @@ def _line_evidence(line: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-@lru_cache(maxsize=65_536)
-def _semantic_prefix(value: str) -> str:
+def _semantic_prefix_uncached(value: str) -> str:
     return _INLINE_VALUE.sub("", value).strip()
 
 
-@lru_cache(maxsize=65_536)
-def _qgrams(value: str) -> frozenset[str]:
+@lru_cache(maxsize=_FEATURE_CACHE_MAXSIZE)
+def _semantic_prefix_cached(value: str) -> str:
+    return _semantic_prefix_uncached(value)
+
+
+def _semantic_prefix(value: str) -> str:
+    if len(value) > _FEATURE_CACHE_MAX_TEXT_CHARS:
+        return _semantic_prefix_uncached(value)
+    return _semantic_prefix_cached(value)
+
+
+def _qgrams_uncached(value: str) -> frozenset[str]:
     padded = f"^{value}$"
     return frozenset(padded[index : index + 2] for index in range(len(padded) - 1))
+
+
+@lru_cache(maxsize=_QGRAM_CACHE_MAXSIZE)
+def _qgrams_cached(value: str) -> frozenset[str]:
+    return _qgrams_uncached(value)
+
+
+def _qgrams(value: str) -> frozenset[str]:
+    if len(value) > _QGRAM_CACHE_MAX_TEXT_CHARS:
+        return _qgrams_uncached(value)
+    return _qgrams_cached(value)
 
 
 def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
@@ -1747,7 +1789,7 @@ def _overlap_ppm(cell: Sequence[int], row: Sequence[int]) -> int:
     return overlap * 1_000_000 // denominator
 
 
-@lru_cache(maxsize=65_536)
+@lru_cache(maxsize=_FEATURE_CACHE_MAXSIZE)
 def _is_value_surfaces_cached(
     vietocr_text: str,
     source_text: str | None,
@@ -1757,6 +1799,10 @@ def _is_value_surfaces_cached(
 
 
 def _is_value(line: Mapping[str, Any]) -> bool:
+    if len(line["vietocr_text"]) + len(line["source_text"] or "") > (_FEATURE_CACHE_MAX_TEXT_CHARS):
+        return is_accounting_value_surface_v1(line["vietocr_text"]) or (
+            type(line["source_text"]) is str and is_accounting_value_surface_v1(line["source_text"])
+        )
     return _is_value_surfaces_cached(
         line["vietocr_text"],
         line["source_text"],
@@ -3760,9 +3806,10 @@ def _cached_build_payload(
     pages_payload: bytes,
     spec_payload: bytes,
     engine_trust_closure: tuple[Any, ...],
-) -> tuple[bytes, bytes, bool, int, int, int]:
+) -> tuple[bytes, bytes, dict[str, Any]]:
     """Serialize cache decisions so hit attribution is exact under threads."""
 
+    global _BUILD_CACHE_BYTES, _BUILD_CACHE_BYPASSES, _BUILD_CACHE_EVICTIONS
     global _BUILD_CACHE_HITS, _BUILD_CACHE_MISSES
     if not engine_trust_closure or engine_trust_closure[0] != _ENGINE_CACHE_REVISION:
         raise _error("scoped-table graph cache engine trust closure drifted")
@@ -3775,26 +3822,59 @@ def _cached_build_payload(
             return (
                 cached[0],
                 cached[1],
-                True,
-                _BUILD_CACHE_HITS,
-                _BUILD_CACHE_MISSES,
-                len(_BUILD_CACHE),
+                {
+                    "admitted_this_call": False,
+                    "bypassed_oversized": False,
+                    "entry_payload_bytes": cached[2],
+                    "entry_resident": True,
+                    "evictions": _BUILD_CACHE_EVICTIONS,
+                    "hit": True,
+                    "hits": _BUILD_CACHE_HITS,
+                    "misses": _BUILD_CACHE_MISSES,
+                    "oversized_bypasses": _BUILD_CACHE_BYPASSES,
+                    "retained_payload_bytes": _BUILD_CACHE_BYTES,
+                    "size": len(_BUILD_CACHE),
+                },
             )
         pages = decode_canonical_json_bytes_v1(pages_payload)
         spec = decode_canonical_json_bytes_v1(spec_payload)
         result, telemetry = _build_parsed(pages, spec, region_first=True)
-        cached = (canonical_json_bytes_v1(result), canonical_json_bytes_v1(telemetry))
-        _BUILD_CACHE[key] = cached
-        if len(_BUILD_CACHE) > _BUILD_CACHE_MAXSIZE:
-            _BUILD_CACHE.popitem(last=False)
+        result_payload = canonical_json_bytes_v1(result)
+        telemetry_payload = canonical_json_bytes_v1(telemetry)
+        entry_payload_bytes = (
+            len(pages_payload) + len(spec_payload) + len(result_payload) + len(telemetry_payload)
+        )
         _BUILD_CACHE_MISSES += 1
+        admitted = entry_payload_bytes <= _BUILD_CACHE_MAX_BYTES
+        if admitted:
+            while _BUILD_CACHE and (
+                len(_BUILD_CACHE) >= _BUILD_CACHE_MAXSIZE
+                or _BUILD_CACHE_BYTES + entry_payload_bytes > _BUILD_CACHE_MAX_BYTES
+            ):
+                _evicted_key, evicted = _BUILD_CACHE.popitem(last=False)
+                _BUILD_CACHE_BYTES -= evicted[2]
+                _BUILD_CACHE_EVICTIONS += 1
+            cached = (result_payload, telemetry_payload, entry_payload_bytes)
+            _BUILD_CACHE[key] = cached
+            _BUILD_CACHE_BYTES += entry_payload_bytes
+        else:
+            _BUILD_CACHE_BYPASSES += 1
         return (
-            cached[0],
-            cached[1],
-            False,
-            _BUILD_CACHE_HITS,
-            _BUILD_CACHE_MISSES,
-            len(_BUILD_CACHE),
+            result_payload,
+            telemetry_payload,
+            {
+                "admitted_this_call": admitted,
+                "bypassed_oversized": not admitted,
+                "entry_payload_bytes": entry_payload_bytes,
+                "entry_resident": admitted,
+                "evictions": _BUILD_CACHE_EVICTIONS,
+                "hit": False,
+                "hits": _BUILD_CACHE_HITS,
+                "misses": _BUILD_CACHE_MISSES,
+                "oversized_bypasses": _BUILD_CACHE_BYPASSES,
+                "retained_payload_bytes": _BUILD_CACHE_BYTES,
+                "size": len(_BUILD_CACHE),
+            },
         )
 
 
@@ -3803,14 +3883,7 @@ def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
     spec = _spec(family_spec)
     pages_payload = canonical_json_bytes_v1(pages)
     spec_payload = canonical_json_bytes_v1(spec)
-    (
-        result_payload,
-        telemetry_payload,
-        cache_hit,
-        cache_hits,
-        cache_misses,
-        cache_size,
-    ) = _cached_build_payload(
+    result_payload, telemetry_payload, cache = _cached_build_payload(
         pages_payload,
         spec_payload,
         _engine_trust_closure(),
@@ -3818,11 +3891,21 @@ def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
     telemetry = decode_canonical_json_bytes_v1(telemetry_payload)
     telemetry.update(
         {
-            "build_cache_hit": cache_hit,
-            "build_cache_hits": cache_hits,
+            "authoritative_replay_rebuilt": False,
+            "build_cache_admitted_this_call": cache["admitted_this_call"],
+            "build_cache_bypassed_authoritative_replay": False,
+            "build_cache_bypassed_oversized": cache["bypassed_oversized"],
+            "build_cache_entry_payload_bytes": cache["entry_payload_bytes"],
+            "build_cache_entry_resident": cache["entry_resident"],
+            "build_cache_evictions": cache["evictions"],
+            "build_cache_hit": cache["hit"],
+            "build_cache_hits": cache["hits"],
+            "build_cache_max_bytes": _BUILD_CACHE_MAX_BYTES,
             "build_cache_maxsize": _BUILD_CACHE_MAXSIZE,
-            "build_cache_misses": cache_misses,
-            "build_cache_size": cache_size,
+            "build_cache_misses": cache["misses"],
+            "build_cache_oversized_bypasses": cache["oversized_bypasses"],
+            "build_cache_retained_payload_bytes": cache["retained_payload_bytes"],
+            "build_cache_size": cache["size"],
         }
     )
     _LAST_BUILD_TELEMETRY.set(telemetry)
@@ -3848,15 +3931,19 @@ def _accounting_scoped_table_graph_last_telemetry_v1() -> dict[str, Any]:
 def _clear_accounting_scoped_table_graph_caches_v1() -> None:
     """Bounded test/benchmark reset; it changes no source or public result."""
 
+    global _BUILD_CACHE_BYTES, _BUILD_CACHE_BYPASSES, _BUILD_CACHE_EVICTIONS
     global _BUILD_CACHE_HITS, _BUILD_CACHE_MISSES
     with _BUILD_CACHE_LOCK:
         _BUILD_CACHE.clear()
+        _BUILD_CACHE_BYTES = 0
+        _BUILD_CACHE_BYPASSES = 0
+        _BUILD_CACHE_EVICTIONS = 0
         _BUILD_CACHE_HITS = 0
         _BUILD_CACHE_MISSES = 0
-    _accented_surface.cache_clear()
+    _accented_surface_cached.cache_clear()
     _accentless_surface_cached.cache_clear()
-    _semantic_prefix.cache_clear()
-    _qgrams.cache_clear()
+    _semantic_prefix_cached.cache_clear()
+    _qgrams_cached.cache_clear()
     _is_value_surfaces_cached.cache_clear()
     _LAST_BUILD_TELEMETRY.set(None)
 
@@ -3890,8 +3977,34 @@ def validate_accounting_scoped_table_graph_replay_v1(
         _spec(family_spec),
         region_first=True,
     )
-    telemetry["build_cache_hit"] = False
-    telemetry["authoritative_replay_rebuilt"] = True
+    with _BUILD_CACHE_LOCK:
+        cache_snapshot = {
+            "evictions": _BUILD_CACHE_EVICTIONS,
+            "hits": _BUILD_CACHE_HITS,
+            "misses": _BUILD_CACHE_MISSES,
+            "oversized_bypasses": _BUILD_CACHE_BYPASSES,
+            "retained_payload_bytes": _BUILD_CACHE_BYTES,
+            "size": len(_BUILD_CACHE),
+        }
+    telemetry.update(
+        {
+            "authoritative_replay_rebuilt": True,
+            "build_cache_admitted_this_call": False,
+            "build_cache_bypassed_authoritative_replay": True,
+            "build_cache_bypassed_oversized": False,
+            "build_cache_entry_payload_bytes": 0,
+            "build_cache_entry_resident": False,
+            "build_cache_evictions": cache_snapshot["evictions"],
+            "build_cache_hit": False,
+            "build_cache_hits": cache_snapshot["hits"],
+            "build_cache_max_bytes": _BUILD_CACHE_MAX_BYTES,
+            "build_cache_maxsize": _BUILD_CACHE_MAXSIZE,
+            "build_cache_misses": cache_snapshot["misses"],
+            "build_cache_oversized_bypasses": cache_snapshot["oversized_bypasses"],
+            "build_cache_retained_payload_bytes": cache_snapshot["retained_payload_bytes"],
+            "build_cache_size": cache_snapshot["size"],
+        }
+    )
     _LAST_BUILD_TELEMETRY.set(telemetry)
     if not same_typed_json_v1(value, rebuilt):
         raise _error("scoped-table graph does not replay exactly")
