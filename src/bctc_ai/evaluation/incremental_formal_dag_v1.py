@@ -17,8 +17,9 @@ bind the exact current page-set root and page denominator.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -26,7 +27,10 @@ from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 __all__ = [
     "FORMAT_VERSION",
+    "ATTEMPT_CLAIM_BOUNDARY",
+    "ATTEMPT_FORMAT_VERSION",
     "RECEIPT_CLAIM_BOUNDARY",
+    "AttemptKindV1",
     "CacheDecisionV1",
     "ContentRefKindV1",
     "CoverageKindV1",
@@ -39,9 +43,11 @@ __all__ = [
     "PlanModeV1",
     "PlannedStageV1",
     "StageOutcomeV1",
+    "StageAttemptObservationV1",
     "StagePinsV1",
     "StageReceiptV1",
     "TypedContentRefV1",
+    "build_stage_attempt_observation_v1",
     "build_stage_receipt_v1",
     "plan_incremental_formal_dag_v1",
     "stage_invalidation_closure_v1",
@@ -50,11 +56,19 @@ __all__ = [
 
 FORMAT_VERSION = "FAMILY_FIRST_INCREMENTAL_FORMAL_DAG_V1"
 _RECEIPT_FORMAT_VERSION = "FAMILY_FIRST_INCREMENTAL_FORMAL_STAGE_RECEIPT_V1"
+ATTEMPT_FORMAT_VERSION = "FAMILY_FIRST_INCREMENTAL_FORMAL_STAGE_ATTEMPT_V1"
 RECEIPT_CLAIM_BOUNDARY = (
     "CONTENT_BOOKKEEPING_ONLY_NON_AUTHORITATIVE_WITHOUT_CALLER_CURRENT_REFS_"
     "FROM_A_LIVE_AUTHENTICATED_STORE_AND_SEPARATELY_AUTHENTICATED_OUTPUT_BYTES"
 )
+ATTEMPT_CLAIM_BOUNDARY = (
+    "CONTENT_BOUND_STAGE_ATTEMPT_OBSERVATION_ONLY_NON_AUTHORITATIVE_WITHOUT_"
+    "CALLER_AUTHENTICATED_EXECUTION_EVIDENCE_AND_CURRENT_STAGE_KEY_REPLAY"
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_REASON_CODE = re.compile(r"^[A-Z][A-Z0-9_]{0,127}$")
+_RUNTIME_FAILURE_CLASS = "RUNTIME_BUDGET_BREACH"
+_RUNTIME_REASON_CODE = "DECLARED_RUNTIME_BUDGET_EXCEEDED"
 
 
 class IncrementalFormalDagV1Error(ValueError):
@@ -117,6 +131,11 @@ class CacheDecisionV1(StrEnum):
     RECOMPUTE = "RECOMPUTE"
     BLOCKED = "BLOCKED"
     SKIPPED = "SKIPPED"
+
+
+class AttemptKindV1(StrEnum):
+    STAGE_FAILURE = "STAGE_FAILURE"
+    RUNTIME_BUDGET_BREACH = "RUNTIME_BUDGET_BREACH"
 
 
 _STAGE_ORDER = (
@@ -248,6 +267,27 @@ class StageReceiptV1:
 
 
 @dataclass(frozen=True, slots=True)
+class StageAttemptObservationV1:
+    format_version: str
+    claim_boundary: str
+    family_id: str
+    document_id: str
+    page_count: int
+    stage: FormalStageV1
+    dependencies: tuple[DependencyRefV1, ...]
+    algorithm_revision_key: str
+    stage_key: str
+    attempt_ordinal: int
+    kind: AttemptKindV1
+    failure_class: str
+    reason_code: str
+    runtime_budget_ms: int | None
+    observed_runtime_ms: int | None
+    failure_signature: str
+    observation_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedStageV1:
     document_id: str
     stage: FormalStageV1
@@ -313,6 +353,71 @@ def _coverage_payload(value: PageCoverageBoundV1 | None) -> dict[str, Any] | Non
         "page_count": value.page_count,
         "covered_page_count": value.covered_page_count,
     }
+
+
+def _algorithm_revision_key(
+    stage: FormalStageV1,
+    dependencies: tuple[DependencyRefV1, ...],
+) -> str:
+    pins = tuple(item for item in dependencies if item.role.startswith("pin:"))
+    expected_kinds = {
+        "code": ContentRefKindV1.CODE,
+        "spec": ContentRefKindV1.SPEC,
+        "model": ContentRefKindV1.MODEL,
+        "prompt": ContentRefKindV1.PROMPT,
+    }
+    for item in pins:
+        parts = item.role.split(":", 2)
+        if (
+            len(parts) != 3
+            or parts[1] not in expected_kinds
+            or item.content_ref.kind is not expected_kinds[parts[1]]
+            or parts[2] != item.content_ref.logical_id
+        ):
+            raise _error("attempt algorithm pin dependency drifted")
+    if not any(item.role.startswith("pin:code:") for item in pins):
+        raise _error("attempt algorithm revision lacks an exact code pin")
+    material = {
+        "format_version": FORMAT_VERSION,
+        "stage": stage.value,
+        "pins": [_dependency_payload(item) for item in pins],
+    }
+    return f"ffifdv1:algorithm:{canonical_json_sha256_v1(material)}"
+
+
+def _failure_signature(value: StageAttemptObservationV1) -> str:
+    material = {
+        "format_version": value.format_version,
+        "family_id": value.family_id,
+        "stage": value.stage.value,
+        "algorithm_revision_key": value.algorithm_revision_key,
+        "kind": value.kind.value,
+        "failure_class": value.failure_class,
+        "reason_code": value.reason_code,
+    }
+    return f"ffifdv1:failure:{canonical_json_sha256_v1(material)}"
+
+
+def _attempt_observation_id(value: StageAttemptObservationV1) -> str:
+    material = {
+        "format_version": value.format_version,
+        "claim_boundary": value.claim_boundary,
+        "family_id": value.family_id,
+        "document_id": value.document_id,
+        "page_count": value.page_count,
+        "stage": value.stage.value,
+        "dependencies": [_dependency_payload(item) for item in value.dependencies],
+        "algorithm_revision_key": value.algorithm_revision_key,
+        "stage_key": value.stage_key,
+        "attempt_ordinal": value.attempt_ordinal,
+        "kind": value.kind.value,
+        "failure_class": value.failure_class,
+        "reason_code": value.reason_code,
+        "runtime_budget_ms": value.runtime_budget_ms,
+        "observed_runtime_ms": value.observed_runtime_ms,
+        "failure_signature": value.failure_signature,
+    }
+    return f"ffifdv1:attempt:{canonical_json_sha256_v1(material)}"
 
 
 def _validate_ref(
@@ -534,6 +639,137 @@ def _validate_receipt(value: Any) -> StageReceiptV1:
     if value.receipt_id != _receipt_id(value):
         raise _error("cached receipt self-hash drifted")
     return value
+
+
+def _validate_family_id(value: Any) -> str:
+    if type(value) is not str or _REASON_CODE.fullmatch(value) is None:
+        raise _error("attempt family ID must be one exact generic identifier")
+    return value
+
+
+def _validate_attempt_observation(value: Any) -> StageAttemptObservationV1:
+    if type(value) is not StageAttemptObservationV1:
+        raise _error("attempt history item must be one exact StageAttemptObservationV1")
+    if (
+        value.format_version != ATTEMPT_FORMAT_VERSION
+        or value.claim_boundary != ATTEMPT_CLAIM_BOUNDARY
+        or type(value.document_id) is not str
+        or not value.document_id
+        or value.document_id != value.document_id.strip()
+        or type(value.page_count) is not int
+        or value.page_count <= 0
+        or type(value.stage) is not FormalStageV1
+        or type(value.attempt_ordinal) is not int
+        or value.attempt_ordinal <= 0
+        or type(value.kind) is not AttemptKindV1
+        or type(value.failure_class) is not str
+        or _REASON_CODE.fullmatch(value.failure_class) is None
+        or type(value.reason_code) is not str
+        or _REASON_CODE.fullmatch(value.reason_code) is None
+    ):
+        raise _error("attempt observation identity or failure code drifted")
+    _validate_family_id(value.family_id)
+    _validate_dependencies(value.dependencies, "attempt observation dependencies")
+    if value.algorithm_revision_key != _algorithm_revision_key(value.stage, value.dependencies):
+        raise _error("attempt observation algorithm revision key drifted")
+    if value.stage_key != _stage_key(
+        value.document_id,
+        value.page_count,
+        value.stage,
+        value.dependencies,
+    ):
+        raise _error("attempt observation stage key drifted")
+    if value.kind is AttemptKindV1.STAGE_FAILURE:
+        if value.runtime_budget_ms is not None or value.observed_runtime_ms is not None:
+            raise _error("ordinary stage failure must not carry runtime-budget fields")
+    elif (
+        value.failure_class != _RUNTIME_FAILURE_CLASS
+        or value.reason_code != _RUNTIME_REASON_CODE
+        or type(value.runtime_budget_ms) is not int
+        or value.runtime_budget_ms <= 0
+        or type(value.observed_runtime_ms) is not int
+        or value.observed_runtime_ms <= value.runtime_budget_ms
+    ):
+        raise _error("runtime-budget attempt observation drifted")
+    if value.failure_signature != _failure_signature(value):
+        raise _error("attempt observation failure signature drifted")
+    if value.observation_id != _attempt_observation_id(value):
+        raise _error("attempt observation content identity drifted")
+    return value
+
+
+def build_stage_attempt_observation_v1(
+    expected_stage: PlannedStageV1,
+    *,
+    family_id: str,
+    page_count: int,
+    attempt_ordinal: int,
+    kind: AttemptKindV1,
+    failure_class: str | None = None,
+    reason_code: str | None = None,
+    runtime_budget_ms: int | None = None,
+    observed_runtime_ms: int | None = None,
+) -> StageAttemptObservationV1:
+    """Record one failed runnable attempt without granting execution authority."""
+
+    if (
+        type(expected_stage) is not PlannedStageV1
+        or expected_stage.decision is not CacheDecisionV1.RECOMPUTE
+        or expected_stage.expected_stage_key is None
+    ):
+        raise _error("an attempt can only be recorded for one runnable planned stage")
+    _validate_family_id(family_id)
+    if type(page_count) is not int or page_count <= 0:
+        raise _error("attempt page denominator drifted")
+    if type(attempt_ordinal) is not int or attempt_ordinal <= 0:
+        raise _error("attempt ordinal must be one exact positive integer")
+    if type(kind) is not AttemptKindV1:
+        raise _error("attempt kind must be one exact AttemptKindV1")
+    if (
+        _stage_key(
+            expected_stage.document_id,
+            page_count,
+            expected_stage.stage,
+            expected_stage.expected_dependencies,
+        )
+        != expected_stage.expected_stage_key
+    ):
+        raise _error("attempt page denominator does not bind the planned stage key")
+    if kind is AttemptKindV1.STAGE_FAILURE:
+        if type(failure_class) is not str or type(reason_code) is not str:
+            raise _error("ordinary stage failure requires exact class and reason codes")
+        selected_failure_class = failure_class
+        selected_reason_code = reason_code
+    else:
+        if failure_class is not None or reason_code is not None:
+            raise _error("runtime-budget observations use fixed failure codes")
+        selected_failure_class = _RUNTIME_FAILURE_CLASS
+        selected_reason_code = _RUNTIME_REASON_CODE
+    provisional = StageAttemptObservationV1(
+        format_version=ATTEMPT_FORMAT_VERSION,
+        claim_boundary=ATTEMPT_CLAIM_BOUNDARY,
+        family_id=family_id,
+        document_id=expected_stage.document_id,
+        page_count=page_count,
+        stage=expected_stage.stage,
+        dependencies=expected_stage.expected_dependencies,
+        algorithm_revision_key=_algorithm_revision_key(
+            expected_stage.stage,
+            expected_stage.expected_dependencies,
+        ),
+        stage_key=expected_stage.expected_stage_key,
+        attempt_ordinal=attempt_ordinal,
+        kind=kind,
+        failure_class=selected_failure_class,
+        reason_code=selected_reason_code,
+        runtime_budget_ms=runtime_budget_ms,
+        observed_runtime_ms=observed_runtime_ms,
+        failure_signature="",
+        observation_id="",
+    )
+    signed = replace(provisional, failure_signature=_failure_signature(provisional))
+    result = replace(signed, observation_id=_attempt_observation_id(signed))
+    return _validate_attempt_observation(result)
 
 
 def build_stage_receipt_v1(
@@ -810,6 +1046,106 @@ def _blocked(
     )
 
 
+def _algorithm_review_decision(
+    node: _ExpectedStageNodeV1,
+    observations: tuple[StageAttemptObservationV1, ...],
+) -> PlannedStageV1 | None:
+    failures = tuple(item for item in observations if item.kind is AttemptKindV1.STAGE_FAILURE)
+    repeated_signatures = tuple(
+        sorted(
+            signature
+            for signature, count in Counter(item.failure_signature for item in failures).items()
+            if count >= 2
+        )
+    )
+    if repeated_signatures:
+        return PlannedStageV1(
+            node.document_id,
+            node.stage,
+            CacheDecisionV1.BLOCKED,
+            "ALGORITHM_REVIEW_REQUIRED_REPEAT_FAILURE",
+            "the same generic failure signature failed at least twice under the "
+            f"current algorithm revision: {repeated_signatures[0]}",
+            node.stage_key,
+            node.dependencies,
+            None,
+        )
+    runtime_breaches = sum(
+        item.kind is AttemptKindV1.RUNTIME_BUDGET_BREACH for item in observations
+    )
+    if runtime_breaches >= 2:
+        return PlannedStageV1(
+            node.document_id,
+            node.stage,
+            CacheDecisionV1.BLOCKED,
+            "ALGORITHM_REVIEW_REQUIRED_RUNTIME_BUDGET",
+            "the current algorithm revision exceeded a predeclared stage runtime "
+            "budget at least twice",
+            node.stage_key,
+            node.dependencies,
+            None,
+        )
+    if len(failures) >= 3:
+        return PlannedStageV1(
+            node.document_id,
+            node.stage,
+            CacheDecisionV1.BLOCKED,
+            "ALGORITHM_REVIEW_REQUIRED_FAILURE_ATTEMPT_LIMIT",
+            "three failed attempts under one algorithm revision require review even "
+            "when caller-supplied failure codes differ",
+            node.stage_key,
+            node.dependencies,
+            None,
+        )
+    return None
+
+
+def _targeted_attempt_recompute(
+    node: _ExpectedStageNodeV1,
+    observations: tuple[StageAttemptObservationV1, ...],
+    candidate: PlannedStageV1,
+) -> PlannedStageV1:
+    if all(item.kind is AttemptKindV1.RUNTIME_BUDGET_BREACH for item in observations):
+        reason = "TARGETED_RECOMPUTE_AFTER_RUNTIME_BUDGET_BREACH"
+        diagnostic = (
+            "one runtime-budget breach requires a targeted/profiled rerun; "
+            "a cached result cannot hide the current-stage observation"
+        )
+    else:
+        reason = "TARGETED_RECOMPUTE_AFTER_STAGE_FAILURE"
+        diagnostic = (
+            "recorded failure evidence requires a targeted falsifier rerun; "
+            "full-corpus retry and cache reuse are not permitted for this node"
+        )
+    return PlannedStageV1(
+        node.document_id,
+        node.stage,
+        CacheDecisionV1.RECOMPUTE,
+        reason,
+        diagnostic,
+        node.stage_key,
+        node.dependencies,
+        candidate.cached_receipt_id,
+    )
+
+
+def _targeted_revision_recompute(
+    node: _ExpectedStageNodeV1,
+    candidate: PlannedStageV1,
+) -> PlannedStageV1:
+    return PlannedStageV1(
+        node.document_id,
+        node.stage,
+        CacheDecisionV1.RECOMPUTE,
+        "TARGETED_RECOMPUTE_AFTER_STAGE_KEY_REVISION",
+        "a revised stage key clears the prior review block but must run one targeted "
+        "falsifier before cache reuse",
+        node.stage_key,
+        node.dependencies,
+        candidate.cached_receipt_id,
+    )
+
+
 def plan_incremental_formal_dag_v1(
     *,
     mode: PlanModeV1,
@@ -817,6 +1153,8 @@ def plan_incremental_formal_dag_v1(
     stage_pins: Mapping[FormalStageV1, StagePinsV1],
     cached_receipts: tuple[StageReceiptV1, ...] = (),
     dev_document_ids: tuple[str, ...] = (),
+    family_id: str = "UNSPECIFIED_FAMILY",
+    attempt_history: tuple[StageAttemptObservationV1, ...] = (),
 ) -> IncrementalFormalPlanV1:
     """Plan the smallest new work frontier without executing or mutating it."""
 
@@ -838,6 +1176,7 @@ def plan_incremental_formal_dag_v1(
         raise _error("stage pins must cover the exact formal DAG")
     for stage in _STAGE_ORDER:
         _validate_pins(stage, stage_pins[stage])
+    _validate_family_id(family_id)
     if type(dev_document_ids) is not tuple or any(
         type(item) is not str for item in dev_document_ids
     ):
@@ -873,11 +1212,45 @@ def plan_incremental_formal_dag_v1(
         cache_keys.add(content_key)
         cache.setdefault((receipt.document_id, receipt.stage), []).append(receipt)
 
+    if type(attempt_history) is not tuple:
+        raise _error("attempt history must be one exact tuple")
+    attempts: dict[tuple[str, str, FormalStageV1, str], list[StageAttemptObservationV1]] = {}
+    attempts_by_stage: dict[tuple[str, str, FormalStageV1], list[StageAttemptObservationV1]] = {}
+    attempts_by_revision: dict[tuple[str, FormalStageV1, str], list[StageAttemptObservationV1]] = {}
+    observation_ids: set[str] = set()
+    attempt_identities: set[tuple[str, str, FormalStageV1, str, int]] = set()
+    for raw in attempt_history:
+        observation = _validate_attempt_observation(raw)
+        if observation.family_id != family_id:
+            raise _error("attempt history family does not match the caller-current family")
+        if observation.document_id not in id_set:
+            raise _error(f"attempt history belongs to unknown document {observation.document_id}")
+        identity = (
+            observation.family_id,
+            observation.document_id,
+            observation.stage,
+            observation.stage_key,
+            observation.attempt_ordinal,
+        )
+        if observation.observation_id in observation_ids or identity in attempt_identities:
+            raise _error("attempt history repeats one observation or stage attempt ordinal")
+        observation_ids.add(observation.observation_id)
+        attempt_identities.add(identity)
+        attempts.setdefault(identity[:-1], []).append(observation)
+        attempts_by_stage.setdefault(identity[:3], []).append(observation)
+        revision_identity = (
+            observation.family_id,
+            observation.stage,
+            observation.algorithm_revision_key,
+        )
+        attempts_by_revision.setdefault(revision_identity, []).append(observation)
+
     by_id = {item.document_id: item for item in current_documents}
     decisions: list[PlannedStageV1] = []
     for document_id in selected_ids:
         document = by_id[document_id]
         accepted: dict[FormalStageV1, StageReceiptV1] = {}
+        algorithm_review_blocked: set[FormalStageV1] = set()
         graph_outcome: StageOutcomeV1 | None = None
         for stage in _STAGE_ORDER:
             if stage is FormalStageV1.SEAL and mode is not PlanModeV1.RELEASE_SEAL:
@@ -895,14 +1268,25 @@ def plan_incremental_formal_dag_v1(
                 and graph_outcome is not StageOutcomeV1.GRAPH_RESCUE_REQUIRED
             ):
                 if FormalStageV1.GRAPH not in accepted:
-                    decisions.append(
-                        _blocked(
-                            document_id,
-                            stage,
-                            "UPSTREAM_GRAPH_OUTCOME_UNKNOWN",
-                            "Gemma is conditional and waits for the deterministic graph outcome",
+                    if FormalStageV1.GRAPH in algorithm_review_blocked:
+                        decisions.append(
+                            _blocked(
+                                document_id,
+                                stage,
+                                "ALGORITHM_REVIEW_REQUIRED_UPSTREAM_BLOCKED",
+                                "Gemma cannot bypass an algorithm-review block on GRAPH",
+                            )
                         )
-                    )
+                        algorithm_review_blocked.add(stage)
+                    else:
+                        decisions.append(
+                            _blocked(
+                                document_id,
+                                stage,
+                                "UPSTREAM_GRAPH_OUTCOME_UNKNOWN",
+                                "Gemma is conditional and waits for the deterministic graph outcome",
+                            )
+                        )
                 else:
                     decisions.append(
                         _skipped(
@@ -929,14 +1313,30 @@ def plan_incremental_formal_dag_v1(
             parents = _parents_for_stage(stage, graph_outcome)
             missing = tuple(parent for parent in parents if parent not in accepted)
             if missing:
-                decisions.append(
-                    _blocked(
-                        document_id,
-                        stage,
-                        "UPSTREAM_RECOMPUTE_REQUIRED",
-                        "waiting for exact outputs: " + ", ".join(item.value for item in missing),
-                    )
+                review_missing = tuple(
+                    parent for parent in missing if parent in algorithm_review_blocked
                 )
+                if review_missing:
+                    decisions.append(
+                        _blocked(
+                            document_id,
+                            stage,
+                            "ALGORITHM_REVIEW_REQUIRED_UPSTREAM_BLOCKED",
+                            "waiting for algorithm review at: "
+                            + ", ".join(item.value for item in review_missing),
+                        )
+                    )
+                    algorithm_review_blocked.add(stage)
+                else:
+                    decisions.append(
+                        _blocked(
+                            document_id,
+                            stage,
+                            "UPSTREAM_RECOMPUTE_REQUIRED",
+                            "waiting for exact outputs: "
+                            + ", ".join(item.value for item in missing),
+                        )
+                    )
                 continue
             if stage is FormalStageV1.SEAL:
                 mapping = accepted[FormalStageV1.MAPPING]
@@ -957,11 +1357,28 @@ def plan_incremental_formal_dag_v1(
                 accepted,
                 graph_outcome,
             )
+            node_attempts = tuple(attempts.get((family_id, document_id, stage, node.stage_key), ()))
+            stage_attempts = tuple(attempts_by_stage.get((family_id, document_id, stage), ()))
+            revision_key = _algorithm_revision_key(stage, node.dependencies)
+            revision_attempts = tuple(
+                attempts_by_revision.get((family_id, stage, revision_key), ())
+            )
+            review = _algorithm_review_decision(node, revision_attempts)
+            if review is not None:
+                decisions.append(review)
+                algorithm_review_blocked.add(stage)
+                continue
             decision, hit = _candidate_decision(
                 node,
                 document,
                 tuple(cache.get((document_id, stage), ())),
             )
+            if node_attempts:
+                decision = _targeted_attempt_recompute(node, node_attempts, decision)
+                hit = None
+            elif stage_attempts:
+                decision = _targeted_revision_recompute(node, decision)
+                hit = None
             decisions.append(decision)
             if hit is not None:
                 accepted[stage] = hit

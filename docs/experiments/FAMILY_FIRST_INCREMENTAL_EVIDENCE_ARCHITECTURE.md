@@ -116,6 +116,41 @@ and p95 80.990 ms; 139 documents retained all six active hits and the only
 runnable node was that document's `SOURCE` stage. These figures measure planner
 overhead only, not OCR, graph, model, or artifact I/O.
 
+## Repeat/runtime circuit breaker
+
+The planner accepts an optional tuple of exact `StageAttemptObservationV1`
+records; the default empty tuple preserves the prior API and cache behavior.
+Each record content-binds family, document/page denominator, stage dependencies,
+the document-specific current `stage_key`, attempt ordinal, failure class/reason
+or predeclared runtime budget, and its own identity. It also carries a separate
+`algorithm_revision_key` derived only from the stage's exact code, spec, model
+and prompt pins. The generic failure signature uses family, stage, algorithm
+revision, attempt kind, failure class and reason; it deliberately contains no
+bank, page number, filing ordinal or expected accounting value.
+
+These observations remain bookkeeping, not execution authority: the caller
+must authenticate the attempt evidence before passing it to the planner.
+Within one algorithm revision the first failure forces only that document-stage
+to a targeted recompute. A second identical signature across the same or a
+different document blocks every node for that family/stage/revision with
+`ALGORITHM_REVIEW_REQUIRED_REPEAT_FAILURE`; two predeclared runtime-budget
+breaches similarly yield `ALGORITHM_REVIEW_REQUIRED_RUNTIME_BUDGET`. Three
+ordinary failures cannot evade review by changing caller metadata and yield
+`ALGORITHM_REVIEW_REQUIRED_FAILURE_ATTEMPT_LIMIT`. A code/spec/model/prompt
+revision clears the old revision's block, but a document with prior stage
+history must execute one targeted falsifier under the new key even when an exact
+new-key receipt is present. Algorithm-review blocks propagate through dependent
+nodes, and `RELEASE_SEAL` cannot treat them as cache hits or release authority.
+
+Synthetic planner-only measurements on the 2026-08-24 development container
+(50 samples, 140 documents, 980 receipts) were: empty history median 97.733 ms,
+p95 99.124 ms; one targeted graph failure median 98.039 ms, p95 101.728 ms; and
+a cross-document repeated-signature block median 81.188 ms, p95 82.295 ms. The
+first-failure history gate therefore added about 0.306 ms at the median in this
+run; the blocked plan is faster because it does not construct downstream stage
+keys. No OCR, PDF, graph, model or authenticated corpus replay occurs in this
+planner benchmark.
+
 Integration order is therefore: wire existing authenticated document-store
 projections into `CurrentDocumentRefsV1`; pin each stage's actual implementation
 trust closure and declarative spec; store authenticated output refs beside the

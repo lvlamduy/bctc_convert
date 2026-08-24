@@ -6,23 +6,30 @@ from hashlib import sha256
 import pytest
 
 from bctc_ai.evaluation.incremental_formal_dag_v1 import (
+    ATTEMPT_CLAIM_BOUNDARY,
     RECEIPT_CLAIM_BOUNDARY,
+    AttemptKindV1,
     CacheDecisionV1,
     ContentRefKindV1,
     CoverageKindV1,
     CurrentDocumentRefsV1,
+    DependencyRefV1,
     FormalStageV1,
     IncrementalFormalDagV1Error,
     PageCoverageBoundV1,
     PlanModeV1,
     PlannedStageV1,
+    StageAttemptObservationV1,
     StageOutcomeV1,
     StagePinsV1,
+    StageReceiptV1,
     TypedContentRefV1,
+    build_stage_attempt_observation_v1,
     build_stage_receipt_v1,
     plan_incremental_formal_dag_v1,
     stage_invalidation_closure_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
 def _digest(value: str) -> str:
@@ -53,6 +60,7 @@ def _pins(
     numeric_code: str = "numeric-v1",
     gemma_model: str = "gemma-model-v1",
     gemma_prompt: str = "gemma-prompt-v1",
+    graph_spec: str = "graph-spec-v1",
 ) -> dict[FormalStageV1, StagePinsV1]:
     def code(stage: FormalStageV1, revision: str | None = None) -> TypedContentRefV1:
         return _ref(ContentRefKindV1.CODE, f"code/{stage.value.lower()}", revision or "v1")
@@ -69,7 +77,7 @@ def _pins(
         ),
         FormalStageV1.GRAPH: StagePinsV1(
             (code(FormalStageV1.GRAPH),),
-            (spec(FormalStageV1.GRAPH, "graph-spec-v1"),),
+            (spec(FormalStageV1.GRAPH, graph_spec),),
         ),
         FormalStageV1.GEMMA_RESCUE: StagePinsV1(
             (code(FormalStageV1.GEMMA_RESCUE),),
@@ -204,6 +212,133 @@ def _complete_cache(
             )
         receipts = (*receipts, *additions)
     raise AssertionError("synthetic formal DAG did not converge")
+
+
+_FAMILY_ID = "TEST_ACCOUNTING_FAMILY"
+
+
+def _attempt(
+    planned: PlannedStageV1,
+    document: CurrentDocumentRefsV1,
+    ordinal: int,
+    *,
+    kind: AttemptKindV1 = AttemptKindV1.STAGE_FAILURE,
+    failure_class: str | None = "TABLE_GEOMETRY_FAILURE",
+    reason_code: str | None = "ROW_AXIS_DID_NOT_CLOSE",
+    runtime_budget_ms: int | None = None,
+    observed_runtime_ms: int | None = None,
+) -> StageAttemptObservationV1:
+    if kind is AttemptKindV1.RUNTIME_BUDGET_BREACH:
+        failure_class = None
+        reason_code = None
+    return build_stage_attempt_observation_v1(
+        planned,
+        family_id=_FAMILY_ID,
+        page_count=document.page_count,
+        attempt_ordinal=ordinal,
+        kind=kind,
+        failure_class=failure_class,
+        reason_code=reason_code,
+        runtime_budget_ms=runtime_budget_ms,
+        observed_runtime_ms=observed_runtime_ms,
+    )
+
+
+def _dependency_payload(value: DependencyRefV1) -> dict:
+    ref = value.content_ref
+    return {
+        "role": value.role,
+        "content_ref": {
+            "kind": ref.kind.value,
+            "logical_id": ref.logical_id,
+            "sha256": ref.sha256,
+            "size_bytes": ref.size_bytes,
+        },
+    }
+
+
+def _coherently_rehash_attempt(value: StageAttemptObservationV1) -> StageAttemptObservationV1:
+    signature = "ffifdv1:failure:" + canonical_json_sha256_v1(
+        {
+            "format_version": value.format_version,
+            "family_id": value.family_id,
+            "stage": value.stage.value,
+            "algorithm_revision_key": value.algorithm_revision_key,
+            "kind": value.kind.value,
+            "failure_class": value.failure_class,
+            "reason_code": value.reason_code,
+        }
+    )
+    signed = replace(value, failure_signature=signature, observation_id="")
+    identity = "ffifdv1:attempt:" + canonical_json_sha256_v1(
+        {
+            "format_version": signed.format_version,
+            "claim_boundary": signed.claim_boundary,
+            "family_id": signed.family_id,
+            "document_id": signed.document_id,
+            "page_count": signed.page_count,
+            "stage": signed.stage.value,
+            "dependencies": [_dependency_payload(item) for item in signed.dependencies],
+            "algorithm_revision_key": signed.algorithm_revision_key,
+            "stage_key": signed.stage_key,
+            "attempt_ordinal": signed.attempt_ordinal,
+            "kind": signed.kind.value,
+            "failure_class": signed.failure_class,
+            "reason_code": signed.reason_code,
+            "runtime_budget_ms": signed.runtime_budget_ms,
+            "observed_runtime_ms": signed.observed_runtime_ms,
+            "failure_signature": signed.failure_signature,
+        }
+    )
+    return replace(signed, observation_id=identity)
+
+
+def _changed_graph_frontier():
+    documents = _documents()
+    baseline_pins = _pins()
+    receipts = _complete_cache(documents, baseline_pins)
+    current_pins = _pins(graph_spec="graph-spec-v2")
+    plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=current_pins,
+        cached_receipts=receipts,
+        dev_document_ids=(documents[0].document_id,),
+        family_id=_FAMILY_ID,
+    )
+    graph = _decision(plan.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert graph.decision is CacheDecisionV1.RECOMPUTE
+    return documents, current_pins, receipts, graph
+
+
+def _current_graph_frontier(
+    documents: tuple[CurrentDocumentRefsV1, ...],
+    pins: dict[FormalStageV1, StagePinsV1],
+    receipts: tuple[StageReceiptV1, ...],
+    document_id: str,
+) -> PlannedStageV1:
+    retained = tuple(
+        item
+        for item in receipts
+        if item.document_id != document_id
+        or item.stage
+        in {
+            FormalStageV1.SOURCE,
+            FormalStageV1.NORMALIZED_SPANS,
+            FormalStageV1.RETRIEVAL,
+        }
+    )
+    plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=retained,
+        dev_document_ids=(document_id,),
+        family_id=_FAMILY_ID,
+    )
+    graph = _decision(plan.decisions, document_id, FormalStageV1.GRAPH)
+    assert graph.decision is CacheDecisionV1.RECOMPUTE
+    return graph
 
 
 def test_numeric_only_change_keeps_retrieval_and_graph_hot() -> None:
@@ -615,3 +750,332 @@ def test_synthetic_140_document_hot_plan_and_one_document_delta() -> None:
         ("doc-085", FormalStageV1.SOURCE)
     ]
     assert len(delta.cache_hits) == 6 * 139
+
+
+def test_first_failure_forces_targeted_recompute_and_second_signature_blocks() -> None:
+    documents, pins, receipts, graph = _changed_graph_frontier()
+    first = _attempt(graph, documents[0], 1)
+
+    first_plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.CORPUS_INCREMENTAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=(first,),
+    )
+    first_graph = _decision(first_plan.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert first_graph.decision is CacheDecisionV1.RECOMPUTE
+    assert first_graph.reason_code == "TARGETED_RECOMPUTE_AFTER_STAGE_FAILURE"
+    assert [(item.document_id, item.stage) for item in first_plan.runnable] == [
+        (documents[0].document_id, FormalStageV1.GRAPH)
+    ]
+
+    second = _attempt(first_graph, documents[0], 2)
+    blocked = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.CORPUS_INCREMENTAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=(first, second),
+    )
+    blocked_graph = _decision(blocked.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert blocked_graph.decision is CacheDecisionV1.BLOCKED
+    assert blocked_graph.reason_code == "ALGORITHM_REVIEW_REQUIRED_REPEAT_FAILURE"
+    assert not blocked.runnable
+
+
+def test_same_generic_failure_across_documents_blocks_the_algorithm_revision() -> None:
+    documents = _documents(2)
+    pins = _pins()
+    receipts = _complete_cache(documents, pins)
+    graph_a = _current_graph_frontier(documents, pins, receipts, "doc-001")
+    graph_b = _current_graph_frontier(documents, pins, receipts, "doc-002")
+    failure_a = _attempt(graph_a, documents[0], 1)
+    failure_b = _attempt(graph_b, documents[1], 1)
+
+    assert failure_a.stage_key != failure_b.stage_key
+    assert failure_a.algorithm_revision_key == failure_b.algorithm_revision_key
+    assert failure_a.failure_signature == failure_b.failure_signature
+
+    blocked = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.CORPUS_INCREMENTAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=(failure_a, failure_b),
+    )
+
+    for document in documents:
+        graph = _decision(blocked.decisions, document.document_id, FormalStageV1.GRAPH)
+        assert graph.decision is CacheDecisionV1.BLOCKED
+        assert graph.reason_code == "ALGORITHM_REVIEW_REQUIRED_REPEAT_FAILURE"
+    assert not blocked.runnable
+
+
+def test_third_failure_cannot_bypass_review_by_changing_failure_codes() -> None:
+    documents, pins, receipts, graph = _changed_graph_frontier()
+    attempts = tuple(
+        _attempt(
+            graph,
+            documents[0],
+            ordinal,
+            failure_class=f"TABLE_GEOMETRY_FAILURE_{ordinal}",
+            reason_code=f"DIFFERENT_METADATA_{ordinal}",
+        )
+        for ordinal in range(1, 4)
+    )
+
+    plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        dev_document_ids=(documents[0].document_id,),
+        family_id=_FAMILY_ID,
+        attempt_history=attempts,
+    )
+
+    decision = _decision(plan.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert decision.decision is CacheDecisionV1.BLOCKED
+    assert decision.reason_code == "ALGORITHM_REVIEW_REQUIRED_FAILURE_ATTEMPT_LIMIT"
+
+
+def test_stage_key_revision_unblocks_only_targeted_recompute_not_cache_hit() -> None:
+    documents, pins_v2, receipts, graph = _changed_graph_frontier()
+    attempts = (_attempt(graph, documents[0], 1), _attempt(graph, documents[0], 2))
+    pins_v3 = _pins(graph_spec="graph-spec-v3")
+
+    revised_frontier = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=pins_v3,
+        cached_receipts=receipts,
+        dev_document_ids=(documents[0].document_id,),
+        family_id=_FAMILY_ID,
+        attempt_history=attempts,
+    )
+    revised_graph = _decision(
+        revised_frontier.decisions, documents[0].document_id, FormalStageV1.GRAPH
+    )
+    exact_revised_receipt = build_stage_receipt_v1(
+        revised_graph,
+        page_count=documents[0].page_count,
+        output_sha256=_digest("revised-graph-output"),
+        output_size_bytes=37,
+        outcome=StageOutcomeV1.GRAPH_RESOLVED,
+    )
+    revised = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=pins_v3,
+        cached_receipts=(*receipts, exact_revised_receipt),
+        dev_document_ids=(documents[0].document_id,),
+        family_id=_FAMILY_ID,
+        attempt_history=attempts,
+    )
+
+    decision = _decision(revised.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert pins_v2 != pins_v3
+    assert decision.expected_stage_key != graph.expected_stage_key
+    assert decision.decision is CacheDecisionV1.RECOMPUTE
+    assert decision.reason_code == "TARGETED_RECOMPUTE_AFTER_STAGE_KEY_REVISION"
+    assert decision.cached_receipt_id == exact_revised_receipt.receipt_id
+    assert decision not in revised.cache_hits
+
+
+def test_one_runtime_budget_breach_recomputes_and_two_block() -> None:
+    documents = _documents(2)
+    pins = _pins()
+    receipts = _complete_cache(documents, pins)
+    graph = _current_graph_frontier(documents, pins, receipts, "doc-001")
+    first = _attempt(
+        graph,
+        documents[0],
+        1,
+        kind=AttemptKindV1.RUNTIME_BUDGET_BREACH,
+        runtime_budget_ms=1_000,
+        observed_runtime_ms=1_001,
+    )
+    once = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        dev_document_ids=("doc-001",),
+        family_id=_FAMILY_ID,
+        attempt_history=(first,),
+    )
+    once_graph = _decision(once.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    assert once_graph.decision is CacheDecisionV1.RECOMPUTE
+    assert once_graph.reason_code == "TARGETED_RECOMPUTE_AFTER_RUNTIME_BUDGET_BREACH"
+
+    graph_b = _current_graph_frontier(documents, pins, receipts, "doc-002")
+    second = _attempt(
+        graph_b,
+        documents[1],
+        1,
+        kind=AttemptKindV1.RUNTIME_BUDGET_BREACH,
+        runtime_budget_ms=1_000,
+        observed_runtime_ms=1_250,
+    )
+    twice = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.CORPUS_INCREMENTAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=(first, second),
+    )
+    for document in documents:
+        twice_graph = _decision(twice.decisions, document.document_id, FormalStageV1.GRAPH)
+        assert twice_graph.decision is CacheDecisionV1.BLOCKED
+        assert twice_graph.reason_code == "ALGORITHM_REVIEW_REQUIRED_RUNTIME_BUDGET"
+
+
+def test_attempt_history_changes_only_its_exact_document_stage_key() -> None:
+    documents = _documents(2)
+    pins = _pins()
+    receipts = _complete_cache(documents, pins)
+    graph = _current_graph_frontier(documents, pins, receipts, "doc-001")
+    first = _attempt(graph, documents[0], 1)
+
+    plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.CORPUS_INCREMENTAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=(first,),
+    )
+
+    assert _decision(plan.decisions, "doc-001", FormalStageV1.SOURCE).decision is (
+        CacheDecisionV1.HIT
+    )
+    assert _decision(plan.decisions, "doc-001", FormalStageV1.GRAPH).decision is (
+        CacheDecisionV1.RECOMPUTE
+    )
+    for stage in (
+        FormalStageV1.SOURCE,
+        FormalStageV1.NORMALIZED_SPANS,
+        FormalStageV1.RETRIEVAL,
+        FormalStageV1.GRAPH,
+        FormalStageV1.NUMERIC_PIXEL,
+        FormalStageV1.MAPPING,
+    ):
+        assert _decision(plan.decisions, "doc-002", stage).decision is CacheDecisionV1.HIT
+
+
+def test_attempt_history_exact_types_identity_family_and_document_fail_closed() -> None:
+    documents, pins, receipts, graph = _changed_graph_frontier()
+    attempt = _attempt(graph, documents[0], 1)
+    assert attempt.claim_boundary == ATTEMPT_CLAIM_BOUNDARY
+
+    malformed = (
+        replace(attempt, attempt_ordinal=True),
+        replace(attempt, page_count=True),
+        replace(attempt, observation_id="ffifdv1:attempt:" + "0" * 64),
+        replace(attempt, failure_signature="ffifdv1:failure:" + "0" * 64),
+        replace(attempt, stage="UNKNOWN"),
+    )
+    for item in malformed:
+        with pytest.raises(IncrementalFormalDagV1Error):
+            plan_incremental_formal_dag_v1(
+                mode=PlanModeV1.DEV_FAST,
+                current_documents=documents,
+                stage_pins=pins,
+                cached_receipts=receipts,
+                dev_document_ids=(documents[0].document_id,),
+                family_id=_FAMILY_ID,
+                attempt_history=(item,),
+            )
+    with pytest.raises(IncrementalFormalDagV1Error, match="exact tuple"):
+        plan_incremental_formal_dag_v1(
+            mode=PlanModeV1.DEV_FAST,
+            current_documents=documents,
+            stage_pins=pins,
+            cached_receipts=receipts,
+            dev_document_ids=(documents[0].document_id,),
+            family_id=_FAMILY_ID,
+            attempt_history=[attempt],
+        )
+    with pytest.raises(IncrementalFormalDagV1Error, match="repeats"):
+        plan_incremental_formal_dag_v1(
+            mode=PlanModeV1.DEV_FAST,
+            current_documents=documents,
+            stage_pins=pins,
+            cached_receipts=receipts,
+            dev_document_ids=(documents[0].document_id,),
+            family_id=_FAMILY_ID,
+            attempt_history=(attempt, attempt),
+        )
+    with pytest.raises(IncrementalFormalDagV1Error, match="runtime-budget"):
+        build_stage_attempt_observation_v1(
+            graph,
+            family_id=_FAMILY_ID,
+            page_count=documents[0].page_count,
+            attempt_ordinal=1,
+            kind=AttemptKindV1.RUNTIME_BUDGET_BREACH,
+            runtime_budget_ms=True,
+            observed_runtime_ms=2,
+        )
+
+    forged_family = _coherently_rehash_attempt(replace(attempt, family_id="DIFFERENT_FAMILY"))
+    with pytest.raises(IncrementalFormalDagV1Error, match="caller-current family"):
+        plan_incremental_formal_dag_v1(
+            mode=PlanModeV1.DEV_FAST,
+            current_documents=documents,
+            stage_pins=pins,
+            cached_receipts=receipts,
+            dev_document_ids=(documents[0].document_id,),
+            family_id=_FAMILY_ID,
+            attempt_history=(forged_family,),
+        )
+
+    foreign_documents = _documents(2)
+    foreign_plan = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.DEV_FAST,
+        current_documents=foreign_documents,
+        stage_pins=_pins(),
+        dev_document_ids=("doc-002",),
+        family_id=_FAMILY_ID,
+    )
+    foreign_source = _decision(foreign_plan.decisions, "doc-002", FormalStageV1.SOURCE)
+    foreign_attempt = _attempt(foreign_source, foreign_documents[1], 1)
+    with pytest.raises(IncrementalFormalDagV1Error, match="unknown document"):
+        plan_incremental_formal_dag_v1(
+            mode=PlanModeV1.DEV_FAST,
+            current_documents=documents,
+            stage_pins=pins,
+            cached_receipts=receipts,
+            dev_document_ids=(documents[0].document_id,),
+            family_id=_FAMILY_ID,
+            attempt_history=(foreign_attempt,),
+        )
+
+
+def test_release_seal_propagates_algorithm_review_block() -> None:
+    documents = _documents()
+    pins = _pins()
+    receipts = _complete_cache(documents, pins)
+    graph = _current_graph_frontier(documents, pins, receipts, documents[0].document_id)
+    attempts = (_attempt(graph, documents[0], 1), _attempt(graph, documents[0], 2))
+
+    release = plan_incremental_formal_dag_v1(
+        mode=PlanModeV1.RELEASE_SEAL,
+        current_documents=documents,
+        stage_pins=pins,
+        cached_receipts=receipts,
+        family_id=_FAMILY_ID,
+        attempt_history=attempts,
+    )
+
+    graph_decision = _decision(release.decisions, documents[0].document_id, FormalStageV1.GRAPH)
+    seal_decision = _decision(release.decisions, documents[0].document_id, FormalStageV1.SEAL)
+    assert graph_decision.reason_code == "ALGORITHM_REVIEW_REQUIRED_REPEAT_FAILURE"
+    assert seal_decision.decision is CacheDecisionV1.BLOCKED
+    assert seal_decision.reason_code == "ALGORITHM_REVIEW_REQUIRED_UPSTREAM_BLOCKED"
+    assert not release.ready
+    assert seal_decision not in release.cache_hits
