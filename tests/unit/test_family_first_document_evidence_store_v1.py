@@ -43,6 +43,78 @@ def _packet(*, document_id: str = "document-1", evidence_root: str = "1" * 64) -
     }
 
 
+def _selected_cache_projection(packet: dict) -> dict:
+    material = {
+        "document_id": packet["document_id"],
+        "document_ordinal": packet["document_ordinal"],
+        "joined_pages": [
+            {
+                "lines": [
+                    {
+                        "bbox": [1, 2, 20, 10],
+                        "crop_ref": {
+                            "path": "crop.png",
+                            "sha256": "6" * 64,
+                            "size_bytes": 1,
+                        },
+                        "line_ordinal": 0,
+                        "numeric_recognition": {
+                            "raw_prediction": "123",
+                            "reader_score": 0.8,
+                        },
+                        "sample_id": "sample-1",
+                        "vietocr_text": "Tiền mặt",
+                    }
+                ],
+                "page_sequence": 1,
+                "page_width": 100,
+            }
+        ],
+        "selected_page_dimensions": [
+            {
+                "physical_page": 1,
+                "pixel_height": 200,
+                "pixel_width": 100,
+                "render_sha256": "4" * 64,
+                "render_size_bytes": 1,
+            }
+        ],
+    }
+    return {
+        **material,
+        "selection_id": "ffoqcv1:selection:" + store_v1.canonical_json_sha256_v1(material),
+    }
+
+
+def _legacy_selected_snapshot(state: SimpleNamespace, selected: dict) -> dict:
+    selected_material = store_v1.canonical_clone_v1(selected)
+    selected_identity = selected_material.pop("selection_id")
+    material = {
+        "document_packet": store_v1.canonical_clone_v1(state.manifest["documents"][0]),
+        "joined_pages": store_v1.canonical_clone_v1(selected["joined_pages"]),
+        "manifest_id": state.manifest["manifest_id"],
+        "query_selection_id": selected_identity,
+        "selected_page_dimensions": store_v1.canonical_clone_v1(
+            selected["selected_page_dimensions"]
+        ),
+        "state": "AUTHENTICATED_IMMUTABLE_SQLITE_SELECTED_PAGE_EVIDENCE",
+    }
+    return store_v1.canonical_clone_v1(
+        {
+            **material,
+            "snapshot_id": "ffdesv1:selected:" + store_v1.canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def _reverse_object_keys(value: object) -> object:
+    if type(value) is dict:
+        return {key: _reverse_object_keys(value[key]) for key in reversed(tuple(value))}
+    if type(value) is list:
+        return [_reverse_object_keys(item) for item in value]
+    return value
+
+
 def _manifest(root: Path, audit_commit: str) -> dict:
     database = (root / "data/local/store.sqlite3").read_bytes()
     inventory = (root / "docs/inventory.md").read_bytes()
@@ -323,6 +395,136 @@ def test_authenticated_document_snapshot_recomputes_one_packet_and_reads_joined_
         store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
             object(), document_ordinal=1, selected_pages=(1,)
         )
+
+
+@pytest.mark.parametrize("reverse_provider_keys", [False, True])
+def test_selected_page_hydration_matches_legacy_bytes_and_detaches_mutations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reverse_provider_keys: bool,
+) -> None:
+    packet = _packet()
+    state = SimpleNamespace(
+        database_path=tmp_path / "evidence.sqlite3",
+        manifest={
+            "documents": [packet],
+            "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    selected = _selected_cache_projection(packet)
+    if reverse_provider_keys:
+        selected = _reverse_object_keys(selected)
+        assert type(selected) is dict
+    selected_before = copy.deepcopy(selected)
+    expected = _legacy_selected_snapshot(state, selected)
+    monkeypatch.setattr(store_v1, "_live_store", lambda _capability: state)
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_selected_joined_pages_v1",
+        lambda _database, _ordinal, *, selected_pages: selected,
+    )
+
+    snapshot = store_v1.read_authenticated_family_first_document_selected_pages_v1(
+        object(), document_ordinal=1, selected_pages=(1,)
+    )
+
+    assert store_v1.canonical_json_bytes_v1(snapshot) == store_v1.canonical_json_bytes_v1(expected)
+    assert store_v1.same_typed_json_v1(selected, selected_before)
+
+    selected["joined_pages"][0]["lines"][0]["bbox"][0] = 999
+    state.manifest["documents"][0]["source_pdf_ref"]["path"] = "provider-mutated.pdf"
+    assert snapshot["joined_pages"][0]["lines"][0]["bbox"][0] == 1
+    assert snapshot["document_packet"]["source_pdf_ref"]["path"] == "vietstock_bctc/a.pdf"
+
+    snapshot["joined_pages"][0]["lines"][0]["bbox"][1] = 888
+    snapshot["document_packet"]["source_pdf_ref"]["path"] = "caller-mutated.pdf"
+    assert selected["joined_pages"][0]["lines"][0]["bbox"][1] == 2
+    assert state.manifest["documents"][0]["source_pdf_ref"]["path"] == "provider-mutated.pdf"
+
+
+@pytest.mark.parametrize("tamper", ["boolean_document_ordinal", "stale_line_content"])
+def test_selected_page_hydration_rejects_exact_type_and_content_tamper(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+) -> None:
+    packet = _packet()
+    state = SimpleNamespace(
+        database_path=tmp_path / "evidence.sqlite3",
+        manifest={
+            "documents": [packet],
+            "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    selected = _selected_cache_projection(packet)
+    if tamper == "boolean_document_ordinal":
+        selected["document_ordinal"] = True
+        material = copy.deepcopy(selected)
+        material.pop("selection_id")
+        selected["selection_id"] = "ffoqcv1:selection:" + store_v1.canonical_json_sha256_v1(
+            material
+        )
+    else:
+        selected["joined_pages"][0]["lines"][0]["vietocr_text"] = "tampered"
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_selected_joined_pages_v1",
+        lambda _database, _ordinal, *, selected_pages: selected,
+    )
+
+    with pytest.raises(
+        store_v1.FamilyFirstDocumentEvidenceStoreV1Error,
+        match="differs from its authenticated document packet",
+    ):
+        store_v1._selected_pages_snapshot_from_state(state, document_ordinal=1, selected_pages=(1,))
+
+
+def test_selected_page_hydration_has_one_final_clone_and_two_identity_hashes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    packet = _packet()
+    state = SimpleNamespace(
+        database_path=tmp_path / "evidence.sqlite3",
+        manifest={
+            "documents": [packet],
+            "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    selected = _selected_cache_projection(packet)
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_selected_joined_pages_v1",
+        lambda _database, _ordinal, *, selected_pages: selected,
+    )
+    original_clone = store_v1.canonical_clone_v1
+    original_hash = store_v1.canonical_json_sha256_v1
+    clone_calls: list[set[str]] = []
+    hash_calls: list[set[str]] = []
+
+    def counted_clone(value: dict) -> dict:
+        clone_calls.append(set(value))
+        return original_clone(value)
+
+    def counted_hash(value: dict) -> str:
+        hash_calls.append(set(value))
+        return original_hash(value)
+
+    monkeypatch.setattr(store_v1, "canonical_clone_v1", counted_clone)
+    monkeypatch.setattr(store_v1, "canonical_json_sha256_v1", counted_hash)
+
+    snapshot = store_v1._selected_pages_snapshot_from_state(
+        state, document_ordinal=1, selected_pages=(1,)
+    )
+
+    assert snapshot["snapshot_id"].startswith("ffdesv1:selected:")
+    assert len(clone_calls) == 1
+    assert clone_calls[0] == set(snapshot)
+    assert len(hash_calls) == 2
+    assert "selection_id" not in hash_calls[0]
+    assert "snapshot_id" not in hash_calls[1]
 
 
 def test_authenticated_topology_accessor_reuses_exact_engine_keyed_cache(

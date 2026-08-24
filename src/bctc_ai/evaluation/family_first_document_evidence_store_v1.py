@@ -1023,24 +1023,35 @@ def _selected_pages_snapshot_from_state(
         )
     except (OSError, RuntimeError, ValueError) as exc:
         raise _error("cannot hydrate authenticated selected-page evidence") from exc
-    selected_material = canonical_clone_v1(selected)
-    selected_identity = selected_material.pop("selection_id", None)
+    if type(selected) is not dict:
+        raise _error("selected-page evidence cache projection is not an exact object")
+    selected_identity = selected.get("selection_id")
+    # The cache reader has just built this private tree from SQLite scalar
+    # values.  Keep one shallow view for its content identity instead of
+    # serializing and parsing the entire selected line axis merely to remove
+    # ``selection_id``.  The final canonical clone below remains the sole
+    # caller-boundary detach and exact-JSON validation.
+    selected_material = {key: value for key, value in selected.items() if key != "selection_id"}
     if (
         selected_identity != "ffoqcv1:selection:" + canonical_json_sha256_v1(selected_material)
-        or selected.get("document_id") != packet["document_id"]
-        or selected.get("document_ordinal") != document_ordinal
-        or [page.get("page_sequence") for page in selected.get("joined_pages", [])]
-        != list(selected_pages)
-        or [page.get("physical_page") for page in selected.get("selected_page_dimensions", [])]
-        != list(selected_pages)
+        or not same_typed_json_v1(selected.get("document_id"), packet["document_id"])
+        or not same_typed_json_v1(selected.get("document_ordinal"), document_ordinal)
+        or not same_typed_json_v1(
+            [page.get("page_sequence") for page in selected.get("joined_pages", [])],
+            list(selected_pages),
+        )
+        or not same_typed_json_v1(
+            [page.get("physical_page") for page in selected.get("selected_page_dimensions", [])],
+            list(selected_pages),
+        )
     ):
         raise _error("selected-page evidence differs from its authenticated document packet")
     material = {
-        "document_packet": canonical_clone_v1(packet),
-        "joined_pages": canonical_clone_v1(selected["joined_pages"]),
+        "document_packet": packet,
+        "joined_pages": selected["joined_pages"],
         "manifest_id": state.manifest["manifest_id"],
         "query_selection_id": selected_identity,
-        "selected_page_dimensions": canonical_clone_v1(selected["selected_page_dimensions"]),
+        "selected_page_dimensions": selected["selected_page_dimensions"],
         "state": "AUTHENTICATED_IMMUTABLE_SQLITE_SELECTED_PAGE_EVIDENCE",
     }
     result = {
