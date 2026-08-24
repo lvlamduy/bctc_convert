@@ -24,7 +24,9 @@ __all__ = [
     "FORMAT_VERSION",
     "PARENT_REPORT_NORM_ID",
     "REPORT_NORM_ID",
+    "TOPOLOGY_SPEC_FORMAT_VERSION",
     "build_loan_enterprise_family12_spec_v1",
+    "build_loan_enterprise_family12_topology_spec_v1",
 ]
 
 
@@ -32,6 +34,7 @@ FORMAT_VERSION = "LOAN_ENTERPRISE_FAMILY12_SPEC_V1"
 FAMILY_ID = "LOAN_ENTERPRISE_FAMILY12"
 REPORT_NORM_ID = 766
 PARENT_REPORT_NORM_ID = 716
+TOPOLOGY_SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
 
 
 _BRANCH_ALIASES = [
@@ -342,6 +345,99 @@ _SOURCE_ONLY_AMBIGUITIES = [
 ]
 
 
+# Semantic role names deliberately do not carry report-normalization IDs.  The
+# topology scan proves only source structure; the separately replayed schema
+# stage remains responsible for binding a semantic row to a report node.
+_TOPOLOGY_ROLE_BY_REPORT_NORM_ID = {
+    767: "STATE_ENTERPRISE_LOANS",
+    768: "LIMITED_LIABILITY_COMPANY_LOANS",
+    769: "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS",
+    770: "STATE_MAJORITY_LLC_LOANS",
+    771: "OTHER_LLC_LOANS",
+    772: "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+    773: "OTHER_JOINT_STOCK_COMPANY_LOANS",
+    774: "PRIVATE_ENTERPRISE_LOANS",
+    775: "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+    776: "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+    6074: "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS",
+    777: "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS",
+    778: "PARTNERSHIP_COMPANY_LOANS",
+    779: "FOREIGN_INVESTED_COMPANY_LOANS",
+    780: "HOUSEHOLD_AND_INDIVIDUAL_LOANS",
+    781: "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
+    782: "OTHER_ENTERPRISE_LOANS",
+    6058: "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+    5748: "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+}
+
+
+def _distinct_aliases(aliases: list[str]) -> list[str]:
+    """Retain source order while removing byte-identical data duplicates."""
+
+    return list(dict.fromkeys(aliases))
+
+
+def _topology_child(child: dict[str, Any]) -> dict[str, Any]:
+    report_norm_id = child["report_norm_id"]
+    return {
+        "matchers": [
+            {
+                "aliases": _distinct_aliases(child["aliases"]),
+                "within_role": "ENTERPRISE_TYPE_BRANCH",
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[report_norm_id],
+        "role_kind": ("NONADDITIVE_CHILD" if report_norm_id == 6058 else "ADDITIVE_CHILD"),
+    }
+
+
+_TOPOLOGY_CHILDREN = [
+    {
+        "matchers": [
+            {
+                "aliases": _distinct_aliases(_BRANCH_ALIASES),
+                "within_role": None,
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "ENTERPRISE_TYPE_BRANCH",
+        "role_kind": "STRUCTURAL_GROUP",
+    },
+    *[_topology_child(child) for child in _CHILDREN],
+]
+
+_TOPOLOGY_SPEC: dict[str, Any] = {
+    "children": _TOPOLOGY_CHILDREN,
+    "family_id": FAMILY_ID,
+    "format_version": TOPOLOGY_SPEC_FORMAT_VERSION,
+    "hard_negative_aliases": _distinct_aliases(
+        [
+            alias
+            for context in _CONTEXT_CLASSES
+            if context["disposition"] == "HARD_VETO"
+            for alias in context["aliases"]
+        ]
+    ),
+    "limits": {
+        "max_cluster_span_lines": 160,
+        "max_continuation_pages": 1,
+        "max_label_line_span": 3,
+    },
+    "parent": {
+        "aliases": _distinct_aliases(_OWNER_ALIASES),
+        "resolution_mode": "EXPLICIT_ONLY",
+        "role": "CUSTOMER_LOAN_OWNER",
+    },
+    "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+    "required_role_combinations": [
+        ["ENTERPRISE_TYPE_BRANCH", _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[child["report_norm_id"]]]
+        for child in _CHILDREN
+    ],
+    "structural_reset_aliases": _distinct_aliases(_STRUCTURAL_RESET_ALIASES),
+}
+
+
 _SPEC: dict[str, Any] = {
     "branch_aliases": _BRANCH_ALIASES,
     "branch_components": _BRANCH_COMPONENTS,
@@ -387,3 +483,9 @@ def build_loan_enterprise_family12_spec_v1() -> dict[str, Any]:
     """Return an isolated exact copy of the declarative Family 12 policy."""
 
     return canonical_clone_v1(_SPEC)
+
+
+def build_loan_enterprise_family12_topology_spec_v1() -> dict[str, Any]:
+    """Return the schema-free shared-V3 owner/branch/child topology policy."""
+
+    return canonical_clone_v1(_TOPOLOGY_SPEC)
