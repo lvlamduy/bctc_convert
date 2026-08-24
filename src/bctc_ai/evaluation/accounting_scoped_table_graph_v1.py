@@ -663,6 +663,39 @@ def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
         for compact, candidates in compact_candidates.items()
         if len(candidates) == 1
     }
+    coarse_categories = {
+        "OWNER",
+        "OWNER_COMPONENT",
+        "ROLE",
+        "SCOPE",
+        "SCOPE_COMPONENT",
+        "SCOPE_LANE_COMPONENT",
+        "STRUCTURAL_RESET",
+    }
+    coarse_entries = [entry for entry in entries if entry["category"] in coarse_categories]
+    coarse_alias_offsets_by_token: dict[str, dict[str, set[int]]] = {}
+    coarse_single_token_deletion_index: dict[str, set[str]] = {}
+    coarse_single_token_observed_lengths: set[int] = set()
+    for entry in coarse_entries:
+        alias_tokens = entry["alias_accentless"].split()
+        for offset, token in enumerate(alias_tokens):
+            coarse_alias_offsets_by_token.setdefault(token, {}).setdefault(
+                entry["alias_id"], set()
+            ).add(offset)
+        if len(alias_tokens) == 1:
+            token = alias_tokens[0]
+            coarse_single_token_observed_lengths.update(
+                range(max(1, len(token) - 1), len(token) + 2)
+            )
+            for signature in _deletion_signatures(token):
+                coarse_single_token_deletion_index.setdefault(signature, set()).add(
+                    entry["alias_id"]
+                )
+    compact_two_token_alias_ids = {
+        compact: frozenset(entry["alias_id"] for entry in candidates)
+        for compact, candidates in compact_unique.items()
+        if candidates[0]["token_count"] == 2
+    }
     return {
         "by_accented": by_accented,
         "by_accentless": by_accentless,
@@ -671,6 +704,17 @@ def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
         "compact_alias_ids": frozenset(
             entry["alias_id"] for candidates in compact_unique.values() for entry in candidates
         ),
+        "coarse_alias_offsets_by_token": {
+            token: {alias_id: frozenset(offsets) for alias_id, offsets in by_alias_id.items()}
+            for token, by_alias_id in coarse_alias_offsets_by_token.items()
+        },
+        "coarse_compact_two_token_alias_ids": compact_two_token_alias_ids,
+        "coarse_entries_by_alias_id": {entry["alias_id"]: entry for entry in coarse_entries},
+        "coarse_single_token_deletion_index": {
+            signature: frozenset(alias_ids)
+            for signature, alias_ids in coarse_single_token_deletion_index.items()
+        },
+        "coarse_single_token_observed_lengths": frozenset(coarse_single_token_observed_lengths),
         "entries": entries,
         "maximum_alias_token_count": max(entry["token_count"] for entry in entries),
         # The values are read-only match proposals tied to this exact compiled
@@ -680,11 +724,56 @@ def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
         "surface_cache_hit_count": 0,
         "surface_cache_miss_count": 0,
         "token_counts": sorted({entry["token_count"] for entry in entries}),
+        "maximum_wrap_lines": spec["limits"]["max_wrap_lines"],
+        "owner_component_ids": frozenset(
+            component["component_id"] for component in spec["owner_component_groups"]
+        ),
+        "scope_component_quorums": tuple(
+            {
+                "lane": frozenset(
+                    component["component_id"] for component in scope["lane_component_groups"]
+                ),
+                "required": frozenset(
+                    component["component_id"] for component in scope["required_component_groups"]
+                ),
+                "scope_id": scope["scope_id"],
+            }
+            for scope in spec["scope_axis"]
+        ),
     }
+
+
+def _deletion_signatures(value: str) -> frozenset[str]:
+    """Return a compact superset key for one insertion/deletion/substitution."""
+
+    return frozenset({value, *(value[:index] + value[index + 1 :] for index in range(len(value)))})
 
 
 def _counter_covers(available: Counter[str], required: Counter[str]) -> bool:
     return all(available[token] >= count for token, count in required.items())
+
+
+def _edit_distance_at_most_one(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) > len(right):
+        left, right = right, left
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right, strict=True)) <= 1
+    left_index = 0
+    right_index = 0
+    differences = 0
+    while left_index < len(left) and right_index < len(right):
+        if left[left_index] == right[right_index]:
+            left_index += 1
+        else:
+            differences += 1
+            if differences > 1:
+                return False
+        right_index += 1
+    return True
 
 
 def _coarse_alias_possible(
@@ -715,6 +804,7 @@ def _coarse_alias_possible(
         for length in range(max(1, len(alias_token) - 1), len(alias_token) + 2):
             if any(
                 len(_qgrams(candidate) ^ _qgrams(alias_token)) <= 6
+                and _edit_distance_at_most_one(candidate, alias_token)
                 for candidate in tokens_by_length.get(length, set())
             ):
                 return True
@@ -740,39 +830,274 @@ def _coarse_alias_possible(
     return False
 
 
-def _coarse_page_category_index(
-    page: Mapping[str, Any], alias_index: Mapping[str, Any]
-) -> dict[str, Any]:
-    """Index page tokens once before any wrapped-window enumeration."""
+def _coarse_ordered_alias_possible(
+    tokens: Sequence[str],
+    entry: Mapping[str, Any],
+    *,
+    candidate_starts: set[int],
+    compact_alias_ids: frozenset[str],
+) -> bool:
+    """Apply exact necessary text channels without the full matcher records."""
 
-    tokens = [
-        token
-        for line in page["lines"]
-        for token in _accentless_surface(line["vietocr_text"]).split()
-    ]
-    token_counts = Counter(tokens)
+    alias = entry["alias_accentless"]
+    alias_token_count = entry["token_count"]
+    raw_starts = candidate_starts
+    exact_starts = {start for start in raw_starts if 0 <= start <= len(tokens) - alias_token_count}
+    for start in exact_starts:
+        candidate = " ".join(tokens[start : start + alias_token_count])
+        if _edit_distance_at_most_one(candidate, alias):
+            return True
+    if entry["alias_id"] not in compact_alias_ids:
+        return False
+    compact = alias.replace(" ", "")
+    for observed_token_count in (alias_token_count - 1, alias_token_count + 1):
+        if observed_token_count < 1:
+            continue
+        compact_starts = {
+            start + shift
+            for start in raw_starts
+            for shift in (-1, 0, 1)
+            if 0 <= start + shift <= len(tokens) - observed_token_count
+        }
+        for start in compact_starts:
+            if "".join(tokens[start : start + observed_token_count]) == compact:
+                return True
+    return False
+
+
+def _coarse_token_alias_index(
+    tokens: Sequence[str], alias_index: Mapping[str, Any]
+) -> dict[str, dict[str, frozenset[int]]]:
+    """Map observed tokens to the only aliases a bounded channel can reach."""
+
+    result: dict[str, dict[str, frozenset[int]]] = {}
+    for token in set(tokens):
+        alias_offsets = {
+            alias_id: set(offsets)
+            for alias_id, offsets in alias_index["coarse_alias_offsets_by_token"]
+            .get(token, {})
+            .items()
+        }
+        for alias_id in alias_index["coarse_compact_two_token_alias_ids"].get(token, ()):
+            alias_offsets.setdefault(alias_id, set()).add(0)
+        if len(token) in alias_index["coarse_single_token_observed_lengths"]:
+            for signature in _deletion_signatures(token):
+                for alias_id in alias_index["coarse_single_token_deletion_index"].get(
+                    signature, ()
+                ):
+                    alias_offsets.setdefault(alias_id, set()).add(0)
+        result[token] = {
+            alias_id: frozenset(offsets) for alias_id, offsets in alias_offsets.items()
+        }
+    return result
+
+
+def _coarse_possible_evidence(
+    token_counts: Counter[str] | None,
+    token_alias_ids: Mapping[str, Mapping[str, frozenset[int]]],
+    alias_index: Mapping[str, Any],
+    *,
+    eligible_categories: frozenset[str] | None = None,
+    ordered_tokens: Sequence[str] | None = None,
+) -> set[tuple[str, str]]:
+    if ordered_tokens is not None:
+        candidate_alias_starts: dict[str, set[int]] = {}
+        for position, token in enumerate(ordered_tokens):
+            for alias_id, offsets in token_alias_ids[token].items():
+                if (
+                    eligible_categories is not None
+                    and alias_index["coarse_entries_by_alias_id"][alias_id]["category"]
+                    not in eligible_categories
+                ):
+                    continue
+                candidate_alias_starts.setdefault(alias_id, set()).update(
+                    position - offset for offset in offsets
+                )
+        return {
+            (entry["category"], entry["semantic_id"])
+            for alias_id, starts in candidate_alias_starts.items()
+            for entry in [alias_index["coarse_entries_by_alias_id"][alias_id]]
+            if _coarse_ordered_alias_possible(
+                ordered_tokens,
+                entry,
+                candidate_starts=starts,
+                compact_alias_ids=alias_index["compact_alias_ids"],
+            )
+        }
+    if token_counts is None:
+        raise AssertionError("unordered coarse evidence requires token counts")
+    candidate_alias_ids = {
+        alias_id for token in token_counts for alias_id in token_alias_ids[token]
+    }
+    if not candidate_alias_ids:
+        return set()
     tokens_by_length: dict[int, set[str]] = {}
     for token in token_counts:
         tokens_by_length.setdefault(len(token), set()).add(token)
-    possible = [
-        entry
-        for entry in alias_index["entries"]
+    return {
+        (entry["category"], entry["semantic_id"])
+        for alias_id in sorted(candidate_alias_ids)
+        for entry in [alias_index["coarse_entries_by_alias_id"][alias_id]]
         if _coarse_alias_possible(
             entry,
             token_counts,
             tokens_by_length,
             compact_alias_ids=alias_index["compact_alias_ids"],
         )
-    ]
-    categories = {entry["category"] for entry in possible}
-    distinct_role_ids = {entry["semantic_id"] for entry in possible if entry["category"] == "ROLE"}
-    owner_possible = bool(categories & {"OWNER", "OWNER_COMPONENT"})
-    scope_possible = bool(categories & {"SCOPE", "SCOPE_COMPONENT", "SCOPE_LANE_COMPONENT"})
-    return {
-        "candidate_possible": owner_possible
+    }
+
+
+def _coarse_candidate_possible(
+    evidence: set[tuple[str, str]],
+    alias_index: Mapping[str, Any],
+    *,
+    owner_components_complete: bool,
+    required_scope_ids: set[str],
+) -> bool:
+    owner_possible = ("OWNER", "OWNER") in evidence or owner_components_complete
+    distinct_role_ids = {semantic_id for category, semantic_id in evidence if category == "ROLE"}
+    direct_scope_ids = {semantic_id for category, semantic_id in evidence if category == "SCOPE"}
+    lane_component_ids = {
+        semantic_id for category, semantic_id in evidence if category == "SCOPE_LANE_COMPONENT"
+    }
+    lane_scope_ids = {
+        quorum["scope_id"]
+        for quorum in alias_index["scope_component_quorums"]
+        if quorum["lane"] and quorum["lane"].issubset(lane_component_ids)
+    }
+    scope_possible = bool(direct_scope_ids | required_scope_ids | lane_scope_ids)
+    return (
+        owner_possible
         and bool(distinct_role_ids)
-        and (scope_possible or len(distinct_role_ids) >= 2),
-        "reset_possible": "STRUCTURAL_RESET" in categories,
+        and (scope_possible or len(distinct_role_ids) >= 2)
+    )
+
+
+def _coarse_page_category_index(
+    page: Mapping[str, Any], alias_index: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Use a page quorum, then prove every alias inside a local wrap band."""
+
+    line_tokens = {
+        line["source_line_index"]: tuple(_accentless_surface(line["vietocr_text"]).split())
+        for line in page["lines"]
+    }
+    page_tokens = [token for tokens in line_tokens.values() for token in tokens]
+    token_alias_ids = _coarse_token_alias_index(page_tokens, alias_index)
+    page_evidence = _coarse_possible_evidence(Counter(page_tokens), token_alias_ids, alias_index)
+    page_owner_components = {
+        semantic_id for category, semantic_id in page_evidence if category == "OWNER_COMPONENT"
+    }
+    page_required_scope_ids = {
+        quorum["scope_id"]
+        for quorum in alias_index["scope_component_quorums"]
+        if quorum["required"]
+        and quorum["required"].issubset(
+            {
+                semantic_id
+                for category, semantic_id in page_evidence
+                if category == "SCOPE_COMPONENT"
+            }
+        )
+    }
+    page_candidate = _coarse_candidate_possible(
+        page_evidence,
+        alias_index,
+        owner_components_complete=bool(alias_index["owner_component_ids"])
+        and alias_index["owner_component_ids"].issubset(page_owner_components),
+        required_scope_ids=page_required_scope_ids,
+    )
+    if not page_candidate:
+        return {
+            "candidate_possible": False,
+            "reset_possible": ("STRUCTURAL_RESET", "STRUCTURAL_RESET") in page_evidence,
+            "window_band_count": 0,
+        }
+
+    windows = _windows(page, alias_index["maximum_wrap_lines"])
+    owner_categories = frozenset({"OWNER", "OWNER_COMPONENT"})
+    ordered_tokens_by_ordinal: dict[int, list[str]] = {}
+    owner_evidence: set[tuple[str, str]] = set()
+    owner_components_complete = False
+    owner_scan_count = 0
+    for ordinal, block in enumerate(windows):
+        owner_scan_count = ordinal + 1
+        ordered_tokens = ordered_tokens_by_ordinal.get(ordinal)
+        if ordered_tokens is None:
+            ordered_tokens = [
+                token
+                # ``_windows`` starts in visual order and every edge strictly
+                # increases center-y, so a path is already provider-order free.
+                for line in block
+                for token in line_tokens[line["source_line_index"]]
+            ]
+            ordered_tokens_by_ordinal[ordinal] = ordered_tokens
+        band_owner_evidence = _coarse_possible_evidence(
+            None,
+            token_alias_ids,
+            alias_index,
+            eligible_categories=owner_categories,
+            ordered_tokens=ordered_tokens,
+        )
+        band_owner_components = {
+            semantic_id
+            for category, semantic_id in band_owner_evidence
+            if category == "OWNER_COMPONENT"
+        }
+        owner_components_complete = bool(alias_index["owner_component_ids"]) and alias_index[
+            "owner_component_ids"
+        ].issubset(band_owner_components)
+        if ("OWNER", "OWNER") in band_owner_evidence or owner_components_complete:
+            owner_evidence = band_owner_evidence
+            break
+    else:
+        return {
+            "candidate_possible": False,
+            "reset_possible": ("STRUCTURAL_RESET", "STRUCTURAL_RESET") in page_evidence,
+            "window_band_count": len(windows),
+        }
+
+    # Owner is only a page-level necessary condition here.  Collect all other
+    # semantic evidence independently of visual order: the authoritative
+    # geometry decides whether the proved axes form a physical table.
+    evidence = set(owner_evidence)
+    required_scope_ids: set[str] = set()
+    for ordinal, block in enumerate(windows):
+        ordered_tokens = ordered_tokens_by_ordinal.get(ordinal)
+        if ordered_tokens is None:
+            ordered_tokens = [
+                token for line in block for token in line_tokens[line["source_line_index"]]
+            ]
+        band_evidence = _coarse_possible_evidence(
+            None,
+            token_alias_ids,
+            alias_index,
+            ordered_tokens=ordered_tokens,
+        )
+        evidence.update(band_evidence)
+        band_scope_components = {
+            semantic_id for category, semantic_id in band_evidence if category == "SCOPE_COMPONENT"
+        }
+        required_scope_ids.update(
+            quorum["scope_id"]
+            for quorum in alias_index["scope_component_quorums"]
+            if quorum["required"] and quorum["required"].issubset(band_scope_components)
+        )
+        if _coarse_candidate_possible(
+            evidence,
+            alias_index,
+            owner_components_complete=owner_components_complete,
+            required_scope_ids=required_scope_ids,
+        ):
+            return {
+                "candidate_possible": True,
+                "reset_possible": ("STRUCTURAL_RESET", "STRUCTURAL_RESET") in page_evidence,
+                "window_band_count": max(owner_scan_count, ordinal + 1),
+            }
+    return {
+        "candidate_possible": False,
+        "reset_possible": ("STRUCTURAL_RESET", "STRUCTURAL_RESET") in page_evidence,
+        "window_band_count": len(windows),
     }
 
 
@@ -1019,7 +1344,11 @@ def _can_wrap(left: Mapping[str, Any], right: Mapping[str, Any], *, scale: float
     return overlap / minimum_width >= 0.18 or abs(left_box[0] - right_box[0]) <= scale * 2.2
 
 
-def _windows(page: Mapping[str, Any], max_lines: int) -> list[list[Mapping[str, Any]]]:
+def _wrap_adjacency(
+    page: Mapping[str, Any],
+) -> tuple[list[Mapping[str, Any]], dict[int, tuple[Mapping[str, Any], ...]]]:
+    """Build the exact bounded forward geometry shared by gate and matcher."""
+
     visual = [line for line in _visual(page["lines"]) if line["vietocr_text"].strip()]
     scale = median_text_height_v1(visual)
     # Followers depend only on the last line, not on the path used to reach
@@ -1048,6 +1377,11 @@ def _windows(page: Mapping[str, Any], max_lines: int) -> list[list[Mapping[str, 
             )
         )
         followers_by_source_index[left["source_line_index"]] = tuple(followers[:6])
+    return visual, followers_by_source_index
+
+
+def _windows(page: Mapping[str, Any], max_lines: int) -> list[list[Mapping[str, Any]]]:
+    visual, followers_by_source_index = _wrap_adjacency(page)
     result: list[list[Mapping[str, Any]]] = []
     for line in visual:
         stack = [[line]]
@@ -3494,6 +3828,7 @@ def _semantic_region_index(
             "candidate_page_count": len(pages),
             "coarse_index_page_count": len(pages),
             "coarse_skipped_page_count": 0,
+            "coarse_window_band_count": 0,
             "geometry_page_count": len(pages),
             "neighbor_page_count": 0,
             "primary_candidate_page_count": primary_count,
@@ -3592,6 +3927,9 @@ def _semantic_region_index(
         "candidate_page_count": len(candidate_sequences),
         "coarse_index_page_count": len(pages),
         "coarse_skipped_page_count": len(pages) - len(wrapped_match_sequences),
+        "coarse_window_band_count": sum(
+            coarse["window_band_count"] for coarse in coarse_by_page.values()
+        ),
         "geometry_page_count": len(seed_sequences),
         "neighbor_page_count": len(candidate_sequences - seed_sequences),
         "primary_candidate_page_count": sum(
@@ -3779,10 +4117,18 @@ def _engine_trust_closure() -> tuple[Any, ...]:
         _ENGINE_CACHE_REVISION,
         _build_parsed,
         _compiled_alias_index,
+        _deletion_signatures,
+        _edit_distance_at_most_one,
+        _coarse_alias_possible,
+        _coarse_ordered_alias_possible,
+        _coarse_token_alias_index,
+        _coarse_possible_evidence,
+        _coarse_candidate_possible,
         _coarse_page_category_index,
         _semantic_region_index,
         _candidate_region_sequences,
         _surface_matches,
+        _wrap_adjacency,
         _windows,
         _semantic_matches,
         _page_segments,

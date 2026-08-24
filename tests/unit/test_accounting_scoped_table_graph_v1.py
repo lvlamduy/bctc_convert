@@ -781,7 +781,7 @@ def test_region_first_perf_guard_reduces_geometry_lines_and_caches_public_replay
 def test_randomized_coarse_index_has_no_semantic_false_negative_against_exhaustive() -> None:
     random = Random(20260824)
     spec = _spec(layouts=["ROLES_AS_ROWS"])
-    for case in range(12):
+    for case in range(32):
         candidate = _row_layout_page(2)
         for line in candidate["lines"]:
             if line["source_line_index"] == 7 and random.randrange(2):
@@ -815,6 +815,53 @@ def test_randomized_coarse_index_has_no_semantic_false_negative_against_exhausti
             ]
             == 1
         )
+
+
+def test_local_window_gate_rejects_page_bag_tokens_dispersed_across_geometry() -> None:
+    page = _page(
+        1,
+        [
+            _line(1, "Mức độ tập trung tài sản", [20, 20, 350, 46]),
+            _line(2, "và công nợ theo khu vực địa lý", [20, 420, 410, 446]),
+            _line(3, "Cho vay khách hàng", [520, 500, 760, 526]),
+            _line(4, "Trong nước", [20, 560, 180, 586]),
+        ],
+    )
+    page["lines"] = list(reversed(page["lines"]))
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1([page], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([page], spec)
+    telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    assert telemetry["coarse_window_band_count"] > 0
+    assert telemetry["wrapped_match_page_count"] == 0
+    assert telemetry["geometry_page_count"] == 0
+
+
+def test_local_window_gate_retains_roles_before_branchless_owner() -> None:
+    page = _page(
+        1,
+        [
+            _line(1, "Trong nước", [20, 20, 180, 46]),
+            _line(2, "Nước ngoài", [20, 55, 180, 81]),
+            _line(3, "Mức độ tập trung tài sản và công nợ", [20, 120, 610, 146]),
+            _line(4, "theo khu vực địa lý", [20, 150, 310, 176]),
+        ],
+    )
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1([page], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([page], spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    assert actual["status"] == "UNRESOLVED_REGION_GRAPH_ENUMERATION"
+    assert [item["unresolved_reason"] for item in actual["unresolved_fragments"]] == [
+        "BRANCHLESS_OWNER_MULTIROLE_SCOPE_MISSING"
+    ]
 
 
 def test_reset_like_footers_are_probed_only_inside_candidate_continuation_budget() -> None:
@@ -953,6 +1000,88 @@ def test_one_whitespace_fusion_is_bounded_and_unrelated_compact_text_is_negative
         item["population_scope"]["scope_id"] != "EXACT_CUSTOMER_LOANS"
         for item in unrelated_result["physical_segments"]
     )
+
+
+@pytest.mark.parametrize(
+    ("first_line", "second_line"),
+    [
+        ("Chovay", "khách hàng"),
+        ("Cho vaykhách", "hàng"),
+        ("Cho vay", "kháchhàng"),
+        ("C ho vay", "khách hàng"),
+        ("Ch o vay", "khách hàng"),
+        ("Cho v ay", "khách hàng"),
+        ("Cho va y", "khách hàng"),
+        ("Cho vay", "k hách hàng"),
+        ("Cho vay", "kh ách hàng"),
+        ("Cho vay", "khá ch hàng"),
+        ("Cho vay", "khác h hàng"),
+        ("Cho vay", "khách h àng"),
+        ("Cho vay", "khách hà ng"),
+        ("Cho vay", "khách hàn g"),
+    ],
+)
+def test_every_scope_fusion_and_split_survives_local_gate(
+    first_line: str, second_line: str
+) -> None:
+    page = _row_layout_page()
+    next(line for line in page["lines"] if line["source_line_index"] == 12)["vietocr_text"] = (
+        first_line
+    )
+    next(line for line in page["lines"] if line["source_line_index"] == 13)["vietocr_text"] = (
+        second_line
+    )
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1([page], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([page], spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    exact = next(
+        item
+        for item in actual["physical_segments"]
+        if item["population_scope"]["scope_id"] == "EXACT_CUSTOMER_LOANS"
+    )
+    assert exact["population_scope"]["match"]["match"]["match_kind"] in {
+        "EXACT_ONE_WHITESPACE_FUSION_OR_SPLIT_ALIAS",
+        "ONE_EDIT_ACCENTLESS_TEXT_SHORTLIST",
+    }
+
+
+@pytest.mark.parametrize(
+    "split_surface",
+    [
+        "T rong nước",
+        "Tr ong nước",
+        "Tro ng nước",
+        "Tron g nước",
+        "Trong n ước",
+        "Trong nư ớc",
+        "Trong nướ c",
+    ],
+)
+def test_one_whitespace_split_positions_survive_local_gate(split_surface: str) -> None:
+    page = _row_layout_page()
+    next(line for line in page["lines"] if line["source_line_index"] == 4)["vietocr_text"] = (
+        split_surface
+    )
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1([page], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([page], spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    exact = next(
+        item
+        for item in actual["physical_segments"]
+        if item["population_scope"]["scope_id"] == "EXACT_CUSTOMER_LOANS"
+    )
+    domestic = next(
+        item for item in exact["role_matches"] if item["semantic_id"] == "DOMESTIC_TOTAL"
+    )
+    assert domestic["match"]["match_kind"] == "EXACT_ONE_WHITESPACE_FUSION_OR_SPLIT_ALIAS"
 
 
 def test_wrapped_mixed_population_poison_closes_before_target_classification() -> None:
