@@ -1,0 +1,357 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_GEOGRAPHY_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_LOAN_GEOGRAPHY_SCHEMA_SWEEP_FORMAL_RESULT_RESTORE_PENDING_PUBLIC_EXACT_LIVE_REPLAY_REQUIRES_AUTHENTICATED_LOCAL_STORE_NO_GEMMA_BROAD_POPULATION_NARROWING_BACKSOLVE_CANONICALIZATION_EXPORT_OR_BANK_PAGE_PERIOD_ROUTING_AUTHORITY",
+  "seal_id": "e0175:seal:9efd41e9d2f582ef212e35155d9e570dd9292c75ae1795438d5825b45763e936",
+  "family_id": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+  "git_commit": "350ad6f46d1ff3685f127ea08ff852e56d1b4618",
+  "sweep_id": "lg140v1:sweep:31983f20ac0700e5a7c4ab2be463de1808a8a34bbe695e0a67583365f76dbeae",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-geography-140-filing-schema-sweep-v1/result.json",
+    "sha256": "cfe434f7ea4ec0ca5123003bc4c3299b5232230e905ee44d77b33c6315c54e28",
+    "size_bytes": 29617254,
+    "mode": "0444"
+  },
+  "metrics": {
+    "absence_numeric_pixel_or_total_control_hydration_count": 0,
+    "accounting_backsolved_or_invented_value_count": 0,
+    "bank_broad_bounded_absence_counts": {
+      "ACB": 12,
+      "BID": 16,
+      "CTG": 16,
+      "HDB": 16,
+      "MBB": 0,
+      "VCB": 0,
+      "VIB": 0,
+      "VPB": 18
+    },
+    "bank_document_counts": {
+      "ACB": 18,
+      "BID": 16,
+      "CTG": 18,
+      "HDB": 16,
+      "MBB": 18,
+      "VCB": 18,
+      "VIB": 18,
+      "VPB": 18
+    },
+    "bank_exact_counts": {
+      "ACB": 3,
+      "BID": 0,
+      "CTG": 0,
+      "HDB": 0,
+      "MBB": 17,
+      "VCB": 0,
+      "VIB": 18,
+      "VPB": 0
+    },
+    "bank_mapped_record_counts": {
+      "ACB": 6,
+      "BID": 0,
+      "CTG": 0,
+      "HDB": 0,
+      "MBB": 34,
+      "VCB": 0,
+      "VIB": 36,
+      "VPB": 0
+    },
+    "bank_not_observed_counts": {
+      "ACB": 3,
+      "BID": 0,
+      "CTG": 2,
+      "HDB": 0,
+      "MBB": 1,
+      "VCB": 18,
+      "VIB": 0,
+      "VPB": 0
+    },
+    "bank_repeated_full_segment_counts": {
+      "ACB": 0,
+      "BID": 0,
+      "CTG": 0,
+      "HDB": 0,
+      "MBB": 0,
+      "VCB": 0,
+      "VIB": 18,
+      "VPB": 0
+    },
+    "bank_visible_dash_zero_counts": {
+      "ACB": 6,
+      "BID": 0,
+      "CTG": 0,
+      "HDB": 0,
+      "MBB": 0,
+      "VCB": 0,
+      "VIB": 36,
+      "VPB": 0
+    },
+    "broad_bounded_absence_trial_count": 78,
+    "broad_mixed_population_trial_count": 18,
+    "broad_total_population_trial_count": 60,
+    "column_layout_trial_count": 18,
+    "continuation_mode_trial_counts": {
+      "ADJACENT_REPEATED_FULL_SEGMENTS_PERIOD_COMPLEMENT": 18,
+      "SINGLE_PAGE_COMPLETE_SEGMENTS": 11,
+      "SINGLE_PAGE_MULTI_PERIOD_COMPLETE_SEGMENTS": 9
+    },
+    "customer_loan_total_control_public_replay_count": 11,
+    "customer_loan_total_control_request_count": 11,
+    "customer_loan_total_control_request_set_count": 38,
+    "direct_whole_document_line_count": 667224,
+    "direct_whole_document_page_count": 8947,
+    "document_count": 140,
+    "document_inherited_period_lane_count": 11,
+    "document_inherited_unit_trial_count": 11,
+    "document_pdf_internal_context_evidence_count": 38,
+    "exact_accounting_equation_count": 65,
+    "exact_customer_loan_geography_trial_count": 38,
+    "gemma_request_count": 0,
+    "known_nested_domestic_mapping_count": 0,
+    "local_upstream_total_control_conflict_count": 0,
+    "mapped_money_cell_count": 130,
+    "mapped_parent_716_or_759_record_count": 0,
+    "mapped_record_count": 76,
+    "multiple_identical_region_count": 0,
+    "not_observed_trial_count": 24,
+    "numeric_gemma_authority_count": 0,
+    "numeric_unresolved_observed_cell_count": 0,
+    "numeric_vetoed_equation_count": 0,
+    "observed_numeric_mapped_cell_count": 88,
+    "partial_continuation_trial_count": 0,
+    "partial_nonterminal_graph_count": 0,
+    "ppocrv6_vietocr_numeric_disagreement_count": 0,
+    "printed_customer_loan_total_control_cell_count": 65,
+    "printed_customer_loan_total_control_source_mode_counts": {
+      "LOCAL_LABELED_TOTAL": 36,
+      "LOCAL_UNLABELED_TOTAL_ROW": 18,
+      "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL": 11
+    },
+    "region_retrieval_mapping_or_absence_authority_count": 0,
+    "repeated_full_segment_trial_count": 18,
+    "row_layout_trial_count": 20,
+    "schema_report_norm_id_record_counts": {
+      "5752": 38,
+      "765": 38
+    },
+    "sparse_hydrated_line_count": 153239,
+    "sparse_hydrated_page_count": 1995,
+    "sparse_line_reduction_ppm": 770333,
+    "sparse_page_reduction_ppm": 777020,
+    "sparse_to_whole_document_equivalence_count": 140,
+    "unresolved_trial_count": 0,
+    "upstream_customer_loan_total_control_document_count": 11,
+    "upstream_customer_loan_total_control_lane_count": 11,
+    "visible_dash_zero_cell_count": 42
+  },
+  "bank_summary": [
+    {
+      "bank": "ACB",
+      "document_count": 18,
+      "verified_exact_document_count": 3,
+      "verified_broad_bounded_absence_document_count": 12,
+      "verified_not_observed_document_count": 3,
+      "mapped_record_count": 6,
+      "visible_dash_zero_cell_count": 6
+    },
+    {
+      "bank": "MBB",
+      "document_count": 18,
+      "verified_exact_document_count": 17,
+      "verified_broad_bounded_absence_document_count": 0,
+      "verified_not_observed_document_count": 1,
+      "mapped_record_count": 34,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "VPB",
+      "document_count": 18,
+      "verified_exact_document_count": 0,
+      "verified_broad_bounded_absence_document_count": 18,
+      "verified_not_observed_document_count": 0,
+      "mapped_record_count": 0,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "HDB",
+      "document_count": 16,
+      "verified_exact_document_count": 0,
+      "verified_broad_bounded_absence_document_count": 16,
+      "verified_not_observed_document_count": 0,
+      "mapped_record_count": 0,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "VCB",
+      "document_count": 18,
+      "verified_exact_document_count": 0,
+      "verified_broad_bounded_absence_document_count": 0,
+      "verified_not_observed_document_count": 18,
+      "mapped_record_count": 0,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "CTG",
+      "document_count": 18,
+      "verified_exact_document_count": 0,
+      "verified_broad_bounded_absence_document_count": 16,
+      "verified_not_observed_document_count": 2,
+      "mapped_record_count": 0,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "BID",
+      "document_count": 16,
+      "verified_exact_document_count": 0,
+      "verified_broad_bounded_absence_document_count": 16,
+      "verified_not_observed_document_count": 0,
+      "mapped_record_count": 0,
+      "visible_dash_zero_cell_count": 0
+    },
+    {
+      "bank": "VIB",
+      "document_count": 18,
+      "verified_exact_document_count": 18,
+      "verified_broad_bounded_absence_document_count": 0,
+      "verified_not_observed_document_count": 0,
+      "mapped_record_count": 36,
+      "visible_dash_zero_cell_count": 36
+    }
+  ],
+  "input_identities": {
+    "bounded_schema_projection_id": "lgbspv1:projection:cfbc470ef1551bdd35dad22ba4892208307f32bd08623b9f770fc21b48bc617f",
+    "document_evidence_store_manifest_id": "ffdesv1:manifest:1d1bfcaf1c61274cea93c990a85e6e8dc9d2b42a077d4283150a1008987d5b93",
+    "numeric_axis_sha256": "dd5bc33c9645798100129fc1309714472958fded41b9e371fac75cd7ec524871",
+    "numeric_receipt_id": "ffpniv3:receipt:2d5021adaa068363ea9dbbbdca934998ce27cd0d023fba4c402258fb571e5dc5",
+    "semantic_index_id": "ffsiv1:index:3aba376f04e965ba3bfb53290046c7b3488091022b74f2bd187ec5d5986890c2",
+    "region_query_spec_id": "fffrrv2:query:94dea056831227562ee83a6f9b93ea244991058ff2753d90c9917c7f752cd232",
+    "region_retrieval_receipt_id": "fffrrv2:receipt:fb74c78482a026dfe46d8d1dac78b45bf5eeea72f2d7ef14043be7550729d598",
+    "region_retrieval_binding_id": "lg140v1:retrieval-receipt-binding:630b20ac8b7d2c40c55f3f046552e7727b829ea4cb0610412638399a08eb4e34"
+  },
+  "input_refs": {
+    "document_evidence_manifest": {
+      "path": "data/registered/family_first_document_evidence_store_v1.json",
+      "sha256": "07b06a79e5fe830d9565082e96ce1d8ba7b83a85377d804c7154eba8becad32c",
+      "size_bytes": 92051
+    },
+    "region_retrieval_database": {
+      "path": "data/local/family_first_ocr_query_cache_v1.sqlite3",
+      "sha256": "3a5ebecadf059b14df893fff20a7976717348558b77af13937876c8c6e3e8504",
+      "size_bytes": 453050368
+    }
+  },
+  "implementation_refs": {
+    "scripts/experiments/build_family_first_loan_geography_140_filing_schema_sweep_v1.py": {
+      "path": "scripts/experiments/build_family_first_loan_geography_140_filing_schema_sweep_v1.py",
+      "sha256": "e67dd9a42bc587635a317f390cd50e08fdcecfd6cf9503018116264074716bc4",
+      "size_bytes": 154363
+    },
+    "scripts/experiments/customer_loan_total_control_v1.py": {
+      "path": "scripts/experiments/customer_loan_total_control_v1.py",
+      "sha256": "ebefb623b4ac41409977d09a7a00ab4f8cb35daaf82cb777717cb15a960f0e9e",
+      "size_bytes": 42546
+    },
+    "scripts/experiments/loan_geography_visible_dash_evidence_v1.py": {
+      "path": "scripts/experiments/loan_geography_visible_dash_evidence_v1.py",
+      "sha256": "dd770c5675ac2478f7b20cadfdb575509f1e3856f42838162ac31dcb12f4a578",
+      "size_bytes": 50509
+    },
+    "scripts/experiments/loan_type_numeric_row_reconciliation_v1.py": {
+      "path": "scripts/experiments/loan_type_numeric_row_reconciliation_v1.py",
+      "sha256": "2af256e1d4a7995d1a0621a632cc6c8bf7256aa3c4bb86a9b95bb00092759d31",
+      "size_bytes": 14072
+    },
+    "scripts/experiments/loan_type_variant_graph_v1.py": {
+      "path": "scripts/experiments/loan_type_variant_graph_v1.py",
+      "sha256": "e55dca8dc49ea2300a608ff25dda21d1b4c5076d105eb11b0e4931f1b1f32a65",
+      "size_bytes": 46223
+    },
+    "src/bctc_ai/evaluation/accounting_scoped_table_graph_v1.py": {
+      "path": "src/bctc_ai/evaluation/accounting_scoped_table_graph_v1.py",
+      "sha256": "347782a12e7da48d52807bf0a035e4df6727a05822b99c9566b72afe175de014",
+      "size_bytes": 178406
+    },
+    "src/bctc_ai/evaluation/accounting_table_axes_v1.py": {
+      "path": "src/bctc_ai/evaluation/accounting_table_axes_v1.py",
+      "sha256": "66787b3f1db7f16cfd1919f2dab03929fe9ee1e1b8994a97049d3ed583499e44",
+      "size_bytes": 54342
+    },
+    "src/bctc_ai/evaluation/accounting_variant_graph_engine_v1.py": {
+      "path": "src/bctc_ai/evaluation/accounting_variant_graph_engine_v1.py",
+      "sha256": "6fbd518a09418278e273b0a81eed4db98b013dcb70bcbdf31e81bf9b47058b50",
+      "size_bytes": 36599
+    },
+    "src/bctc_ai/evaluation/family_first_document_evidence_store_v1.py": {
+      "path": "src/bctc_ai/evaluation/family_first_document_evidence_store_v1.py",
+      "sha256": "451e5c26ff616ea6f5e90e0d20709f1275b971378cad706588e3ae46b892f452",
+      "size_bytes": 47123
+    },
+    "src/bctc_ai/evaluation/family_first_ocr_query_cache_v1.py": {
+      "path": "src/bctc_ai/evaluation/family_first_ocr_query_cache_v1.py",
+      "sha256": "ae13a22da18b6f9514e6c18e988e09cc93c36b3ee621103eaff13bef454a125e",
+      "size_bytes": 67566
+    },
+    "src/bctc_ai/evaluation/family_first_region_retrieval_v1.py": {
+      "path": "src/bctc_ai/evaluation/family_first_region_retrieval_v1.py",
+      "sha256": "01a4d4a676a25e03eb4fe1733f159ceafbdacad9be6d6ed1196572528e1fae20",
+      "size_bytes": 105116
+    },
+    "src/bctc_ai/evaluation/family_first_visible_dash_glyph_evidence_v1.py": {
+      "path": "src/bctc_ai/evaluation/family_first_visible_dash_glyph_evidence_v1.py",
+      "sha256": "05bfd3d24b3ee5ac2ea372fe9be26f56c8bfb3ce4cef06026afd0939883b7228",
+      "size_bytes": 16684
+    },
+    "src/bctc_ai/evaluation/loan_geography_numeric_reconciliation_v1.py": {
+      "path": "src/bctc_ai/evaluation/loan_geography_numeric_reconciliation_v1.py",
+      "sha256": "260568df64ff4f8c3011e7b3cab45b03e18219dd8367fc51245bb3e884c1faeb",
+      "size_bytes": 48193
+    },
+    "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py": {
+      "path": "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py",
+      "sha256": "baed02373e4f3f8bc88b1e3ddcf5b2937f942ab65db069cf71cf281fba218a7d",
+      "size_bytes": 134156
+    },
+    "src/bctc_ai/mapping/loan_geography_bounded_schema_v1.py": {
+      "path": "src/bctc_ai/mapping/loan_geography_bounded_schema_v1.py",
+      "sha256": "2e17c735e525999b7c8be0607f13b421a226c1dd4d8fb3e5d9f10667f2928991",
+      "size_bytes": 16836
+    },
+    "src/bctc_ai/source_structure/contracts_v1.py": {
+      "path": "src/bctc_ai/source_structure/contracts_v1.py",
+      "sha256": "3f48ee42ffb2d0392f3413632421f324a97bdd1225c9056798342bd0d270f1ad",
+      "size_bytes": 96880
+    }
+  },
+  "authority": {
+    "absence_trial_hydrates_numeric_pixel_or_total_control_evidence": false,
+    "accounting_can_backsolve_invent_or_narrow_a_population": false,
+    "accounting_is_corroboration_or_veto_only": true,
+    "bank_filename_note_page_period_scope_year_or_ordinal_used_as_mapping_rule": false,
+    "bare_git_checkout_sufficient_for_public_exact_replay": false,
+    "blank_or_detector_omission_imputed_as_zero": false,
+    "broad_or_mixed_geography_population_mapping_authority": false,
+    "canonicalization_or_export_authority": false,
+    "customer_loan_total_control_requires_capability_snapshot_and_public_replay": true,
+    "customer_loan_total_control_snapshot_self_hash_is_source_authority": false,
+    "e0164_persisted_result_is_total_control_authority": false,
+    "gemma_numeric_authority": false,
+    "gemma_request_count": 0,
+    "known_nested_domestic_descendants_emitted": false,
+    "new_s3_write_authorized_by_this_seal": false,
+    "parent_716_or_759_emitted_as_mapping": false,
+    "persisted_formal_result_self_authenticating": false,
+    "persisted_retrieval_receipt_is_bounded_roots_and_coverage_only": true,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_live_replay_required": true,
+    "public_exact_live_replay_requires_authenticated_local_store": true,
+    "public_exact_replay_requires_restored_formal_result": true,
+    "raw_ppocrv6_and_vietocr_surfaces_preserved": true,
+    "region_retrieval_is_mapping_or_absence_authority": false,
+    "region_retrieval_requires_authenticated_exact_replay": true,
+    "s3_registration_pending": true,
+    "schema_creation_authority": false,
+    "schema_mapping_authority_bounded_to_family_11": true,
+    "shared_scoped_table_graph_required": true,
+    "sparse_and_whole_document_structure_must_be_equivalent": true,
+    "visible_dash_zero_requires_exact_pixel_replay": true
+  }
+}
