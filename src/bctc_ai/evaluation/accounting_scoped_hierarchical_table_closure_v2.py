@@ -167,6 +167,10 @@ _LOCAL_EQUATION_FIELDS_V2 = {
     "residual_evidence",
     "rounding_evidence",
 }
+_LOCAL_EQUATION_FIELDS_V3 = {
+    *_LOCAL_EQUATION_FIELDS_V2,
+    "local_trailing_subgroup_subtotal_receipt",
+}
 _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS = "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
 _COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS = (
     "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO"
@@ -180,6 +184,63 @@ _UNLABELED_SUBTOTAL_DISPOSITIONS = {
 _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES = {
     "INTERBANK_DEPOSIT_GROUP",
     "INTERBANK_LOAN_GROUP",
+}
+_LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION = "LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION"
+_LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS = {
+    "alternative_value_axes",
+    "boundary_occurrence_id",
+    "boundary_role",
+    "candidate_ordinal",
+    "component_occurrence_ids",
+    "component_roles",
+    "component_sample_ids",
+    "descendant_occurrence_ids",
+    "interval",
+    "nonadditive_occurrence_ids",
+    "nonadditive_sample_ids",
+    "missing_column_ordinals",
+    "numeric_sample_universe_sha256",
+    "observed_column_ordinals",
+    "parent_occurrence_id",
+    "receipt_id",
+    "role_occurrence_axis_sha256",
+    "row_axis_id",
+    "source_record_sha256",
+    "source_cluster_id",
+    "source_row_kind",
+    "source_sample_ids",
+    "selection_kind",
+    "status",
+    "target_occurrence_id",
+    "target_role",
+}
+_LOCAL_TRAILING_SUBGROUP_INTERVAL_FIELDS = {
+    "candidate_first_document_line_ordinal",
+    "candidate_first_source_line_index",
+    "candidate_last_document_line_ordinal",
+    "candidate_last_source_line_index",
+    "last_descendant_document_line_ordinal",
+    "last_descendant_source_line_index",
+    "page_sequence",
+    "subgroup_stop_document_line_ordinal_exclusive",
+    "subgroup_stop_source_line_index_exclusive",
+    "target_document_line_ordinal",
+    "target_source_line_index",
+    "topology_region_stop_document_line_ordinal_exclusive",
+    "topology_region_stop_source_line_index_exclusive",
+}
+_LOCAL_TRAILING_SUBGROUP_ALTERNATIVE_FIELDS = {
+    "component_occurrence_ids",
+    "component_roles",
+    "component_sample_ids",
+    "values",
+}
+_LOCAL_TRAILING_SUBGROUP_RECEIPT_STATUS = (
+    "EXACT_VISIBLE_LANES_UNLABELED_SUBGROUP_SELECTOR_BOUND_TO_SEALED_INTERVAL"
+)
+_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS = {
+    *_UNLABELED_SUBTOTAL_DISPOSITIONS,
+    _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
 }
 _MAX_EQUATIONS = 128
 _MAX_COVERAGE_RECORDS = 16_384
@@ -202,6 +263,7 @@ _GLOBAL_EQUATION_STATUSES = {
     "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
 }
 _LOCAL_EQUATION_STATUSES = {
+    "LOCAL_AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP_VETO",
     "LOCAL_AMBIGUOUS_ROUNDING_COMPONENT_OWNERSHIP_VETO",
     "LOCAL_SINGLE_SCOPE_WITHOUT_VISIBLE_SUBTOTAL_DEFERRED_TO_EXHAUSTIVE_GLOBAL_EQUATION",
     "LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO",
@@ -211,6 +273,7 @@ _LOCAL_EQUATION_STATUSES = {
     "LOCAL_VISIBLE_SUBTOTAL_INCOMPLETE_COMPONENT_SET_VETO",
     "LOCAL_VISIBLE_SUBTOTAL_MISMATCH_VETO",
     "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS",
+    "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
 }
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
@@ -694,6 +757,30 @@ def _same_values(left: Sequence[Mapping[str, Any]], right: Sequence[Mapping[str,
     ] and all(_equal(a["number"], b["number"]) for a, b in zip(left, right, strict=True))
 
 
+def _exact_numeric_value_signature(values: Sequence[Mapping[str, Any]]) -> str:
+    """Key exact displayed numbers without conflating their source provenance."""
+
+    return canonical_json_sha256_v1(
+        [
+            {
+                "column_ordinal": value["column_ordinal"],
+                "number": canonical_clone_v1(value["number"]),
+            }
+            for value in values
+        ]
+    )
+
+
+def _unique_maximum_component_coverage(
+    alternatives: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    if not alternatives:
+        return None
+    maximum = max(len(item["component_roles"]) for item in alternatives)
+    strongest = [item for item in alternatives if len(item["component_roles"]) == maximum]
+    return strongest[0] if len(strongest) == 1 else None
+
+
 def _residuals(
     visible: Sequence[Mapping[str, Any]], components: Sequence[Mapping[str, Any]]
 ) -> list[dict[str, Any]] | None:
@@ -1010,14 +1097,25 @@ def _complete_alternatives(
             role in resolved for role in roles
         ):
             continue
+        records = [resolved[role] for role in roles]
+        printed_axes = [record.get(_PRINTED_SOURCE_CELLS_KEY) for record in records]
+        printed_sample_ids = [
+            cell.get("source_sample_id")
+            for axis in printed_axes
+            if type(axis) is list
+            for lane in axis
+            if type(lane) is list
+            for cell in lane
+            if type(cell) is dict
+        ]
+        if len(printed_sample_ids) != len(set(printed_sample_ids)):
+            continue
         result.append(
             {
-                _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(
-                    [resolved[role] for role in roles]
-                ),
+                _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(records),
                 "component_roles": list(roles),
                 "derivation_policy": alternative["derivation_policy"],
-                "values": _sum_records([resolved[role] for role in roles]),
+                "values": _sum_records(records),
             }
         )
     return result
@@ -1220,12 +1318,20 @@ def _local_equations(
                     rounding_evidence.append(assessment)
                     rounding_alternatives.append((alternative, assessment))
         if exact:
-            selected = max(exact, key=lambda item: len(item["component_roles"]))
-            status = "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
-            component_roles = selected["component_roles"]
-            valid_results.add(result_occurrence)
-            authorized_component_scopes.add(result_occurrence)
-            covered_components.update(selected["component_occurrence_ids"])
+            selected = _unique_maximum_component_coverage(exact)
+            if selected is not None:
+                status = "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+                component_roles = selected["component_roles"]
+                valid_results.add(result_occurrence)
+                authorized_component_scopes.add(result_occurrence)
+                covered_components.update(selected["component_occurrence_ids"])
+            else:
+                status = "LOCAL_AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP_VETO"
+                component_roles = []
+                reasons.append(
+                    f"LOCAL_AMBIGUOUS_EXACT_COMPONENT_OWNERSHIP:"
+                    f"{equation['result_role']}:{result_occurrence}"
+                )
         elif within_rounding := [
             item
             for item in rounding_alternatives
@@ -1490,16 +1596,13 @@ def _select_global_equation(
                 if item["derivation_policy"]
                 == "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
             ]
-            distinct = {canonical_json_sha256_v1(item["values"]): item for item in derivable}
-            if len(distinct) == 1:
-                strongest = [
-                    item
-                    for item in derivable
-                    if len(item["component_roles"])
-                    == max(len(entry["component_roles"]) for entry in derivable)
-                ]
-                if len(strongest) == 1:
-                    selected = strongest[0]
+            numeric_signatures = {
+                _exact_numeric_value_signature(item["values"]) for item in derivable
+            }
+            if len(numeric_signatures) == 1:
+                strongest = _unique_maximum_component_coverage(derivable)
+                if strongest is not None:
+                    selected = strongest
                     source = None
                     status = "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
                 else:
@@ -1712,6 +1815,522 @@ def _numeric_source_candidate_axis(
             item["line_ordinal"],
             str(item["key"]),
         ),
+    )
+
+
+def _occurrence_descends_from(
+    occurrence: Mapping[str, Any],
+    ancestor_occurrence_id: str,
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
+) -> bool:
+    """Return true only for one acyclic, explicitly bound ownership chain."""
+
+    owner = occurrence.get("scope_owner_occurrence_id")
+    visited: set[str] = set()
+    while type(owner) is str and owner:
+        if owner == ancestor_occurrence_id:
+            return True
+        if owner in visited:
+            return False
+        visited.add(owner)
+        parent = occurrence_by_id.get(owner)
+        if type(parent) is not dict:
+            return False
+        owner = parent.get("scope_owner_occurrence_id")
+    return False
+
+
+def _local_trailing_subgroup_subtotal_receipt(
+    *,
+    accounting_rows: Sequence[Mapping[str, Any]],
+    equation: Mapping[str, Any],
+    family_id: str,
+    local_records: Sequence[Mapping[str, Any]],
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    row_axis: Mapping[str, Any],
+    source_candidates: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Prove one exact visible-lane subtotal selector for one sealed local scope.
+
+    This is deliberately narrower than the legacy global unlabeled-subtotal
+    projector.  It creates no role and performs no backsolve: a structural
+    loan group may consume exactly one unlabeled physical numeric row only
+    when that row closes the subgroup interval immediately after every owned
+    descendant.  A partial row is selection-only: every omitted lane must be
+    exactly identical across every competing exhaustive alternative.
+    """
+
+    target_role = equation.get("result_role")
+    if family_id != "INTERBANK_DEPOSITS_AND_LOANS" or target_role != ("INTERBANK_LOAN_GROUP"):
+        return None
+    target_occurrences = [
+        occurrence for occurrence in role_occurrences if occurrence.get("role") == target_role
+    ]
+    target_local_records = [
+        record for record in local_records if record.get("result_role") == target_role
+    ]
+    if (
+        len(target_occurrences) != 1
+        or len(target_local_records) != 1
+        or target_local_records[0].get("status")
+        != "LOCAL_SINGLE_SCOPE_WITHOUT_VISIBLE_SUBTOTAL_DEFERRED_TO_EXHAUSTIVE_GLOBAL_EQUATION"
+        or target_local_records[0].get("component_roles_present") != []
+        or "rounding_evidence" not in target_local_records[0]
+    ):
+        return None
+    target = target_occurrences[0]
+    target_id = target.get("occurrence_id")
+    target_match = target.get("label_match")
+    parent_id = target.get("scope_owner_occurrence_id")
+    region = row_axis.get("topology_region")
+    parent_match = region.get("parent_match") if type(region) is dict else None
+    if (
+        type(target_id) is not str
+        or type(parent_id) is not str
+        or not parent_id.startswith("aforav2:root:")
+        or target.get("role_kind") != "STRUCTURAL_GROUP"
+        or target.get("has_bound_value_row") is not False
+        or type(target_match) is not dict
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            target_match
+        )
+        or not str(target.get("scope_owner_match_kind", "")).startswith("EXACT_")
+        or type(region) is not dict
+        or type(parent_match) is not dict
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            parent_match
+        )
+        or region.get("page_sequence") != target_match.get("page_sequence")
+    ):
+        return None
+    page_sequence = target_match["page_sequence"]
+    stop_source = region.get("cluster_end_source_line_index_exclusive")
+    stop_document = region.get("cluster_end_document_line_ordinal_exclusive")
+    target_source = target_match.get("source_line_index")
+    target_document = target_match.get("document_line_ordinal")
+    if (
+        any(
+            type(item) is not int
+            for item in (stop_source, stop_document, target_source, target_document)
+        )
+        or not target_source < stop_source
+        or stop_document - target_document != stop_source - target_source
+    ):
+        return None
+
+    occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in role_occurrences
+        if type(occurrence.get("occurrence_id")) is str
+    }
+    if len(occurrence_by_id) != len(role_occurrences):
+        return None
+    descendants = [
+        occurrence
+        for occurrence in role_occurrences
+        if _occurrence_descends_from(occurrence, target_id, occurrence_by_id)
+    ]
+    descendants.sort(
+        key=lambda occurrence: (
+            occurrence["label_match"]["document_line_ordinal"],
+            occurrence["occurrence_id"],
+        )
+    )
+    descendant_ids = [occurrence["occurrence_id"] for occurrence in descendants]
+    if not descendants or any(
+        occurrence.get("role_kind") not in {"ADDITIVE_CHILD", "NONADDITIVE_CHILD"}
+        or type(occurrence.get("label_match")) is not dict
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            occurrence["label_match"]
+        )
+        or occurrence["label_match"].get("page_sequence") != page_sequence
+        or not target_source < occurrence["label_match"].get("source_line_index", -1) < stop_source
+        for occurrence in descendants
+    ):
+        return None
+    interval_occurrences = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+        and target_source
+        < occurrence.get("label_match", {}).get("source_line_index", -1)
+        < stop_source
+    ]
+    later_non_descendants = sorted(
+        (
+            occurrence
+            for occurrence in interval_occurrences
+            if occurrence["occurrence_id"] not in set(descendant_ids)
+        ),
+        key=lambda occurrence: (
+            occurrence["label_match"]["source_line_index"],
+            occurrence["occurrence_id"],
+        ),
+    )
+    boundary = later_non_descendants[0] if later_non_descendants else None
+    if boundary is not None and (
+        boundary.get("role_kind") != "TOTAL"
+        or boundary.get("scope_owner_occurrence_id") != parent_id
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            boundary.get("label_match", {})
+        )
+    ):
+        return None
+    subgroup_stop_source = (
+        boundary["label_match"]["source_line_index"] if boundary is not None else stop_source
+    )
+    subgroup_stop_document = (
+        boundary["label_match"]["document_line_ordinal"] if boundary is not None else stop_document
+    )
+    if (
+        subgroup_stop_document - target_document != subgroup_stop_source - target_source
+        or any(
+            occurrence["occurrence_id"] not in set(descendant_ids)
+            for occurrence in interval_occurrences
+            if occurrence["label_match"]["source_line_index"] < subgroup_stop_source
+        )
+        or any(
+            occurrence["label_match"]["source_line_index"] >= subgroup_stop_source
+            for occurrence in descendants
+        )
+    ):
+        return None
+
+    rows_by_occurrence: dict[str, Mapping[str, Any]] = {}
+    for row in accounting_rows:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is not str or occurrence_id in rows_by_occurrence:
+            return None
+        rows_by_occurrence[occurrence_id] = row
+    descendant_rows = [rows_by_occurrence.get(occurrence_id) for occurrence_id in descendant_ids]
+    if any(
+        type(row) is not dict
+        or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+        or not row.get("values")
+        for row in descendant_rows
+    ):
+        return None
+    additive = [
+        occurrence for occurrence in descendants if occurrence["role_kind"] == "ADDITIVE_CHILD"
+    ]
+    nonadditive = [
+        occurrence for occurrence in descendants if occurrence["role_kind"] == "NONADDITIVE_CHILD"
+    ]
+    additive_roles = [occurrence["role"] for occurrence in additive]
+    if len(additive_roles) != len(set(additive_roles)):
+        return None
+    additive_by_role = {occurrence["role"]: occurrence for occurrence in additive}
+    required_roles = set(additive_roles) - set(equation["shared_component_roles"])
+    applicable_alternatives = []
+    for alternative in equation["component_role_alternatives"]:
+        roles = list(alternative["component_roles"])
+        if not required_roles <= set(roles) or not all(role in additive_by_role for role in roles):
+            continue
+        occurrence_ids = [additive_by_role[role]["occurrence_id"] for role in roles]
+        rows = [rows_by_occurrence[occurrence_id] for occurrence_id in occurrence_ids]
+        applicable_alternatives.append(
+            {
+                "component_occurrence_ids": occurrence_ids,
+                "component_roles": roles,
+                "component_sample_ids": [
+                    value["sample_id"] for row in rows for value in row["values"]
+                ],
+                "values": _sum_records([_source_resolution(row) for row in rows]),
+            }
+        )
+    if not applicable_alternatives:
+        return None
+
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in numeric_sample_universe
+        if type(sample.get("sample_id")) is str
+    }
+    if len(sample_by_id) != len(numeric_sample_universe):
+        return None
+
+    def owned_sample_ids(occurrence_id: str) -> list[str]:
+        return [value["sample_id"] for value in rows_by_occurrence[occurrence_id]["values"]]
+
+    nonadditive_occurrence_ids = [occurrence["occurrence_id"] for occurrence in nonadditive]
+    nonadditive_sample_ids = [
+        sample_id
+        for occurrence_id in nonadditive_occurrence_ids
+        for sample_id in owned_sample_ids(occurrence_id)
+    ]
+    descendant_sample_ids = [
+        sample_id
+        for occurrence_id in descendant_ids
+        for sample_id in owned_sample_ids(occurrence_id)
+    ]
+    if len(descendant_sample_ids) != len(set(descendant_sample_ids)) or any(
+        type(sample_by_id.get(sample_id)) is not dict
+        or sample_by_id[sample_id].get("owner_kind") != "ROLE_OCCURRENCE"
+        or sample_by_id[sample_id].get("owner_id") != occurrence_id
+        for occurrence_id in descendant_ids
+        for sample_id in owned_sample_ids(occurrence_id)
+    ):
+        return None
+    descendant_samples = [sample_by_id[sample_id] for sample_id in descendant_sample_ids]
+    last_descendant_source = max(sample["line_ordinal"] for sample in descendant_samples)
+    page_document_offset = target_document - target_source
+    last_descendant_document = page_document_offset + last_descendant_source
+
+    post_descendant_sources = []
+    for source in source_candidates:
+        source_samples = [sample_by_id.get(sample_id) for sample_id in source["sample_ids"]]
+        if not source_samples or any(type(sample) is not dict for sample in source_samples):
+            continue
+        source_lines = [sample["line_ordinal"] for sample in source_samples]
+        if (
+            source.get("page_sequence") == page_sequence
+            and min(source_lines) > last_descendant_source
+            and max(source_lines) < subgroup_stop_source
+        ):
+            post_descendant_sources.append((source, source_samples))
+    if len(post_descendant_sources) != 1:
+        return None
+    selected, selected_samples = post_descendant_sources[0]
+    selected_lines = [sample["line_ordinal"] for sample in selected_samples]
+    candidate_first_source = min(selected_lines)
+    candidate_last_source = max(selected_lines)
+    candidate_ordinal = (
+        selected["source_record"].get("candidate_ordinal")
+        if selected["row_kind"] == "TRAILING_VALUE_ROW"
+        else None
+    )
+    source_cluster_id = (
+        selected["source_record"].get("cluster_id")
+        if selected["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+        else None
+    )
+    observed_columns = [value["column_ordinal"] for value in selected["values"]]
+    lane_axis = [value["column_ordinal"] for value in applicable_alternatives[0]["values"]]
+    if any(
+        [value["column_ordinal"] for value in alternative["values"]] != lane_axis
+        for alternative in applicable_alternatives
+    ):
+        return None
+    missing_columns = [lane for lane in lane_axis if lane not in set(observed_columns)]
+
+    def exact_visible_lanes_match(alternative: Mapping[str, Any]) -> bool:
+        by_lane = {value["column_ordinal"]: value for value in alternative["values"]}
+        return all(
+            value["column_ordinal"] in by_lane
+            and same_typed_json_v1(value["number"], by_lane[value["column_ordinal"]]["number"])
+            for value in selected["values"]
+        )
+
+    matching_alternatives = [
+        alternative
+        for alternative in applicable_alternatives
+        if exact_visible_lanes_match(alternative)
+    ]
+    missing_lanes_are_nondiscriminating = all(
+        len(
+            {
+                canonical_json_sha256_v1(alternative["values"][lane]["number"])
+                for alternative in applicable_alternatives
+            }
+        )
+        == 1
+        for lane in missing_columns
+    )
+    if len(matching_alternatives) != 1:
+        return None
+    selected_alternative = matching_alternatives[0]
+    component_roles = selected_alternative["component_roles"]
+    component_occurrence_ids = selected_alternative["component_occurrence_ids"]
+    component_sample_ids = selected_alternative["component_sample_ids"]
+    component_sum = selected_alternative["values"]
+    component_rows = [rows_by_occurrence[item] for item in component_occurrence_ids]
+    selection_kind = (
+        "COMPLETE_EXACT_ALL_LANES"
+        if not missing_columns
+        else "PARTIAL_EXACT_UNIQUE_VISIBLE_LANES_IDENTICAL_MISSING_LANES"
+    )
+    if (
+        observed_columns != sorted(set(observed_columns))
+        or not observed_columns
+        or any(column not in lane_axis for column in observed_columns)
+        or (missing_columns and not missing_lanes_are_nondiscriminating)
+        or (
+            selected.get("row_kind") == "TRAILING_VALUE_ROW"
+            and (type(candidate_ordinal) is not int or missing_columns or not selected["complete"])
+        )
+        or (
+            selected.get("row_kind") == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+            and (
+                type(source_cluster_id) is not str
+                or selected["source_record"].get("status")
+                != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+                or selected["source_record"].get("label_lane_status")
+                != occurrence_v2._UNLABELED_LABEL_LANE_STATUS
+            )
+        )
+        or selected.get("row_kind")
+        not in {"TRAILING_VALUE_ROW", "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"}
+        or candidate_first_source != last_descendant_source + 1
+        or candidate_last_source != subgroup_stop_source - 1
+        or page_document_offset + candidate_last_source != subgroup_stop_document - 1
+        or max(sample["bbox"][1] for sample in selected_samples)
+        >= min(sample["bbox"][3] for sample in selected_samples)
+        or min(sample["bbox"][1] for sample in selected_samples)
+        <= max(sample["bbox"][3] for sample in descendant_samples)
+        or any(
+            (
+                sample.get("owner_kind") != "TRAILING_VALUE_ROW"
+                or sample.get("owner_id") != f"aforav2:trailing:{candidate_ordinal}"
+            )
+            if selected["row_kind"] == "TRAILING_VALUE_ROW"
+            else (
+                sample.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or sample.get("owner_id") != source_cluster_id
+            )
+            for sample in selected_samples
+        )
+    ):
+        return None
+
+    interval = {
+        "candidate_first_document_line_ordinal": page_document_offset + candidate_first_source,
+        "candidate_first_source_line_index": candidate_first_source,
+        "candidate_last_document_line_ordinal": page_document_offset + candidate_last_source,
+        "candidate_last_source_line_index": candidate_last_source,
+        "last_descendant_document_line_ordinal": last_descendant_document,
+        "last_descendant_source_line_index": last_descendant_source,
+        "page_sequence": page_sequence,
+        "subgroup_stop_document_line_ordinal_exclusive": subgroup_stop_document,
+        "subgroup_stop_source_line_index_exclusive": subgroup_stop_source,
+        "target_document_line_ordinal": target_document,
+        "target_source_line_index": target_source,
+        "topology_region_stop_document_line_ordinal_exclusive": stop_document,
+        "topology_region_stop_source_line_index_exclusive": stop_source,
+    }
+    receipt_material = {
+        "alternative_value_axes": canonical_clone_v1(applicable_alternatives),
+        "boundary_occurrence_id": (boundary["occurrence_id"] if boundary is not None else None),
+        "boundary_role": boundary["role"] if boundary is not None else None,
+        "candidate_ordinal": candidate_ordinal,
+        "component_occurrence_ids": component_occurrence_ids,
+        "component_roles": component_roles,
+        "component_sample_ids": component_sample_ids,
+        "descendant_occurrence_ids": descendant_ids,
+        "interval": interval,
+        "nonadditive_occurrence_ids": nonadditive_occurrence_ids,
+        "nonadditive_sample_ids": nonadditive_sample_ids,
+        "missing_column_ordinals": missing_columns,
+        "numeric_sample_universe_sha256": canonical_json_sha256_v1(numeric_sample_universe),
+        "observed_column_ordinals": observed_columns,
+        "parent_occurrence_id": parent_id,
+        "role_occurrence_axis_sha256": canonical_json_sha256_v1(role_occurrences),
+        "row_axis_id": row_axis["row_axis_id"],
+        "source_cluster_id": source_cluster_id,
+        "source_record_sha256": canonical_json_sha256_v1(selected["source_record"]),
+        "source_row_kind": selected["row_kind"],
+        "source_sample_ids": canonical_clone_v1(selected["sample_ids"]),
+        "selection_kind": selection_kind,
+        "status": _LOCAL_TRAILING_SUBGROUP_RECEIPT_STATUS,
+        "target_occurrence_id": target_id,
+        "target_role": target_role,
+    }
+    receipt = {
+        **receipt_material,
+        "receipt_id": "ashtcv2:local-trailing-subgroup-subtotal:"
+        + canonical_json_sha256_v1(receipt_material),
+    }
+    return {
+        "candidate_ordinal": candidate_ordinal,
+        "disposition": _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
+        "occurrence_id": target_id,
+        "receipt": receipt,
+        "resolution": {
+            _PRINTED_SOURCE_CELLS_KEY: _printed_source_cells_by_lane(
+                [_source_resolution(row) for row in component_rows]
+            ),
+            "component_roles": component_roles,
+            "resolution_kind": "DERIVED_EXACT_LOCAL_TRAILING_SUBGROUP_SUBTOTAL",
+            "role": target_role,
+            "source": None,
+            "values": canonical_clone_v1(component_sum),
+        },
+        "role": target_role,
+        "row_kind": selected["row_kind"],
+        "sample_ids": canonical_clone_v1(selected["sample_ids"]),
+        "source_key": selected["key"],
+        "source_record": canonical_clone_v1(selected["source_record"]),
+    }
+
+
+def _local_trailing_subgroup_has_equal_vector_collision(
+    evidence: Mapping[str, Any],
+    equations: Sequence[Mapping[str, Any]],
+    resolved: Mapping[str, Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Reject a receipt whose vector can name another declared accounting result."""
+
+    receipt = evidence["receipt"]
+    target_role = evidence["role"]
+    scratch = canonical_clone_v1(resolved)
+    scratch[target_role] = canonical_clone_v1(evidence["resolution"])
+    for _pass in range(len(equations) + 1):
+        changed = False
+        for equation in equations:
+            alternatives = [
+                {
+                    "component_roles": alternative["component_roles"],
+                    "values": _sum_records(
+                        [scratch[role] for role in alternative["component_roles"]]
+                    ),
+                }
+                for alternative in equation["component_role_alternatives"]
+                if all(role in scratch for role in alternative["component_roles"])
+            ]
+            distinct = {
+                _exact_numeric_value_signature(alternative["values"]): alternative
+                for alternative in alternatives
+            }
+            result_role = equation["result_role"]
+            if result_role not in scratch and len(distinct) == 1:
+                selected = next(iter(distinct.values()))
+                scratch[result_role] = {
+                    "component_roles": selected["component_roles"],
+                    "resolution_kind": "DERIVED_EXACT_COLLISION_PROJECTION",
+                    "role": result_role,
+                    "source": None,
+                    "values": selected["values"],
+                }
+                changed = True
+        if not changed:
+            break
+    excluded_roles = {
+        target_role,
+        *receipt["component_roles"],
+        *(
+            occurrence["role"]
+            for occurrence in role_occurrences
+            if occurrence.get("occurrence_id") in receipt["nonadditive_occurrence_ids"]
+        ),
+    }
+    target_values = evidence["resolution"]["values"]
+    if any(
+        role not in excluded_roles and _same_values(record["values"], target_values)
+        for role, record in scratch.items()
+    ):
+        return True
+    return any(
+        equation["result_role"] != target_role
+        and any(
+            all(role in scratch for role in alternative["component_roles"])
+            and _same_values(
+                _sum_records([scratch[role] for role in alternative["component_roles"]]),
+                target_values,
+            )
+            for alternative in equation["component_role_alternatives"]
+        )
+        for equation in equations
     )
 
 
@@ -3103,9 +3722,9 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
                 type(cluster) is not dict
                 or not same_typed_json_v1(receipt["source_record"], cluster)
                 or receipt["disposition"]
-                not in {expected_disposition, *_UNLABELED_SUBTOTAL_DISPOSITIONS}
+                not in {expected_disposition, *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS}
                 or (
-                    receipt["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                    receipt["disposition"] in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
                     and cluster["status"] != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
                 )
             ):
@@ -3137,7 +3756,7 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
     }
     if any(
-        receipt["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+        receipt["disposition"] not in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
         and (
             (
                 "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
@@ -3277,6 +3896,439 @@ def _local_equation_exact_arithmetic(
         _occurrence_number_axis(result_occurrence_id, numeric_sample_by_id),
         component_axes,
     )
+
+
+def _validate_local_trailing_subgroup_subtotal_receipt(
+    equation: Mapping[str, Any],
+    value: Mapping[str, Any],
+    *,
+    numeric_sample_by_id: Mapping[str, Mapping[str, Any]],
+    resolved_by_role: Mapping[str, Mapping[str, Any]],
+    role_occurrence_by_id: Mapping[str, Mapping[str, Any]],
+) -> None:
+    receipt = equation.get("local_trailing_subgroup_subtotal_receipt")
+    interval = receipt.get("interval") if type(receipt) is dict else None
+    if (
+        type(receipt) is not dict
+        or set(receipt) != _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS
+        or type(interval) is not dict
+        or set(interval) != _LOCAL_TRAILING_SUBGROUP_INTERVAL_FIELDS
+        or receipt["status"] != _LOCAL_TRAILING_SUBGROUP_RECEIPT_STATUS
+        or receipt["target_role"] != equation["result_role"]
+        or receipt["target_occurrence_id"] != equation["result_occurrence_id"]
+        or receipt["component_roles"] != equation["component_roles_present"]
+        or receipt["row_axis_id"] != value["row_axis_id"]
+        or receipt["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(value["numeric_sample_universe"])
+        or receipt["role_occurrence_axis_sha256"]
+        != canonical_json_sha256_v1(value["role_occurrences"])
+        or receipt["source_row_kind"]
+        not in {"TRAILING_VALUE_ROW", "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"}
+        or (
+            receipt["source_row_kind"] == "TRAILING_VALUE_ROW"
+            and (
+                type(receipt["candidate_ordinal"]) is not int
+                or receipt["candidate_ordinal"] < 0
+                or receipt["source_cluster_id"] is not None
+            )
+        )
+        or (
+            receipt["source_row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+            and (
+                receipt["candidate_ordinal"] is not None
+                or type(receipt["source_cluster_id"]) is not str
+                or not receipt["source_cluster_id"].startswith("aforav2:unassigned:")
+            )
+        )
+        or receipt["selection_kind"]
+        not in {
+            "COMPLETE_EXACT_ALL_LANES",
+            "PARTIAL_EXACT_UNIQUE_VISIBLE_LANES_IDENTICAL_MISSING_LANES",
+        }
+        or type(receipt["alternative_value_axes"]) is not list
+        or not receipt["alternative_value_axes"]
+        or type(receipt["observed_column_ordinals"]) is not list
+        or receipt["observed_column_ordinals"] != sorted(set(receipt["observed_column_ordinals"]))
+        or not receipt["observed_column_ordinals"]
+        or any(type(item) is not int or item < 0 for item in receipt["observed_column_ordinals"])
+        or type(receipt["missing_column_ordinals"]) is not list
+        or receipt["missing_column_ordinals"] != sorted(set(receipt["missing_column_ordinals"]))
+        or any(type(item) is not int or item < 0 for item in receipt["missing_column_ordinals"])
+        or bool(receipt["missing_column_ordinals"])
+        is not receipt["selection_kind"].startswith("PARTIAL_")
+        or (receipt["boundary_occurrence_id"] is None) is not (receipt["boundary_role"] is None)
+        or (
+            receipt["boundary_occurrence_id"] is not None
+            and (
+                type(receipt["boundary_occurrence_id"]) is not str
+                or type(receipt["boundary_role"]) is not str
+                or not receipt["boundary_role"]
+            )
+        )
+        or any(
+            type(receipt[field]) is not list
+            or len(receipt[field]) != len(set(receipt[field]))
+            or any(type(item) is not str or not item for item in receipt[field])
+            for field in (
+                "component_occurrence_ids",
+                "component_roles",
+                "component_sample_ids",
+                "descendant_occurrence_ids",
+                "nonadditive_occurrence_ids",
+                "nonadditive_sample_ids",
+                "source_sample_ids",
+            )
+        )
+        or any(type(item) is not int for item in interval.values())
+    ):
+        raise _error("local trailing subgroup subtotal receipt shape or axis drifted")
+    material = canonical_clone_v1(receipt)
+    receipt_id = material.pop("receipt_id")
+    if receipt_id != "ashtcv2:local-trailing-subgroup-subtotal:" + (
+        canonical_json_sha256_v1(material)
+    ):
+        raise _error("local trailing subgroup subtotal receipt identity drifted")
+
+    target = role_occurrence_by_id.get(receipt["target_occurrence_id"])
+    target_match = target.get("label_match") if type(target) is dict else None
+    if (
+        value["family_id"] != "INTERBANK_DEPOSITS_AND_LOANS"
+        or receipt["target_role"] != "INTERBANK_LOAN_GROUP"
+        or type(target) is not dict
+        or target.get("role") != receipt["target_role"]
+        or target.get("role_kind") != "STRUCTURAL_GROUP"
+        or target.get("has_bound_value_row") is not False
+        or target.get("scope_owner_occurrence_id") != receipt["parent_occurrence_id"]
+        or type(receipt["parent_occurrence_id"]) is not str
+        or not receipt["parent_occurrence_id"].startswith("aforav2:root:")
+        or type(target_match) is not dict
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            target_match
+        )
+        or not str(target.get("scope_owner_match_kind", "")).startswith("EXACT_")
+        or interval["target_document_line_ordinal"] != target_match.get("document_line_ordinal")
+        or interval["target_source_line_index"] != target_match.get("source_line_index")
+        or interval["page_sequence"] != target_match.get("page_sequence")
+    ):
+        raise _error("local trailing subgroup target or parent binding drifted")
+
+    descendants = [
+        occurrence
+        for occurrence in role_occurrence_by_id.values()
+        if _occurrence_descends_from(
+            occurrence, receipt["target_occurrence_id"], role_occurrence_by_id
+        )
+    ]
+    descendants.sort(
+        key=lambda occurrence: (
+            occurrence["label_match"]["document_line_ordinal"],
+            occurrence["occurrence_id"],
+        )
+    )
+    additive = [
+        occurrence for occurrence in descendants if occurrence.get("role_kind") == "ADDITIVE_CHILD"
+    ]
+    nonadditive = [
+        occurrence
+        for occurrence in descendants
+        if occurrence.get("role_kind") == "NONADDITIVE_CHILD"
+    ]
+    additive_by_role = {occurrence["role"]: occurrence for occurrence in additive}
+    if (
+        [occurrence["occurrence_id"] for occurrence in descendants]
+        != receipt["descendant_occurrence_ids"]
+        or any(
+            occurrence.get("role_kind") not in {"ADDITIVE_CHILD", "NONADDITIVE_CHILD"}
+            or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence.get("label_match", {})
+            )
+            for occurrence in descendants
+        )
+        or len(additive_by_role) != len(additive)
+        or not set(receipt["component_roles"]) <= set(additive_by_role)
+        or receipt["component_occurrence_ids"]
+        != [additive_by_role[role]["occurrence_id"] for role in receipt["component_roles"]]
+        or receipt["nonadditive_occurrence_ids"]
+        != [occurrence["occurrence_id"] for occurrence in nonadditive]
+    ):
+        raise _error("local trailing subgroup exhaustive descendant ownership drifted")
+    boundary = (
+        role_occurrence_by_id.get(receipt["boundary_occurrence_id"])
+        if receipt["boundary_occurrence_id"] is not None
+        else None
+    )
+    if boundary is not None and (
+        boundary.get("role") != receipt["boundary_role"]
+        or boundary.get("role_kind") != "TOTAL"
+        or boundary.get("scope_owner_occurrence_id") != receipt["parent_occurrence_id"]
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            boundary.get("label_match", {})
+        )
+        or boundary["label_match"].get("source_line_index")
+        != interval["subgroup_stop_source_line_index_exclusive"]
+        or boundary["label_match"].get("document_line_ordinal")
+        != interval["subgroup_stop_document_line_ordinal_exclusive"]
+    ):
+        raise _error("local trailing subgroup exact boundary binding drifted")
+    if boundary is None and (
+        interval["subgroup_stop_source_line_index_exclusive"]
+        != interval["topology_region_stop_source_line_index_exclusive"]
+        or interval["subgroup_stop_document_line_ordinal_exclusive"]
+        != interval["topology_region_stop_document_line_ordinal_exclusive"]
+    ):
+        raise _error("local trailing subgroup topology stop binding drifted")
+
+    def occurrence_samples(occurrence_id: str) -> list[Mapping[str, Any]]:
+        return sorted(
+            (
+                sample
+                for sample in numeric_sample_by_id.values()
+                if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+                and sample.get("owner_id") == occurrence_id
+            ),
+            key=lambda sample: sample["column_ordinal"],
+        )
+
+    component_sample_axes = [
+        occurrence_samples(occurrence_id) for occurrence_id in receipt["component_occurrence_ids"]
+    ]
+    nonadditive_sample_axes = [
+        occurrence_samples(occurrence_id) for occurrence_id in receipt["nonadditive_occurrence_ids"]
+    ]
+    descendant_sample_axes = [
+        occurrence_samples(occurrence_id) for occurrence_id in receipt["descendant_occurrence_ids"]
+    ]
+    if (
+        any(
+            not samples
+            or [sample["column_ordinal"] for sample in samples] != list(range(len(samples)))
+            for samples in descendant_sample_axes
+        )
+        or receipt["component_sample_ids"]
+        != [sample["sample_id"] for samples in component_sample_axes for sample in samples]
+        or receipt["nonadditive_sample_ids"]
+        != [sample["sample_id"] for samples in nonadditive_sample_axes for sample in samples]
+    ):
+        raise _error("local trailing subgroup numeric ownership receipt drifted")
+
+    def sample_resolution(samples: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+        return {
+            "values": [
+                {
+                    "column_ordinal": sample["column_ordinal"],
+                    "number": {
+                        "coefficient": sample["parsed_token"]["coefficient"],
+                        "percentage_mark_present": sample["parsed_token"][
+                            "percentage_mark_present"
+                        ],
+                        "scale": sample["parsed_token"]["scale"],
+                    },
+                    "source_sample_ids": [sample["sample_id"]],
+                }
+                for sample in samples
+            ]
+        }
+
+    alternative_signatures: list[tuple[str, ...]] = []
+    for alternative in receipt["alternative_value_axes"]:
+        roles = alternative.get("component_roles") if type(alternative) is dict else None
+        occurrence_ids = (
+            alternative.get("component_occurrence_ids") if type(alternative) is dict else None
+        )
+        sample_ids = alternative.get("component_sample_ids") if type(alternative) is dict else None
+        if (
+            type(alternative) is not dict
+            or set(alternative) != _LOCAL_TRAILING_SUBGROUP_ALTERNATIVE_FIELDS
+            or type(roles) is not list
+            or not roles
+            or len(roles) != len(set(roles))
+            or any(role not in additive_by_role for role in roles)
+            or type(occurrence_ids) is not list
+            or occurrence_ids != [additive_by_role[role]["occurrence_id"] for role in roles]
+            or type(sample_ids) is not list
+            or sample_ids
+            != [
+                sample["sample_id"]
+                for occurrence_id in occurrence_ids
+                for sample in occurrence_samples(occurrence_id)
+            ]
+            or not same_typed_json_v1(
+                alternative.get("values"),
+                _sum_records(
+                    [
+                        sample_resolution(occurrence_samples(occurrence_id))
+                        for occurrence_id in occurrence_ids
+                    ]
+                ),
+            )
+        ):
+            raise _error("local trailing subgroup alternative vector receipt drifted")
+        alternative_signatures.append(tuple(roles))
+    if len(alternative_signatures) != len(set(alternative_signatures)) or not any(
+        alternative["component_roles"] == receipt["component_roles"]
+        and alternative["component_occurrence_ids"] == receipt["component_occurrence_ids"]
+        and alternative["component_sample_ids"] == receipt["component_sample_ids"]
+        for alternative in receipt["alternative_value_axes"]
+    ):
+        raise _error("local trailing subgroup selected alternative receipt drifted")
+    descendant_samples = [sample for samples in descendant_sample_axes for sample in samples]
+    last_descendant_source = max(sample["line_ordinal"] for sample in descendant_samples)
+    page_document_offset = (
+        interval["target_document_line_ordinal"] - interval["target_source_line_index"]
+    )
+    if (
+        interval["last_descendant_source_line_index"] != last_descendant_source
+        or interval["last_descendant_document_line_ordinal"]
+        != page_document_offset + last_descendant_source
+        or interval["candidate_first_source_line_index"] != last_descendant_source + 1
+        or interval["candidate_first_document_line_ordinal"]
+        != page_document_offset + interval["candidate_first_source_line_index"]
+        or interval["candidate_last_document_line_ordinal"]
+        != page_document_offset + interval["candidate_last_source_line_index"]
+        or interval["subgroup_stop_source_line_index_exclusive"]
+        != interval["candidate_last_source_line_index"] + 1
+        or interval["subgroup_stop_document_line_ordinal_exclusive"]
+        != interval["candidate_last_document_line_ordinal"] + 1
+        or interval["topology_region_stop_source_line_index_exclusive"]
+        < interval["subgroup_stop_source_line_index_exclusive"]
+        or interval["topology_region_stop_document_line_ordinal_exclusive"]
+        - interval["target_document_line_ordinal"]
+        != interval["topology_region_stop_source_line_index_exclusive"]
+        - interval["target_source_line_index"]
+    ):
+        raise _error("local trailing subgroup sealed interval receipt drifted")
+
+    coverage = [
+        record
+        for record in value["coverage_receipt"]
+        if record.get("disposition") == _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+        and record.get("candidate_ordinal") == receipt["candidate_ordinal"]
+        and record.get("row_kind") == receipt["source_row_kind"]
+        and (
+            receipt["source_cluster_id"] is None
+            or record.get("source_record", {}).get("cluster_id") == receipt["source_cluster_id"]
+        )
+    ]
+    if len(coverage) != 1:
+        raise _error("local trailing subgroup subtotal coverage is not unique")
+    source_receipt = coverage[0]
+    source_candidates = _numeric_source_candidate_axis(
+        value["numeric_sample_universe"],
+        [source_receipt["source_record"]]
+        if receipt["source_row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+        else [],
+        [source_receipt["source_record"]]
+        if receipt["source_row_kind"] == "TRAILING_VALUE_ROW"
+        else [],
+    )
+    source = source_candidates[0] if len(source_candidates) == 1 else None
+    source_samples = [
+        numeric_sample_by_id.get(sample_id) for sample_id in receipt["source_sample_ids"]
+    ]
+    if (
+        type(source) is not dict
+        or source["row_kind"] != receipt["source_row_kind"]
+        or source["sample_ids"] != receipt["source_sample_ids"]
+        or source_receipt["coverage_id"]
+        != "ashtcv2:coverage:local-trailing-subgroup-subtotal:"
+        + receipt["target_role"]
+        + (
+            f":trailing:{receipt['candidate_ordinal']}"
+            if receipt["source_row_kind"] == "TRAILING_VALUE_ROW"
+            else f":cluster:{receipt['source_cluster_id']}"
+        )
+        or source_receipt["occurrence_id"] != receipt["target_occurrence_id"]
+        or source_receipt["role"] != receipt["target_role"]
+        or source_receipt["sample_ids"] != receipt["source_sample_ids"]
+        or source_receipt["row_kind"] != receipt["source_row_kind"]
+        or receipt["source_record_sha256"]
+        != canonical_json_sha256_v1(source_receipt["source_record"])
+        or any(type(sample) is not dict for sample in source_samples)
+        or min(sample["line_ordinal"] for sample in source_samples)
+        != interval["candidate_first_source_line_index"]
+        or max(sample["line_ordinal"] for sample in source_samples)
+        != interval["candidate_last_source_line_index"]
+        or [sample["column_ordinal"] for sample in source_samples]
+        != receipt["observed_column_ordinals"]
+        or max(sample["bbox"][1] for sample in source_samples)
+        >= min(sample["bbox"][3] for sample in source_samples)
+        or min(sample["bbox"][1] for sample in source_samples)
+        <= max(sample["bbox"][3] for sample in descendant_samples)
+    ):
+        raise _error("local trailing subgroup subtotal source receipt drifted")
+
+    lane_axis = [
+        value["column_ordinal"] for value in receipt["alternative_value_axes"][0]["values"]
+    ]
+    if lane_axis != list(range(len(lane_axis))) or receipt["missing_column_ordinals"] != [
+        lane for lane in lane_axis if lane not in set(receipt["observed_column_ordinals"])
+    ]:
+        raise _error("local trailing subgroup selector lane axis drifted")
+
+    def alternative_matches_visible(alternative: Mapping[str, Any]) -> bool:
+        by_lane = {
+            value_record["column_ordinal"]: value_record for value_record in alternative["values"]
+        }
+        return all(
+            source_value["column_ordinal"] in by_lane
+            and same_typed_json_v1(
+                source_value["number"], by_lane[source_value["column_ordinal"]]["number"]
+            )
+            for source_value in source["values"]
+        )
+
+    matching_alternatives = [
+        alternative
+        for alternative in receipt["alternative_value_axes"]
+        if alternative_matches_visible(alternative)
+    ]
+    missing_lanes_are_nondiscriminating = all(
+        len(
+            {
+                canonical_json_sha256_v1(alternative["values"][lane]["number"])
+                for alternative in receipt["alternative_value_axes"]
+            }
+        )
+        == 1
+        for lane in receipt["missing_column_ordinals"]
+    )
+    selected_alternative = matching_alternatives[0] if len(matching_alternatives) == 1 else None
+    if (
+        type(selected_alternative) is not dict
+        or selected_alternative["component_roles"] != receipt["component_roles"]
+        or bool(receipt["missing_column_ordinals"])
+        and not missing_lanes_are_nondiscriminating
+        or receipt["selection_kind"] == "COMPLETE_EXACT_ALL_LANES"
+        and (receipt["missing_column_ordinals"] or not source["complete"])
+    ):
+        raise _error("local trailing subgroup selector alternative became ambiguous")
+
+    target_resolution = resolved_by_role.get(receipt["target_role"])
+    target_global = [
+        record
+        for record in value["equations"]["global"]
+        if record.get("result_role") == receipt["target_role"]
+    ]
+    if (
+        type(target_resolution) is not dict
+        or target_resolution.get("source") is not None
+        or target_resolution.get("component_roles") != receipt["component_roles"]
+        or not _same_values(target_resolution.get("values", []), selected_alternative["values"])
+        or len(target_global) != 1
+        or target_global[0].get("status") != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or target_global[0].get("component_roles_present") != receipt["component_roles"]
+    ):
+        raise _error("local trailing subgroup subtotal did not close its declared target")
+    excluded_roles = {
+        receipt["target_role"],
+        *receipt["component_roles"],
+        *(occurrence["role"] for occurrence in nonadditive),
+    }
+    if any(
+        role not in excluded_roles and _same_values(record["values"], target_resolution["values"])
+        for role, record in resolved_by_role.items()
+    ):
+        raise _error("local trailing subgroup subtotal has an equal-vector collision")
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -3553,7 +4605,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
     for equation in value["equations"]["local"]:
         if (
             type(equation) is not dict
-            or set(equation) not in (_LOCAL_EQUATION_FIELDS_V1, _LOCAL_EQUATION_FIELDS_V2)
+            or set(equation)
+            not in (
+                _LOCAL_EQUATION_FIELDS_V1,
+                _LOCAL_EQUATION_FIELDS_V2,
+                _LOCAL_EQUATION_FIELDS_V3,
+            )
             or type(equation["component_roles_present"]) is not list
             or type(equation["result_occurrence_id"]) is not str
             or not equation["result_occurrence_id"]
@@ -3584,7 +4641,19 @@ def _validate_result(value: Any) -> dict[str, Any]:
             ]
             if "ROUNDING_CORROBORATED" in equation["status"] and len(selected) != 1:
                 raise _error("scoped hierarchical local rounding selection drifted")
-        if equation["status"] in {
+        if equation["status"] == (
+            "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        ):
+            if equation.get("residual_evidence") or equation.get("rounding_evidence"):
+                raise _error("local trailing exact subtotal retained rounding authority")
+            _validate_local_trailing_subgroup_subtotal_receipt(
+                equation,
+                value,
+                numeric_sample_by_id=numeric_sample_by_id,
+                resolved_by_role=resolved_by_role,
+                role_occurrence_by_id=role_occurrence_by_id,
+            )
+        elif equation["status"] in {
             "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
             "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS",
         }:
@@ -3647,6 +4716,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         _EXTREME_MARGIN_FURNITURE_DISPOSITION,
         _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
         _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
+        _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
     }
     unlabeled_exact_subtotal_target_roles = {
         equation["result_role"]
@@ -3654,6 +4724,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if equation["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
         and equation["component_roles_present"]
     } & {*_UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES, "TERM_DEPOSIT_GROUP"}
+    unlabeled_exact_subtotal_target_roles.update(
+        equation["result_role"]
+        for equation in value["equations"]["local"]
+        if equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        and equation["component_roles_present"]
+    )
     if (
         None in occurrence_ids
         or len(coverage_ids) != len(set(coverage_ids))
@@ -3698,7 +4774,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and (
                     record["candidate_ordinal"] is not None
                     or (
-                        record["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        record["disposition"] in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
                         and (
                             (
                                 record["occurrence_id"] is not None
@@ -3708,7 +4784,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                         )
                     )
                     or (
-                        record["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        record["disposition"] not in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
                         and (
                             record["occurrence_id"] is not None
                             or record["role"] is not None
@@ -3764,7 +4840,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     or record["source_record"].get("candidate_ordinal")
                     != record["candidate_ordinal"]
                     or (
-                        record["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        record["disposition"] in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
                         and (
                             (
                                 record["occurrence_id"] is not None
@@ -3774,7 +4850,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                         )
                     )
                     or (
-                        record["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        record["disposition"] not in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
                         and (record["occurrence_id"] is not None or record["role"] is not None)
                     )
                 )
@@ -3955,7 +5031,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             and disposition
             not in {
                 "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER",
-                *_UNLABELED_SUBTOTAL_DISPOSITIONS,
+                *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
             }
             for ordinal, disposition in trailing_receipts.items()
         )
@@ -4070,6 +5146,12 @@ def _build(
     locally_valid_results: set[str] = set()
     locally_authorized_component_scopes: set[str] = set()
     locally_covered_components: set[str] = set()
+    source_candidates = _numeric_source_candidate_axis(
+        axis["numeric_sample_universe"],
+        axis["internal_unassigned_numeric_clusters"],
+        row_axis["trailing_value_rows"],
+    )
+    provisional_local_trailing_subtotals: list[dict[str, Any]] = []
     for equation in spec["equations"]:
         if equation["result_role"] in local_roles:
             (
@@ -4089,6 +5171,18 @@ def _build(
             locally_authorized_component_scopes.update(authorized_component_scopes)
             locally_covered_components.update(covered_components)
             reasons.extend(local_reasons)
+            local_trailing_subtotal = _local_trailing_subgroup_subtotal_receipt(
+                accounting_rows=accounting_rows,
+                equation=equation,
+                family_id=spec["family_id"],
+                local_records=records,
+                numeric_sample_universe=axis["numeric_sample_universe"],
+                role_occurrences=axis["role_occurrences"],
+                row_axis=row_axis,
+                source_candidates=source_candidates,
+            )
+            if local_trailing_subtotal is not None:
+                provisional_local_trailing_subtotals.append(local_trailing_subtotal)
     resolved, _source_occurrences, repeated_reasons = _aggregate_source_roles(
         valued_rows,
         aggregate_roles,
@@ -4102,13 +5196,44 @@ def _build(
         locally_authorized_component_scopes,
     )
     reasons.extend(repeated_reasons)
-    source_candidates = _numeric_source_candidate_axis(
-        axis["numeric_sample_universe"],
-        axis["internal_unassigned_numeric_clusters"],
-        row_axis["trailing_value_rows"],
-    )
     reserved_unlabeled_source_keys: set[tuple[str, str | int]] = set()
     unlabeled_subtotal_by_source_key: dict[tuple[str, str | int], dict[str, Any]] = {}
+    for evidence in provisional_local_trailing_subtotals:
+        if _local_trailing_subgroup_has_equal_vector_collision(
+            evidence,
+            spec["equations"],
+            resolved,
+            axis["role_occurrences"],
+        ):
+            reasons.append(
+                "LOCAL_TRAILING_SUBGROUP_SUBTOTAL_EQUAL_VECTOR_COLLISION_VETO:"
+                + evidence["role"]
+                + ":"
+                + str(evidence["candidate_ordinal"])
+            )
+            continue
+        matching_records = [
+            record
+            for record in local_records
+            if record["result_occurrence_id"] == evidence["occurrence_id"]
+            and record["result_role"] == evidence["role"]
+        ]
+        if len(matching_records) != 1 or evidence["source_key"] in (reserved_unlabeled_source_keys):
+            raise _error("local trailing subgroup subtotal selection axis drifted")
+        local_record = matching_records[0]
+        local_record["component_roles_present"] = canonical_clone_v1(
+            evidence["receipt"]["component_roles"]
+        )
+        local_record["local_trailing_subgroup_subtotal_receipt"] = canonical_clone_v1(
+            evidence["receipt"]
+        )
+        local_record["status"] = "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        locally_valid_results.add(evidence["occurrence_id"])
+        locally_authorized_component_scopes.add(evidence["occurrence_id"])
+        locally_covered_components.update(evidence["receipt"]["component_occurrence_ids"])
+        resolved[evidence["role"]] = canonical_clone_v1(evidence["resolution"])
+        reserved_unlabeled_source_keys.add(evidence["source_key"])
+        unlabeled_subtotal_by_source_key[evidence["source_key"]] = evidence
     global_records = []
     for equation in spec["equations"]:
         available_trailing_rows = [
@@ -4181,7 +5306,11 @@ def _build(
     corroborated_occurrence_ids = {
         evidence["occurrence_id"]
         for evidence in unlabeled_subtotal_by_source_key.values()
-        if evidence["disposition"] == _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        if evidence["disposition"]
+        in {
+            _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
+            _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
+        }
     }
     incomplete_rows = [
         row for row in row_axis["rows"] if row["status"] != "VISIBLE_VALUE_LANES_BOUND"
@@ -4329,7 +5458,13 @@ def _build(
             {
                 "candidate_ordinal": ordinal,
                 "coverage_id": (
-                    "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    (
+                        "ashtcv2:coverage:local-trailing-subgroup-subtotal:"
+                        if unlabeled_subtotal is not None
+                        and unlabeled_subtotal["disposition"]
+                        == _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+                        else "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    )
                     + unlabeled_subtotal["role"]
                     + f":trailing:{ordinal}"
                     if unlabeled_subtotal is not None
@@ -4362,7 +5497,13 @@ def _build(
             {
                 "candidate_ordinal": None,
                 "coverage_id": (
-                    "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    (
+                        "ashtcv2:coverage:local-trailing-subgroup-subtotal:"
+                        if unlabeled_subtotal is not None
+                        and unlabeled_subtotal["disposition"]
+                        == _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+                        else "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    )
                     + unlabeled_subtotal["role"]
                     + ":cluster:"
                     + cluster_id

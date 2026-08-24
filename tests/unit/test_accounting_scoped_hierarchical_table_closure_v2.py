@@ -339,6 +339,31 @@ def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
     return pages
 
 
+def _vpb25_shaped_local_trailing_loan_subtotal_pages(
+    *,
+    deposit_current: str = "100",
+    deposit_prior: str = "80",
+    extra_rows: list[tuple[str, str, str]] | None = None,
+    post_discount_rows: list[tuple[str, str, str]] | None = None,
+    trailing: list[tuple[str | None, str | None]] | None = None,
+) -> list[dict[str, object]]:
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", deposit_current, deposit_prior),
+            ("Cấp tín dụng cho các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            *(extra_rows or []),
+            ("- Trong đó: chiết khẩu, tái chiết khẩu", "30", "20"),
+            *(post_discount_rows or []),
+        ],
+        trailing=[("50", "40")] if trailing is None else trailing,
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    ordinal = len(pages[0]["lines"])
+    pages[0]["lines"].append(_line(ordinal, "Mức lãi suất", "", [45, 500, 430, 520]))
+    return pages
+
+
 def _acb_explicit_totals_unlabeled_term_pages(
     *,
     deposit_total_prior: str = "110",
@@ -383,6 +408,86 @@ def _acb_explicit_totals_unlabeled_term_pages(
             [810, boundary_top - 25, 900, boundary_top - 5],
         ),
     ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
+def _acb5_partial_local_loan_selector_pages(
+    *,
+    selector_prior: str = "100979",
+    selector_current: str | None = None,
+    selector_label: str | None = None,
+    duplicate_selector: bool = False,
+    loan_provision_current: str = "0",
+    loan_provision_prior: str = "-50000",
+) -> list[dict[str, object]]:
+    pages = _pages(
+        [
+            ("Tiền gửi không kỳ hạn", "30", "20"),
+            ("Tiền gửi có kỳ hạn", "100", "80"),
+            ("Dự phòng tiền gửi tại các TCTD khác", "0", "0"),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "0", "150979"),
+            ("Bằng ngoại tệ", "0", "0"),
+            (
+                "Dự phòng cho vay các TCTD khác",
+                loan_provision_current,
+                loan_provision_prior,
+            ),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "130", "101079"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    lines = pages[0]["lines"]
+    boundary_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi và cho vay các TCTD khác"
+    )
+    boundary_top = lines[boundary_index]["bbox"][1]
+    selector_lines = []
+    if selector_label is not None:
+        selector_lines.append(
+            _line(
+                20_000,
+                selector_label,
+                "",
+                [45, boundary_top - 25, 430, boundary_top - 5],
+            )
+        )
+    if selector_current is not None:
+        selector_lines.append(
+            _line(
+                20_001,
+                selector_current,
+                selector_current,
+                [610, boundary_top - 25, 700, boundary_top - 5],
+            )
+        )
+    selector_lines.append(
+        _line(
+            20_002, selector_prior, selector_prior, [810, boundary_top - 25, 900, boundary_top - 5]
+        )
+    )
+    if duplicate_selector:
+        selector_lines.append(
+            _line(
+                20_003,
+                selector_prior,
+                selector_prior,
+                [812, boundary_top - 25, 902, boundary_top - 5],
+            )
+        )
+    lines[boundary_index:boundary_index] = selector_lines
+    reset_ordinal = len(lines)
+    lines.append(_line(reset_ordinal, "Mức lãi suất", "", [45, 650, 430, 670]))
     for ordinal, line in enumerate(lines):
         line["line_ordinal"] = ordinal
         line["sample_id"] = f"sample-{ordinal + 1:09d}"
@@ -729,6 +834,371 @@ def test_v4_unlabeled_deposit_and_loan_subtotals_are_exact_coverage_only() -> No
         )
         == closure
     )
+
+
+def test_v4_terminal_local_loan_subtotal_closes_only_its_sealed_subgroup() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert local["status"] == ("LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS")
+    assert local["component_roles_present"] == ["INTERBANK_LOAN_VND"]
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    assert receipt["nonadditive_occurrence_ids"]
+    assert receipt["nonadditive_sample_ids"]
+    assert receipt["interval"]["candidate_first_source_line_index"] == (
+        receipt["interval"]["last_descendant_source_line_index"] + 1
+    )
+    assert receipt["interval"]["candidate_last_source_line_index"] == (
+        receipt["interval"]["subgroup_stop_source_line_index_exclusive"] - 1
+    )
+    assert (
+        receipt["interval"]["topology_region_stop_source_line_index_exclusive"]
+        == (axis["row_axis"]["topology_region"]["cluster_end_source_line_index_exclusive"])
+    )
+    trailing_receipt = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["row_kind"] == "TRAILING_VALUE_ROW"
+    )
+    assert trailing_receipt["disposition"] == (
+        subject._LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+    )
+    discount_receipt = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )
+    assert discount_receipt["disposition"] == "NONADDITIVE_VISIBLE_SOURCE_ROLE"
+    resolved = {record["role"]: record for record in closure["resolved_roles"]}
+    assert [
+        value["number"]["coefficient"] for value in resolved["INTERBANK_LOAN_GROUP"]["values"]
+    ] == [50, 40]
+    assert [
+        value["number"]["coefficient"]
+        for value in resolved["INTERBANK_DEPOSITS_AND_LOANS"]["values"]
+    ] == [150, 120]
+    assert resolved["INTERBANK_LOAN_GROUP"]["source"] is None
+    assert resolved["INTERBANK_DEPOSITS_AND_LOANS"]["source"] is None
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(trailing=[("50", None)]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(trailing=[("51", "40")]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(trailing=[("51", "41")]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(trailing=[("50", "40"), ("50", "40")]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(extra_rows=[("Bằng ngoại tệ", "10", "5")]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(trailing=[("80", "60")]),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(
+            post_discount_rows=[("Dòng không xác định", "50", "40")], trailing=[]
+        ),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(
+            extra_rows=[("", "50", "40")], trailing=[]
+        ),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(
+            extra_rows=[("Cấp tín dụng cho các TCTD khác", "", "")]
+        ),
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(deposit_current="0", deposit_prior="0"),
+    ],
+    ids=[
+        "partial",
+        "mismatch",
+        "rounding-only",
+        "duplicate",
+        "additional-additive",
+        "nonadditive-counted",
+        "same-row-label",
+        "reordered",
+        "multiple-target",
+        "equal-root-loan",
+    ],
+)
+def test_v4_local_trailing_loan_subtotal_adversarial_sources_remain_unresolved(
+    pages: list[dict[str, object]],
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        for equation in closure["equations"]["local"]
+    )
+    assert not any(
+        record["disposition"] == subject._LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+        for record in closure["coverage_receipt"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("parent_occurrence_id", "aforav2:root:" + "0" * 64),
+        ("numeric_sample_universe_sha256", "0" * 64),
+        ("source_record_sha256", "0" * 64),
+    ],
+)
+def test_v4_local_trailing_subgroup_receipt_cannot_be_coherently_rehashed(
+    field: str, replacement: str
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _vpb25_shaped_local_trailing_loan_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    local = next(
+        equation
+        for equation in attacked["equations"]["local"]
+        if equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+    )
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    receipt[field] = replacement
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:local-trailing-subgroup-subtotal:" + (
+        canonical_json_sha256_v1(receipt_material)
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="local trailing subgroup",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_v4_partial_local_selector_is_unique_and_never_supplies_omitted_lane() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _acb5_partial_local_loan_selector_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    assert receipt["selection_kind"] == (
+        "PARTIAL_EXACT_UNIQUE_VISIBLE_LANES_IDENTICAL_MISSING_LANES"
+    )
+    assert receipt["source_row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    assert receipt["observed_column_ordinals"] == [1]
+    assert receipt["missing_column_ordinals"] == [0]
+    assert receipt["boundary_role"] == "EXPLICIT_FAMILY_TOTAL"
+    assert receipt["component_roles"] == [
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_PROVISION",
+    ]
+    assert [
+        [value["number"]["coefficient"] for value in alternative["values"]]
+        for alternative in receipt["alternative_value_axes"]
+    ] == [[0, 150979], [0, 100979]]
+    cluster = next(
+        item
+        for item in axis["internal_unassigned_numeric_clusters"]
+        if item["cluster_id"] == receipt["source_cluster_id"]
+    )
+    assert cluster["column_ordinals"] == [1]
+    resolved = {record["role"]: record for record in closure["resolved_roles"]}
+    assert [
+        value["number"]["coefficient"] for value in resolved["INTERBANK_LOAN_GROUP"]["values"]
+    ] == [0, 100979]
+    assert resolved["INTERBANK_LOAN_GROUP"]["source"] is None
+    deposit_equation = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert deposit_equation["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    assert deposit_equation["component_roles_present"] == [
+        "DEMAND_DEPOSIT_GROUP",
+        "TERM_DEPOSIT_GROUP",
+        "INTERBANK_DEPOSIT_PROVISION",
+    ]
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_numeric_equivalent_alternatives_ignore_sources_but_require_unique_max_coverage() -> None:
+    def alternative(roles: list[str], sample_id: str) -> dict[str, object]:
+        return {
+            "component_roles": roles,
+            "values": [
+                {
+                    "column_ordinal": 0,
+                    "number": {
+                        "coefficient": 0,
+                        "percentage_mark_present": False,
+                        "scale": 0,
+                    },
+                    "source_sample_ids": [sample_id],
+                }
+            ],
+        }
+
+    narrow = alternative(["DEMAND_DEPOSIT_GROUP", "TERM_DEPOSIT_GROUP"], "sample-a")
+    maximal = alternative(
+        [
+            "DEMAND_DEPOSIT_GROUP",
+            "TERM_DEPOSIT_GROUP",
+            "INTERBANK_DEPOSIT_PROVISION",
+        ],
+        "sample-b",
+    )
+    assert subject._exact_numeric_value_signature(narrow["values"]) == (
+        subject._exact_numeric_value_signature(maximal["values"])
+    )
+    assert subject._unique_maximum_component_coverage([narrow, maximal]) is maximal
+    tied = alternative(["DEMAND_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_PROVISION"], "sample-c")
+    assert subject._unique_maximum_component_coverage([narrow, tied]) is None
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [
+        _acb5_partial_local_loan_selector_pages(selector_prior="150979", loan_provision_prior="0"),
+        _acb5_partial_local_loan_selector_pages(duplicate_selector=True),
+        _acb5_partial_local_loan_selector_pages(selector_label="Không xác định"),
+        _acb5_partial_local_loan_selector_pages(loan_provision_current="-1"),
+        _acb5_partial_local_loan_selector_pages(selector_prior="100978"),
+    ],
+    ids=[
+        "equal-vector-alternatives",
+        "duplicate-source",
+        "unknown-same-row-label",
+        "missing-lane-disagreement",
+        "visible-lane-mismatch",
+    ],
+)
+def test_v4_partial_local_selector_adversarial_evidence_cannot_choose_an_alternative(
+    pages: list[dict[str, object]],
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        for equation in closure["equations"]["local"]
+    )
+    assert not any(
+        record["disposition"] == subject._LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION
+        for record in closure["coverage_receipt"]
+    )
+
+
+@pytest.mark.parametrize("attack", ["alternative", "missing-lane", "boundary"])
+def test_v4_partial_local_selector_receipt_rejects_coherent_tamper(attack: str) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _acb5_partial_local_loan_selector_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    local = next(
+        equation
+        for equation in attacked["equations"]["local"]
+        if equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+    )
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    if attack == "alternative":
+        receipt["alternative_value_axes"][1]["values"][1]["number"]["coefficient"] += 1
+    elif attack == "missing-lane":
+        receipt["missing_column_ordinals"] = []
+        receipt["selection_kind"] = "COMPLETE_EXACT_ALL_LANES"
+    else:
+        receipt["interval"]["subgroup_stop_source_line_index_exclusive"] += 1
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:local-trailing-subgroup-subtotal:" + (
+        canonical_json_sha256_v1(receipt_material)
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="local trailing subgroup",
+    ):
+        subject._validate_result(attacked)
 
 
 def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> None:
