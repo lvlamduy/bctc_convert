@@ -1041,24 +1041,9 @@ def _validate_runtime_stage(value: Any) -> PlannedRuntimeStageV2:
         or _PREFLIGHT_ID.fullmatch(value.preflight_id) is None
         or type(value.resolution_target_ids) is not tuple
         or any(type(item) is not str for item in value.resolution_target_ids)
-        or tuple(sorted(set(value.resolution_target_ids))) != value.resolution_target_ids
     ):
         raise _error("planned runtime stage lifecycle shape drifted")
     return value
-
-
-def _validate_stage_preflight_binding(
-    stage: PlannedRuntimeStageV2, preflight: RuntimePreflightV2
-) -> None:
-    revision_by_stage = {
-        item.stage: item.algorithm_revision_key for item in preflight.stage_revisions
-    }
-    if (
-        stage.preflight_id != preflight.preflight_id
-        or revision_by_stage.get(stage.stage) != stage.algorithm_revision_key
-        or stage.document_id not in preflight.selected_document_ids
-    ):
-        raise _error("planned runtime stage drifted from its exact preflight pins/scope")
 
 
 def _new_observation(
@@ -1111,11 +1096,12 @@ def append_stage_failure_v2(
     ledger = validate_failure_ledger_v2(failure_ledger)
     stage = _validate_runtime_stage(planned_stage)
     flight = _validate_preflight(preflight)
-    _validate_stage_preflight_binding(stage, flight)
-    if ledger.family_id != flight.family_id:
+    if ledger.family_id != flight.family_id or stage.preflight_id != flight.preflight_id:
         raise _error("failure append does not bind the current ledger/preflight")
     if stage.decision is not CacheDecisionV1.RECOMPUTE or stage.expected_stage_key is None:
         raise _error("failure observations may only append for a runnable stage")
+    if stage.document_id not in flight.selected_document_ids:
+        raise _error("failure stage is outside the preflight document set")
     if type(taxonomy) is not FailureTaxonomyV2 or taxonomy not in _NON_RUNTIME_FAILURES:
         raise _error("failure taxonomy must be one closed non-runtime enum value")
     _validate_exact_int(observed_runtime_ms, "observed runtime")
@@ -1185,10 +1171,9 @@ def append_targeted_success_v2(
     ledger = validate_failure_ledger_v2(failure_ledger)
     stage = _validate_runtime_stage(planned_stage)
     flight = _validate_preflight(preflight)
-    _validate_stage_preflight_binding(stage, flight)
     if flight.scope is not RuntimeScopeV2.TARGETED:
         raise _error("targeted success requires a predeclared TARGETED preflight")
-    if ledger.family_id != flight.family_id:
+    if ledger.family_id != flight.family_id or stage.preflight_id != flight.preflight_id:
         raise _error("targeted success does not bind the current ledger/preflight")
     if (
         stage.decision is not CacheDecisionV1.RECOMPUTE
@@ -1393,13 +1378,6 @@ def plan_incremental_formal_runtime_v2(
             and receipt.stage_key == observation.stage_key
         ):
             valid_successes.append(observation)
-    valid_successes_by_doc_stage_revision: dict[
-        tuple[str, FormalStageV1, str], list[RuntimeObservationV2]
-    ] = defaultdict(list)
-    for success in valid_successes:
-        valid_successes_by_doc_stage_revision[
-            (success.document_id, success.stage, success.algorithm_revision_key)
-        ].append(success)
     resolved_incident_ids = {
         target_id
         for success in valid_successes
@@ -1420,28 +1398,26 @@ def plan_incremental_formal_runtime_v2(
         if not prior:
             continue
         probation_closed = any(
-            any(
+            success.document_id == document_id
+            and success.stage is stage
+            and success.algorithm_revision_key == current_revision
+            and any(
                 observation_by_id[target_id].algorithm_revision_key
                 != current_revision
                 for target_id in success.resolves_observation_ids
             )
-            for success in valid_successes_by_doc_stage_revision.get(
-                (document_id, stage, current_revision), ()
-            )
+            for success in valid_successes
         )
         if not probation_closed:
             pending_probation[stage][document_id] = max(
                 prior, key=lambda item: item.sequence
             )
 
-    review_by_revision = {
-        key: _review_action(tuple(observations))
-        for key, observations in events_by_revision.items()
-    }
     wrapped: list[PlannedRuntimeStageV2] = []
     for item in base.decisions:
         revision = revision_by_stage[item.stage]
-        review = review_by_revision.get((item.stage, revision))
+        current_events = tuple(events_by_revision.get((item.stage, revision), ()))
+        review = _review_action(current_events)
         result = PlannedRuntimeStageV2(
             item,
             item.decision,
