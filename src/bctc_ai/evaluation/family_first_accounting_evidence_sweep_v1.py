@@ -984,15 +984,15 @@ def _selected_v4_one_edit_authority_v1(
     ordinal = selected.get("candidate_ordinal")
     if type(ordinal) is not int or not 0 <= ordinal < len(topology_candidates["regions"]):
         raise _error("selected V4 candidate lost its pre-pruning topology identity")
-    effective_region = selected["row_axis"].get("topology_region")
-    if type(effective_region) is not dict:
-        raise _error("selected V4 candidate lost its effective topology region")
+    expanded_occurrence_region = selected["row_axis"].get("topology_region")
+    if type(expanded_occurrence_region) is not dict:
+        raise _error("selected V4 candidate lost its expanded occurrence region")
     try:
         receipt = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
             _one_edit_authority_pages_v1(joined_pages),
             family_spec,
             topology_candidates["regions"][ordinal],
-            effective_region,
+            expanded_occurrence_region,
         )
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
         raise _error("selected V4 one-edit exact authority drifted") from exc

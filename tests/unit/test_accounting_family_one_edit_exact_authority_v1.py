@@ -77,6 +77,26 @@ def _selected(pages: list[dict], spec: dict | None = None) -> dict:
     return scan["regions"][0]
 
 
+def _expanded(region: dict) -> dict:
+    expanded = copy.deepcopy(region)
+    decorated = []
+    for ordinal, raw_match in enumerate(expanded["child_matches"]):
+        match = {
+            **raw_match,
+            "occurrence_id": f"test:occurrence:{ordinal}:{raw_match['role']}",
+        }
+        within_role = match.get("matched_within_role")
+        owners = [item for item in decorated if item["role"] == within_role]
+        owner = owners[-1] if owners else None
+        match["scope_owner_occurrence_id"] = (
+            owner["occurrence_id"] if owner is not None else "test:root"
+        )
+        match["scope_owner_role"] = owner["role"] if owner is not None else None
+        decorated.append(match)
+    expanded["child_matches"] = decorated
+    return expanded
+
+
 def _three_level_pages(
     *,
     parent_source: str | None = "Family assets",
@@ -96,7 +116,7 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
@@ -109,8 +129,13 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
         (item["match_scope"], item["role"], item["within_role"]) for item in receipt["checks"]
     ] == [
         ("FAMILY_PARENT", "FAMILY_ASSETS", None),
-        ("EFFECTIVE_CHILD", "DOMESTIC_GROUP", None),
-        ("EFFECTIVE_CHILD", "VND_BALANCE", "DOMESTIC_GROUP"),
+        ("EXPANDED_OCCURRENCE", "DOMESTIC_GROUP", None),
+        ("EXPANDED_OCCURRENCE", "VND_BALANCE", "DOMESTIC_GROUP"),
+    ]
+    assert [item["occurrence_id"] for item in receipt["checks"]] == [
+        None,
+        "test:occurrence:0:DOMESTIC_GROUP",
+        "test:occurrence:1:VND_BALANCE",
     ]
     assert all(
         item["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for item in receipt["checks"]
@@ -142,7 +167,7 @@ def test_coextensive_effective_child_copied_from_parent_needs_its_own_role_alias
     effective["child_matches"].append(effective_total)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, spec, region, effective
+        pages, spec, region, _expanded(effective)
     )
 
     assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
@@ -156,7 +181,7 @@ def test_missing_bound_source_text_fails_closed() -> None:
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -169,7 +194,7 @@ def test_source_channel_that_is_still_one_edit_is_not_exact_authority() -> None:
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -188,7 +213,7 @@ def test_exact_alias_on_a_different_source_span_does_not_corroborate_retrieval()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     assert receipt["checks"][0]["role"] == "VND_BALANCE"
@@ -208,7 +233,7 @@ def test_same_exact_leaf_under_a_different_structural_parent_cannot_corroborate(
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -227,17 +252,65 @@ def test_exact_leaf_without_the_exact_selected_family_parent_cannot_corroborate(
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     assert receipt["checks"][0]["status"] == "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
 
 
+def test_repeated_exact_first_occurrence_cannot_corroborate_fuzzy_second_occurrence() -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Vietnam dong balancx", "Vietnam dong balancz"),
+        _line(4, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    occurrences = topology_v1.enumerate_accounting_family_role_occurrences_v1(
+        pages, _spec(), region
+    )
+    assert [item["source_line_index"] for item in occurrences if item["role"] == "VND_BALANCE"] == [
+        2,
+        3,
+    ]
+    expanded = copy.deepcopy(region)
+    expanded["child_matches"] = occurrences
+    expanded = _expanded(expanded)
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, expanded
+    )
+
+    assert receipt["metrics"]["selected_one_edit_match_count"] == 1
+    repeated = receipt["checks"][0]
+    assert repeated["occurrence_id"] == "test:occurrence:2:VND_BALANCE"
+    assert repeated["source_line_indices"] == [3]
+    assert repeated["status"] == "BOUND_SOURCE_TEXT_REMAINS_ONE_EDIT_NOT_EXACT"
+    assert "OCCURRENCE_test:occurrence:2:VND_BALANCE" in receipt["unresolved_reasons"][0]
+
+
+def test_expanded_one_edit_occurrence_without_occurrence_id_is_rejected() -> None:
+    pages = _three_level_pages()
+    region = _selected(pages)
+    expanded = _expanded(region)
+    expanded["child_matches"][-1].pop("occurrence_id")
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence identity axis drifted",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, expanded
+        )
+
+
 def test_receipt_tamper_and_coherent_identity_rehash_are_rejected_by_replay() -> None:
     pages = _three_level_pages()
     region = _selected(pages)
+    expanded = _expanded(region)
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, expanded
     )
     tampered = copy.deepcopy(receipt)
     tampered["checks"][0]["retrieval_channel"]["surface"] = "forged"
@@ -258,7 +331,34 @@ def test_receipt_tamper_and_coherent_identity_rehash_are_rejected_by_replay() ->
         match="does not replay exactly",
     ):
         subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
-            tampered, pages, _spec(), region, region
+            tampered, pages, _spec(), region, expanded
+        )
+
+    occurrence_tampered = copy.deepcopy(receipt)
+    child = next(
+        item
+        for item in occurrence_tampered["checks"]
+        if item["match_scope"] == "EXPANDED_OCCURRENCE"
+    )
+    child["occurrence_id"] = "forged:occurrence"
+    child["exact_channel"]["context_binding"]["occurrence_id"] = "forged:occurrence"
+    child["exact_channel"]["context_binding_sha256"] = subject.canonical_json_sha256_v1(
+        child["exact_channel"]["context_binding"]
+    )
+    material = copy.deepcopy(occurrence_tampered)
+    material.pop("receipt_id")
+    occurrence_tampered["receipt_id"] = "afeoeav1:receipt:" + subject.canonical_json_sha256_v1(
+        material
+    )
+    subject.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+        occurrence_tampered
+    )
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            occurrence_tampered, pages, _spec(), region, expanded
         )
 
 
@@ -274,7 +374,7 @@ def test_unselected_or_near_one_edit_match_cannot_veto_selected_exact_region() -
     selected = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), selected, selected
+        pages, _spec(), selected, _expanded(selected)
     )
 
     assert receipt["status"] == "NOT_REQUIRED_NO_SELECTED_ONE_EDIT_RETRIEVAL"
@@ -313,7 +413,7 @@ def test_v4_integration_does_not_gate_a_discarded_complete_one_edit_candidate() 
     ]
 
     receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
-        {"candidate_ordinal": 0, "row_axis": {"topology_region": selected_region}},
+        {"candidate_ordinal": 0, "row_axis": {"topology_region": _expanded(selected_region)}},
         joined_pages=joined,
         family_spec=_spec(),
         topology_candidates={"regions": scan["regions"]},
@@ -333,7 +433,7 @@ def test_enumeration_and_bounded_decorative_parenthetical_are_exact_transforms()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, region
+        pages, _spec(), region, _expanded(region)
     )
 
     parent = receipt["checks"][0]
@@ -362,7 +462,7 @@ def test_v4_evidence_integration_turns_failed_selected_receipt_into_trial_reason
     ]
     selected = {
         "candidate_ordinal": 0,
-        "row_axis": {"topology_region": copy.deepcopy(region)},
+        "row_axis": {"topology_region": _expanded(region)},
     }
 
     receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
