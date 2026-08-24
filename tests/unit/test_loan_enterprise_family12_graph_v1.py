@@ -99,6 +99,7 @@ def test_spec_locks_schema_history_and_safety_policy() -> None:
         780,
         781,
         782,
+        6058,
         5748,
     ]
     assert spec["historical_evidence_summary"] == {
@@ -109,11 +110,16 @@ def test_spec_locks_schema_history_and_safety_policy() -> None:
         "same_page_owner_present_count": 64,
         "studied_filing_count": 140,
     }
-    assert spec["safety"]["foreign_branch_or_subsidiary_allowed_report_norm_ids"] == [782]
+    assert spec["safety"]["foreign_branch_or_subsidiary_allowed_report_norm_ids"] == [6058]
     assert spec["safety"]["foreign_branch_or_subsidiary_forbidden_report_norm_ids"] == [
         765,
-        6058,
+        782,
     ]
+    schema_parents = {
+        child["report_norm_id"]: child["schema_parent_report_norm_id"] for child in spec["children"]
+    }
+    assert schema_parents[6058] == 727
+    assert {parent for child, parent in schema_parents.items() if child != 6058} == {766}
     assert spec["safety"]["mapping_authority"] is False
     assert [item["component_id"] for item in spec["branch_components"]] == [
         "BRANCH_LOAI_HINH_DOANH_NGHIEP",
@@ -828,20 +834,23 @@ def test_subsidiary_context_cannot_replace_explicit_loan_owner() -> None:
     )
 
 
-def test_foreign_branch_component_binds_782_once_and_never_765_or_6058() -> None:
+def test_foreign_branch_component_binds_exact_6058_while_other_remains_782() -> None:
     foreign = "Cho vay tại chi nhánh và ngân hàng con nước ngoài"
     result = build_loan_enterprise_family12_graph_v1(
         [_page(1, _table_lines(rows=["Khác", foreign]))]
     )
 
-    assert _binding_ids(result) == [782]
-    assert set(_binding_ids(result)).isdisjoint({765, 6058})
-    binding = result["regions"][0]["binding_proposals"][0]
-    assert binding["foreign_branch_or_subsidiary_component"] is True
-    assert _row_by_surface(result, foreign)["report_norm_id"] == 782
-    assert _row_by_surface(result, "Khác")["status"] == (
-        "DUPLICATE_SCHEMA_ROLE_SOURCE_ONLY_AMBIGUOUS"
+    assert _binding_ids(result) == [782, 6058]
+    assert 765 not in _binding_ids(result)
+    binding = next(
+        item for item in result["regions"][0]["binding_proposals"] if item["report_norm_id"] == 6058
     )
+    assert binding["foreign_branch_or_subsidiary_component"] is True
+    assert _row_by_surface(result, foreign)["report_norm_id"] == 6058
+    assert _row_by_surface(result, foreign)["binding_class"] == (
+        "EXACT_FOREIGN_BRANCH_OR_SUBSIDIARY_INDUSTRY_LEAF"
+    )
+    assert _row_by_surface(result, "Khác")["report_norm_id"] == 782
 
 
 def test_775_and_777_are_exact_only_not_recovered_from_typo() -> None:
@@ -973,3 +982,132 @@ def test_input_contract_rejects_duplicate_source_indices() -> None:
 
     with pytest.raises(LoanEnterpriseFamily12GraphV1Error, match="source line index repeats"):
         build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+
+def _branchless_owner_two_child_lines() -> list[dict]:
+    return [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, "Công ty TNHH", 70, 130, 570, 158),
+        _line(2, "100", 730, 130, 820, 158),
+        _line(3, "Công ty cổ phần khác", 70, 190, 570, 218),
+        _line(4, "200", 730, 190, 820, 218),
+    ]
+
+
+def test_semantic_near_is_unresolved_and_never_bounded_absence() -> None:
+    result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines()[1:])])
+
+    assert result["regions"] == []
+    assert result["near_regions"][0]["disposition"] == "UNRESOLVED"
+    assert result["bounded_absences"] == []
+    assert result["metrics"]["bounded_absence_count"] == 0
+    assert result["metrics"]["unresolved_region_count"] == 1
+
+
+def test_branchless_owner_and_two_distinct_children_veto_bounded_absence() -> None:
+    result = build_loan_enterprise_family12_graph_v1(
+        [_page(1, _branchless_owner_two_child_lines())]
+    )
+
+    assert result["regions"] == []
+    assert result["near_regions"] == []
+    assert result["bounded_absences"] == []
+    assert result["metrics"]["branchless_rescue_challenger_count"] == 1
+    challenger = result["branchless_rescue_challengers"][0]
+    assert challenger["disposition"] == "UNRESOLVED"
+    assert challenger["candidate_child_report_norm_ids"] == [768, 773]
+    assert (
+        challenger["source_page_evidence_sha256"]
+        == result["evidence_binding"]["canonical_page_evidence_sha256"]
+    )
+
+
+def test_branchless_rescue_rejects_reset_between_and_cross_page_borrowing() -> None:
+    reset_between = _branchless_owner_two_child_lines()
+    reset_between.insert(1, _line(9, "Tài sản cố định", 40, 90, 410, 118))
+    result = build_loan_enterprise_family12_graph_v1([_page(1, reset_between)])
+
+    assert result["branchless_rescue_challengers"] == []
+    assert result["metrics"]["bounded_absence_count"] == 1
+
+    cross_page = build_loan_enterprise_family12_graph_v1(
+        [
+            _page(1, [_branchless_owner_two_child_lines()[0]]),
+            _page(2, _branchless_owner_two_child_lines()[1:]),
+        ]
+    )
+    assert cross_page["branchless_rescue_challengers"] == []
+    assert cross_page["metrics"]["bounded_absence_count"] == 1
+
+
+def test_branchless_rescue_before_following_reset_is_retained() -> None:
+    lines = _branchless_owner_two_child_lines()
+    lines.append(_line(9, "Tài sản cố định", 40, 270, 410, 298))
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["bounded_absences"] == []
+    challenger = result["branchless_rescue_challengers"][0]
+    assert challenger["reset_fence"]["preceding_context_event_id"] is None
+    assert type(challenger["reset_fence"]["following_context_event_id"]) is str
+    assert challenger["reset_fence"]["structural_reset_can_be_crossed"] is False
+
+
+def test_branchless_lane_partial_evidence_also_vetoes_absence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 20, 400, 48),
+        _line(1, "Theo đối tượng khách hàng", 590, 65, 900, 91),
+        _line(2, "Loại hình doanh nghiệp", 600, 98, 890, 124),
+        _line(3, "triệu đồng", 650, 135, 800, 161),
+        _line(4, "Công ty TNHH", 60, 220, 450, 248),
+        _line(5, "100", 680, 220, 760, 248),
+        _line(6, "Công ty cổ phần khác", 60, 275, 500, 303),
+        _line(7, "200", 680, 275, 760, 303),
+    ]
+    pages = [_page(1, lines)]
+    semantic = semantic_region_module.build_accounting_semantic_region_graph_v1(
+        pages,
+        family12_graph_module._generic_spec(build_loan_enterprise_family12_spec_v1()),
+    )
+    semantic["regions"] = []
+    semantic["near_regions"] = []
+    semantic["metrics"]["branch_candidate_count"] = 0
+    monkeypatch.setattr(
+        family12_graph_module,
+        "build_accounting_semantic_region_graph_v1",
+        lambda _pages, _spec: copy.deepcopy(semantic),
+    )
+
+    result = build_loan_enterprise_family12_graph_v1(pages)
+
+    assert result["bounded_absences"] == []
+    challenger = result["branchless_rescue_challengers"][0]
+    assert challenger["disposition"] == "UNRESOLVED"
+    assert challenger["candidate_child_report_norm_ids"] == [768, 773]
+    assert challenger["shared_scoped_table_binding"]["evidence_kind"] == ("UNRESOLVED_FRAGMENT")
+
+
+def test_schema_parent_projection_is_exact_and_self_rehashed_tamper_fails_replay() -> None:
+    foreign = "Cho vay tại chi nhánh và ngân hàng con nước ngoài"
+    pages = [_page(1, _table_lines(rows=["Công ty TNHH", foreign]))]
+    result = build_loan_enterprise_family12_graph_v1(pages)
+    rows = {row["report_norm_id"]: row for row in result["regions"][0]["row_proposals"]}
+    bindings = {item["report_norm_id"]: item for item in result["regions"][0]["binding_proposals"]}
+
+    assert rows[768]["schema_parent_report_norm_id"] == 766
+    assert rows[6058]["schema_parent_report_norm_id"] == 727
+    assert bindings[768]["schema_parent_report_norm_id"] == 766
+    assert bindings[6058]["schema_parent_report_norm_id"] == 727
+    assert validate_loan_enterprise_family12_graph_replay_v1(result, pages) == result
+
+    tampered = copy.deepcopy(result)
+    tampered["regions"][0]["binding_proposals"][1]["schema_parent_report_norm_id"] = 766
+    material = copy.deepcopy(tampered)
+    material.pop("result_id")
+    tampered["result_id"] = "lef12v1:result:" + family12_graph_module.canonical_json_sha256_v1(
+        material
+    )
+    with pytest.raises(LoanEnterpriseFamily12GraphV1Error, match="does not replay exactly"):
+        validate_loan_enterprise_family12_graph_replay_v1(tampered, pages)

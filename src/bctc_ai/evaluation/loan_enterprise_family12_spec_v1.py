@@ -1,7 +1,9 @@
 """Declarative Vietnamese aliases and safety policy for loan Family 12.
 
 Family 12 is report-normalization node 766 (``Phân tích theo loại hình
-doanh nghiệp``), owned by node 716 (``Cho vay khách hàng``).  This module is
+doanh nghiệp``), owned by node 716 (``Cho vay khách hàng``).  The exact
+foreign-branch row retains its live-schema identity 6058 under industry
+parent 727; it is never folded into the 766 ``Khác`` leaf.  This module is
 data only: it contains no bank, filename, page, numeric, or model route.
 
 The historical counts describe the closed 140-filing study supplied for this
@@ -159,6 +161,7 @@ def _child(
     historical_disposition: str = "OBSERVED_OR_SCHEMA_DECLARED",
     bounded_edit: bool = True,
     binding_class: str = "STANDARD_SCHEMA_ROW",
+    schema_parent_report_norm_id: int = REPORT_NORM_ID,
 ) -> dict[str, Any]:
     return {
         "aliases": aliases,
@@ -167,6 +170,7 @@ def _child(
         "canonical_name": canonical_name,
         "historical_disposition": historical_disposition,
         "report_norm_id": report_norm_id,
+        "schema_parent_report_norm_id": schema_parent_report_norm_id,
     }
 
 
@@ -282,6 +286,12 @@ _CHILDREN = [
         [
             "Khác",
             "Thành phần kinh tế khác",
+        ],
+    ),
+    _child(
+        6058,
+        "Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+        [
             "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
@@ -289,7 +299,8 @@ _CHILDREN = [
             "Chi nhánh và công ty con tại nước ngoài",
             "Chi nhánh và công ty con ở nước ngoài",
         ],
-        binding_class="FOREIGN_BRANCH_OR_SUBSIDIARY_COMPONENT_TO_OTHER",
+        binding_class="EXACT_FOREIGN_BRANCH_OR_SUBSIDIARY_INDUSTRY_LEAF",
+        schema_parent_report_norm_id=727,
     ),
     _child(
         5748,
@@ -362,8 +373,8 @@ _SPEC: dict[str, Any] = {
         "bounded_edit_runs_when_any_exact_row_candidate_exists": False,
         "deposit_report_norm_ids_are_hard_veto": [1055, 1075],
         "distinct_fuzzy_branch_regions_are_retained_for_topology_resolution": True,
-        "foreign_branch_or_subsidiary_allowed_report_norm_ids": [782],
-        "foreign_branch_or_subsidiary_forbidden_report_norm_ids": [765, 6058],
+        "foreign_branch_or_subsidiary_allowed_report_norm_ids": [6058],
+        "foreign_branch_or_subsidiary_forbidden_report_norm_ids": [765, 782],
         "mapping_authority": False,
         "numeric_authority": False,
         "related_party_report_norm_ids_are_hard_veto": [1259, 5750, 5751],

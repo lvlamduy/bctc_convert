@@ -1,7 +1,8 @@
 """Append-stable bounded TM schema projection for loan enterprise/customer type.
 
 The projection closes the mapping-eligible leaf population directly beneath
-ReportNormId 766 while retaining nearby lookalike branches as explicit
+ReportNormId 766 and binds the exact foreign-branch leaf 6058 to its live
+industry parent 727.  Other nearby lookalike branches remain explicit
 non-emitting context.  Global schema revisions, workbook positions, display
 order, and unrelated appends do not enter the identity.
 
@@ -45,9 +46,10 @@ FORMAT_VERSION = "LOAN_ENTERPRISE_BOUNDED_TM_SCHEMA_PROJECTION_V1"
 FAMILY_ID = "LOAN_ENTERPRISE_OR_CUSTOMER_TYPE_CLASSIFICATION"
 CLAIM_BOUNDARY = (
     "LIVE_TM_SCHEMA_EXACT_ENTERPRISE_LEAF_IDENTITIES_EDGES_CONTEXT_ELIGIBILITY_"
-    "AND_CLOSED_REPORT_NORM_766_POPULATION_WITH_EXPLICIT_INDUSTRY_DEPOSIT_AND_"
-    "RELATED_PARTY_LOOKALIKE_CONTEXT_ONLY_NO_GLOBAL_SCHEMA_REVISION_FILE_HASH_"
-    "DISPLAY_ORDER_SOURCE_MATCHING_VALUE_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+    "CLOSED_REPORT_NORM_766_POPULATION_AND_EXACT_FOREIGN_BRANCH_6058_UNDER_727_"
+    "WITH_EXPLICIT_INDUSTRY_DEPOSIT_AND_RELATED_PARTY_LOOKALIKE_CONTEXT_ONLY_NO_"
+    "GLOBAL_SCHEMA_REVISION_FILE_HASH_DISPLAY_ORDER_SOURCE_MATCHING_VALUE_"
+    "CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 
 
@@ -300,7 +302,7 @@ _NODE_SPECS = {
     ),
 }
 
-_CHILD_ROLE_IDS = (
+_DIRECT_CHILD_ROLE_IDS = (
     ("STATE_ENTERPRISE", 767),
     ("LIMITED_LIABILITY_COMPANY", 768),
     ("STATE_OWNED_SINGLE_MEMBER_LLC", 769),
@@ -320,6 +322,9 @@ _CHILD_ROLE_IDS = (
     ("OTHER", 782),
     ("MARGIN_AND_SECURITIES_ADVANCE", 5748),
 )
+_CROSS_PARENT_ROLE_IDS = (("FOREIGN_BRANCH_LOANS", 6058),)
+_CHILD_ROLE_IDS = (*_DIRECT_CHILD_ROLE_IDS, *_CROSS_PARENT_ROLE_IDS)
+_DIRECT_CHILD_IDS = tuple(identifier for _role, identifier in _DIRECT_CHILD_ROLE_IDS)
 _CHILD_IDS = tuple(identifier for _role, identifier in _CHILD_ROLE_IDS)
 _TARGET_IDS = frozenset(_NODE_SPECS)
 _SAFETY = {
@@ -332,6 +337,7 @@ _SAFETY = {
     "global_schema_item_count_in_identity": False,
     "global_schema_revision_in_identity": False,
     "industry_leaf_6058_emitted_as_child_of_766": False,
+    "industry_leaf_6058_emitted_under_parent_727": True,
     "new_unclassified_mapping_eligible_child_fails_closed": True,
     "owner_716_emitted_as_mapping": False,
     "related_party_branch_emitted_by_family_12": False,
@@ -479,7 +485,8 @@ def _expected_material() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "emission_policy": {
             "ambiguous_source_disposition": "RETAIN_SOURCE_ONLY_WITHOUT_FORCED_SCHEMA_ID",
-            "cross_family_industry_context_report_norm_ids": [727, 6058],
+            "cross_family_industry_context_report_norm_ids": [727],
+            "cross_parent_emittable_exact_leaf_report_norm_ids": [6058],
             "deposit_analogue_context_report_norm_ids": [1055, 1075],
             "emittable_exact_leaf_report_norm_ids": list(_CHILD_IDS),
             "family_parent_report_norm_id": 766,
@@ -491,7 +498,6 @@ def _expected_material() -> dict[str, Any]:
         "excluded_context": {
             "cross_family_industry": [
                 _expected_node(727, "INDUSTRY_FAMILY_CONTEXT_NOT_EMITTED"),
-                _expected_node(6058, "INDUSTRY_LEAF_OUTSIDE_REPORT_NORM_766_NOT_EMITTED"),
             ],
             "customer_deposit_analogue": [
                 _expected_node(1055, "CUSTOMER_DEPOSIT_OWNER_NOT_EMITTED"),
@@ -537,9 +543,10 @@ def build_loan_enterprise_bounded_schema_projection_v1(
         raise _error("bounded loan-enterprise target schema/context is incomplete")
 
     _require_edge(schema, 716, 766)
-    _close_eligible_children(schema, contexts, 766, _CHILD_IDS)
-    for identifier in _CHILD_IDS:
+    _close_eligible_children(schema, contexts, 766, _DIRECT_CHILD_IDS)
+    for identifier in _DIRECT_CHILD_IDS:
         _close_eligible_children(schema, contexts, identifier, ())
+    _close_eligible_children(schema, contexts, 6058, ())
     for parent_id, child_id in (
         (716, 727),
         (727, 6058),
@@ -562,7 +569,6 @@ def build_loan_enterprise_bounded_schema_projection_v1(
         )
     for identifier, disposition in (
         (727, "INDUSTRY_FAMILY_CONTEXT_NOT_EMITTED"),
-        (6058, "INDUSTRY_LEAF_OUTSIDE_REPORT_NORM_766_NOT_EMITTED"),
         (1055, "CUSTOMER_DEPOSIT_OWNER_NOT_EMITTED"),
         (1075, "CUSTOMER_DEPOSIT_TYPE_ANALOGUE_NOT_EMITTED"),
         (1259, "OTHER_INFORMATION_SECTION_NOT_EMITTED"),

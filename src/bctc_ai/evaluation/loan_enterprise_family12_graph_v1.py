@@ -17,9 +17,17 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from bctc_ai.evaluation import accounting_semantic_region_graph_v1 as semantic_region_v1
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
 from bctc_ai.evaluation.accounting_minimal_unique_anchor_resolution_v1 import (
     build_accounting_minimal_unique_anchor_resolution_v1,
+)
+from bctc_ai.evaluation.accounting_scoped_table_graph_v1 import (
+    SPEC_FORMAT_VERSION as SCOPED_TABLE_SPEC_FORMAT_VERSION,
+)
+from bctc_ai.evaluation.accounting_scoped_table_graph_v1 import (
+    AccountingScopedTableGraphV1Error,
+    build_accounting_scoped_table_graph_v1,
 )
 from bctc_ai.evaluation.accounting_semantic_region_graph_v1 import (
     SPEC_FORMAT_VERSION as SEMANTIC_SPEC_FORMAT_VERSION,
@@ -74,7 +82,8 @@ AUTHENTICATED_BATCH_FORMAT_VERSION = (
     "LOAN_ENTERPRISE_FAMILY12_AUTHENTICATED_SNAPSHOT_GRAPH_BATCH_V1"
 )
 CLAIM_BOUNDARY = (
-    "RNID766_INSIDE_EXPLICIT_RNID716_SHARED_SEMANTIC_REGION_AND_GEOMETRY_"
+    "DECLARED_SCHEMA_PARENT_BOUND_RNID766_OR_EXACT_RNID6058_INSIDE_EXPLICIT_"
+    "RNID716_SHARED_SEMANTIC_REGION_AND_GEOMETRY_"
     "PROPOSAL_ONLY_NO_NUMERIC_SCHEMA_MAPPING_GEMMA_ROUTING_OR_EXPORT_AUTHORITY"
 )
 _AUTHENTICATED_DOCUMENT_CLAIM_BOUNDARY = (
@@ -128,8 +137,8 @@ LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2 = {
     },
     "family_spec_ref": {
         "path": "src/bctc_ai/evaluation/loan_enterprise_family12_spec_v1.py",
-        "sha256": "f40b84f53493d89462ac1adabcc685deb3a92bb0aa35d726079663c66ff52748",
-        "size_bytes": 13_664,
+        "sha256": "d064d859a754b552975fade7a98beb4ce4fd4d60796ef1af99a1171cee04c990",
+        "size_bytes": 14_101,
     },
 }
 
@@ -435,6 +444,220 @@ def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _branchless_scoped_spec(
+    family_spec: Mapping[str, Any], semantic_spec: Mapping[str, Any]
+) -> dict[str, Any]:
+    owner = next(
+        item for item in family_spec["context_classes"] if item["context_id"] == "OWNER_716"
+    )
+    scoped = semantic_spec["scoped_table"]
+    return {
+        "continuation_aliases": scoped["continuation_aliases"],
+        "family_id": FAMILY_ID + "_BRANCHLESS_RESCUE",
+        "format_version": SCOPED_TABLE_SPEC_FORMAT_VERSION,
+        "layout_modes": ["ROLES_AS_ROWS"],
+        "limits": {**scoped["limits"], "continuation_page_budget": 0},
+        "owner_aliases": owner["aliases"],
+        "require_trailing_total_for_roles_as_columns": False,
+        "role_axis": [
+            {
+                "aliases": child["aliases"],
+                "role": _semantic_id(child["report_norm_id"]),
+            }
+            for child in family_spec["children"]
+        ],
+        "scope_axis": [
+            {
+                "aliases": family_spec["branch_aliases"],
+                "disposition": "TARGET",
+                "lane_component_groups": [
+                    {
+                        "aliases": component["aliases"],
+                        "component_id": component["component_id"],
+                        "source": (
+                            "LEAF"
+                            if component["component_id"] == "BRANCH_LOAI_HINH_DOANH_NGHIEP"
+                            else "PATH"
+                        ),
+                    }
+                    for component in family_spec["branch_components"]
+                ],
+                "scope_id": "FAMILY12_EXPLICIT_BRANCH",
+            },
+            {
+                "aliases": [
+                    alias
+                    for context in family_spec["context_classes"]
+                    if context["disposition"] == "HARD_VETO"
+                    for alias in context["aliases"]
+                ],
+                "disposition": "HARD_VETO_MIXED",
+                "scope_id": "NON_FAMILY12_CONTEXT",
+            },
+        ],
+        "structural_reset_aliases": family_spec["structural_reset_aliases"],
+        "target_scope_id": "FAMILY12_EXPLICIT_BRANCH",
+        "trailing_total_aliases": [],
+    }
+
+
+def _reset_fenced_page_intervals(
+    region_pages: Sequence[Mapping[str, Any]], semantic_spec: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    pages = semantic_region_v1._pages(region_pages)
+    parsed_spec = semantic_region_v1._spec(semantic_spec)
+    plans, _comparisons, _metrics = semantic_region_v1._context_event_plan(pages, parsed_spec)
+    intervals = []
+    for page, plan in zip(pages, plans, strict=True):
+        fences = sorted(
+            (event for event in plan["events"] if event["disposition"] == "HARD_VETO"),
+            key=lambda item: (item["start"], item["stop"], item["context_event_id"]),
+        )
+        cursor = 0
+        preceding_fence_id = None
+        for fence in [*fences, None]:
+            stop = len(page["lines"]) if fence is None else fence["start"]
+            if cursor < stop:
+                intervals.append(
+                    {
+                        "following_fence_event_id": (
+                            None if fence is None else fence["context_event_id"]
+                        ),
+                        "page": {**page, "lines": page["lines"][cursor:stop]},
+                        "preceding_fence_event_id": preceding_fence_id,
+                    }
+                )
+            if fence is not None:
+                cursor = max(cursor, fence["stop"])
+                preceding_fence_id = fence["context_event_id"]
+    return intervals
+
+
+def _compact_branchless_match(match: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: canonical_clone_v1(match[key])
+        for key in (
+            "bbox",
+            "match_id",
+            "page_sequence",
+            "semantic_id",
+            "source_line_indices_in_visual_order",
+            "surface_raw_nfc",
+        )
+    }
+
+
+def _branchless_rescue_challengers(
+    region_pages: Sequence[Mapping[str, Any]],
+    family_spec: Mapping[str, Any],
+    semantic_spec: Mapping[str, Any],
+    *,
+    source_page_evidence_sha256: str,
+) -> list[dict[str, Any]]:
+    scoped_spec = _branchless_scoped_spec(family_spec, semantic_spec)
+    child_ids = {
+        _semantic_id(child["report_norm_id"]): child["report_norm_id"]
+        for child in family_spec["children"]
+    }
+    challengers = []
+    for interval in _reset_fenced_page_intervals(region_pages, semantic_spec):
+        try:
+            scoped = build_accounting_scoped_table_graph_v1([interval["page"]], scoped_spec)
+        except AccountingScopedTableGraphV1Error as error:
+            raise _error(str(error)) from error
+        evidence = []
+        for fragment in scoped["unresolved_fragments"]:
+            owner_matches = fragment.get("owner_matches")
+            if type(owner_matches) is not list:
+                owner = fragment.get("owner")
+                owner_matches = [owner] if type(owner) is dict else []
+            role_matches = fragment.get("role_matches")
+            evidence_id = fragment.get("unresolved_fragment_id") or fragment.get(
+                "partial_fragment_id"
+            )
+            if (
+                not owner_matches
+                or any(owner.get("semantic_id") != "OWNER" for owner in owner_matches)
+                or type(role_matches) is not list
+                or type(evidence_id) is not str
+            ):
+                continue
+            evidence.append(
+                {
+                    "evidence_id": evidence_id,
+                    "evidence_kind": "UNRESOLVED_FRAGMENT",
+                    "graph_ids": [],
+                    "owner_matches": owner_matches,
+                    "page_sequence": fragment["page_sequence"],
+                    "role_matches": role_matches,
+                    "status": "BRANCHLESS_OWNER_MULTIROLE_SCOPED_UNRESOLVED_EVIDENCE",
+                }
+            )
+        evidence.extend(
+            {
+                "evidence_id": segment["segment_id"],
+                "evidence_kind": "PHYSICAL_SEGMENT",
+                "graph_ids": sorted(
+                    graph["graph_id"]
+                    for graph in scoped["graphs"]
+                    if any(
+                        item["segment_id"] == segment["segment_id"] for item in graph["segments"]
+                    )
+                ),
+                "owner_matches": [segment["owner"]],
+                "page_sequence": segment["page_sequences"][0],
+                "role_matches": segment["role_matches"],
+                "status": "BRANCHLESS_OWNER_MULTIROLE_SCOPE_DERIVED_STRUCTURE",
+            }
+            for segment in scoped["physical_segments"]
+            if segment["owner"].get("semantic_id") == "OWNER"
+        )
+        for item in evidence:
+            candidate_ids = sorted(
+                {
+                    child_ids[match["semantic_id"]]
+                    for match in item["role_matches"]
+                    if match["semantic_id"] in child_ids
+                }
+            )
+            if len(candidate_ids) < 2:
+                continue
+            material = {
+                "candidate_child_report_norm_ids": candidate_ids,
+                "disposition": "UNRESOLVED",
+                "owner_matches": [
+                    _compact_branchless_match(match) for match in item["owner_matches"]
+                ],
+                "reset_fence": {
+                    "following_context_event_id": interval["following_fence_event_id"],
+                    "page_sequence": item["page_sequence"],
+                    "preceding_context_event_id": interval["preceding_fence_event_id"],
+                    "structural_reset_can_be_crossed": scoped["safety"][
+                        "structural_reset_can_be_crossed"
+                    ],
+                },
+                "role_matches": [
+                    _compact_branchless_match(match) for match in item["role_matches"]
+                ],
+                "shared_scoped_table_binding": {
+                    **canonical_clone_v1(scoped["evidence_binding"]),
+                    "evidence_id": item["evidence_id"],
+                    "evidence_kind": item["evidence_kind"],
+                    "graph_ids": item["graph_ids"],
+                    "result_id": scoped["result_id"],
+                },
+                "source_page_evidence_sha256": source_page_evidence_sha256,
+                "status": item["status"],
+            }
+            challengers.append(
+                {
+                    **material,
+                    "challenger_id": "lef12v1:branchless:" + canonical_json_sha256_v1(material),
+                }
+            )
+    return sorted(challengers, key=lambda item: item["challenger_id"])
+
+
 def _semantic_to_child(spec: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
     return {_semantic_id(child["report_norm_id"]): child for child in spec["children"]}
 
@@ -487,6 +710,9 @@ def _project_row(
     projected["report_norm_id"] = (
         children[semantic_id]["report_norm_id"] if semantic_id in children else None
     )
+    projected["schema_parent_report_norm_id"] = (
+        children[semantic_id]["schema_parent_report_norm_id"] if semantic_id in children else None
+    )
     if semantic_id in children:
         projected["binding_class"] = children[semantic_id]["binding_class"]
     if projected["status"] == "SEMANTIC_ROW_TEXT_AND_GEOMETRY_PROPOSAL_REQUIRES_REPLAY":
@@ -526,6 +752,7 @@ def _unique_bindings(
                 continue
             row["candidate_report_norm_ids"] = [report_norm_id]
             row["report_norm_id"] = None
+            row["schema_parent_report_norm_id"] = None
             row["reason"] = "DUPLICATE_SCHEMA_ROLE_FAIL_CLOSED"
             row["status"] = "DUPLICATE_SCHEMA_ROLE_SOURCE_ONLY_AMBIGUOUS"
         if selected is None:
@@ -534,6 +761,7 @@ def _unique_bindings(
             "evidence_proposal_id": selected["proposal_id"],
             "foreign_branch_or_subsidiary_component": _foreign_component(selected),
             "report_norm_id": report_norm_id,
+            "schema_parent_report_norm_id": selected["schema_parent_report_norm_id"],
             "status": "UNIQUE_SCHEMA_BINDING_PROPOSAL_NO_MAPPING_AUTHORITY",
         }
         bindings.append(
@@ -559,6 +787,7 @@ def _near_region(
     material = {
         "body_limit_reached": body_limit_reached,
         "branch": canonical_clone_v1(branch),
+        "disposition": "UNRESOLVED",
         "minimal_unique_anchor_resolution_v1": (
             canonical_clone_v1(minimal_anchor_resolution)
             if minimal_anchor_resolution is not None
@@ -652,6 +881,18 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         raise _error(str(error)) from error
     children = _semantic_to_child(family_spec)
     context_ids = _context_to_report_ids(family_spec)
+    branchless_rescue_challengers = (
+        _branchless_rescue_challengers(
+            region_pages,
+            family_spec,
+            semantic_spec,
+            source_page_evidence_sha256=semantic_result["evidence_binding"][
+                "canonical_page_evidence_sha256"
+            ],
+        )
+        if semantic_result["metrics"]["branch_candidate_count"] == 0
+        else []
+    )
     pending_regions = []
     near_regions = []
     for near in semantic_result["near_regions"]:
@@ -795,7 +1036,10 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             {**material, "region_id": "lef12v1:region:" + canonical_json_sha256_v1(material)}
         )
     bounded_absences = []
-    if semantic_result["metrics"]["branch_candidate_count"] == 0:
+    if (
+        semantic_result["metrics"]["branch_candidate_count"] == 0
+        and not branchless_rescue_challengers
+    ):
         bounded_absences.append(
             {
                 "page_sequences": semantic_result["bounded_absences"][0]["page_sequences"],
@@ -803,19 +1047,12 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 "status": "BOUNDED_ABSENCE_NO_GLOBAL_CORPUS_CLAIM",
             }
         )
-    bounded_absences.extend(
-        {
-            "near_region_id": item["near_region_id"],
-            "reason": item["reason"],
-            "status": "BOUNDED_ABSENCE_FROM_ACCEPTED_FAMILY12_REGION",
-        }
-        for item in near_regions
-    )
     metrics = {
         "approximate_alias_comparison_count": semantic_result["matcher_metrics"][
             "approximate_alias_comparison_count"
         ],
         "bounded_absence_count": len(bounded_absences),
+        "branchless_rescue_challenger_count": len(branchless_rescue_challengers),
         "branch_candidate_count": semantic_result["metrics"]["branch_candidate_count"],
         "branch_component_fallback_candidate_count": semantic_result["metrics"][
             "branch_component_fallback_candidate_count"
@@ -851,11 +1088,15 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "unique_binding_proposal_count": sum(
             len(region["binding_proposals"]) for region in regions
         ),
+        "unresolved_region_count": len(near_regions) + len(branchless_rescue_challengers),
     }
     safety = canonical_clone_v1(family_spec["safety"])
     safety.update(
         {
             "authenticated_store_or_full_corpus_used": False,
+            "branchless_owner_multirole_can_veto_bounded_absence": True,
+            "branchless_rescue_grants_mapping_authority": False,
+            "branchless_rescue_is_source_and_reset_fenced": True,
             "gemma_or_other_model_authority": False,
             "historical_evidence_metadata_used_for_matching": False,
             "minimal_unique_anchor_resolution_grants_mapping_authority": False,
@@ -866,11 +1107,13 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "single_branch_component_can_create_binding_proposal": False,
             "shared_geometry_or_scoped_graph_grants_mapping_authority": False,
             "shared_semantic_region_failure_can_promote_mapping": False,
+            "source_only_near_region_is_bounded_absence": False,
             "two_role_table_without_owner_716_can_accept": False,
         }
     )
     material = {
         "bounded_absences": bounded_absences,
+        "branchless_rescue_challengers": branchless_rescue_challengers,
         "claim_boundary": CLAIM_BOUNDARY,
         "evidence_binding": {
             "canonical_page_evidence_sha256": semantic_result["evidence_binding"][
@@ -897,8 +1140,8 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "report_norm_id": REPORT_NORM_ID,
         "safety": safety,
         "status": (
-            "FAMILY12_PROPOSAL_ENUMERATION_WITH_UNRESOLVED_NEAR_REGIONS"
-            if near_regions
+            "FAMILY12_PROPOSAL_ENUMERATION_WITH_UNRESOLVED_REGIONS"
+            if near_regions or branchless_rescue_challengers
             else "FAMILY12_PROPOSAL_ENUMERATION"
         ),
     }
@@ -1073,6 +1316,9 @@ def _authenticated_snapshot_graphs(
     receipt_metrics = receipt["metrics"]
     metrics = {
         "bounded_absence_count": sum(item["bounded_absence_count"] for item in graph_metrics),
+        "branchless_rescue_challenger_count": sum(
+            item["branchless_rescue_challenger_count"] for item in graph_metrics
+        ),
         "branch_component_fallback_candidate_count": sum(
             item["branch_component_fallback_candidate_count"] for item in graph_metrics
         ),
@@ -1114,6 +1360,7 @@ def _authenticated_snapshot_graphs(
         "unique_binding_proposal_count": sum(
             item["unique_binding_proposal_count"] for item in graph_metrics
         ),
+        "unresolved_region_count": sum(item["unresolved_region_count"] for item in graph_metrics),
         "zero_line_page_count": sum(item["zero_line_page_count"] for item in projection_metrics),
     }
     material = {

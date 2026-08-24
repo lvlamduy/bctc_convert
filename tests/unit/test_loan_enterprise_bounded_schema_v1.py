@@ -17,14 +17,15 @@ from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 _ROOT = Path(__file__).resolve().parents[2]
 _LIVE_PROJECTION_ID = (
-    "lebspv1:projection:af352038c11dacfa3baef5116b296184a0d80a7edd781868bbd028e7ca17c228"
+    "lebspv1:projection:e6893b7c8e9650fdb9e533e97ccbfbb2c77a4adba1cdcc673fa24dacfbecc89b"
 )
-_CHILD_IDS = (
+_DIRECT_CHILD_IDS = (
     *range(767, 777),
     6074,
     *range(777, 783),
     5748,
 )
+_EMITTABLE_IDS = (*_DIRECT_CHILD_IDS, 6058)
 _NAMES = {
     716: "Cho vay khách hàng",
     727: "Phân tích theo ngành nghề kinh doanh",
@@ -58,7 +59,7 @@ _PARENTS = {
     716: 560,
     727: 716,
     766: 716,
-    **{identifier: 766 for identifier in _CHILD_IDS},
+    **{identifier: 766 for identifier in _DIRECT_CHILD_IDS},
     6058: 727,
     1055: 560,
     1075: 1055,
@@ -73,7 +74,7 @@ def _context_fields(identifier: int) -> tuple[tuple[int, ...], int, str, int, in
         return (560, 716), 1, "BALANCE_SHEET_NOTES", 560, 716
     if identifier in {727, 766}:
         return (560, 716, identifier), 2, "BALANCE_SHEET_NOTES", 560, 716
-    if identifier in _CHILD_IDS:
+    if identifier in _DIRECT_CHILD_IDS:
         return (560, 716, 766, identifier), 3, "BALANCE_SHEET_NOTES", 560, 716
     if identifier == 6058:
         return (560, 716, 727, 6058), 3, "BALANCE_SHEET_NOTES", 560, 716
@@ -123,7 +124,7 @@ def _fixtures() -> tuple[dict[int, SimpleNamespace], dict[int, SimpleNamespace]]
         )
     schema[716].children = [727, 766]
     schema[727].children = [6058]
-    schema[766].children = list(_CHILD_IDS)
+    schema[766].children = list(_DIRECT_CHILD_IDS)
     schema[1055].children = [1075]
     schema[1259].children = [5750]
     schema[5750].children = [5751]
@@ -143,30 +144,33 @@ def _append_child(
     contexts[identifier] = SimpleNamespace(report_norm_id=identifier, mapping_eligible=eligible)
 
 
-def test_projection_closes_exact_18_leaves_and_preserves_source_only_ambiguity() -> None:
+def test_projection_closes_direct_leaves_and_exact_cross_parent_6058() -> None:
     schema, contexts = _fixtures()
     result = build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
 
-    assert [item["report_norm_id"] for item in result["mapped_leaves"]] == list(_CHILD_IDS)
+    assert [item["report_norm_id"] for item in result["mapped_leaves"]] == list(_EMITTABLE_IDS)
     assert all(
         item["presence"] == "OPTIONAL_WHEN_EXACT_SOURCE_SEMANTICS_PROVEN"
         for item in result["mapped_leaves"]
     )
     assert result["emission_policy"] == {
         "ambiguous_source_disposition": "RETAIN_SOURCE_ONLY_WITHOUT_FORCED_SCHEMA_ID",
-        "cross_family_industry_context_report_norm_ids": [727, 6058],
+        "cross_family_industry_context_report_norm_ids": [727],
+        "cross_parent_emittable_exact_leaf_report_norm_ids": [6058],
         "deposit_analogue_context_report_norm_ids": [1055, 1075],
-        "emittable_exact_leaf_report_norm_ids": list(_CHILD_IDS),
+        "emittable_exact_leaf_report_norm_ids": list(_EMITTABLE_IDS),
         "family_parent_report_norm_id": 766,
         "mapped_parent_report_norm_ids": [],
         "related_party_context_report_norm_ids": [1259, 5750, 5751],
         "required_per_document_report_norm_ids": [],
         "source_customer_loan_total_report_norm_id": None,
     }
-    assert 6058 not in result["emission_policy"]["emittable_exact_leaf_report_norm_ids"]
+    foreign = next(item for item in result["mapped_leaves"] if item["report_norm_id"] == 6058)
+    assert foreign["parent_report_norm_id"] == 727
+    assert foreign["ancestor_path"] == [560, 716, 727, 6058]
     assert [
         item["report_norm_id"] for item in result["excluded_context"]["cross_family_industry"]
-    ] == [727, 6058]
+    ] == [727]
     assert [
         item["report_norm_id"] for item in result["excluded_context"]["customer_deposit_analogue"]
     ] == [1055, 1075]
@@ -175,6 +179,8 @@ def test_projection_closes_exact_18_leaves_and_preserves_source_only_ambiguity()
         5750,
         5751,
     ]
+    assert result["safety"]["industry_leaf_6058_emitted_as_child_of_766"] is False
+    assert result["safety"]["industry_leaf_6058_emitted_under_parent_727"] is True
     assert validate_loan_enterprise_bounded_schema_projection_v1(result) == result
     assert (
         validate_loan_enterprise_bounded_schema_projection_replay_v1(result, schema, contexts)
@@ -186,7 +192,13 @@ def test_live_projection_matches_frozen_bounded_identity_without_corpus_or_auth(
     result = build_live_loan_enterprise_bounded_schema_projection_v1(_ROOT)
 
     assert result["projection_id"] == _LIVE_PROJECTION_ID
-    assert [item["report_norm_id"] for item in result["mapped_leaves"]] == list(_CHILD_IDS)
+    assert [item["report_norm_id"] for item in result["mapped_leaves"]] == list(_EMITTABLE_IDS)
+    assert (
+        next(item for item in result["mapped_leaves"] if item["report_norm_id"] == 6058)[
+            "parent_report_norm_id"
+        ]
+        == 727
+    )
     assert result["owner_context"]["report_norm_id"] == 716
     assert result["family_context"]["report_norm_id"] == 766
 
@@ -218,9 +230,14 @@ def test_new_eligible_direct_or_nested_child_fails_closed() -> None:
     with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="eligible child population"):
         build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
 
+    schema, contexts = _fixtures()
+    _append_child(schema, contexts, parent_id=6058, identifier=9006, eligible=True)
+    with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="eligible child population"):
+        build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
 
-@pytest.mark.parametrize("removed_id", _CHILD_IDS)
-def test_removing_any_one_of_the_18_eligible_children_fails_closed(removed_id: int) -> None:
+
+@pytest.mark.parametrize("removed_id", _DIRECT_CHILD_IDS)
+def test_removing_any_direct_eligible_child_fails_closed(removed_id: int) -> None:
     schema, contexts = _fixtures()
     schema[766].children.remove(removed_id)
 
@@ -262,6 +279,11 @@ def test_context_parent_and_required_edge_drift_fail_closed() -> None:
     with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="lacks required child"):
         build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
 
+    schema, contexts = _fixtures()
+    schema[727].children.remove(6058)
+    with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="lacks required child"):
+        build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
+
 
 @pytest.mark.parametrize(
     ("identifier", "field", "value"),
@@ -292,6 +314,11 @@ def test_mapping_eligibility_and_mapping_key_identity_falsifiers_fail_closed() -
     schema, contexts = _fixtures()
     schema[6074].schema_id = 5748
     with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="identities"):
+        build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
+
+    schema, contexts = _fixtures()
+    contexts[6058].mapping_eligible = False
+    with pytest.raises(LoanEnterpriseBoundedSchemaV1Error, match="drifted"):
         build_loan_enterprise_bounded_schema_projection_v1(schema, contexts)
 
 
