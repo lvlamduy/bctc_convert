@@ -841,6 +841,12 @@ def test_corrected_open_human_reasons_name_the_exact_axis_or_margin_population()
     )
     assert "blank thật, không phải dấu gạch và không phải 0" in rows["E0161-ASEG-017"][8]
 
+    ledger = LEDGER.read_text(encoding="utf-8")
+    assert "| A2025-CRISK-003 | ACB | 84 | Vàng |" in ledger
+    assert "| A2025-CRISK-004 | ACB | 84 | JPY |" in ledger
+    assert "| A2025-CRISK-003 | ACB | 84 | JPY |" not in ledger
+    assert "| A2025-CRISK-004 | ACB | 84 | Vàng |" not in ledger
+
 
 def test_family11_zero_unresolved_is_recorded_in_both_status_docs() -> None:
     completed = COMPLETED.read_text(encoding="utf-8")
