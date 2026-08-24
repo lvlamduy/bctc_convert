@@ -273,6 +273,55 @@ Trạng thái:
   nhưng active legacy families và Family11 runtime path chưa chứng minh đầy đủ
   region-first/cached execution.
 
+## RFP-012 — Optional component coverage is mistaken for an exhaustive equation
+
+- **Failure pattern:** hierarchical closure thấy đủ `minimum_component_count`
+  rồi suy subtotal/parent/grand total, dù source vẫn có thể còn currency branch,
+  provision, dòng `Khác`, numeric row chưa bind hoặc partial trailing total.
+  Derived parent sau đó trông giống một source row hợp lệ và bị schema mapper
+  phát ra.
+- **Evidence:** Family3 V3 hiện khai báo các ngưỡng `1/2`, `1/2`, `1/3`, `1/3`
+  và `2/3`. Falsifier chỉ có một demand-VND row và một visible loan subtotal vẫn
+  có thể derive dây chuyền `DEMAND → DEPOSIT → FAMILY`; Family12 cũng đã cho
+  thấy source-only/nested group không được bỏ qua chỉ vì flat subset đóng số.
+- **Cause:** `minimum_component_count` chứng minh một phép cộng có thể tính,
+  nhưng không chứng minh component set là exhaustive; topology `OPTIONAL` bị
+  hiểu nhầm thành source absence.
+- **Anti-fix:** không map derived parent từ một optional subset; không coi role
+  không match là zero/absent; không bỏ unmatched numeric row, partial trailing
+  row hoặc source-only group để làm phương trình đóng; không dùng accounting để
+  chọn/sửa digit hay dấu.
+- **Current primitive:** hierarchical closure giữ visible/derived provenance và
+  dùng mismatch làm veto, nhưng chưa xuất một source-bound visible-coverage
+  receipt chứng minh toàn bộ body numeric axis đã bind và mọi equation dùng đúng
+  exhaustive population. Trước khi mapping derived parent cần shared coverage
+  gate: bound/unmatched rows, source-only groups, optional visible branches,
+  unique complete trailing total và exact component-policy receipt.
+- **Status:** `OPEN`.
+
+## RFP-013 — Model page JSON is treated as reconstructed table authority
+
+- **Failure pattern:** Gemma/full-page JSON nhìn hợp lý nhưng đổi digit, bỏ hoặc
+  gộp column, invent header/row, hay gán cell sang period/population khác; output
+  sau đó được dùng trực tiếp để map thay vì làm challenger.
+- **Evidence:** Gemma từng đổi `22.581` thành `22.561`, copy comparative `17`
+  vào current DASH, và full-page transcription cần context để giữ multi-level
+  header. F-004/F-010/F-011/F-011A đã chứng minh prompt dài, crop quá sớm và
+  JSON-looking output đều không tạo numeric/geometry authority.
+- **Cause:** closed JSON hoặc model agreement bị xem là source replay; prompt
+  trộn transcription, arithmetic và schema decision; response không bind đầy đủ
+  page pixels, model/settings, prompt và raw output.
+- **Anti-fix:** không đưa ReportNormId/expected value vào prompt; không để Gemma
+  một mình quyết định row, column, digit hay mapping; không chạy full-page trên
+  mọi trang; không resize/crop mất header context trước structure rescue.
+- **Current primitive:** existing hosted Gemma artifacts bind selected page/crop
+  hashes and keep numeric disagreement non-authoritative, nhưng chưa có shared
+  schema-blind page-structure challenger contract. Contract chung phải giữ exact
+  page/crop ref, prompt/model/settings/raw response/closed JSON, rồi đối chiếu
+  native text, PP-OCR geometry, VietOCR, row/column topology và accounting. Chỉ
+  trigger khi primary unresolved hoặc layout mới; disagreement giữ unresolved.
+- **Status:** `OPEN`.
+
 ## Pre-change gate
 
 Trước một generic fix mới:
