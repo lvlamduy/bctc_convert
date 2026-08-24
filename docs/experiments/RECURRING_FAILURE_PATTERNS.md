@@ -89,7 +89,11 @@ Trạng thái:
   axes, ordered non-overlap, repeated/continuation evidence và không có reset.
   Budget exhaustion, conflict hoặc partial > supported proof trở thành explicit
   unresolved; original physical page IDs được giữ, zero-line pages không tạo
-  reset giả.
+  reset giả. Family V4 cần full-page axis dùng public authenticated selected-page
+  snapshot `1..N`; không được lấy topology cache dựng chỉ từ các line có OCR vì
+  cache đó có thể biến trục `1,2,3` thành `1,3`. Regression bắt buộc gồm một
+  zero-line page ở giữa và topology phải được rebuild/replay từ chính snapshot
+  đầy đủ đó.
 - **Status:** `MITIGATED`.
 
 ## RFP-004 — Parent, child, alternative view, or similar wording changes population
@@ -206,6 +210,10 @@ Trạng thái:
 - **Evidence:** E-0046 từng mất khoảng 91 phút và hơn 200 GB logical reads;
   topology 140 docs giảm từ 137.071 s xuống 13.810 s bằng bounded workers và
   hot non-authoritative cache còn 0.075 s; family sidecar refresh 0.477 s.
+  Family3 V4 cold build ngày 2026-08-24 mất khoảng 20 phút và targeted một
+  filing vẫn vượt 30 giây dù hydrate snapshot chỉ dưới một giây. Profile chỉ ra
+  cùng full-document snapshot/topology-candidate envelope bị build/replay lại
+  theo candidate, occurrence pass và render pass.
 - **Cause:** safe single-item accessor đặt trong corpus loop; retrieval,
   authentication, topology và downstream projection không có same-turn handoff.
 - **Anti-fix:** không bỏ replay/capability checks; không cache mutable objects;
@@ -217,8 +225,10 @@ Trạng thái:
   Region-first retrieval chỉ shortlist selected/adjacent pages và full-document
   fallback khi coverage chưa proved. Final public replay/audit vẫn giữ riêng,
   không nhân theo page/cell.
-- **Status:** `MITIGATED`; final authority gate còn cần full replay, nhưng không
-  được lặp multiplicatively hoặc trong inner loop.
+- **Status:** `ALGORITHM_REVIEW_REQUIRED` cho Family3 V4 cho tới khi same-turn
+  prepared context loại bỏ rebuild multiplicative và targeted/cold telemetry
+  trở lại dưới budget; các path đã mitigated khác vẫn giữ final public replay,
+  nhưng không được lặp trong inner loop.
 
 ## RFP-010 — Absence, broad scope, ambiguity, and local evidence failure are collapsed
 
