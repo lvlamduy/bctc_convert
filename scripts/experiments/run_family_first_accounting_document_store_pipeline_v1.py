@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,18 @@ from scripts.experiments import (  # noqa: E402
 )
 from scripts.experiments import run_family_first_topology_sweep_v1 as topology_cli  # noqa: E402
 
+_ARTIFACT_SUFFIX = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
+
+
+def _artifact_path_with_suffix(path: Path, artifact_suffix: str | None) -> Path:
+    """Append one bounded slug to the filename while preserving its directory."""
+
+    if artifact_suffix is None:
+        return path
+    if type(artifact_suffix) is not str or _ARTIFACT_SUFFIX.fullmatch(artifact_suffix) is None:
+        raise ValueError("document-store family artifact suffix is not one safe slug")
+    return path.with_name(f"{path.stem}-{artifact_suffix}{path.suffix}")
+
 
 def run_family_first_accounting_document_store_pipeline_v1(
     project_root: Path,
@@ -38,6 +51,7 @@ def run_family_first_accounting_document_store_pipeline_v1(
     evaluation_spec_path: Path,
     schema_binding_spec_path: Path,
     command: str,
+    artifact_suffix: str | None = None,
 ) -> dict[str, object]:
     if command not in {"build", "verify"}:
         raise ValueError("document-store family pipeline command must be build or verify")
@@ -45,8 +59,13 @@ def run_family_first_accounting_document_store_pipeline_v1(
     family_spec = topology_cli._family_spec(root, family_spec_path)
     evaluation_spec = topology_cli._family_spec(root, evaluation_spec_path)
     schema_binding_spec = topology_cli._family_spec(root, schema_binding_spec_path)
-    evidence_relative = evidence_cli._artifact_path(family_spec, evaluation_spec)
-    mapping_relative = mapping_cli._artifact_path(family_spec, evaluation_spec, schema_binding_spec)
+    evidence_relative = _artifact_path_with_suffix(
+        evidence_cli._artifact_path(family_spec, evaluation_spec), artifact_suffix
+    )
+    mapping_relative = _artifact_path_with_suffix(
+        mapping_cli._artifact_path(family_spec, evaluation_spec, schema_binding_spec),
+        artifact_suffix,
+    )
     persisted_evidence = persisted_mapping = None
     if command == "verify":
         persisted_evidence = pipeline_v1._read_canonical_object(
@@ -92,6 +111,7 @@ def main() -> int:
     parser.add_argument("--family-spec", required=True, type=Path)
     parser.add_argument("--evaluation-spec", required=True, type=Path)
     parser.add_argument("--schema-binding-spec", required=True, type=Path)
+    parser.add_argument("--artifact-suffix")
     parser.add_argument("command", choices=("build", "verify"))
     args = parser.parse_args()
     result = run_family_first_accounting_document_store_pipeline_v1(
@@ -100,6 +120,7 @@ def main() -> int:
         evaluation_spec_path=args.evaluation_spec,
         schema_binding_spec_path=args.schema_binding_spec,
         command=args.command,
+        artifact_suffix=args.artifact_suffix,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
     return 0
