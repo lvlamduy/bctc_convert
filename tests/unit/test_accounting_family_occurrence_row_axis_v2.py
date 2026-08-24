@@ -463,6 +463,31 @@ def test_numeric_universe_owns_internal_money_samples_but_excludes_header_dates(
         subject._validate_result(attacked)
 
 
+def test_numeric_universe_types_body_off_lane_number_but_excludes_header_and_footer() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    lines[8:8] = [_line(999, "17", "17", [940, 213, 990, 233])]
+    lines.append(_line(1_000, "19", "19", [940, 700, 990, 720]))
+    _reindex_page_lines(lines)
+
+    _scan, axis = _build(pages)
+
+    clusters = axis["internal_unassigned_numeric_clusters"]
+    assert len(clusters) == 1
+    assert clusters[0]["status"] == "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
+    assert len(clusters[0]["sample_ids"]) == 1
+    universe = {sample["sample_id"]: sample for sample in axis["numeric_sample_universe"]}
+    assert clusters[0]["sample_ids"][0] in universe
+    assert lines[1]["sample_id"] not in universe
+    assert lines[2]["sample_id"] not in universe
+    assert lines[-1]["sample_id"] not in universe
+
+
 def test_prose_candidate_with_empty_v1_grid_is_typed_unresolved_without_margin_numeric() -> None:
     pages = [
         {
@@ -981,6 +1006,39 @@ def test_f3_generic_discount_requires_nearest_exact_currency_interval() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "intervening_label",
+    ["Khác", "Dự phòng rủi ro cho vay các TCTD khác"],
+)
+def test_f3_generic_discount_interval_stops_at_any_intervening_loan_sibling(
+    intervening_label: str,
+) -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "45", "36"),
+                (intervening_label, "5", "4"),
+                ("Chiết khấu, tái chiết khấu", "2", "1"),
+            ]
+        )
+    )
+
+    generic = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    )
+    assert generic["source_scope_binding"] is None
+    assert not any(
+        item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+        and item["label_match"]["document_line_ordinal"]
+        == generic["label_match"]["document_line_ordinal"]
+        for item in axis["role_occurrences"]
+    )
+
+
 def test_f3_touching_wrapped_explicit_vnd_discount_overrides_prior_fx_scope() -> None:
     pages = _f3_pages(
         [
@@ -1093,6 +1151,48 @@ def test_f3_bare_provision_before_loan_leaf_remains_source_only_ambiguous() -> N
     assert occurrence["source_scope_binding"] is None
 
 
+def test_f3_bare_deposit_provision_before_final_deposit_role_remains_ambiguous() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Bằng VND", "40", "40"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+
+    occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert occurrence["source_scope_binding"] is None
+
+
+def test_f3_bare_root_provision_with_later_deposit_role_remains_ambiguous() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Bằng VND", "40", "40"),
+            ]
+        )
+    )
+
+    occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert occurrence["source_scope_binding"] is None
+
+
 def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leaves() -> None:
     _scan, axis = _build_f3(
         _f3_pages(
@@ -1117,6 +1217,97 @@ def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leave
         if row["label_match"]["occurrence_id"] == loan["occurrence_id"]
     )
     assert loan_row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+
+
+def test_f3_bare_provisions_are_unique_per_exact_parent_interval() -> None:
+    _scan, distinct_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Dự phòng", "-3", "-2"),
+            ]
+        )
+    )
+    assert {
+        occurrence["role"]
+        for occurrence in distinct_axis["role_occurrences"]
+        if occurrence["role"] in {"INTERBANK_DEPOSIT_PROVISION", "TOTAL_INTERBANK_PROVISION"}
+    } == {"INTERBANK_DEPOSIT_PROVISION", "TOTAL_INTERBANK_PROVISION"}
+
+    _scan, duplicate_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Dự phòng", "-3", "-2"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+    assert [
+        occurrence["role"]
+        for occurrence in duplicate_axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    ] == ["INTERBANK_PROVISION_AMBIGUOUS", "INTERBANK_PROVISION_AMBIGUOUS"]
+
+
+def test_f3_explicit_provision_wins_over_bare_duplicate_in_same_interval() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Dự phòng tiền gửi tại các TCTD khác", "-2", "-1"),
+                ("Dự phòng", "-3", "-2"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+
+    roles = [occurrence["role"] for occurrence in axis["role_occurrences"]]
+    assert roles.count("INTERBANK_DEPOSIT_PROVISION") == 1
+    assert roles.count("INTERBANK_PROVISION_AMBIGUOUS") == 1
+
+
+def test_f3_generic_discount_is_unique_within_one_currency_subscope() -> None:
+    _scan, duplicate_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Chiết khấu, tái chiết khấu", "5", "4"),
+                ("Chiết khấu, tái chiết khấu", "6", "5"),
+            ]
+        )
+    )
+    assert [
+        occurrence["role"]
+        for occurrence in duplicate_axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    ] == [
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+    ]
+
+    _scan, explicit_axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Chiết khấu, tái chiết khấu", "5", "4"),
+                ("Chiết khấu, tái chiết khấu bằng VND", "6", "5"),
+            ]
+        )
+    )
+    roles = [occurrence["role"] for occurrence in explicit_axis["role_occurrences"]]
+    assert roles.count("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND") == 1
+    assert roles.count("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS") == 1
 
 
 def test_f3_other_requires_noncontinuation_geometry_and_exact_parent_scope() -> None:
@@ -1174,6 +1365,31 @@ def test_f3_other_requires_noncontinuation_geometry_and_exact_parent_scope() -> 
         row for row in standalone_axis["row_axis"]["rows"] if row["role"] == other["role"]
     )
     assert [value["parsed_token"]["coefficient"] for value in other_row["values"]] == [7, 6]
+
+
+def test_f3_declared_scoped_other_alias_composes_touching_label_fragments() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_wrapped_other(pages, prefix="Các khoản")
+
+    _scan, axis = _build_f3(pages)
+
+    other = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_OTHER"
+    )
+    assert other["source_scope_binding"] is None
+    assert other["label_match"]["normalized_surface"] == "cac khoan khac"
+    assert other["label_match"]["match_kind"] == ("EXACT_ACCENTLESS_ALIAS_VISUAL_CONTINUATION")
+    row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == other["occurrence_id"]
+    )
+    assert [value["parsed_token"]["coefficient"] for value in row["values"]] == [7, 6]
 
 
 def test_f3_known_total_provision_wrap_suppresses_interleaved_other_suffix() -> None:

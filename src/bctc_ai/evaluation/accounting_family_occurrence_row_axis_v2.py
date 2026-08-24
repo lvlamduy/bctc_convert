@@ -31,6 +31,9 @@ from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_authenticated_snapshot_cell_dash_v1 as dash_v1
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    normalize_vietnamese_anchor_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_bytes_v1,
@@ -173,12 +176,32 @@ _DEPOSIT_SCOPE_ROLES = {
     "TERM_DEPOSIT_GROUP",
     "TERM_DEPOSIT_VND",
 }
+_DEPOSIT_SEMANTIC_INTERVAL_ROLES = {
+    *_DEPOSIT_SCOPE_ROLES,
+    "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+    "INTERBANK_DEPOSIT_OTHER",
+    "INTERBANK_DEPOSIT_PROVISION",
+    "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+    _PROVISION_GENERIC_ROLE,
+}
 _LOAN_LEAF_ROLES = {
     *_DISCOUNT_SCOPE_TARGETS,
     *_DISCOUNT_SCOPE_TARGETS.values(),
     "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
     "INTERBANK_LOAN_OTHER",
     "INTERBANK_LOAN_PROVISION",
+}
+_LOAN_SEMANTIC_INTERVAL_ROLES = {
+    *_LOAN_LEAF_ROLES,
+    _DISCOUNT_GENERIC_ROLE,
+    _PROVISION_GENERIC_ROLE,
+}
+_LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES = {
+    *_LOAN_SEMANTIC_INTERVAL_ROLES,
+    *_DEPOSIT_SEMANTIC_INTERVAL_ROLES,
+    "EXPLICIT_FAMILY_TOTAL",
+    "INTERBANK_LOAN_GROUP",
+    "TOTAL_INTERBANK_PROVISION",
 }
 _INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
     "cluster_id",
@@ -188,6 +211,7 @@ _INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
     "status",
 }
 _INTERNAL_UNASSIGNED_CLUSTER_STATUS = "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+_OFF_LANE_NUMERIC_CLUSTER_STATUS = "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
 _MAX_ROLE_OCCURRENCES = 4_096
 _MAX_EXISTING_DASH_CELLS = 16_384
 _MAX_NUMERIC_SAMPLES = 65_536
@@ -461,6 +485,12 @@ def _expanded_matches(
         child["role"]: {alias for matcher in child["matchers"] for alias in matcher["aliases"]}
         for child in compiled_for_wrapped_labels["children"]
     }
+    contextual_aliases_by_role: dict[str, dict[str | None, set[str]]] = {}
+    for child in compiled_for_wrapped_labels["children"]:
+        for matcher in child["matchers"]:
+            contextual_aliases_by_role.setdefault(child["role"], {}).setdefault(
+                matcher["within_role"], set()
+            ).update(matcher["aliases"])
 
     def fragments_touch(first: Mapping[str, Any], second: Mapping[str, Any]) -> bool:
         page = page_by_sequence.get(first["page_sequence"])
@@ -574,6 +604,49 @@ def _expanded_matches(
                 return True
         return False
 
+    def compose_known_scoped_other(
+        candidate: dict[str, Any], preceding: Mapping[str, Any] | None
+    ) -> bool:
+        if preceding is None or not has_same_row_money(candidate):
+            return False
+        within_role = candidate.get("matched_within_role")
+        if type(within_role) is not str:
+            return False
+        composite_surface = (
+            f"{preceding['vietocr_text'].strip()} {candidate['surface'].strip()}".strip()
+        )
+        composite_normalized = normalize_vietnamese_anchor_v1(composite_surface)
+        aliases = contextual_aliases_by_role.get(candidate["role"], {}).get(within_role, set())
+        if composite_normalized not in aliases:
+            return False
+        owners = [
+            match
+            for match in candidates
+            if match["role"] == within_role
+            and match["page_sequence"] == candidate["page_sequence"]
+            and match["end_document_line_ordinal"] < candidate["document_line_ordinal"]
+        ]
+        if not owners:
+            return False
+        nearest_end = max(owner["end_document_line_ordinal"] for owner in owners)
+        nearest = [owner for owner in owners if owner["end_document_line_ordinal"] == nearest_end]
+        if len(nearest) != 1 or not str(nearest[0]["match_kind"]).startswith("EXACT_"):
+            return False
+        candidate["document_line_ordinal"] = (
+            candidate["document_line_ordinal"]
+            - candidate["source_line_index"]
+            + preceding["line_ordinal"]
+        )
+        candidate["match_kind"] = "EXACT_ACCENTLESS_ALIAS_VISUAL_CONTINUATION"
+        candidate["normalized_surface"] = composite_normalized
+        candidate["source_line_index"] = preceding["line_ordinal"]
+        candidate["source_line_indices"] = [
+            preceding["line_ordinal"],
+            candidate["end_source_line_index"],
+        ]
+        candidate["surface"] = composite_surface
+        return True
+
     result = []
     for candidate in candidates:
         visual_preceding_fragment = (
@@ -583,6 +656,7 @@ def _expanded_matches(
             and candidate["role"] in {"INTERBANK_DEPOSIT_OTHER", "INTERBANK_LOAN_OTHER"}
             else None
         )
+        compose_known_scoped_other(candidate, visual_preceding_fragment)
         same_source_twins = [
             other
             for other in candidates
@@ -914,6 +988,11 @@ def _project_reviewed_schema_source_scopes(
             item["role"],
         ),
     )
+    generic_discount_sources = [
+        match
+        for match in projected
+        if match["role"] == _DISCOUNT_GENERIC_ROLE and str(match["match_kind"]).startswith("EXACT_")
+    ]
 
     # Explicit currency words are independently sufficient source-subscope
     # evidence.  Persist the same reviewed receipt shape used by interval-bound
@@ -975,23 +1054,51 @@ def _project_reviewed_schema_source_scopes(
         ):
             continue
         anchor = max(nearest, key=lambda item: item["document_line_ordinal"])
-        next_currency = min(
-            (
-                scope["document_line_ordinal"]
-                for scope in currency_scopes
-                if scope["document_line_ordinal"] > anchor["document_line_ordinal"]
-                and scope["document_line_ordinal"] < next_loan
-            ),
-            default=next_loan,
-        )
-        if match["document_line_ordinal"] >= next_currency:
-            continue
+        non_generic_boundaries = [
+            sibling["document_line_ordinal"]
+            for sibling in projected
+            if sibling is not match
+            and sibling["role"] in _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES
+            and sibling["role"] != _DISCOUNT_GENERIC_ROLE
+            and anchor["end_document_line_ordinal"] < sibling["document_line_ordinal"] < next_loan
+        ]
+        source_subscope_end = min(non_generic_boundaries, default=next_loan)
+        interval_generic_discounts = [
+            source
+            for source in generic_discount_sources
+            if anchor["end_document_line_ordinal"]
+            < source["document_line_ordinal"]
+            < source_subscope_end
+        ]
+        intervening_loan_siblings = [
+            sibling
+            for sibling in projected
+            if sibling is not match
+            and sibling["role"] in _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES
+            and anchor["end_document_line_ordinal"]
+            < sibling["document_line_ordinal"]
+            < match["document_line_ordinal"]
+            and sibling["document_line_ordinal"] < next_loan
+        ]
         target_role = _DISCOUNT_SCOPE_TARGETS[anchor["role"]]
+        explicit_same_target = [
+            sibling
+            for sibling in projected
+            if sibling is not match
+            and sibling["role"] == target_role
+            and loan["document_line_ordinal"] <= sibling["document_line_ordinal"] < next_loan
+        ]
+        if (
+            intervening_loan_siblings
+            or len(interval_generic_discounts) != 1
+            or explicit_same_target
+        ):
+            continue
         receipt = _scope_binding(
             anchor=anchor,
             binding_kind="UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL",
             geometry=None,
-            interval_end_exclusive=next_currency,
+            interval_end_exclusive=match["end_document_line_ordinal"] + 1,
             interval_start=anchor["document_line_ordinal"],
             source=match,
             source_role=_DISCOUNT_GENERIC_ROLE,
@@ -1004,6 +1111,12 @@ def _project_reviewed_schema_source_scopes(
         (match for match in projected if match["role"] in _DEPOSIT_SCOPE_ROLES),
         key=lambda item: item["document_line_ordinal"],
     )
+    generic_provision_sources = [
+        match
+        for match in projected
+        if match["role"] == _PROVISION_GENERIC_ROLE
+        and str(match["match_kind"]).startswith("EXACT_")
+    ]
     for match in projected:
         if match["role"] != _PROVISION_GENERIC_ROLE or not str(match["match_kind"]).startswith(
             "EXACT_"
@@ -1016,9 +1129,49 @@ def _project_reviewed_schema_source_scopes(
             if item["document_line_ordinal"] < before
             and str(item["match_kind"]).startswith("EXACT_")
         ]
+        active_deposit_groups = [
+            item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+        ]
+        if active_deposit_groups:
+            active_deposit_start = max(
+                item["document_line_ordinal"] for item in active_deposit_groups
+            )
+            prior_deposits = [
+                item
+                for item in prior_deposits
+                if item["document_line_ordinal"] >= active_deposit_start
+            ]
         prior_loans = [item for item in loan_groups if item["document_line_ordinal"] < before]
         later_loans = [item for item in loan_groups if item["document_line_ordinal"] > before]
         if prior_deposits and not prior_loans and later_loans:
+            next_loan_ordinal = min(item["document_line_ordinal"] for item in later_loans)
+            deposit_interval_start = min(item["document_line_ordinal"] for item in prior_deposits)
+            interval_provisions = [
+                item
+                for item in generic_provision_sources
+                if deposit_interval_start <= item["document_line_ordinal"] < next_loan_ordinal
+            ]
+            explicit_interval_provisions = [
+                item
+                for item in projected
+                if item is not match
+                and item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+                and deposit_interval_start <= item["document_line_ordinal"] < next_loan_ordinal
+            ]
+            if (
+                any(
+                    before < item["document_line_ordinal"] < next_loan_ordinal
+                    and (
+                        item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                        or item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
+                    )
+                    for item in projected
+                    if item is not match
+                )
+                or len(interval_provisions) != 1
+                or explicit_interval_provisions
+            ):
+                continue
             anchor = max(
                 prior_deposits,
                 key=lambda item: (
@@ -1034,8 +1187,8 @@ def _project_reviewed_schema_source_scopes(
                 anchor=anchor,
                 binding_kind="EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
                 geometry=None,
-                interval_end_exclusive=min(item["document_line_ordinal"] for item in later_loans),
-                interval_start=min(item["document_line_ordinal"] for item in prior_deposits),
+                interval_end_exclusive=next_loan_ordinal,
+                interval_start=deposit_interval_start,
                 source=match,
                 source_role=_PROVISION_GENERIC_ROLE,
                 source_scope_role="INTERBANK_DEPOSIT_GROUP",
@@ -1060,6 +1213,18 @@ def _project_reviewed_schema_source_scopes(
             continue
         if prior_deposits and prior_loans and not later_loans:
             loan = max(prior_loans, key=lambda item: item["document_line_ordinal"])
+            root_interval_provisions = [
+                item
+                for item in generic_provision_sources
+                if loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
+            ]
+            explicit_root_interval_provisions = [
+                item
+                for item in projected
+                if item is not match
+                and item["role"] == "TOTAL_INTERBANK_PROVISION"
+                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
+            ]
             prior_loan_leaves = [
                 item
                 for item in projected
@@ -1073,6 +1238,20 @@ def _project_reviewed_schema_source_scopes(
                 if item["role"] in _LOAN_LEAF_ROLES
                 and before < item["document_line_ordinal"] < region_end
             ]
+            later_loan_semantics = [
+                item
+                for item in projected
+                if item is not match
+                and item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
+                and before < item["document_line_ordinal"] < region_end
+            ]
+            later_deposit_roles = [
+                item
+                for item in projected
+                if item is not match
+                and item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                and before < item["document_line_ordinal"] < region_end
+            ]
             all_loan_leaves = [
                 item
                 for item in projected
@@ -1082,9 +1261,13 @@ def _project_reviewed_schema_source_scopes(
             exact_group_total_without_leaf_labels = not all_loan_leaves and bool(
                 _same_row_numeric_samples(pages, loan)
             )
-            if (
-                not prior_loan_leaves and not exact_group_total_without_leaf_labels
-            ) or later_loan_leaves:
+            if (not prior_loan_leaves and not exact_group_total_without_leaf_labels) or (
+                len(root_interval_provisions) != 1
+                or explicit_root_interval_provisions
+                or later_loan_leaves
+                or later_loan_semantics
+                or later_deposit_roles
+            ):
                 continue
             if not str(loan["match_kind"]).startswith("EXACT_"):
                 continue
@@ -2040,6 +2223,14 @@ def _build_numeric_sample_universe(
         header_indices = set(grid["header_evidence_source_line_indices"])
         candidates: list[dict[str, Any]] = []
         lanes_by_sample: dict[str, int] = {}
+        off_lane_sample_ids: set[str] = set()
+        adjacent_lane_span = (
+            min(right - left for left, right in zip(centers, centers[1:], strict=False))
+            if len(centers) > 1
+            else scale * 4.0
+        )
+        table_left = centers[0] - adjacent_lane_span * 0.75
+        table_right = centers[-1] + adjacent_lane_span * 0.75
         for line in local_lines:
             if (
                 line["sample_id"] in universe_by_sample
@@ -2048,12 +2239,14 @@ def _build_numeric_sample_universe(
             ):
                 continue
             center = (line["bbox"][0] + line["bbox"][2]) / 2
-            lane = min(range(len(centers)), key=lambda index: abs(center - centers[index]))
-            if abs(center - centers[lane]) > lane_tolerance:
+            if not table_left <= center <= table_right:
                 continue
+            lane = min(range(len(centers)), key=lambda index: abs(center - centers[index]))
             projected = {**canonical_clone_v1(line), "source_line_index": line["line_ordinal"]}
             candidates.append(projected)
             lanes_by_sample[line["sample_id"]] = lane
+            if abs(center - centers[lane]) > lane_tolerance:
+                off_lane_sample_ids.add(line["sample_id"])
         if not candidates:
             continue
         physical_clusters = row_v1.cluster_numeric_rows_v1(
@@ -2078,7 +2271,11 @@ def _build_numeric_sample_universe(
                 "column_ordinals": [lanes_by_sample[line["sample_id"]] for line in ordered],
                 "page_sequence": page_sequence,
                 "sample_ids": [line["sample_id"] for line in ordered],
-                "status": _INTERNAL_UNASSIGNED_CLUSTER_STATUS,
+                "status": (
+                    _OFF_LANE_NUMERIC_CLUSTER_STATUS
+                    if any(line["sample_id"] in off_lane_sample_ids for line in ordered)
+                    else _INTERNAL_UNASSIGNED_CLUSTER_STATUS
+                ),
             }
             cluster_id = "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material)
             cluster = {**cluster_material, "cluster_id": cluster_id}
@@ -2224,7 +2421,8 @@ def _validate_numeric_sample_universe(
         if (
             type(cluster) is not dict
             or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
-            or cluster["status"] != _INTERNAL_UNASSIGNED_CLUSTER_STATUS
+            or cluster["status"]
+            not in {_INTERNAL_UNASSIGNED_CLUSTER_STATUS, _OFF_LANE_NUMERIC_CLUSTER_STATUS}
             or type(cluster["page_sequence"]) is not int
             or cluster["page_sequence"] <= 0
             or type(cluster["sample_ids"]) is not list
@@ -2443,6 +2641,24 @@ def _validate_result(value: Any) -> dict[str, Any]:
         span = _source_span(occurrence["label_match"])
         actual_span_occurrences.setdefault(canonical_json_sha256_v1(span), []).append(occurrence)
     currency_roles = set(_DISCOUNT_SCOPE_TARGETS)
+    generic_provision_sources = [
+        item
+        for item in value["role_occurrences"]
+        if item["role"] == _PROVISION_GENERIC_ROLE
+        or (
+            type(item.get("source_scope_binding")) is dict
+            and item["source_scope_binding"].get("source_role") == _PROVISION_GENERIC_ROLE
+        )
+    ]
+    generic_discount_sources = [
+        item
+        for item in value["role_occurrences"]
+        if item["role"] == _DISCOUNT_GENERIC_ROLE
+        or (
+            type(item.get("source_scope_binding")) is dict
+            and item["source_scope_binding"].get("source_role") == _DISCOUNT_GENERIC_ROLE
+        )
+    ]
     for occurrence in value["role_occurrences"]:
         receipt = occurrence["source_scope_binding"]
         anchor_span = receipt.get("anchor_span") if type(receipt) is dict else None
@@ -2463,6 +2679,29 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("reviewed schema source-scope anchor does not precede its source")
         kind = receipt["binding_kind"]
         if kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
+            prior_loan_groups = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
+                and item["label_match"]["document_line_ordinal"]
+                < source_match["document_line_ordinal"]
+            ]
+            expected_loan = max(
+                prior_loan_groups,
+                key=lambda item: item["label_match"]["document_line_ordinal"],
+                default=None,
+            )
+            next_loan_ordinal = min(
+                (
+                    item["label_match"]["document_line_ordinal"]
+                    for item in value["role_occurrences"]
+                    if item["role"] == "INTERBANK_LOAN_GROUP"
+                    and item["label_match"]["document_line_ordinal"]
+                    > source_match["document_line_ordinal"]
+                ),
+                default=2**63 - 1,
+            )
             preceding_currency = [
                 item
                 for item in value["role_occurrences"]
@@ -2470,6 +2709,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["end_document_line_ordinal"]
                 < source_match["document_line_ordinal"]
+                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+                and type(expected_loan) is dict
+                and item["label_match"]["document_line_ordinal"]
+                >= expected_loan["label_match"]["document_line_ordinal"]
             ]
             nearest_end = max(
                 (item["label_match"]["end_document_line_ordinal"] for item in preceding_currency),
@@ -2480,10 +2723,58 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 for item in preceding_currency
                 if item["label_match"]["end_document_line_ordinal"] == nearest_end
             ]
+            intervening_loan_siblings = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"]
+                not in {occurrence["occurrence_id"], anchor["occurrence_id"]}
+                and item["role"] in _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES
+                and anchor_match["end_document_line_ordinal"]
+                < item["label_match"]["document_line_ordinal"]
+                < source_match["document_line_ordinal"]
+            ]
+            generic_discount_ids = {item["occurrence_id"] for item in generic_discount_sources}
+            non_generic_boundaries = [
+                item["label_match"]["document_line_ordinal"]
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] not in generic_discount_ids
+                and item["role"] in _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES
+                and anchor_match["end_document_line_ordinal"]
+                < item["label_match"]["document_line_ordinal"]
+                < next_loan_ordinal
+            ]
+            source_subscope_end = min(non_generic_boundaries, default=next_loan_ordinal)
+            interval_generic_discounts = [
+                item
+                for item in generic_discount_sources
+                if anchor_match["end_document_line_ordinal"]
+                < item["label_match"]["document_line_ordinal"]
+                < source_subscope_end
+            ]
+            explicit_same_target = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["role"] == occurrence["role"]
+                and item["occurrence_id"] not in generic_discount_ids
+                and type(expected_loan) is dict
+                and expected_loan["label_match"]["document_line_ordinal"]
+                <= item["label_match"]["document_line_ordinal"]
+                < next_loan_ordinal
+            ]
             if (
-                len(nearest) != 1
+                expected_loan is None
+                or len(nearest) != 1
                 or nearest[0]["occurrence_id"] != anchor["occurrence_id"]
+                or anchor["scope_owner_occurrence_id"] != expected_loan["occurrence_id"]
                 or occurrence["scope_owner_occurrence_id"] != anchor["occurrence_id"]
+                or intervening_loan_siblings
+                or len(interval_generic_discounts) != 1
+                or explicit_same_target
+                or receipt["interval"]["start_document_line_ordinal"]
+                != anchor_match["document_line_ordinal"]
+                or receipt["interval"]["end_document_line_ordinal_exclusive"]
+                != source_match["end_document_line_ordinal"] + 1
             ):
                 raise _error(
                     "discount source subscope is not the nearest exact currency occurrence"
@@ -2497,6 +2788,18 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and item["label_match"]["document_line_ordinal"] < source_ordinal
                 and str(item["label_match"]["match_kind"]).startswith("EXACT_")
             ]
+            active_deposit_groups = [
+                item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+            ]
+            if active_deposit_groups:
+                active_deposit_start = max(
+                    item["label_match"]["document_line_ordinal"] for item in active_deposit_groups
+                )
+                prior_deposits = [
+                    item
+                    for item in prior_deposits
+                    if item["label_match"]["document_line_ordinal"] >= active_deposit_start
+                ]
             prior_loans = [
                 item
                 for item in value["role_occurrences"]
@@ -2508,6 +2811,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 for item in value["role_occurrences"]
                 if item["role"] == "INTERBANK_LOAN_GROUP"
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            next_loan_ordinal = min(
+                (item["label_match"]["document_line_ordinal"] for item in later_loans),
+                default=None,
+            )
+            later_deposits_before_loan = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                and item["occurrence_id"] != occurrence["occurrence_id"]
+                and source_ordinal < item["label_match"]["document_line_ordinal"]
+                and type(next_loan_ordinal) is int
+                and item["label_match"]["document_line_ordinal"] < next_loan_ordinal
+            ]
+            incompatible_semantics_before_loan = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
+                and source_ordinal < item["label_match"]["document_line_ordinal"]
+                and type(next_loan_ordinal) is int
+                and item["label_match"]["document_line_ordinal"] < next_loan_ordinal
             ]
             expected_anchor = max(
                 prior_deposits,
@@ -2530,13 +2855,42 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 ),
                 default=None,
             )
+            deposit_interval_start = min(
+                (item["label_match"]["document_line_ordinal"] for item in prior_deposits),
+                default=None,
+            )
+            interval_provisions = [
+                item
+                for item in generic_provision_sources
+                if type(deposit_interval_start) is int
+                and type(next_loan_ordinal) is int
+                and deposit_interval_start
+                <= item["label_match"]["document_line_ordinal"]
+                < next_loan_ordinal
+            ]
+            generic_provision_ids = {item["occurrence_id"] for item in generic_provision_sources}
+            explicit_interval_provisions = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["occurrence_id"] not in generic_provision_ids
+                and item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+                and type(deposit_interval_start) is int
+                and type(next_loan_ordinal) is int
+                and deposit_interval_start
+                <= item["label_match"]["document_line_ordinal"]
+                < next_loan_ordinal
+            ]
             if (
                 expected_anchor is None
                 or expected_anchor["occurrence_id"] != anchor["occurrence_id"]
+                or len(interval_provisions) != 1
+                or explicit_interval_provisions
                 or prior_loans
                 or not later_loans
-                or receipt["interval"]["start_document_line_ordinal"]
-                != min(item["label_match"]["document_line_ordinal"] for item in prior_deposits)
+                or later_deposits_before_loan
+                or incompatible_semantics_before_loan
+                or receipt["interval"]["start_document_line_ordinal"] != deposit_interval_start
                 or receipt["interval"]["end_document_line_ordinal_exclusive"]
                 != min(item["label_match"]["document_line_ordinal"] for item in later_loans)
                 or (
@@ -2568,6 +2922,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 if item["role"] == "INTERBANK_LOAN_GROUP"
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
             ]
+            later_deposits = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                and item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
             expected_loan = max(
                 prior_loans,
                 key=lambda item: (
@@ -2587,6 +2948,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item
                 for item in value["role_occurrences"]
                 if item["role"] in _LOAN_LEAF_ROLES
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            later_loan_semantics = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
             ]
             all_loan_leaf_occurrences = [
@@ -2615,13 +2983,33 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and type(anchor_row.get("values")) is list
                 and bool(anchor_row["values"])
             )
+            root_interval_provisions = [
+                item
+                for item in generic_provision_sources
+                if type(region_end) is int
+                and anchor_ordinal <= item["label_match"]["document_line_ordinal"] < region_end
+            ]
+            generic_provision_ids = {item["occurrence_id"] for item in generic_provision_sources}
+            explicit_root_interval_provisions = [
+                item
+                for item in value["role_occurrences"]
+                if item["occurrence_id"] != occurrence["occurrence_id"]
+                and item["occurrence_id"] not in generic_provision_ids
+                and item["role"] == "TOTAL_INTERBANK_PROVISION"
+                and type(region_end) is int
+                and anchor_ordinal <= item["label_match"]["document_line_ordinal"] < region_end
+            ]
             if (
                 not prior_deposits
+                or len(root_interval_provisions) != 1
+                or explicit_root_interval_provisions
                 or expected_loan is None
                 or expected_loan["occurrence_id"] != anchor["occurrence_id"]
                 or not str(anchor_match["match_kind"]).startswith("EXACT_")
                 or not (exact_leaf_completion or exact_group_total_completion)
                 or later_loans
+                or later_deposits
+                or later_loan_semantics
                 or occurrence["scope_owner_role"] is not None
                 or receipt["interval"]["start_document_line_ordinal"] != anchor_ordinal
                 or type(region_end) is not int

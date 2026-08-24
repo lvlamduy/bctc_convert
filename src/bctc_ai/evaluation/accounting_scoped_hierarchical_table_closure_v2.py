@@ -166,6 +166,16 @@ _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS = "COEXTENSIVE_PRECEDING_NUMERIC_SO
 _COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS = (
     "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO"
 )
+_UNLABELED_EXACT_SUBTOTAL_CORROBORATION = "UNLABELED_EXACT_SUBTOTAL_CORROBORATION"
+_UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION = "UNRESOLVED_AMBIGUOUS_UNLABELED_SUBTOTAL"
+_UNLABELED_SUBTOTAL_DISPOSITIONS = {
+    _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
+    _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
+}
+_UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES = {
+    "INTERBANK_DEPOSIT_GROUP",
+    "INTERBANK_LOAN_GROUP",
+}
 _MAX_EQUATIONS = 128
 _MAX_COVERAGE_RECORDS = 16_384
 _MAX_RESOLVED_ROLES = 4_096
@@ -201,8 +211,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "bd55ea3195f86c00ef9a141ab644525989cce442bc346a8a54d8bf9239558efe",
-        "size_bytes": 130_314,
+        "sha256": "418575d167f69598926a601edb2b2075f52a3256deaf7f965808d1bd1df91a0d",
+        "size_bytes": 147_989,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -1548,6 +1558,394 @@ def _select_global_equation(
     return record, reasons
 
 
+def _numeric_source_candidate_axis(
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    internal_clusters: Sequence[Mapping[str, Any]],
+    trailing_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Project unowned/trailing numeric rows without giving them semantic roles."""
+
+    sample_by_id = {sample["sample_id"]: sample for sample in numeric_sample_universe}
+
+    def candidate(
+        *,
+        key: tuple[str, str | int],
+        row_kind: str,
+        source_record: Mapping[str, Any],
+        sample_ids: Sequence[str],
+        source_complete: bool,
+    ) -> dict[str, Any]:
+        samples = [sample_by_id.get(sample_id) for sample_id in sample_ids]
+        typed_samples = [sample for sample in samples if type(sample) is dict]
+        columns = [sample["column_ordinal"] for sample in typed_samples]
+        pages = {sample["page_sequence"] for sample in typed_samples}
+        source_values = source_record.get("values", [])
+        shared_fields = {
+            "bbox",
+            "column_center",
+            "column_ordinal",
+            "crop_ref",
+            "line_ordinal",
+            "page_sequence",
+            "parsed_token",
+            "raw_prediction",
+            "reader_score",
+            "sample_id",
+        }
+        source_values_match_universe = row_kind != "TRAILING_VALUE_ROW" or (
+            type(source_values) is list
+            and len(source_values) == len(typed_samples)
+            and all(
+                same_typed_json_v1(
+                    {field: value.get(field) for field in shared_fields},
+                    {field: sample.get(field) for field in shared_fields},
+                )
+                for value, sample in zip(source_values, typed_samples, strict=True)
+            )
+        )
+        complete = (
+            source_complete
+            and len(typed_samples) == len(sample_ids)
+            and bool(typed_samples)
+            and len(pages) == 1
+            and columns == list(range(len(columns)))
+            and len(columns) == len(set(columns))
+            and source_values_match_universe
+            and all(
+                sample["parsed_token"]["classification"] == "SIGNED_NUMBER"
+                for sample in typed_samples
+            )
+        )
+        values = [
+            {
+                "column_ordinal": sample["column_ordinal"],
+                "number": _number(sample),
+                "source_sample_ids": [sample["sample_id"]],
+            }
+            for sample in typed_samples
+        ]
+        return {
+            "bottom": max((sample["bbox"][3] for sample in typed_samples), default=-1),
+            "complete": complete,
+            "key": key,
+            "line_ordinal": min((sample["line_ordinal"] for sample in typed_samples), default=-1),
+            "page_sequence": next(iter(pages)) if len(pages) == 1 else None,
+            "row_kind": row_kind,
+            "sample_ids": list(sample_ids),
+            "source_record": canonical_clone_v1(source_record),
+            "top": min((sample["bbox"][1] for sample in typed_samples), default=-1),
+            "values": values,
+        }
+
+    result = []
+    for cluster in internal_clusters:
+        result.append(
+            candidate(
+                key=("cluster", cluster["cluster_id"]),
+                row_kind="INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+                sample_ids=cluster["sample_ids"],
+                source_complete=(
+                    cluster["status"] == occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+                ),
+                source_record=cluster,
+            )
+        )
+    for trailing in trailing_rows:
+        result.append(
+            candidate(
+                key=("trailing", trailing["candidate_ordinal"]),
+                row_kind="TRAILING_VALUE_ROW",
+                sample_ids=[value["sample_id"] for value in trailing["values"]],
+                source_complete=(trailing["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"),
+                source_record=trailing,
+            )
+        )
+    return sorted(
+        result,
+        key=lambda item: (
+            item["page_sequence"] if type(item["page_sequence"]) is int else 2**31,
+            item["top"],
+            item["line_ordinal"],
+            str(item["key"]),
+        ),
+    )
+
+
+def _unlabeled_exact_subtotal_for_equation(
+    *,
+    family_id: str,
+    equation_record: Mapping[str, Any],
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    reserved_source_keys: set[tuple[str, str | int]],
+    resolved_by_role: Mapping[str, Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    source_candidates: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Recognize one exact printed subtotal as coverage/corroboration only.
+
+    This is deliberately Family-3-specific and does not create a source role.
+    The target remains the exact component-derived record.  A partial, off-lane,
+    duplicate, mismatching, reordered, or out-of-subtree row receives no
+    authority and therefore keeps its ordinary source-only/trailing veto.
+    """
+
+    target_role = equation_record.get("result_role")
+    target = resolved_by_role.get(target_role)
+    if (
+        family_id != "INTERBANK_DEPOSITS_AND_LOANS"
+        or target_role not in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES
+        or equation_record.get("status") != "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        or not equation_record.get("component_roles_present")
+        or equation_record.get("selected_trailing_candidate_ordinal") is not None
+        or type(target) is not dict
+        or target.get("source") is not None
+        or target.get("resolution_kind") != "DERIVED_EXACT_COMPONENT_SUM"
+        or target.get("component_roles") != equation_record["component_roles_present"]
+        or type(target.get("values")) is not list
+        or not target["values"]
+    ):
+        return None
+    target_occurrences = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("role") == target_role
+        and str(occurrence.get("label_match", {}).get("match_kind", "")).startswith("EXACT_")
+    ]
+    if len(target_occurrences) > 1 or (
+        target_role == "INTERBANK_LOAN_GROUP" and len(target_occurrences) != 1
+    ):
+        return None
+    target_occurrence = target_occurrences[0] if target_occurrences else None
+    if target_occurrence is None and len(equation_record["component_roles_present"]) < 2:
+        return None
+    target_match = target_occurrence.get("label_match") if target_occurrence is not None else None
+    target_bbox = target_match.get("source_label_bbox") if type(target_match) is dict else None
+    if target_occurrence is not None and (
+        type(target_bbox) is not list
+        or len(target_bbox) != 4
+        or any(type(item) is not int for item in target_bbox)
+    ):
+        return None
+    component_sample_ids = list(
+        dict.fromkeys(
+            sample_id
+            for value in target["values"]
+            for sample_id in value.get("source_sample_ids", [])
+        )
+    )
+    sample_by_id = {sample["sample_id"]: sample for sample in numeric_sample_universe}
+    component_samples = [sample_by_id.get(sample_id) for sample_id in component_sample_ids]
+    if (
+        not component_sample_ids
+        or any(type(sample) is not dict for sample in component_samples)
+        or any(
+            sample["owner_kind"] in {"SOURCE_ONLY_INTERNAL_CLUSTER", "TRAILING_VALUE_ROW"}
+            for sample in component_samples
+        )
+        or len({sample["page_sequence"] for sample in component_samples}) != 1
+    ):
+        return None
+    page_sequence = component_samples[0]["page_sequence"]
+    if target_match is not None and target_match["page_sequence"] != page_sequence:
+        return None
+    component_top = max(sample["bbox"][1] for sample in component_samples)
+    component_bottom = max(sample["bbox"][3] for sample in component_samples)
+    if target_bbox is not None and target_bbox[1] >= component_top:
+        return None
+
+    boundary_top: int | None = None
+    if target_role == "INTERBANK_DEPOSIT_GROUP":
+        later_loan_groups = [
+            occurrence
+            for occurrence in role_occurrences
+            if occurrence.get("role") == "INTERBANK_LOAN_GROUP"
+            and str(occurrence.get("label_match", {}).get("match_kind", "")).startswith("EXACT_")
+            and occurrence["label_match"]["page_sequence"] == page_sequence
+            and occurrence["label_match"]["source_label_bbox"][1] > component_top
+        ]
+        if len(later_loan_groups) != 1:
+            return None
+        boundary_top = later_loan_groups[0]["label_match"]["source_label_bbox"][1]
+
+    interval_sources = [
+        source
+        for source in source_candidates
+        if source["key"] not in reserved_source_keys
+        and source["page_sequence"] == page_sequence
+        and source["top"] > component_top
+        and source["bottom"] > component_bottom
+        and (boundary_top is None or source["top"] < boundary_top)
+    ]
+    if not interval_sources:
+        return None
+    first_top = min(source["top"] for source in interval_sources)
+    first_sources = [source for source in interval_sources if source["top"] == first_top]
+    if len(first_sources) != 1:
+        return None
+    selected = first_sources[0]
+    if not selected["complete"] or not _same_values(selected["values"], target["values"]):
+        return None
+    if any(
+        source["key"] != selected["key"]
+        and source["complete"]
+        and _same_values(source["values"], target["values"])
+        for source in interval_sources
+    ):
+        return None
+
+    disposition = _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+    if target_role == "INTERBANK_LOAN_GROUP":
+        deposit = resolved_by_role.get("INTERBANK_DEPOSIT_GROUP")
+        if type(deposit) is not dict:
+            return None
+        root_component_sets = [
+            [deposit, target],
+            *(
+                [deposit, target, resolved_by_role[provision_role]]
+                for provision_role in (
+                    "TOTAL_INTERBANK_PROVISION",
+                    "INTERBANK_DEPOSIT_PROVISION",
+                    "INTERBANK_LOAN_PROVISION",
+                )
+                if provision_role in resolved_by_role
+            ),
+        ]
+        root_value_axes = [_sum_records(records) for records in root_component_sets]
+        later_root_candidates = [
+            source
+            for source in source_candidates
+            if source["key"] not in reserved_source_keys
+            and source["key"] != selected["key"]
+            and source["page_sequence"] == page_sequence
+            and source["top"] > selected["top"]
+            and source["complete"]
+            and any(_same_values(source["values"], values) for values in root_value_axes)
+            and not _same_values(source["values"], target["values"])
+        ]
+        if len(later_root_candidates) != 1:
+            if not later_root_candidates and any(
+                _same_values(values, target["values"]) for values in root_value_axes
+            ):
+                disposition = _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION
+            else:
+                return None
+
+    candidate_top = selected["top"]
+    if target_role == "INTERBANK_DEPOSIT_GROUP":
+        later_target_semantics = [
+            occurrence
+            for occurrence in role_occurrences
+            if occurrence.get("role") in occurrence_v2._DEPOSIT_SEMANTIC_INTERVAL_ROLES
+            and occurrence["label_match"]["page_sequence"] == page_sequence
+            and candidate_top < occurrence["label_match"]["source_label_bbox"][1] < boundary_top
+        ]
+    else:
+        later_target_semantics = [
+            occurrence
+            for occurrence in role_occurrences
+            if occurrence.get("role")
+            in {
+                *occurrence_v2._LOAN_SEMANTIC_INTERVAL_ROLES,
+                "INTERBANK_LOAN_GROUP",
+            }
+            and occurrence["label_match"]["page_sequence"] == page_sequence
+            and occurrence["label_match"]["source_label_bbox"][1] > candidate_top
+        ]
+    if later_target_semantics:
+        return None
+    return {
+        "candidate_ordinal": (
+            selected["source_record"].get("candidate_ordinal")
+            if selected["row_kind"] == "TRAILING_VALUE_ROW"
+            else None
+        ),
+        "disposition": disposition,
+        "occurrence_id": (
+            target_occurrence["occurrence_id"] if target_occurrence is not None else None
+        ),
+        "role": target_role,
+        "row_kind": selected["row_kind"],
+        "sample_ids": canonical_clone_v1(selected["sample_ids"]),
+        "source_key": selected["key"],
+        "source_record": canonical_clone_v1(selected["source_record"]),
+    }
+
+
+def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> None:
+    trailing_rows = [
+        receipt["source_record"]
+        for receipt in value["coverage_receipt"]
+        if receipt["row_kind"] == "TRAILING_VALUE_ROW"
+    ]
+    source_candidates = _numeric_source_candidate_axis(
+        value["numeric_sample_universe"],
+        value["internal_unassigned_numeric_clusters"],
+        trailing_rows,
+    )
+    resolved_by_role = {record["role"]: record for record in value["resolved_roles"]}
+    reserved: set[tuple[str, str | int]] = set()
+    expected_by_key: dict[tuple[str, str | int], Mapping[str, Any]] = {}
+    for equation in value["equations"]["global"]:
+        evidence = _unlabeled_exact_subtotal_for_equation(
+            equation_record=equation,
+            family_id=value["family_id"],
+            numeric_sample_universe=value["numeric_sample_universe"],
+            reserved_source_keys=reserved,
+            resolved_by_role=resolved_by_role,
+            role_occurrences=value["role_occurrences"],
+            source_candidates=source_candidates,
+        )
+        if evidence is not None:
+            reserved.add(evidence["source_key"])
+            expected_by_key[evidence["source_key"]] = evidence
+    actual_by_key: dict[tuple[str, str | int], Mapping[str, Any]] = {}
+    for receipt in value["coverage_receipt"]:
+        if receipt["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS:
+            continue
+        key = (
+            ("cluster", receipt["source_record"].get("cluster_id"))
+            if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+            else ("trailing", receipt["candidate_ordinal"])
+        )
+        if key in actual_by_key:
+            raise _error("unlabeled exact subtotal source is owned more than once")
+        actual_by_key[key] = receipt
+    if set(actual_by_key) != set(expected_by_key):
+        raise _error("unlabeled exact subtotal designation did not replay")
+    for key, expected in expected_by_key.items():
+        actual = actual_by_key[key]
+        expected_coverage_id = (
+            "ashtcv2:coverage:unlabeled-exact-subtotal:"
+            + expected["role"]
+            + (
+                f":trailing:{expected['candidate_ordinal']}"
+                if expected["row_kind"] == "TRAILING_VALUE_ROW"
+                else ":cluster:" + expected["source_record"]["cluster_id"]
+            )
+        )
+        if (
+            actual["coverage_id"] != expected_coverage_id
+            or actual["disposition"] != expected["disposition"]
+            or actual["candidate_ordinal"] != expected["candidate_ordinal"]
+            or actual["occurrence_id"] != expected["occurrence_id"]
+            or actual["role"] != expected["role"]
+            or actual["row_kind"] != expected["row_kind"]
+            or actual["sample_ids"] != expected["sample_ids"]
+            or not same_typed_json_v1(actual["source_record"], expected["source_record"])
+        ):
+            raise _error("unlabeled exact subtotal receipt or boundary proof drifted")
+        if expected["disposition"] == _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION and (
+            "AMBIGUOUS_UNLABELED_SUBTOTAL_SOURCE:"
+            + expected["role"]
+            + ":"
+            + str(key[0])
+            + ":"
+            + str(key[1])
+            not in value["unresolved_reasons"]
+        ):
+            raise _error("ambiguous unlabeled subtotal receipt did not veto closure")
+
+
 def _metrics(
     resolved: Sequence[Mapping[str, Any]],
     equations: Sequence[Mapping[str, Any]],
@@ -1587,8 +1985,10 @@ def _metrics(
             for record in coverage_receipt
             if record["disposition"]
             in {
+                "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
                 "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
                 "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE",
+                _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
             }
         ),
     }
@@ -2069,7 +2469,11 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         if (
             type(cluster) is not dict
             or set(cluster) != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_FIELDS
-            or cluster.get("status") != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+            or cluster.get("status")
+            not in {
+                occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS,
+                occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS,
+            }
             or type(cluster.get("cluster_id")) is not str
             or type(cluster.get("page_sequence")) is not int
             or cluster["page_sequence"] <= 0
@@ -2137,16 +2541,50 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
                 raise _error("source-only receipt differs from numeric universe ownership")
             receipt_sample_ids.append(sample_id)
         if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER":
-            source_only_receipts.add(receipt["source_record"]["cluster_id"])
+            cluster_id = receipt["source_record"]["cluster_id"]
+            cluster = cluster_by_id.get(cluster_id)
+            expected_disposition = (
+                "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"
+                if type(cluster) is dict
+                and cluster["status"] == occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS
+                else "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+            )
+            if (
+                type(cluster) is not dict
+                or not same_typed_json_v1(receipt["source_record"], cluster)
+                or receipt["disposition"]
+                not in {expected_disposition, *_UNLABELED_SUBTOTAL_DISPOSITIONS}
+                or (
+                    receipt["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                    and cluster["status"] != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+                )
+            ):
+                raise _error("numeric cluster status, source record, or disposition drifted")
+            source_only_receipts.add(cluster_id)
     if (
         len(receipt_sample_ids) != len(set(receipt_sample_ids))
         or set(receipt_sample_ids) != set(by_sample)
         or source_only_receipts != set(cluster_by_id)
     ):
         raise _error("numeric universe does not have exactly one owning coverage receipt")
+    cluster_receipts = {
+        receipt["source_record"]["cluster_id"]: receipt
+        for receipt in value["coverage_receipt"]
+        if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    }
     if any(
-        f"SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:{cluster_id}" not in value["unresolved_reasons"]
-        for cluster_id in cluster_by_id
+        receipt["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+        and (
+            (
+                "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
+                if cluster["status"] == occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS
+                else "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:"
+            )
+            + cluster_id
+            not in value["unresolved_reasons"]
+        )
+        for cluster_id, cluster in cluster_by_id.items()
+        for receipt in [cluster_receipts[cluster_id]]
     ):
         raise _error("source-only numeric cluster did not veto closure")
 
@@ -2611,6 +3049,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH",
         "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER",
         "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
+        "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
+        _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
+        _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
     }
     if (
         None in occurrence_ids
@@ -2638,10 +3079,29 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or (
                 record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
                 and (
-                    record["occurrence_id"] is not None
-                    or record["role"] is not None
-                    or record["candidate_ordinal"] is not None
-                    or record["disposition"] != "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+                    record["candidate_ordinal"] is not None
+                    or (
+                        record["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        and (
+                            (
+                                record["occurrence_id"] is not None
+                                and record["occurrence_id"] not in occurrence_ids
+                            )
+                            or record["role"] not in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES
+                        )
+                    )
+                    or (
+                        record["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        and (
+                            record["occurrence_id"] is not None
+                            or record["role"] is not None
+                            or record["disposition"]
+                            not in {
+                                "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
+                                "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
+                            }
+                        )
+                    )
                     or record["source_record"].get("cluster_id")
                     not in {
                         cluster.get("cluster_id")
@@ -2682,12 +3142,24 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or (
                 record["row_kind"] == "TRAILING_VALUE_ROW"
                 and (
-                    record["occurrence_id"] is not None
-                    or record["role"] is not None
-                    or type(record["candidate_ordinal"]) is not int
+                    type(record["candidate_ordinal"]) is not int
                     or record["candidate_ordinal"] < 0
                     or record["source_record"].get("candidate_ordinal")
                     != record["candidate_ordinal"]
+                    or (
+                        record["disposition"] in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        and (
+                            (
+                                record["occurrence_id"] is not None
+                                and record["occurrence_id"] not in occurrence_ids
+                            )
+                            or record["role"] not in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES
+                        )
+                    )
+                    or (
+                        record["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS
+                        and (record["occurrence_id"] is not None or record["role"] is not None)
+                    )
                 )
             )
             or record["sample_ids"]
@@ -2842,6 +3314,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or set(coextensive_receipts) != set(owned_coextensive_ids)
     ):
         raise _error("scoped hierarchical coextensive source receipt drifted")
+    _validate_unlabeled_exact_subtotal_receipts(value)
     _validate_numeric_sample_coverage(value)
     trailing_evidence = {
         candidate["candidate_ordinal"]: candidate["status"]
@@ -2860,7 +3333,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
         or any(
             ordinal not in trailing_evidence
-            and disposition != "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER"
+            and disposition
+            not in {
+                "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER",
+                *_UNLABELED_SUBTOTAL_DISPOSITIONS,
+            }
             for ordinal, disposition in trailing_receipts.items()
         )
         or (not value["unresolved_reasons"])
@@ -2938,10 +3415,6 @@ def _build(
         not in source_only_occurrences | one_edit_occurrences
     ]
     valued_rows = [row for row in accounting_rows if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
-    if axis["status"] != (
-        "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
-    ):
-        reasons.append("VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE")
     aggregate_roles = set(spec["repeated_role_policy"]["aggregate_roles"])
     allow_rounding = spec["format_version"] == SPEC_FORMAT_VERSION_V2
     local_records = []
@@ -2981,16 +3454,71 @@ def _build(
         locally_authorized_component_scopes,
     )
     reasons.extend(repeated_reasons)
+    source_candidates = _numeric_source_candidate_axis(
+        axis["numeric_sample_universe"],
+        axis["internal_unassigned_numeric_clusters"],
+        row_axis["trailing_value_rows"],
+    )
+    reserved_unlabeled_source_keys: set[tuple[str, str | int]] = set()
+    unlabeled_subtotal_by_source_key: dict[tuple[str, str | int], dict[str, Any]] = {}
     global_records = []
     for equation in spec["equations"]:
+        available_trailing_rows = [
+            row
+            for row in row_axis["trailing_value_rows"]
+            if ("trailing", row["candidate_ordinal"]) not in reserved_unlabeled_source_keys
+        ]
         record, equation_reasons = _select_global_equation(
             equation,
             resolved,
-            row_axis["trailing_value_rows"],
+            available_trailing_rows,
             allow_rounding=allow_rounding,
         )
         global_records.append(record)
         reasons.extend(equation_reasons)
+        unlabeled_subtotal = _unlabeled_exact_subtotal_for_equation(
+            equation_record=record,
+            family_id=spec["family_id"],
+            numeric_sample_universe=axis["numeric_sample_universe"],
+            reserved_source_keys=reserved_unlabeled_source_keys,
+            resolved_by_role=resolved,
+            role_occurrences=axis["role_occurrences"],
+            source_candidates=source_candidates,
+        )
+        if unlabeled_subtotal is not None:
+            source_key = unlabeled_subtotal["source_key"]
+            reserved_unlabeled_source_keys.add(source_key)
+            unlabeled_subtotal_by_source_key[source_key] = unlabeled_subtotal
+            if unlabeled_subtotal["disposition"] == _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION:
+                reasons.append(
+                    "AMBIGUOUS_UNLABELED_SUBTOTAL_SOURCE:"
+                    + unlabeled_subtotal["role"]
+                    + ":"
+                    + str(source_key[0])
+                    + ":"
+                    + str(source_key[1])
+                )
+    corroborated_occurrence_ids = {
+        evidence["occurrence_id"]
+        for evidence in unlabeled_subtotal_by_source_key.values()
+        if evidence["disposition"] == _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+    }
+    incomplete_rows = [
+        row for row in row_axis["rows"] if row["status"] != "VISIBLE_VALUE_LANES_BOUND"
+    ]
+    if incomplete_rows and all(
+        row["label_match"].get("occurrence_id") in corroborated_occurrence_ids and not row["values"]
+        for row in incomplete_rows
+    ):
+        reasons = [
+            reason
+            for reason in reasons
+            if reason != "VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE"
+        ]
+    elif axis["status"] != (
+        "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
+    ):
+        reasons.append("VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE")
     equation_roles = {
         role
         for equation in spec["equations"]
@@ -3107,18 +3635,31 @@ def _build(
         if ordinal in trailing_ordinals:
             raise _error("trailing numeric coverage axis repeats")
         trailing_ordinals.add(ordinal)
+        unlabeled_subtotal = unlabeled_subtotal_by_source_key.get(("trailing", ordinal))
+        if unlabeled_subtotal is not None and ordinal in trailing_disposition_by_ordinal:
+            raise _error("unlabeled subtotal is also claimed as a global trailing result")
         disposition = trailing_disposition_by_ordinal.get(
             ordinal, "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER"
         )
-        if disposition == "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER":
+        if unlabeled_subtotal is not None:
+            disposition = unlabeled_subtotal["disposition"]
+        elif disposition == "UNRESOLVED_UNCLAIMED_TRAILING_NUMERIC_CHALLENGER":
             reasons.append(f"UNCLAIMED_TRAILING_NUMERIC_ROW:{ordinal}")
         coverage_receipt.append(
             {
                 "candidate_ordinal": ordinal,
-                "coverage_id": f"ashtcv2:coverage:trailing:{ordinal}",
+                "coverage_id": (
+                    "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    + unlabeled_subtotal["role"]
+                    + f":trailing:{ordinal}"
+                    if unlabeled_subtotal is not None
+                    else f"ashtcv2:coverage:trailing:{ordinal}"
+                ),
                 "disposition": disposition,
-                "occurrence_id": None,
-                "role": None,
+                "occurrence_id": (
+                    unlabeled_subtotal["occurrence_id"] if unlabeled_subtotal is not None else None
+                ),
+                "role": unlabeled_subtotal["role"] if unlabeled_subtotal is not None else None,
                 "row_kind": "TRAILING_VALUE_ROW",
                 "sample_ids": [value["sample_id"] for value in trailing["values"]],
                 "source_record": canonical_clone_v1(trailing),
@@ -3126,14 +3667,39 @@ def _build(
         )
     for cluster in axis["internal_unassigned_numeric_clusters"]:
         cluster_id = cluster["cluster_id"]
-        reasons.append(f"SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:{cluster_id}")
+        off_lane = cluster["status"] == occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS
+        unlabeled_subtotal = unlabeled_subtotal_by_source_key.get(("cluster", cluster_id))
+        if unlabeled_subtotal is None:
+            reasons.append(
+                (
+                    "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
+                    if off_lane
+                    else "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:"
+                )
+                + cluster_id
+            )
         coverage_receipt.append(
             {
                 "candidate_ordinal": None,
-                "coverage_id": "ashtcv2:coverage:source-only:" + cluster_id,
-                "disposition": "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
-                "occurrence_id": None,
-                "role": None,
+                "coverage_id": (
+                    "ashtcv2:coverage:unlabeled-exact-subtotal:"
+                    + unlabeled_subtotal["role"]
+                    + ":cluster:"
+                    + cluster_id
+                    if unlabeled_subtotal is not None
+                    else "ashtcv2:coverage:source-only:" + cluster_id
+                ),
+                "disposition": (
+                    unlabeled_subtotal["disposition"]
+                    if unlabeled_subtotal is not None
+                    else "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"
+                    if off_lane
+                    else "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+                ),
+                "occurrence_id": (
+                    unlabeled_subtotal["occurrence_id"] if unlabeled_subtotal is not None else None
+                ),
+                "role": unlabeled_subtotal["role"] if unlabeled_subtotal is not None else None,
                 "row_kind": "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
                 "sample_ids": canonical_clone_v1(cluster["sample_ids"]),
                 "source_record": canonical_clone_v1(cluster),

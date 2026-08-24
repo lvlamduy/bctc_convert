@@ -297,6 +297,41 @@ def _acb_shaped_preceding_subtotal_pages(
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
 
 
+def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
+    pages = _pages(
+        [
+            ("Tiền gửi không kỳ hạn", "30", "20"),
+            ("Bằng VND", "20", "15"),
+            ("Bằng ngoại tệ", "10", "5"),
+            ("Tiền gửi có kỳ hạn", "70", "60"),
+            ("Bằng VND", "60", "50"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Bằng ngoại tệ", "0", "0"),
+        ],
+        trailing=[("50", "40"), ("150", "120")],
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    lines = pages[0]["lines"]
+    loan_index = next(
+        index for index, line in enumerate(lines) if line["vietocr_text"] == "Cho vay các TCTD khác"
+    )
+    lines[loan_index:loan_index] = [
+        _line(999, "100", "100", [610, 390, 700, 410]),
+        _line(1_000, "80", "80", [810, 390, 900, 410]),
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
 def _axis(pages: list[dict[str, object]], topology: dict[str, object] | None = None) -> dict:
     topology = _topology() if topology is None else topology
     scan = topology_v1.build_accounting_family_topology_scan_v1(
@@ -360,6 +395,19 @@ def _insert_internal_numeric_pair(pages: list[dict], token: str) -> None:
         }
 
 
+def _insert_off_lane_body_numeric(pages: list[dict], token: str) -> None:
+    lines = pages[0]["lines"]
+    lines[7:7] = [_line(999, token, token, [940, 185, 990, 205])]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+
 @pytest.mark.parametrize("token", ["0", "7", "-"])
 def test_internal_typed_money_lane_sample_is_source_only_and_always_vetoes(
     token: str,
@@ -402,6 +450,70 @@ def test_internal_typed_money_lane_sample_is_source_only_and_always_vetoes(
     ) == len(axis["numeric_sample_universe"])
 
 
+def test_off_lane_body_numeric_is_owned_once_and_vetoes_closure() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_off_lane_body_numeric(pages, "7")
+
+    axis, closure = _closure(pages)
+
+    cluster = next(
+        cluster
+        for cluster in axis["internal_unassigned_numeric_clusters"]
+        if cluster["status"] == occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS
+    )
+    assert len(cluster["sample_ids"]) == 1
+    receipt = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["source_record"].get("cluster_id") == cluster["cluster_id"]
+    )
+    assert receipt["sample_ids"] == cluster["sample_ids"]
+    assert receipt["disposition"] == "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert (
+        f"OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:{cluster['cluster_id']}"
+        in closure["unresolved_reasons"]
+    )
+    assert (
+        sum(
+            sample_id in cluster["sample_ids"]
+            for record in closure["coverage_receipt"]
+            for sample_id in record["sample_ids"]
+        )
+        == 1
+    )
+
+
+def test_off_lane_cluster_cause_cannot_be_retyped_by_coherent_rehash() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+        ]
+    )
+    _insert_off_lane_body_numeric(pages, "7")
+    _axis_value, closure = _closure(pages)
+    attacked = copy.deepcopy(closure)
+    receipt = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record["disposition"] == "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"
+    )
+    receipt["disposition"] = "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="cluster status|disposition drifted",
+    ):
+        subject._validate_result(attacked)
+
+
 def test_numeric_universe_sample_cannot_lose_its_only_receipt_after_coherent_rehash() -> None:
     pages = _pages(
         [
@@ -424,7 +536,118 @@ def test_numeric_universe_sample_cannot_lose_its_only_receipt_after_coherent_reh
 
     with pytest.raises(
         subject.AccountingScopedHierarchicalTableClosureV2Error,
-        match="internal numeric cluster|exactly one owning coverage receipt",
+        match="internal numeric cluster|numeric cluster status|exactly one owning coverage receipt",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_v4_unlabeled_deposit_and_loan_subtotals_are_exact_coverage_only() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _vib_shaped_unlabeled_subtotal_pages(), topology=topology, hierarchy=hierarchy
+    )
+
+    receipts = [
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+    ]
+    assert [(receipt["row_kind"], receipt["role"]) for receipt in receipts] == [
+        ("TRAILING_VALUE_ROW", "INTERBANK_LOAN_GROUP"),
+        ("INTERNAL_UNASSIGNED_NUMERIC_CLUSTER", "INTERBANK_DEPOSIT_GROUP"),
+    ]
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    resolved = {record["role"]: record for record in closure["resolved_roles"]}
+    assert resolved["INTERBANK_DEPOSIT_GROUP"]["source"] is None
+    assert resolved["INTERBANK_LOAN_GROUP"]["source"] is None
+    assert resolved["INTERBANK_DEPOSITS_AND_LOANS"]["source"]["kind"] == "TRAILING_VALUE_ROW"
+    assert [
+        value["number"]["coefficient"]
+        for value in resolved["INTERBANK_DEPOSITS_AND_LOANS"]["values"]
+    ] == [150, 120]
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_v4_single_equal_loan_and_root_unlabeled_row_is_ambiguous() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "0", "0"),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Bằng ngoại tệ", "0", "0"),
+        ],
+        trailing=[("50", "40")],
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    receipt = next(
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["row_kind"] == "TRAILING_VALUE_ROW"
+    )
+    assert receipt["disposition"] == subject._UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION
+    assert receipt["role"] == "INTERBANK_LOAN_GROUP"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("AMBIGUOUS_UNLABELED_SUBTOTAL_SOURCE:INTERBANK_LOAN_GROUP:")
+        for reason in closure["unresolved_reasons"]
+    )
+
+
+def test_v4_unlabeled_subtotal_target_cannot_be_forged_by_coherent_rehash() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _vib_shaped_unlabeled_subtotal_pages(), topology=topology, hierarchy=hierarchy
+    )
+    attacked = copy.deepcopy(closure)
+    receipt = next(
+        receipt
+        for receipt in attacked["coverage_receipt"]
+        if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+        and receipt["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+    )
+    receipt["role"] = "INTERBANK_LOAN_GROUP"
+    receipt["coverage_id"] = receipt["coverage_id"].replace(
+        "INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="designation did not replay|boundary proof drifted",
     ):
         subject._validate_result(attacked)
 
