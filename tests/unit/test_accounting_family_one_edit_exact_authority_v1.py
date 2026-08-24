@@ -58,6 +58,50 @@ def _spec() -> dict[str, object]:
     }
 
 
+def _nested_spec() -> dict[str, object]:
+    return {
+        "children": [
+            {
+                "matchers": [_matcher("Root section")],
+                "presence": "OPTIONAL",
+                "role": "ROOT",
+                "role_kind": "STRUCTURAL_GROUP",
+            },
+            {
+                "matchers": [
+                    _matcher("Inner contextual", "ROOT"),
+                    _matcher("Inner standalone"),
+                ],
+                "presence": "OPTIONAL",
+                "role": "INNER",
+                "role_kind": "STRUCTURAL_GROUP",
+            },
+            {
+                "matchers": [_matcher("Leaf balance", "INNER")],
+                "presence": "OPTIONAL",
+                "role": "LEAF",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ],
+        "family_id": "NESTED_FAMILY",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+        "hard_negative_aliases": [],
+        "limits": {
+            "max_cluster_span_lines": 16,
+            "max_continuation_pages": 0,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Nested family"],
+            "resolution_mode": "EXPLICIT_ONLY",
+            "role": "NESTED_FAMILY",
+        },
+        "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+        "required_role_combinations": [["ROOT", "INNER", "LEAF"]],
+        "structural_reset_aliases": ["Next family"],
+    }
+
+
 def _line(index: int, vietocr: str, source: str | None, *, left: int = 100) -> dict:
     return {
         "bbox": [left, 100 + index * 30, left + 420, 122 + index * 30],
@@ -230,6 +274,124 @@ def test_same_exact_leaf_under_a_different_structural_parent_cannot_corroborate(
     assert leaf["within_role"] == "DOMESTIC_GROUP"
     assert leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
     assert leaf["exact_channel"]["context_binding"]["family_id"] == "FAMILY_ASSETS"
+
+
+def test_nested_leaf_rejects_same_span_owner_from_context_free_matcher() -> None:
+    pages = _pages(
+        _line(0, "Nested family", "Nested family"),
+        _line(1, "Root section", "Root section"),
+        # Retrieval binds INNER beneath ROOT.  PP-OCR independently sees an
+        # exact context-free INNER alias on that identical physical row.
+        _line(2, "Inner contextuax", "Inner standalone"),
+        _line(3, "Leaf balancx", "Leaf balance"),
+        _line(4, "Next family", "Next family"),
+    )
+    spec = _nested_spec()
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    retrieval_inner = next(match for match in expanded["child_matches"] if match["role"] == "INNER")
+    assert retrieval_inner["matched_within_role"] == "ROOT"
+    compiled = topology_v1._spec(spec)
+    exact_hits, _source_pages = subject._source_exact_axes(topology_v1._pages(pages), compiled)
+    source_axis = subject._decorate_exact_source_occurrences_v1(
+        subject._context_bound_source_records(exact_hits, compiled, region),
+        region,
+    )
+    source_inner = next(match for match in source_axis if match["role"] == "INNER")
+    assert source_inner["source_line_index"] == retrieval_inner["source_line_index"]
+    assert source_inner["matched_within_role"] is None
+    leaf = next(item for item in receipt["checks"] if item["role"] == "LEAF")
+    assert leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
+
+
+def test_nested_exact_owner_chain_is_recursive_and_source_tamper_fails_replay() -> None:
+    pages = _pages(
+        _line(0, "Nested familx", "Nested family"),
+        _line(1, "Root sectiox", "Root section"),
+        _line(2, "Inner contextuax", "Inner contextual"),
+        _line(3, "Leaf balancx", "Leaf balance"),
+        _line(4, "Next family", "Next family"),
+    )
+    spec = _nested_spec()
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+    assert [(item["role"], item["status"]) for item in receipt["checks"]] == [
+        ("NESTED_FAMILY", "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"),
+        ("ROOT", "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"),
+        ("INNER", "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"),
+        ("LEAF", "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"),
+    ]
+
+    tampered_pages = copy.deepcopy(pages)
+    tampered_pages[0]["lines"][2]["source_text"] = "Inner standalone"
+    tampered = subject.build_accounting_family_one_edit_exact_authority_v1(
+        tampered_pages, spec, region, expanded
+    )
+    tampered_leaf = next(item for item in tampered["checks"] if item["role"] == "LEAF")
+    assert tampered_leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
+
+    ancestor_tampered_pages = copy.deepcopy(pages)
+    ancestor_tampered_pages[0]["lines"][1]["source_text"] = "Root sectioz"
+    ancestor_tampered = subject.build_accounting_family_one_edit_exact_authority_v1(
+        ancestor_tampered_pages, spec, region, expanded
+    )
+    ancestor_tampered_leaf = next(
+        item for item in ancestor_tampered["checks"] if item["role"] == "LEAF"
+    )
+    assert ancestor_tampered_leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="receipt does not replay exactly",
+    ):
+        subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            receipt,
+            tampered_pages,
+            spec,
+            region,
+            expanded,
+        )
+
+
+def test_repeated_nested_owners_bind_leaf_to_nearest_exact_source_occurrences() -> None:
+    pages = _pages(
+        _line(0, "Nested family", "Nested family"),
+        _line(1, "Root section", "Root section"),
+        _line(2, "Inner contextual", "Inner contextual"),
+        _line(3, "Leaf balance", "Leaf balance"),
+        _line(4, "Root section", "Root section"),
+        _line(5, "Inner contextual", "Inner contextual"),
+        _line(6, "Leaf balancx", "Leaf balance"),
+        _line(7, "Next family", "Next family"),
+    )
+    spec = _nested_spec()
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    leaf = next(item for item in receipt["checks"] if item["role"] == "LEAF")
+    assert leaf["source_line_indices"] == [6]
+    assert leaf["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+
+    tampered_pages = copy.deepcopy(pages)
+    tampered_pages[0]["lines"][5]["source_text"] = "Inner standalone"
+    tampered = subject.build_accounting_family_one_edit_exact_authority_v1(
+        tampered_pages, spec, region, expanded
+    )
+    tampered_leaf = next(item for item in tampered["checks"] if item["role"] == "LEAF")
+    assert tampered_leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
 
 
 def test_exact_leaf_without_the_exact_selected_family_parent_cannot_corroborate() -> None:
