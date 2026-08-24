@@ -3,9 +3,11 @@
 The topology reader may use one edit to *retrieve* a plausible family region.
 That tolerance is deliberately not accounting or mapping authority.  This
 module closes that gap for V4 callers: after downstream evidence has selected
-one candidate, every selected parent/effective-child one-edit match must be
+one candidate, every selected parent/expanded-occurrence one-edit match must be
 re-observed as an exact declared alias on the identical bound source-text
-lines, in the identical family/role/structural-parent context.
+lines, in the identical family/role/structural-parent context.  Expanded
+children are bound by occurrence ID so one exact occurrence can never
+corroborate a fuzzy repetition of the same role.
 
 Only accent removal/case/punctuation normalization, an enumeration prefix,
 and the topology engine's bounded decorative parenthetical removal are exact
@@ -39,7 +41,7 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V1"
 CLAIM_BOUNDARY = (
     "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_INDEPENDENT_EXACT_"
-    "BOUND_SOURCE_TEXT_ALIAS_ON_IDENTICAL_FAMILY_ROLE_PARENT_PAGE_AND_LINE_SPAN_"
+    "BOUND_SOURCE_TEXT_ALIAS_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_PARENT_PAGE_AND_LINE_SPAN_"
     "NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
@@ -51,6 +53,7 @@ _AUTHORITY_SPEC = {
     ],
     "bound_source_channel": "PPOCR_BOUND_SOURCE_TEXT",
     "exact_alias_requires_same_family_parent_context": True,
+    "exact_alias_requires_same_expanded_occurrence_id": True,
     "exact_alias_requires_same_page_and_source_line_indices": True,
     "one_edit_channel": "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY",
     "selected_candidate_only": True,
@@ -62,6 +65,7 @@ _SAFETY = {
     "one_edit_similarity_can_grant_exact_authority": False,
     "schema_authority": False,
     "source_text_exact_alias_and_context_required": True,
+    "expanded_occurrence_identity_required": True,
 }
 _RESULT_FIELDS = {
     "authority_spec",
@@ -78,7 +82,7 @@ _RESULT_FIELDS = {
 }
 _INPUT_BINDING_FIELDS = {
     "document_pages_sha256",
-    "effective_topology_region_sha256",
+    "expanded_occurrence_region_sha256",
     "family_spec_sha256",
     "selected_topology_region_sha256",
 }
@@ -90,6 +94,7 @@ _METRIC_FIELDS = {
 _CHECK_FIELDS = {
     "exact_channel",
     "match_scope",
+    "occurrence_id",
     "page_sequence",
     "retrieval_channel",
     "role",
@@ -117,6 +122,16 @@ _EXACT_FIELDS = {
     "source_surface",
     "source_surface_sha256",
     "transform",
+}
+_CONTEXT_FIELDS = {
+    "family_id",
+    "family_parent",
+    "occurrence_id",
+    "parent_resolution",
+    "scope_owner_occurrence_id",
+    "selected_region_sha256",
+    "structural_parent",
+    "within_role",
 }
 _STATUSES = {
     "EXACT_SOURCE_AUTHORITY_BOUND",
@@ -191,9 +206,11 @@ def _match_identity(match: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]
             match.get("document_line_ordinal"),
             match.get("end_document_line_ordinal"),
         ],
+        "occurrence_id": match.get("occurrence_id"),
         "page_sequence": match.get("page_sequence"),
         "role": match.get("role"),
         "source_line_indices": list(_match_line_indices(match, pages)),
+        "scope_owner_occurrence_id": match.get("scope_owner_occurrence_id"),
         "within_role": match.get("matched_within_role"),
     }
 
@@ -465,6 +482,7 @@ def _check(
     indices = _match_line_indices(match, pages)
     role = compiled["parent"]["role"] if match_scope == "FAMILY_PARENT" else match["role"]
     within_role = None if match_scope == "FAMILY_PARENT" else match.get("matched_within_role")
+    occurrence_id = None if match_scope == "FAMILY_PARENT" else match.get("occurrence_id")
     retrieval_candidates = _retrieval_alias_candidates(match, aliases)
     retrieval_alias_axis = [
         {
@@ -489,7 +507,11 @@ def _check(
         "family_parent": (
             _match_identity(selected_parent, pages) if selected_parent is not None else None
         ),
+        "occurrence_id": occurrence_id,
         "parent_resolution": selected_region["parent_resolution"],
+        "scope_owner_occurrence_id": (
+            None if match_scope == "FAMILY_PARENT" else match.get("scope_owner_occurrence_id")
+        ),
         "selected_region_sha256": canonical_json_sha256_v1(selected_region),
         "structural_parent": _match_identity(owner, pages) if owner is not None else None,
         "within_role": within_role,
@@ -504,7 +526,7 @@ def _check(
         status = "MISSING_BOUND_SOURCE_TEXT"
     exact_bindings = _exact_alias_bindings(surface, aliases) if surface is not None else []
     coextensive_parent_child = (
-        match_scope == "EFFECTIVE_CHILD"
+        match_scope == "EXPANDED_OCCURRENCE"
         and selected_parent is not None
         and _same_match_span(match, selected_parent, pages)
     )
@@ -617,6 +639,7 @@ def _check(
     return {
         "exact_channel": exact_channel,
         "match_scope": match_scope,
+        "occurrence_id": occurrence_id,
         "page_sequence": match["page_sequence"],
         "retrieval_channel": retrieval,
         "role": role,
@@ -663,7 +686,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if (
             type(check) is not dict
             or set(check) != _CHECK_FIELDS
-            or check["match_scope"] not in {"EFFECTIVE_CHILD", "FAMILY_PARENT"}
+            or check["match_scope"] not in {"EXPANDED_OCCURRENCE", "FAMILY_PARENT"}
+            or (check["match_scope"] == "FAMILY_PARENT" and check["occurrence_id"] is not None)
+            or (
+                check["match_scope"] == "EXPANDED_OCCURRENCE"
+                and (type(check["occurrence_id"]) is not str or not check["occurrence_id"])
+            )
             or type(check["role"]) is not str
             or not check["role"]
             or type(check["role_kind"]) is not str
@@ -698,6 +726,22 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or type(exact) is not dict
             or set(exact) != _EXACT_FIELDS
             or exact["channel"] != "PPOCR_BOUND_SOURCE_TEXT_EXACT"
+            or type(exact["context_binding"]) is not dict
+            or set(exact["context_binding"]) != _CONTEXT_FIELDS
+            or exact["context_binding"]["family_id"] != value["family_id"]
+            or exact["context_binding"].get("occurrence_id") != check["occurrence_id"]
+            or exact["context_binding"].get("within_role") != check["within_role"]
+            or exact["context_binding"]["selected_region_sha256"]
+            != value["input_binding"]["selected_topology_region_sha256"]
+            or (
+                check["match_scope"] == "FAMILY_PARENT"
+                and exact["context_binding"]["scope_owner_occurrence_id"] is not None
+            )
+            or (
+                exact["context_binding"]["structural_parent"] is not None
+                and exact["context_binding"]["structural_parent"].get("occurrence_id")
+                != exact["context_binding"]["scope_owner_occurrence_id"]
+            )
             or exact["context_binding_sha256"] != canonical_json_sha256_v1(exact["context_binding"])
             or (exact["source_surface"] is None and exact["source_surface_sha256"] is not None)
             or (
@@ -719,6 +763,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
     bound = sum(
         check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for check in value["checks"]
     )
+    occurrence_ids = [
+        check["occurrence_id"]
+        for check in value["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+    ]
+    if len(occurrence_ids) != len(set(occurrence_ids)):
+        raise _error("one-edit exact-authority occurrence identity repeats")
     metrics = {
         "exact_bound_count": bound,
         "selected_one_edit_match_count": len(value["checks"]),
@@ -734,6 +785,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     expected_reasons = [
         (
             f"ONE_EDIT_EXACT_AUTHORITY:{check['status']}:{check['role']}:"
+            f"OCCURRENCE_{check['occurrence_id'] or 'FAMILY_PARENT'}:"
             f"PAGE_{check['page_sequence']}:LINES_"
             + ",".join(str(index) for index in check["source_line_indices"])
         )
@@ -757,9 +809,9 @@ def build_accounting_family_one_edit_exact_authority_v1(
     document_pages: Any,
     family_spec: Any,
     selected_topology_region: Any,
-    effective_topology_region: Any,
+    expanded_occurrence_region: Any,
 ) -> dict[str, Any]:
-    """Gate only one already-selected V4 candidate against exact source text."""
+    """Gate one selected V4 candidate and every expanded role occurrence."""
 
     try:
         pages = topology_v1._pages(document_pages)  # noqa: SLF001
@@ -768,29 +820,58 @@ def build_accounting_family_one_edit_exact_authority_v1(
         raise _error("one-edit exact-authority document or family spec drifted") from exc
     if (
         type(selected_topology_region) is not dict
-        or type(effective_topology_region) is not dict
+        or type(expanded_occurrence_region) is not dict
         or not same_typed_json_v1(
             selected_topology_region.get("parent_match"),
-            effective_topology_region.get("parent_match"),
+            expanded_occurrence_region.get("parent_match"),
         )
         or any(
-            selected_topology_region.get(field) != effective_topology_region.get(field)
+            selected_topology_region.get(field) != expanded_occurrence_region.get(field)
             for field in (
                 "cluster_end_document_line_ordinal_exclusive",
                 "cluster_start_document_line_ordinal",
                 "parent_resolution",
             )
         )
-        or type(effective_topology_region.get("child_matches")) is not list
+        or type(expanded_occurrence_region.get("child_matches")) is not list
     ):
-        raise _error("one-edit exact-authority selected/effective region binding drifted")
+        raise _error("one-edit exact-authority selected/expanded region binding drifted")
     selected_parent = selected_topology_region.get("parent_match")
-    effective_matches = effective_topology_region["child_matches"]
+    effective_matches = expanded_occurrence_region["child_matches"]
+    occurrence_ids = [
+        match.get("occurrence_id") if type(match) is dict else None for match in effective_matches
+    ]
+    if (
+        any(type(occurrence_id) is not str or not occurrence_id for occurrence_id in occurrence_ids)
+        or len(occurrence_ids) != len(set(occurrence_ids))
+        or any(
+            type(match.get("scope_owner_occurrence_id")) is not str
+            or not match["scope_owner_occurrence_id"]
+            or match.get("matched_within_role") != match.get("scope_owner_role")
+            or (
+                match.get("scope_owner_role") is not None
+                and (type(match["scope_owner_role"]) is not str or not match["scope_owner_role"])
+            )
+            for match in effective_matches
+        )
+    ):
+        raise _error("one-edit exact-authority expanded occurrence identity axis drifted")
+    occurrence_by_id = {match["occurrence_id"]: match for match in effective_matches}
+    if any(
+        match["scope_owner_role"] is not None
+        and (
+            match["scope_owner_occurrence_id"] not in occurrence_by_id
+            or occurrence_by_id[match["scope_owner_occurrence_id"]].get("role")
+            != match["scope_owner_role"]
+        )
+        for match in effective_matches
+    ):
+        raise _error("one-edit exact-authority expanded structural-owner axis drifted")
     selected_matches: list[tuple[str, Mapping[str, Any]]] = []
     if selected_parent is not None and _is_one_edit(selected_parent):
         selected_matches.append(("FAMILY_PARENT", selected_parent))
     selected_matches.extend(
-        ("EFFECTIVE_CHILD", match) for match in effective_matches if _is_one_edit(match)
+        ("EXPANDED_OCCURRENCE", match) for match in effective_matches if _is_one_edit(match)
     )
     exact_hits, _source_pages = _source_exact_axes(pages, compiled)
     source_records = _context_bound_source_records(
@@ -824,6 +905,7 @@ def build_accounting_family_one_edit_exact_authority_v1(
     reasons = [
         (
             f"ONE_EDIT_EXACT_AUTHORITY:{check['status']}:{check['role']}:"
+            f"OCCURRENCE_{check['occurrence_id'] or 'FAMILY_PARENT'}:"
             f"PAGE_{check['page_sequence']}:LINES_"
             + ",".join(str(index) for index in check["source_line_indices"])
         )
@@ -841,7 +923,9 @@ def build_accounting_family_one_edit_exact_authority_v1(
         "format_version": FORMAT_VERSION,
         "input_binding": {
             "document_pages_sha256": canonical_json_sha256_v1(document_pages),
-            "effective_topology_region_sha256": canonical_json_sha256_v1(effective_topology_region),
+            "expanded_occurrence_region_sha256": canonical_json_sha256_v1(
+                expanded_occurrence_region
+            ),
             "family_spec_sha256": canonical_json_sha256_v1(family_spec),
             "selected_topology_region_sha256": canonical_json_sha256_v1(selected_topology_region),
         },
@@ -877,7 +961,7 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
     document_pages: Any,
     family_spec: Any,
     selected_topology_region: Any,
-    effective_topology_region: Any,
+    expanded_occurrence_region: Any,
 ) -> dict[str, Any]:
     """Exact-rebuild a receipt from bound source text and the selected region."""
 
@@ -886,7 +970,7 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
         document_pages,
         family_spec,
         selected_topology_region,
-        effective_topology_region,
+        expanded_occurrence_region,
     )
     if not same_typed_json_v1(persisted, expected):
         raise _error("one-edit exact-authority receipt does not replay exactly")
