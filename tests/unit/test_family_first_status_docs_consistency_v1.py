@@ -432,9 +432,7 @@ def test_family_completion_rule_and_interbank_summary_are_in_both_status_docs() 
     assert "Unresolved thực sự sau PDF review" in completed
     assert "MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18" in completed
     assert "`2 triệu đồng`" in completed
-    canonical_family3 = [
-        row for row in _canonical_open_source_rows() if row[0].startswith("F3-")
-    ]
+    canonical_family3 = [row for row in _canonical_open_source_rows() if row[0].startswith("F3-")]
     assert sum(row[7] == "RESOLVABLE_PENDING_GENERIC_FIX" for row in canonical_family3) == 41
     assert sum(row[7] == "KEEP_UNRESOLVED_SOURCE_CONFLICT" for row in canonical_family3) == 1
     assert "Technical/pre-review provenance appendix" in ledger
@@ -512,9 +510,7 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     assert not any(re.fullmatch(r"(?:CL|FI)-[0-9]+", item) for item in ids)
 
     experiment_counts = Counter(
-        match.group(1)
-        for item in ids
-        if (match := re.match(r"^E([0-9]{4})-", item))
+        match.group(1) for item in ids if (match := re.match(r"^E([0-9]{4})-", item))
     )
     assert experiment_counts == {
         "0073": 12,
@@ -562,9 +558,10 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
         "0161",
     }
     assert sum(experiment_counts[key] for key in annual_experiments) == 134
-    assert sum(
-        count for key, count in experiment_counts.items() if key not in annual_experiments
-    ) == 71
+    assert (
+        sum(count for key, count in experiment_counts.items() if key not in annual_experiments)
+        == 71
+    )
 
     allowed_statuses = {
         "RESOLVABLE_PENDING_GENERIC_FIX",
@@ -616,11 +613,14 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     assert direct_rows["E0161-ASEG-014"][5] == "physical p82; printed p80"
 
     ledger = LEDGER.read_text(encoding="utf-8")
-    assert "NEEDS_DIRECT_PIXEL_REVIEW" not in ledger[
-        ledger.index("<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->") : ledger.index(
-            "<!-- CANONICAL_OPEN_SOURCE_ROWS_END -->"
-        )
-    ]
+    assert (
+        "NEEDS_DIRECT_PIXEL_REVIEW"
+        not in ledger[
+            ledger.index("<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->") : ledger.index(
+                "<!-- CANONICAL_OPEN_SOURCE_ROWS_END -->"
+            )
+        ]
+    )
     for stale in ("143 work item", "101 item", "441 / 143 OPEN"):
         assert stale not in ledger
     assert "545 entries = 247 OPEN + 298 closed/history" in ledger
