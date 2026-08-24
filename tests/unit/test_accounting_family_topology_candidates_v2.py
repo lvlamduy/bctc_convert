@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -256,3 +257,71 @@ def test_dependency_content_drift_fails_before_candidate_construction(monkeypatc
         match="dependency content reference drifted",
     ):
         subject.build_accounting_family_topology_candidates_v2(_pages(), _spec())
+
+
+def test_prepared_authority_scans_hits_once_and_matches_public_replay(monkeypatch) -> None:
+    pages = _pages()
+    spec = _spec()
+    expected_scan = topology_v1.build_accounting_family_topology_scan_v1(pages, spec)
+    expected_candidates = subject.build_accounting_family_topology_candidates_v2(pages, spec)
+    expected_bindings = [
+        subject.bind_accounting_family_topology_candidate_v2(
+            pages,
+            spec,
+            expected_candidates,
+            region,
+        )
+        for region in expected_candidates["regions"]
+    ]
+    original_document_hits = topology_v1._document_hits
+    calls = 0
+
+    def counted_document_hits(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return original_document_hits(*args, **kwargs)
+
+    monkeypatch.setattr(topology_v1, "_document_hits", counted_document_hits)
+    prepared = subject._prepare_accounting_family_topology_candidates_v2(pages, spec)
+    scan, candidates, bindings = subject._prepared_accounting_family_topology_authority_v2(prepared)
+
+    assert calls == 1
+    assert scan == expected_scan
+    assert candidates == expected_candidates
+    assert [
+        subject._validate_prepared_accounting_family_topology_candidate_binding_v2(
+            binding,
+            document_pages=pages,
+            family_spec=spec,
+            topology_candidates=candidates,
+            topology_region=region,
+        )
+        for binding, region in zip(bindings, candidates["regions"], strict=True)
+    ] == expected_bindings
+
+    forged = replace(bindings[0], prepared_binding_sha256="0" * 64)
+    with pytest.raises(
+        subject.AccountingFamilyTopologyCandidatesV2Error,
+        match="binding content drifted",
+    ):
+        subject._validate_prepared_accounting_family_topology_candidate_binding_v2(
+            forged,
+            document_pages=pages,
+            family_spec=spec,
+            topology_candidates=candidates,
+            topology_region=candidates["regions"][0],
+        )
+
+    changed_pages = copy.deepcopy(pages)
+    changed_pages[0]["lines"][0]["vietocr_text"] = "MUTATED CURRENT PAGE"
+    with pytest.raises(
+        subject.AccountingFamilyTopologyCandidatesV2Error,
+        match="source binding drifted",
+    ):
+        subject._validate_prepared_accounting_family_topology_candidate_binding_v2(
+            bindings[0],
+            document_pages=changed_pages,
+            family_spec=spec,
+            topology_candidates=candidates,
+            topology_region=candidates["regions"][0],
+        )

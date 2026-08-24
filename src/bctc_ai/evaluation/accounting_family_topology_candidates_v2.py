@@ -22,6 +22,7 @@ import hashlib
 import os
 import stat
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -124,6 +125,39 @@ class AccountingFamilyTopologyCandidatesV2Error(ValueError):
 
 def _error(message: str) -> AccountingFamilyTopologyCandidatesV2Error:
     return AccountingFamilyTopologyCandidatesV2Error(message)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedAccountingFamilyTopologyCandidateBindingV2:
+    """One process-local candidate binding produced by the retained hit scan."""
+
+    document_pages_sha256: str
+    family_spec_sha256: str
+    prepared_binding_sha256: str
+    topology_candidates_id: str
+    topology_region_sha256: str
+    _binding: dict[str, Any] = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedAccountingFamilyTopologyCandidatesV2:
+    """Sealed same-turn V1/V2 authority derived by one document hit scan."""
+
+    document_pages_sha256: str
+    family_spec_sha256: str
+    legacy_topology_scan_id: str
+    prepared_context_sha256: str
+    topology_candidates_id: str
+    _bindings: tuple[_PreparedAccountingFamilyTopologyCandidateBindingV2, ...] = field(
+        repr=False, compare=False
+    )
+    _legacy_topology_scan: dict[str, Any] = field(repr=False, compare=False)
+    _topology_candidates: dict[str, Any] = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_TOPOLOGY_SEAL = object()
 
 
 def _stable_dependency_ref(expected: Mapping[str, Any]) -> dict[str, Any]:
@@ -257,14 +291,17 @@ def _core_semantic_anchor_hit_count(
     return sum(len(hits["children"][role]) for role in core_roles)
 
 
-def _build_material(document_pages: Any, family_spec: Any) -> dict[str, Any]:
-    dependencies = _dependency_refs()
-    try:
-        pages = topology_v1._pages(document_pages)
-        spec = topology_v1._spec(family_spec)
-        complete, near, legacy_scan, axes = _candidate_axes(pages, spec)
-    except (ValueError, RuntimeError) as exc:
-        raise _error("topology-candidate complete document or family spec drifted") from exc
+def _build_material_from_candidate_axes(
+    *,
+    document_pages: Any,
+    family_spec: Any,
+    spec: Mapping[str, Any],
+    complete: Sequence[Mapping[str, Any]],
+    near: Sequence[Mapping[str, Any]],
+    legacy_scan: Mapping[str, Any],
+    axes: Mapping[str, Any],
+    dependencies: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
     if len(complete) > _MAX_COMPLETE_REGIONS or len(near) > _MAX_NEAR_REGIONS:
         raise _error("topology-candidate bounded region denominator exceeded")
     hits = axes["hits"]
@@ -322,6 +359,26 @@ def _build_material(document_pages: Any, family_spec: Any) -> dict[str, Any]:
             "minimal_role_combination_proved": unique,
         },
     }
+
+
+def _build_material(document_pages: Any, family_spec: Any) -> dict[str, Any]:
+    dependencies = _dependency_refs()
+    try:
+        pages = topology_v1._pages(document_pages)
+        spec = topology_v1._spec(family_spec)
+        complete, near, legacy_scan, axes = _candidate_axes(pages, spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("topology-candidate complete document or family spec drifted") from exc
+    return _build_material_from_candidate_axes(
+        document_pages=document_pages,
+        family_spec=family_spec,
+        spec=spec,
+        complete=complete,
+        near=near,
+        legacy_scan=legacy_scan,
+        axes=axes,
+        dependencies=dependencies,
+    )
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -483,6 +540,262 @@ def _project_coextensive_total(
         for item in sorted(region["child_matches"], key=lambda item: item["preferred_ordinal"])
     ]
     return region
+
+
+def _prepared_binding_material(
+    binding: Mapping[str, Any],
+    *,
+    document_pages_sha256: str,
+    family_spec_sha256: str,
+    topology_candidates_id: str,
+    topology_region_sha256: str,
+) -> dict[str, Any]:
+    return {
+        "binding_sha256": canonical_json_sha256_v1(binding),
+        "document_pages_sha256": document_pages_sha256,
+        "family_spec_sha256": family_spec_sha256,
+        "topology_candidates_id": topology_candidates_id,
+        "topology_region_sha256": topology_region_sha256,
+    }
+
+
+def _prepare_candidate_binding(
+    *,
+    document_pages_sha256: str,
+    family_spec_sha256: str,
+    topology_candidates_id: str,
+    topology_region: Mapping[str, Any],
+    occurrences: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+) -> _PreparedAccountingFamilyTopologyCandidateBindingV2:
+    selected = canonical_clone_v1(topology_region)
+    binding = {
+        "effective_topology_region": _project_coextensive_total(selected, spec),
+        "role_occurrences": canonical_clone_v1(occurrences),
+        "topology_candidates_id": topology_candidates_id,
+        "topology_region": selected,
+    }
+    region_sha256 = canonical_json_sha256_v1(selected)
+    material = _prepared_binding_material(
+        binding,
+        document_pages_sha256=document_pages_sha256,
+        family_spec_sha256=family_spec_sha256,
+        topology_candidates_id=topology_candidates_id,
+        topology_region_sha256=region_sha256,
+    )
+    return _PreparedAccountingFamilyTopologyCandidateBindingV2(
+        document_pages_sha256=document_pages_sha256,
+        family_spec_sha256=family_spec_sha256,
+        prepared_binding_sha256=canonical_json_sha256_v1(material),
+        topology_candidates_id=topology_candidates_id,
+        topology_region_sha256=region_sha256,
+        _binding=binding,
+        seal=_PREPARED_TOPOLOGY_SEAL,
+    )
+
+
+def _prepared_accounting_family_topology_candidate_binding_content_v2(
+    value: Any,
+    *,
+    topology_candidates: Mapping[str, Any],
+    topology_region: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate one sealed same-turn binding without replaying the document."""
+
+    if (
+        type(value) is not _PreparedAccountingFamilyTopologyCandidateBindingV2
+        or value.seal is not _PREPARED_TOPOLOGY_SEAL
+        or type(topology_candidates) is not dict
+        or type(topology_region) is not dict
+        or value.topology_candidates_id != topology_candidates.get("result_id")
+        or value.topology_region_sha256 != canonical_json_sha256_v1(topology_region)
+    ):
+        raise _error("prepared topology-candidate binding identity drifted")
+    binding = value._binding  # noqa: SLF001
+    material = _prepared_binding_material(
+        binding,
+        document_pages_sha256=value.document_pages_sha256,
+        family_spec_sha256=value.family_spec_sha256,
+        topology_candidates_id=value.topology_candidates_id,
+        topology_region_sha256=value.topology_region_sha256,
+    )
+    if (
+        value.prepared_binding_sha256 != canonical_json_sha256_v1(material)
+        or binding.get("topology_candidates_id") != value.topology_candidates_id
+        or not same_typed_json_v1(binding.get("topology_region"), topology_region)
+    ):
+        raise _error("prepared topology-candidate binding content drifted")
+    return canonical_clone_v1(binding)
+
+
+def _validate_prepared_accounting_family_topology_candidate_binding_v2(
+    value: Any,
+    *,
+    document_pages: Any,
+    family_spec: Any,
+    topology_candidates: Mapping[str, Any],
+    topology_region: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind a sealed candidate to the current exact pages and family spec."""
+
+    if (
+        type(value) is not _PreparedAccountingFamilyTopologyCandidateBindingV2
+        or value.document_pages_sha256 != canonical_json_sha256_v1(document_pages)
+        or value.family_spec_sha256 != canonical_json_sha256_v1(family_spec)
+    ):
+        raise _error("prepared topology-candidate source binding drifted")
+    return _prepared_accounting_family_topology_candidate_binding_content_v2(
+        value,
+        topology_candidates=topology_candidates,
+        topology_region=topology_region,
+    )
+
+
+def _prepared_context_material(
+    *,
+    document_pages_sha256: str,
+    family_spec_sha256: str,
+    legacy_topology_scan: Mapping[str, Any],
+    topology_candidates: Mapping[str, Any],
+    bindings: Sequence[_PreparedAccountingFamilyTopologyCandidateBindingV2],
+) -> dict[str, Any]:
+    return {
+        "binding_sha256_axis": [binding.prepared_binding_sha256 for binding in bindings],
+        "document_pages_sha256": document_pages_sha256,
+        "family_spec_sha256": family_spec_sha256,
+        "legacy_topology_scan_sha256": canonical_json_sha256_v1(legacy_topology_scan),
+        "topology_candidates_sha256": canonical_json_sha256_v1(topology_candidates),
+    }
+
+
+def _prepare_accounting_family_topology_candidates_v2(
+    document_pages: Any,
+    family_spec: Any,
+) -> _PreparedAccountingFamilyTopologyCandidatesV2:
+    """Build V1 scan, V2 envelope, and all bindings from one retained hit scan."""
+
+    dependencies = _dependency_refs()
+    try:
+        pages = topology_v1._pages(document_pages)
+        spec = topology_v1._spec(family_spec)
+        complete, near, legacy_scan, axes = _candidate_axes(pages, spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("prepared topology-candidate source authority drifted") from exc
+    material = _build_material_from_candidate_axes(
+        document_pages=document_pages,
+        family_spec=family_spec,
+        spec=spec,
+        complete=complete,
+        near=near,
+        legacy_scan=legacy_scan,
+        axes=axes,
+        dependencies=dependencies,
+    )
+    topology_candidates = _validate_result(
+        {
+            **material,
+            "result_id": "aftcv2:result:" + canonical_json_sha256_v1(material),
+        }
+    )
+    document_sha256 = topology_candidates["input_binding"]["document_pages_sha256"]
+    family_sha256 = topology_candidates["input_binding"]["family_spec_sha256"]
+    hits = axes["hits"]
+    bindings = []
+    for region in complete:
+        try:
+            occurrences = topology_v1._child_records_in_range(
+                hits["children"],
+                spec,
+                retain_all_occurrences=True,
+                start=region["cluster_start_document_line_ordinal"],
+                stop=region["cluster_end_document_line_ordinal_exclusive"],
+            )
+        except (ValueError, RuntimeError) as exc:
+            raise _error("prepared topology-candidate occurrence binding drifted") from exc
+        bindings.append(
+            _prepare_candidate_binding(
+                document_pages_sha256=document_sha256,
+                family_spec_sha256=family_sha256,
+                topology_candidates_id=topology_candidates["result_id"],
+                topology_region=region,
+                occurrences=occurrences,
+                spec=spec,
+            )
+        )
+    binding_axis = tuple(bindings)
+    context_material = _prepared_context_material(
+        document_pages_sha256=document_sha256,
+        family_spec_sha256=family_sha256,
+        legacy_topology_scan=legacy_scan,
+        topology_candidates=topology_candidates,
+        bindings=binding_axis,
+    )
+    return _PreparedAccountingFamilyTopologyCandidatesV2(
+        document_pages_sha256=document_sha256,
+        family_spec_sha256=family_sha256,
+        legacy_topology_scan_id=legacy_scan["scan_id"],
+        prepared_context_sha256=canonical_json_sha256_v1(context_material),
+        topology_candidates_id=topology_candidates["result_id"],
+        _bindings=binding_axis,
+        _legacy_topology_scan=legacy_scan,
+        _topology_candidates=topology_candidates,
+        seal=_PREPARED_TOPOLOGY_SEAL,
+    )
+
+
+def _prepared_accounting_family_topology_authority_v2(
+    value: Any,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    tuple[_PreparedAccountingFamilyTopologyCandidateBindingV2, ...],
+]:
+    """Open a sealed same-turn authority; persisted data still uses public replay."""
+
+    if (
+        type(value) is not _PreparedAccountingFamilyTopologyCandidatesV2
+        or value.seal is not _PREPARED_TOPOLOGY_SEAL
+    ):
+        raise _error("prepared topology-candidate context identity drifted")
+    legacy_scan = value._legacy_topology_scan  # noqa: SLF001
+    topology_candidates = value._topology_candidates  # noqa: SLF001
+    bindings = value._bindings  # noqa: SLF001
+    if (
+        type(legacy_scan) is not dict
+        or type(topology_candidates) is not dict
+        or type(bindings) is not tuple
+        or value.legacy_topology_scan_id != legacy_scan.get("scan_id")
+        or value.topology_candidates_id != topology_candidates.get("result_id")
+        or topology_candidates.get("input_binding", {}).get("document_pages_sha256")
+        != value.document_pages_sha256
+        or topology_candidates.get("input_binding", {}).get("family_spec_sha256")
+        != value.family_spec_sha256
+        or topology_candidates.get("input_binding", {}).get("legacy_topology_scan_id")
+        != value.legacy_topology_scan_id
+        or len(bindings) != len(topology_candidates.get("regions", ()))
+    ):
+        raise _error("prepared topology-candidate context binding drifted")
+    for binding, region in zip(bindings, topology_candidates["regions"], strict=True):
+        if (
+            binding.document_pages_sha256 != value.document_pages_sha256
+            or binding.family_spec_sha256 != value.family_spec_sha256
+        ):
+            raise _error("prepared topology-candidate binding source axis drifted")
+        _prepared_accounting_family_topology_candidate_binding_content_v2(
+            binding,
+            topology_candidates=topology_candidates,
+            topology_region=region,
+        )
+    context_material = _prepared_context_material(
+        document_pages_sha256=value.document_pages_sha256,
+        family_spec_sha256=value.family_spec_sha256,
+        legacy_topology_scan=legacy_scan,
+        topology_candidates=topology_candidates,
+        bindings=bindings,
+    )
+    if value.prepared_context_sha256 != canonical_json_sha256_v1(context_material):
+        raise _error("prepared topology-candidate context content drifted")
+    return legacy_scan, topology_candidates, bindings
 
 
 def bind_accounting_family_topology_candidate_v2(

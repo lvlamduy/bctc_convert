@@ -12,6 +12,7 @@ from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as subje
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     propose_missing_value_lane_regions_v1,
@@ -593,4 +594,120 @@ def test_two_authenticated_dash_lanes_survive_and_coherent_rehash_replay_fails()
             ),
             selected_snapshot=snapshot,
             render_snapshots=(render,),
+        )
+
+
+def test_prepared_snapshot_projection_matches_public_build_without_replay(monkeypatch) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Bằng VND", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    snapshot, _render = _snapshot_and_render(pages, [])
+    expected_projection = snapshot_v1.build_authenticated_semantic_region_snapshot_v1(snapshot)
+    prepared = subject._prepare_authenticated_snapshot_projection_v2(snapshot)
+    typed_snapshot, projection = subject._prepared_authenticated_snapshot_projection_authority_v2(
+        prepared
+    )
+
+    assert projection == expected_projection
+    monkeypatch.setattr(
+        snapshot_v1,
+        "build_authenticated_semantic_region_snapshot_v1",
+        lambda *_args, **_kwargs: pytest.fail("prepared occurrence rebuilt the snapshot"),
+    )
+    monkeypatch.setattr(
+        snapshot_v1,
+        "validate_authenticated_semantic_region_snapshot_replay_v1",
+        lambda *_args, **_kwargs: pytest.fail("prepared occurrence replayed the snapshot"),
+    )
+    monkeypatch.setattr(
+        subject,
+        "_prepared_authenticated_snapshot_projection_authority_v2",
+        lambda *_args, **_kwargs: pytest.fail("prepared occurrence rehashed the full snapshot"),
+    )
+
+    subject._validate_snapshot_and_renders(
+        row_v1._pages(typed_snapshot["joined_pages"]),
+        typed_snapshot,
+        (),
+        prepared_snapshot=prepared,
+    )
+    typed_snapshot["joined_pages"][0]["lines"][0]["vietocr_text"] = "MUTATED AFTER OPEN"
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="projection binding drifted",
+    ):
+        subject._validate_snapshot_and_renders(
+            row_v1._pages(typed_snapshot["joined_pages"]),
+            typed_snapshot,
+            (),
+            prepared_snapshot=prepared,
+        )
+
+
+def test_prepared_candidate_binding_skips_document_topology_replay(monkeypatch) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", "40"),
+            ("Tiền gửi và cho vay TCTD khác", "200", "180"),
+            ("Tiền gửi tại TCTD khác", "120", "110"),
+            ("Cho vay TCTD khác", "80", "70"),
+            ("Bằng VND", "80", "70"),
+        ]
+    )
+    spec = _spec()
+    topology_pages = row_v1._topology_pages(pages)
+    prepared = candidates_v2._prepare_accounting_family_topology_candidates_v2(
+        topology_pages,
+        spec,
+    )
+    scan, candidates, bindings = candidates_v2._prepared_accounting_family_topology_authority_v2(
+        prepared
+    )
+    monkeypatch.setattr(
+        candidates_v2,
+        "bind_accounting_family_topology_candidate_v2",
+        lambda *_args, **_kwargs: pytest.fail("prepared binding replayed full topology"),
+    )
+
+    axis = subject._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+        pages,
+        spec,
+        scan,
+        candidates["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        topology_candidates=candidates,
+        prepared_topology_binding=bindings[0],
+    )
+
+    assert axis["topology_candidates_id"] == candidates["result_id"]
+    assert axis["topology_scan_id"] == scan["scan_id"]
+
+    changed_spec = copy.deepcopy(spec)
+    changed_spec["limits"]["max_cluster_span_lines"] -= 1
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="candidate replay failed",
+    ):
+        subject._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+            pages,
+            changed_spec,
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            topology_candidates=candidates,
+            prepared_topology_binding=bindings[0],
         )

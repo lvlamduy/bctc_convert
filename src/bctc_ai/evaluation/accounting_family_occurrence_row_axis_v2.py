@@ -16,9 +16,11 @@ reclassified here.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import stat
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +33,7 @@ from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as rend
 from bctc_ai.evaluation import family_first_authenticated_snapshot_cell_dash_v1 as dash_v1
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -151,8 +154,8 @@ _DEPENDENCIES = {
     },
     "topology_candidates_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_candidates_v2.py",
-        "sha256": "1bdac40e8d8b3b073de7286875756beedcbd7ca9ec5053bba45dbd03919e31ba",
-        "size_bytes": 20_160,
+        "sha256": "609f914fa16baf85c11c44d994e1e8b554f5700b7b46971b225322406e68aad7",
+        "size_bytes": 32_335,
     },
 }
 
@@ -163,6 +166,25 @@ class AccountingFamilyOccurrenceRowAxisV2Error(ValueError):
 
 def _error(message: str) -> AccountingFamilyOccurrenceRowAxisV2Error:
     return AccountingFamilyOccurrenceRowAxisV2Error(message)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedAuthenticatedSnapshotProjectionV2:
+    """Process-local canonical snapshot projection for repeated V4 consumers."""
+
+    document_ordinal: int
+    page_axis: tuple[int, ...]
+    prepared_context_sha256: str
+    projection_content_sha256: str
+    projection_id: str
+    selected_snapshot_content_sha256: str
+    snapshot_id: str
+    _projection_bytes: bytes = field(repr=False, compare=False)
+    _selected_snapshot_bytes: bytes = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_SNAPSHOT_SEAL = object()
 
 
 def _policy(value: Any) -> dict[str, Any]:
@@ -253,8 +275,13 @@ def _expanded_matches(
     topology_region: Mapping[str, Any],
     effective_region: Mapping[str, Any] | None,
     topology_candidates: Mapping[str, Any] | None,
+    prepared_topology_binding: (
+        candidates_v2._PreparedAccountingFamilyTopologyCandidateBindingV2 | None
+    ),
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any], str | None]:
     if topology_candidates is None:
+        if prepared_topology_binding is not None:
+            raise _error("prepared candidate binding requires its V2 topology envelope")
         selected = _selected_scan_region(topology_scan, topology_region)
         try:
             expected_effective = (
@@ -273,12 +300,21 @@ def _expanded_matches(
         topology_candidates_id = None
     else:
         try:
-            binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
-                row_v1._topology_pages(pages),
-                family_spec,
-                topology_candidates,
-                topology_region,
-            )
+            if prepared_topology_binding is None:
+                binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+                    row_v1._topology_pages(pages),
+                    family_spec,
+                    topology_candidates,
+                    topology_region,
+                )
+            else:
+                binding = candidates_v2._validate_prepared_accounting_family_topology_candidate_binding_v2(
+                    prepared_topology_binding,
+                    document_pages=row_v1._topology_pages(pages),
+                    family_spec=family_spec,
+                    topology_candidates=topology_candidates,
+                    topology_region=topology_region,
+                )
         except candidates_v2.AccountingFamilyTopologyCandidatesV2Error as exc:
             raise _error("pre-pruning topology candidate replay failed") from exc
         if (
@@ -404,22 +440,274 @@ def _local_page_sequence(selected_pages: Sequence[int], physical_page: int) -> i
     raise _error("DASH cell page is absent from the authenticated selected snapshot")
 
 
+def _projection_from_canonical_snapshot_v2(
+    snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Mirror the pinned snapshot projection over an already canonical value."""
+
+    dimensions = {item["physical_page"]: item for item in snapshot["selected_page_dimensions"]}
+    region_pages = []
+    page_bindings = []
+    line_bindings = []
+    for page in snapshot["joined_pages"]:
+        page_sequence = page["page_sequence"]
+        dimension = dimensions[page_sequence]
+        region_lines = []
+        for line in page["lines"]:
+            numeric = line["numeric_recognition"]
+            region_lines.append(
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "source_line_index": line["line_ordinal"],
+                    "source_text": numeric["raw_prediction"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+            )
+            line_bindings.append(
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "crop_ref": canonical_clone_v1(line["crop_ref"]),
+                    "page_sequence": page_sequence,
+                    "ppocrv6_reader_score": numeric["reader_score"],
+                    "ppocrv6_surface": numeric["raw_prediction"],
+                    "sample_id": line["sample_id"],
+                    "source_line_index": line["line_ordinal"],
+                    "vietocr_transformer_surface": line["vietocr_text"],
+                }
+            )
+        region_pages.append(
+            {
+                "lines": region_lines,
+                "page_height": dimension["pixel_height"],
+                "page_sequence": page_sequence,
+                "page_width": dimension["pixel_width"],
+            }
+        )
+        page_bindings.append(
+            {
+                "line_count": len(region_lines),
+                "page_height": dimension["pixel_height"],
+                "page_sequence": page_sequence,
+                "page_width": dimension["pixel_width"],
+                "render_ref": {
+                    "sha256": dimension["render_sha256"],
+                    "size_bytes": dimension["render_size_bytes"],
+                },
+            }
+        )
+    packet = snapshot["document_packet"]
+    material = {
+        "authority": canonical_clone_v1(snapshot_v1._AUTHORITY),  # noqa: SLF001
+        "claim_boundary": snapshot_v1.CLAIM_BOUNDARY,
+        "format_version": snapshot_v1.FORMAT_VERSION,
+        "line_bindings": line_bindings,
+        "metrics": {
+            "line_count": len(line_bindings),
+            "page_count": len(region_pages),
+            "zero_line_page_count": sum(not page["lines"] for page in region_pages),
+        },
+        "page_bindings": page_bindings,
+        "region_pages": region_pages,
+        "source_binding": {
+            "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
+            "document_id": packet["document_id"],
+            "document_line_count": packet["line_count"],
+            "document_ordinal": packet["document_ordinal"],
+            "document_packet_id": packet["packet_id"],
+            "document_page_count": packet["page_count"],
+            "manifest_id": snapshot["manifest_id"],
+            "query_selection_id": snapshot["query_selection_id"],
+            "selected_pages": [page["page_sequence"] for page in region_pages],
+            "snapshot_id": snapshot["snapshot_id"],
+        },
+        "state": "CALLER_AUTHENTICATED_SELECTED_SNAPSHOT_PROJECTED_FOR_SEMANTIC_GRAPH",
+    }
+    return {
+        **material,
+        "projection_id": "asrsv1:projection:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _prepared_snapshot_context_material(
+    *,
+    document_ordinal: int,
+    page_axis: tuple[int, ...],
+    projection_content_sha256: str,
+    projection_id: str,
+    selected_snapshot_content_sha256: str,
+    snapshot_id: str,
+) -> dict[str, Any]:
+    return {
+        "document_ordinal": document_ordinal,
+        "page_axis": list(page_axis),
+        "projection_content_sha256": projection_content_sha256,
+        "projection_id": projection_id,
+        "selected_snapshot_content_sha256": selected_snapshot_content_sha256,
+        "snapshot_id": snapshot_id,
+    }
+
+
+def _prepare_authenticated_snapshot_projection_v2(
+    selected_snapshot: Mapping[str, Any],
+) -> _PreparedAuthenticatedSnapshotProjectionV2:
+    """Canonicalize and project one caller-authenticated snapshot once."""
+
+    try:
+        typed = snapshot_v1._canonical_snapshot(selected_snapshot)  # noqa: SLF001
+        projection = _projection_from_canonical_snapshot_v2(typed)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("caller-authenticated selected snapshot contract drifted") from exc
+    source = projection["source_binding"]
+    page_axis = tuple(source["selected_pages"])
+    projection_bytes = canonical_json_bytes_v1(projection)
+    selected_snapshot_bytes = canonical_json_bytes_v1(typed)
+    projection_content_sha256 = hashlib.sha256(projection_bytes).hexdigest()
+    selected_snapshot_content_sha256 = hashlib.sha256(selected_snapshot_bytes).hexdigest()
+    material = _prepared_snapshot_context_material(
+        document_ordinal=source["document_ordinal"],
+        page_axis=page_axis,
+        projection_content_sha256=projection_content_sha256,
+        projection_id=projection["projection_id"],
+        selected_snapshot_content_sha256=selected_snapshot_content_sha256,
+        snapshot_id=source["snapshot_id"],
+    )
+    return _PreparedAuthenticatedSnapshotProjectionV2(
+        document_ordinal=source["document_ordinal"],
+        page_axis=page_axis,
+        prepared_context_sha256=canonical_json_sha256_v1(material),
+        projection_content_sha256=projection_content_sha256,
+        projection_id=projection["projection_id"],
+        selected_snapshot_content_sha256=selected_snapshot_content_sha256,
+        snapshot_id=source["snapshot_id"],
+        _projection_bytes=projection_bytes,
+        _selected_snapshot_bytes=selected_snapshot_bytes,
+        seal=_PREPARED_SNAPSHOT_SEAL,
+    )
+
+
+def _prepared_authenticated_snapshot_projection_authority_v2(
+    value: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Open and content-check one sealed same-turn snapshot projection."""
+
+    if (
+        type(value) is not _PreparedAuthenticatedSnapshotProjectionV2
+        or value.seal is not _PREPARED_SNAPSHOT_SEAL
+    ):
+        raise _error("prepared selected-snapshot projection identity drifted")
+    selected_snapshot_bytes = value._selected_snapshot_bytes  # noqa: SLF001
+    projection_bytes = value._projection_bytes  # noqa: SLF001
+    try:
+        selected_snapshot = json.loads(selected_snapshot_bytes.decode("utf-8"))
+        projection = json.loads(projection_bytes.decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("prepared selected-snapshot projection content drifted") from exc
+    if (
+        type(selected_snapshot_bytes) is not bytes
+        or type(projection_bytes) is not bytes
+        or type(selected_snapshot) is not dict
+        or type(projection) is not dict
+        or hashlib.sha256(selected_snapshot_bytes).hexdigest()
+        != value.selected_snapshot_content_sha256
+        or hashlib.sha256(projection_bytes).hexdigest() != value.projection_content_sha256
+    ):
+        raise _error("prepared selected-snapshot projection content drifted")
+    snapshot_material = canonical_clone_v1(selected_snapshot)
+    snapshot_id = snapshot_material.pop("snapshot_id", None)
+    projection_material = canonical_clone_v1(projection)
+    projection_id = projection_material.pop("projection_id", None)
+    source = projection.get("source_binding")
+    if (
+        type(source) is not dict
+        or snapshot_id != "ffdesv1:selected:" + canonical_json_sha256_v1(snapshot_material)
+        or projection_id != "asrsv1:projection:" + canonical_json_sha256_v1(projection_material)
+        or value.snapshot_id != snapshot_id
+        or value.projection_id != projection_id
+        or value.document_ordinal != source.get("document_ordinal")
+        or value.snapshot_id != source.get("snapshot_id")
+        or value.page_axis != tuple(source.get("selected_pages", ()))
+    ):
+        raise _error("prepared selected-snapshot projection content drifted")
+    material = _prepared_snapshot_context_material(
+        document_ordinal=value.document_ordinal,
+        page_axis=value.page_axis,
+        projection_content_sha256=value.projection_content_sha256,
+        projection_id=value.projection_id,
+        selected_snapshot_content_sha256=value.selected_snapshot_content_sha256,
+        snapshot_id=value.snapshot_id,
+    )
+    if value.prepared_context_sha256 != canonical_json_sha256_v1(material):
+        raise _error("prepared selected-snapshot projection binding drifted")
+    return selected_snapshot, projection
+
+
+def _use_prepared_authenticated_snapshot_projection_v2(
+    value: Any,
+    selected_snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind current snapshot content to one immutable same-turn projection."""
+
+    if (
+        type(value) is not _PreparedAuthenticatedSnapshotProjectionV2
+        or value.seal is not _PREPARED_SNAPSHOT_SEAL
+    ):
+        raise _error("prepared selected snapshot differs from the occurrence source")
+    projection_bytes = value._projection_bytes  # noqa: SLF001
+    try:
+        projection = json.loads(projection_bytes.decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("prepared selected-snapshot projection binding drifted") from exc
+    source = projection.get("source_binding") if type(projection) is dict else None
+    material = _prepared_snapshot_context_material(
+        document_ordinal=value.document_ordinal,
+        page_axis=value.page_axis,
+        projection_content_sha256=value.projection_content_sha256,
+        projection_id=value.projection_id,
+        selected_snapshot_content_sha256=value.selected_snapshot_content_sha256,
+        snapshot_id=value.snapshot_id,
+    )
+    if (
+        type(source) is not dict
+        or type(projection_bytes) is not bytes
+        or canonical_json_sha256_v1(selected_snapshot) != value.selected_snapshot_content_sha256
+        or hashlib.sha256(projection_bytes).hexdigest() != value.projection_content_sha256
+        or selected_snapshot.get("snapshot_id") != value.snapshot_id
+        or projection.get("projection_id") != value.projection_id
+        or source.get("document_ordinal") != value.document_ordinal
+        or source.get("snapshot_id") != value.snapshot_id
+        or tuple(source.get("selected_pages", ())) != value.page_axis
+        or value.prepared_context_sha256 != canonical_json_sha256_v1(material)
+    ):
+        raise _error("prepared selected-snapshot projection binding drifted")
+    return projection
+
+
 def _validate_snapshot_and_renders(
     pages: Sequence[Mapping[str, Any]],
     selected_snapshot: Mapping[str, Any] | None,
     render_snapshots: Sequence[Mapping[str, Any]],
+    *,
+    prepared_snapshot: _PreparedAuthenticatedSnapshotProjectionV2 | None = None,
 ) -> None:
     if selected_snapshot is None:
-        if render_snapshots:
+        if render_snapshots or prepared_snapshot is not None:
             raise _error("authenticated renders require their selected-snapshot binding")
         return
-    try:
-        projection = snapshot_v1.build_authenticated_semantic_region_snapshot_v1(selected_snapshot)
-        snapshot_v1.validate_authenticated_semantic_region_snapshot_replay_v1(
-            projection, selected_snapshot
+    if prepared_snapshot is None:
+        try:
+            projection = snapshot_v1.build_authenticated_semantic_region_snapshot_v1(
+                selected_snapshot
+            )
+            snapshot_v1.validate_authenticated_semantic_region_snapshot_replay_v1(
+                projection, selected_snapshot
+            )
+        except (ValueError, RuntimeError) as exc:
+            raise _error("caller-authenticated selected snapshot contract drifted") from exc
+    else:
+        projection = _use_prepared_authenticated_snapshot_projection_v2(
+            prepared_snapshot,
+            selected_snapshot,
         )
-    except (ValueError, RuntimeError) as exc:
-        raise _error("caller-authenticated selected snapshot contract drifted") from exc
     source = projection["source_binding"]
     snapshot_pages = {page["page_sequence"]: page for page in selected_snapshot["joined_pages"]}
     if set(snapshot_pages) != {page["page_sequence"] for page in pages}:
@@ -862,7 +1150,11 @@ def _build(
     *,
     effective_topology_region: Mapping[str, Any] | None,
     topology_candidates: Mapping[str, Any] | None,
+    prepared_topology_binding: (
+        candidates_v2._PreparedAccountingFamilyTopologyCandidateBindingV2 | None
+    ),
     selected_snapshot: Mapping[str, Any] | None,
+    prepared_snapshot: _PreparedAuthenticatedSnapshotProjectionV2 | None,
     render_snapshots: Sequence[Mapping[str, Any]],
     visible_dash_rescues: Any,
 ) -> dict[str, Any]:
@@ -875,7 +1167,12 @@ def _build(
         raise _error("occurrence row-axis shared input contract drifted") from exc
     if scan["family_id"] != compiled_family["family_id"] or type(topology_region) is not dict:
         raise _error("occurrence row-axis family or selected region drifted")
-    _validate_snapshot_and_renders(parsed_pages, selected_snapshot, render_snapshots)
+    _validate_snapshot_and_renders(
+        parsed_pages,
+        selected_snapshot,
+        render_snapshots,
+        prepared_snapshot=prepared_snapshot,
+    )
     expanded_matches, selected_region, expected_effective, topology_candidates_id = (
         _expanded_matches(
             parsed_pages,
@@ -884,6 +1181,7 @@ def _build(
             topology_region,
             effective_topology_region,
             topology_candidates,
+            prepared_topology_binding,
         )
     )
     matches = _decorate_scopes(
@@ -987,7 +1285,9 @@ def build_accounting_family_occurrence_row_axis_v2(
         policy,
         effective_topology_region=effective_topology_region,
         topology_candidates=topology_candidates,
+        prepared_topology_binding=None,
         selected_snapshot=selected_snapshot,
+        prepared_snapshot=None,
         render_snapshots=render_snapshots,
         visible_dash_rescues=visible_dash_rescues,
     )
@@ -1002,7 +1302,11 @@ def _build_accounting_family_occurrence_row_axis_from_authenticated_topology_sca
     *,
     effective_topology_region: Mapping[str, Any] | None = None,
     topology_candidates: Mapping[str, Any] | None = None,
+    prepared_topology_binding: (
+        candidates_v2._PreparedAccountingFamilyTopologyCandidateBindingV2 | None
+    ) = None,
     selected_snapshot: Mapping[str, Any] | None = None,
+    prepared_snapshot: _PreparedAuthenticatedSnapshotProjectionV2 | None = None,
     render_snapshots: Sequence[Mapping[str, Any]] = (),
     visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
@@ -1014,7 +1318,9 @@ def _build_accounting_family_occurrence_row_axis_from_authenticated_topology_sca
         policy,
         effective_topology_region=effective_topology_region,
         topology_candidates=topology_candidates,
+        prepared_topology_binding=prepared_topology_binding,
         selected_snapshot=selected_snapshot,
+        prepared_snapshot=prepared_snapshot,
         render_snapshots=render_snapshots,
         visible_dash_rescues=visible_dash_rescues,
     )

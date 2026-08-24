@@ -9,6 +9,8 @@ the strongest output is a replayable schema-review readiness proposal.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any
 
 from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1
@@ -19,7 +21,6 @@ from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as topol
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
 from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as scoped_v2
-from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as region_snapshot_v1
 from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
@@ -132,6 +133,68 @@ class FamilyFirstAccountingEvidenceSweepV1Error(ValueError):
 
 def _error(message: str) -> FamilyFirstAccountingEvidenceSweepV1Error:
     return FamilyFirstAccountingEvidenceSweepV1Error(message)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedV4DocumentStoreContextV1:
+    """Same-turn snapshot/topology authority reused by base and render passes."""
+
+    caller_snapshot_sha256: str
+    evaluation_spec_sha256: str
+    family_spec_sha256: str
+    prepared_context_sha256: str
+    prepared_snapshot: Any = field(repr=False, compare=False)
+    prepared_topology: Any = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_V4_DOCUMENT_CONTEXT_SEAL = object()
+
+
+def _prepared_v4_document_context_material_v1(
+    *,
+    caller_snapshot_sha256: str,
+    evaluation_spec_sha256: str,
+    family_spec_sha256: str,
+    prepared_snapshot: Any,
+    prepared_topology: Any,
+) -> dict[str, Any]:
+    return {
+        "caller_snapshot_sha256": caller_snapshot_sha256,
+        "evaluation_spec_sha256": evaluation_spec_sha256,
+        "family_spec_sha256": family_spec_sha256,
+        "prepared_snapshot_context_sha256": getattr(
+            prepared_snapshot, "prepared_context_sha256", None
+        ),
+        "prepared_topology_context_sha256": getattr(
+            prepared_topology, "prepared_context_sha256", None
+        ),
+    }
+
+
+def _new_v4_runtime_telemetry_v1() -> dict[str, int | float]:
+    """Create opt-in process telemetry; it is never persisted as evidence."""
+
+    return {
+        "candidate_count": 0,
+        "occurrence_axis_build_count": 0,
+        "occurrence_base_reuse_count": 0,
+        "render_page_count": 0,
+        "render_retry_count": 0,
+        "snapshot_prepare_count": 0,
+        "snapshot_prepare_seconds": 0.0,
+        "topology_prepare_count": 0,
+        "topology_prepare_seconds": 0.0,
+    }
+
+
+def _telemetry_add(
+    telemetry: dict[str, int | float] | None,
+    field_name: str,
+    value: int | float,
+) -> None:
+    if telemetry is not None:
+        telemetry[field_name] = telemetry.get(field_name, 0) + value
 
 
 def _evaluation_spec(
@@ -255,19 +318,18 @@ def _v4_topology_authority(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Rebuild one V1 scan and its complete pre-pruning V2 candidate axis."""
 
-    legacy_scan = topology_v1.build_accounting_family_topology_scan_v1(
+    prepared = topology_candidates_v2._prepare_accounting_family_topology_candidates_v2(
         topology_pages,
         family_spec,
+    )
+    legacy_scan, candidates, _bindings = (
+        topology_candidates_v2._prepared_accounting_family_topology_authority_v2(prepared)
     )
     if expected_legacy_scan is not None and not same_typed_json_v1(
         legacy_scan,
         expected_legacy_scan,
     ):
         raise _error("V4 legacy topology scan differs from its complete source replay")
-    candidates = topology_candidates_v2.build_accounting_family_topology_candidates_v2(
-        topology_pages,
-        family_spec,
-    )
     if candidates["input_binding"]["legacy_topology_scan_id"] != legacy_scan["scan_id"]:
         raise _error("V4 topology candidate authority lost its legacy scan binding")
     return legacy_scan, candidates
@@ -892,11 +954,17 @@ def _candidate_evidence_from_joined_pages(
     render_snapshots: tuple[dict[str, Any], ...],
     selected_snapshot: dict[str, Any] | None = None,
     topology_candidates: dict[str, Any] | None = None,
+    prepared_topology_bindings: tuple[Any, ...] = (),
+    prepared_snapshot: Any = None,
+    runtime_telemetry: dict[str, int | float] | None = None,
 ) -> list[dict[str, Any]]:
     is_v4 = evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
     if is_v4:
         topology_pages = row_axis_v1._topology_pages(joined_pages)
-        if topology_candidates is None:
+        if prepared_topology_bindings:
+            if topology_candidates is None:
+                raise _error("prepared candidate bindings lost their V2 topology envelope")
+        elif topology_candidates is None:
             topology_candidates = (
                 topology_candidates_v2.build_accounting_family_topology_candidates_v2(
                     topology_pages,
@@ -917,12 +985,18 @@ def _candidate_evidence_from_joined_pages(
         ):
             raise _error("V4 topology candidates differ from their legacy scan binding")
         topology_regions = topology_candidates["regions"]
+        if prepared_topology_bindings and len(prepared_topology_bindings) != len(topology_regions):
+            raise _error("prepared candidate binding axis differs from the V2 regions")
     else:
-        if topology_candidates is not None:
+        if topology_candidates is not None or prepared_topology_bindings or prepared_snapshot:
             raise _error("pre-pruning topology candidates require evaluation V4")
         topology_regions = topology_scan["regions"]
     candidate_evidence = []
+    _telemetry_add(runtime_telemetry, "candidate_count", len(topology_regions))
     for candidate_ordinal, topology_region in enumerate(topology_regions):
+        prepared_binding = (
+            prepared_topology_bindings[candidate_ordinal] if prepared_topology_bindings else None
+        )
         try:
             if is_v4:
                 base_occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
@@ -932,9 +1006,12 @@ def _candidate_evidence_from_joined_pages(
                     topology_region,
                     evaluation_spec["occurrence_row_axis_policy"],
                     topology_candidates=topology_candidates,
+                    prepared_topology_binding=prepared_binding,
                     selected_snapshot=selected_snapshot,
+                    prepared_snapshot=prepared_snapshot,
                     render_snapshots=render_snapshots,
                 )
+                _telemetry_add(runtime_telemetry, "occurrence_axis_build_count", 1)
                 base_row_axis = base_occurrence_axis["row_axis"]
             else:
                 base_row_axis = row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
@@ -949,26 +1026,37 @@ def _candidate_evidence_from_joined_pages(
                 render_snapshots=render_snapshots,
             )
             if is_v4:
-                occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
-                    joined_pages,
-                    family_spec,
-                    topology_scan,
-                    topology_region,
-                    evaluation_spec["occurrence_row_axis_policy"],
-                    topology_candidates=topology_candidates,
-                    selected_snapshot=selected_snapshot,
-                    render_snapshots=render_snapshots,
-                    visible_dash_rescues=dash_rescues,
-                )
+                if dash_rescues:
+                    occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+                        joined_pages,
+                        family_spec,
+                        topology_scan,
+                        topology_region,
+                        evaluation_spec["occurrence_row_axis_policy"],
+                        topology_candidates=topology_candidates,
+                        prepared_topology_binding=prepared_binding,
+                        selected_snapshot=selected_snapshot,
+                        prepared_snapshot=prepared_snapshot,
+                        render_snapshots=render_snapshots,
+                        visible_dash_rescues=dash_rescues,
+                    )
+                    _telemetry_add(runtime_telemetry, "occurrence_axis_build_count", 1)
+                else:
+                    occurrence_axis = base_occurrence_axis
+                    _telemetry_add(runtime_telemetry, "occurrence_base_reuse_count", 1)
                 row_axis = occurrence_axis["row_axis"]
             else:
                 occurrence_axis = None
-                row_axis = row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
-                    joined_pages,
-                    family_spec,
-                    topology_scan,
-                    topology_region,
-                    visible_dash_rescues=dash_rescues,
+                row_axis = (
+                    row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+                        joined_pages,
+                        family_spec,
+                        topology_scan,
+                        topology_region,
+                        visible_dash_rescues=dash_rescues,
+                    )
+                    if dash_rescues
+                    else base_row_axis
                 )
         except ValueError as exc:
             candidate_evidence.append(
@@ -1436,7 +1524,7 @@ def _validate_v4_document_store_selected_snapshot_v1(
     snapshot: Any,
     *,
     expected_packet: dict[str, Any] | None,
-) -> None:
+) -> tuple[dict[str, Any], dict[str, Any], Any]:
     """Require the public authenticated full-page snapshot contract for V4.
 
     V4's occurrence axis authenticates existing textual dashes against exact
@@ -1446,16 +1534,19 @@ def _validate_v4_document_store_selected_snapshot_v1(
     """
 
     try:
-        projection = region_snapshot_v1.build_authenticated_semantic_region_snapshot_v1(snapshot)
-        region_snapshot_v1.validate_authenticated_semantic_region_snapshot_replay_v1(
-            projection,
-            snapshot,
+        prepared_snapshot = occurrence_row_v2._prepare_authenticated_snapshot_projection_v2(
+            snapshot
+        )
+        typed_snapshot, projection = (
+            occurrence_row_v2._prepared_authenticated_snapshot_projection_authority_v2(
+                prepared_snapshot
+            )
         )
     except (ValueError, RuntimeError) as exc:
         raise _error("V4 document-store selected snapshot contract drifted") from exc
-    packet = snapshot["document_packet"]
+    packet = typed_snapshot["document_packet"]
     selected_pages = list(range(1, packet["page_count"] + 1))
-    selected_line_count = sum(len(page["lines"]) for page in snapshot["joined_pages"])
+    selected_line_count = sum(len(page["lines"]) for page in typed_snapshot["joined_pages"])
     source = projection["source_binding"]
     if (
         (expected_packet is not None and not same_typed_json_v1(packet, expected_packet))
@@ -1463,11 +1554,125 @@ def _validate_v4_document_store_selected_snapshot_v1(
         or source["document_packet_id"] != packet["packet_id"]
         or source["selected_pages"] != selected_pages
         or selected_line_count != packet["line_count"]
-        or [page["page_sequence"] for page in snapshot["joined_pages"]] != selected_pages
-        or [dimension["physical_page"] for dimension in snapshot["selected_page_dimensions"]]
+        or [page["page_sequence"] for page in typed_snapshot["joined_pages"]] != selected_pages
+        or [dimension["physical_page"] for dimension in typed_snapshot["selected_page_dimensions"]]
         != selected_pages
     ):
         raise _error("V4 document-store selected snapshot packet or full-page axis drifted")
+    return typed_snapshot, projection, prepared_snapshot
+
+
+def _prepare_v4_document_store_context_v1(
+    snapshot: dict[str, Any],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    *,
+    expected_packet: dict[str, Any] | None,
+    runtime_telemetry: dict[str, int | float] | None,
+) -> _PreparedV4DocumentStoreContextV1:
+    snapshot_started = perf_counter()
+    selected_snapshot, _projection, prepared_snapshot = (
+        _validate_v4_document_store_selected_snapshot_v1(
+            snapshot,
+            expected_packet=expected_packet,
+        )
+    )
+    _telemetry_add(runtime_telemetry, "snapshot_prepare_count", 1)
+    _telemetry_add(
+        runtime_telemetry,
+        "snapshot_prepare_seconds",
+        perf_counter() - snapshot_started,
+    )
+    topology_started = perf_counter()
+    prepared_topology = topology_candidates_v2._prepare_accounting_family_topology_candidates_v2(
+        row_axis_v1._topology_pages(selected_snapshot["joined_pages"]),
+        family_spec,
+    )
+    _telemetry_add(runtime_telemetry, "topology_prepare_count", 1)
+    _telemetry_add(
+        runtime_telemetry,
+        "topology_prepare_seconds",
+        perf_counter() - topology_started,
+    )
+    caller_snapshot_sha256 = canonical_json_sha256_v1(snapshot)
+    evaluation_spec_sha256 = canonical_json_sha256_v1(evaluation_spec)
+    family_spec_sha256 = canonical_json_sha256_v1(family_spec)
+    material = _prepared_v4_document_context_material_v1(
+        caller_snapshot_sha256=caller_snapshot_sha256,
+        evaluation_spec_sha256=evaluation_spec_sha256,
+        family_spec_sha256=family_spec_sha256,
+        prepared_snapshot=prepared_snapshot,
+        prepared_topology=prepared_topology,
+    )
+    return _PreparedV4DocumentStoreContextV1(
+        caller_snapshot_sha256=caller_snapshot_sha256,
+        evaluation_spec_sha256=evaluation_spec_sha256,
+        family_spec_sha256=family_spec_sha256,
+        prepared_context_sha256=canonical_json_sha256_v1(material),
+        prepared_snapshot=prepared_snapshot,
+        prepared_topology=prepared_topology,
+        seal=_PREPARED_V4_DOCUMENT_CONTEXT_SEAL,
+    )
+
+
+def _open_prepared_v4_document_store_context_v1(
+    value: Any,
+    snapshot: dict[str, Any],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    *,
+    expected_packet: dict[str, Any] | None,
+    expected_legacy_scan: dict[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], tuple[Any, ...]]:
+    """Reopen both exact inner authorities before every trial or retry."""
+
+    if (
+        type(value) is not _PreparedV4DocumentStoreContextV1
+        or value.seal is not _PREPARED_V4_DOCUMENT_CONTEXT_SEAL
+        or value.caller_snapshot_sha256 != canonical_json_sha256_v1(snapshot)
+        or value.family_spec_sha256 != canonical_json_sha256_v1(family_spec)
+        or value.evaluation_spec_sha256 != canonical_json_sha256_v1(evaluation_spec)
+    ):
+        raise _error("prepared V4 document-store context differs from its source")
+    material = _prepared_v4_document_context_material_v1(
+        caller_snapshot_sha256=value.caller_snapshot_sha256,
+        evaluation_spec_sha256=value.evaluation_spec_sha256,
+        family_spec_sha256=value.family_spec_sha256,
+        prepared_snapshot=value.prepared_snapshot,
+        prepared_topology=value.prepared_topology,
+    )
+    if value.prepared_context_sha256 != canonical_json_sha256_v1(material):
+        raise _error("prepared V4 document-store context binding drifted")
+    try:
+        selected_snapshot, _projection = (
+            occurrence_row_v2._prepared_authenticated_snapshot_projection_authority_v2(
+                value.prepared_snapshot
+            )
+        )
+        topology_scan, topology_candidates, candidate_bindings = (
+            topology_candidates_v2._prepared_accounting_family_topology_authority_v2(
+                value.prepared_topology
+            )
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("prepared V4 document-store inner authority drifted") from exc
+    if (
+        (
+            expected_packet is not None
+            and not same_typed_json_v1(
+                selected_snapshot["document_packet"],
+                expected_packet,
+            )
+        )
+        or (
+            expected_legacy_scan is not None
+            and not same_typed_json_v1(topology_scan, expected_legacy_scan)
+        )
+        or topology_candidates["input_binding"]["legacy_topology_scan_id"]
+        != topology_scan["scan_id"]
+    ):
+        raise _error("prepared V4 document-store inner source binding drifted")
+    return selected_snapshot, topology_scan, topology_candidates, candidate_bindings
 
 
 def _trial_from_document_store_snapshot_v1(
@@ -1478,32 +1683,54 @@ def _trial_from_document_store_snapshot_v1(
     render_snapshots: tuple[dict[str, Any], ...] = (),
     topology_scan: dict[str, Any] | None = None,
     expected_packet: dict[str, Any] | None = None,
+    _v4_runtime_context: dict[str, Any] | None = None,
+    runtime_telemetry: dict[str, int | float] | None = None,
 ) -> dict[str, Any]:
-    packet = snapshot["document_packet"]
-    joined_pages = snapshot["joined_pages"]
     if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
-        _validate_v4_document_store_selected_snapshot_v1(
-            snapshot,
-            expected_packet=expected_packet,
+        prepared_context = (
+            _v4_runtime_context.get("prepared_context") if _v4_runtime_context is not None else None
         )
-        topology_scan, topology_candidates = _v4_topology_authority(
-            row_axis_v1._topology_pages(joined_pages),
-            family_spec,
-            expected_legacy_scan=topology_scan,
+        if prepared_context is None:
+            prepared_context = _prepare_v4_document_store_context_v1(
+                snapshot,
+                family_spec,
+                evaluation_spec,
+                expected_packet=expected_packet,
+                runtime_telemetry=runtime_telemetry,
+            )
+            if _v4_runtime_context is not None:
+                _v4_runtime_context["prepared_context"] = prepared_context
+        snapshot, topology_scan, topology_candidates, candidate_bindings = (
+            _open_prepared_v4_document_store_context_v1(
+                prepared_context,
+                snapshot,
+                family_spec,
+                evaluation_spec,
+                expected_packet=expected_packet,
+                expected_legacy_scan=topology_scan,
+            )
         )
         topology_status = topology_candidates["status"]
         region_authority = topology_candidates
     elif topology_scan is None:
+        prepared_context = None
+        candidate_bindings = ()
+        topology_candidates = None
+        packet = snapshot["document_packet"]
+        joined_pages = snapshot["joined_pages"]
         topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
             _topology_pages_from_document_snapshot_v1(joined_pages), family_spec
         )
-        topology_candidates = None
         topology_status = topology_scan["status"]
         region_authority = topology_scan
     else:
+        prepared_context = None
+        candidate_bindings = ()
         topology_candidates = None
         topology_status = topology_scan["status"]
         region_authority = topology_scan
+    packet = snapshot["document_packet"]
+    joined_pages = snapshot["joined_pages"]
     base = {
         "document_ordinal": packet["document_ordinal"],
         "private_provenance": {
@@ -1543,7 +1770,8 @@ def _trial_from_document_store_snapshot_v1(
         raise _error("document-store topology selected no physical page")
     projected_pages = [
         {
-            **canonical_clone_v1(page),
+            "lines": page["lines"],
+            "page_sequence": page["page_sequence"],
             "page_width": page["page_width"] if page["page_sequence"] in selected_pages else None,
         }
         for page in joined_pages
@@ -1556,6 +1784,11 @@ def _trial_from_document_store_snapshot_v1(
         render_snapshots=render_snapshots,
         selected_snapshot=snapshot,
         topology_candidates=topology_candidates,
+        prepared_topology_bindings=candidate_bindings,
+        prepared_snapshot=(
+            prepared_context.prepared_snapshot if prepared_context is not None else None
+        ),
+        runtime_telemetry=runtime_telemetry,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
     return {
@@ -1581,21 +1814,38 @@ def _document_store_trial_with_render_rescue_v1(
     family_spec: dict[str, Any],
     policy: dict[str, Any],
     topology_scan: dict[str, Any] | None,
+    runtime_telemetry: dict[str, int | float] | None = None,
 ) -> dict[str, Any]:
     is_v4 = policy["format_version"] == EVALUATION_SPEC_FORMAT_V4
+    runtime_context: dict[str, Any] = {}
     trial = _trial_from_document_store_snapshot_v1(
         snapshot,
         family_spec,
         policy,
         topology_scan=topology_scan,
         expected_packet=packet if is_v4 else None,
+        _v4_runtime_context=runtime_context if is_v4 else None,
+        runtime_telemetry=runtime_telemetry,
     )
     if is_v4:
-        _render_scan, render_topology_candidates = _v4_topology_authority(
-            row_axis_v1._topology_pages(snapshot["joined_pages"]),
-            family_spec,
-            expected_legacy_scan=trial["topology_scan"],
-        )
+        prepared_context = runtime_context.get("prepared_context")
+        if type(prepared_context) is _PreparedV4DocumentStoreContextV1:
+            _selected_snapshot, _render_scan, render_topology_candidates, _bindings = (
+                _open_prepared_v4_document_store_context_v1(
+                    prepared_context,
+                    snapshot,
+                    family_spec,
+                    policy,
+                    expected_packet=packet,
+                    expected_legacy_scan=trial["topology_scan"],
+                )
+            )
+        else:
+            _render_scan, render_topology_candidates = _v4_topology_authority(
+                row_axis_v1._topology_pages(snapshot["joined_pages"]),
+                family_spec,
+                expected_legacy_scan=trial["topology_scan"],
+            )
     else:
         render_topology_candidates = None
     missing_pages = _missing_render_pages_for_document_store_trial_v1(
@@ -1606,6 +1856,8 @@ def _document_store_trial_with_render_rescue_v1(
         topology_candidates=render_topology_candidates,
     )
     if missing_pages:
+        _telemetry_add(runtime_telemetry, "render_retry_count", 1)
+        _telemetry_add(runtime_telemetry, "render_page_count", len(missing_pages))
         renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
             document_store_capability,
             document_ordinal=packet["document_ordinal"],
@@ -1618,6 +1870,8 @@ def _document_store_trial_with_render_rescue_v1(
             render_snapshots=renders,
             topology_scan=trial["topology_scan"] if is_v4 else topology_scan,
             expected_packet=packet if is_v4 else None,
+            _v4_runtime_context=runtime_context if is_v4 else None,
+            runtime_telemetry=runtime_telemetry,
         )
     return trial
 

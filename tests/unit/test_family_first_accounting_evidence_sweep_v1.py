@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+from dataclasses import replace
 
 import pytest
 from PIL import Image, ImageDraw
@@ -1225,6 +1226,75 @@ def test_document_store_v4_rejects_coherently_rehashed_truncated_full_line_axis(
         )
 
 
+@pytest.mark.parametrize("mutated_inner", ["CANDIDATES", "SCAN"])
+def test_document_store_v4_cached_context_reopens_inner_authority_before_early_return(
+    mutated_inner: str,
+) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
+    family_spec = _family_spec()
+    policy = {"format_version": subject.EVALUATION_SPEC_FORMAT_V4}
+    runtime_context: dict[str, object] = {}
+    first = subject._trial_from_document_store_snapshot_v1(
+        snapshot,
+        family_spec,
+        policy,
+        expected_packet=snapshot["document_packet"],
+        _v4_runtime_context=runtime_context,
+    )
+    assert first["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
+    prepared = runtime_context["prepared_context"]
+    if mutated_inner == "CANDIDATES":
+        prepared.prepared_topology._topology_candidates[  # noqa: SLF001
+            "status"
+        ] = "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    else:
+        prepared.prepared_topology._legacy_topology_scan[  # noqa: SLF001
+            "status"
+        ] = "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="inner authority drifted",
+    ):
+        subject._trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            expected_packet=snapshot["document_packet"],
+            _v4_runtime_context=runtime_context,
+        )
+
+
+def test_document_store_v4_rejects_forged_outer_prepared_context() -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
+    family_spec = _family_spec()
+    policy = {"format_version": subject.EVALUATION_SPEC_FORMAT_V4}
+    runtime_context: dict[str, object] = {}
+    subject._trial_from_document_store_snapshot_v1(
+        snapshot,
+        family_spec,
+        policy,
+        expected_packet=snapshot["document_packet"],
+        _v4_runtime_context=runtime_context,
+    )
+    runtime_context["prepared_context"] = replace(
+        runtime_context["prepared_context"],
+        family_spec_sha256="0" * 64,
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="differs from its source",
+    ):
+        subject._trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            expected_packet=snapshot["document_packet"],
+            _v4_runtime_context=runtime_context,
+        )
+
+
 def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selection(
     monkeypatch,
 ) -> None:
@@ -1663,6 +1733,7 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
         "period_semantics": "BALANCE_COMPARATIVE",
     }
 
+    telemetry = subject._new_v4_runtime_telemetry_v1()
     evidence = subject._candidate_evidence_from_joined_pages(
         joined_pages=[],
         topology_scan=topology_scan,
@@ -1670,13 +1741,12 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
         evaluation_spec=policy,
         render_snapshots=(),
         topology_candidates=topology_candidates,
+        runtime_telemetry=telemetry,
     )
     selected, reasons = subject._select_candidate_evidence(evidence, policy)
 
     assert [call["region"] for call in occurrence_calls] == [
         summary_region,
-        summary_region,
-        detail_region,
         detail_region,
     ]
     assert all(call["scan"] is topology_scan for call in occurrence_calls)
@@ -1684,6 +1754,9 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
     assert [candidate["candidate_ordinal"] for candidate in evidence] == [0, 1]
     assert selected is evidence[1]
     assert reasons == []
+    assert telemetry["candidate_count"] == 2
+    assert telemetry["occurrence_axis_build_count"] == 2
+    assert telemetry["occurrence_base_reuse_count"] == 2
 
 
 def test_two_independent_role_rich_v4_details_remain_unresolved() -> None:
