@@ -425,6 +425,7 @@ def _acb5_partial_local_loan_selector_pages(
     selector_current: str | None = None,
     selector_label: str | None = None,
     duplicate_selector: bool = False,
+    loan_vnd_current: str = "0",
     loan_provision_current: str = "0",
     loan_provision_prior: str = "-50000",
 ) -> list[dict[str, object]]:
@@ -434,7 +435,7 @@ def _acb5_partial_local_loan_selector_pages(
             ("Tiền gửi có kỳ hạn", "100", "80"),
             ("Dự phòng tiền gửi tại các TCTD khác", "0", "0"),
             ("Cho vay các TCTD khác", "", ""),
-            ("Bằng VND", "0", "150979"),
+            ("Bằng VND", loan_vnd_current, "150979"),
             ("Bằng ngoại tệ", "0", "0"),
             (
                 "Dự phòng cho vay các TCTD khác",
@@ -863,6 +864,16 @@ def test_v4_terminal_local_loan_subtotal_closes_only_its_sealed_subgroup() -> No
     receipt = local["local_trailing_subgroup_subtotal_receipt"]
     assert receipt["nonadditive_occurrence_ids"]
     assert receipt["nonadditive_sample_ids"]
+    assert receipt["hierarchy_spec_sha256"] == (
+        subject._LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256
+    )
+    assert receipt["equation_spec_sha256"] == (
+        subject._LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256
+    )
+    assert receipt["applicable_alternative_ordinals"] == [4]
+    assert [
+        alternative["alternative_ordinal"] for alternative in receipt["alternative_value_axes"]
+    ] == [4]
     assert receipt["interval"]["candidate_first_source_line_index"] == (
         receipt["interval"]["last_descendant_source_line_index"] + 1
     )
@@ -970,6 +981,8 @@ def test_v4_local_trailing_loan_subtotal_adversarial_sources_remain_unresolved(
         ("parent_occurrence_id", "aforav2:root:" + "0" * 64),
         ("numeric_sample_universe_sha256", "0" * 64),
         ("source_record_sha256", "0" * 64),
+        ("hierarchy_spec_sha256", "0" * 64),
+        ("equation_spec_sha256", "0" * 64),
     ],
 )
 def test_v4_local_trailing_subgroup_receipt_cannot_be_coherently_rehashed(
@@ -1045,6 +1058,22 @@ def test_v4_partial_local_selector_is_unique_and_never_supplies_omitted_lane() -
         "INTERBANK_LOAN_VND",
         "INTERBANK_LOAN_FOREIGN_CURRENCY",
         "INTERBANK_LOAN_PROVISION",
+    ]
+    assert receipt["hierarchy_spec_sha256"] == (
+        subject._LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256
+    )
+    assert receipt["equation_spec_sha256"] == (
+        subject._LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256
+    )
+    assert receipt["configured_alternative_role_sets"] == [
+        list(roles) for roles in subject._LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS
+    ]
+    assert receipt["applicable_alternative_ordinals"] == [0, 1]
+    assert [
+        alternative["alternative_ordinal"] for alternative in receipt["alternative_value_axes"]
+    ] == [0, 1]
+    assert receipt["applicable_alternative_spec_sha256s"] == [
+        alternative["alternative_spec_sha256"] for alternative in receipt["alternative_value_axes"]
     ]
     assert [
         [value["number"]["coefficient"] for value in alternative["values"]]
@@ -1157,7 +1186,18 @@ def test_v4_partial_local_selector_adversarial_evidence_cannot_choose_an_alterna
     )
 
 
-@pytest.mark.parametrize("attack", ["alternative", "missing-lane", "boundary"])
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "alternative",
+        "delete-alternative-axis",
+        "reverse-alternative-axis",
+        "duplicate-alternative-axis",
+        "reverse-configured-role-sets",
+        "missing-lane",
+        "boundary",
+    ],
+)
 def test_v4_partial_local_selector_receipt_rejects_coherent_tamper(attack: str) -> None:
     project_root = Path(__file__).resolve().parents[2]
     topology = json.loads(
@@ -1182,6 +1222,26 @@ def test_v4_partial_local_selector_receipt_rejects_coherent_tamper(attack: str) 
     receipt = local["local_trailing_subgroup_subtotal_receipt"]
     if attack == "alternative":
         receipt["alternative_value_axes"][1]["values"][1]["number"]["coefficient"] += 1
+    elif attack == "delete-alternative-axis":
+        receipt["alternative_value_axes"].pop(0)
+        receipt["applicable_alternative_ordinals"].pop(0)
+        receipt["applicable_alternative_spec_sha256s"].pop(0)
+    elif attack == "reverse-alternative-axis":
+        receipt["alternative_value_axes"].reverse()
+        receipt["applicable_alternative_ordinals"].reverse()
+        receipt["applicable_alternative_spec_sha256s"].reverse()
+    elif attack == "duplicate-alternative-axis":
+        receipt["alternative_value_axes"].append(
+            copy.deepcopy(receipt["alternative_value_axes"][-1])
+        )
+        receipt["applicable_alternative_ordinals"].append(
+            receipt["applicable_alternative_ordinals"][-1]
+        )
+        receipt["applicable_alternative_spec_sha256s"].append(
+            receipt["applicable_alternative_spec_sha256s"][-1]
+        )
+    elif attack == "reverse-configured-role-sets":
+        receipt["configured_alternative_role_sets"].reverse()
     elif attack == "missing-lane":
         receipt["missing_column_ordinals"] = []
         receipt["selection_kind"] = "COMPLETE_EXACT_ALL_LANES"
@@ -1199,6 +1259,97 @@ def test_v4_partial_local_selector_receipt_rejects_coherent_tamper(attack: str) 
         match="local trailing subgroup",
     ):
         subject._validate_result(attacked)
+
+
+@pytest.mark.parametrize("hierarchy_attack", ["delete-applicable-alternative", "reverse-order"])
+def test_v4_partial_local_selector_requires_exact_canonical_equation_set(
+    hierarchy_attack: str,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _acb5_partial_local_loan_selector_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked_hierarchy = copy.deepcopy(hierarchy)
+    loan_equation = next(
+        equation
+        for equation in attacked_hierarchy["equations"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    if hierarchy_attack == "delete-applicable-alternative":
+        loan_equation["component_role_alternatives"] = [
+            alternative
+            for alternative in loan_equation["component_role_alternatives"]
+            if alternative["component_roles"]
+            != ["INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"]
+        ]
+    else:
+        loan_equation["component_role_alternatives"].reverse()
+
+    attacked_closure = subject.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, topology, attacked_hierarchy
+    )
+
+    assert attacked_closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        for equation in attacked_closure["equations"]["local"]
+    )
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, attacked_hierarchy
+        )
+
+
+def test_v4_reduced_equation_cannot_hide_partial_selector_missing_lane_disagreement() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb5_partial_local_loan_selector_pages(
+        loan_vnd_current="-1",
+        loan_provision_current="1",
+    )
+    axis, full_closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+    reduced_hierarchy = copy.deepcopy(hierarchy)
+    loan_equation = next(
+        equation
+        for equation in reduced_hierarchy["equations"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    loan_equation["component_role_alternatives"] = [
+        alternative
+        for alternative in loan_equation["component_role_alternatives"]
+        if alternative["component_roles"]
+        != ["INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"]
+    ]
+    reduced_closure = subject.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, topology, reduced_hierarchy
+    )
+
+    for closure in (full_closure, reduced_closure):
+        assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+        assert not any(
+            equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+            for equation in closure["equations"]["local"]
+        )
 
 
 def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> None:

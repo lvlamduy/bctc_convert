@@ -186,7 +186,52 @@ _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES = {
     "INTERBANK_LOAN_GROUP",
 }
 _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION = "LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION"
+_LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256 = (
+    "5f7b7b082706d338d755d0d97332f8f7715556e34c12736752e508ebd6bacac5"
+)
+_LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256 = (
+    "e34e4ad6ba255b3cc713e74d7c401cbb060a3ae0139178e191c38bb28c8a56ef"
+)
+_LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS = (
+    ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"),
+    (
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_PROVISION",
+    ),
+    (
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_OTHER",
+    ),
+    (
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_PROVISION",
+        "INTERBANK_LOAN_OTHER",
+    ),
+    ("INTERBANK_LOAN_VND",),
+    ("INTERBANK_LOAN_FOREIGN_CURRENCY",),
+    ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_PROVISION"),
+    ("INTERBANK_LOAN_FOREIGN_CURRENCY", "INTERBANK_LOAN_PROVISION"),
+    ("INTERBANK_LOAN_OTHER",),
+    ("INTERBANK_LOAN_OTHER", "INTERBANK_LOAN_PROVISION"),
+    ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_OTHER"),
+    ("INTERBANK_LOAN_FOREIGN_CURRENCY", "INTERBANK_LOAN_OTHER"),
+    (
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_PROVISION",
+        "INTERBANK_LOAN_OTHER",
+    ),
+    (
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_PROVISION",
+        "INTERBANK_LOAN_OTHER",
+    ),
+)
 _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS = {
+    "applicable_alternative_ordinals",
+    "applicable_alternative_spec_sha256s",
     "alternative_value_axes",
     "boundary_occurrence_id",
     "boundary_role",
@@ -194,7 +239,10 @@ _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS = {
     "component_occurrence_ids",
     "component_roles",
     "component_sample_ids",
+    "configured_alternative_role_sets",
     "descendant_occurrence_ids",
+    "equation_spec_sha256",
+    "hierarchy_spec_sha256",
     "interval",
     "nonadditive_occurrence_ids",
     "nonadditive_sample_ids",
@@ -230,6 +278,8 @@ _LOCAL_TRAILING_SUBGROUP_INTERVAL_FIELDS = {
     "topology_region_stop_source_line_index_exclusive",
 }
 _LOCAL_TRAILING_SUBGROUP_ALTERNATIVE_FIELDS = {
+    "alternative_ordinal",
+    "alternative_spec_sha256",
     "component_occurrence_ids",
     "component_roles",
     "component_sample_ids",
@@ -242,6 +292,38 @@ _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS = {
     *_UNLABELED_SUBTOTAL_DISPOSITIONS,
     _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
 }
+
+
+def _local_trailing_subgroup_trusted_equation_spec() -> dict[str, Any]:
+    """Return the exact ordered Family-3 loan equation authorized for this projector."""
+
+    alternatives = []
+    for ordinal, roles in enumerate(_LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS):
+        alternatives.append(
+            {
+                "component_roles": list(roles),
+                "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+                "derivation_policy": (
+                    "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+                    if ordinal < 4
+                    else "VISIBLE_RESULT_CORROBORATION_ONLY"
+                ),
+            }
+        )
+    return {
+        "component_role_alternatives": alternatives,
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "result_role": "INTERBANK_LOAN_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_source_policy": "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE",
+        "visible_result_roles": [
+            "INTERBANK_LOAN_GROUP",
+            "EXPLICIT_INTERBANK_LOAN_TOTAL",
+        ],
+        "shared_component_roles": ["INTERBANK_LOAN_PROVISION"],
+    }
+
+
 _MAX_EQUATIONS = 128
 _MAX_COVERAGE_RECORDS = 16_384
 _MAX_RESOLVED_ROLES = 4_096
@@ -1845,6 +1927,7 @@ def _local_trailing_subgroup_subtotal_receipt(
     accounting_rows: Sequence[Mapping[str, Any]],
     equation: Mapping[str, Any],
     family_id: str,
+    hierarchy_spec_sha256: str,
     local_records: Sequence[Mapping[str, Any]],
     numeric_sample_universe: Sequence[Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
@@ -1862,7 +1945,15 @@ def _local_trailing_subgroup_subtotal_receipt(
     """
 
     target_role = equation.get("result_role")
-    if family_id != "INTERBANK_DEPOSITS_AND_LOANS" or target_role != ("INTERBANK_LOAN_GROUP"):
+    trusted_equation = _local_trailing_subgroup_trusted_equation_spec()
+    equation_spec_sha256 = canonical_json_sha256_v1(equation)
+    if (
+        family_id != "INTERBANK_DEPOSITS_AND_LOANS"
+        or target_role != "INTERBANK_LOAN_GROUP"
+        or hierarchy_spec_sha256 != _LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256
+        or equation_spec_sha256 != _LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256
+        or not same_typed_json_v1(equation, trusted_equation)
+    ):
         return None
     target_occurrences = [
         occurrence for occurrence in role_occurrences if occurrence.get("role") == target_role
@@ -2023,7 +2114,7 @@ def _local_trailing_subgroup_subtotal_receipt(
     additive_by_role = {occurrence["role"]: occurrence for occurrence in additive}
     required_roles = set(additive_roles) - set(equation["shared_component_roles"])
     applicable_alternatives = []
-    for alternative in equation["component_role_alternatives"]:
+    for alternative_ordinal, alternative in enumerate(equation["component_role_alternatives"]):
         roles = list(alternative["component_roles"])
         if not required_roles <= set(roles) or not all(role in additive_by_role for role in roles):
             continue
@@ -2031,6 +2122,8 @@ def _local_trailing_subgroup_subtotal_receipt(
         rows = [rows_by_occurrence[occurrence_id] for occurrence_id in occurrence_ids]
         applicable_alternatives.append(
             {
+                "alternative_ordinal": alternative_ordinal,
+                "alternative_spec_sha256": canonical_json_sha256_v1(alternative),
                 "component_occurrence_ids": occurrence_ids,
                 "component_roles": roles,
                 "component_sample_ids": [
@@ -2154,6 +2247,7 @@ def _local_trailing_subgroup_subtotal_receipt(
         observed_columns != sorted(set(observed_columns))
         or not observed_columns
         or any(column not in lane_axis for column in observed_columns)
+        or (missing_columns and len(applicable_alternatives) < 2)
         or (missing_columns and not missing_lanes_are_nondiscriminating)
         or (
             selected.get("row_kind") == "TRAILING_VALUE_ROW"
@@ -2209,6 +2303,12 @@ def _local_trailing_subgroup_subtotal_receipt(
         "topology_region_stop_source_line_index_exclusive": stop_source,
     }
     receipt_material = {
+        "applicable_alternative_ordinals": [
+            alternative["alternative_ordinal"] for alternative in applicable_alternatives
+        ],
+        "applicable_alternative_spec_sha256s": [
+            alternative["alternative_spec_sha256"] for alternative in applicable_alternatives
+        ],
         "alternative_value_axes": canonical_clone_v1(applicable_alternatives),
         "boundary_occurrence_id": (boundary["occurrence_id"] if boundary is not None else None),
         "boundary_role": boundary["role"] if boundary is not None else None,
@@ -2216,7 +2316,12 @@ def _local_trailing_subgroup_subtotal_receipt(
         "component_occurrence_ids": component_occurrence_ids,
         "component_roles": component_roles,
         "component_sample_ids": component_sample_ids,
+        "configured_alternative_role_sets": [
+            list(roles) for roles in _LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS
+        ],
         "descendant_occurrence_ids": descendant_ids,
+        "equation_spec_sha256": equation_spec_sha256,
+        "hierarchy_spec_sha256": hierarchy_spec_sha256,
         "interval": interval,
         "nonadditive_occurrence_ids": nonadditive_occurrence_ids,
         "nonadditive_sample_ids": nonadditive_sample_ids,
@@ -3908,6 +4013,15 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
 ) -> None:
     receipt = equation.get("local_trailing_subgroup_subtotal_receipt")
     interval = receipt.get("interval") if type(receipt) is dict else None
+    trusted_equation = _local_trailing_subgroup_trusted_equation_spec()
+    trusted_role_sets = [
+        list(roles) for roles in _LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS
+    ]
+    if (
+        canonical_json_sha256_v1(trusted_equation)
+        != _LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256
+    ):
+        raise _error("local trailing subgroup trusted equation declaration drifted")
     if (
         type(receipt) is not dict
         or set(receipt) != _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS
@@ -3917,6 +4031,10 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
         or receipt["target_role"] != equation["result_role"]
         or receipt["target_occurrence_id"] != equation["result_occurrence_id"]
         or receipt["component_roles"] != equation["component_roles_present"]
+        or receipt["hierarchy_spec_sha256"]
+        != _LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256
+        or receipt["equation_spec_sha256"] != _LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256
+        or receipt["configured_alternative_role_sets"] != trusted_role_sets
         or receipt["row_axis_id"] != value["row_axis_id"]
         or receipt["numeric_sample_universe_sha256"]
         != canonical_json_sha256_v1(value["numeric_sample_universe"])
@@ -3947,6 +4065,17 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
         }
         or type(receipt["alternative_value_axes"]) is not list
         or not receipt["alternative_value_axes"]
+        or type(receipt["applicable_alternative_ordinals"]) is not list
+        or any(
+            type(item) is not int or item < 0 for item in receipt["applicable_alternative_ordinals"]
+        )
+        or receipt["applicable_alternative_ordinals"]
+        != sorted(set(receipt["applicable_alternative_ordinals"]))
+        or type(receipt["applicable_alternative_spec_sha256s"]) is not list
+        or any(
+            type(item) is not str or len(item) != 64
+            for item in receipt["applicable_alternative_spec_sha256s"]
+        )
         or type(receipt["observed_column_ordinals"]) is not list
         or receipt["observed_column_ordinals"] != sorted(set(receipt["observed_column_ordinals"]))
         or not receipt["observed_column_ordinals"]
@@ -4129,47 +4258,57 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
             ]
         }
 
-    alternative_signatures: list[tuple[str, ...]] = []
-    for alternative in receipt["alternative_value_axes"]:
-        roles = alternative.get("component_roles") if type(alternative) is dict else None
-        occurrence_ids = (
-            alternative.get("component_occurrence_ids") if type(alternative) is dict else None
-        )
-        sample_ids = alternative.get("component_sample_ids") if type(alternative) is dict else None
-        if (
-            type(alternative) is not dict
-            or set(alternative) != _LOCAL_TRAILING_SUBGROUP_ALTERNATIVE_FIELDS
-            or type(roles) is not list
-            or not roles
-            or len(roles) != len(set(roles))
-            or any(role not in additive_by_role for role in roles)
-            or type(occurrence_ids) is not list
-            or occurrence_ids != [additive_by_role[role]["occurrence_id"] for role in roles]
-            or type(sample_ids) is not list
-            or sample_ids
-            != [
-                sample["sample_id"]
-                for occurrence_id in occurrence_ids
-                for sample in occurrence_samples(occurrence_id)
-            ]
-            or not same_typed_json_v1(
-                alternative.get("values"),
-                _sum_records(
+    required_roles = set(additive_by_role) - set(trusted_equation["shared_component_roles"])
+    expected_alternatives = []
+    for alternative_ordinal, alternative_spec in enumerate(
+        trusted_equation["component_role_alternatives"]
+    ):
+        roles = alternative_spec["component_roles"]
+        if not required_roles <= set(roles) or not all(role in additive_by_role for role in roles):
+            continue
+        occurrence_ids = [additive_by_role[role]["occurrence_id"] for role in roles]
+        component_samples = [
+            sample["sample_id"]
+            for occurrence_id in occurrence_ids
+            for sample in occurrence_samples(occurrence_id)
+        ]
+        expected_alternatives.append(
+            {
+                "alternative_ordinal": alternative_ordinal,
+                "alternative_spec_sha256": canonical_json_sha256_v1(alternative_spec),
+                "component_occurrence_ids": occurrence_ids,
+                "component_roles": canonical_clone_v1(roles),
+                "component_sample_ids": component_samples,
+                "values": _sum_records(
                     [
                         sample_resolution(occurrence_samples(occurrence_id))
                         for occurrence_id in occurrence_ids
                     ]
                 ),
-            )
-        ):
-            raise _error("local trailing subgroup alternative vector receipt drifted")
-        alternative_signatures.append(tuple(roles))
-    if len(alternative_signatures) != len(set(alternative_signatures)) or not any(
-        alternative["component_roles"] == receipt["component_roles"]
+            }
+        )
+    expected_ordinals = [
+        alternative["alternative_ordinal"] for alternative in expected_alternatives
+    ]
+    expected_spec_sha256s = [
+        alternative["alternative_spec_sha256"] for alternative in expected_alternatives
+    ]
+    if (
+        not expected_alternatives
+        or (receipt["selection_kind"].startswith("PARTIAL_") and len(expected_alternatives) < 2)
+        or receipt["applicable_alternative_ordinals"] != expected_ordinals
+        or receipt["applicable_alternative_spec_sha256s"] != expected_spec_sha256s
+        or not same_typed_json_v1(receipt["alternative_value_axes"], expected_alternatives)
+    ):
+        raise _error("local trailing subgroup complete alternative axis drifted")
+    selected_receipts = [
+        alternative
+        for alternative in expected_alternatives
+        if alternative["component_roles"] == receipt["component_roles"]
         and alternative["component_occurrence_ids"] == receipt["component_occurrence_ids"]
         and alternative["component_sample_ids"] == receipt["component_sample_ids"]
-        for alternative in receipt["alternative_value_axes"]
-    ):
+    ]
+    if len(selected_receipts) != 1:
         raise _error("local trailing subgroup selected alternative receipt drifted")
     descendant_samples = [sample for samples in descendant_sample_axes for sample in samples]
     last_descendant_source = max(sample["line_ordinal"] for sample in descendant_samples)
@@ -5067,6 +5206,7 @@ def _build(
     except occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
         raise _error("scoped hierarchical occurrence row-axis validation failed") from exc
     spec = _spec(hierarchy_spec, family_topology_spec)
+    hierarchy_spec_sha256 = canonical_json_sha256_v1(spec)
     if axis["family_id"] != spec["family_id"]:
         raise _error("scoped hierarchy family differs from its occurrence axis")
     row_axis = axis["row_axis"]
@@ -5175,6 +5315,7 @@ def _build(
                 accounting_rows=accounting_rows,
                 equation=equation,
                 family_id=spec["family_id"],
+                hierarchy_spec_sha256=hierarchy_spec_sha256,
                 local_records=records,
                 numeric_sample_universe=axis["numeric_sample_universe"],
                 role_occurrences=axis["role_occurrences"],
