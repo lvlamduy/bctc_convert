@@ -9,6 +9,7 @@ the strongest output is a replayable schema-review readiness proposal.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any
@@ -16,6 +17,7 @@ from typing import Any
 from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1
 from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
+from bctc_ai.evaluation import accounting_family_one_edit_exact_authority_v1 as one_edit_v1
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as topology_candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
@@ -115,6 +117,7 @@ _TRIAL_FIELDS = {
     "topology_scan",
     "unresolved_reasons",
 }
+_TRIAL_FIELDS_V4 = {*_TRIAL_FIELDS, "one_edit_exact_authority_receipt"}
 _BINDING_FIELDS = {"document_axis_id", "metrics", "source_binding_sha256"}
 _INDEX_FIELDS = {"numeric_receipt_id", "semantic_index_id"}
 _METRIC_FIELDS = {
@@ -945,6 +948,57 @@ def _select_candidate_evidence(
     )
 
 
+def _one_edit_authority_pages_v1(
+    joined_pages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Expose both OCR channels on the identical selected full-page line axis."""
+
+    return [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "source_line_index": line["line_ordinal"],
+                    "source_text": line["numeric_recognition"]["raw_prediction"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in joined_pages
+    ]
+
+
+def _selected_v4_one_edit_authority_v1(
+    selected: dict[str, Any] | None,
+    *,
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    topology_candidates: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Gate only the downstream-selected V4 candidate, never a discarded one."""
+
+    if selected is None or topology_candidates is None or selected.get("row_axis") is None:
+        return None, []
+    ordinal = selected.get("candidate_ordinal")
+    if type(ordinal) is not int or not 0 <= ordinal < len(topology_candidates["regions"]):
+        raise _error("selected V4 candidate lost its pre-pruning topology identity")
+    effective_region = selected["row_axis"].get("topology_region")
+    if type(effective_region) is not dict:
+        raise _error("selected V4 candidate lost its effective topology region")
+    try:
+        receipt = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
+            _one_edit_authority_pages_v1(joined_pages),
+            family_spec,
+            topology_candidates["regions"][ordinal],
+            effective_region,
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("selected V4 one-edit exact authority drifted") from exc
+    return receipt, canonical_clone_v1(receipt["unresolved_reasons"])
+
+
 def _candidate_evidence_from_joined_pages(
     *,
     joined_pages: list[dict[str, Any]],
@@ -1197,6 +1251,8 @@ def _trial(
         "source_pdf_ref": canonical_clone_v1(document["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        base["one_edit_exact_authority_receipt"] = None
     if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
             **base,
@@ -1238,6 +1294,15 @@ def _trial(
         topology_candidates=topology_candidates,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
+    one_edit_receipt = None
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
+            selected,
+            joined_pages=joined_pages,
+            family_spec=family_spec,
+            topology_candidates=topology_candidates,
+        )
+        reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
         **base,
         "additive_closure": selected["additive_closure"] if selected is not None else None,
@@ -1247,6 +1312,11 @@ def _trial(
             "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
             if not reasons
             else "UNRESOLVED_EVIDENCE_GATES"
+        ),
+        **(
+            {"one_edit_exact_authority_receipt": one_edit_receipt}
+            if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+            else {}
         ),
         "row_axis": selected["row_axis"] if selected is not None else None,
         "unresolved_reasons": reasons,
@@ -1272,9 +1342,12 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
     except (ValueError, RuntimeError) as exc:
         raise _error("family topology specification drifted") from exc
     policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
+    expected_trial_fields = (
+        _TRIAL_FIELDS_V4 if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4 else _TRIAL_FIELDS
+    )
     if (
         type(baseline_trial) is not dict
-        or set(baseline_trial) != _TRIAL_FIELDS
+        or set(baseline_trial) != expected_trial_fields
         or type(document_snapshot) is not dict
         or set(document_snapshot)
         != {
@@ -1366,6 +1439,15 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         topology_candidates=topology_candidates,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, policy)
+    one_edit_receipt = None
+    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
+            selected,
+            joined_pages=joined_pages,
+            family_spec=family_spec,
+            topology_candidates=topology_candidates,
+        )
+        reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return canonical_clone_v1(
         {
             "additive_closure": (selected["additive_closure"] if selected is not None else None),
@@ -1378,6 +1460,11 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
                 else "UNRESOLVED_EVIDENCE_GATES"
             ),
             "private_provenance": baseline_trial["private_provenance"],
+            **(
+                {"one_edit_exact_authority_receipt": one_edit_receipt}
+                if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4
+                else {}
+            ),
             "row_axis": selected["row_axis"] if selected is not None else None,
             "source_pdf_ref": baseline_trial["source_pdf_ref"],
             "topology_scan": topology_scan,
@@ -1742,6 +1829,8 @@ def _trial_from_document_store_snapshot_v1(
         "source_pdf_ref": canonical_clone_v1(packet["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        base["one_edit_exact_authority_receipt"] = None
     if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
             **base,
@@ -1791,6 +1880,15 @@ def _trial_from_document_store_snapshot_v1(
         runtime_telemetry=runtime_telemetry,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
+    one_edit_receipt = None
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
+            selected,
+            joined_pages=projected_pages,
+            family_spec=family_spec,
+            topology_candidates=topology_candidates,
+        )
+        reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
         **base,
         "additive_closure": selected["additive_closure"] if selected is not None else None,
@@ -1800,6 +1898,11 @@ def _trial_from_document_store_snapshot_v1(
             "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
             if not reasons
             else "UNRESOLVED_EVIDENCE_GATES"
+        ),
+        **(
+            {"one_edit_exact_authority_receipt": one_edit_receipt}
+            if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+            else {}
         ),
         "row_axis": selected["row_axis"] if selected is not None else None,
         "unresolved_reasons": reasons,
@@ -2043,10 +2146,14 @@ def _validate(value: Any) -> dict[str, Any]:
         or type(value["trials"]) is not list
     ):
         raise _error("family-first accounting evidence sweep shape drifted")
+    evaluation_format = value["evaluation_spec"]["value"].get("format_version")
+    expected_trial_fields = (
+        _TRIAL_FIELDS_V4 if evaluation_format == EVALUATION_SPEC_FORMAT_V4 else _TRIAL_FIELDS
+    )
     for ordinal, trial in enumerate(value["trials"], 1):
         if (
             type(trial) is not dict
-            or set(trial) != _TRIAL_FIELDS
+            or set(trial) != expected_trial_fields
             or trial["document_ordinal"] != ordinal
             or type(trial["private_provenance"]) is not dict
             or type(trial["source_pdf_ref"]) is not dict
@@ -2061,6 +2168,39 @@ def _validate(value: Any) -> dict[str, Any]:
             or set(trial["document_axis_binding"]) != _BINDING_FIELDS
         ):
             raise _error("family-first document-axis binding drifted")
+        if evaluation_format == EVALUATION_SPEC_FORMAT_V4:
+            receipt = trial["one_edit_exact_authority_receipt"]
+            if (
+                trial["evidence_status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+                and receipt is None
+            ):
+                raise _error("family-first V4 ready trial lacks one-edit authority receipt")
+            if receipt is not None:
+                try:
+                    receipt = one_edit_v1.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+                        receipt
+                    )
+                except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+                    raise _error("family-first V4 one-edit authority receipt drifted") from exc
+                if (
+                    receipt["family_id"] != value["family_id"]
+                    or receipt["input_binding"]["family_spec_sha256"]
+                    != value["family_spec"]["sha256"]
+                    or trial["evidence_status"]
+                    not in {
+                        "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+                        "UNRESOLVED_EVIDENCE_GATES",
+                    }
+                    or any(
+                        reason not in trial["unresolved_reasons"]
+                        for reason in receipt["unresolved_reasons"]
+                    )
+                    or (
+                        receipt["unresolved_reasons"]
+                        and trial["evidence_status"] != "UNRESOLVED_EVIDENCE_GATES"
+                    )
+                ):
+                    raise _error("family-first V4 one-edit authority status binding drifted")
     if (
         type(value["metrics"]) is not dict
         or set(value["metrics"]) != _METRIC_FIELDS
