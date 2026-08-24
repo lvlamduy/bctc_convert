@@ -1618,6 +1618,284 @@ def _strict_same_population_selection_policy() -> dict:
     }
 
 
+def _direct_visible_provision_record(
+    role: str,
+    coefficients: tuple[int, int],
+    *,
+    parent_role: str,
+) -> dict:
+    values = [
+        {
+            "column_ordinal": ordinal,
+            "number": {
+                "coefficient": coefficient,
+                "percentage_mark_present": False,
+                "scale": 0,
+            },
+        }
+        for ordinal, coefficient in enumerate(coefficients)
+    ]
+    source_values = [
+        {
+            "column_ordinal": value["column_ordinal"],
+            "parsed_token": {
+                "classification": (
+                    "DASH_ZERO" if value["number"]["coefficient"] == 0 else "SIGNED_NUMBER"
+                ),
+                **value["number"],
+            },
+        }
+        for value in values
+    ]
+    return {
+        "component_roles": [],
+        "resolution_kind": "VISIBLE_SOURCE_ROLE",
+        "role": role,
+        "source": {
+            "kind": "ROLE_ROW",
+            "record": {
+                "label_match": {
+                    "match_kind": "EXACT_ACCENTLESS_ALIAS",
+                    "occurrence_id": f"aforav2:occurrence:{role.lower()}",
+                    "role": role,
+                    "role_kind": "ADDITIVE_CHILD",
+                    "scope_owner_occurrence_id": f"aforav2:owner:{parent_role.lower()}",
+                    "scope_owner_role": None if parent_role == "FAMILY" else parent_role,
+                    "source_scope_binding": {
+                        "source_scope_role": parent_role,
+                        "status": "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING",
+                        "target_role": role,
+                    },
+                },
+                "missing_column_ordinals": [],
+                "role": role,
+                "role_kind": "ADDITIVE_CHILD",
+                "status": "VISIBLE_VALUE_LANES_BOUND",
+                "values": source_values,
+            },
+        },
+        "values": values,
+    }
+
+
+def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple[dict, dict]:
+    summary = _ready_hierarchical_candidate(
+        [
+            "EXPLICIT_FAMILY_TOTAL",
+            "INTERBANK_DEPOSIT_GROUP",
+            "INTERBANK_LOAN_GROUP",
+            "TOTAL_INTERBANK_PROVISION",
+            "FAMILY",
+        ],
+        candidate_ordinal=0,
+        coefficients=root,
+    )
+    detail = _ready_hierarchical_candidate(
+        [
+            "EXPLICIT_FAMILY_TOTAL",
+            "DEMAND_DEPOSIT_VND",
+            "INTERBANK_DEPOSIT_GROUP",
+            "INTERBANK_LOAN_VND",
+            "INTERBANK_LOAN_GROUP",
+            "INTERBANK_DEPOSIT_PROVISION",
+            "INTERBANK_LOAN_PROVISION",
+            "FAMILY",
+        ],
+        candidate_ordinal=1,
+        coefficients=root,
+    )
+
+    def replace_role(candidate: dict, record: dict) -> None:
+        records = candidate["additive_closure"]["resolved_roles"]
+        records[records.index(next(item for item in records if item["role"] == record["role"]))] = (
+            record
+        )
+
+    replace_role(
+        summary,
+        _direct_visible_provision_record(
+            "TOTAL_INTERBANK_PROVISION", (0, -50_000), parent_role="FAMILY"
+        ),
+    )
+    replace_role(
+        detail,
+        _direct_visible_provision_record(
+            "INTERBANK_DEPOSIT_PROVISION",
+            (0, 0),
+            parent_role="INTERBANK_DEPOSIT_GROUP",
+        ),
+    )
+    replace_role(
+        detail,
+        _direct_visible_provision_record(
+            "INTERBANK_LOAN_PROVISION",
+            (0, -50_000),
+            parent_role="INTERBANK_LOAN_GROUP",
+        ),
+    )
+    summary["additive_closure"]["equations"] = {
+        "global": [
+            {
+                "component_roles_present": [
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                    "TOTAL_INTERBANK_PROVISION",
+                ],
+                "result_role": "FAMILY",
+                "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                "visible_result_roles": ["FAMILY", "EXPLICIT_FAMILY_TOTAL"],
+            }
+        ]
+    }
+    detail["additive_closure"]["equations"] = {
+        "global": [
+            {
+                "component_roles_present": [
+                    "DEMAND_DEPOSIT_VND",
+                    "INTERBANK_DEPOSIT_PROVISION",
+                ],
+                "result_role": "INTERBANK_DEPOSIT_GROUP",
+                "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                "visible_result_roles": ["INTERBANK_DEPOSIT_GROUP"],
+            },
+            {
+                "component_roles_present": [
+                    "INTERBANK_LOAN_VND",
+                    "INTERBANK_LOAN_PROVISION",
+                ],
+                "result_role": "INTERBANK_LOAN_GROUP",
+                "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                "visible_result_roles": ["INTERBANK_LOAN_GROUP"],
+            },
+            {
+                "component_roles_present": [
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                ],
+                "result_role": "FAMILY",
+                "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                "visible_result_roles": ["FAMILY", "EXPLICIT_FAMILY_TOTAL"],
+            },
+        ]
+    }
+    return summary, detail
+
+
+@pytest.mark.parametrize(
+    "root",
+    [
+        (110_986_765, 108_003_288),
+        (92_094_858, 108_003_288),
+    ],
+)
+def test_v4_exact_coarse_provision_yields_to_parented_split_detail(root: tuple[int, int]) -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=root)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is detail
+    assert reasons == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "MISMATCH_WITH_SAME_ROOT",
+        "MISSING_SPLIT_ROLE",
+        "OMITTED_COMMON_LANE",
+        "PARTIAL_SPLIT_LANES",
+        "DUPLICATE_SPLIT_ROLE",
+        "ROUNDED_SPLIT_ROLE",
+        "WRONG_SPLIT_PARENT",
+        "SPLIT_GROUP_NOT_RECONCILED",
+    ],
+)
+def test_v4_provision_presentation_stays_incomparable_without_exact_split_proof(
+    mutation: str,
+) -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+    records = detail["additive_closure"]["resolved_roles"]
+    coarse = next(
+        item
+        for item in summary["additive_closure"]["resolved_roles"]
+        if item["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    deposit = next(item for item in records if item["role"] == "INTERBANK_DEPOSIT_PROVISION")
+    loan = next(item for item in records if item["role"] == "INTERBANK_LOAN_PROVISION")
+    if mutation == "MISMATCH_WITH_SAME_ROOT":
+        loan["values"][1]["number"]["coefficient"] += 1
+        loan["source"]["record"]["values"][1]["parsed_token"]["coefficient"] += 1
+    elif mutation == "MISSING_SPLIT_ROLE":
+        records.remove(loan)
+    elif mutation == "OMITTED_COMMON_LANE":
+        for record in (coarse, deposit, loan):
+            record["values"] = record["values"][:1]
+            record["source"]["record"]["values"] = record["source"]["record"]["values"][:1]
+    elif mutation == "PARTIAL_SPLIT_LANES":
+        loan["source"]["record"]["missing_column_ordinals"] = [1]
+        loan["source"]["record"]["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+    elif mutation == "DUPLICATE_SPLIT_ROLE":
+        records.append(copy.deepcopy(deposit))
+    elif mutation == "ROUNDED_SPLIT_ROLE":
+        loan["resolution_kind"] = "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS"
+    elif mutation == "WRONG_SPLIT_PARENT":
+        match = deposit["source"]["record"]["label_match"]
+        match["scope_owner_role"] = "INTERBANK_LOAN_GROUP"
+        match["source_scope_binding"]["source_scope_role"] = "INTERBANK_LOAN_GROUP"
+    else:
+        equation = next(
+            item
+            for item in detail["additive_closure"]["equations"]["global"]
+            if item["result_role"] == "INTERBANK_DEPOSIT_GROUP"
+        )
+        equation["status"] = "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_equal_split_detail_candidates_remain_ambiguous() -> None:
+    _, first = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+    second = copy.deepcopy(first)
+    second["candidate_ordinal"] = 2
+
+    selected, reasons = subject._select_candidate_evidence(
+        [first, second],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v3_does_not_apply_v4_provision_presentation_equivalence() -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail], _strict_same_population_selection_policy()
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
 def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> None:
     summary = _ready_hierarchical_candidate(
         ["EXPLICIT_FAMILY_TOTAL", "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
