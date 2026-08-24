@@ -1315,6 +1315,255 @@ def test_authenticated_extreme_margin_chromatic_furniture_keeps_one_owned_sample
     )
 
 
+def test_extreme_margin_v2_connected_stamp_accepts_separated_label_and_replays() -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages(candidate_vietocr="soom")
+    pages[0]["lines"].append(_line(903, "Lãi suất năm", "", [700, 290, 850, 310]))
+    _reindex_page_lines(pages[0]["lines"])
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color="red", with_render=True
+    )
+
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
+    assert evidence["status"] == subject._EXTREME_MARGIN_FURNITURE_V2_STATUS
+    assert evidence["geometry"]["margin_boundary"] == 939
+    assert evidence["label_collision_proof"]["status"] == ("EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS")
+    assert evidence["label_collision_proof"]["maximum_label_right"] == 850
+    proof = evidence["expanded_component_proof"]
+    component = proof["component_axis"][proof["qualifying_component_ordinal"]]
+    assert proof["qualifying_component_count"] == 1
+    assert component["clear_extent_above_center"] >= proof["minimum_side_extent_pixels"]
+    assert component["clear_extent_below_center"] >= proof["minimum_side_extent_pixels"]
+    assert (
+        component["chromatic_original_ink_pixel_count"] * 2
+        >= (component["original_ink_pixel_count"])
+    )
+    sample = next(
+        item
+        for item in axis["numeric_sample_universe"]
+        if item["sample_id"] == evidence["sample_id"]
+    )
+    assert sample["owner_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    assert sample["owner_id"] == evidence["evidence_id"]
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        len(
+            [
+                item
+                for item in closure["coverage_receipt"]
+                if item["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+                and item["sample_ids"] == [evidence["sample_id"]]
+            ]
+        )
+        == 1
+    )
+    render = _snapshot_and_render(
+        pages,
+        [],
+        colored_bboxes=[(line["bbox"], "red") for line in stamp_lines],
+    )[1]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "BLACK",
+        "WEAK_CHROMA",
+        "NO_PEERS",
+        "SINGLE_PEER",
+        "DIGIT_PEERS",
+        "LABEL_TEXT",
+        "LABEL_CROSSES_MARGIN",
+        "MONEY_LANE",
+    ],
+)
+def test_extreme_margin_v2_rejects_missing_or_ambiguous_authority(attack: str) -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages(candidate_vietocr="soom")
+    color = "red"
+    if attack == "BLACK":
+        color = "black"
+    elif attack == "WEAK_CHROMA":
+        color = "#b4aaaa"
+    elif attack == "NO_PEERS":
+        pages, stamp_lines = _extreme_margin_fixture_pages(
+            include_peers=False, candidate_vietocr="soom"
+        )
+    elif attack == "SINGLE_PEER":
+        removed = stamp_lines.pop(0)
+        pages[0]["lines"].remove(removed)
+        _reindex_page_lines(pages[0]["lines"])
+    elif attack == "DIGIT_PEERS":
+        for line in stamp_lines[:-1]:
+            line["numeric_recognition"]["raw_prediction"] = "STAMP2"
+    elif attack == "LABEL_TEXT":
+        pages, stamp_lines = _extreme_margin_fixture_pages(candidate_vietocr="UNKNOWN LABEL")
+    elif attack == "LABEL_CROSSES_MARGIN":
+        pages[0]["lines"].append(_line(903, "Nhãn", "", [920, 290, 945, 310]))
+        _reindex_page_lines(pages[0]["lines"])
+    elif attack == "MONEY_LANE":
+        pages, stamp_lines = _extreme_margin_fixture_pages(
+            candidate_bbox=[850, 290, 900, 310], candidate_vietocr="soom"
+        )
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color=color, with_render=True
+    )
+
+    assert axis["authenticated_extreme_margin_furniture_evidence"] == []
+    if attack == "MONEY_LANE":
+        return
+    assert axis["internal_unassigned_numeric_clusters"]
+    assert all(
+        cluster["status"]
+        in {
+            "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER",
+            "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+        }
+        for cluster in axis["internal_unassigned_numeric_clusters"]
+    )
+
+
+def _extreme_margin_v2_component_test_proof(
+    rectangles: list[tuple[list[int], str]],
+) -> dict | None:
+    image = Image.new("RGB", (1000, 800), "white")
+    draw = ImageDraw.Draw(image)
+    for bbox, color in rectangles:
+        draw.rectangle(tuple(bbox), fill=color)
+    return subject._authenticated_extreme_margin_v2_component_proof(
+        image=image,
+        render_record={
+            "document_ordinal": 1,
+            "physical_page": 1,
+            "render_ref": {
+                "pixel_height": 800,
+                "pixel_width": 1000,
+                "sha256": "0" * 64,
+                "size_bytes": 1,
+            },
+        },
+        render_id="ffaprv1:render:fixture",
+        candidate={"bbox": [950, 290, 995, 310]},
+        margin_boundary=939,
+        scale=20.0,
+    )
+
+
+@pytest.mark.parametrize(
+    "rectangles",
+    [
+        [([940, 292, 999, 308], "red")],
+        [([960, 299, 970, 360], "red")],
+        [([960, 260, 970, 340], "black")],
+        [([952, 260, 960, 340], "red"), ([980, 260, 988, 340], "red")],
+    ],
+)
+def test_extreme_margin_v2_component_rejects_horizontal_one_sided_black_or_nonunique(
+    rectangles: list[tuple[list[int], str]],
+) -> None:
+    assert _extreme_margin_v2_component_test_proof(rectangles) is None
+
+
+def test_extreme_margin_v2_component_and_render_tamper_rejects() -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages(candidate_vietocr="soom")
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color="red", with_render=True
+    )
+    qualification_tamper = copy.deepcopy(axis)
+    evidence = qualification_tamper["authenticated_extreme_margin_furniture_evidence"][0]
+    component = evidence["expanded_component_proof"]["component_axis"][
+        evidence["expanded_component_proof"]["qualifying_component_ordinal"]
+    ]
+    component["target_overlap_ink_pixel_count"] = 0
+    evidence["expanded_component_proof"]["component_axis_sha256"] = canonical_json_sha256_v1(
+        evidence["expanded_component_proof"]["component_axis"]
+    )
+    _coherently_rehash_furniture_axis(qualification_tamper)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="component uniqueness",
+    ):
+        subject._validate_result(qualification_tamper)
+
+    label_tamper = copy.deepcopy(axis)
+    evidence = label_tamper["authenticated_extreme_margin_furniture_evidence"][0]
+    evidence["label_collision_proof"]["semantic_label_line_ordinals"].append(
+        evidence["source_record"]["line_ordinal"]
+    )
+    evidence["label_collision_proof"]["semantic_label_line_ordinals"].sort()
+    _coherently_rehash_furniture_axis(label_tamper)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="label collision proof",
+    ):
+        subject._validate_result(label_tamper)
+
+    pixel_tamper = copy.deepcopy(axis)
+    pixel_tamper["authenticated_extreme_margin_furniture_evidence"][0]["expanded_component_proof"][
+        "expanded_rgb_sha256"
+    ] = "0" * 64
+    _coherently_rehash_furniture_axis(pixel_tamper)
+    assert subject._validate_result(pixel_tamper) == pixel_tamper
+    render = _snapshot_and_render(
+        pages,
+        [],
+        colored_bboxes=[(line["bbox"], "red") for line in stamp_lines],
+    )[1]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            pixel_tamper,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+
+
 def test_extreme_margin_furniture_fails_closed_without_every_gate() -> None:
     pages, stamp_lines = _extreme_margin_fixture_pages()
     _scan, _candidates, _snapshot, no_render = _build_authenticated_extreme_margin_fixture(

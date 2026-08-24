@@ -216,8 +216,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "551aa5ebb18cc552bfacd112c53463bee91f0d458510d79c18d556303d674299",
-        "size_bytes": 264_180,
+        "sha256": "0c35fe6f21ed4fbf9c2264ea847f0afcda63c1fbd103f8f75fdb48153385d693",
+        "size_bytes": 307_773,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -3026,10 +3026,18 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
     }
     furniture_by_id: dict[str, Mapping[str, Any]] = {}
     for evidence in value["authenticated_extreme_margin_furniture_evidence"]:
+        status = evidence.get("status") if type(evidence) is dict else None
+        expected_fields = (
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_FIELDS
+            if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
+            else occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_FIELDS
+            if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS
+            else None
+        )
         if (
             type(evidence) is not dict
-            or set(evidence) != occurrence_v2._EXTREME_MARGIN_FURNITURE_FIELDS
-            or evidence.get("status") != occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
+            or expected_fields is None
+            or set(evidence) != expected_fields
             or type(evidence.get("evidence_id")) is not str
         ):
             raise _error("scoped hierarchical extreme-margin furniture evidence drifted")

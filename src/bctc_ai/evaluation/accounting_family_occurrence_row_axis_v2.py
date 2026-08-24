@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from PIL import Image, ImageFilter
+
 from bctc_ai.evaluation import accounting_family_coextensive_parent_total_v1 as total_v1
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
@@ -301,6 +303,9 @@ _LABELED_LABEL_LANE_STATUS = "EXPLICIT_SAME_ROW_LABEL_FRAGMENT_PRESENT"
 _INTERNAL_UNASSIGNED_CLUSTER_STATUS = "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
 _OFF_LANE_NUMERIC_CLUSTER_STATUS = "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
 _EXTREME_MARGIN_FURNITURE_STATUS = "AUTHENTICATED_EXTREME_MARGIN_CHROMATIC_ANNOTATION_FURNITURE"
+_EXTREME_MARGIN_FURNITURE_V2_STATUS = (
+    "AUTHENTICATED_EXTREME_MARGIN_CONNECTED_CHROMATIC_ANNOTATION_FURNITURE_V2"
+)
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
 _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
     "DASH_ZERO",
@@ -324,6 +329,11 @@ _EXTREME_MARGIN_FURNITURE_FIELDS = {
     "source_record",
     "status",
     "topology_candidates_id",
+}
+_EXTREME_MARGIN_FURNITURE_V2_FIELDS = {
+    *_EXTREME_MARGIN_FURNITURE_FIELDS,
+    "expanded_component_proof",
+    "label_collision_proof",
 }
 _EXTREME_MARGIN_GEOMETRY_FIELDS = {
     "candidate_bbox",
@@ -367,6 +377,59 @@ _EXTREME_MARGIN_RENDER_BINDING_FIELDS = {
     "raw_pixel_bbox",
     "render_id",
     "render_ref",
+}
+_EXTREME_MARGIN_V2_GEOMETRY_FIELDS = {
+    "candidate_bbox",
+    "candidate_center_quads",
+    "lane_centers_quads",
+    "lane_tolerance",
+    "margin_boundary",
+    "nearest_lane_ordinal",
+    "page_width",
+    "right_edge_gap",
+}
+_EXTREME_MARGIN_V2_LABEL_COLLISION_FIELDS = {
+    "candidate_line_ordinal",
+    "margin_boundary",
+    "maximum_label_right",
+    "same_row_label_evidence",
+    "same_row_label_evidence_sha256",
+    "semantic_label_line_ordinals",
+    "status",
+}
+_EXTREME_MARGIN_V2_COMPONENT_FIELDS = {
+    "above_center_original_ink_pixel_count",
+    "bbox",
+    "below_center_original_ink_pixel_count",
+    "chromatic_original_ink_pixel_count",
+    "clear_extent_above_center",
+    "clear_extent_below_center",
+    "closed_pixel_count",
+    "original_ink_pixel_count",
+    "target_overlap_ink_pixel_count",
+    "vertical_extension_outside_target",
+}
+_EXTREME_MARGIN_V2_COMPONENT_PROOF_FIELDS = {
+    "body_text_scale",
+    "candidate_center_twice",
+    "chroma_spread_threshold",
+    "closed_mask_sha256",
+    "component_axis",
+    "component_axis_sha256",
+    "expanded_pixel_count",
+    "expanded_raw_pixel_bbox",
+    "expanded_rgb_sha256",
+    "ink_threshold",
+    "minimum_component_height",
+    "minimum_original_ink_pixels",
+    "minimum_side_extent_pixels",
+    "minimum_side_ink_pixels",
+    "minimum_target_overlap_ink_pixels",
+    "minimum_vertical_extension_pixels",
+    "morphology_kernel_size",
+    "qualifying_component_count",
+    "qualifying_component_ordinal",
+    "render_binding",
 }
 _MAX_ROLE_OCCURRENCES = 4_096
 _MAX_EXISTING_DASH_CELLS = 16_384
@@ -3734,6 +3797,419 @@ def _build_authenticated_extreme_margin_furniture_evidence(
     }, False
 
 
+def _extreme_margin_v2_candidate_surface_is_nonnumeric(line: Mapping[str, Any]) -> bool:
+    surface = line["vietocr_text"].strip()
+    compact = "".join(normalize_vietnamese_anchor_v1(surface).split())
+    return (
+        not any(character.isdigit() for character in surface)
+        and row_v1.parse_visible_financial_numeric_token_v1(surface)["classification"]
+        not in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+        and len(compact) <= 4
+    )
+
+
+def _extreme_margin_v2_band_axis(
+    page: Mapping[str, Any], *, margin_boundary: int
+) -> list[dict[str, Any]]:
+    page_width = page["page_width"]
+    return sorted(
+        (
+            _extreme_margin_line_record(line)
+            for line in page["lines"]
+            if line["bbox"][0] >= margin_boundary
+            and line["bbox"][2] <= page_width
+            and (
+                line["vietocr_text"].strip()
+                or line["numeric_recognition"]["raw_prediction"].strip()
+            )
+        ),
+        key=lambda item: (item["line_ordinal"], item["bbox"]),
+    )
+
+
+def _extreme_margin_v2_geometric_peer_ordinals(
+    source_line_axis: Sequence[Mapping[str, Any]], candidate: Mapping[str, Any]
+) -> list[int]:
+    candidate_bbox = candidate["bbox"]
+    candidate_height = candidate_bbox[3] - candidate_bbox[1]
+    peers = []
+    for line in source_line_axis:
+        if line["line_ordinal"] == candidate["line_ordinal"]:
+            continue
+        bbox = line["bbox"]
+        vertical_gap = max(0, candidate_bbox[1] - bbox[3], bbox[1] - candidate_bbox[3])
+        if (
+            min(candidate_bbox[2], bbox[2]) <= max(candidate_bbox[0], bbox[0])
+            or vertical_gap > 6 * max(candidate_height, bbox[3] - bbox[1])
+            or not _extreme_margin_peer_surfaces_are_nonnumeric(line)
+        ):
+            continue
+        peers.append(line["line_ordinal"])
+    return sorted(peers)
+
+
+def _extreme_margin_v2_component_qualifies(
+    component: Mapping[str, Any],
+    *,
+    margin_boundary: int,
+    target_bbox: Sequence[int],
+    minimum_component_height: int,
+    minimum_original_ink_pixels: int,
+    minimum_side_extent_pixels: int,
+    minimum_side_ink_pixels: int,
+    minimum_target_overlap_ink_pixels: int,
+    minimum_vertical_extension_pixels: int,
+) -> bool:
+    bbox = component["bbox"]
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
+    return (
+        bbox[0] >= margin_boundary
+        and min(bbox[2], target_bbox[2]) > max(bbox[0], target_bbox[0])
+        and min(bbox[3], target_bbox[3]) > max(bbox[1], target_bbox[1])
+        and height >= minimum_component_height
+        and height * 5 >= width * 6
+        and component["original_ink_pixel_count"] >= minimum_original_ink_pixels
+        and component["chromatic_original_ink_pixel_count"] * 2
+        >= component["original_ink_pixel_count"]
+        and component["target_overlap_ink_pixel_count"] >= minimum_target_overlap_ink_pixels
+        and component["clear_extent_above_center"] >= minimum_side_extent_pixels
+        and component["clear_extent_below_center"] >= minimum_side_extent_pixels
+        and component["above_center_original_ink_pixel_count"] >= minimum_side_ink_pixels
+        and component["below_center_original_ink_pixel_count"] >= minimum_side_ink_pixels
+        and component["vertical_extension_outside_target"] >= minimum_vertical_extension_pixels
+    )
+
+
+def _authenticated_extreme_margin_v2_component_proof(
+    *,
+    image: Any,
+    render_record: Mapping[str, Any],
+    render_id: str,
+    candidate: Mapping[str, Any],
+    margin_boundary: int,
+    scale: float,
+) -> dict[str, Any] | None:
+    target_bbox = candidate["bbox"]
+    target_height = target_bbox[3] - target_bbox[1]
+    expanded_bbox = [
+        margin_boundary,
+        max(0, target_bbox[1] - 2 * target_height),
+        image.width,
+        min(image.height, target_bbox[3] + 2 * target_height),
+    ]
+    if (
+        expanded_bbox[0] >= expanded_bbox[2]
+        or expanded_bbox[1] >= expanded_bbox[3]
+        or render_record["render_ref"]["pixel_width"] != image.width
+        or render_record["render_ref"]["pixel_height"] != image.height
+    ):
+        return None
+    expanded = image.crop(tuple(expanded_bbox))
+    expanded_rgb = expanded.tobytes()
+    pixels = list(zip(expanded_rgb[0::3], expanded_rgb[1::3], expanded_rgb[2::3], strict=True))
+    ink_threshold = 220
+    chroma_spread_threshold = 30
+    original_ink = bytes(255 if min(pixel) < ink_threshold else 0 for pixel in pixels)
+    kernel_radius = max(1, min(7, int(scale // 8)))
+    kernel_size = 2 * kernel_radius + 1
+    closed = (
+        Image.frombytes("L", expanded.size, original_ink)
+        .filter(ImageFilter.MaxFilter(kernel_size))
+        .filter(ImageFilter.MinFilter(kernel_size))
+    )
+    closed_bytes = bytes(closed.tobytes())
+    width, height = expanded.size
+    visited = bytearray(len(closed_bytes))
+    component_axis = []
+    candidate_center_twice = target_bbox[1] + target_bbox[3]
+    for origin in range(len(closed_bytes)):
+        if not closed_bytes[origin] or visited[origin]:
+            continue
+        visited[origin] = 1
+        stack = [origin]
+        indices = []
+        while stack:
+            index = stack.pop()
+            indices.append(index)
+            x = index % width
+            y = index // width
+            for next_y in range(max(0, y - 1), min(height, y + 2)):
+                row_offset = next_y * width
+                for next_x in range(max(0, x - 1), min(width, x + 2)):
+                    neighbor = row_offset + next_x
+                    if closed_bytes[neighbor] and not visited[neighbor]:
+                        visited[neighbor] = 1
+                        stack.append(neighbor)
+        xs = [index % width for index in indices]
+        ys = [index // width for index in indices]
+        bbox = [
+            expanded_bbox[0] + min(xs),
+            expanded_bbox[1] + min(ys),
+            expanded_bbox[0] + max(xs) + 1,
+            expanded_bbox[1] + max(ys) + 1,
+        ]
+        original_indices = [index for index in indices if original_ink[index]]
+        chromatic_indices = [
+            index
+            for index in original_indices
+            if max(pixels[index]) - min(pixels[index]) >= chroma_spread_threshold
+        ]
+        target_overlap = 0
+        above = 0
+        below = 0
+        for index in original_indices:
+            absolute_x = expanded_bbox[0] + index % width
+            absolute_y = expanded_bbox[1] + index // width
+            if (
+                target_bbox[0] <= absolute_x < target_bbox[2]
+                and target_bbox[1] <= absolute_y < target_bbox[3]
+            ):
+                target_overlap += 1
+            pixel_center_twice = 2 * absolute_y + 1
+            if pixel_center_twice < candidate_center_twice:
+                above += 1
+            elif pixel_center_twice > candidate_center_twice:
+                below += 1
+        component_axis.append(
+            {
+                "above_center_original_ink_pixel_count": above,
+                "bbox": bbox,
+                "below_center_original_ink_pixel_count": below,
+                "chromatic_original_ink_pixel_count": len(chromatic_indices),
+                "clear_extent_above_center": max(0, (candidate_center_twice - 2 * bbox[1]) // 2),
+                "clear_extent_below_center": max(0, (2 * bbox[3] - candidate_center_twice) // 2),
+                "closed_pixel_count": len(indices),
+                "original_ink_pixel_count": len(original_indices),
+                "target_overlap_ink_pixel_count": target_overlap,
+                "vertical_extension_outside_target": max(0, target_bbox[1] - bbox[1])
+                + max(0, bbox[3] - target_bbox[3]),
+            }
+        )
+    component_axis.sort(key=lambda item: (item["bbox"], item["closed_pixel_count"]))
+    if len(component_axis) > _MAX_ROLE_OCCURRENCES:
+        return None
+    minimum_component_height = max(6, (3 * target_height + 1) // 2)
+    minimum_original_ink_pixels = max(64, 2 * target_height)
+    minimum_side_extent_pixels = max(4, (target_height + 7) // 8)
+    minimum_side_ink_pixels = max(8, target_height // 2)
+    minimum_target_overlap_ink_pixels = max(16, target_height // 4)
+    minimum_vertical_extension_pixels = max(4, (target_height + 1) // 2)
+    qualifying = [
+        ordinal
+        for ordinal, component in enumerate(component_axis)
+        if _extreme_margin_v2_component_qualifies(
+            component,
+            margin_boundary=margin_boundary,
+            target_bbox=target_bbox,
+            minimum_component_height=minimum_component_height,
+            minimum_original_ink_pixels=minimum_original_ink_pixels,
+            minimum_side_extent_pixels=minimum_side_extent_pixels,
+            minimum_side_ink_pixels=minimum_side_ink_pixels,
+            minimum_target_overlap_ink_pixels=minimum_target_overlap_ink_pixels,
+            minimum_vertical_extension_pixels=minimum_vertical_extension_pixels,
+        )
+    ]
+    if len(qualifying) != 1:
+        return None
+    return {
+        "body_text_scale": float(scale),
+        "candidate_center_twice": candidate_center_twice,
+        "chroma_spread_threshold": chroma_spread_threshold,
+        "closed_mask_sha256": hashlib.sha256(closed_bytes).hexdigest(),
+        "component_axis": component_axis,
+        "component_axis_sha256": canonical_json_sha256_v1(component_axis),
+        "expanded_pixel_count": len(pixels),
+        "expanded_raw_pixel_bbox": expanded_bbox,
+        "expanded_rgb_sha256": hashlib.sha256(expanded_rgb).hexdigest(),
+        "ink_threshold": ink_threshold,
+        "minimum_component_height": minimum_component_height,
+        "minimum_original_ink_pixels": minimum_original_ink_pixels,
+        "minimum_side_extent_pixels": minimum_side_extent_pixels,
+        "minimum_side_ink_pixels": minimum_side_ink_pixels,
+        "minimum_target_overlap_ink_pixels": minimum_target_overlap_ink_pixels,
+        "minimum_vertical_extension_pixels": minimum_vertical_extension_pixels,
+        "morphology_kernel_size": kernel_size,
+        "qualifying_component_count": 1,
+        "qualifying_component_ordinal": qualifying[0],
+        "render_binding": {
+            "document_ordinal": render_record["document_ordinal"],
+            "physical_page": render_record["physical_page"],
+            "raw_pixel_bbox": expanded_bbox,
+            "render_id": render_id,
+            "render_ref": canonical_clone_v1(render_record["render_ref"]),
+        },
+    }
+
+
+def _build_authenticated_extreme_margin_furniture_evidence_v2(
+    *,
+    topology_candidates_id: str | None,
+    pages: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    ordered_numeric_lines: Sequence[Mapping[str, Any]],
+    cluster: Mapping[str, Any],
+    source_record: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+    matches: Sequence[Mapping[str, Any]],
+    selected_snapshot: Mapping[str, Any] | None,
+    render_by_page: Mapping[int, Mapping[str, Any]],
+) -> tuple[dict[str, Any] | None, bool]:
+    if (
+        type(topology_candidates_id) is not str
+        or not topology_candidates_id.startswith("aftcv2:result:")
+        or len(ordered_numeric_lines) != 1
+        or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+        or source_record.get("parsed_token", {}).get("classification") != "SIGNED_NUMBER"
+        or type(page.get("page_width")) is not int
+        or page["page_width"] <= 0
+        or not centers
+    ):
+        return None, False
+    candidate = ordered_numeric_lines[0]
+    if not _extreme_margin_v2_candidate_surface_is_nonnumeric(candidate):
+        return None, False
+    center_quads = [center * 4 for center in centers]
+    if any(not float(center).is_integer() for center in center_quads):
+        return None, False
+    margin_boundary = math.ceil(centers[-1] + lane_tolerance)
+    bbox = candidate["bbox"]
+    page_width = page["page_width"]
+    if bbox[0] < margin_boundary or bbox[2] > page_width:
+        return None, False
+    full_page_label_band, full_page_label_evidence = _build_inspected_label_band(
+        ordered_numeric_lines=ordered_numeric_lines,
+        page=page,
+        pages=pages,
+        local_lines=page["lines"],
+    )
+    if any(label["bbox"][2] >= margin_boundary for label in full_page_label_evidence):
+        return None, False
+    semantic_label_line_ordinals = sorted(
+        {
+            page["lines"][index]["line_ordinal"]
+            for match in matches
+            if match["page_sequence"] == page["page_sequence"]
+            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
+        }
+    )
+    if candidate["line_ordinal"] in semantic_label_line_ordinals:
+        return None, False
+    margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
+    candidate_records = [
+        line for line in margin_axis if line["sample_id"] == candidate["sample_id"]
+    ]
+    peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(margin_axis, candidate)
+    if len(candidate_records) != 1 or len(peer_ordinals) < 2:
+        return None, False
+    page_sequence = page["page_sequence"]
+    if selected_snapshot is None or page_sequence not in render_by_page:
+        return None, selected_snapshot is not None
+    render = render_by_page[page_sequence]
+    try:
+        render_record, payload = render_v1._validated_render_snapshot(render)
+        image = render_v1._png_image(payload).convert("RGB")
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise _error("authenticated extreme-margin V2 render replay failed") from exc
+    if image.width != page_width:
+        return None, False
+    candidate_crop = _authenticated_extreme_margin_crop_proof(
+        image=image,
+        render_record=render_record,
+        render_id=render["render_id"],
+        line=candidate,
+    )
+    component_proof = _authenticated_extreme_margin_v2_component_proof(
+        image=image,
+        render_record=render_record,
+        render_id=render["render_id"],
+        candidate=candidate,
+        margin_boundary=margin_boundary,
+        scale=scale,
+    )
+    if component_proof is None:
+        return None, False
+    page_line_by_ordinal = {line["line_ordinal"]: line for line in page["lines"]}
+    peer_crops = []
+    for ordinal in peer_ordinals:
+        proof = _authenticated_extreme_margin_crop_proof(
+            image=image,
+            render_record=render_record,
+            render_id=render["render_id"],
+            line=page_line_by_ordinal[ordinal],
+        )
+        if (
+            proof["ink_pixel_count"] > 0
+            and proof["chromatic_ink_pixel_count"] * 2 >= proof["ink_pixel_count"]
+        ):
+            peer_crops.append(proof)
+    qualifying_peer_ordinals = sorted(
+        proof["source_line_record"]["line_ordinal"] for proof in peer_crops
+    )
+    if len(qualifying_peer_ordinals) < 2:
+        return None, False
+    document_pages_sha256 = canonical_json_sha256_v1(pages)
+    maximum_label_right = (
+        max(label["bbox"][2] for label in full_page_label_evidence)
+        if full_page_label_evidence
+        else None
+    )
+    material = {
+        "candidate_crop_proof": candidate_crop,
+        "document_pages_sha256": document_pages_sha256,
+        "expanded_component_proof": component_proof,
+        "full_page_inspected_label_band": full_page_label_band,
+        "geometry": {
+            "candidate_bbox": canonical_clone_v1(bbox),
+            "candidate_center_quads": 2 * (bbox[0] + bbox[2]),
+            "lane_centers_quads": [int(center) for center in center_quads],
+            "lane_tolerance": float(lane_tolerance),
+            "margin_boundary": margin_boundary,
+            "nearest_lane_ordinal": source_record["column_ordinal"],
+            "page_width": page_width,
+            "right_edge_gap": page_width - bbox[2],
+        },
+        "label_collision_proof": {
+            "candidate_line_ordinal": candidate["line_ordinal"],
+            "margin_boundary": margin_boundary,
+            "maximum_label_right": maximum_label_right,
+            "same_row_label_evidence": full_page_label_evidence,
+            "same_row_label_evidence_sha256": canonical_json_sha256_v1(full_page_label_evidence),
+            "semantic_label_line_ordinals": semantic_label_line_ordinals,
+            "status": (
+                "EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS"
+                if full_page_label_evidence
+                else "NO_SAME_ROW_LABEL_COLLISION"
+            ),
+        },
+        "margin_band": {
+            "document_pages_sha256": document_pages_sha256,
+            "input_page_line_count": len(page["lines"]),
+            "page_sequence": page_sequence,
+            "qualifying_peer_line_ordinals": qualifying_peer_ordinals,
+            "source_line_axis": margin_axis,
+            "source_line_axis_sha256": canonical_json_sha256_v1(margin_axis),
+        },
+        "original_cluster": canonical_clone_v1(cluster),
+        "page_sequence": page_sequence,
+        "peer_crop_proofs": sorted(
+            peer_crops,
+            key=lambda proof: proof["source_line_record"]["line_ordinal"],
+        ),
+        "sample_id": source_record["sample_id"],
+        "snapshot_id": selected_snapshot["snapshot_id"],
+        "source_record": canonical_clone_v1(source_record),
+        "status": _EXTREME_MARGIN_FURNITURE_V2_STATUS,
+        "topology_candidates_id": topology_candidates_id,
+    }
+    return {
+        **material,
+        "evidence_id": "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material),
+    }, False
+
+
 def _build_numeric_sample_universe(
     pages: Sequence[Mapping[str, Any]],
     expanded_region: Mapping[str, Any],
@@ -3927,6 +4403,25 @@ def _build_numeric_sample_universe(
                     selected_snapshot=selected_snapshot,
                     render_by_page=render_by_page,
                 )
+                if evidence is None:
+                    evidence_v2, render_required_v2 = (
+                        _build_authenticated_extreme_margin_furniture_evidence_v2(
+                            pages=pages,
+                            topology_candidates_id=topology_candidates_id,
+                            page=page,
+                            ordered_numeric_lines=ordered,
+                            cluster=cluster,
+                            source_record=source_records[0],
+                            centers=centers,
+                            lane_tolerance=lane_tolerance,
+                            scale=scale,
+                            matches=matches,
+                            selected_snapshot=selected_snapshot,
+                            render_by_page=render_by_page,
+                        )
+                    )
+                    evidence = evidence_v2
+                    render_required = render_required or render_required_v2
             if evidence is not None:
                 furniture_evidence.append(evidence)
                 source = source_records[0]
@@ -4138,7 +4633,7 @@ def _validate_extreme_margin_crop_proof(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def _validate_extreme_margin_furniture_evidence_axis(
+def _validate_extreme_margin_furniture_evidence_axis_v1(
     evidence_axis: Any,
     *,
     universe_by_sample: Mapping[str, Mapping[str, Any]],
@@ -4368,6 +4863,451 @@ def _validate_extreme_margin_furniture_evidence_axis(
     if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
         raise _error("authenticated extreme-margin furniture ownership repeats")
     return set(sample_ids)
+
+
+def _validate_extreme_margin_v2_exact_crop_proof(value: Any) -> dict[str, Any]:
+    source_line = value.get("source_line_record") if type(value) is dict else None
+    if (
+        type(value) is not dict
+        or set(value) != _EXTREME_MARGIN_CROP_PROOF_FIELDS
+        or type(source_line) is not dict
+        or type(value["pixel_count"]) is not int
+        or value["pixel_count"] <= 0
+        or type(value["ink_pixel_count"]) is not int
+        or not 0 < value["ink_pixel_count"] <= value["pixel_count"]
+        or type(value["chromatic_ink_pixel_count"]) is not int
+        or not 0 <= value["chromatic_ink_pixel_count"] <= value["ink_pixel_count"]
+        or type(value["exact_bbox_rgb_sha256"]) is not str
+        or not re.fullmatch(r"[0-9a-f]{64}", value["exact_bbox_rgb_sha256"])
+    ):
+        raise _error("extreme-margin V2 exact crop proof drifted")
+    source_line = _validate_extreme_margin_line_record(source_line)
+    bbox = source_line["bbox"]
+    if value["pixel_count"] != (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]):
+        raise _error("extreme-margin V2 exact crop pixel denominator drifted")
+    _validate_extreme_margin_render_binding(value["render_binding"], source_line)
+    return canonical_clone_v1(value)
+
+
+def _validate_extreme_margin_v2_component_proof(
+    value: Any,
+    *,
+    geometry: Mapping[str, Any],
+    candidate_crop: Mapping[str, Any],
+) -> None:
+    component_axis = value.get("component_axis") if type(value) is dict else None
+    render_binding = value.get("render_binding") if type(value) is dict else None
+    target_bbox = geometry["candidate_bbox"]
+    target_height = target_bbox[3] - target_bbox[1]
+    if (
+        type(value) is not dict
+        or set(value) != _EXTREME_MARGIN_V2_COMPONENT_PROOF_FIELDS
+        or type(value["body_text_scale"]) is not float
+        or not math.isfinite(value["body_text_scale"])
+        or value["body_text_scale"] <= 0
+        or value["candidate_center_twice"] != target_bbox[1] + target_bbox[3]
+        or value["ink_threshold"] != 220
+        or value["chroma_spread_threshold"] != 30
+        or value["morphology_kernel_size"]
+        != 2 * max(1, min(7, int(value["body_text_scale"] // 8))) + 1
+        or type(component_axis) is not list
+        or len(component_axis) > _MAX_ROLE_OCCURRENCES
+        or any(type(component) is not dict for component in component_axis)
+        or component_axis
+        != sorted(
+            component_axis, key=lambda item: (item.get("bbox"), item.get("closed_pixel_count"))
+        )
+        or value["component_axis_sha256"] != canonical_json_sha256_v1(component_axis)
+        or type(value["expanded_raw_pixel_bbox"]) is not list
+        or len(value["expanded_raw_pixel_bbox"]) != 4
+        or type(value["expanded_pixel_count"]) is not int
+        or value["expanded_pixel_count"] <= 0
+        or type(value["expanded_rgb_sha256"]) is not str
+        or not re.fullmatch(r"[0-9a-f]{64}", value["expanded_rgb_sha256"])
+        or type(value["closed_mask_sha256"]) is not str
+        or not re.fullmatch(r"[0-9a-f]{64}", value["closed_mask_sha256"])
+        or value["minimum_component_height"] != max(6, (3 * target_height + 1) // 2)
+        or value["minimum_original_ink_pixels"] != max(64, 2 * target_height)
+        or value["minimum_side_extent_pixels"] != max(4, (target_height + 7) // 8)
+        or value["minimum_side_ink_pixels"] != max(8, target_height // 2)
+        or value["minimum_target_overlap_ink_pixels"] != max(16, target_height // 4)
+        or value["minimum_vertical_extension_pixels"] != max(4, (target_height + 1) // 2)
+        or type(render_binding) is not dict
+        or set(render_binding) != _EXTREME_MARGIN_RENDER_BINDING_FIELDS
+        or render_binding["raw_pixel_bbox"] != value["expanded_raw_pixel_bbox"]
+        or render_binding["render_id"] != candidate_crop["render_binding"]["render_id"]
+        or render_binding["document_ordinal"]
+        != candidate_crop["render_binding"]["document_ordinal"]
+        or not same_typed_json_v1(
+            render_binding["render_ref"], candidate_crop["render_binding"]["render_ref"]
+        )
+    ):
+        raise _error("extreme-margin V2 expanded component proof drifted")
+    try:
+        render_ref = render_v1._render_reference(render_binding["render_ref"])
+    except (ValueError, RuntimeError) as exc:
+        raise _error("extreme-margin V2 component render reference drifted") from exc
+    expanded_bbox = value["expanded_raw_pixel_bbox"]
+    expected_expanded_bbox = [
+        geometry["margin_boundary"],
+        max(0, target_bbox[1] - 2 * target_height),
+        render_ref["pixel_width"],
+        min(render_ref["pixel_height"], target_bbox[3] + 2 * target_height),
+    ]
+    if (
+        expanded_bbox != expected_expanded_bbox
+        or value["expanded_pixel_count"]
+        != (expanded_bbox[2] - expanded_bbox[0]) * (expanded_bbox[3] - expanded_bbox[1])
+        or render_binding["physical_page"] != candidate_crop["render_binding"]["physical_page"]
+    ):
+        raise _error("extreme-margin V2 expanded RGB denominator drifted")
+    for component in component_axis:
+        bbox = component.get("bbox") if type(component) is dict else None
+        if (
+            type(component) is not dict
+            or set(component) != _EXTREME_MARGIN_V2_COMPONENT_FIELDS
+            or type(bbox) is not list
+            or len(bbox) != 4
+            or any(type(coordinate) is not int for coordinate in bbox)
+            or not (
+                expanded_bbox[0] <= bbox[0] < bbox[2] <= expanded_bbox[2]
+                and expanded_bbox[1] <= bbox[1] < bbox[3] <= expanded_bbox[3]
+            )
+            or type(component["closed_pixel_count"]) is not int
+            or not 0 < component["closed_pixel_count"] <= (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+            or type(component["original_ink_pixel_count"]) is not int
+            or not 0 <= component["original_ink_pixel_count"] <= component["closed_pixel_count"]
+            or type(component["chromatic_original_ink_pixel_count"]) is not int
+            or not 0
+            <= component["chromatic_original_ink_pixel_count"]
+            <= component["original_ink_pixel_count"]
+            or type(component["target_overlap_ink_pixel_count"]) is not int
+            or not 0
+            <= component["target_overlap_ink_pixel_count"]
+            <= component["original_ink_pixel_count"]
+            or type(component["above_center_original_ink_pixel_count"]) is not int
+            or type(component["below_center_original_ink_pixel_count"]) is not int
+            or min(
+                component["above_center_original_ink_pixel_count"],
+                component["below_center_original_ink_pixel_count"],
+            )
+            < 0
+            or component["above_center_original_ink_pixel_count"]
+            + component["below_center_original_ink_pixel_count"]
+            > component["original_ink_pixel_count"]
+            or component["clear_extent_above_center"]
+            != max(0, (value["candidate_center_twice"] - 2 * bbox[1]) // 2)
+            or component["clear_extent_below_center"]
+            != max(0, (2 * bbox[3] - value["candidate_center_twice"]) // 2)
+            or component["vertical_extension_outside_target"]
+            != max(0, target_bbox[1] - bbox[1]) + max(0, bbox[3] - target_bbox[3])
+        ):
+            raise _error("extreme-margin V2 connected component axis drifted")
+    qualifying = [
+        ordinal
+        for ordinal, component in enumerate(component_axis)
+        if _extreme_margin_v2_component_qualifies(
+            component,
+            margin_boundary=geometry["margin_boundary"],
+            target_bbox=target_bbox,
+            minimum_component_height=value["minimum_component_height"],
+            minimum_original_ink_pixels=value["minimum_original_ink_pixels"],
+            minimum_side_extent_pixels=value["minimum_side_extent_pixels"],
+            minimum_side_ink_pixels=value["minimum_side_ink_pixels"],
+            minimum_target_overlap_ink_pixels=value["minimum_target_overlap_ink_pixels"],
+            minimum_vertical_extension_pixels=value["minimum_vertical_extension_pixels"],
+        )
+    ]
+    if (
+        value["qualifying_component_count"] != 1
+        or type(value["qualifying_component_ordinal"]) is not int
+        or qualifying != [value["qualifying_component_ordinal"]]
+    ):
+        raise _error("extreme-margin V2 component uniqueness drifted")
+
+
+def _validate_extreme_margin_furniture_evidence_axis_v2(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    topology_candidates_id: str | None,
+) -> set[str]:
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    evidence_ids = []
+    sample_ids = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _EXTREME_MARGIN_FURNITURE_V2_FIELDS
+            or evidence.get("status") != _EXTREME_MARGIN_FURNITURE_V2_STATUS
+            or type(evidence.get("evidence_id")) is not str
+            or type(evidence.get("snapshot_id")) is not str
+            or not evidence["snapshot_id"].startswith("ffdesv1:selected:")
+            or type(evidence.get("document_pages_sha256")) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", evidence["document_pages_sha256"])
+            or type(evidence.get("page_sequence")) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence.get("sample_id")) is not str
+            or not evidence["sample_id"]
+            or evidence.get("topology_candidates_id") != topology_candidates_id
+        ):
+            raise _error("authenticated extreme-margin V2 furniture evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material):
+            raise _error("authenticated extreme-margin V2 furniture identity drifted")
+        cluster = evidence["original_cluster"]
+        source = evidence["source_record"]
+        if (
+            type(cluster) is not dict
+            or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+            or cluster.get("page_sequence") != evidence["page_sequence"]
+            or cluster.get("sample_ids") != [evidence["sample_id"]]
+            or type(source) is not dict
+        ):
+            raise _error("extreme-margin V2 original singleton cluster drifted")
+        _validate_numeric_sample_record(source)
+        if (
+            source["sample_id"] != evidence["sample_id"]
+            or source["page_sequence"] != evidence["page_sequence"]
+            or source["parsed_token"]["classification"] != "SIGNED_NUMBER"
+            or source["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or source["owner_id"] != cluster["cluster_id"]
+        ):
+            raise _error("extreme-margin V2 original numeric owner drifted")
+        cluster_material = canonical_clone_v1(cluster)
+        cluster_id = cluster_material.pop("cluster_id", None)
+        if cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material):
+            raise _error("extreme-margin V2 original cluster identity drifted")
+        _validate_inspected_label_band(cluster, {evidence["sample_id"]: source})
+        label_proof = evidence["label_collision_proof"]
+        full_page_band = evidence["full_page_inspected_label_band"]
+        full_page_evidence = _same_row_label_evidence_from_inspected_band(
+            full_page_band.get("source_line_axis", []) if type(full_page_band) is dict else []
+        )
+        if (
+            type(label_proof) is not dict
+            or set(label_proof) != _EXTREME_MARGIN_V2_LABEL_COLLISION_FIELDS
+            or label_proof["candidate_line_ordinal"] != source["line_ordinal"]
+            or label_proof["same_row_label_evidence"] != full_page_evidence
+            or label_proof["same_row_label_evidence_sha256"]
+            != canonical_json_sha256_v1(full_page_evidence)
+            or label_proof["status"]
+            != (
+                "EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS"
+                if full_page_evidence
+                else "NO_SAME_ROW_LABEL_COLLISION"
+            )
+            or type(label_proof["semantic_label_line_ordinals"]) is not list
+            or label_proof["semantic_label_line_ordinals"]
+            != sorted(set(label_proof["semantic_label_line_ordinals"]))
+            or any(
+                type(ordinal) is not int or ordinal < 0
+                for ordinal in label_proof["semantic_label_line_ordinals"]
+            )
+            or source["line_ordinal"] in label_proof["semantic_label_line_ordinals"]
+        ):
+            raise _error("extreme-margin V2 exact label collision proof drifted")
+        full_page_cluster = canonical_clone_v1(cluster)
+        full_page_cluster["inspected_label_band"] = full_page_band
+        full_page_cluster["same_row_label_evidence"] = canonical_clone_v1(full_page_evidence)
+        full_page_cluster["label_lane_status"] = (
+            _LABELED_LABEL_LANE_STATUS if full_page_evidence else _UNLABELED_LABEL_LANE_STATUS
+        )
+        _validate_inspected_label_band(full_page_cluster, {evidence["sample_id"]: source})
+        if (
+            full_page_band["document_pages_sha256"] != evidence["document_pages_sha256"]
+            or full_page_band["page_sequence"] != evidence["page_sequence"]
+        ):
+            raise _error("extreme-margin V2 full-page label denominator drifted")
+        geometry = evidence["geometry"]
+        grid = grid_by_page.get(evidence["page_sequence"])
+        bbox = source["bbox"]
+        if (
+            type(geometry) is not dict
+            or set(geometry) != _EXTREME_MARGIN_V2_GEOMETRY_FIELDS
+            or type(grid) is not dict
+            or geometry["candidate_bbox"] != bbox
+            or geometry["candidate_center_quads"] != 2 * (bbox[0] + bbox[2])
+            or type(geometry["page_width"]) is not int
+            or geometry["page_width"] <= 0
+            or geometry["right_edge_gap"] != geometry["page_width"] - bbox[2]
+            or type(geometry["lane_centers_quads"]) is not list
+            or any(not float(center * 4).is_integer() for center in grid["column_centers"])
+            or geometry["lane_centers_quads"]
+            != [int(center * 4) for center in grid["column_centers"]]
+            or type(geometry["lane_tolerance"]) is not float
+            or not math.isfinite(geometry["lane_tolerance"])
+            or geometry["lane_tolerance"] <= 0
+            or geometry["margin_boundary"]
+            != math.ceil(grid["column_centers"][-1] + geometry["lane_tolerance"])
+            or bbox[0] < geometry["margin_boundary"]
+            or bbox[2] > geometry["page_width"]
+            or type(geometry["nearest_lane_ordinal"]) is not int
+            or not 0 <= geometry["nearest_lane_ordinal"] < len(grid["column_centers"])
+            or source["column_ordinal"] != geometry["nearest_lane_ordinal"]
+            or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
+            or geometry["nearest_lane_ordinal"]
+            != min(
+                range(len(grid["column_centers"])),
+                key=lambda index: abs(
+                    geometry["candidate_center_quads"] - geometry["lane_centers_quads"][index]
+                ),
+            )
+            or abs(
+                geometry["candidate_center_quads"]
+                - geometry["lane_centers_quads"][geometry["nearest_lane_ordinal"]]
+            )
+            <= 4 * geometry["lane_tolerance"]
+            or label_proof["margin_boundary"] != geometry["margin_boundary"]
+            or label_proof["maximum_label_right"]
+            != (
+                max(label["bbox"][2] for label in full_page_evidence)
+                if full_page_evidence
+                else None
+            )
+            or any(label["bbox"][2] >= geometry["margin_boundary"] for label in full_page_evidence)
+        ):
+            raise _error("extreme-margin V2 geometry or label separation drifted")
+        margin_band = evidence["margin_band"]
+        source_axis = margin_band.get("source_line_axis") if type(margin_band) is dict else None
+        peer_ordinals = (
+            margin_band.get("qualifying_peer_line_ordinals") if type(margin_band) is dict else None
+        )
+        if (
+            type(margin_band) is not dict
+            or set(margin_band) != _EXTREME_MARGIN_BAND_FIELDS
+            or margin_band["document_pages_sha256"] != evidence["document_pages_sha256"]
+            or margin_band["page_sequence"] != evidence["page_sequence"]
+            or type(margin_band["input_page_line_count"]) is not int
+            or margin_band["input_page_line_count"] != full_page_band["input_page_line_count"]
+            or type(source_axis) is not list
+            or len(source_axis) > margin_band["input_page_line_count"]
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                for line in source_axis
+            )
+            or source_axis
+            != sorted(source_axis, key=lambda item: (item["line_ordinal"], item["bbox"]))
+            or len({line["line_ordinal"] for line in source_axis}) != len(source_axis)
+            or len({line["sample_id"] for line in source_axis}) != len(source_axis)
+            or margin_band["source_line_axis_sha256"] != canonical_json_sha256_v1(source_axis)
+            or any(
+                line["bbox"][0] < geometry["margin_boundary"]
+                or line["bbox"][2] > geometry["page_width"]
+                or not (line["vietocr_text"].strip() or line["numeric_raw_prediction"].strip())
+                for line in source_axis
+            )
+            or type(peer_ordinals) is not list
+            or peer_ordinals != sorted(set(peer_ordinals))
+            or len(peer_ordinals) < 2
+        ):
+            raise _error("extreme-margin V2 complete source-band denominator drifted")
+        candidate_lines = [
+            line for line in source_axis if line["sample_id"] == evidence["sample_id"]
+        ]
+        candidate_crop = _validate_extreme_margin_v2_exact_crop_proof(
+            evidence["candidate_crop_proof"]
+        )
+        if (
+            len(candidate_lines) != 1
+            or not same_typed_json_v1(candidate_lines[0], candidate_crop["source_line_record"])
+            or candidate_lines[0]["bbox"] != source["bbox"]
+            or candidate_lines[0]["line_ordinal"] != source["line_ordinal"]
+            or candidate_lines[0]["crop_ref"] != source["crop_ref"]
+            or candidate_lines[0]["numeric_raw_prediction"] != source["raw_prediction"]
+            or candidate_lines[0]["numeric_reader_score"] != source["reader_score"]
+            or not _extreme_margin_v2_candidate_surface_is_nonnumeric(candidate_lines[0])
+            or not set(peer_ordinals).issubset(
+                _extreme_margin_v2_geometric_peer_ordinals(source_axis, candidate_lines[0])
+            )
+        ):
+            raise _error("extreme-margin V2 candidate or peer source binding drifted")
+        peer_crops = evidence["peer_crop_proofs"]
+        source_by_ordinal = {line["line_ordinal"]: line for line in source_axis}
+        if (
+            candidate_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or candidate_crop["render_binding"]["render_ref"]["pixel_width"]
+            != geometry["page_width"]
+            or type(peer_crops) is not list
+            or [proof["source_line_record"]["line_ordinal"] for proof in peer_crops]
+            != peer_ordinals
+            or any(
+                not same_typed_json_v1(
+                    _validate_extreme_margin_v2_exact_crop_proof(proof)["source_line_record"],
+                    source_by_ordinal.get(proof["source_line_record"]["line_ordinal"]),
+                )
+                or proof["chromatic_ink_pixel_count"] * 2 < proof["ink_pixel_count"]
+                or not _extreme_margin_peer_surfaces_are_nonnumeric(proof["source_line_record"])
+                or proof["render_binding"]["render_id"]
+                != candidate_crop["render_binding"]["render_id"]
+                or proof["render_binding"]["document_ordinal"]
+                != candidate_crop["render_binding"]["document_ordinal"]
+                or not same_typed_json_v1(
+                    proof["render_binding"]["render_ref"],
+                    candidate_crop["render_binding"]["render_ref"],
+                )
+                for proof in peer_crops
+            )
+        ):
+            raise _error("extreme-margin V2 authenticated chromatic peer axis drifted")
+        _validate_extreme_margin_v2_component_proof(
+            evidence["expanded_component_proof"],
+            geometry=geometry,
+            candidate_crop=candidate_crop,
+        )
+        expected_final = canonical_clone_v1(source)
+        expected_final["owner_kind"] = _EXTREME_MARGIN_FURNITURE_OWNER_KIND
+        expected_final["owner_id"] = evidence_id
+        if not same_typed_json_v1(universe_by_sample.get(evidence["sample_id"]), expected_final):
+            raise _error("extreme-margin V2 furniture universe owner drifted")
+        evidence_ids.append(evidence_id)
+        sample_ids.append(evidence["sample_id"])
+    if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
+        raise _error("authenticated extreme-margin V2 furniture ownership repeats")
+    return set(sample_ids)
+
+
+def _validate_extreme_margin_furniture_evidence_axis(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    topology_candidates_id: str | None,
+) -> set[str]:
+    if type(evidence_axis) is not list or len(evidence_axis) > _MAX_ROLE_OCCURRENCES:
+        raise _error("authenticated extreme-margin furniture evidence axis drifted")
+    v1 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict and evidence.get("status") == _EXTREME_MARGIN_FURNITURE_STATUS
+    ]
+    v2 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict and evidence.get("status") == _EXTREME_MARGIN_FURNITURE_V2_STATUS
+    ]
+    if len(v1) + len(v2) != len(evidence_axis):
+        raise _error("authenticated extreme-margin furniture evidence version drifted")
+    v1_samples = _validate_extreme_margin_furniture_evidence_axis_v1(
+        v1,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    v2_samples = _validate_extreme_margin_furniture_evidence_axis_v2(
+        v2,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    if v1_samples & v2_samples or len({item["evidence_id"] for item in evidence_axis}) != len(
+        evidence_axis
+    ):
+        raise _error("authenticated extreme-margin furniture cross-version ownership repeats")
+    return v1_samples | v2_samples
 
 
 def _validate_numeric_sample_universe(
