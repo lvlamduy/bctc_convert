@@ -339,6 +339,67 @@ def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
     return pages
 
 
+def _flat_compound_occurrence_subtotal_pages(
+    *,
+    deposit_subtotal: tuple[str | None, str | None] = ("100", "80"),
+    duplicate_deposit_subtotal: bool = False,
+    loan_subtotal: tuple[str | None, str | None] = ("50", "40"),
+) -> list[dict[str, object]]:
+    """Flat compound labels with structural shadows sharing one exact root."""
+
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn bằng VND", "20", "15"),
+            ("Tiền gửi không kỳ hạn bằng ngoại tệ", "10", "5"),
+            ("Tiền gửi có kỳ hạn bằng VND", "60", "50"),
+            ("Tiền gửi có kỳ hạn bằng ngoại tệ", "10", "10"),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Cho vay bằng VND", "50", "40"),
+            ("Cho vay bằng ngoại tệ", "0", "0"),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "150", "120"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    lines = pages[0]["lines"]
+
+    def insert_pair(
+        boundary_label: str,
+        values: tuple[str | None, str | None],
+        *,
+        duplicate: bool = False,
+    ) -> None:
+        boundary_index = next(
+            index for index, line in enumerate(lines) if line["vietocr_text"] == boundary_label
+        )
+        top = lines[boundary_index]["bbox"][1] - 25
+        inserted = []
+        for column, token in enumerate(values):
+            if token is None:
+                continue
+            left = 610 if column == 0 else 810
+            inserted.append(_line(30_000 + column, token, token, [left, top, left + 90, top + 20]))
+        if duplicate:
+            inserted.extend(copy.deepcopy(inserted))
+        lines[boundary_index:boundary_index] = inserted
+
+    insert_pair(
+        "Cho vay các TCTD khác",
+        deposit_subtotal,
+        duplicate=duplicate_deposit_subtotal,
+    )
+    insert_pair("Tổng tiền gửi và cho vay các TCTD khác", loan_subtotal)
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
 def _vpb25_shaped_local_trailing_loan_subtotal_pages(
     *,
     deposit_current: str = "100",
@@ -920,6 +981,125 @@ def test_v4_unlabeled_deposit_and_loan_subtotals_are_exact_coverage_only() -> No
     )
 
 
+def test_shared_occurrence_bound_subtotal_uses_direct_equation_frontiers() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _flat_compound_occurrence_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    receipts = [
+        record
+        for record in closure["coverage_receipt"]
+        if subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY in record
+    ]
+    assert [record["role"] for record in receipts] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+    ]
+    deposit = receipts[0][subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY]
+    loan = receipts[1][subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY]
+    assert [item["role"] for item in deposit["ordered_component_frontier"]] == [
+        "DEMAND_DEPOSIT_GROUP",
+        "TERM_DEPOSIT_GROUP",
+    ]
+    assert [item["role"] for item in loan["ordered_component_frontier"]] == [
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+    ]
+    assert len(deposit["ordered_component_occurrence_ids"]) == 4
+    assert len(loan["ordered_component_occurrence_ids"]) == 2
+    assert deposit["binding_kind"] == ("DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER")
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [
+        _flat_compound_occurrence_subtotal_pages(deposit_subtotal=("100", None)),
+        _flat_compound_occurrence_subtotal_pages(deposit_subtotal=("101", "80")),
+        _flat_compound_occurrence_subtotal_pages(duplicate_deposit_subtotal=True),
+        _flat_compound_occurrence_subtotal_pages(deposit_subtotal=("80", "100")),
+    ],
+    ids=["partial", "mismatch", "duplicate", "reordered-lanes"],
+)
+def test_shared_occurrence_bound_subtotal_adversarial_sources_remain_unresolved(
+    pages: list[dict[str, object]],
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        record.get(subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("target_role")
+        == "INTERBANK_DEPOSIT_GROUP"
+        for record in closure["coverage_receipt"]
+    )
+
+
+def test_shared_occurrence_bound_subtotal_public_replay_rejects_coherent_tamper() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _flat_compound_occurrence_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    coverage = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record.get(subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("target_role")
+        == "INTERBANK_DEPOSIT_GROUP"
+    )
+    receipt = coverage[subject._OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY]
+    receipt["equation_spec_sha256"] = "0" * 64
+    material = copy.deepcopy(receipt)
+    material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:occurrence-bound-subtotal:" + (
+        canonical_json_sha256_v1(material)
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked, axis, topology, hierarchy
+        )
+
+
 def test_v4_terminal_local_loan_subtotal_closes_only_its_sealed_subgroup() -> None:
     project_root = Path(__file__).resolve().parents[2]
     topology = json.loads(
@@ -997,6 +1177,43 @@ def test_v4_terminal_local_loan_subtotal_closes_only_its_sealed_subgroup() -> No
         )
         == closure
     )
+
+
+def test_v4_local_trailing_subtotal_allows_only_zero_area_bbox_edge_contact() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _vpb25_shaped_local_trailing_loan_subtotal_pages()
+    lines = pages[0]["lines"]
+    discount_index = next(
+        index for index, line in enumerate(lines) if "chiết" in line["vietocr_text"]
+    )
+    descendant_bottom = max(lines[discount_index + offset]["bbox"][3] for offset in (1, 2))
+    trailing = [
+        line
+        for line in lines[discount_index + 3 :]
+        if line["numeric_recognition"]["raw_prediction"] in {"50", "40"}
+    ]
+    assert len(trailing) == 2
+    for line in trailing:
+        height = line["bbox"][3] - line["bbox"][1]
+        line["bbox"][1] = descendant_bottom
+        line["bbox"][3] = descendant_bottom + height
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert local["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
 
 
 @pytest.mark.parametrize(
