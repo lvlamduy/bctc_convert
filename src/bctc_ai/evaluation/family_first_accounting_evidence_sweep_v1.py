@@ -13,6 +13,7 @@ import copy
 import re
 from collections.abc import Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from multiprocessing import get_context
 from time import perf_counter
@@ -64,10 +65,10 @@ EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
 _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
-_DOCUMENT_STORE_PARALLEL_IN_FLIGHT_PER_WORKER = 2
 _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
 _V4_RENDER_PREFLIGHT_FORMAT_VERSION = "FAMILY_FIRST_DOCUMENT_RENDER_PREFLIGHT_V1"
+_V4_RENDER_PREFLIGHT_CONTEXT_CACHE: dict[str, dict[str, Any]] = {}
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -4589,6 +4590,8 @@ def _v4_document_store_render_preflight_worker_v1(
         or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
     ):
         raise _error("V4 document-store render preflight request binding drifted")
+    if _V4_RENDER_PREFLIGHT_CONTEXT_CACHE:
+        raise _error("V4 render preflight worker retained an unfinished context")
     prepared_context = _prepare_v4_document_store_context_v1(
         snapshot,
         family_spec,
@@ -4630,12 +4633,22 @@ def _v4_document_store_render_preflight_worker_v1(
         topology_candidates_id=topology_candidates["result_id"],
         topology_scan_id=topology_scan["scan_id"],
     )
-    return {
+    preflight = {
         **material,
         "preflight_id": "ffdrpv1:preflight:" + canonical_json_sha256_v1(material),
         "render_pages": render_pages,
         "reservoir_pages": reservoir_pages,
     }
+    _V4_RENDER_PREFLIGHT_CONTEXT_CACHE[preflight["preflight_id"]] = {
+        "family_spec_sha256": canonical_json_sha256_v1(family_spec),
+        "packet_id": packet["packet_id"],
+        "policy_sha256": canonical_json_sha256_v1(policy),
+        "prepared_context": prepared_context,
+        "snapshot_id": snapshot["snapshot_id"],
+        "topology_candidates_id": topology_candidates["result_id"],
+        "topology_scan_id": topology_scan["scan_id"],
+    }
+    return preflight
 
 
 def _validated_v4_document_store_render_preflight_v1(
@@ -4725,19 +4738,34 @@ def _v4_document_store_preflight_bound_trial_worker_v1(
         packet=packet,
         snapshot=snapshot,
     )
+    cached_context = _V4_RENDER_PREFLIGHT_CONTEXT_CACHE.pop(preflight["preflight_id"], None)
+    if (
+        type(cached_context) is not dict
+        or set(cached_context)
+        != {
+            "family_spec_sha256",
+            "packet_id",
+            "policy_sha256",
+            "prepared_context",
+            "snapshot_id",
+            "topology_candidates_id",
+            "topology_scan_id",
+        }
+        or cached_context.get("packet_id") != packet["packet_id"]
+        or cached_context.get("snapshot_id") != snapshot["snapshot_id"]
+        or cached_context.get("family_spec_sha256") != canonical_json_sha256_v1(family_spec)
+        or cached_context.get("policy_sha256") != canonical_json_sha256_v1(policy)
+        or cached_context.get("topology_candidates_id") != preflight["topology_candidates_id"]
+        or cached_context.get("topology_scan_id") != preflight["topology_scan_id"]
+    ):
+        raise _error("V4 preflight-bound trial lost its worker-affine context")
     reservoir = _canonical_authenticated_render_snapshot_order_v1(render_snapshots)
     if (
         not same_typed_json_v1(reservoir, render_snapshots)
         or tuple(render["physical_page"] for render in reservoir) != preflight["reservoir_pages"]
     ):
         raise _error("V4 preflight-bound trial received a different private reservoir")
-    prepared_context = _prepare_v4_document_store_context_v1(
-        snapshot,
-        family_spec,
-        policy,
-        expected_packet=packet,
-        runtime_telemetry=None,
-    )
+    prepared_context = cached_context["prepared_context"]
     selected_snapshot, topology_scan, topology_candidates, _candidate_bindings = (
         _open_prepared_v4_document_store_context_v1(
             prepared_context,
@@ -4982,30 +5010,37 @@ def _parallel_v4_document_store_trials_v1(
         # would inherit the parent module's opaque authenticated-store handle
         # registry even though the capability is intentionally absent from
         # every worker request.
-        with ProcessPoolExecutor(
-            max_workers=jobs,
-            mp_context=get_context("spawn"),
-        ) as executor:
-            max_active_documents = min(
-                len(packets),
-                jobs * _DOCUMENT_STORE_PARALLEL_IN_FLIGHT_PER_WORKER,
+        with ExitStack() as executor_stack:
+            executors = tuple(
+                executor_stack.enter_context(
+                    ProcessPoolExecutor(
+                        max_workers=1,
+                        mp_context=get_context("spawn"),
+                    )
+                )
+                for _ in range(jobs)
             )
-            refill_batch_size = min(_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE, jobs)
             active_snapshots: dict[int, dict[str, Any]] = {}
-            pending: dict[Any, tuple[int, str]] = {}
+            ready_source_indices: list[int] = []
+            free_lanes = list(range(jobs))
+            pending: dict[Any, tuple[int, str, int]] = {}
             next_source_index = 0
 
-            def submit_preflight(index: int, snapshot: dict[str, Any]) -> None:
+            def submit_preflight(index: int, lane: int) -> None:
                 packet = packets[index]
-                future = executor.submit(
+                future = executors[lane].submit(
                     _v4_document_store_render_preflight_worker_v1,
-                    (packet, snapshot, family_spec, policy),
+                    (packet, active_snapshots[index], family_spec, policy),
                 )
-                pending[future] = (index, "PREFLIGHT")
+                pending[future] = (index, "PREFLIGHT", lane)
 
-            def hydrate_next(count: int) -> None:
+            def hydrate_next_batch() -> None:
                 nonlocal next_source_index
-                requested = selections[next_source_index : next_source_index + count]
+                requested = selections[
+                    next_source_index : next_source_index + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE
+                ]
+                if not requested:
+                    return
                 snapshots = (
                     document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
                         document_store_capability,
@@ -5017,28 +5052,25 @@ def _parallel_v4_document_store_trials_v1(
                 for offset, snapshot in enumerate(snapshots):
                     index = next_source_index + offset
                     active_snapshots[index] = snapshot
-                    submit_preflight(index, snapshot)
+                    ready_source_indices.append(index)
                 next_source_index += len(snapshots)
 
-            def refill_window() -> None:
-                while next_source_index < len(packets):
-                    available_slots = max_active_documents - len(active_snapshots)
-                    remaining_source_count = len(packets) - next_source_index
-                    next_batch_size = min(refill_batch_size, remaining_source_count)
-                    if available_slots < next_batch_size:
-                        return
-                    # Submit each selected-page chunk before hydrating the next
-                    # one so worker spawn/compute overlaps the parent store read.
-                    hydrate_next(next_batch_size)
+            def dispatch_free_lanes() -> None:
+                if free_lanes and not ready_source_indices and next_source_index < len(packets):
+                    hydrate_next_batch()
+                while free_lanes and ready_source_indices:
+                    lane = free_lanes.pop(0)
+                    index = ready_source_indices.pop(0)
+                    submit_preflight(index, lane)
 
-            refill_window()
+            dispatch_free_lanes()
             while pending:
                 completed, _remaining = wait(
                     tuple(pending),
                     return_when=FIRST_COMPLETED,
                 )
                 for future in sorted(completed, key=lambda item: pending[item]):
-                    index, stage = pending.pop(future)
+                    index, stage, lane = pending.pop(future)
                     packet = packets[index]
                     snapshot = active_snapshots[index]
                     if stage == "PREFLIGHT":
@@ -5056,7 +5088,7 @@ def _parallel_v4_document_store_trials_v1(
                             if preflight["reservoir_pages"]
                             else ()
                         )
-                        final_future = executor.submit(
+                        final_future = executors[lane].submit(
                             _v4_document_store_preflight_bound_trial_worker_v1,
                             (
                                 packet,
@@ -5067,7 +5099,7 @@ def _parallel_v4_document_store_trials_v1(
                                 preflight,
                             ),
                         )
-                        pending[final_future] = (index, "FINAL")
+                        pending[final_future] = (index, "FINAL", lane)
                         continue
                     if stage != "FINAL":
                         raise _error("V4 document-store worker stage drifted")
@@ -5080,8 +5112,10 @@ def _parallel_v4_document_store_trials_v1(
                         raise _error("V4 preflight-bound final trial retained a render request")
                     final_trials[index] = trial
                     del active_snapshots[index]
-                refill_window()
-            if next_source_index != len(packets) or active_snapshots:
+                    free_lanes.append(lane)
+                free_lanes.sort()
+                dispatch_free_lanes()
+            if next_source_index != len(packets) or active_snapshots or ready_source_indices:
                 raise _error("V4 document-store worker window lost its source axis")
             if any(trial is None for trial in final_trials):
                 raise _error("V4 document-store worker batch lost a source trial")

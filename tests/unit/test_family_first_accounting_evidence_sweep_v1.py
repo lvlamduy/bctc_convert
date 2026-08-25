@@ -1480,10 +1480,24 @@ def test_v4_preflight_bound_trial_keeps_reservoir_private_until_exact_reveal(
         "result_id": preflight["topology_candidates_id"],
         "regions": [{"candidate_id": "candidate-1"}],
     }
+    family_spec = _family_spec()
+    policy = {"format_version": subject.EVALUATION_SPEC_FORMAT_V4}
     trial_render_pages = []
 
     monkeypatch.setattr(
-        subject, "_prepare_v4_document_store_context_v1", lambda *_a, **_k: prepared
+        subject,
+        "_V4_RENDER_PREFLIGHT_CONTEXT_CACHE",
+        {
+            preflight["preflight_id"]: {
+                "family_spec_sha256": subject.canonical_json_sha256_v1(family_spec),
+                "packet_id": packet["packet_id"],
+                "policy_sha256": subject.canonical_json_sha256_v1(policy),
+                "prepared_context": prepared,
+                "snapshot_id": snapshot["snapshot_id"],
+                "topology_candidates_id": preflight["topology_candidates_id"],
+                "topology_scan_id": preflight["topology_scan_id"],
+            }
+        },
     )
     monkeypatch.setattr(
         subject,
@@ -1522,8 +1536,8 @@ def test_v4_preflight_bound_trial_keeps_reservoir_private_until_exact_reveal(
         (
             packet,
             snapshot,
-            _family_spec(),
-            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            family_spec,
+            policy,
             renders,
             preflight,
         )
@@ -1629,7 +1643,7 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
     )
 
     assert calls == {
-        "executor": [(2, "spawn")],
+        "executor": [(1, "spawn"), (1, "spawn")],
         "renders": [(1, (1, 2))],
         "selected": [selections],
     }
@@ -1669,7 +1683,7 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
 
     class SynchronousExecutor:
         def __init__(self, *, max_workers, mp_context):
-            assert max_workers == 16
+            assert max_workers == 1
             assert mp_context.get_start_method() == "spawn"
 
         def __enter__(self):
@@ -1741,7 +1755,7 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
     )
 
     assert [len(batch) for batch in batches] == expected_batch_sizes
-    assert max(pending_sizes) <= 32
+    assert max(pending_sizes) <= 16
     assert [trial["document_ordinal"] for trial in trials] == list(range(1, document_count + 1))
 
 
@@ -1770,7 +1784,7 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
 
     class SynchronousExecutor:
         def __init__(self, *, max_workers, mp_context):
-            assert max_workers == 16
+            assert max_workers == 1
             assert mp_context.get_start_method() == "spawn"
 
         def __enter__(self):
