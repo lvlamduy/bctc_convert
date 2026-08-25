@@ -278,6 +278,35 @@ def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> 
     assert majority["end_source_line_index"] == 6
 
 
+def test_family12_wrapped_state_majority_equity_wording_tolerates_one_ocr_character() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Công ty có phân có vốn cổ phần của nhà",
+                    "nước chiếm trên 50% vộn điều lệ hoặc tổng",
+                    "số cổ phân có quyền biểu quyết, hoặc nhà",
+                    "nước giữ quyền chi phối đổi với công ty",
+                    "trong Điều lệ của công ly",
+                    "Công ty cổ phần khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    majority = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
+    )
+    assert majority["match_kind"] == "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    assert majority["source_line_index"] == 1
+    assert majority["end_source_line_index"] == 5
+
+
 def test_family12_branchless_owner_requires_two_distinct_exact_leaf_roles() -> None:
     spec = build_loan_enterprise_family12_topology_spec_v1()
     positive = build_accounting_family_topology_scan_v1(

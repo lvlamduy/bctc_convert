@@ -231,6 +231,7 @@
             "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
             "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
@@ -242,6 +243,7 @@
             "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
             "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty"
           ],
           "within_role": null
