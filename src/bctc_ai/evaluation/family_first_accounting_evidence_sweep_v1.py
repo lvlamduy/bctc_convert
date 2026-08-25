@@ -67,6 +67,7 @@ _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
 _DOCUMENT_STORE_PARALLEL_IN_FLIGHT_PER_WORKER = 2
 _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
+_V4_RENDER_PREFLIGHT_FORMAT_VERSION = "FAMILY_FIRST_DOCUMENT_RENDER_PREFLIGHT_V1"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -3875,6 +3876,131 @@ def _canonical_authenticated_render_snapshot_order_v1(
     return tuple(dict(by_page[page]) for page in sorted(by_page))
 
 
+def _v4_prepruning_candidate_render_pages_v1(
+    joined_pages: list[dict[str, Any]],
+    topology_candidates: Mapping[str, Any],
+) -> tuple[int, ...]:
+    """Project a private page reservoir admitted by complete V2 candidates.
+
+    This is deliberately a topology-only preflight.  It may neither inspect a
+    downstream trial nor route on bank, period, filename, or page number.  A
+    page enters the parent-owned reservoir only when it intersects one
+    authenticated complete pre-pruning candidate.  The union is not itself
+    downstream render authority: a later exact reveal step must retain the
+    existing bounded ordinary/candidate-scoped semantics before any pixels are
+    exposed to a final trial.
+    """
+
+    regions = topology_candidates.get("regions")
+    if type(regions) is not list:
+        raise _error("V4 render preflight lost its topology candidate axis")
+    selected: set[int] = set()
+    for region in regions:
+        if type(region) is not dict:
+            raise _error("V4 render preflight candidate shape drifted")
+        candidate_pages = _selected_topology_pages_v1(
+            joined_pages,
+            {"regions": [region]},
+        )
+        if not candidate_pages:
+            raise _error("V4 render preflight candidate retained no source page")
+        selected.update(candidate_pages)
+    return tuple(sorted(selected))
+
+
+def _v4_document_store_render_preflight_material_v1(
+    *,
+    document_ordinal: int,
+    packet_id: str,
+    render_pages: tuple[int, ...],
+    reservoir_pages: tuple[int, ...],
+    snapshot_id: str,
+    topology_candidates_id: str,
+    topology_scan_id: str,
+) -> dict[str, Any]:
+    return {
+        "document_ordinal": document_ordinal,
+        "format_version": _V4_RENDER_PREFLIGHT_FORMAT_VERSION,
+        "packet_id": packet_id,
+        "render_pages": list(render_pages),
+        "reservoir_pages": list(reservoir_pages),
+        "snapshot_id": snapshot_id,
+        "topology_candidates_id": topology_candidates_id,
+        "topology_scan_id": topology_scan_id,
+    }
+
+
+def _v4_prepruning_occurrence_render_pages_v1(
+    *,
+    selected_snapshot: dict[str, Any],
+    topology_scan: dict[str, Any],
+    topology_candidates: dict[str, Any],
+    candidate_bindings: tuple[Any, ...],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    prepared_snapshot: Any,
+) -> tuple[int, ...]:
+    """Find page-local pixel needs before closure or candidate selection.
+
+    Every inspected row axis is rooted in one authenticated complete
+    pre-pruning candidate.  The projection admits only (a) pages owning an
+    unresolved visible value lane and (b) exact pages named by the occurrence
+    authority's extreme-margin render gate.  It does not build column context,
+    accounting closure, one-edit projection, or downstream candidate choice.
+    """
+
+    regions = topology_candidates["regions"]
+    if len(candidate_bindings) != len(regions):
+        raise _error("V4 render preflight candidate binding axis drifted")
+    joined_pages = selected_snapshot["joined_pages"]
+    selected: set[int] = set()
+    margin_prefix = occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX
+    for topology_region, prepared_binding in zip(regions, candidate_bindings, strict=True):
+        admitted_pages = _selected_topology_pages_v1(
+            joined_pages,
+            {"regions": [topology_region]},
+        )
+        try:
+            occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+                joined_pages,
+                family_spec,
+                topology_scan,
+                topology_region,
+                evaluation_spec["occurrence_row_axis_policy"],
+                topology_candidates=topology_candidates,
+                prepared_topology_binding=prepared_binding,
+                selected_snapshot=selected_snapshot,
+                prepared_snapshot=prepared_snapshot,
+                render_snapshots=(),
+            )
+        except ValueError:
+            # A non-render row-axis failure is final-trial evidence, never
+            # authority to broaden which source pixels the parent may open.
+            continue
+        row_axis = occurrence_axis["row_axis"]
+        candidate_pages = {
+            row["label_match"]["page_sequence"]
+            for row in row_axis["rows"]
+            if row["missing_column_ordinals"]
+        }
+        candidate_pages.update(
+            row["page_sequence"]
+            for row in row_axis["trailing_value_rows"]
+            if row["missing_column_ordinals"]
+        )
+        for reason in occurrence_axis["unresolved_reasons"]:
+            if type(reason) is not str or not reason.startswith(margin_prefix):
+                continue
+            page_surface = reason.removeprefix(margin_prefix)
+            if not page_surface.isascii() or not page_surface.isdigit():
+                raise _error("V4 render preflight margin page reason drifted")
+            candidate_pages.add(int(page_surface))
+        if not candidate_pages <= admitted_pages:
+            raise _error("V4 render preflight escaped its candidate page authority")
+        selected.update(candidate_pages)
+    return tuple(sorted(selected))
+
+
 def _missing_render_pages_for_document_store_trial_v1(
     trial: dict[str, Any],
     topology_scan: dict[str, Any],
@@ -4447,6 +4573,271 @@ def _document_store_trial_with_render_rescue_v1(
     return trial
 
 
+def _v4_document_store_render_preflight_worker_v1(
+    request: tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]],
+) -> dict[str, Any]:
+    """Project candidate-bound render pages without building a family trial."""
+
+    if type(request) is not tuple or len(request) != 4:
+        raise _error("V4 document-store render preflight request shape drifted")
+    packet, snapshot, family_spec, policy = request
+    if (
+        type(packet) is not dict
+        or type(snapshot) is not dict
+        or type(family_spec) is not dict
+        or type(policy) is not dict
+        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+    ):
+        raise _error("V4 document-store render preflight request binding drifted")
+    prepared_context = _prepare_v4_document_store_context_v1(
+        snapshot,
+        family_spec,
+        policy,
+        expected_packet=packet,
+        runtime_telemetry=None,
+    )
+    selected_snapshot, topology_scan, topology_candidates, candidate_bindings = (
+        _open_prepared_v4_document_store_context_v1(
+            prepared_context,
+            snapshot,
+            family_spec,
+            policy,
+            expected_packet=packet,
+            expected_legacy_scan=None,
+        )
+    )
+    render_pages = _v4_prepruning_occurrence_render_pages_v1(
+        selected_snapshot=selected_snapshot,
+        topology_scan=topology_scan,
+        topology_candidates=topology_candidates,
+        candidate_bindings=candidate_bindings,
+        family_spec=family_spec,
+        evaluation_spec=policy,
+        prepared_snapshot=prepared_context.prepared_snapshot,
+    )
+    reservoir_pages = _v4_prepruning_candidate_render_pages_v1(
+        selected_snapshot["joined_pages"],
+        topology_candidates,
+    )
+    if not set(render_pages) <= set(reservoir_pages):
+        raise _error("V4 render preflight pages escape their private reservoir")
+    material = _v4_document_store_render_preflight_material_v1(
+        document_ordinal=packet["document_ordinal"],
+        packet_id=packet["packet_id"],
+        render_pages=render_pages,
+        reservoir_pages=reservoir_pages,
+        snapshot_id=snapshot["snapshot_id"],
+        topology_candidates_id=topology_candidates["result_id"],
+        topology_scan_id=topology_scan["scan_id"],
+    )
+    return {
+        **material,
+        "preflight_id": "ffdrpv1:preflight:" + canonical_json_sha256_v1(material),
+        "render_pages": render_pages,
+        "reservoir_pages": reservoir_pages,
+    }
+
+
+def _validated_v4_document_store_render_preflight_v1(
+    value: Any,
+    *,
+    packet: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Rebind one topology/occurrence preflight to parent-owned source."""
+
+    fields = {
+        "document_ordinal",
+        "format_version",
+        "packet_id",
+        "preflight_id",
+        "render_pages",
+        "reservoir_pages",
+        "snapshot_id",
+        "topology_candidates_id",
+        "topology_scan_id",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or value.get("document_ordinal") != packet.get("document_ordinal")
+        or value.get("format_version") != _V4_RENDER_PREFLIGHT_FORMAT_VERSION
+        or value.get("packet_id") != packet.get("packet_id")
+        or value.get("snapshot_id") != snapshot.get("snapshot_id")
+        or type(value.get("topology_candidates_id")) is not str
+        or not value["topology_candidates_id"].startswith("aftcv2:result:")
+        or type(value.get("topology_scan_id")) is not str
+        or not value["topology_scan_id"].startswith("aftv1:scan:")
+        or type(value.get("render_pages")) is not tuple
+        or any(type(page) is not int or page <= 0 for page in value["render_pages"])
+        or tuple(sorted(value["render_pages"])) != value["render_pages"]
+        or len(value["render_pages"]) != len(set(value["render_pages"]))
+        or any(page > packet.get("page_count", 0) for page in value["render_pages"])
+        or type(value.get("reservoir_pages")) is not tuple
+        or any(type(page) is not int or page <= 0 for page in value["reservoir_pages"])
+        or tuple(sorted(value["reservoir_pages"])) != value["reservoir_pages"]
+        or len(value["reservoir_pages"]) != len(set(value["reservoir_pages"]))
+        or any(page > packet.get("page_count", 0) for page in value["reservoir_pages"])
+        or not set(value["render_pages"]) <= set(value["reservoir_pages"])
+    ):
+        raise _error("V4 document-store render preflight differs from its parent source")
+    material = _v4_document_store_render_preflight_material_v1(
+        document_ordinal=value["document_ordinal"],
+        packet_id=value["packet_id"],
+        render_pages=value["render_pages"],
+        reservoir_pages=value["reservoir_pages"],
+        snapshot_id=value["snapshot_id"],
+        topology_candidates_id=value["topology_candidates_id"],
+        topology_scan_id=value["topology_scan_id"],
+    )
+    if value.get("preflight_id") != "ffdrpv1:preflight:" + canonical_json_sha256_v1(material):
+        raise _error("V4 document-store render preflight identity drifted")
+    return dict(value)
+
+
+def _v4_document_store_preflight_bound_trial_worker_v1(
+    request: tuple[
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        tuple[dict[str, Any], ...],
+        dict[str, Any],
+    ],
+) -> dict[str, Any]:
+    """Recompute one final trial with exactly its preflight-authorized pixels."""
+
+    if type(request) is not tuple or len(request) != 6:
+        raise _error("V4 preflight-bound trial worker request shape drifted")
+    packet, snapshot, family_spec, policy, render_snapshots, raw_preflight = request
+    if (
+        type(packet) is not dict
+        or type(snapshot) is not dict
+        or type(family_spec) is not dict
+        or type(policy) is not dict
+        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+        or type(render_snapshots) is not tuple
+        or any(type(render) is not dict for render in render_snapshots)
+    ):
+        raise _error("V4 preflight-bound trial worker request binding drifted")
+    preflight = _validated_v4_document_store_render_preflight_v1(
+        raw_preflight,
+        packet=packet,
+        snapshot=snapshot,
+    )
+    reservoir = _canonical_authenticated_render_snapshot_order_v1(render_snapshots)
+    if (
+        not same_typed_json_v1(reservoir, render_snapshots)
+        or tuple(render["physical_page"] for render in reservoir) != preflight["reservoir_pages"]
+    ):
+        raise _error("V4 preflight-bound trial received a different private reservoir")
+    prepared_context = _prepare_v4_document_store_context_v1(
+        snapshot,
+        family_spec,
+        policy,
+        expected_packet=packet,
+        runtime_telemetry=None,
+    )
+    selected_snapshot, topology_scan, topology_candidates, _candidate_bindings = (
+        _open_prepared_v4_document_store_context_v1(
+            prepared_context,
+            snapshot,
+            family_spec,
+            policy,
+            expected_packet=packet,
+            expected_legacy_scan=None,
+        )
+    )
+    if (
+        preflight["topology_scan_id"] != topology_scan["scan_id"]
+        or preflight["topology_candidates_id"] != topology_candidates["result_id"]
+        or not set(preflight["reservoir_pages"])
+        <= set(
+            _v4_prepruning_candidate_render_pages_v1(
+                selected_snapshot["joined_pages"], topology_candidates
+            )
+        )
+    ):
+        raise _error("V4 preflight-bound trial topology authority drifted")
+    try:
+        occurrence_row_v2._validate_snapshot_and_renders(
+            selected_snapshot["joined_pages"],
+            selected_snapshot,
+            reservoir,
+            prepared_snapshot=prepared_context.prepared_snapshot,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("V4 preflight-bound trial render authority drifted") from exc
+    reservoir_by_page = {render["physical_page"]: render for render in reservoir}
+    revealed_pages = set(preflight["render_pages"])
+
+    def revealed_renders() -> tuple[dict[str, Any], ...]:
+        return tuple(reservoir_by_page[page] for page in sorted(revealed_pages))
+
+    runtime_context = {"prepared_context": prepared_context}
+
+    def build_trial() -> dict[str, Any]:
+        return _trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            render_snapshots=revealed_renders(),
+            topology_scan=topology_scan,
+            expected_packet=packet,
+            _v4_runtime_context=runtime_context,
+        )
+
+    trial = build_trial()
+    # The occurrence-only preflight replaces the ordinary base pass.  Pixels
+    # outside ``render_pages`` remain a private reservoir and cannot affect a
+    # row, closure, or selector until the unchanged downstream trial requests
+    # one exact candidate-scoped page.  If the preflight found no ordinary
+    # page, retain the existing FULL -> CANDIDATE_SCOPED two-step axis.
+    retry_modes = (
+        ("CANDIDATE_SCOPED",) if preflight["render_pages"] else ("FULL", "CANDIDATE_SCOPED")
+    )
+    for retry_mode in retry_modes:
+        if retry_mode == "FULL":
+            requested_pages = _missing_render_pages_for_document_store_trial_v1(
+                trial,
+                trial["topology_scan"],
+                selected_snapshot["joined_pages"],
+                evaluation_spec=policy,
+                topology_candidates=topology_candidates,
+            )
+        else:
+            requested_pages = _v4_candidate_scoped_missing_dimension_render_pages(
+                trial,
+                selected_snapshot["joined_pages"],
+                topology_candidates,
+            )
+        requested_pages = tuple(page for page in requested_pages if page not in revealed_pages)
+        if not requested_pages:
+            continue
+        if not set(requested_pages) <= set(preflight["reservoir_pages"]):
+            raise _error("V4 final trial requested pixels outside its private reservoir")
+        revealed_pages.update(requested_pages)
+        trial = build_trial()
+    remaining_pages = tuple(
+        page
+        for page in _v4_candidate_scoped_missing_dimension_render_pages(
+            trial,
+            selected_snapshot["joined_pages"],
+            topology_candidates,
+        )
+        if page not in revealed_pages
+    )
+    if remaining_pages:
+        raise _error("V4 preflight-bound trial exceeded its exact reveal axis")
+    return {
+        "document_ordinal": packet["document_ordinal"],
+        "missing_render_pages": (),
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": trial,
+    }
+
+
 def _v4_document_store_trial_worker_v1(
     request: tuple[
         dict[str, Any],
@@ -4601,17 +4992,16 @@ def _parallel_v4_document_store_trials_v1(
             )
             refill_batch_size = min(_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE, jobs)
             active_snapshots: dict[int, dict[str, Any]] = {}
-            accumulated_renders: dict[int, tuple[dict[str, Any], ...]] = {}
-            pending: dict[Any, tuple[int, int]] = {}
+            pending: dict[Any, tuple[int, str]] = {}
             next_source_index = 0
 
-            def submit_base(index: int, snapshot: dict[str, Any]) -> None:
+            def submit_preflight(index: int, snapshot: dict[str, Any]) -> None:
                 packet = packets[index]
                 future = executor.submit(
-                    _v4_document_store_trial_worker_v1,
-                    (packet, snapshot, family_spec, policy, (), None, "FULL"),
+                    _v4_document_store_render_preflight_worker_v1,
+                    (packet, snapshot, family_spec, policy),
                 )
-                pending[future] = (index, 0)
+                pending[future] = (index, "PREFLIGHT")
 
             def hydrate_next(count: int) -> None:
                 nonlocal next_source_index
@@ -4627,8 +5017,7 @@ def _parallel_v4_document_store_trials_v1(
                 for offset, snapshot in enumerate(snapshots):
                     index = next_source_index + offset
                     active_snapshots[index] = snapshot
-                    accumulated_renders[index] = ()
-                    submit_base(index, snapshot)
+                    submit_preflight(index, snapshot)
                 next_source_index += len(snapshots)
 
             def refill_window() -> None:
@@ -4649,50 +5038,48 @@ def _parallel_v4_document_store_trials_v1(
                     return_when=FIRST_COMPLETED,
                 )
                 for future in sorted(completed, key=lambda item: pending[item]):
-                    index, retry_ordinal = pending.pop(future)
+                    index, stage = pending.pop(future)
                     packet = packets[index]
                     snapshot = active_snapshots[index]
+                    if stage == "PREFLIGHT":
+                        preflight = _validated_v4_document_store_render_preflight_v1(
+                            future.result(),
+                            packet=packet,
+                            snapshot=snapshot,
+                        )
+                        reservoir = (
+                            document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+                                document_store_capability,
+                                document_ordinal=packet["document_ordinal"],
+                                physical_pages=preflight["reservoir_pages"],
+                            )
+                            if preflight["reservoir_pages"]
+                            else ()
+                        )
+                        final_future = executor.submit(
+                            _v4_document_store_preflight_bound_trial_worker_v1,
+                            (
+                                packet,
+                                snapshot,
+                                family_spec,
+                                policy,
+                                reservoir,
+                                preflight,
+                            ),
+                        )
+                        pending[final_future] = (index, "FINAL")
+                        continue
+                    if stage != "FINAL":
+                        raise _error("V4 document-store worker stage drifted")
                     trial, missing_pages = _validated_v4_document_store_worker_result_v1(
                         future.result(),
                         packet=packet,
                         snapshot=snapshot,
                     )
                     if missing_pages:
-                        if retry_ordinal >= 2:
-                            raise _error("V4 rendered worker exceeded its bounded retry axis")
-                        already_rendered_pages = {
-                            render["physical_page"] for render in accumulated_renders[index]
-                        }
-                        if already_rendered_pages & set(missing_pages):
-                            raise _error("V4 rendered worker repeated an already opened page")
-                        new_renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
-                            document_store_capability,
-                            document_ordinal=packet["document_ordinal"],
-                            physical_pages=missing_pages,
-                        )
-                        accumulated_renders[index] = (
-                            _canonical_authenticated_render_snapshot_order_v1(
-                                accumulated_renders[index],
-                                new_renders,
-                            )
-                        )
-                        rendered_future = executor.submit(
-                            _v4_document_store_trial_worker_v1,
-                            (
-                                packet,
-                                snapshot,
-                                family_spec,
-                                policy,
-                                accumulated_renders[index],
-                                trial["topology_scan"],
-                                "CANDIDATE_SCOPED" if retry_ordinal == 0 else "NONE",
-                            ),
-                        )
-                        pending[rendered_future] = (index, retry_ordinal + 1)
-                        continue
+                        raise _error("V4 preflight-bound final trial retained a render request")
                     final_trials[index] = trial
                     del active_snapshots[index]
-                    del accumulated_renders[index]
                 refill_window()
             if next_source_index != len(packets) or active_snapshots:
                 raise _error("V4 document-store worker window lost its source axis")

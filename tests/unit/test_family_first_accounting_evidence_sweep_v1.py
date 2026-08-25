@@ -5,6 +5,7 @@ import hashlib
 import io
 from concurrent.futures import Future
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image, ImageDraw
@@ -1410,6 +1411,129 @@ def test_v4_document_store_worker_result_is_rebound_to_parent_source(mutation) -
         )
 
 
+def _render_preflight_fixture() -> tuple[dict, dict, dict]:
+    packet = {
+        "document_ordinal": 1,
+        "packet_id": "ffdesv1:document:" + "a" * 64,
+        "page_count": 3,
+    }
+    snapshot = {"snapshot_id": "ffdesv1:selected:" + "b" * 64}
+    material = subject._v4_document_store_render_preflight_material_v1(
+        document_ordinal=1,
+        packet_id=packet["packet_id"],
+        render_pages=(2,),
+        reservoir_pages=(1, 2, 3),
+        snapshot_id=snapshot["snapshot_id"],
+        topology_candidates_id="aftcv2:result:" + "c" * 64,
+        topology_scan_id="aftv1:scan:" + "d" * 64,
+    )
+    preflight = {
+        **material,
+        "preflight_id": "ffdrpv1:preflight:" + subject.canonical_json_sha256_v1(material),
+        "render_pages": (2,),
+        "reservoir_pages": (1, 2, 3),
+    }
+    return packet, snapshot, preflight
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value.__setitem__("document_ordinal", 2),
+        lambda value: value.__setitem__("packet_id", "ffdesv1:document:" + "e" * 64),
+        lambda value: value.__setitem__("snapshot_id", "ffdesv1:selected:" + "e" * 64),
+        lambda value: value.__setitem__("render_pages", (2, 1)),
+        lambda value: value.__setitem__("render_pages", (2, 2)),
+        lambda value: value.__setitem__("render_pages", (4,)),
+        lambda value: value.__setitem__("render_pages", (2, 3)),
+        lambda value: value.__setitem__("reservoir_pages", (1, 2)),
+        lambda value: value.__setitem__("reservoir_pages", (1, 2, 4)),
+        lambda value: value.__setitem__("topology_scan_id", "aftv1:scan:" + "e" * 64),
+        lambda value: value.__setitem__("preflight_id", "ffdrpv1:preflight:" + "e" * 64),
+    ],
+)
+def test_v4_document_store_render_preflight_rejects_parent_or_axis_tamper(mutation) -> None:
+    packet, snapshot, preflight = _render_preflight_fixture()
+    mutation(preflight)
+
+    with pytest.raises(subject.FamilyFirstAccountingEvidenceSweepV1Error):
+        subject._validated_v4_document_store_render_preflight_v1(
+            preflight,
+            packet=packet,
+            snapshot=snapshot,
+        )
+
+
+def test_v4_preflight_bound_trial_keeps_reservoir_private_until_exact_reveal(
+    monkeypatch,
+) -> None:
+    packet, snapshot, preflight = _render_preflight_fixture()
+    snapshot = {
+        **snapshot,
+        "document_packet": packet,
+        "joined_pages": [{"physical_page": page} for page in (1, 2, 3)],
+    }
+    renders = tuple(_render(1, page) for page in (1, 2, 3))
+    prepared = SimpleNamespace(prepared_snapshot=object())
+    topology_scan = {"scan_id": preflight["topology_scan_id"]}
+    topology_candidates = {
+        "result_id": preflight["topology_candidates_id"],
+        "regions": [{"candidate_id": "candidate-1"}],
+    }
+    trial_render_pages = []
+
+    monkeypatch.setattr(
+        subject, "_prepare_v4_document_store_context_v1", lambda *_a, **_k: prepared
+    )
+    monkeypatch.setattr(
+        subject,
+        "_open_prepared_v4_document_store_context_v1",
+        lambda *_a, **_k: (snapshot, topology_scan, topology_candidates, (object(),)),
+    )
+    monkeypatch.setattr(
+        subject,
+        "_v4_prepruning_candidate_render_pages_v1",
+        lambda *_a, **_k: (1, 2, 3),
+    )
+    monkeypatch.setattr(
+        subject.occurrence_row_v2,
+        "_validate_snapshot_and_renders",
+        lambda *_a, **_k: None,
+    )
+
+    def trial_from(_snapshot, _family, _policy, *, render_snapshots, **_kwargs):
+        pages = tuple(render["physical_page"] for render in render_snapshots)
+        trial_render_pages.append(pages)
+        return {"document_ordinal": 1, "topology_scan": topology_scan, "pages": pages}
+
+    monkeypatch.setattr(subject, "_trial_from_document_store_snapshot_v1", trial_from)
+    monkeypatch.setattr(
+        subject,
+        "_missing_render_pages_for_document_store_trial_v1",
+        lambda *_a, **_k: pytest.fail("nonempty preflight repeated the ordinary render pass"),
+    )
+    monkeypatch.setattr(
+        subject,
+        "_v4_candidate_scoped_missing_dimension_render_pages",
+        lambda trial, *_a, **_k: (3,) if trial["pages"] == (2,) else (),
+    )
+
+    result = subject._v4_document_store_preflight_bound_trial_worker_v1(
+        (
+            packet,
+            snapshot,
+            _family_spec(),
+            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            renders,
+            preflight,
+        )
+    )
+
+    assert trial_render_pages == [(2,), (2, 3)]
+    assert result["trial"]["pages"] == (2, 3)
+    assert result["missing_render_pages"] == ()
+
+
 def test_parallel_v4_document_store_trials_preserve_order_and_render_only_requests(
     monkeypatch,
 ) -> None:
@@ -1451,34 +1575,39 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
 
     def renders(_cap, *, document_ordinal, physical_pages):
         calls["renders"].append((document_ordinal, physical_pages))
-        return (_render(document_ordinal, physical_pages[0]),)
+        return tuple(_render(document_ordinal, page) for page in physical_pages)
 
-    def worker(request):
-        packet, snapshot, _family, _policy, render_axis, topology_scan, missing_mode = request
+    def preflight_worker(request):
+        packet, _snapshot, _family, _policy = request
+        return {
+            "render_pages": (1,) if packet["document_ordinal"] == 1 else (),
+            "reservoir_pages": (1, 2) if packet["document_ordinal"] == 1 else (),
+        }
+
+    def final_worker(request):
+        packet, snapshot, _family, _policy, render_axis, _preflight = request
         ordinal = packet["document_ordinal"]
         assert snapshot["snapshot_id"] == snapshots[ordinal - 1]["snapshot_id"]
-        is_rendered = bool(render_axis)
-        if ordinal == 1 and missing_mode == "FULL":
-            missing_pages = (1,)
-        elif ordinal == 1 and missing_mode == "CANDIDATE_SCOPED":
-            missing_pages = (2,)
-        else:
-            missing_pages = ()
         return {
             "document_ordinal": ordinal,
-            "missing_render_pages": missing_pages,
+            "missing_render_pages": (),
             "packet_id": packet["packet_id"],
             "snapshot_id": snapshot["snapshot_id"],
             "trial": {
                 "document_ordinal": ordinal,
-                "rendered": is_rendered,
+                "rendered": bool(render_axis),
                 "rendered_pages": [render["physical_page"] for render in render_axis],
-                "topology_scan": topology_scan or {"scan_id": f"scan-{ordinal}"},
             },
         }
 
     monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
-    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(subject, "_v4_document_store_render_preflight_worker_v1", preflight_worker)
+    monkeypatch.setattr(subject, "_v4_document_store_preflight_bound_trial_worker_v1", final_worker)
+    monkeypatch.setattr(
+        subject,
+        "_validated_v4_document_store_render_preflight_v1",
+        lambda value, **_kwargs: value,
+    )
     monkeypatch.setattr(
         subject.document_store_v1,
         "read_authenticated_family_first_documents_selected_pages_v1",
@@ -1501,7 +1630,7 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
 
     assert calls == {
         "executor": [(2, "spawn")],
-        "renders": [(1, (1,)), (1, (2,))],
+        "renders": [(1, (1, 2))],
         "selected": [selections],
     }
     assert [trial["document_ordinal"] for trial in trials] == [1, 2]
@@ -1570,9 +1699,12 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
             copy.deepcopy(snapshots[ordinal]) for ordinal, _pages in document_page_selections
         )
 
-    def worker(request):
-        packet, snapshot, _family, _policy, _renders, _scan, mode = request
-        assert mode == "FULL"
+    def preflight_worker(request):
+        packet, _snapshot, _family, _policy = request
+        return {"render_pages": (), "reservoir_pages": (), "ordinal": packet["document_ordinal"]}
+
+    def final_worker(request):
+        packet, snapshot, _family, _policy, _renders, _preflight = request
         return {
             "document_ordinal": packet["document_ordinal"],
             "missing_render_pages": (),
@@ -1586,7 +1718,13 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
 
     monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
     monkeypatch.setattr(subject, "wait", reverse_wait)
-    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(subject, "_v4_document_store_render_preflight_worker_v1", preflight_worker)
+    monkeypatch.setattr(subject, "_v4_document_store_preflight_bound_trial_worker_v1", final_worker)
+    monkeypatch.setattr(
+        subject,
+        "_validated_v4_document_store_render_preflight_v1",
+        lambda value, **_kwargs: value,
+    )
     monkeypatch.setattr(
         subject.document_store_v1,
         "read_authenticated_family_first_documents_selected_pages_v1",
@@ -1644,8 +1782,9 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
         def submit(self, function, request):
             nonlocal sequence
             sequence += 1
-            packet, _snapshot, _family, _policy, _renders, _scan, mode = request
-            submission_events.append((packet["document_ordinal"], mode))
+            packet = request[0]
+            stage = "PREFLIGHT" if len(request) == 4 else "FINAL"
+            submission_events.append((packet["document_ordinal"], stage))
             future = Future()
             future.sequence = sequence
             try:
@@ -1665,12 +1804,16 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
             copy.deepcopy(snapshots[ordinal]) for ordinal, _pages in document_page_selections
         )
 
-    def worker(request):
-        packet, snapshot, _family, _policy, _renders, _scan, mode = request
+    def preflight_worker(request):
+        packet, _snapshot, _family, _policy = request
+        return {"render_pages": (), "reservoir_pages": (), "ordinal": packet["document_ordinal"]}
+
+    def final_worker(request):
+        packet, snapshot, _family, _policy, _renders, _preflight = request
         ordinal = packet["document_ordinal"]
         return {
             "document_ordinal": ordinal,
-            "missing_render_pages": (1,) if ordinal == 1 and mode == "FULL" else (),
+            "missing_render_pages": (),
             "packet_id": packet["packet_id"],
             "snapshot_id": snapshot["snapshot_id"],
             "trial": {
@@ -1681,7 +1824,13 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
 
     monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
     monkeypatch.setattr(subject, "wait", fifo_wait)
-    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(subject, "_v4_document_store_render_preflight_worker_v1", preflight_worker)
+    monkeypatch.setattr(subject, "_v4_document_store_preflight_bound_trial_worker_v1", final_worker)
+    monkeypatch.setattr(
+        subject,
+        "_validated_v4_document_store_render_preflight_v1",
+        lambda value, **_kwargs: value,
+    )
     monkeypatch.setattr(
         subject.document_store_v1,
         "read_authenticated_family_first_documents_selected_pages_v1",
@@ -1705,7 +1854,7 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
     )
 
     assert selected_batch_sizes == [16, 16, 1]
-    assert submission_events.index((1, "CANDIDATE_SCOPED")) < submission_events.index((33, "FULL"))
+    assert submission_events.index((1, "FINAL")) < submission_events.index((33, "PREFLIGHT"))
     assert [trial["document_ordinal"] for trial in trials] == list(range(1, 34))
 
 
