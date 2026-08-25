@@ -25,6 +25,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     extract_reporting_year_axis_v1,
     infer_document_accounting_unit_context_v1,
     infer_document_reporting_period_context_v1,
+    is_period_axis_candidate_line_v1,
     resolve_relative_period_axis_v1,
 )
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
@@ -106,6 +107,7 @@ _COMPARATIVE_QUALIFIERS = {
     "da duoc soat xet",
     "so lieu so sanh",
 }
+_MAX_PERIOD_SUBSET_CANDIDATE_LINES = 16
 
 
 class AccountingFamilyColumnContextV1Error(ValueError):
@@ -585,13 +587,16 @@ def _local_period_records(
     # Do not silently downgrade an ambiguous set of full/split/relative period
     # surfaces to a coarser two-year axis.  The caller may still recover one
     # unique expected-period subset using document context plus lane geometry.
+    subset_lines = _period_subset_candidate_lines(header_lines)
+    if subset_lines is None:
+        return [], "UNRESOLVED_PERIOD_SUBSET_CANDIDATE_LIMIT_EXCEEDED"
     if any(
         extract_period_axis_v1(subset)[1] != "UNRESOLVED"
-        for subset_size in range(2, min(4, len(header_lines)) + 1)
-        for subset in combinations(header_lines, subset_size)
+        for subset_size in range(2, min(4, len(subset_lines)) + 1)
+        for subset in combinations(subset_lines, subset_size)
     ):
         return [], "UNRESOLVED_MULTIPLE_LOCAL_PERIOD_SURFACES"
-    years, year_mode = extract_reporting_year_axis_v1(header_lines)
+    years, year_mode = extract_reporting_year_axis_v1(subset_lines)
     expected = _expected_periods(document_context, semantics)
     if year_mode != "VISIBLE_TWO_YEAR_REPORTING_AXIS" or expected is None:
         return [], "UNRESOLVED"
@@ -609,6 +614,23 @@ def _local_period_records(
         ],
         "LOCAL_TWO_YEAR_AXIS_BOUND_TO_DOCUMENT_DATES",
     )
+
+
+def _period_subset_candidate_lines(
+    header_lines: Sequence[Mapping[str, Any]],
+) -> list[Mapping[str, Any]] | None:
+    """Bound subset search to period grammar and comparative qualifiers."""
+
+    selected = [
+        line
+        for line in header_lines
+        if is_period_axis_candidate_line_v1(line)
+        or any(
+            qualifier in normalize_vietnamese_anchor_v1(line["vietocr_text"])
+            for qualifier in _COMPARATIVE_QUALIFIERS
+        )
+    ]
+    return selected if len(selected) <= _MAX_PERIOD_SUBSET_CANDIDATE_LINES else None
 
 
 def _period_axis(
@@ -642,12 +664,15 @@ def _period_axis(
         # axis forms, then accept only one unique expected-period geometry.
         # The expected dates come from repeated document evidence; bank, page,
         # note and fixed-year identities never enter this choice.
+        subset_lines = _period_subset_candidate_lines(header_lines)
+        if subset_lines is None:
+            return []
         alternatives: dict[
             tuple[tuple[int, str, tuple[int, ...], int], ...],
             tuple[list[tuple[int, Mapping[str, Any]]], str, tuple[int, ...]],
         ] = {}
-        for subset_size in range(2, min(4, len(header_lines)) + 1):
-            for subset in combinations(header_lines, subset_size):
+        for subset_size in range(2, min(4, len(subset_lines)) + 1):
+            for subset in combinations(subset_lines, subset_size):
                 subset_records, subset_mode = _local_period_records(
                     subset,
                     page_lines,

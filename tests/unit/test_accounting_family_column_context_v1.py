@@ -4,6 +4,7 @@ import copy
 
 import pytest
 
+from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation.accounting_family_column_context_v1 import (
     AccountingFamilyColumnContextV1Error,
     build_accounting_family_column_context_v1,
@@ -69,6 +70,36 @@ def _line(
         "sample_id": f"sample-{sample:09d}",
         "vietocr_text": text,
     }
+
+
+def _header_candidate(index: int, text: str) -> dict[str, object]:
+    return {
+        "bbox": [100, 10 + index, 220, 30 + index],
+        "numeric_score": 0.99,
+        "numeric_text": text,
+        "source_line_index": index,
+        "vietocr_text": text,
+    }
+
+
+def test_period_subset_search_excludes_arbitrary_header_lines_and_is_bounded() -> None:
+    lines = [
+        *[_header_candidate(index, f"Khoản mục trình bày {index}") for index in range(100)],
+        _header_candidate(100, "31/12/2025"),
+        _header_candidate(101, "31/12/2024"),
+        _header_candidate(102, "Số liệu so sánh"),
+    ]
+
+    selected = column_context_v1._period_subset_candidate_lines(lines)
+
+    assert selected is not None
+    assert [line["source_line_index"] for line in selected] == [100, 101, 102]
+    assert (
+        column_context_v1._period_subset_candidate_lines(
+            [_header_candidate(index, f"Năm {2000 + index}") for index in range(17)]
+        )
+        is None
+    )
 
 
 def _page(lines: list[dict[str, object]], page: int) -> dict[str, object]:

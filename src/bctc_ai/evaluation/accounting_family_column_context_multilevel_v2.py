@@ -69,8 +69,8 @@ _FALLBACK_ELIGIBLE_V1_REASONS = {
 PINNED_IMPLEMENTATION_REFS = {
     "sealed_column_context_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_column_context_v1.py",
-        "sha256": "1ce4bff636481c84e7a053f92f76c143647e386807de32000b58962a5bd35e03",
-        "size_bytes": 54_372,
+        "sha256": "0f7f9acb36f75afe8eb7d377ab6c14d8a8186c6eac3da55a9dce7dcc76439a22",
+        "size_bytes": 55_297,
     },
     "multilevel_header_leaf_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_multilevel_header_leaf_axis_v1.py",

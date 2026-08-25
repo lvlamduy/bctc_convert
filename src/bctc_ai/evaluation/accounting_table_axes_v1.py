@@ -36,6 +36,7 @@ __all__ = [
     "money_integer_v1",
     "money_values_v1",
     "percentage_values_v1",
+    "is_period_axis_candidate_line_v1",
     "resolve_relative_period_axis_v1",
     "unit_kind_v1",
 ]
@@ -221,6 +222,26 @@ def _standalone_or_prefixed_year(value: str) -> int | None:
     if re.fullmatch(r"20\d{2}", normalized):
         return int(normalized)
     return None
+
+
+def is_period_axis_candidate_line_v1(line: Mapping[str, Any]) -> bool:
+    """Return whether the exact period parsers can consume this line.
+
+    This is a grammar-only shortlist for bounded subset search.  It grants no
+    period, lane, document, or mapping authority.
+    """
+
+    text = _period_text(line, "period-axis candidate line")
+    _source_line_index(line, "period-axis candidate line")
+    _bbox(line, "period-axis candidate line")
+    normalized = normalize_vietnamese_anchor_v1(text)
+    if _contains_period_surface(text) or _relative_period_role(normalized) is not None:
+        return True
+    if matched := _DAY_ONLY.fullmatch(normalized):
+        return 1 <= int(matched.group(1)) <= 31
+    if matched := _MONTH_YEAR.fullmatch(normalized):
+        return 1 <= int(matched.group(1)) <= 12
+    return False
 
 
 def center_x2_v1(line: Mapping[str, Any]) -> int:

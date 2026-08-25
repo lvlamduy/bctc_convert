@@ -17,6 +17,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     infer_document_reporting_period_context_v1,
     is_accounting_value_surface_v1,
     is_number_like_v1,
+    is_period_axis_candidate_line_v1,
     money_integer_v1,
     money_values_v1,
     percentage_values_v1,
@@ -49,6 +50,22 @@ def _line(
 
 def _page(page_sequence: int, *lines: dict[str, object]) -> dict[str, object]:
     return {"lines": list(lines), "page_sequence": page_sequence}
+
+
+@pytest.mark.parametrize(
+    ("surface", "expected"),
+    [
+        ("31/12/2025", True),
+        ("Ngày 31 tháng", True),
+        ("12 năm 2025", True),
+        ("Số cuối kỳ", True),
+        ("Năm 2025", True),
+        ("Cho vay khách hàng", False),
+        ("1.234.567", False),
+    ],
+)
+def test_period_axis_candidate_line_is_grammar_only(surface: str, expected: bool) -> None:
+    assert is_period_axis_candidate_line_v1(_line(3, surface, 10)) is expected
 
 
 def test_period_axis_supports_exact_split_and_relative_variants() -> None:
