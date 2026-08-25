@@ -2426,11 +2426,16 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
     ):
         return False
     for role in top_roles:
+        source = summary_records[role].get("source")
+        source_record = source.get("record") if type(source) is dict else None
+        direct_role_kind = source_record.get("role_kind") if type(source_record) is dict else None
+        if direct_role_kind not in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}:
+            return False
         exact = _v4_exact_visible_role_axis(
             summary_records[role],
             summary_axes,
             expected_parent_role=family_id,
-            expected_role_kind="STRUCTURAL_GROUP",
+            expected_role_kind=direct_role_kind,
             allow_family_root_scope_without_binding=True,
         )
         if exact is None or exact[1] in summary_consumed:
@@ -2492,6 +2497,7 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
             record,
             detail_axes,
             expected_parent_role=parent_role,
+            allow_family_root_scope_without_binding=parent_role == family_id,
         )
         if exact is None or exact[1] in detail_consumed:
             return False

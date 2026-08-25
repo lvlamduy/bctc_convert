@@ -3314,6 +3314,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     nested_discount: bool = False,
     off_frontier_row: bool = False,
     partial_provision: bool = False,
+    root_adjustment: bool = False,
     trailing_detail_root: bool = False,
     wrong_provision_parent: bool = False,
 ) -> tuple[dict, dict]:
@@ -3323,6 +3324,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     demand = "DEMAND_DEPOSIT_GROUP"
     term = "TERM_DEPOSIT_GROUP"
     provision = adjustment_role
+    root_adjustment_role = "ROOT_LEVEL_ADJUSTMENT"
     root_axis = (100, 100)
     deposit_axis = (70, 60)
     loan_axis = (30, 40)
@@ -3385,8 +3387,18 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     summary_root = result_record(
         family,
         root_axis,
-        [deposit, loan],
+        [deposit, loan, *([root_adjustment_role] if root_adjustment else [])],
         resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+    )
+    summary_adjustment = (
+        _v4_direct_visible_test_record(
+            root_adjustment_role,
+            (0, 0),
+            line_ordinal=60,
+            role_kind="ADDITIVE_CHILD",
+        )
+        if root_adjustment
+        else None
     )
     summary = {
         "additive_closure": {
@@ -3405,13 +3417,13 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                         "visible_result_roles": [loan],
                     },
                     {
-                        "component_roles_present": [deposit, loan],
+                        "component_roles_present": [
+                            deposit,
+                            loan,
+                            *([root_adjustment_role] if root_adjustment else []),
+                        ],
                         "result_role": family,
-                        "status": (
-                            "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
-                            if trailing_detail_root
-                            else "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
-                        ),
+                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
                         "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
                     },
                 ],
@@ -3421,6 +3433,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
             "resolved_roles": [
                 summary_deposit,
                 summary_loan,
+                *([summary_adjustment] if summary_adjustment is not None else []),
                 summary_root_alias,
                 summary_root,
             ],
@@ -3434,6 +3447,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         parent_roles={
             deposit: family,
             loan: family,
+            **({root_adjustment_role: family} if root_adjustment else {}),
             "EXPLICIT_FAMILY_TOTAL": family,
         },
     )
@@ -3524,6 +3538,15 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                 role_kind="NONADDITIVE_CHILD",
             )
         )
+    if root_adjustment:
+        visible_records.append(
+            _v4_direct_visible_test_record(
+                root_adjustment_role,
+                (0, 0),
+                line_ordinal=125,
+                role_kind="ADDITIVE_CHILD",
+            )
+        )
 
     derived_records = [
         result_record(
@@ -3553,7 +3576,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         result_record(
             family,
             root_axis,
-            [deposit, loan],
+            [deposit, loan, *([root_adjustment_role] if root_adjustment else [])],
             resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
         ),
     ]
@@ -3592,9 +3615,17 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                         "visible_result_roles": [loan, "EXPLICIT_INTERBANK_LOAN_TOTAL"],
                     },
                     {
-                        "component_roles_present": [deposit, loan],
+                        "component_roles_present": [
+                            deposit,
+                            loan,
+                            *([root_adjustment_role] if root_adjustment else []),
+                        ],
                         "result_role": family,
-                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "status": (
+                            "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                            if trailing_detail_root
+                            else "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                        ),
                         "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
                     },
                 ],
@@ -3615,6 +3646,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         "INTERBANK_LOAN_VND": loan,
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
         provision: deposit if wrong_provision_parent else loan,
+        **({root_adjustment_role: family} if root_adjustment else {}),
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL": deposit,
         "EXPLICIT_INTERBANK_LOAN_TOTAL": loan,
         "EXPLICIT_FAMILY_TOTAL": family,
@@ -3666,6 +3698,7 @@ def test_v4_visible_summary_yields_to_unique_visible_correlated_exact_detail(
 
 def test_v4_visible_summary_yields_to_exact_richer_trailing_root_detail() -> None:
     summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        root_adjustment=True,
         trailing_detail_root=True,
     )
 
