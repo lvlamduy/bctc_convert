@@ -1034,6 +1034,106 @@ def test_optional_partial_child_with_blank_missing_lane_does_not_block_complete_
     assert result["metrics"]["missing_lane_count"] == 0
 
 
+def test_repeated_role_dash_rescue_selects_the_unique_missing_page_lane() -> None:
+    pages = [
+        _page(
+            [
+                _line(0, "Phân tích dư nợ theo thời gian", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Nợ ngắn hạn", "", [50, 100, 300, 122]),
+                _line(4, "100", "100", [600, 100, 700, 122]),
+                _line(5, "90", "90", [800, 100, 900, 122]),
+                _line(6, "Nợ trung hạn", "", [50, 150, 300, 172]),
+                _line(7, "200", "200", [600, 150, 700, 172]),
+                _line(8, "180", "180", [800, 150, 900, 172]),
+                _line(9, "Nợ ngắn hạn", "", [50, 200, 300, 222]),
+                _line(10, "70", "70", [800, 200, 900, 222]),
+            ]
+        )
+    ]
+    base = build_accounting_family_row_axis_v1(pages, _spec())
+    complete = next(row for row in base["rows"] if row["role"] == "SHORT_TERM")
+    partial = copy.deepcopy(complete)
+    partial["label_match"].update(
+        {
+            "document_line_ordinal": 9,
+            "end_document_line_ordinal": 9,
+            "end_source_line_index": 9,
+            "source_line_index": 9,
+            "surface": "Nợ ngắn hạn",
+        }
+    )
+    visible = partial["values"][1]
+    source = pages[0]["lines"][10]
+    visible.update(
+        {
+            "bbox": copy.deepcopy(source["bbox"]),
+            "line_ordinal": 10,
+            "parsed_token": row_axis_v1.parse_visible_financial_numeric_token_v1("70"),
+            "raw_prediction": "70",
+            "sample_id": source["sample_id"],
+        }
+    )
+    partial["values"] = [visible]
+    partial["missing_column_ordinals"] = [0]
+    partial["status"] = "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    rows = [*copy.deepcopy(base["rows"]), partial]
+    region = copy.deepcopy(base["topology_region"])
+    region["cluster_end_document_line_ordinal_exclusive"] = 11
+    centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+        rows, partial, base["column_grids"]
+    )
+    proposal = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in pages[0]["lines"]],
+        label_boxes=[pages[0]["lines"][partial["label_match"]["source_line_index"]]["bbox"]],
+        is_numeric=row_axis_v1._is_numeric,
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )[0]
+    rescues = (
+        {
+            "column_ordinal": 0,
+            "page_sequence": 1,
+            "region": _dash_region(proposal["raw_pixel_bbox"]),
+            "role": "SHORT_TERM",
+        },
+    )
+
+    completed, projections = row_axis_v1._apply_visible_dash_rescues(
+        row_axis_v1._pages(pages),
+        region,
+        rows,
+        base["column_grids"],
+        rescues,
+    )
+
+    repeated = [row for row in completed if row["role"] == "SHORT_TERM"]
+    assert [[value["raw_prediction"] for value in row["values"]] for row in repeated] == [
+        ["100", "90"],
+        ["-", "70"],
+    ]
+    assert all(row["status"] == "VISIBLE_VALUE_LANES_BOUND" for row in repeated)
+    assert len(projections) == 1
+
+    duplicated_rows = [*rows, copy.deepcopy(partial)]
+    duplicated_rows[-1]["label_match"]["source_line_index"] = 3
+    duplicated_rows[-1]["label_match"]["end_source_line_index"] = 3
+    with pytest.raises(
+        AccountingFamilyRowAxisV1Error,
+        match="does not select one observed role page lane",
+    ):
+        row_axis_v1._apply_visible_dash_rescues(
+            row_axis_v1._pages(pages),
+            region,
+            duplicated_rows,
+            base["column_grids"],
+            rescues,
+        )
+
+
 def test_later_child_with_explicit_other_parent_does_not_hide_structural_row() -> None:
     rows = [
         {

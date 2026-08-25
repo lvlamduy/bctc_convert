@@ -197,7 +197,10 @@ Trạng thái:
   `family_first_numeric_cell_evidence_v1` và
   `loan_geography_numeric_reconciliation_v1` giữ mọi raw candidate, typed
   `BLANK`/`DASH`/`PRINTED_ZERO`, chỉ cho equation select/veto đúng một already-
-  observed assignment. Missing local printed control chỉ được thay bằng một
+  observed assignment. Với role lặp trên cùng trang, pixel dash chỉ được bind
+  khi đúng một base row của `(role, page, lane)` đang thiếu lane đó; hai row
+  cùng thiếu một lane vẫn abstain, còn row cùng role đã đủ số không làm mất
+  exact pixel evidence của row kế tiếp. Missing local printed control chỉ được thay bằng một
   public-replayed authenticated upstream control; không control nào được
   backsolve. Một mixed-separator cell đã có independent crop reader chỉ được
   dùng accounting corroboration khi exact coverage role của chính sample đó đi

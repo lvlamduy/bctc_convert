@@ -530,13 +530,19 @@ def test_inconsistent_visible_grid_skips_optional_dash_rescue_and_stays_unresolv
 
 
 @pytest.mark.parametrize(
-    ("require_unique_owner", "reverse_rows", "expected_rescue_count"),
-    [(True, False, 0), (True, True, 0), (False, False, 1)],
+    ("require_unique_owner", "reverse_rows", "duplicate_missing_lane", "expected_rescue_count"),
+    [
+        (True, False, False, 1),
+        (True, True, False, 1),
+        (True, False, True, 0),
+        (False, False, False, 1),
+    ],
 )
-def test_v4_repeated_role_page_dash_rescue_is_skipped_without_legacy_drift(
+def test_v4_repeated_role_page_dash_rescue_binds_unique_missing_lane_without_legacy_drift(
     monkeypatch,
     require_unique_owner: bool,
     reverse_rows: bool,
+    duplicate_missing_lane: bool,
     expected_rescue_count: int,
 ) -> None:
     rows = [
@@ -559,6 +565,8 @@ def test_v4_repeated_role_page_dash_rescue_is_skipped_without_legacy_drift(
             "role": "INTERBANK_LOAN_VND",
         },
     ]
+    if duplicate_missing_lane:
+        rows[1]["missing_column_ordinals"] = [0]
     if reverse_rows:
         rows.reverse()
     proposal = {

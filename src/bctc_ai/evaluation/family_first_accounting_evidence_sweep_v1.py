@@ -523,29 +523,28 @@ def _visible_dash_rescue_inputs(
     region_lines = row_axis_v1._region_lines(joined_pages, region)
     if type(require_unique_role_page_owner) is not bool:
         raise _error("visible-dash rescue owner policy must be one exact boolean")
-    v1_role_page_owner_counts: dict[tuple[str, int], int] = {}
+    v1_role_page_lane_owner_counts: dict[tuple[str, int, int], int] = {}
     if require_unique_role_page_owner:
         for observed_row in row_axis["rows"]:
-            owner_key = (
-                observed_row["role"],
-                observed_row["label_match"]["page_sequence"],
-            )
-            v1_role_page_owner_counts[owner_key] = v1_role_page_owner_counts.get(owner_key, 0) + 1
+            for missing_lane in observed_row["missing_column_ordinals"]:
+                owner_key = (
+                    observed_row["role"],
+                    observed_row["label_match"]["page_sequence"],
+                    missing_lane,
+                )
+                v1_role_page_lane_owner_counts[owner_key] = (
+                    v1_role_page_lane_owner_counts.get(owner_key, 0) + 1
+                )
     rescues = []
     for row in row_axis["rows"]:
         if not row["missing_column_ordinals"]:
             continue
         match = row["label_match"]
         page_sequence = match["page_sequence"]
-        if (
-            require_unique_role_page_owner
-            and v1_role_page_owner_counts[(row["role"], page_sequence)] != 1
+        if require_unique_role_page_owner and not any(
+            v1_role_page_lane_owner_counts[(row["role"], page_sequence, lane)] == 1
+            for lane in row["missing_column_ordinals"]
         ):
-            # The sealed V1 rescue contract selects rows by role and page,
-            # not by the V2 occurrence identity.  A repeated role on one
-            # page therefore cannot receive an unambiguous V1 pixel hint.
-            # Keep its base missing lane so typed source-only evidence and
-            # ordinary closure vetoes remain authoritative.
             continue
         page = by_page[page_sequence]
         page_height = heights.get(page_sequence)
@@ -578,6 +577,16 @@ def _visible_dash_rescue_inputs(
         )
         by_lane = {proposal["column_ordinal"]: proposal for proposal in proposals}
         for lane in row["missing_column_ordinals"]:
+            if (
+                require_unique_role_page_owner
+                and v1_role_page_lane_owner_counts[(row["role"], page_sequence, lane)] != 1
+            ):
+                # The sealed V1 rescue envelope names role, page and lane.
+                # Repeated same-role rows remain safe when only one of them
+                # lacks this exact lane: the immutable base row axis then
+                # selects that row uniquely.  Two rows missing the same lane
+                # remain ambiguous and receive no pixel hint.
+                continue
             proposal = by_lane.get(lane)
             if proposal is None:
                 continue

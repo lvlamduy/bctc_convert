@@ -1227,18 +1227,17 @@ def _rescue_projection(
         or raw["column_ordinal"] < 0
     ):
         raise _error("visible-dash rescue input fields drifted")
+    lane = raw["column_ordinal"]
     candidates = [
         row
         for row in rows
         if row["role"] == raw["role"]
         and row["label_match"]["page_sequence"] == raw["page_sequence"]
+        and lane in row["missing_column_ordinals"]
     ]
     if len(candidates) != 1:
-        raise _error("visible-dash rescue does not select one observed role row")
+        raise _error("visible-dash rescue does not select one observed role page lane")
     row = candidates[0]
-    lane = raw["column_ordinal"]
-    if lane not in row["missing_column_ordinals"]:
-        raise _error("visible-dash rescue targets no missing body lane")
     by_page = {page["page_sequence"]: page for page in pages}
     page = by_page.get(raw["page_sequence"])
     if page is None or type(page["page_width"]) is not int:
@@ -1379,6 +1378,7 @@ def _apply_visible_dash_rescues(
             for item in completed
             if item["role"] == projection["role"]
             and item["label_match"]["page_sequence"] == projection["page_sequence"]
+            and projection["column_ordinal"] in item["missing_column_ordinals"]
         )
         row["values"].append(rescued)
         row["values"].sort(key=lambda item: item["column_ordinal"])
