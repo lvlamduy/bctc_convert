@@ -4624,6 +4624,34 @@ def _v4_document_store_render_preflight_worker_v1(
     )
     if not set(render_pages) <= set(reservoir_pages):
         raise _error("V4 render preflight pages escape their private reservoir")
+    completed_result: dict[str, Any] | None = None
+    if not render_pages:
+        trial = _trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            render_snapshots=(),
+            topology_scan=topology_scan,
+            expected_packet=packet,
+            _v4_runtime_context={"prepared_context": prepared_context},
+        )
+        render_pages = _missing_render_pages_for_document_store_trial_v1(
+            trial,
+            trial["topology_scan"],
+            selected_snapshot["joined_pages"],
+            evaluation_spec=policy,
+            topology_candidates=topology_candidates,
+        )
+        if not set(render_pages) <= set(reservoir_pages):
+            raise _error("V4 render preflight base trial escaped its private reservoir")
+        if not render_pages:
+            completed_result = {
+                "document_ordinal": packet["document_ordinal"],
+                "missing_render_pages": (),
+                "packet_id": packet["packet_id"],
+                "snapshot_id": snapshot["snapshot_id"],
+                "trial": trial,
+            }
     material = _v4_document_store_render_preflight_material_v1(
         document_ordinal=packet["document_ordinal"],
         packet_id=packet["packet_id"],
@@ -4635,19 +4663,21 @@ def _v4_document_store_render_preflight_worker_v1(
     )
     preflight = {
         **material,
+        "completed_result": completed_result,
         "preflight_id": "ffdrpv1:preflight:" + canonical_json_sha256_v1(material),
         "render_pages": render_pages,
         "reservoir_pages": reservoir_pages,
     }
-    _V4_RENDER_PREFLIGHT_CONTEXT_CACHE[preflight["preflight_id"]] = {
-        "family_spec_sha256": canonical_json_sha256_v1(family_spec),
-        "packet_id": packet["packet_id"],
-        "policy_sha256": canonical_json_sha256_v1(policy),
-        "prepared_context": prepared_context,
-        "snapshot_id": snapshot["snapshot_id"],
-        "topology_candidates_id": topology_candidates["result_id"],
-        "topology_scan_id": topology_scan["scan_id"],
-    }
+    if completed_result is None:
+        _V4_RENDER_PREFLIGHT_CONTEXT_CACHE[preflight["preflight_id"]] = {
+            "family_spec_sha256": canonical_json_sha256_v1(family_spec),
+            "packet_id": packet["packet_id"],
+            "policy_sha256": canonical_json_sha256_v1(policy),
+            "prepared_context": prepared_context,
+            "snapshot_id": snapshot["snapshot_id"],
+            "topology_candidates_id": topology_candidates["result_id"],
+            "topology_scan_id": topology_scan["scan_id"],
+        }
     return preflight
 
 
@@ -4660,6 +4690,7 @@ def _validated_v4_document_store_render_preflight_v1(
     """Rebind one topology/occurrence preflight to parent-owned source."""
 
     fields = {
+        "completed_result",
         "document_ordinal",
         "format_version",
         "packet_id",
@@ -4673,6 +4704,11 @@ def _validated_v4_document_store_render_preflight_v1(
     if (
         type(value) is not dict
         or set(value) != fields
+        or (
+            value.get("completed_result") is not None
+            and type(value["completed_result"]) is not dict
+        )
+        or (value.get("completed_result") is not None and value.get("render_pages") != ())
         or value.get("document_ordinal") != packet.get("document_ordinal")
         or value.get("format_version") != _V4_RENDER_PREFLIGHT_FORMAT_VERSION
         or value.get("packet_id") != packet.get("packet_id")
@@ -4738,6 +4774,8 @@ def _v4_document_store_preflight_bound_trial_worker_v1(
         packet=packet,
         snapshot=snapshot,
     )
+    if preflight["completed_result"] is not None:
+        raise _error("V4 preflight-bound trial received an already complete result")
     cached_context = _V4_RENDER_PREFLIGHT_CONTEXT_CACHE.pop(preflight["preflight_id"], None)
     if (
         type(cached_context) is not dict
@@ -5079,6 +5117,19 @@ def _parallel_v4_document_store_trials_v1(
                             packet=packet,
                             snapshot=snapshot,
                         )
+                        completed_result = preflight.get("completed_result")
+                        if completed_result is not None:
+                            trial, missing_pages = _validated_v4_document_store_worker_result_v1(
+                                completed_result,
+                                packet=packet,
+                                snapshot=snapshot,
+                            )
+                            if missing_pages:
+                                raise _error("V4 completed preflight retained a render request")
+                            final_trials[index] = trial
+                            del active_snapshots[index]
+                            free_lanes.append(lane)
+                            continue
                         reservoir = (
                             document_store_v1.read_authenticated_family_first_document_page_renders_v1(
                                 document_store_capability,
