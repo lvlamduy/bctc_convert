@@ -196,6 +196,33 @@ def test_family12_branch_before_wrapped_owner_uses_two_exact_context_free_leaves
     assert all(item["matched_within_role"] is None for item in region["child_matches"])
 
 
+def test_family12_wrapped_state_majority_source_variants_resolve_exact_roles() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Công ty TNHH trên 1 Thành viên vốn Nhà",
+                    "nước lớn hơn 50%",
+                    "Công ty Cổ phần Vốn Nhà nước - 50%",
+                    "(Nhà nước chiếm cổ phần chi phối)",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["regions"][0]["observed_roles"] == [
+        "STATE_MAJORITY_LLC_LOANS",
+        "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+    ]
+    assert all(
+        item["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+        for item in result["regions"][0]["child_matches"]
+    )
+
+
 def test_family12_branchless_owner_requires_two_distinct_exact_leaf_roles() -> None:
     spec = build_loan_enterprise_family12_topology_spec_v1()
     positive = build_accounting_family_topology_scan_v1(
