@@ -644,7 +644,7 @@ _TOPOLOGY_SPEC: dict[str, Any] = {
         ]
     ),
     "limits": {
-        "max_cluster_span_lines": 160,
+        "max_cluster_span_lines": 192,
         "max_continuation_pages": 1,
         "max_label_line_span": 6,
     },

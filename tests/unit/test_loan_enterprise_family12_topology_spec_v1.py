@@ -59,7 +59,7 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
         "role": FAMILY_ID,
     }
     assert spec["limits"] == {
-        "max_cluster_span_lines": 160,
+        "max_cluster_span_lines": 192,
         "max_continuation_pages": 1,
         "max_label_line_span": 6,
     }
@@ -172,6 +172,29 @@ def test_family12_child_can_continue_exactly_one_reset_free_page() -> None:
     )
     assert company["page_sequence"] == 2
     assert company["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
+def test_family12_two_page_budget_keeps_late_contextual_other_row() -> None:
+    first_page = ["Cho vay khách hàng", *[f"Nội dung {index}" for index in range(85)]]
+    second_page = [
+        "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp như sau",
+        *[f"Dòng trình bày {index}" for index in range(80)],
+        "Khác",
+    ]
+
+    result = build_accounting_family_topology_scan_v1(
+        [_page(first_page, page_sequence=1), _page(second_page, page_sequence=2)],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["continuation_page_count"] == 1
+    other = next(
+        item for item in region["child_matches"] if item["role"] == "OTHER_ENTERPRISE_LOANS"
+    )
+    assert other["page_sequence"] == 2
+    assert other["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
 
 
 def test_family12_branch_before_wrapped_owner_uses_two_exact_context_free_leaves() -> None:
