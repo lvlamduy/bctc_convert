@@ -200,6 +200,7 @@ _UNLABELED_SUBTOTAL_DISPOSITIONS = {
 _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION = (
     "ONE_EDIT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"
 )
+_EXACT_FAMILY_PARENT_RESULT_DISPOSITION = "EXACT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"
 _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES = {
     "INTERBANK_DEPOSIT_GROUP",
     "INTERBANK_LOAN_GROUP",
@@ -1307,6 +1308,116 @@ def _trailing_resolution(candidate: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _exact_family_parent_cluster_resolution(
+    *,
+    internal_unassigned_numeric_clusters: Sequence[Mapping[str, Any]],
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    row_axis: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Bind one exact inline family-parent total to the body column grid.
+
+    This is source authority, not arithmetic inference.  The cluster must be
+    the sole complete numeric row whose same-row label is exactly the selected
+    topology parent.  Arithmetic remains a later corroboration/veto in the
+    declared root equation.
+    """
+
+    region = row_axis.get("topology_region")
+    parent = region.get("parent_match") if type(region) is dict else None
+    if (
+        type(parent) is not dict
+        or not occurrence_v2._match_has_effective_exact_source_authority(parent)  # noqa: SLF001
+        or type(parent.get("page_sequence")) is not int
+        or type(parent.get("source_line_index")) is not int
+        or type(parent.get("end_source_line_index")) is not int
+    ):
+        return None
+    parent_lines = list(range(parent["source_line_index"], parent["end_source_line_index"] + 1))
+    grids = [
+        grid
+        for grid in row_axis.get("column_grids", [])
+        if grid.get("page_sequence") == parent["page_sequence"]
+    ]
+    if len(grids) != 1:
+        return None
+    centers = grids[0].get("column_centers")
+    if type(centers) is not list or not centers:
+        return None
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in numeric_sample_universe
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    if len(sample_by_id) != len(numeric_sample_universe):
+        return None
+    candidates = []
+    for cluster in internal_unassigned_numeric_clusters:
+        sample_ids = cluster.get("sample_ids")
+        samples = (
+            [sample_by_id.get(sample_id) for sample_id in sample_ids]
+            if type(sample_ids) is list
+            else None
+        )
+        label_lines = [
+            item.get("line_ordinal")
+            for item in cluster.get("same_row_label_evidence", [])
+            if type(item) is dict
+        ]
+        if (
+            cluster.get("status") != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS  # noqa: SLF001
+            or cluster.get("label_lane_status") != occurrence_v2._LABELED_LABEL_LANE_STATUS  # noqa: SLF001
+            or cluster.get("page_sequence") != parent["page_sequence"]
+            or label_lines != parent_lines
+            or type(samples) is not list
+            or any(type(sample) is not dict for sample in samples)
+            or [sample["column_ordinal"] for sample in samples] != list(range(len(centers)))
+            or [sample["column_center"] for sample in samples] != centers
+            or any(
+                sample.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or sample.get("owner_id") != cluster.get("cluster_id")
+                or sample.get("page_sequence") != parent["page_sequence"]
+                or sample.get("parsed_token", {}).get("classification")
+                not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                for sample in samples
+            )
+        ):
+            continue
+        resolution = {
+            _PRINTED_SOURCE_CELLS_KEY: [
+                [
+                    {
+                        "classification": sample["parsed_token"]["classification"],
+                        "number": _number(sample),
+                        "source_sample_id": sample["sample_id"],
+                    }
+                ]
+                for sample in samples
+            ],
+            "component_roles": [],
+            "resolution_kind": "VISIBLE_FAMILY_PARENT_CLUSTER",
+            "role": row_axis["family_id"],
+            "source": {
+                "kind": "FAMILY_PARENT_CLUSTER",
+                "record": canonical_clone_v1(cluster),
+            },
+            "values": [
+                {
+                    "column_ordinal": sample["column_ordinal"],
+                    "number": _number(sample),
+                    "source_sample_ids": [sample["sample_id"]],
+                }
+                for sample in samples
+            ],
+        }
+        candidates.append(
+            {
+                "cluster": canonical_clone_v1(cluster),
+                "resolution": resolution,
+            }
+        )
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _printed_source_cells_by_lane(
     records: Sequence[Mapping[str, Any]],
 ) -> list[list[dict[str, Any]]]:
@@ -2143,6 +2254,10 @@ def _select_global_equation(
     source = visible
     status = "NOT_APPLICABLE_NO_SOURCE_OR_EXHAUSTIVE_COMPONENT_SET"
     if visible is not None:
+        visible_source = visible.get("source")
+        visible_allows_rounding = not (
+            type(visible_source) is dict and visible_source.get("kind") == "FAMILY_PARENT_CLUSTER"
+        )
         exact = [item for item in alternatives if _same_values(visible["values"], item["values"])]
         if exact:
             maximum = max(len(item["component_roles"]) for item in exact)
@@ -2164,7 +2279,7 @@ def _select_global_equation(
                 )
                 if evidence is not None:
                     residual_evidence.append(evidence)
-                if allow_rounding:
+                if allow_rounding and visible_allows_rounding:
                     assessment = _rounding_assessment(
                         result_role=result_role,
                         printed=visible,
@@ -2387,6 +2502,8 @@ def _select_global_equation(
                     if source_kind == "TRAILING_VALUE_ROW" and selected_by_rounding
                     else "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
                     if source_kind == "TRAILING_VALUE_ROW"
+                    else "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+                    if source_kind == "FAMILY_PARENT_CLUSTER"
                     else "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM_CORROBORATED_BY_COMPONENTS"
                     if source_kind is None
                     else "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS"
@@ -4830,6 +4947,7 @@ def _metrics(
             in {
                 "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+                "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS",
             }
@@ -4876,7 +4994,7 @@ def _validate_resolution_record(record: Any) -> None:
         and (
             type(source) is not dict
             or set(source) != {"kind", "record"}
-            or source["kind"] not in {"ROLE_ROW", "TRAILING_VALUE_ROW"}
+            or source["kind"] not in {"FAMILY_PARENT_CLUSTER", "ROLE_ROW", "TRAILING_VALUE_ROW"}
             or type(source["record"]) is not dict
             or (
                 source["kind"] == "ROLE_ROW"
@@ -4886,10 +5004,24 @@ def _validate_resolution_record(record: Any) -> None:
                 source["kind"] == "TRAILING_VALUE_ROW"
                 and source["record"].get("status") != "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
             )
+            or (
+                source["kind"] == "FAMILY_PARENT_CLUSTER"
+                and (
+                    source["record"].get("status")
+                    != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS  # noqa: SLF001
+                    or source["record"].get("label_lane_status")
+                    != occurrence_v2._LABELED_LABEL_LANE_STATUS  # noqa: SLF001
+                )
+            )
         )
     ):
         raise _error("scoped hierarchical resolved source authority drifted")
     source_values = source["record"].get("values") if source is not None else None
+    if source is not None and source["kind"] == "FAMILY_PARENT_CLUSTER":
+        if source["record"].get("sample_ids") != [
+            item for value in record["values"] for item in value.get("source_sample_ids", [])
+        ]:
+            raise _error("scoped hierarchical family-parent cluster sample axis drifted")
     for expected_lane, value in enumerate(record["values"]):
         if (
             type(value) is not dict
@@ -5534,12 +5666,14 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
                 not in {
                     expected_disposition,
                     *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+                    _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
                     _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
                 }
                 or (
                     receipt["disposition"]
                     in {
                         *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+                        _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
                         _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
                     }
                     and cluster["status"] != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
@@ -5588,6 +5722,7 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         receipt["disposition"]
         not in {
             *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+            _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
             _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
         }
         and (
@@ -6499,6 +6634,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM": {"DERIVED_EXACT_COMPONENT_SUM"},
             "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
                 "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM_CORROBORATED_BY_COMPONENTS",
+                "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
             },
             "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
@@ -6675,6 +6811,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
         _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
         _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
+        _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
         _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
     }
     unlabeled_exact_subtotal_target_roles = {
@@ -6751,6 +6888,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                             not in {
                                 "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
                                 "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
+                                _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
                                 _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
                             }
                         )
@@ -6856,6 +6994,60 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:" + cluster_id in value["unresolved_reasons"]
         ):
             raise _error("parent-frontier cluster coverage drifted")
+    exact_family_parent_receipts = [
+        record
+        for record in value["coverage_receipt"]
+        if record["disposition"] == _EXACT_FAMILY_PARENT_RESULT_DISPOSITION
+    ]
+    exact_root_equations = [
+        equation
+        for equation in value["equations"]["global"]
+        if equation["result_role"] == value["family_id"]
+    ]
+    exact_root_resolution = resolved_by_role.get(value["family_id"])
+    if exact_family_parent_receipts:
+        if len(exact_family_parent_receipts) != 1:
+            raise _error("exact family-parent cluster coverage repeats")
+        cluster = exact_family_parent_receipts[0]["source_record"]
+        cluster_id = cluster["cluster_id"]
+        expected = {
+            "candidate_ordinal": None,
+            "coverage_id": "ashtcv2:coverage:exact-family-parent:" + cluster_id,
+            "disposition": _EXACT_FAMILY_PARENT_RESULT_DISPOSITION,
+            "occurrence_id": None,
+            "role": None,
+            "row_kind": "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+            "sample_ids": canonical_clone_v1(cluster["sample_ids"]),
+            "source_record": canonical_clone_v1(cluster),
+        }
+        if (
+            exact_family_parent_receipts != [expected]
+            or len(exact_root_equations) != 1
+            or exact_root_equations[0]["status"]
+            != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+            or type(exact_root_resolution) is not dict
+            or exact_root_resolution.get("role") != value["family_id"]
+            or exact_root_resolution.get("resolution_kind")
+            != "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+            or exact_root_resolution.get("source", {}).get("kind") != "FAMILY_PARENT_CLUSTER"
+            or not same_typed_json_v1(
+                exact_root_resolution.get("source", {}).get("record"), cluster
+            )
+            or exact_root_resolution.get("component_roles")
+            != exact_root_equations[0]["component_roles_present"]
+            or "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:" + cluster_id
+            in value["unresolved_reasons"]
+        ):
+            raise _error("exact family-parent cluster coverage drifted")
+    elif type(exact_root_resolution) is dict and (
+        exact_root_resolution.get("resolution_kind")
+        == "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+        or (
+            type(exact_root_resolution.get("source")) is dict
+            and exact_root_resolution["source"].get("kind") == "FAMILY_PARENT_CLUSTER"
+        )
+    ):
+        raise _error("exact family-parent source authority lacks coverage")
     coextensive_receipts = {
         record["occurrence_id"]: record
         for record in value["coverage_receipt"]
@@ -7281,6 +7473,17 @@ def _build(
         locally_authorized_component_scopes,
     )
     reasons.extend(repeated_reasons)
+    exact_family_parent_result = (
+        None
+        if parent_frontier_result_cluster is not None
+        else _exact_family_parent_cluster_resolution(
+            internal_unassigned_numeric_clusters=axis["internal_unassigned_numeric_clusters"],
+            numeric_sample_universe=axis["numeric_sample_universe"],
+            row_axis=row_axis,
+        )
+    )
+    if exact_family_parent_result is not None:
+        resolved[spec["family_id"]] = canonical_clone_v1(exact_family_parent_result["resolution"])
     reserved_unlabeled_source_keys: set[tuple[str, str | int]] = (
         {
             ("cluster", parent_frontier_result_cluster["cluster_id"]),
@@ -7288,6 +7491,10 @@ def _build(
         if parent_frontier_result_cluster is not None
         else set()
     )
+    if exact_family_parent_result is not None:
+        reserved_unlabeled_source_keys.add(
+            ("cluster", exact_family_parent_result["cluster"]["cluster_id"])
+        )
     unlabeled_subtotal_by_source_key: dict[tuple[str, str | int], dict[str, Any]] = {}
     for evidence in provisional_local_trailing_subtotals:
         if _local_trailing_subgroup_has_equal_vector_collision(
@@ -7399,6 +7606,23 @@ def _build(
                     + ":"
                     + str(source_key[1])
                 )
+    if exact_family_parent_result is not None:
+        exact_root_records = [
+            record for record in global_records if record["result_role"] == spec["family_id"]
+        ]
+        exact_parent_corroborated = (
+            len(exact_root_records) == 1
+            and exact_root_records[0]["status"]
+            == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+            and resolved.get(spec["family_id"], {}).get("resolution_kind")
+            == "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+        )
+        if not exact_parent_corroborated:
+            reserved_unlabeled_source_keys.discard(
+                ("cluster", exact_family_parent_result["cluster"]["cluster_id"])
+            )
+            resolved.pop(spec["family_id"], None)
+            exact_family_parent_result = None
     synthetic_receipt_roles = {
         evidence["role"]
         for evidence in unlabeled_subtotal_by_source_key.values()
@@ -7660,9 +7884,19 @@ def _build(
             parent_frontier_result_cluster is not None
             and cluster_id == parent_frontier_result_cluster["cluster_id"]
         )
-        if parent_frontier_result and unlabeled_subtotal is not None:
-            raise _error("parent-frontier result cluster was claimed by another subtotal")
-        if unlabeled_subtotal is None and not parent_frontier_result:
+        exact_family_parent_result_cluster = (
+            exact_family_parent_result is not None
+            and cluster_id == exact_family_parent_result["cluster"]["cluster_id"]
+        )
+        if (parent_frontier_result or exact_family_parent_result_cluster) and (
+            unlabeled_subtotal is not None
+        ):
+            raise _error("family-parent result cluster was claimed by another subtotal")
+        if (
+            unlabeled_subtotal is None
+            and not parent_frontier_result
+            and not exact_family_parent_result_cluster
+        ):
             reasons.append(
                 (
                     "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
@@ -7677,6 +7911,8 @@ def _build(
                 "coverage_id": (
                     "ashtcv2:coverage:one-edit-parent-frontier:" + cluster_id
                     if parent_frontier_result
+                    else "ashtcv2:coverage:exact-family-parent:" + cluster_id
+                    if exact_family_parent_result_cluster
                     else (
                         "ashtcv2:coverage:local-trailing-subgroup-subtotal:"
                         if unlabeled_subtotal is not None
@@ -7693,6 +7929,8 @@ def _build(
                 "disposition": (
                     _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION
                     if parent_frontier_result
+                    else _EXACT_FAMILY_PARENT_RESULT_DISPOSITION
+                    if exact_family_parent_result_cluster
                     else unlabeled_subtotal["disposition"]
                     if unlabeled_subtotal is not None
                     else "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"

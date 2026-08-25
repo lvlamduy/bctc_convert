@@ -414,6 +414,7 @@ def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
             "sha256": f"{ordinal + 1:064x}",
             "size_bytes": 100 + ordinal,
         }
+    pages[0]["lines"] = lines
     return pages
 
 
@@ -1161,6 +1162,137 @@ def _family12_flat_children_and_grand_total_pages(
             "size_bytes": 100 + ordinal,
         }
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
+def _family12_flat_children_and_inline_parent_total_pages(
+    *, parent_current: int = 131, parent_prior: int = 103
+) -> list[dict[str, object]]:
+    pages = _family12_flat_children_and_grand_total_pages()
+    original = pages[0]["lines"]
+    parent = original[0]
+    parent["bbox"] = [25, 72, 500, 94]
+    current_header, prior_header, unit = original[1:4]
+    current_header["bbox"] = [610, 15, 700, 35]
+    prior_header["bbox"] = [810, 15, 900, 35]
+    unit["bbox"] = [610, 42, 900, 62]
+    lines = [
+        current_header,
+        prior_header,
+        unit,
+        parent,
+        _line(-1, str(parent_current), str(parent_current), [610, 72, 700, 94]),
+        _line(-1, str(parent_prior), str(parent_prior), [810, 72, 900, 94]),
+        *original[4:-2],
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    pages[0]["lines"] = lines
+    return pages
+
+
+def test_family12_exact_inline_parent_total_corroborates_one_direct_frontier() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_flat_children_and_inline_parent_total_pages()
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    root_equation = next(
+        record
+        for record in closure["equations"]["global"]
+        if record["result_role"] == "LOAN_ENTERPRISE_FAMILY12"
+    )
+    assert root_equation["status"] == ("VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS")
+    assert root_equation["component_roles_present"] == [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+    ]
+    root_resolution = next(
+        record
+        for record in closure["resolved_roles"]
+        if record["role"] == "LOAN_ENTERPRISE_FAMILY12"
+    )
+    assert root_resolution["resolution_kind"] == (
+        "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+    )
+    receipts = [
+        record
+        for record in closure["coverage_receipt"]
+        if record["disposition"] == "EXACT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"
+    ]
+    assert len(receipts) == 1
+    assert receipts[0]["sample_ids"] == root_resolution["source"]["record"]["sample_ids"]
+    assert not any(
+        reason.startswith("SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+    attacked = copy.deepcopy(closure)
+    attacked_root = next(
+        record
+        for record in attacked["resolved_roles"]
+        if record["role"] == "LOAN_ENTERPRISE_FAMILY12"
+    )
+    attacked_root["source"]["record"]["sample_ids"].reverse()
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="family-parent cluster sample axis|family-parent cluster coverage",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_family12_inline_parent_total_mismatch_remains_source_only_and_unresolved() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_flat_children_and_inline_parent_total_pages(parent_current=132)
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        record["disposition"] == "EXACT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"
+        for record in closure["coverage_receipt"]
+    )
+    assert any(
+        reason.startswith("SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:")
+        for reason in closure["unresolved_reasons"]
+    )
+    root_equation = next(
+        record
+        for record in closure["equations"]["global"]
+        if record["result_role"] == "LOAN_ENTERPRISE_FAMILY12"
+    )
+    assert root_equation["status"] == "VISIBLE_RESULT_MISMATCH_VETO"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
 
 
 def test_family12_flat_children_derive_virtual_groups_only_through_exact_grand_total() -> None:

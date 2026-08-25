@@ -1,6 +1,6 @@
 # Recurring failure-pattern registry
 
-Updated: 2026-08-24 (UTC)
+Updated: 2026-08-25 (UTC)
 
 Đây là registry bắt buộc phải kiểm tra trước khi sửa shared OCR/table/mapping
 logic. Chỉ ghi failure đã lặp lại, có khả năng tái diễn hoặc làm sai authority;
@@ -347,7 +347,12 @@ Trạng thái:
   source-only groups, internal/trailing subtotal và presentation aliases đều phải
   được phân loại; partial/extra/duplicate/mixed-level/use-count≠1 hoặc coherent
   tamper fail closed. Accounting chỉ corroborate/veto source-observed digits và
-  declared display-unit rounding; không backsolve.
+  declared display-unit rounding; không backsolve. Family12 còn bind được một
+  total in cùng dòng với exact topology parent như source-only labeled cluster:
+  cluster phải là duy nhất, đủ đúng body lane/grid và trùng exact parent
+  page/source-line axis; chỉ exact declared direct frontier mới được consume nó.
+  Sai một digit, thiếu/nhân đôi lane, khác parent hoặc chỉ khớp rounding đều giữ
+  cluster source-only và closure unresolved.
 - **Status:** `MITIGATED` trên Family3 V4; primitive phải được tái chứng minh cho
   mỗi family mới, đặc biệt Family12 nested group → core subtotal → grand total.
 
