@@ -469,6 +469,36 @@ def test_family12_next_note_heading_fences_unrelated_totals_after_visible_table_
     assert "EXPLICIT_LOAN_ENTERPRISE_TOTAL" not in region["observed_roles"]
 
 
+def test_family12_letter_of_credit_subtable_fences_repeated_enterprise_labels() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Công ty trách nhiệm hữu hạn khác",
+                    "228.506.157 155.438.528",
+                    "Hộ kinh doanh, cá nhân",
+                    "167.684.870 159.619.463",
+                    "Công ty Cổ phần khác",
+                    "139.883.573 109.598.655",
+                    "Nghiệp vụ phát hành thư tín dụng trả chậm",
+                    "phát sinh trước ngày 01 tháng 7 năm 2024",
+                    "Công ty Cổ phần khác",
+                    "0 6.363.484",
+                    "Công ty trách nhiệm hữu hạn khác",
+                    "0 4.815.288",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["cluster_end_document_line_ordinal_exclusive"] == 7
+    assert [item["source_line_index"] for item in region["child_matches"]] == [1, 3, 5]
+
+
 def test_family12_two_independent_equal_targets_remain_unresolved() -> None:
     result = build_accounting_family_topology_scan_v1(
         [
