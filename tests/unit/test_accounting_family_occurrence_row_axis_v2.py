@@ -3185,7 +3185,7 @@ def test_f3_blank_discount_does_not_steal_vnd_total_at_close_row_gaps() -> None:
     for gap in (18, 20):
         pages = _f3_pages(
             [
-                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
                 ("Cho vay các TCTD khác", "50", "40"),
                 ("Bằng VND", "50", "40"),
                 ("Chiết khấu, tái chiết khấu", "", ""),
@@ -3689,7 +3689,7 @@ def test_f3_touching_wrapped_explicit_vnd_discount_overrides_prior_fx_scope() ->
     [
         (
             [
-                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
                 ("Tiền gửi không kỳ hạn", "60", "50"),
                 ("Bằng VND", "60", "50"),
                 ("Tiền gửi có kỳ hạn", "40", "40"),
@@ -3699,27 +3699,26 @@ def test_f3_touching_wrapped_explicit_vnd_discount_overrides_prior_fx_scope() ->
                 ("Bằng VND", "50", "40"),
             ],
             "INTERBANK_DEPOSIT_PROVISION",
-            "EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
+            "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION",
         ),
         (
             [
                 ("Tiền gửi tại các TCTD khác", "100", "90"),
-                ("Cho vay các TCTD khác", "50", "40"),
-                ("Bằng VND", "50", "40"),
+                ("Cho vay các TCTD khác", "52", "41"),
                 ("Dự phòng rủi ro", "-2", "-1"),
             ],
             "TOTAL_INTERBANK_PROVISION",
-            "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES",
+            "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION",
         ),
         (
             [
                 ("Tiền gửi tại các TCTD khác", "100", "90"),
-                ("Cho vay các TCTD khác", "50", "40"),
-                ("Dự phòng rủi ro cho vay các TCTD khác", "-2", "-1"),
+                ("Cho vay các TCTD khác", "48", "39"),
                 ("Bằng VND", "50", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
             ],
             "INTERBANK_LOAN_PROVISION",
-            None,
+            "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION",
         ),
     ],
 )
@@ -3733,6 +3732,168 @@ def test_f3_provision_schema_role_is_bound_by_exact_parent_interval(
         assert occurrence["source_scope_binding"] is None
     else:
         assert occurrence["source_scope_binding"]["binding_kind"] == expected_kind
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [
+            ("Tiền gửi tại các TCTD khác", "99", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Dự phòng rủi ro", "-2", ""),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "96", "88"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+            ("Dự phòng", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98.1", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98", "89"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "35", "35"),
+            ("Khoản chưa rõ", "5", "5"),
+            ("Dự phòng rủi ro", "3", "4"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Dự phòng tiền gửi tại các TCTD khác", "-2", "-1"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "98", "89"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Tiền gửi tại các TCTD khác", "10", "10"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+    ],
+)
+def test_f3_recursive_parent_provision_fails_closed_without_one_exact_frontier(
+    rows: list[tuple[str, str, str]],
+) -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                *rows,
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+
+    assert not [
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if type(occurrence["source_scope_binding"]) is dict
+        and occurrence["source_scope_binding"].get("binding_kind")
+        == "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+    ]
+
+
+def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "52", "41"),
+                ("Bằng VND", "52", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    equation = next(
+        occurrence["source_scope_binding"]["geometry"]["equation"]
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    assert [component["role"] for component in equation["component_frontier"]] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    ]
+
+
+def test_f3_root_provision_rejects_a_mixed_level_compensating_equation() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Bằng VND", "52", "40"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    for line, value in zip(pages[0]["lines"][3:5], ("202", "170"), strict=True):
+        line["vietocr_text"] = value
+        line["numeric_recognition"]["raw_prediction"] = value
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert provision["source_scope_binding"] is None
+
+
+def test_f3_same_generic_label_binds_distinct_exact_deposit_and_loan_parents() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "52", "41"),
+                ("Bằng VND", "54", "42"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    provisions = [
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"]
+        in {"INTERBANK_DEPOSIT_PROVISION", "INTERBANK_LOAN_PROVISION"}
+    ]
+    assert [occurrence["role"] for occurrence in provisions] == [
+        "INTERBANK_DEPOSIT_PROVISION",
+        "INTERBANK_LOAN_PROVISION",
+    ]
+    assert len({occurrence["retrieval_occurrence_id"] for occurrence in provisions}) == 2
+    assert len({occurrence["scope_owner_occurrence_id"] for occurrence in provisions}) == 2
+    assert all(
+        occurrence["source_scope_binding"]["geometry"]["equation"][
+            "parent_occurrence_id"
+        ]
+        == occurrence["scope_owner_occurrence_id"]
+        for occurrence in provisions
+    )
 
 
 def test_f3_bare_provision_before_loan_leaf_remains_source_only_ambiguous() -> None:
@@ -3800,7 +3961,7 @@ def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leave
         _f3_pages(
             [
                 ("Tiền gửi tại các TCTD khác", "100", "90"),
-                ("Cho vay các TCTD khác", "50", "40"),
+                ("Cho vay các TCTD khác", "52", "41"),
                 ("Dự phòng rủi ro", "-2", "-1"),
             ]
         )
@@ -3810,7 +3971,7 @@ def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leave
         item for item in axis["role_occurrences"] if item["role"] == "TOTAL_INTERBANK_PROVISION"
     )
     assert occurrence["source_scope_binding"]["binding_kind"] == (
-        "EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES"
+        "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
     )
     loan = next(item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_GROUP")
     loan_row = next(
@@ -3921,11 +4082,11 @@ def test_f3_bare_provisions_are_unique_per_exact_parent_interval() -> None:
             ]
         )
     )
-    assert {
+    assert [
         occurrence["role"]
         for occurrence in distinct_axis["role_occurrences"]
-        if occurrence["role"] in {"INTERBANK_DEPOSIT_PROVISION", "TOTAL_INTERBANK_PROVISION"}
-    } == {"INTERBANK_DEPOSIT_PROVISION", "TOTAL_INTERBANK_PROVISION"}
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    ] == ["INTERBANK_PROVISION_AMBIGUOUS", "INTERBANK_PROVISION_AMBIGUOUS"]
 
     _scan, duplicate_axis = _build_f3(
         _f3_pages(
@@ -4655,11 +4816,11 @@ def test_f3_scope_receipts_reject_coherent_status_anchor_and_explicit_surface_fo
         )
 
 
-def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> None:
+def test_f3_recursive_parent_provision_receipts_rederive_rows_and_geometry() -> None:
     _scan, deposit_axis = _build_f3(
         _f3_pages(
             [
-                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
                 ("Tiền gửi không kỳ hạn", "60", "50"),
                 ("Bằng VND", "60", "50"),
                 ("Tiền gửi có kỳ hạn", "40", "40"),
@@ -4676,11 +4837,16 @@ def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> N
         for item in attacked["role_occurrences"]
         if item["role"] == "INTERBANK_DEPOSIT_PROVISION"
     )
-    deposit_group = next(
-        item for item in attacked["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_GROUP"
-    )
     receipt = provision["source_scope_binding"]
-    receipt["anchor_span"] = subject._source_span(deposit_group["label_match"])
+    equation = receipt["geometry"]["equation"]
+    equation["component_frontier"][0]["numbers"][0]["coefficient"] += 1
+    equation["result"]["numbers"][0]["coefficient"] += 1
+    equation_material = copy.deepcopy(equation)
+    equation_material.pop("equation_id")
+    equation["equation_id"] = (
+        "aforav2:direct-frontier-equation:"
+        + canonical_json_sha256_v1(equation_material)
+    )
     material = copy.deepcopy(receipt)
     material.pop("binding_id")
     receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
@@ -4688,7 +4854,7 @@ def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> N
     _coherently_rehash_occurrence(attacked)
     with pytest.raises(
         subject.AccountingFamilyOccurrenceRowAxisV2Error,
-        match="exact deposit interval",
+        match="component row or owner",
     ):
         subject._validate_result(attacked)
 
@@ -4696,8 +4862,7 @@ def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> N
         _f3_pages(
             [
                 ("Tiền gửi tại các TCTD khác", "100", "90"),
-                ("Cho vay các TCTD khác", "50", "40"),
-                ("Bằng VND", "50", "40"),
+                ("Cho vay các TCTD khác", "52", "41"),
                 ("Dự phòng rủi ro", "-2", "-1"),
             ]
         )
@@ -4707,10 +4872,7 @@ def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> N
         item for item in attacked["role_occurrences"] if item["role"] == "TOTAL_INTERBANK_PROVISION"
     )
     receipt = provision["source_scope_binding"]
-    receipt["geometry"]["source_left"] += 1
-    receipt["geometry"]["absolute_left_delta"] = abs(
-        receipt["geometry"]["source_left"] - receipt["geometry"]["anchor_left"]
-    )
+    receipt["geometry"]["ordered_source_label_bboxes"][0][0] += 1
     material = copy.deepcopy(receipt)
     material.pop("binding_id")
     receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
@@ -4718,6 +4880,6 @@ def test_f3_provision_receipts_rederive_interval_and_actual_bbox_geometry() -> N
     _coherently_rehash_occurrence(attacked)
     with pytest.raises(
         subject.AccountingFamilyOccurrenceRowAxisV2Error,
-        match="semantic matrix",
+        match="component row or owner",
     ):
         subject._validate_result(attacked)

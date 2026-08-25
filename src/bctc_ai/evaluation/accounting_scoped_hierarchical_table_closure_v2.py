@@ -252,10 +252,10 @@ _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES = {
 }
 _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION = "LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION"
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256 = (
-    "5f7b7b082706d338d755d0d97332f8f7715556e34c12736752e508ebd6bacac5"
+    "21dd1049f463dbac578b99f4623031f161f134ed97df2bc4e60effee11d506f6"
 )
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256 = (
-    "e34e4ad6ba255b3cc713e74d7c401cbb060a3ae0139178e191c38bb28c8a56ef"
+    "f65af9cf8efab27a3f3444a1b6aa279bc37d3c512300b81456ffb98893f02e60"
 )
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS = (
     ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"),
@@ -391,7 +391,7 @@ def _local_trailing_subgroup_trusted_equation_spec() -> dict[str, Any]:
             "INTERBANK_LOAN_GROUP",
             "EXPLICIT_INTERBANK_LOAN_TOTAL",
         ],
-        "shared_component_roles": ["INTERBANK_LOAN_PROVISION"],
+        "shared_component_roles": [],
     }
 
 
@@ -466,8 +466,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "d378947868092c19e3eb7f49dc112fbcb0dbceedb7a6568352738188269c0415",
-        "size_bytes": 448_164,
+        "sha256": "13d20f76764bab27b8832e97b0f102830229d5d1e4086e51c0c5eb821704f271",
+        "size_bytes": 487_465,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -2413,7 +2413,6 @@ def _local_trailing_subgroup_subtotal_receipt(
         observed_columns != sorted(set(observed_columns))
         or not observed_columns
         or any(column not in lane_axis for column in observed_columns)
-        or (missing_columns and len(applicable_alternatives) < 2)
         or (missing_columns and not missing_lanes_are_nondiscriminating)
         or (
             selected.get("row_kind") == "TRAILING_VALUE_ROW"
@@ -5456,7 +5455,6 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
     ]
     if (
         not expected_alternatives
-        or (receipt["selection_kind"].startswith("PARTIAL_") and len(expected_alternatives) < 2)
         or receipt["applicable_alternative_ordinals"] != expected_ordinals
         or receipt["applicable_alternative_spec_sha256s"] != expected_spec_sha256s
         or not same_typed_json_v1(receipt["alternative_value_axes"], expected_alternatives)

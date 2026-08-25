@@ -25,6 +25,7 @@ import re
 import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -210,6 +211,80 @@ _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_FOREIGN_CURRENCY": ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"),
 }
 _PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
+_RECURSIVE_PARENT_PROVISION_BINDING_KIND = (
+    "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+)
+_RECURSIVE_PARENT_PROVISION_EQUATION_STATUS = (
+    "EXACT_ORDERED_DIRECT_COMPONENT_FRONTIER_CORROBORATED"
+)
+_RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS = (
+    "EXACT_VISUAL_PARENT_INTERVAL_AND_DIRECT_FRONTIER"
+)
+_RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
+    {
+        "direct_component_role_alternatives": (
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_PROVISION",
+            ),
+            ("DEMAND_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_PROVISION"),
+            ("TERM_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_PROVISION"),
+            ("INTERBANK_DEPOSIT_OTHER", "INTERBANK_DEPOSIT_PROVISION"),
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_OTHER",
+                "INTERBANK_DEPOSIT_PROVISION",
+            ),
+        ),
+        "matched_within_role": "INTERBANK_DEPOSIT_GROUP",
+        "parent_role": "INTERBANK_DEPOSIT_GROUP",
+        "result_roles": (
+            "INTERBANK_DEPOSIT_GROUP",
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+        ),
+        "target_role": "INTERBANK_DEPOSIT_PROVISION",
+    },
+    {
+        "direct_component_role_alternatives": (
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+            ),
+            ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_PROVISION"),
+            ("INTERBANK_LOAN_FOREIGN_CURRENCY", "INTERBANK_LOAN_PROVISION"),
+            ("INTERBANK_LOAN_OTHER", "INTERBANK_LOAN_PROVISION"),
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_OTHER",
+                "INTERBANK_LOAN_PROVISION",
+            ),
+        ),
+        "matched_within_role": "INTERBANK_LOAN_GROUP",
+        "parent_role": "INTERBANK_LOAN_GROUP",
+        "result_roles": (
+            "INTERBANK_LOAN_GROUP",
+            "EXPLICIT_INTERBANK_LOAN_TOTAL",
+        ),
+        "target_role": "INTERBANK_LOAN_PROVISION",
+    },
+    {
+        "direct_component_role_alternatives": (
+            (
+                "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_GROUP",
+                "TOTAL_INTERBANK_PROVISION",
+            ),
+        ),
+        "matched_within_role": None,
+        "parent_role": None,
+        "result_roles": ("EXPLICIT_FAMILY_TOTAL",),
+        "target_role": "TOTAL_INTERBANK_PROVISION",
+    },
+)
 _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS = {
     "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS": (
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
@@ -1435,6 +1510,367 @@ def _same_row_numeric_samples_are_complete(
     return expected_lane_count > 0 and len(samples) == expected_lane_count
 
 
+def _direct_frontier_number(value: Mapping[str, Any]) -> dict[str, Any] | None:
+    parsed = value.get("parsed_token")
+    if (
+        type(parsed) is not dict
+        or parsed.get("classification")
+        not in {
+            "DASH_ZERO",
+            "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "SIGNED_NUMBER",
+        }
+        or type(parsed.get("coefficient")) is not int
+        or type(parsed.get("scale")) is not int
+        or parsed["scale"] < 0
+        or type(parsed.get("percentage_mark_present")) is not bool
+    ):
+        return None
+    return {
+        "coefficient": parsed["coefficient"],
+        "percentage_mark_present": parsed["percentage_mark_present"],
+        "scale": parsed["scale"],
+    }
+
+
+def _direct_frontier_row_receipt(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    values = sorted(row.get("values", []), key=lambda item: item.get("column_ordinal", -1))
+    if (
+        row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+        or not values
+        or [value.get("column_ordinal") for value in values] != list(range(len(values)))
+    ):
+        return None
+    numbers = [_direct_frontier_number(value) for value in values]
+    if any(number is None for number in numbers):
+        return None
+    return {
+        "numbers": numbers,
+        "sample_ids": [value["sample_id"] for value in values],
+    }
+
+
+def _direct_frontier_parent_row_receipt(
+    pages: Sequence[Mapping[str, Any]],
+    parent_match: Mapping[str, Any],
+    preliminary_axis: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    samples = _same_row_numeric_samples(pages, parent_match)
+    grid = next(
+        (
+            item
+            for item in preliminary_axis["column_grids"]
+            if item["page_sequence"] == parent_match["page_sequence"]
+        ),
+        None,
+    )
+    if type(grid) is not dict or len(samples) != len(grid["column_centers"]) or not samples:
+        return None
+    samples = sorted(samples, key=lambda item: (item["bbox"][0], item["line_ordinal"]))
+    numbers = []
+    for sample in samples:
+        parsed = row_v1.parse_visible_financial_numeric_token_v1(
+            sample["numeric_recognition"]["raw_prediction"]
+        )
+        number = _direct_frontier_number({"parsed_token": parsed})
+        if number is None:
+            return None
+        numbers.append(number)
+    return {
+        "numbers": numbers,
+        "sample_ids": [sample["sample_id"] for sample in samples],
+    }
+
+
+def _direct_frontier_sum_is_exact(
+    result: Mapping[str, Any], components: Sequence[Mapping[str, Any]]
+) -> bool:
+    result_numbers = result["numbers"]
+    if not components or any(len(item["numbers"]) != len(result_numbers) for item in components):
+        return False
+    for lane, expected in enumerate(result_numbers):
+        observed = [item["numbers"][lane] for item in components]
+        percentages = {item["percentage_mark_present"] for item in [expected, *observed]}
+        if len(percentages) != 1:
+            return False
+        scale = max(item["scale"] for item in [expected, *observed])
+        expected_coefficient = expected["coefficient"] * 10 ** (scale - expected["scale"])
+        observed_coefficient = sum(
+            item["coefficient"] * 10 ** (scale - item["scale"]) for item in observed
+        )
+        if expected_coefficient != observed_coefficient:
+            return False
+    return True
+
+
+def _visual_match_key(match: Mapping[str, Any]) -> tuple[int, int, int, int]:
+    bbox = match.get("source_label_bbox")
+    if type(bbox) is not list:
+        return (
+            match["page_sequence"],
+            2 * match["document_line_ordinal"],
+            2 * match["end_document_line_ordinal"],
+            match["document_line_ordinal"],
+        )
+    return (
+        match["page_sequence"],
+        bbox[1] + bbox[3],
+        2 * bbox[0],
+        match["document_line_ordinal"],
+    )
+
+
+def _has_unmatched_complete_labeled_numeric_row(
+    pages: Sequence[Mapping[str, Any]],
+    matches: Sequence[Mapping[str, Any]],
+    *,
+    lower_bbox: Sequence[int],
+    page_sequence: int,
+    upper_bbox: Sequence[int],
+    expected_lane_count: int,
+) -> bool:
+    if expected_lane_count <= 0:
+        return True
+    page = next(
+        (item for item in pages if item["page_sequence"] == page_sequence),
+        None,
+    )
+    if type(page) is not dict:
+        return True
+    claimed_source_indices = {
+        source_line_index
+        for match in matches
+        if match["page_sequence"] == page_sequence
+        for source_line_index in row_v1._match_source_line_indices(match)  # noqa: SLF001
+    }
+    lower_center = lower_bbox[1] + lower_bbox[3]
+    upper_center = upper_bbox[1] + upper_bbox[3]
+    for source_line_index, line in enumerate(page["lines"]):
+        bbox = line["bbox"]
+        if (
+            source_line_index in claimed_source_indices
+            or not lower_center < bbox[1] + bbox[3] < upper_center
+            or row_v1._is_numeric(line)  # noqa: SLF001
+            or not line["vietocr_text"].strip()
+        ):
+            continue
+        numeric_peers = [
+            peer
+            for peer in page["lines"]
+            if row_v1._is_numeric(peer)  # noqa: SLF001
+            and _same_row_fragment_distance(peer, bbox) is not None
+        ]
+        if len(numeric_peers) == expected_lane_count:
+            return True
+    return False
+
+
+def _recursive_parent_provision_equation_geometry(
+    *,
+    component_rows: Sequence[Mapping[str, Any]],
+    component_roles: Sequence[str],
+    generic_occurrence: Mapping[str, Any],
+    parent_occurrence_id: str,
+    parent_role: str,
+    result_occurrence_id: str,
+    result_receipt: Mapping[str, Any],
+    result_role: str,
+) -> dict[str, Any]:
+    component_frontier = []
+    for row, role in zip(component_rows, component_roles, strict=True):
+        receipt = _direct_frontier_row_receipt(row)
+        if receipt is None:
+            raise _error("recursive parent provision lost a complete direct component row")
+        match = row["label_match"]
+        component_frontier.append(
+            {
+                "numbers": receipt["numbers"],
+                "retrieval_occurrence_id": match["retrieval_occurrence_id"],
+                "role": role,
+                "sample_ids": receipt["sample_ids"],
+            }
+        )
+    equation_material = {
+        "component_frontier": component_frontier,
+        "parent_occurrence_id": parent_occurrence_id,
+        "parent_role": parent_role,
+        "result": {
+            "numbers": canonical_clone_v1(result_receipt["numbers"]),
+            "occurrence_id": result_occurrence_id,
+            "role": result_role,
+            "sample_ids": canonical_clone_v1(result_receipt["sample_ids"]),
+        },
+        "source_retrieval_occurrence_id": generic_occurrence["retrieval_occurrence_id"],
+        "status": _RECURSIVE_PARENT_PROVISION_EQUATION_STATUS,
+    }
+    equation = {
+        **equation_material,
+        "equation_id": "aforav2:direct-frontier-equation:"
+        + canonical_json_sha256_v1(equation_material),
+    }
+    return {
+        "equation": equation,
+        "ordered_source_label_bboxes": [
+            canonical_clone_v1(row["label_match"]["source_label_bbox"])
+            for row in component_rows
+        ],
+        "status": _RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS,
+    }
+
+
+def _recursive_parent_provision_geometry_is_valid(
+    geometry: Any, *, label_match: Mapping[str, Any], role: str
+) -> bool:
+    if (
+        type(geometry) is not dict
+        or set(geometry) != {"equation", "ordered_source_label_bboxes", "status"}
+        or geometry["status"] != _RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS
+        or type(geometry["equation"]) is not dict
+    ):
+        return False
+    equation = geometry["equation"]
+    if (
+        set(equation)
+        != {
+            "component_frontier",
+            "equation_id",
+            "parent_occurrence_id",
+            "parent_role",
+            "result",
+            "source_retrieval_occurrence_id",
+            "status",
+        }
+        or equation["status"] != _RECURSIVE_PARENT_PROVISION_EQUATION_STATUS
+        or type(equation["parent_occurrence_id"]) is not str
+        or not equation["parent_occurrence_id"]
+        or type(equation["parent_role"]) is not str
+        or not equation["parent_role"]
+        or equation["source_retrieval_occurrence_id"]
+        != label_match.get("retrieval_occurrence_id", label_match.get("occurrence_id"))
+        or type(equation["component_frontier"]) is not list
+        or not equation["component_frontier"]
+        or type(equation["result"]) is not dict
+        or set(equation["result"])
+        != {"numbers", "occurrence_id", "role", "sample_ids"}
+    ):
+        return False
+
+    def numbers_valid(value: Any) -> bool:
+        return (
+            type(value) is list
+            and bool(value)
+            and all(
+                type(number) is dict
+                and set(number)
+                == {"coefficient", "percentage_mark_present", "scale"}
+                and type(number["coefficient"]) is int
+                and type(number["percentage_mark_present"]) is bool
+                and type(number["scale"]) is int
+                and number["scale"] >= 0
+                for number in value
+            )
+        )
+
+    result = equation["result"]
+    components = equation["component_frontier"]
+    if (
+        type(result["occurrence_id"]) is not str
+        or not result["occurrence_id"]
+        or type(result["role"]) is not str
+        or not result["role"]
+        or not numbers_valid(result["numbers"])
+        or type(result["sample_ids"]) is not list
+        or len(result["sample_ids"]) != len(result["numbers"])
+        or len(result["sample_ids"]) != len(set(result["sample_ids"]))
+        or any(type(sample_id) is not str or not sample_id for sample_id in result["sample_ids"])
+        or any(
+            type(component) is not dict
+            or set(component)
+            != {"numbers", "retrieval_occurrence_id", "role", "sample_ids"}
+            or type(component["retrieval_occurrence_id"]) is not str
+            or not component["retrieval_occurrence_id"]
+            or type(component["role"]) is not str
+            or not component["role"]
+            or not numbers_valid(component["numbers"])
+            or len(component["numbers"]) != len(result["numbers"])
+            or type(component["sample_ids"]) is not list
+            or len(component["sample_ids"]) != len(component["numbers"])
+            or len(component["sample_ids"]) != len(set(component["sample_ids"]))
+            or any(
+                type(sample_id) is not str or not sample_id
+                for sample_id in component["sample_ids"]
+            )
+            for component in components
+        )
+    ):
+        return False
+    matching_specs = [
+        spec
+        for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
+        if spec["target_role"] == role
+        and tuple(component["role"] for component in components)
+        in spec["direct_component_role_alternatives"]
+    ]
+    if len(matching_specs) != 1:
+        return False
+    spec = matching_specs[0]
+    expected_parent_role = spec["parent_role"] or "INTERBANK_DEPOSITS_AND_LOANS"
+    allowed_result_roles = set(spec["result_roles"])
+    if spec["parent_role"] is None:
+        allowed_result_roles.add(expected_parent_role)
+    if (
+        equation["parent_role"] != expected_parent_role
+        or result["role"] not in allowed_result_roles
+        or (
+            spec["parent_role"] is not None
+            and result["occurrence_id"] != equation["parent_occurrence_id"]
+        )
+        or sum(component["role"] == role for component in components) != 1
+        or len(
+            {component["retrieval_occurrence_id"] for component in components}
+        )
+        != len(components)
+        or len(
+            {
+                sample_id
+                for component in components
+                for sample_id in component["sample_ids"]
+            }
+        )
+        != sum(len(component["sample_ids"]) for component in components)
+    ):
+        return False
+    if not _direct_frontier_sum_is_exact(
+        result,
+        [
+            {"numbers": component["numbers"], "sample_ids": component["sample_ids"]}
+            for component in components
+        ],
+    ):
+        return False
+    bboxes = geometry["ordered_source_label_bboxes"]
+    if (
+        type(bboxes) is not list
+        or len(bboxes) != len(components)
+        or any(
+            type(bbox) is not list
+            or len(bbox) != 4
+            or any(type(coordinate) is not int for coordinate in bbox)
+            or not bbox[0] < bbox[2]
+            or not bbox[1] < bbox[3]
+            for bbox in bboxes
+        )
+        or [(bbox[1] + bbox[3], bbox[0]) for bbox in bboxes]
+        != sorted((bbox[1] + bbox[3], bbox[0]) for bbox in bboxes)
+    ):
+        return False
+    material = {key: canonical_clone_v1(value) for key, value in equation.items() if key != "equation_id"}
+    return equation["equation_id"] == "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(
+        material
+    )
+
+
 def _bound_one_edit_exact_source_check(
     match: Mapping[str, Any],
 ) -> Mapping[str, Any] | None:
@@ -1879,228 +2315,6 @@ def _project_reviewed_schema_source_scopes(
         )
         retype(match, target_role, receipt, matched_within_role=anchor["role"])
 
-    deposit_matches = sorted(
-        (match for match in projected if match["role"] in _DEPOSIT_SCOPE_ROLES),
-        key=lambda item: item["document_line_ordinal"],
-    )
-    generic_provision_sources = [
-        match
-        for match in projected
-        if match["role"] == _PROVISION_GENERIC_ROLE
-        and str(match["match_kind"]).startswith("EXACT_")
-    ]
-    for match in projected:
-        if match["role"] != _PROVISION_GENERIC_ROLE or not str(match["match_kind"]).startswith(
-            "EXACT_"
-        ):
-            continue
-        before = match["document_line_ordinal"]
-        prior_deposits = [
-            item
-            for item in deposit_matches
-            if item["page_sequence"] == match["page_sequence"]
-            and item["document_line_ordinal"] < before
-            and _match_has_effective_exact_source_authority(item)
-        ]
-        active_deposit_groups = [
-            item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
-        ]
-        if active_deposit_groups:
-            active_deposit_start = max(
-                item["document_line_ordinal"] for item in active_deposit_groups
-            )
-            prior_deposits = [
-                item
-                for item in prior_deposits
-                if item["document_line_ordinal"] >= active_deposit_start
-            ]
-        prior_loans = [
-            item
-            for item in loan_groups
-            if item["page_sequence"] == match["page_sequence"]
-            and item["document_line_ordinal"] < before
-        ]
-        later_loans = [
-            item
-            for item in loan_groups
-            if item["page_sequence"] == match["page_sequence"]
-            and item["document_line_ordinal"] > before
-        ]
-        if prior_deposits and not prior_loans and later_loans:
-            next_loan_ordinal = min(item["document_line_ordinal"] for item in later_loans)
-            deposit_interval_start = min(item["document_line_ordinal"] for item in prior_deposits)
-            prior_explicit_group_totals = [
-                item
-                for item in projected
-                if item["role"] in _EXPLICIT_GROUP_TOTAL_ROLES
-                and deposit_interval_start
-                < item["document_line_ordinal"]
-                < match["document_line_ordinal"]
-            ]
-            interval_provisions = [
-                item
-                for item in generic_provision_sources
-                if deposit_interval_start <= item["document_line_ordinal"] < next_loan_ordinal
-            ]
-            explicit_interval_provisions = [
-                item
-                for item in projected
-                if item is not match
-                and item["role"] == "INTERBANK_DEPOSIT_PROVISION"
-                and deposit_interval_start <= item["document_line_ordinal"] < next_loan_ordinal
-            ]
-            if (
-                any(
-                    before < item["document_line_ordinal"] < next_loan_ordinal
-                    and (
-                        item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
-                        or item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
-                    )
-                    for item in projected
-                    if item is not match
-                )
-                or prior_explicit_group_totals
-                or len(interval_provisions) != 1
-                or explicit_interval_provisions
-            ):
-                continue
-            anchor = max(
-                prior_deposits,
-                key=lambda item: (
-                    item["document_line_ordinal"],
-                    item["end_document_line_ordinal"],
-                    item["preferred_ordinal"],
-                    item["role"],
-                ),
-            )
-            if not _match_has_effective_exact_source_authority(anchor):
-                continue
-            receipt = _scope_binding(
-                anchor=anchor,
-                anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(anchor),
-                binding_kind="EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
-                geometry=None,
-                interval_end_exclusive=next_loan_ordinal,
-                interval_start=deposit_interval_start,
-                source=match,
-                source_role=_PROVISION_GENERIC_ROLE,
-                source_scope_role="INTERBANK_DEPOSIT_GROUP",
-                target_role="INTERBANK_DEPOSIT_PROVISION",
-            )
-            deposit_group = next(
-                (
-                    item
-                    for item in reversed(prior_deposits)
-                    if item["role"] == "INTERBANK_DEPOSIT_GROUP"
-                ),
-                None,
-            )
-            retype(
-                match,
-                "INTERBANK_DEPOSIT_PROVISION",
-                receipt,
-                matched_within_role=(
-                    "INTERBANK_DEPOSIT_GROUP" if deposit_group is not None else None
-                ),
-            )
-            continue
-        if prior_deposits and prior_loans and not later_loans:
-            loan = max(prior_loans, key=lambda item: item["document_line_ordinal"])
-            prior_explicit_group_totals = [
-                item
-                for item in projected
-                if item["role"] in _EXPLICIT_GROUP_TOTAL_ROLES
-                and loan["document_line_ordinal"]
-                < item["document_line_ordinal"]
-                < match["document_line_ordinal"]
-            ]
-            root_interval_provisions = [
-                item
-                for item in generic_provision_sources
-                if loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
-            ]
-            explicit_root_interval_provisions = [
-                item
-                for item in projected
-                if item is not match
-                and item["role"] == "TOTAL_INTERBANK_PROVISION"
-                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
-            ]
-            prior_loan_leaves = [
-                item
-                for item in projected
-                if item["role"] in _LOAN_LEAF_ROLES
-                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < before
-                and _match_has_effective_exact_source_authority(item)
-            ]
-            later_loan_leaves = [
-                item
-                for item in projected
-                if item["role"] in _LOAN_LEAF_ROLES
-                and before < item["document_line_ordinal"] < region_end
-            ]
-            later_loan_semantics = [
-                item
-                for item in projected
-                if item is not match
-                and item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
-                and before < item["document_line_ordinal"] < region_end
-            ]
-            later_deposit_roles = [
-                item
-                for item in projected
-                if item is not match
-                and item["role"] in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
-                and before < item["document_line_ordinal"] < region_end
-            ]
-            all_loan_leaves = [
-                item
-                for item in projected
-                if item["role"] in _LOAN_LEAF_ROLES
-                and loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
-            ]
-            exact_group_total_without_leaf_labels = (
-                not all_loan_leaves
-                and _same_row_numeric_samples_are_complete(pages, loan, projected)
-            )
-            if (not prior_loan_leaves and not exact_group_total_without_leaf_labels) or (
-                len(root_interval_provisions) != 1
-                or explicit_root_interval_provisions
-                or prior_explicit_group_totals
-                or later_loan_leaves
-                or later_loan_semantics
-                or later_deposit_roles
-            ):
-                continue
-            if not _match_has_effective_exact_source_authority(loan):
-                continue
-            source_bbox = match["source_label_bbox"]
-            loan_bbox = loan["source_label_bbox"]
-            absolute_left_delta = abs(source_bbox[0] - loan_bbox[0])
-            maximum_delta = max(source_bbox[3] - source_bbox[1], loan_bbox[3] - loan_bbox[1])
-            if absolute_left_delta > maximum_delta:
-                continue
-            geometry = {
-                "absolute_left_delta": absolute_left_delta,
-                "anchor_left": loan_bbox[0],
-                "maximum_root_sibling_left_delta": maximum_delta,
-                "source_left": source_bbox[0],
-                "status": "EXACT_ROOT_SIBLING_ALIGNMENT_WITHIN_ONE_LABEL_HEIGHT",
-            }
-            receipt = _scope_binding(
-                anchor=loan,
-                anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(loan),
-                binding_kind="EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES",
-                geometry=geometry,
-                interval_end_exclusive=region_end,
-                interval_start=loan["document_line_ordinal"],
-                source=match,
-                source_role=_PROVISION_GENERIC_ROLE,
-                source_scope_role=compiled_family["family_id"],
-                target_role="TOTAL_INTERBANK_PROVISION",
-            )
-            retype(match, "TOTAL_INTERBANK_PROVISION", receipt, matched_within_role=None)
-
     projected.sort(
         key=lambda item: (
             item["document_line_ordinal"],
@@ -2115,6 +2329,397 @@ def _project_reviewed_schema_source_scopes(
         match["role_occurrence_ordinal"] = ordinal
         ordinals[match["role"]] = ordinal + 1
     return projected
+
+
+def _project_recursive_parent_provision_bindings(
+    pages: Sequence[Mapping[str, Any]],
+    compiled_family: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    preliminary_matches: Sequence[Mapping[str, Any]],
+    preliminary_axis: Mapping[str, Any],
+    selected_region: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Bind a generic additive row only through one exact recursive equation.
+
+    The primitive consumes the sealed visible row/lane axis, not OCR provider
+    order.  A candidate parent is eligible only when one declared ordered
+    direct-component frontier is complete and sums exactly to its visible
+    result in every lane.  Parent results and their leaves can therefore never
+    coexist in one frontier.  More than one physical source, parent, result, or
+    exact frontier is an abstention.
+    """
+
+    projected = [canonical_clone_v1(match) for match in matches]
+    definitions = {child["role"]: child for child in compiled_family["children"]}
+    required_roles = {
+        _PROVISION_GENERIC_ROLE,
+        *(
+            spec["target_role"]
+            for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
+        ),
+    }
+    if not required_roles <= set(definitions):
+        return projected
+    rows = [
+        row
+        for row in preliminary_axis["rows"]
+        if _direct_frontier_row_receipt(row) is not None
+    ]
+    all_rows = preliminary_axis["rows"]
+    rows_by_role: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        rows_by_role.setdefault(row["role"], []).append(row)
+    grids_by_page = {
+        grid["page_sequence"]: grid for grid in preliminary_axis["column_grids"]
+    }
+    generic_occurrences = [
+        match
+        for match in preliminary_matches
+        if match["role"] == _PROVISION_GENERIC_ROLE
+        and _match_has_effective_exact_source_authority(match)
+        and match["occurrence_id"]
+        in {row["label_match"]["occurrence_id"] for row in rows_by_role.get(_PROVISION_GENERIC_ROLE, [])}
+    ]
+    if not generic_occurrences:
+        return projected
+    row_by_occurrence = {
+        row["label_match"]["occurrence_id"]: row for row in rows
+    }
+    projected_by_retrieval_id = {
+        match.get("retrieval_occurrence_id", match.get("occurrence_id")): match
+        for match in projected
+    }
+    root_scope_id = "aforav2:root:" + canonical_json_sha256_v1(
+        {
+            "end": selected_region["cluster_end_document_line_ordinal_exclusive"],
+            "parent_match": selected_region.get("parent_match"),
+            "start": selected_region["cluster_start_document_line_ordinal"],
+        }
+    )
+    parent_match = canonical_clone_v1(selected_region["parent_match"])
+    parent_match["role"] = compiled_family["family_id"]
+    parent_match["source_label_bbox"] = _source_line_bbox(pages, parent_match)
+    parent_result = _direct_frontier_parent_row_receipt(
+        pages, parent_match, preliminary_axis
+    )
+
+    proposals: list[dict[str, Any]] = []
+    for generic in generic_occurrences:
+        generic_row = row_by_occurrence[generic["occurrence_id"]]
+        generic_key = _visual_match_key(generic)
+        source_proposals = []
+        for binding_spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS:
+            target_role = binding_spec["target_role"]
+            parent_role = binding_spec["parent_role"]
+            if parent_role is None:
+                parent_occurrence_id = root_scope_id
+                parent_role_for_receipt = compiled_family["family_id"]
+                parent_rows = [None]
+                result_candidates = [
+                    (
+                        row["label_match"]["occurrence_id"],
+                        row["role"],
+                        _direct_frontier_row_receipt(row),
+                    )
+                    for result_role in binding_spec["result_roles"]
+                    for row in rows_by_role.get(result_role, [])
+                    if row["label_match"]["page_sequence"] == generic["page_sequence"]
+                    and row["label_match"].get("scope_owner_occurrence_id")
+                    == root_scope_id
+                ]
+                if (
+                    parent_result is not None
+                    and parent_match["page_sequence"] == generic["page_sequence"]
+                    and parent_result["sample_ids"]
+                    not in [candidate[2]["sample_ids"] for candidate in result_candidates]
+                ):
+                    result_candidates.append(
+                        (
+                            root_scope_id,
+                            compiled_family["family_id"],
+                            parent_result,
+                        )
+                    )
+            else:
+                parent_rows = [
+                    row
+                    for row in rows_by_role.get(parent_role, [])
+                    if row["label_match"]["page_sequence"] == generic["page_sequence"]
+                    and _match_has_effective_exact_source_authority(row["label_match"])
+                ]
+                parent_occurrence_id = ""
+                parent_role_for_receipt = parent_role
+                result_candidates = []
+            for parent_row in parent_rows:
+                if parent_row is not None:
+                    parent_occurrence_id = parent_row["label_match"]["occurrence_id"]
+                    result_candidates = [
+                        (
+                            row["label_match"]["occurrence_id"],
+                            row["role"],
+                            _direct_frontier_row_receipt(row),
+                        )
+                        for result_role in binding_spec["result_roles"]
+                        for row in rows_by_role.get(result_role, [])
+                        if row["label_match"]["page_sequence"] == generic["page_sequence"]
+                        and row["label_match"]["occurrence_id"] == parent_occurrence_id
+                    ]
+                next_parent_boundary = None
+                if parent_row is not None:
+                    later_parent_boundaries = [
+                        _visual_match_key(row["label_match"])
+                        for role in ("INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP")
+                        for row in rows_by_role.get(role, [])
+                        if row["label_match"]["page_sequence"] == generic["page_sequence"]
+                        and row["label_match"]["occurrence_id"] != parent_occurrence_id
+                        and _visual_match_key(row["label_match"])
+                        > _visual_match_key(parent_row["label_match"])
+                    ]
+                    next_parent_boundary = min(later_parent_boundaries, default=None)
+                    if (
+                        generic_key <= _visual_match_key(parent_row["label_match"])
+                        or next_parent_boundary is not None
+                        and generic_key >= next_parent_boundary
+                    ):
+                        continue
+
+                frontier_page_sequence = generic["page_sequence"]
+                frontier_start = (
+                    None
+                    if parent_row is None
+                    else _visual_match_key(parent_row["label_match"])
+                )
+                frontier_end = next_parent_boundary
+
+                def belongs_to_parent_frontier(
+                    row: Mapping[str, Any],
+                    *,
+                    end: tuple[int, int, int, int] | None = frontier_end,
+                    page_sequence: int = frontier_page_sequence,
+                    start: tuple[int, int, int, int] | None = frontier_start,
+                ) -> bool:
+                    match = row["label_match"]
+                    if match["page_sequence"] != page_sequence:
+                        return False
+                    if start is None:
+                        return match.get("scope_owner_occurrence_id") == root_scope_id
+                    key = _visual_match_key(match)
+                    return start < key and (end is None or key < end)
+
+                declared_non_provision_roles = {
+                    role
+                    for alternative in binding_spec["direct_component_role_alternatives"]
+                    for role in alternative
+                    if role != target_role
+                }
+                owner_rows = [
+                    row
+                    for row in all_rows
+                    if row["role"] in declared_non_provision_roles
+                    and belongs_to_parent_frontier(row)
+                ]
+                if any(_direct_frontier_row_receipt(row) is None for row in owner_rows):
+                    continue
+                explicit_target_rows = [
+                    row
+                    for row in all_rows
+                    if row["role"] == target_role and belongs_to_parent_frontier(row)
+                ]
+                if explicit_target_rows:
+                    continue
+                grid = grids_by_page.get(generic["page_sequence"])
+                interval_parent_match = (
+                    parent_match if parent_row is None else parent_row["label_match"]
+                )
+                if (
+                    type(grid) is not dict
+                    or _has_unmatched_complete_labeled_numeric_row(
+                        pages,
+                        preliminary_matches,
+                        lower_bbox=interval_parent_match["source_label_bbox"],
+                        page_sequence=generic["page_sequence"],
+                        upper_bbox=generic["source_label_bbox"],
+                        expected_lane_count=len(grid["column_centers"]),
+                    )
+                ):
+                    continue
+                for alternative in binding_spec["direct_component_role_alternatives"]:
+                    expected_non_provision_roles = [
+                        role for role in alternative if role != target_role
+                    ]
+                    if sorted(row["role"] for row in owner_rows) != sorted(
+                        expected_non_provision_roles
+                    ):
+                        continue
+                    source_roles = tuple(
+                        _PROVISION_GENERIC_ROLE if role == target_role else role
+                        for role in alternative
+                    )
+                    choices = []
+                    for source_role in source_roles:
+                        if source_role == _PROVISION_GENERIC_ROLE:
+                            choices.append([generic_row])
+                        else:
+                            choices.append(
+                                [
+                                    row
+                                    for row in rows_by_role.get(source_role, [])
+                                    if belongs_to_parent_frontier(row)
+                                    and _match_has_effective_exact_source_authority(
+                                        row["label_match"]
+                                    )
+                                ]
+                            )
+                    if any(not choice for choice in choices):
+                        continue
+                    for component_rows in product(*choices):
+                        component_matches = [row["label_match"] for row in component_rows]
+                        if (
+                            len({row["label_match"]["occurrence_id"] for row in component_rows})
+                            != len(component_rows)
+                            or [
+                                _visual_match_key(match) for match in component_matches
+                            ]
+                            != sorted(_visual_match_key(match) for match in component_matches)
+                            or _visual_match_key(component_matches[-1]) != generic_key
+                        ):
+                            continue
+                        if parent_row is not None and not (
+                            _visual_match_key(parent_row["label_match"])
+                            < _visual_match_key(component_matches[0])
+                        ):
+                            continue
+                        component_receipts = [
+                            _direct_frontier_row_receipt(row) for row in component_rows
+                        ]
+                        for result_occurrence_id, result_role, result_receipt in result_candidates:
+                            if (
+                                result_receipt is None
+                                or not _direct_frontier_sum_is_exact(
+                                    result_receipt, component_receipts
+                                )
+                            ):
+                                continue
+                            geometry = _recursive_parent_provision_equation_geometry(
+                                component_rows=component_rows,
+                                component_roles=alternative,
+                                generic_occurrence=generic,
+                                parent_occurrence_id=parent_occurrence_id,
+                                parent_role=parent_role_for_receipt,
+                                result_occurrence_id=result_occurrence_id,
+                                result_receipt=result_receipt,
+                                result_role=result_role,
+                            )
+                            anchor_row = (
+                                parent_row
+                                if parent_row is not None
+                                else component_rows[-2]
+                            )
+                            source_proposals.append(
+                                {
+                                    "anchor": anchor_row["label_match"],
+                                    "geometry": geometry,
+                                    "matched_within_role": binding_spec[
+                                        "matched_within_role"
+                                    ],
+                                    "parent_occurrence_id": parent_occurrence_id,
+                                    "source": generic,
+                                    "target_role": target_role,
+                                }
+                            )
+        unique_by_equation = {
+            proposal["geometry"]["equation"]["equation_id"]: proposal
+            for proposal in source_proposals
+        }
+        if len(unique_by_equation) == 1:
+            proposals.append(next(iter(unique_by_equation.values())))
+
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for proposal in proposals:
+        grouped.setdefault(
+            (proposal["parent_occurrence_id"], proposal["target_role"]), []
+        ).append(proposal)
+    for group in grouped.values():
+        if len(group) != 1:
+            continue
+        proposal = group[0]
+        source = proposal["source"]
+        projected_source = projected_by_retrieval_id.get(
+            source["retrieval_occurrence_id"]
+        )
+        if projected_source is None or projected_source["role"] != _PROVISION_GENERIC_ROLE:
+            continue
+        anchor = proposal["anchor"]
+        receipt = _scope_binding(
+            anchor=anchor,
+            anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(anchor),
+            binding_kind=_RECURSIVE_PARENT_PROVISION_BINDING_KIND,
+            geometry=proposal["geometry"],
+            interval_end_exclusive=selected_region[
+                "cluster_end_document_line_ordinal_exclusive"
+            ],
+            interval_start=selected_region["cluster_start_document_line_ordinal"],
+            source=projected_source,
+            source_role=_PROVISION_GENERIC_ROLE,
+            source_scope_role=(
+                proposal["matched_within_role"] or compiled_family["family_id"]
+            ),
+            target_role=proposal["target_role"],
+        )
+        definition = definitions[proposal["target_role"]]
+        projected_source.update(
+            {
+                "matched_within_role": proposal["matched_within_role"],
+                "preferred_ordinal": definition["preferred_ordinal"],
+                "presence": definition["presence"],
+                "role": proposal["target_role"],
+                "role_kind": definition["role_kind"],
+                "source_scope_binding": receipt,
+            }
+        )
+    projected.sort(
+        key=lambda item: (
+            item["document_line_ordinal"],
+            item["end_document_line_ordinal"],
+            item["preferred_ordinal"],
+            item["role"],
+        )
+    )
+    ordinals: dict[str, int] = {}
+    for match in projected:
+        ordinal = ordinals.get(match["role"], 0)
+        match["role_occurrence_ordinal"] = ordinal
+        ordinals[match["role"]] = ordinal + 1
+    return projected
+
+
+def _retarget_recursive_parent_provision_dash_rescues(
+    visible_dash_rescues: Any,
+    preliminary_matches: Sequence[Mapping[str, Any]],
+    projected_matches: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    if type(visible_dash_rescues) is not tuple:
+        raise _error("recursive parent provision dash inputs must remain one exact tuple")
+    projected_by_retrieval = {
+        match.get("retrieval_occurrence_id", match.get("occurrence_id")): match
+        for match in projected_matches
+    }
+    targets_by_page: dict[int, list[str]] = {}
+    for source in preliminary_matches:
+        if source["role"] != _PROVISION_GENERIC_ROLE:
+            continue
+        target = projected_by_retrieval.get(source["retrieval_occurrence_id"])
+        if target is None or target["role"] == _PROVISION_GENERIC_ROLE:
+            continue
+        targets_by_page.setdefault(source["page_sequence"], []).append(target["role"])
+    result = []
+    for raw in visible_dash_rescues:
+        item = canonical_clone_v1(raw)
+        targets = targets_by_page.get(item.get("page_sequence"), [])
+        if item.get("role") == _PROVISION_GENERIC_ROLE and len(targets) == 1:
+            item["role"] = targets[0]
+        result.append(item)
+    return tuple(result)
 
 
 def _decorate_scopes(
@@ -2438,6 +3043,40 @@ def _validate_source_scope_binding(
                 <= geometry["absolute_left_delta"]
                 <= geometry["maximum_root_sibling_left_delta"]
                 and interval["start_document_line_ordinal"] == anchor["document_line_ordinal"]
+            )
+        elif kind == _RECURSIVE_PARENT_PROVISION_BINDING_KIND:
+            binding_specs = [
+                spec
+                for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
+                if spec["target_role"] == role
+            ]
+            binding_spec = binding_specs[0] if len(binding_specs) == 1 else None
+            expected_scope_role = (
+                binding_spec["parent_role"]
+                if binding_spec is not None and binding_spec["parent_role"] is not None
+                else "INTERBANK_DEPOSITS_AND_LOANS"
+            )
+            expected_anchor_role = (
+                binding_spec["parent_role"]
+                if binding_spec is not None and binding_spec["parent_role"] is not None
+                else "INTERBANK_LOAN_GROUP"
+            )
+            reviewed_matrix_valid = (
+                binding_spec is not None
+                and value["source_role"] == _PROVISION_GENERIC_ROLE
+                and value["source_scope_role"] == expected_scope_role
+                and exact_source
+                and exact_anchor
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
+                and anchor.get("role") == expected_anchor_role
+                and _recursive_parent_provision_geometry_is_valid(
+                    geometry,
+                    label_match=label_match,
+                    role=role,
+                )
+                and geometry["ordered_source_label_bboxes"][-1]
+                == value["source_span"]["source_label_bbox"]
             )
     ambiguous_matrix_valid = False
     if value["status"] == _AMBIGUOUS_WRAPPED_LABEL_STATUS:
@@ -8942,6 +9581,159 @@ def _validate_result(value: Any) -> dict[str, Any]:
             != _EXPLICIT_GROUP_TOTAL_BINDING_KIND
         ):
             raise _error("explicit group total lacks its exact parent-interval receipt")
+    occurrences_by_retrieval_id: dict[str, list[Mapping[str, Any]]] = {}
+    for item in value["role_occurrences"]:
+        occurrences_by_retrieval_id.setdefault(item["retrieval_occurrence_id"], []).append(item)
+    universe_by_sample_id = {
+        record.get("sample_id"): record
+        for record in value["numeric_sample_universe"]
+        if type(record) is dict and type(record.get("sample_id")) is str
+    }
+    for item in value["role_occurrences"]:
+        receipt = item["source_scope_binding"]
+        if (
+            type(receipt) is not dict
+            or receipt.get("binding_kind") != _RECURSIVE_PARENT_PROVISION_BINDING_KIND
+        ):
+            continue
+        geometry = receipt["geometry"]
+        equation = geometry["equation"]
+        parent_occurrence_id = equation["parent_occurrence_id"]
+        parent_occurrence_for_interval = occurrence_by_id.get(parent_occurrence_id)
+        next_parent_boundary_key = None
+        if type(parent_occurrence_for_interval) is dict:
+            later_parent_boundary_keys = [
+                _visual_match_key(candidate["label_match"])
+                for candidate in value["role_occurrences"]
+                if candidate["role"]
+                in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                and candidate["occurrence_id"] != parent_occurrence_id
+                and candidate["label_match"]["page_sequence"]
+                == parent_occurrence_for_interval["label_match"]["page_sequence"]
+                and _visual_match_key(candidate["label_match"])
+                > _visual_match_key(parent_occurrence_for_interval["label_match"])
+            ]
+            next_parent_boundary_key = min(later_parent_boundary_keys, default=None)
+        component_occurrences = []
+        for component, expected_bbox in zip(
+            equation["component_frontier"],
+            geometry["ordered_source_label_bboxes"],
+            strict=True,
+        ):
+            candidates = occurrences_by_retrieval_id.get(
+                component["retrieval_occurrence_id"], []
+            )
+            if len(candidates) != 1:
+                raise _error(
+                    "recursive parent equation component is not one actual retrieval occurrence"
+                )
+            component_occurrence = candidates[0]
+            component_row = row_by_occurrence.get(component_occurrence["occurrence_id"])
+            component_receipt = (
+                _direct_frontier_row_receipt(component_row)
+                if type(component_row) is dict
+                else None
+            )
+            component_key = _visual_match_key(component_occurrence["label_match"])
+            component_is_in_exact_parent_interval = (
+                component_occurrence["scope_owner_occurrence_id"]
+                == parent_occurrence_id
+                if equation["parent_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+                else type(parent_occurrence_for_interval) is dict
+                and _visual_match_key(parent_occurrence_for_interval["label_match"])
+                < component_key
+                and (
+                    next_parent_boundary_key is None
+                    or component_key < next_parent_boundary_key
+                )
+            )
+            if (
+                component_occurrence["role"] != component["role"]
+                or not component_is_in_exact_parent_interval
+                or component_occurrence["label_match"].get("source_label_bbox")
+                != expected_bbox
+                or component_receipt is None
+                or component_receipt["numbers"] != component["numbers"]
+                or component_receipt["sample_ids"] != component["sample_ids"]
+            ):
+                raise _error(
+                    "recursive parent equation component row or owner does not replay exactly"
+                )
+            component_occurrences.append(component_occurrence)
+        target_components = [
+            occurrence
+            for occurrence in component_occurrences
+            if occurrence["role"] == item["role"]
+        ]
+        if (
+            len(target_components) != 1
+            or target_components[0]["occurrence_id"] != item["occurrence_id"]
+            or equation["source_retrieval_occurrence_id"]
+            != item["retrieval_occurrence_id"]
+            or item["scope_owner_occurrence_id"] != parent_occurrence_id
+        ):
+            raise _error("recursive parent equation source occurrence or owner drifted")
+        result = equation["result"]
+        result_occurrence = occurrence_by_id.get(result["occurrence_id"])
+        result_row = (
+            row_by_occurrence.get(result_occurrence["occurrence_id"])
+            if type(result_occurrence) is dict
+            else None
+        )
+        result_receipt = (
+            _direct_frontier_row_receipt(result_row)
+            if type(result_row) is dict
+            else None
+        )
+        if result_receipt is None:
+            result_records = [
+                universe_by_sample_id.get(sample_id) for sample_id in result["sample_ids"]
+            ]
+            result_numbers = [
+                _direct_frontier_number(record)
+                if type(record) is dict
+                else None
+                for record in result_records
+            ]
+            if any(number is None for number in result_numbers):
+                raise _error("recursive parent equation result samples are absent")
+            result_receipt = {
+                "numbers": result_numbers,
+                "sample_ids": list(result["sample_ids"]),
+            }
+        if (
+            result_receipt["numbers"] != result["numbers"]
+            or result_receipt["sample_ids"] != result["sample_ids"]
+            or (
+                type(result_occurrence) is dict
+                and result_occurrence["role"] != result["role"]
+            )
+            or (
+                type(result_occurrence) is not dict
+                and (
+                    result["occurrence_id"] != parent_occurrence_id
+                    or result["role"] != equation["parent_role"]
+                )
+            )
+        ):
+            raise _error("recursive parent equation result does not replay exactly")
+        if equation["parent_role"] in {
+            "INTERBANK_DEPOSIT_GROUP",
+            "INTERBANK_LOAN_GROUP",
+        }:
+            parent_occurrence = occurrence_by_id.get(parent_occurrence_id)
+            if (
+                type(parent_occurrence) is not dict
+                or parent_occurrence["role"] != equation["parent_role"]
+                or result["occurrence_id"] != parent_occurrence_id
+                or item["scope_owner_role"] != equation["parent_role"]
+            ):
+                raise _error("recursive parent equation exact parent occurrence drifted")
+        elif (
+            parent_occurrence_id not in root_scope_ids
+            or item["scope_owner_role"] is not None
+        ):
+            raise _error("recursive root equation exact parent scope drifted")
     actual_span_occurrences: dict[str, list[Mapping[str, Any]]] = {}
     for occurrence in value["role_occurrences"]:
         span = _source_span(occurrence["label_match"])
@@ -9009,6 +9801,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         anchor = anchors[0]
         source_match = occurrence["label_match"]
         anchor_match = anchor["label_match"]
+        kind = receipt["binding_kind"]
         anchor_exact_check = receipt.get("anchor_exact_source_authority_check")
         if anchor_exact_check is not None and (
             _bound_one_edit_exact_source_check(anchor_match) is None
@@ -9018,12 +9811,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
             )
         ):
             raise _error("reviewed schema source-scope anchor exact-source proof drifted")
-        if (
-            anchor_match["page_sequence"] != source_match["page_sequence"]
-            or anchor_match["end_document_line_ordinal"] >= source_match["document_line_ordinal"]
+        document_order_precedes = (
+            anchor_match["end_document_line_ordinal"]
+            < source_match["document_line_ordinal"]
+        )
+        visual_order_precedes = (
+            anchor_match["page_sequence"] == source_match["page_sequence"]
+            and _visual_match_key(anchor_match) < _visual_match_key(source_match)
+        )
+        if anchor_match["page_sequence"] != source_match["page_sequence"] or not (
+            document_order_precedes
+            or kind == _RECURSIVE_PARENT_PROVISION_BINDING_KIND
+            and visual_order_precedes
         ):
             raise _error("reviewed schema source-scope anchor does not precede its source")
-        kind = receipt["binding_kind"]
         if kind == _EXPLICIT_GROUP_TOTAL_BINDING_KIND:
             source_role = receipt["source_role"]
             target_role = occurrence["role"]
@@ -9162,6 +9963,74 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 != boundary["label_match"]["document_line_ordinal"]
             ):
                 raise _error("explicit group total parent-interval proof drifted")
+        elif kind == _RECURSIVE_PARENT_PROVISION_BINDING_KIND:
+            equation = receipt["geometry"]["equation"]
+            parent_occurrence_id = equation["parent_occurrence_id"]
+            same_parent_targets = [
+                candidate
+                for candidate in value["role_occurrences"]
+                if candidate["role"] == occurrence["role"]
+                and candidate["scope_owner_occurrence_id"] == parent_occurrence_id
+            ]
+            if equation["parent_role"] in {
+                "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_GROUP",
+            }:
+                expected_anchor = occurrence_by_id.get(parent_occurrence_id)
+                later_parent_boundaries = [
+                    candidate
+                    for candidate in value["role_occurrences"]
+                    if candidate["role"]
+                    in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                    and candidate["occurrence_id"] != parent_occurrence_id
+                    and candidate["label_match"]["page_sequence"]
+                    == source_match["page_sequence"]
+                    and _visual_match_key(candidate["label_match"])
+                    > _visual_match_key(expected_anchor["label_match"])
+                ] if type(expected_anchor) is dict else []
+                next_parent_boundary = min(
+                    later_parent_boundaries,
+                    key=lambda candidate: _visual_match_key(candidate["label_match"]),
+                    default=None,
+                )
+                source_precedes_boundary = (
+                    next_parent_boundary is None
+                    or _visual_match_key(source_match)
+                    < _visual_match_key(next_parent_boundary["label_match"])
+                )
+            else:
+                expected_anchor_candidates = [
+                    candidates[0]
+                    for component in equation["component_frontier"][:-1]
+                    if len(
+                        candidates := occurrences_by_retrieval_id.get(
+                            component["retrieval_occurrence_id"], []
+                        )
+                    )
+                    == 1
+                ]
+                expected_anchor = (
+                    expected_anchor_candidates[-1]
+                    if expected_anchor_candidates
+                    else None
+                )
+                source_precedes_boundary = True
+            topology_region = axis["topology_region"]
+            if (
+                type(expected_anchor) is not dict
+                or expected_anchor["occurrence_id"] != anchor["occurrence_id"]
+                or not source_precedes_boundary
+                or len(same_parent_targets) != 1
+                or same_parent_targets[0]["occurrence_id"]
+                != occurrence["occurrence_id"]
+                or receipt["interval"]["start_document_line_ordinal"]
+                != topology_region["cluster_start_document_line_ordinal"]
+                or receipt["interval"]["end_document_line_ordinal_exclusive"]
+                != topology_region[
+                    "cluster_end_document_line_ordinal_exclusive"
+                ]
+            ):
+                raise _error("recursive parent provision interval or unique owner drifted")
         elif kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
             prior_loan_groups = [
                 item
@@ -9724,6 +10593,63 @@ def _build(
         expanded_matches,
         selected_region,
     )
+    preliminary_matches = _decorate_scopes(expanded_matches, selected_region)
+    if any(match["role"] == _PROVISION_GENERIC_ROLE for match in preliminary_matches):
+        preliminary_expanded = _expanded_region(expected_effective, preliminary_matches)
+        try:
+            preliminary_axis = row_v1._build_axis(
+                parsed_pages,
+                scan,
+                preliminary_expanded,
+                visible_dash_rescues,
+            )
+        except row_v1.AccountingFamilyRowAxisV1Error as exc:
+            raise _error("sealed preliminary recursive-parent row projection failed") from exc
+        preliminary_axis, _preliminary_unique_dash_evidence = (
+            _project_unique_dash_speck_rescues_v2(
+                preliminary_axis,
+                preliminary_matches,
+                visible_dash_rescues,
+                topology_candidates_id=topology_candidates_id,
+                topology_scan_id=scan["scan_id"],
+            )
+        )
+        preliminary_axis, _preliminary_dash_evidence, _preliminary_dash_reasons = (
+            _authenticate_existing_dashes(
+                preliminary_axis,
+                selected_snapshot=selected_snapshot,
+                render_snapshots=render_snapshots,
+            )
+        )
+        preliminary_axis, _preliminary_structural_rejections = (
+            _project_structural_owner_only_rescue_rejections(
+                preliminary_axis, preliminary_matches
+            )
+        )
+        try:
+            preliminary_axis, preliminary_coextensive = (
+                total_v1.project_accounting_family_coextensive_structural_numeric_rows_v1(
+                    preliminary_axis,
+                    preliminary_matches,
+                )
+            )
+            if preliminary_coextensive:
+                preliminary_axis = _regenerate_v1_axis(preliminary_axis)
+        except total_v1.AccountingFamilyCoextensiveParentTotalV1Error as exc:
+            raise _error("recursive-parent preliminary subtotal projection failed") from exc
+        expanded_matches = _project_recursive_parent_provision_bindings(
+            parsed_pages,
+            compiled_family,
+            expanded_matches,
+            preliminary_matches,
+            preliminary_axis,
+            selected_region,
+        )
+        visible_dash_rescues = _retarget_recursive_parent_provision_dash_rescues(
+            visible_dash_rescues,
+            preliminary_matches,
+            expanded_matches,
+        )
     matches = _decorate_scopes(
         expanded_matches,
         selected_region,
