@@ -43,6 +43,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "HIERARCHY_FRONTIER_FORMAT_VERSION",
+    "RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION",
     "PARENT_FRONTIER_FORMAT_VERSION",
     "AccountingFamilyOneEditExactAuthorityV1Error",
     "build_accounting_family_one_edit_exact_authority_v1",
@@ -58,6 +59,7 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V2"
 PARENT_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V3"
 HIERARCHY_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V4"
+RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V5"
 CLAIM_BOUNDARY = (
     "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_EITHER_INDEPENDENT_EXACT_"
     "BOUND_SOURCE_TEXT_ALIAS_OR_AUTHENTICATED_SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_"
@@ -78,6 +80,13 @@ HIERARCHY_FRONTIER_CLAIM_BOUNDARY = (
     "PHYSICAL_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_LANE_AXIS_MIXED_GROUPING_"
     "REQUIRES_AUTHENTICATED_SAME_CROP_INDEPENDENT_EXACT_INTEGER_REPLAY_NO_"
     "BACKSOLVE_ROUNDING_PARENT_PLUS_DESCENDANT_DOUBLE_COUNT_OR_ROUTING_AUTHORITY"
+)
+RECURSIVE_HIERARCHY_FRONTIER_CLAIM_BOUNDARY = (
+    "SELECTED_V4_ONE_EDIT_COMPONENT_MAY_BE_BOUND_ONLY_WHEN_THE_SHARED_HIERARCHY_"
+    "COMPILER_REPLAYS_ONE_EXHAUSTIVE_RECURSIVE_DIRECT_FRONTIER_FROM_SOURCE_"
+    "VISIBLE_ROWS_THROUGH_EVERY_PRINTED_INTERMEDIATE_SUBTOTAL_TO_ONE_SOURCE_"
+    "VISIBLE_ROOT_RESULT_ON_THE_IDENTICAL_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_"
+    "MIXED_LANE_AXIS_NO_BACKSOLVE_ROUNDING_MIXED_LEVEL_DUPLICATE_OR_ROUTING_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
@@ -141,6 +150,21 @@ _HIERARCHY_FRONTIER_AUTHORITY_SPEC = {
         "unique_exhaustive_frontier_required": True,
     },
 }
+_RECURSIVE_HIERARCHY_FRONTIER_AUTHORITY_SPEC = {
+    **_AUTHORITY_SPEC,
+    "recursive_hierarchy_direct_frontier_authority": {
+        "component_frontier": "SHARED_HIERARCHY_COMPILER_SELECTED_DIRECT_FRONTIER_PER_LEVEL",
+        "exact_equation_required_in_every_lane": True,
+        "intermediate_result_carrier": "ONE_EXACT_UNLABELED_SOURCE_SUBTOTAL",
+        "mixed_level_or_duplicate_component_use_forbidden": True,
+        "numeric_cells": "RAW_SIGNED_OR_DASH_SOURCE_VISIBLE_ONLY",
+        "result_carrier": "ONE_COMPLETE_VISIBLE_TRAILING_RESULT",
+        "same_page_root_period_unit_and_complete_lane_axis_required": True,
+        "source_observed_numeric_assignments_only": True,
+        "target_kind": "COMPONENT",
+        "unique_exhaustive_recursive_frontier_required": True,
+    },
+}
 _SAFETY = {
     "bank_file_page_period_scope_used_for_routing": False,
     "discarded_or_near_one_edit_match_can_veto_selected_candidate": False,
@@ -168,6 +192,13 @@ _HIERARCHY_FRONTIER_SAFETY = {
     "mixed_grouped_token_can_be_reclassified_or_mutated": False,
     "result_and_component_source_samples_must_be_disjoint": True,
 }
+_RECURSIVE_HIERARCHY_FRONTIER_SAFETY = {
+    **_HIERARCHY_FRONTIER_SAFETY,
+    "intermediate_subtotal_can_be_invented_or_backsolved": False,
+    "percentage_and_money_lanes_may_be_collapsed_to_one_unit": False,
+    "recursive_proof_requires_shared_closure_replay": True,
+    "uncertified_mixed_numeric_token_can_authorize": False,
+}
 _RESULT_FIELDS = {
     "authority_spec",
     "checks",
@@ -191,6 +222,11 @@ _HIERARCHY_FRONTIER_RESULT_FIELDS = {
     "hierarchy_direct_frontier_authority",
     "source_exact_authority_receipt",
 }
+_RECURSIVE_HIERARCHY_FRONTIER_RESULT_FIELDS = {
+    *_RESULT_FIELDS,
+    "recursive_hierarchy_direct_frontier_authority",
+    "source_exact_authority_receipt",
+}
 _INPUT_BINDING_FIELDS = {
     "document_pages_sha256",
     "expanded_occurrence_region_sha256",
@@ -210,6 +246,10 @@ _HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS = {
     *_PARENT_FRONTIER_INPUT_BINDING_FIELDS,
     "column_policy_sha256",
     "hierarchy_spec_sha256",
+}
+_RECURSIVE_HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS = {
+    *_HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS,
+    "authenticated_extreme_margin_furniture_evidence_sha256",
 }
 _METRIC_FIELDS = {
     "exact_bound_count",
@@ -382,6 +422,40 @@ _HIERARCHY_FRONTIER_CELL_FIELDS = {
     "source_line_index",
     "vietocr_number",
     "vietocr_surface",
+}
+_RECURSIVE_HIERARCHY_FRONTIER_BOUND_STATUS = (
+    "EXACT_RECURSIVE_HIERARCHY_DIRECT_FRONTIER_AUTHORITY_BOUND"
+)
+_RECURSIVE_HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION = (
+    "ACCOUNTING_FAMILY_ONE_EDIT_RECURSIVE_HIERARCHY_DIRECT_FRONTIER_AUTHORITY_PROOF_V1"
+)
+_RECURSIVE_HIERARCHY_FRONTIER_PROOF_FIELDS = {
+    "column_context_receipt",
+    "format_version",
+    "input_binding",
+    "proof_id",
+    "recursive_frontier",
+    "source_check",
+    "status",
+}
+_RECURSIVE_FRONTIER_FIELDS = {
+    "covered_source_sample_ids",
+    "family_id",
+    "format_version",
+    "global_equations_sha256",
+    "hierarchy_spec_sha256",
+    "local_equations_sha256",
+    "page_sequence",
+    "proof_id",
+    "resolved_roles_sha256",
+    "root_equation",
+    "root_occurrence_id",
+    "selected_component_use_count",
+    "synthetic_intermediate_coverage",
+    "target_occurrence_id",
+    "target_retrieval_occurrence_id",
+    "target_role",
+    "trailing_result",
 }
 _PARENT_MATCH_BINDING_FIELDS = {
     "document_line_span",
@@ -2076,7 +2150,11 @@ def _parent_frontier_structural_evidence_v1(value: Any) -> dict[str, Any]:
     }
     if any(type(axis) is not list for axis in axes.values()):
         raise _error("one-edit parent-frontier occurrence evidence axis drifted")
+    furniture = value.get("authenticated_extreme_margin_furniture_evidence", [])
+    if type(furniture) is not list:
+        raise _error("one-edit parent-frontier furniture evidence axis drifted")
     return {
+        "authenticated_extreme_margin_furniture_evidence": canonical_clone_v1(furniture),
         "internal_unassigned_numeric_clusters": canonical_clone_v1(
             axes["internal_unassigned_numeric_clusters"]
         ),
@@ -3322,6 +3400,27 @@ def _hierarchy_frontier_input_binding_v1(
     }
 
 
+def _recursive_hierarchy_frontier_input_binding_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    column_context: Mapping[str, Any],
+    hierarchy_spec: Any,
+    column_policy: Mapping[str, Any],
+) -> dict[str, str]:
+    return {
+        **_hierarchy_frontier_input_binding_v1(
+            source_receipt,
+            evidence,
+            column_context,
+            hierarchy_spec,
+            column_policy,
+        ),
+        "authenticated_extreme_margin_furniture_evidence_sha256": canonical_json_sha256_v1(
+            evidence["authenticated_extreme_margin_furniture_evidence"]
+        ),
+    }
+
+
 def _hierarchy_frontier_number(value: Mapping[str, Any]) -> dict[str, Any] | None:
     return occurrence_row_v2._direct_frontier_number(value)  # noqa: SLF001
 
@@ -3893,6 +3992,156 @@ def _build_hierarchy_frontier_proof_v1(
     }
 
 
+def _build_recursive_hierarchy_frontier_proof_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    context: Mapping[str, Any],
+    family_spec: Any,
+    hierarchy_spec: Any,
+    input_binding: Mapping[str, str],
+) -> dict[str, Any] | None:
+    if len(source_receipt["checks"]) != 1:
+        return None
+    source_check = source_receipt["checks"][0]
+    retrieval = source_check.get("retrieval_channel")
+    if (
+        source_check.get("match_scope") != "EXPANDED_OCCURRENCE"
+        or source_check.get("status")
+        not in {
+            "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN",
+            "RETRIEVAL_ONE_EDIT_ALIAS_SPEC_BINDING_DRIFTED",
+        }
+        or type(source_check.get("occurrence_id")) is not str
+        or type(retrieval) is not dict
+        or retrieval.get("match_kind") != "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    ):
+        return None
+    targets = [
+        occurrence
+        for occurrence in evidence["role_occurrences"]
+        if occurrence.get("retrieval_occurrence_id") == source_check["occurrence_id"]
+        and occurrence.get("role") == source_check["role"]
+        and str(occurrence.get("label_match", {}).get("match_kind", "")).startswith("ONE_EDIT_")
+    ]
+    if len(targets) != 1 or source_check["source_line_indices"] != (
+        _hierarchy_frontier_source_line_indices(targets[0]["label_match"])
+    ):
+        return None
+    target_page = targets[0]["label_match"].get("page_sequence")
+    grids = [
+        grid
+        for grid in evidence["row_axis"]["column_grids"]
+        if grid.get("page_sequence") == target_page
+    ]
+    if len(grids) != 1:
+        return None
+    centers = grids[0]["column_centers"]
+    period_axis = sorted(context["period_axis"], key=lambda item: item["column_ordinal"])
+    unit_axis = sorted(context["unit_axis"], key=lambda item: item["column_ordinal"])
+    if (
+        context.get("status") != "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+        or context.get("row_axis_id") != evidence["row_axis"]["row_axis_id"]
+        or [item.get("column_ordinal") for item in period_axis] != list(range(len(centers)))
+        or [item.get("column_ordinal") for item in unit_axis] != list(range(len(centers)))
+        or [item.get("column_center") for item in period_axis] != centers
+        or [item.get("column_center") for item in unit_axis] != centers
+    ):
+        return None
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_scoped_hierarchical_table_closure_v2 as closure_v2,
+    )
+
+    recursive = closure_v2._project_provisional_one_edit_recursive_frontier_v1(  # noqa: SLF001
+        authenticated_extreme_margin_furniture_evidence=evidence[
+            "authenticated_extreme_margin_furniture_evidence"
+        ],
+        family_topology_spec=family_spec,
+        hierarchy_spec=hierarchy_spec,
+        internal_unassigned_numeric_clusters=evidence["internal_unassigned_numeric_clusters"],
+        numeric_sample_universe=evidence["numeric_sample_universe"],
+        role_occurrences=evidence["role_occurrences"],
+        row_axis=evidence["row_axis"],
+        target_retrieval_occurrence_id=source_check["occurrence_id"],
+    )
+    if (
+        type(recursive) is not dict
+        or recursive.get("target_occurrence_id") != targets[0]["occurrence_id"]
+        or recursive.get("target_role") != source_check["role"]
+        or recursive.get("page_sequence") != target_page
+    ):
+        return None
+    sample_by_id = {sample["sample_id"]: sample for sample in evidence["numeric_sample_universe"]}
+    covered_samples = [
+        sample_by_id.get(sample_id) for sample_id in recursive["covered_source_sample_ids"]
+    ]
+    if any(
+        type(sample) is not dict
+        or sample.get("parsed_token", {}).get("classification")
+        not in {"DASH_ZERO", "SIGNED_NUMBER"}
+        for sample in covered_samples
+    ):
+        return None
+    material = {
+        "column_context_receipt": canonical_clone_v1(context),
+        "format_version": _RECURSIVE_HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION,
+        "input_binding": canonical_clone_v1(input_binding),
+        "recursive_frontier": canonical_clone_v1(recursive),
+        "source_check": canonical_clone_v1(source_check),
+        "status": _RECURSIVE_HIERARCHY_FRONTIER_BOUND_STATUS,
+    }
+    return {
+        **material,
+        "proof_id": "afeoerhdfav1:proof:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _validate_recursive_hierarchy_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _RECURSIVE_HIERARCHY_FRONTIER_PROOF_FIELDS
+        or value.get("format_version") != _RECURSIVE_HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION
+        or value.get("status") != _RECURSIVE_HIERARCHY_FRONTIER_BOUND_STATUS
+        or type(value.get("source_check")) is not dict
+        or type(value.get("input_binding")) is not dict
+        or set(value["input_binding"]) != _RECURSIVE_HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS
+        or any(
+            type(item) is not str
+            or len(item) != 64
+            or any(character not in "0123456789abcdef" for character in item)
+            for item in value["input_binding"].values()
+        )
+    ):
+        raise _error("one-edit recursive hierarchy-frontier proof shape drifted")
+    try:
+        column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
+            value["column_context_receipt"]
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit recursive hierarchy-frontier column receipt drifted") from exc
+    recursive = value.get("recursive_frontier")
+    if (
+        type(recursive) is not dict
+        or set(recursive) != _RECURSIVE_FRONTIER_FIELDS
+        or recursive.get("format_version")
+        != "ACCOUNTING_SCOPED_HIERARCHICAL_PROVISIONAL_ONE_EDIT_RECURSIVE_FRONTIER_V1"
+        or recursive.get("target_retrieval_occurrence_id")
+        != value["source_check"].get("occurrence_id")
+        or recursive.get("target_role") != value["source_check"].get("role")
+    ):
+        raise _error("one-edit recursive hierarchy-frontier closure proof drifted")
+    recursive_material = canonical_clone_v1(recursive)
+    recursive_id = recursive_material.pop("proof_id")
+    if recursive_id != "ashtcv2:provisional-one-edit-recursive-frontier:" + (
+        canonical_json_sha256_v1(recursive_material)
+    ):
+        raise _error("one-edit recursive hierarchy-frontier closure identity drifted")
+    material = canonical_clone_v1(value)
+    proof_id = material.pop("proof_id")
+    if proof_id != "afeoerhdfav1:proof:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit recursive hierarchy-frontier proof identity drifted")
+    return canonical_clone_v1(value)
+
+
 def _validate_hierarchy_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -4258,6 +4507,151 @@ def _validate_hierarchy_frontier_result_v1(value: Any) -> dict[str, Any]:
     if receipt_id != "afeoeav1:receipt:" + canonical_json_sha256_v1(material):
         raise _error("one-edit hierarchy-frontier receipt identity drifted")
     return canonical_clone_v1(value)
+
+
+def _validate_recursive_hierarchy_frontier_result_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _RECURSIVE_HIERARCHY_FRONTIER_RESULT_FIELDS
+        or value.get("format_version") != RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION
+        or value.get("claim_boundary") != RECURSIVE_HIERARCHY_FRONTIER_CLAIM_BOUNDARY
+        or not same_typed_json_v1(value.get("safety"), _RECURSIVE_HIERARCHY_FRONTIER_SAFETY)
+        or type(value.get("authority_spec")) is not dict
+        or set(value["authority_spec"]) != {"sha256", "value"}
+        or not same_typed_json_v1(
+            value["authority_spec"]["value"],
+            _RECURSIVE_HIERARCHY_FRONTIER_AUTHORITY_SPEC,
+        )
+        or value["authority_spec"]["sha256"]
+        != canonical_json_sha256_v1(_RECURSIVE_HIERARCHY_FRONTIER_AUTHORITY_SPEC)
+    ):
+        raise _error("one-edit recursive hierarchy-frontier receipt shape drifted")
+    source = _validate_result(value["source_exact_authority_receipt"])
+    proof = _validate_recursive_hierarchy_frontier_proof_shape_v1(
+        value["recursive_hierarchy_direct_frontier_authority"]
+    )
+    unbound_checks = [
+        check for check in source["checks"] if check["status"] not in _BOUND_CHECK_STATUSES
+    ]
+    if (
+        len(source["checks"]) != 1
+        or len(unbound_checks) != 1
+        or not same_typed_json_v1(unbound_checks[0], proof["source_check"])
+        or value["family_id"] != source["family_id"]
+        or value["checks"] != source["checks"]
+        or value["input_binding"] != proof["input_binding"]
+        or value["input_binding"]["source_exact_authority_receipt_sha256"]
+        != canonical_json_sha256_v1(source)
+        or any(
+            value["input_binding"][key] != source["input_binding"][key]
+            for key in _INPUT_BINDING_FIELDS
+        )
+    ):
+        raise _error("one-edit recursive hierarchy-frontier source binding drifted")
+    source_reason = _parent_frontier_reason(unbound_checks[0])
+    expected_reasons = [
+        reason for reason in source["unresolved_reasons"] if reason != source_reason
+    ]
+    expected_metrics = {
+        "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+        "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+        "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+    }
+    expected_status = (
+        "EXACT_SOURCE_AUTHORITY_BOUND"
+        if not expected_reasons
+        else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    )
+    if (
+        value["metrics"] != expected_metrics
+        or value["unresolved_reasons"] != expected_reasons
+        or value["status"] != expected_status
+    ):
+        raise _error("one-edit recursive hierarchy-frontier status drifted")
+    material = canonical_clone_v1(value)
+    receipt_id = material.pop("receipt_id")
+    if receipt_id != "afeoeav1:receipt:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit recursive hierarchy-frontier receipt identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validate_recursive_hierarchy_frontier_against_structural_evidence_v1(
+    value: Any,
+    structural_evidence: Any,
+    *,
+    family_spec: Any = None,
+    hierarchy_spec: Any = None,
+) -> dict[str, Any]:
+    receipt = _validate_recursive_hierarchy_frontier_result_v1(value)
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    proof = receipt["recursive_hierarchy_direct_frontier_authority"]
+    recursive = proof["recursive_frontier"]
+    context = proof["column_context_receipt"]
+    binding = receipt["input_binding"]
+    if (
+        binding["internal_unassigned_numeric_clusters_sha256"]
+        != canonical_json_sha256_v1(evidence["internal_unassigned_numeric_clusters"])
+        or binding["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(evidence["numeric_sample_universe"])
+        or binding["role_occurrences_sha256"]
+        != canonical_json_sha256_v1(evidence["role_occurrences"])
+        or binding["row_axis_sha256"] != canonical_json_sha256_v1(evidence["row_axis"])
+        or binding["column_context_sha256"] != canonical_json_sha256_v1(context)
+        or binding["authenticated_extreme_margin_furniture_evidence_sha256"]
+        != canonical_json_sha256_v1(evidence["authenticated_extreme_margin_furniture_evidence"])
+        or context["row_axis_id"] != evidence["row_axis"]["row_axis_id"]
+    ):
+        raise _error("one-edit recursive hierarchy-frontier structural input drifted")
+    target_matches = [
+        occurrence
+        for occurrence in evidence["role_occurrences"]
+        if occurrence.get("occurrence_id") == recursive["target_occurrence_id"]
+        and occurrence.get("retrieval_occurrence_id") == recursive["target_retrieval_occurrence_id"]
+        and occurrence.get("role") == recursive["target_role"]
+    ]
+    if (
+        len(target_matches) != 1
+        or not str(target_matches[0].get("label_match", {}).get("match_kind", "")).startswith(
+            "ONE_EDIT_"
+        )
+        or _hierarchy_frontier_source_line_indices(target_matches[0]["label_match"])
+        != proof["source_check"]["source_line_indices"]
+        or target_matches[0].get("scope_owner_occurrence_id") != recursive["root_occurrence_id"]
+    ):
+        raise _error("one-edit recursive hierarchy-frontier target binding drifted")
+    sample_by_id = {sample["sample_id"]: sample for sample in evidence["numeric_sample_universe"]}
+    covered_samples = [
+        sample_by_id.get(sample_id) for sample_id in recursive["covered_source_sample_ids"]
+    ]
+    if any(
+        type(sample) is not dict
+        or sample.get("parsed_token", {}).get("classification")
+        not in {"DASH_ZERO", "SIGNED_NUMBER"}
+        for sample in covered_samples
+    ) or set(recursive["covered_source_sample_ids"]) != set(sample_by_id):
+        raise _error("one-edit recursive hierarchy-frontier source sample binding drifted")
+    if (family_spec is None) is not (hierarchy_spec is None):
+        raise _error("one-edit recursive hierarchy-frontier replay policy is incomplete")
+    if family_spec is not None:
+        from bctc_ai.evaluation import (  # noqa: PLC0415
+            accounting_scoped_hierarchical_table_closure_v2 as closure_v2,
+        )
+
+        expected = closure_v2._project_provisional_one_edit_recursive_frontier_v1(  # noqa: SLF001
+            authenticated_extreme_margin_furniture_evidence=evidence[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
+            family_topology_spec=family_spec,
+            hierarchy_spec=hierarchy_spec,
+            internal_unassigned_numeric_clusters=evidence["internal_unassigned_numeric_clusters"],
+            numeric_sample_universe=evidence["numeric_sample_universe"],
+            role_occurrences=evidence["role_occurrences"],
+            row_axis=evidence["row_axis"],
+            target_retrieval_occurrence_id=recursive["target_retrieval_occurrence_id"],
+        )
+        if not same_typed_json_v1(expected, recursive):
+            raise _error("one-edit recursive hierarchy-frontier closure does not replay exactly")
+    return receipt
 
 
 def _validate_hierarchy_frontier_against_structural_evidence_v1(
@@ -4743,7 +5137,60 @@ def project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
         input_binding,
     )
     if proof is None:
-        return canonical_clone_v1(source)
+        recursive_input_binding = _recursive_hierarchy_frontier_input_binding_v1(
+            source,
+            evidence,
+            context,
+            hierarchy_spec,
+            column_policy,
+        )
+        recursive_proof = _build_recursive_hierarchy_frontier_proof_v1(
+            source,
+            evidence,
+            context,
+            family_spec,
+            hierarchy_spec,
+            recursive_input_binding,
+        )
+        if recursive_proof is None:
+            return canonical_clone_v1(source)
+        source_reason = _parent_frontier_reason(recursive_proof["source_check"])
+        reasons = [reason for reason in source["unresolved_reasons"] if reason != source_reason]
+        material = {
+            "authority_spec": {
+                "sha256": canonical_json_sha256_v1(_RECURSIVE_HIERARCHY_FRONTIER_AUTHORITY_SPEC),
+                "value": canonical_clone_v1(_RECURSIVE_HIERARCHY_FRONTIER_AUTHORITY_SPEC),
+            },
+            "checks": canonical_clone_v1(source["checks"]),
+            "claim_boundary": RECURSIVE_HIERARCHY_FRONTIER_CLAIM_BOUNDARY,
+            "family_id": compiled["family_id"],
+            "format_version": RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION,
+            "input_binding": recursive_input_binding,
+            "metrics": {
+                "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+                "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+                "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+            },
+            "recursive_hierarchy_direct_frontier_authority": recursive_proof,
+            "safety": canonical_clone_v1(_RECURSIVE_HIERARCHY_FRONTIER_SAFETY),
+            "source_exact_authority_receipt": canonical_clone_v1(source),
+            "status": (
+                "EXACT_SOURCE_AUTHORITY_BOUND"
+                if not reasons
+                else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+            ),
+            "unresolved_reasons": reasons,
+        }
+        persisted = {
+            **material,
+            "receipt_id": "afeoeav1:receipt:" + canonical_json_sha256_v1(material),
+        }
+        return _validate_recursive_hierarchy_frontier_against_structural_evidence_v1(
+            persisted,
+            evidence,
+            family_spec=family_spec,
+            hierarchy_spec=hierarchy_spec,
+        )
     source_reason = _parent_frontier_reason(proof["source_check"])
     reasons = [reason for reason in source["unresolved_reasons"] if reason != source_reason]
     material = {
@@ -4785,10 +5232,24 @@ def hierarchy_frontier_bound_retrieval_occurrence_ids_v1(
     value: Any,
     *,
     structural_evidence: Any,
+    family_spec: Any = None,
+    hierarchy_spec: Any = None,
 ) -> set[str]:
-    """Return only component retrieval IDs sealed by one replayed V4 proof."""
+    """Return only component retrieval IDs sealed by one replayed hierarchy proof."""
 
     receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] == RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION:
+        _validate_recursive_hierarchy_frontier_against_structural_evidence_v1(
+            receipt,
+            structural_evidence,
+            family_spec=family_spec,
+            hierarchy_spec=hierarchy_spec,
+        )
+        return {
+            receipt["recursive_hierarchy_direct_frontier_authority"]["recursive_frontier"][
+                "target_retrieval_occurrence_id"
+            ]
+        }
     if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
         return set()
     _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, structural_evidence)
@@ -4810,6 +5271,15 @@ def hierarchy_frontier_certified_sample_ids_v1(
     """Return source samples whose V4 crop/reader bindings were sealed."""
 
     receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] == RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION:
+        _validate_recursive_hierarchy_frontier_against_structural_evidence_v1(
+            receipt, structural_evidence
+        )
+        return set(
+            receipt["recursive_hierarchy_direct_frontier_authority"]["recursive_frontier"][
+                "covered_source_sample_ids"
+            ]
+        )
     if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
         return set()
     _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, structural_evidence)
@@ -4858,6 +5328,8 @@ def family_parent_has_exact_authority_v1(
     ):
         return True
     if receipt["format_version"] != PARENT_FRONTIER_FORMAT_VERSION:
+        if receipt["format_version"] == RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION:
+            return False
         if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
             return False
         if structural_evidence is None:
@@ -5069,6 +5541,11 @@ def validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
         return _validate_parent_frontier_result_v1(value)
     if type(value) is dict and value.get("format_version") == HIERARCHY_FRONTIER_FORMAT_VERSION:
         return _validate_hierarchy_frontier_result_v1(value)
+    if (
+        type(value) is dict
+        and value.get("format_version") == RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION
+    ):
+        return _validate_recursive_hierarchy_frontier_result_v1(value)
     return _validate_result(value)
 
 
@@ -5123,7 +5600,11 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
             expected_lane_unit_kinds=expected_lane_unit_kinds,
             visible_dash_rescues=visible_dash_rescues,
         )
-        if persisted["format_version"] == HIERARCHY_FRONTIER_FORMAT_VERSION
+        if persisted["format_version"]
+        in {
+            HIERARCHY_FRONTIER_FORMAT_VERSION,
+            RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION,
+        }
         else source_expected
     )
     if not same_typed_json_v1(persisted, expected):

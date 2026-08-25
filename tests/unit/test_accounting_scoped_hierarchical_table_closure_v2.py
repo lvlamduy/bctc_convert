@@ -1215,6 +1215,104 @@ def test_family12_unlabeled_core_uses_unbound_semantic_challenger_only_as_stop()
     )
 
 
+def test_family12_one_edit_margin_projects_one_recursive_core_to_grand_frontier() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_nested_group_core_and_grand_total_pages()
+    margin = next(
+        line for line in pages[0]["lines"] if line["vietocr_text"] == "Cho vay giao dịch ký quỹ"
+    )
+    margin["vietocr_text"] = "Cho vay giao dịch ký quỹx"
+    axis = _axis(pages, topology)
+    target = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    )
+
+    proof = subject._project_provisional_one_edit_recursive_frontier_v1(
+        authenticated_extreme_margin_furniture_evidence=axis[
+            "authenticated_extreme_margin_furniture_evidence"
+        ],
+        family_topology_spec=topology,
+        hierarchy_spec=hierarchy,
+        internal_unassigned_numeric_clusters=axis["internal_unassigned_numeric_clusters"],
+        numeric_sample_universe=axis["numeric_sample_universe"],
+        role_occurrences=axis["role_occurrences"],
+        row_axis=axis["row_axis"],
+        target_retrieval_occurrence_id=target["retrieval_occurrence_id"],
+    )
+
+    assert proof is not None
+    assert proof["target_occurrence_id"] == target["occurrence_id"]
+    assert proof["root_equation"]["component_roles_present"] == [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+    ]
+    assert proof["root_equation"]["selected_trailing_candidate_ordinal"] == 0
+    assert [coverage["role"] for coverage in proof["synthetic_intermediate_coverage"]] == [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    ]
+    assert (
+        next(
+            item
+            for item in proof["selected_component_use_count"]
+            if item["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+        )["use_count"]
+        == 1
+    )
+
+
+def test_family12_one_edit_margin_recursive_frontier_rejects_missing_core() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_nested_group_core_and_grand_total_pages()
+    lines = pages[0]["lines"]
+    margin_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Cho vay giao dịch ký quỹ"
+    )
+    del lines[margin_index - 2 : margin_index]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+    margin = next(line for line in lines if line["vietocr_text"] == "Cho vay giao dịch ký quỹ")
+    margin["vietocr_text"] = "Cho vay giao dịch ký quỹx"
+    axis = _axis(pages, topology)
+    target = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    )
+
+    assert (
+        subject._project_provisional_one_edit_recursive_frontier_v1(
+            authenticated_extreme_margin_furniture_evidence=axis[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
+            family_topology_spec=topology,
+            hierarchy_spec=hierarchy,
+            internal_unassigned_numeric_clusters=axis["internal_unassigned_numeric_clusters"],
+            numeric_sample_universe=axis["numeric_sample_universe"],
+            role_occurrences=axis["role_occurrences"],
+            row_axis=axis["row_axis"],
+            target_retrieval_occurrence_id=target["retrieval_occurrence_id"],
+        )
+        is None
+    )
+
+
 @pytest.mark.parametrize(
     "attack",
     ["MISSING_CORE", "PARTIAL_CORE", "MISMATCHED_CORE", "MIXED_LEVEL_DOUBLE_COUNT"],

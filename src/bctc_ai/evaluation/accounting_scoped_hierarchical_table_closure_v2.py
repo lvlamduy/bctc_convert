@@ -23,6 +23,7 @@ from typing import Any
 
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_v2
 from bctc_ai.evaluation import accounting_family_one_edit_exact_authority_v1 as one_edit_v1
+from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -104,6 +105,9 @@ _TRAILING_POLICIES = {
 }
 _APPLICATION_POLICY = "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE"
 _PRINTED_SOURCE_CELLS_KEY = "_printed_source_cells_by_lane"
+_PROVISIONAL_ONE_EDIT_RECURSIVE_FRONTIER_FORMAT_VERSION = (
+    "ACCOUNTING_SCOPED_HIERARCHICAL_PROVISIONAL_ONE_EDIT_RECURSIVE_FRONTIER_V1"
+)
 _VISIBLE_SOURCE_POLICIES = {
     "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE",
     "REQUIRE_EXHAUSTIVE_COMPONENTS",
@@ -487,8 +491,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "0c0d6629371ded9ace8e9a5b04194552bef20a9b6c02d2df2c9aa039c3ca8734",
-        "size_bytes": 578_654,
+        "sha256": "3b94746f1114bc447d6fef178497dad11e164b3aa7911e90b9a648f8e6c3a156",
+        "size_bytes": 580_189,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -889,6 +893,328 @@ def _source_role_vetoes(
             one_edit_occurrences.add(occurrence_id)
             reasons.append(f"ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE:{role}:{occurrence_id}")
     return source_only_occurrences, one_edit_occurrences, reasons
+
+
+def _project_provisional_one_edit_recursive_frontier_v1(
+    *,
+    authenticated_extreme_margin_furniture_evidence: Sequence[Mapping[str, Any]],
+    family_topology_spec: Any,
+    hierarchy_spec: Any,
+    internal_unassigned_numeric_clusters: Sequence[Mapping[str, Any]],
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    row_axis: Any,
+    target_retrieval_occurrence_id: str,
+) -> dict[str, Any] | None:
+    """Project one proof-only recursive closure around one one-edit source row.
+
+    The target row remains source observed.  This helper grants no authority by
+    itself; it returns a fully replayable candidate only when the ordinary
+    hierarchy compiler selects one exhaustive direct frontier at every level,
+    every synthetic intermediate has one exact printed subtotal, and the root
+    has one exact visible result.  Callers must independently bind the target's
+    one-edit source check before persisting any authority receipt.
+    """
+
+    if (
+        type(target_retrieval_occurrence_id) is not str
+        or not target_retrieval_occurrence_id
+        or any(
+            type(axis) not in {list, tuple}
+            for axis in (
+                authenticated_extreme_margin_furniture_evidence,
+                internal_unassigned_numeric_clusters,
+                numeric_sample_universe,
+                role_occurrences,
+            )
+        )
+    ):
+        return None
+    try:
+        validated_row_axis = row_v1._validate_result(row_axis)  # noqa: SLF001
+        spec = _spec(hierarchy_spec, family_topology_spec)
+    except (row_v1.AccountingFamilyRowAxisV1Error, AccountingScopedHierarchicalTableClosureV2Error):
+        return None
+    hierarchy_spec_sha256 = canonical_json_sha256_v1(spec)
+    if validated_row_axis["family_id"] != spec["family_id"]:
+        return None
+    occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in role_occurrences
+        if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
+    }
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in numeric_sample_universe
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    if len(occurrence_by_id) != len(role_occurrences) or len(sample_by_id) != len(
+        numeric_sample_universe
+    ):
+        return None
+    rows_by_occurrence: dict[str, list[Mapping[str, Any]]] = {}
+    for row in validated_row_axis["rows"]:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence.setdefault(occurrence_id, []).append(row)
+    targets = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("retrieval_occurrence_id") == target_retrieval_occurrence_id
+        and str(occurrence.get("label_match", {}).get("match_kind", "")).startswith("ONE_EDIT_")
+        and len(rows_by_occurrence.get(occurrence["occurrence_id"], [])) == 1
+        and rows_by_occurrence[occurrence["occurrence_id"]][0].get("status")
+        == "VISIBLE_VALUE_LANES_BOUND"
+    ]
+    if len(targets) != 1:
+        return None
+    target = targets[0]
+    target_occurrence_id = target["occurrence_id"]
+    target_role = target["role"]
+    target_page = target.get("label_match", {}).get("page_sequence")
+    target_root = target.get("scope_owner_occurrence_id")
+    if type(target_page) is not int or type(target_root) is not str:
+        return None
+
+    source_only_roles = set(spec["source_role_policy"]["source_only_veto_roles"])
+    numeric_rows = [row for row in validated_row_axis["rows"] if row.get("values")]
+    accounting_rows = []
+    for row in numeric_rows:
+        occurrence = occurrence_by_id.get(row.get("label_match", {}).get("occurrence_id"))
+        if type(occurrence) is not dict or row.get("status") != "VISIBLE_VALUE_LANES_BOUND":
+            return None
+        if occurrence["role"] in source_only_roles:
+            return None
+        label_is_one_edit = str(occurrence.get("label_match", {}).get("match_kind", "")).startswith(
+            "ONE_EDIT_"
+        )
+        owner_is_one_edit = str(occurrence.get("scope_owner_match_kind", "")).startswith(
+            "ONE_EDIT_"
+        )
+        if (label_is_one_edit or owner_is_one_edit) and occurrence["occurrence_id"] != (
+            target_occurrence_id
+        ):
+            return None
+        accounting_rows.append(row)
+
+    allow_rounding = spec["format_version"] in {
+        SPEC_FORMAT_VERSION_V2,
+        SPEC_FORMAT_VERSION_V3,
+    }
+    local_roles = set(spec["repeated_role_policy"]["local_subtotal_roles"])
+    local_records: list[dict[str, Any]] = []
+    locally_valid_results: set[str] = set()
+    locally_authorized_component_scopes: set[str] = set()
+    locally_covered_components: set[str] = set()
+    for equation in spec["equations"]:
+        if equation["result_role"] not in local_roles:
+            continue
+        records, valid, authorized, covered, local_reasons = _local_equations(
+            equation,
+            accounting_rows,
+            role_occurrences,
+            allow_rounding=allow_rounding,
+        )
+        if local_reasons:
+            return None
+        local_records.extend(records)
+        locally_valid_results.update(valid)
+        locally_authorized_component_scopes.update(authorized)
+        locally_covered_components.update(covered)
+    resolved, _source_occurrences, repeated_reasons = _aggregate_source_roles(
+        accounting_rows,
+        set(spec["repeated_role_policy"]["aggregate_roles"]),
+        local_roles,
+        {
+            role
+            for role, role_kind in spec["role_kind_by_role"].items()
+            if role_kind == "NONADDITIVE_CHILD"
+        },
+        locally_valid_results,
+        locally_authorized_component_scopes,
+    )
+    if repeated_reasons:
+        return None
+
+    source_candidates = _numeric_source_candidate_axis(
+        numeric_sample_universe,
+        internal_unassigned_numeric_clusters,
+        validated_row_axis["trailing_value_rows"],
+    )
+    occurrence_roles = {occurrence["role"] for occurrence in role_occurrences}
+    declared_component_roles = {
+        role
+        for equation in spec["equations"]
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+    }
+    synthetic_intermediate_roles = {
+        role
+        for role in local_roles & declared_component_roles
+        if spec["role_kind_by_role"].get(role) == "STRUCTURAL_GROUP"
+        and role not in occurrence_roles
+    }
+    reserved_source_keys: set[tuple[str, str | int]] = set()
+    subtotal_by_key: dict[tuple[str, str | int], dict[str, Any]] = {}
+    selected_component_owner_roles: dict[str, set[str]] = {}
+    global_records: list[dict[str, Any]] = []
+    for equation in spec["equations"]:
+        available_trailing = [
+            row
+            for row in validated_row_axis["trailing_value_rows"]
+            if ("trailing", row["candidate_ordinal"]) not in reserved_source_keys
+        ]
+        record, equation_reasons = _select_global_equation(
+            equation,
+            resolved,
+            available_trailing,
+            allow_rounding=allow_rounding,
+            descendant_result_roles_by_role=_descendant_result_roles_by_role(spec["equations"]),
+            selected_component_owner_roles={
+                role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
+            },
+        )
+        if equation_reasons:
+            return None
+        global_records.append(record)
+        for component_role in record["component_roles_present"]:
+            selected_component_owner_roles.setdefault(component_role, set()).add(
+                record["result_role"]
+            )
+        subtotal = _unlabeled_exact_subtotal_for_equation(
+            equation_record=record,
+            family_id=spec["family_id"],
+            furniture_evidence=authenticated_extreme_margin_furniture_evidence,
+            numeric_sample_universe=numeric_sample_universe,
+            reserved_source_keys=reserved_source_keys,
+            resolved_by_role=resolved,
+            role_occurrences=role_occurrences,
+            row_axis=validated_row_axis,
+            source_candidates=source_candidates,
+            equation_spec=equation,
+            hierarchy_spec_sha256=hierarchy_spec_sha256,
+            synthetic_intermediate_allowed=record["result_role"] in synthetic_intermediate_roles,
+            target_role_kind=spec["role_kind_by_role"].get(record["result_role"]),
+        )
+        if subtotal is not None:
+            if subtotal["source_key"] in reserved_source_keys:
+                return None
+            reserved_source_keys.add(subtotal["source_key"])
+            subtotal_by_key[subtotal["source_key"]] = subtotal
+
+    synthetic_receipt_roles = {
+        evidence["role"]
+        for evidence in subtotal_by_key.values()
+        if evidence.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
+        == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+    }
+    if any(
+        record["result_role"] in synthetic_intermediate_roles
+        and record["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        and record["result_role"] not in synthetic_receipt_roles
+        for record in global_records
+    ):
+        return None
+
+    selected_use_count: dict[str, int] = {}
+    for record in global_records:
+        for role in record["component_roles_present"]:
+            selected_use_count[role] = selected_use_count.get(role, 0) + 1
+    accounting_component_roles = {
+        role
+        for equation in spec["equations"]
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+        if role in resolved and spec["role_kind_by_role"].get(role) != "NONADDITIVE_CHILD"
+    }
+    if any(selected_use_count.get(role, 0) != 1 for role in accounting_component_roles):
+        return None
+    root_records = [
+        record for record in global_records if record["result_role"] == spec["family_id"]
+    ]
+    if len(root_records) != 1:
+        return None
+    root_record = root_records[0]
+    selected_trailing_ordinal = root_record.get("selected_trailing_candidate_ordinal")
+    selected_trailing = [
+        row
+        for row in validated_row_axis["trailing_value_rows"]
+        if row["candidate_ordinal"] == selected_trailing_ordinal
+    ]
+    if (
+        len(selected_trailing) != 1
+        or root_record.get("status")
+        != "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or target_role not in selected_use_count
+        or selected_use_count[target_role] != 1
+    ):
+        return None
+    claimed_trailing = {
+        record.get("selected_trailing_candidate_ordinal")
+        for record in global_records
+        if record.get("selected_trailing_candidate_ordinal") is not None
+    } | {source_key[1] for source_key in reserved_source_keys if source_key[0] == "trailing"}
+    claimed_clusters = {
+        source_key[1] for source_key in reserved_source_keys if source_key[0] == "cluster"
+    }
+    if claimed_trailing != {
+        row["candidate_ordinal"] for row in validated_row_axis["trailing_value_rows"]
+    } or claimed_clusters != {
+        cluster["cluster_id"] for cluster in internal_unassigned_numeric_clusters
+    }:
+        return None
+
+    covered_sample_ids = list(
+        dict.fromkeys(
+            [value["sample_id"] for row in numeric_rows for value in row["values"]]
+            + [
+                sample_id
+                for evidence in subtotal_by_key.values()
+                for sample_id in evidence["sample_ids"]
+            ]
+            + [value["sample_id"] for value in selected_trailing[0]["values"]]
+        )
+    )
+    if set(covered_sample_ids) != set(sample_by_id):
+        return None
+    material = {
+        "covered_source_sample_ids": covered_sample_ids,
+        "family_id": spec["family_id"],
+        "format_version": _PROVISIONAL_ONE_EDIT_RECURSIVE_FRONTIER_FORMAT_VERSION,
+        "global_equations_sha256": canonical_json_sha256_v1(global_records),
+        "hierarchy_spec_sha256": hierarchy_spec_sha256,
+        "local_equations_sha256": canonical_json_sha256_v1(local_records),
+        "page_sequence": target_page,
+        "resolved_roles_sha256": canonical_json_sha256_v1(list(resolved.values())),
+        "root_equation": canonical_clone_v1(root_record),
+        "root_occurrence_id": target_root,
+        "selected_component_use_count": [
+            {"role": role, "use_count": selected_use_count[role]}
+            for role in sorted(selected_use_count)
+        ],
+        "synthetic_intermediate_coverage": [
+            {
+                **canonical_clone_v1(
+                    {
+                        field: field_value
+                        for field, field_value in subtotal_by_key[key].items()
+                        if field != "source_key"
+                    }
+                ),
+                "source_key": list(subtotal_by_key[key]["source_key"]),
+            }
+            for key in sorted(subtotal_by_key)
+        ],
+        "target_occurrence_id": target_occurrence_id,
+        "target_retrieval_occurrence_id": target_retrieval_occurrence_id,
+        "target_role": target_role,
+        "trailing_result": canonical_clone_v1(selected_trailing[0]),
+    }
+    return {
+        **material,
+        "proof_id": "ashtcv2:provisional-one-edit-recursive-frontier:"
+        + canonical_json_sha256_v1(material),
+    }
 
 
 def _canonical_number(coefficient: int, scale: int, percentage: bool) -> dict[str, Any]:
@@ -6768,12 +7094,25 @@ def _build(
         row for row in numeric_rows if not _optional_incomplete_row_is_exact_equation_identity(row)
     ]
     one_edit_structural_evidence = {
+        "authenticated_extreme_margin_furniture_evidence": axis[
+            "authenticated_extreme_margin_furniture_evidence"
+        ],
         "internal_unassigned_numeric_clusters": axis["internal_unassigned_numeric_clusters"],
         "numeric_sample_universe": axis["numeric_sample_universe"],
         "role_occurrences": axis["role_occurrences"],
         "row_axis": row_axis,
     }
     one_edit_receipt = axis["one_edit_exact_source_structural_proofs"]
+    if (
+        one_edit_receipt["format_version"]
+        == one_edit_v1.RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION
+    ):
+        one_edit_v1._validate_recursive_hierarchy_frontier_against_structural_evidence_v1(  # noqa: SLF001
+            one_edit_receipt,
+            one_edit_structural_evidence,
+            family_spec=family_topology_spec,
+            hierarchy_spec=hierarchy_spec,
+        )
     if one_edit_receipt["format_version"] == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION:
         proof_equation = one_edit_receipt["hierarchy_direct_frontier_authority"][
             "hierarchy_equation_binding"

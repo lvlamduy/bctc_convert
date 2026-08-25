@@ -739,9 +739,15 @@ def _mixed_separator_consensus_reasons(
         closure.get("format_version") == "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2"
         and type(closure.get("one_edit_exact_source_structural_proofs")) is dict
         and closure["one_edit_exact_source_structural_proofs"].get("format_version")
-        == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION
+        in {
+            one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION,
+            one_edit_v1.RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION,
+        }
     ):
         structural_evidence = {
+            "authenticated_extreme_margin_furniture_evidence": closure[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
             "internal_unassigned_numeric_clusters": closure["internal_unassigned_numeric_clusters"],
             "numeric_sample_universe": closure["numeric_sample_universe"],
             "role_occurrences": closure["role_occurrences"],
@@ -3501,6 +3507,7 @@ def _selected_v4_one_edit_authority_v1(
         if receipt["format_version"] in {
             one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION,
             one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION,
+            one_edit_v1.RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION,
         }:
             closure = selected.get("additive_closure")
             column_context = selected.get("column_context")
@@ -3524,6 +3531,9 @@ def _selected_v4_one_edit_authority_v1(
                 visible_dash_rescues=visible_dash_rescues,
             )
             structural_evidence = {
+                "authenticated_extreme_margin_furniture_evidence": closure[
+                    "authenticated_extreme_margin_furniture_evidence"
+                ],
                 "internal_unassigned_numeric_clusters": closure[
                     "internal_unassigned_numeric_clusters"
                 ],

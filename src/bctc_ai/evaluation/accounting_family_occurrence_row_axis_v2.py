@@ -12313,6 +12313,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
             one_edit_v1._validate_parent_frontier_against_structural_evidence_v1(  # noqa: SLF001
                 one_edit_proofs,
                 {
+                    "authenticated_extreme_margin_furniture_evidence": value[
+                        "authenticated_extreme_margin_furniture_evidence"
+                    ],
                     "internal_unassigned_numeric_clusters": value[
                         "internal_unassigned_numeric_clusters"
                     ],
@@ -12341,6 +12344,26 @@ def _validate_result(value: Any) -> dict[str, Any]:
         except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
             raise _error(
                 "one-edit hierarchy-frontier proof does not bind the occurrence axis"
+            ) from exc
+    if one_edit_proofs["format_version"] == one_edit_v1.RECURSIVE_HIERARCHY_FRONTIER_FORMAT_VERSION:
+        try:
+            one_edit_v1._validate_recursive_hierarchy_frontier_against_structural_evidence_v1(  # noqa: SLF001
+                one_edit_proofs,
+                {
+                    "authenticated_extreme_margin_furniture_evidence": value[
+                        "authenticated_extreme_margin_furniture_evidence"
+                    ],
+                    "internal_unassigned_numeric_clusters": value[
+                        "internal_unassigned_numeric_clusters"
+                    ],
+                    "numeric_sample_universe": value["numeric_sample_universe"],
+                    "role_occurrences": value["role_occurrences"],
+                    "row_axis": axis,
+                },
+            )
+        except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+            raise _error(
+                "one-edit recursive hierarchy-frontier proof does not bind the occurrence axis"
             ) from exc
     dash_sample_ids = []
     for item in value["authenticated_existing_dash_evidence"]:
@@ -12765,6 +12788,9 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
     projected_receipt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
         axis["one_edit_exact_source_structural_proofs"],
         {
+            "authenticated_extreme_margin_furniture_evidence": axis[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
             "internal_unassigned_numeric_clusters": axis["internal_unassigned_numeric_clusters"],
             "numeric_sample_universe": axis["numeric_sample_universe"],
             "role_occurrences": axis["role_occurrences"],
@@ -12825,6 +12851,9 @@ def project_accounting_family_one_edit_hierarchy_frontier_authority_v2(
         one_edit_v1.project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
             axis["one_edit_exact_source_structural_proofs"],
             {
+                "authenticated_extreme_margin_furniture_evidence": axis[
+                    "authenticated_extreme_margin_furniture_evidence"
+                ],
                 "internal_unassigned_numeric_clusters": axis[
                     "internal_unassigned_numeric_clusters"
                 ],
