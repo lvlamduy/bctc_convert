@@ -714,8 +714,8 @@ _DEPENDENCIES = {
     },
     "row_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
-        "sha256": "32297e5547df9ab48d89a31441d5d2e0dafcde221740a89b8676dfbb387a075d",
-        "size_bytes": 82_707,
+        "sha256": "ac09dbf13b7f1f3620ed96be8c4c05e172c8230177000118b5d397b94fc8aa2f",
+        "size_bytes": 85_540,
     },
     "selected_snapshot_validator": {
         "path": "src/bctc_ai/evaluation/authenticated_semantic_region_snapshot_v1.py",

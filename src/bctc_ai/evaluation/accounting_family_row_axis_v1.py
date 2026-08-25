@@ -1464,6 +1464,70 @@ def _blank_optional_structural_group_keys(
     return result
 
 
+def _rescue_completed_structural_group_keys(
+    base_rows: Sequence[Mapping[str, Any]],
+    completed_rows: Sequence[Mapping[str, Any]],
+    rescue_projections: Sequence[Mapping[str, Any]],
+) -> set[tuple[str, int]]:
+    """Retain one partial subtotal completed only by sealed ordinary dashes."""
+
+    result = set()
+    keys = {
+        (row["role"], row["label_match"]["page_sequence"])
+        for row in base_rows
+        if row["role_kind"] == "STRUCTURAL_GROUP"
+    }
+    for key in keys:
+        base = [
+            row
+            for row in base_rows
+            if (row["role"], row["label_match"]["page_sequence"]) == key
+        ]
+        completed = [
+            row
+            for row in completed_rows
+            if (row["role"], row["label_match"]["page_sequence"]) == key
+        ]
+        projections = [
+            projection
+            for projection in rescue_projections
+            if (projection["role"], projection["page_sequence"]) == key
+        ]
+        if len(base) != 1 or len(completed) != 1:
+            continue
+        base_row = base[0]
+        completed_row = completed[0]
+        missing = base_row["missing_column_ordinals"]
+        if (
+            base_row["status"] != "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+            or not base_row["values"]
+            or not missing
+            or completed_row["status"] != "VISIBLE_VALUE_LANES_BOUND"
+            or not same_typed_json_v1(
+                base_row["label_match"], completed_row["label_match"]
+            )
+            or len(projections) != len(missing)
+            or sorted(projection["column_ordinal"] for projection in projections) != missing
+        ):
+            continue
+        if all(
+            projection["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+            and len(
+                rescued_values := [
+                    value
+                    for value in completed_row["values"]
+                    if value["column_ordinal"] == projection["column_ordinal"]
+                ]
+            )
+            == 1
+            and rescued_values[0]["sample_id"] == projection["region_id"]
+            and rescued_values[0]["parsed_token"]["classification"] == "DASH_ZERO"
+            for projection in projections
+        ):
+            result.add(key)
+    return result
+
+
 def _trailing_value_rows(
     pages: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
@@ -1832,6 +1896,14 @@ def _build_axis(
         for row in base_rows
         if row["role_kind"] == "STRUCTURAL_GROUP" and row["status"] == "VISIBLE_VALUE_LANES_BOUND"
     }
+    # A structural subtotal can be visibly valued while one printed zero lane
+    # is represented only by an authenticated dash crop.  Preserve that narrow
+    # case after the rescue has replayed, without permitting a repeated
+    # same-role occurrence, blank crop, degraded mark, or partial rescue set to
+    # bypass the complete-child filter.
+    rescue_completed_structural_rows = _rescue_completed_structural_group_keys(
+        base_rows, rows, rescue_projections
+    )
     blank_optional_structural_rows = _blank_optional_structural_group_keys(rows, rescue_projections)
     rows = [
         row
@@ -1842,7 +1914,7 @@ def _build_axis(
             or (
                 row["status"] == "VISIBLE_VALUE_LANES_BOUND"
                 and (row["role"], row["label_match"]["page_sequence"])
-                in originally_complete_structural_rows
+                in originally_complete_structural_rows | rescue_completed_structural_rows
             )
             or row["role"] not in complete_structural_roles
         )

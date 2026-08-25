@@ -395,6 +395,158 @@ def test_complete_child_row_axis_overrides_staggered_structural_group_affinity()
     assert result["safety"]["staggered_lane_bboxes_bound_by_complete_parent_child_row_axis"]
 
 
+def _dash_completed_structural_subtotal_pages() -> list[dict[str, object]]:
+    return [
+        _page(
+            [
+                _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Triệu đồng", "", [600, 75, 700, 95]),
+                _line(4, "Triệu đồng", "", [800, 75, 900, 95]),
+                _line(5, "Tiền gửi tại TCTD khác", "", [50, 120, 300, 142]),
+                _line(6, "100", "100", [600, 120, 700, 142]),
+                _line(7, "90", "90", [800, 120, 900, 142]),
+                _line(8, "Cho vay TCTD khác", "", [50, 180, 300, 202]),
+                _line(9, "20", "20", [600, 180, 700, 202]),
+                _line(10, "Bằng VND", "", [80, 230, 300, 252]),
+                _line(11, "20", "20", [600, 230, 700, 252]),
+            ]
+        )
+    ]
+
+
+def test_authenticated_dash_completed_structural_subtotal_survives_child_filter() -> None:
+    pages = _dash_completed_structural_subtotal_pages()
+    base = build_accounting_family_row_axis_v1(pages, _contextual_summary_spec())
+    rescues = []
+    for role in ("LOAN_GROUP", "LOAN_VND"):
+        row = next(item for item in base["rows"] if item["role"] == role)
+        centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+            base["rows"], row, base["column_grids"]
+        )
+        proposal = next(
+            item
+            for item in propose_missing_value_lane_regions_v1(
+                row_axis_v1._region_lines(pages, base["topology_region"])[1],
+                label_boxes=[pages[0]["lines"][row["label_match"]["source_line_index"]]["bbox"]],
+                is_numeric=row_axis_v1._is_numeric,
+                page_width=1000,
+                page_height=1200,
+                resolved_column_centers=centers,
+                resolved_visible_value_cells=visible_cells,
+            )
+            if item["column_ordinal"] == 1
+        )
+        rescues.append(
+            {
+                "column_ordinal": 1,
+                "page_sequence": 1,
+                "region": _dash_region(proposal["raw_pixel_bbox"]),
+                "role": role,
+            }
+        )
+
+    result = build_accounting_family_row_axis_v1(
+        pages, _contextual_summary_spec(), visible_dash_rescues=tuple(rescues)
+    )
+
+    by_role = {row["role"]: row for row in result["rows"]}
+    assert [value["raw_prediction"] for value in by_role["LOAN_GROUP"]["values"]] == [
+        "20",
+        "-",
+    ]
+    assert [value["raw_prediction"] for value in by_role["LOAN_VND"]["values"]] == [
+        "20",
+        "-",
+    ]
+
+
+def test_degraded_dash_cannot_preserve_rescue_completed_structural_subtotal() -> None:
+    pages = _dash_completed_structural_subtotal_pages()
+    base = build_accounting_family_row_axis_v1(pages, _contextual_summary_spec())
+    rescues = []
+    for role in ("LOAN_GROUP", "LOAN_VND"):
+        row = next(item for item in base["rows"] if item["role"] == role)
+        centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+            base["rows"], row, base["column_grids"]
+        )
+        proposal = next(
+            item
+            for item in propose_missing_value_lane_regions_v1(
+                row_axis_v1._region_lines(pages, base["topology_region"])[1],
+                label_boxes=[pages[0]["lines"][row["label_match"]["source_line_index"]]["bbox"]],
+                is_numeric=row_axis_v1._is_numeric,
+                page_width=1000,
+                page_height=1200,
+                resolved_column_centers=centers,
+                resolved_visible_value_cells=visible_cells,
+            )
+            if item["column_ordinal"] == 1
+        )
+        rescues.append(
+            {
+                "column_ordinal": 1,
+                "page_sequence": 1,
+                "region": _dash_region(
+                    proposal["raw_pixel_bbox"], degraded_short_mark=role == "LOAN_GROUP"
+                ),
+                "role": role,
+            }
+        )
+
+    result = build_accounting_family_row_axis_v1(
+        pages, _contextual_summary_spec(), visible_dash_rescues=tuple(rescues)
+    )
+
+    assert "LOAN_GROUP" not in {row["role"] for row in result["rows"]}
+
+
+def test_dash_completed_structural_allow_set_rejects_repeated_same_role_occurrence() -> None:
+    base_row = {
+        "label_match": {
+            "end_source_line_index": 5,
+            "page_sequence": 1,
+            "source_line_index": 5,
+        },
+        "missing_column_ordinals": [1],
+        "role": "GROUP",
+        "role_kind": "STRUCTURAL_GROUP",
+        "status": "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE",
+        "values": [{"column_ordinal": 0, "sample_id": "visible"}],
+    }
+    completed_row = copy.deepcopy(base_row)
+    completed_row.update(
+        {
+            "missing_column_ordinals": [],
+            "status": "VISIBLE_VALUE_LANES_BOUND",
+            "values": [
+                *completed_row["values"],
+                {
+                    "column_ordinal": 1,
+                    "parsed_token": {"classification": "DASH_ZERO"},
+                    "sample_id": "region-dash",
+                },
+            ],
+        }
+    )
+    projection = {
+        "classification": "VISIBLE_HORIZONTAL_DASH_GLYPH",
+        "column_ordinal": 1,
+        "page_sequence": 1,
+        "region_id": "region-dash",
+        "role": "GROUP",
+    }
+    repeated = copy.deepcopy(base_row)
+    repeated["label_match"].update(
+        {"end_source_line_index": 9, "source_line_index": 9}
+    )
+
+    assert row_axis_v1._rescue_completed_structural_group_keys(
+        [base_row, repeated], [completed_row], [projection]
+    ) == set()
+
+
 def test_cluster_reassignment_updates_both_source_and_target_missing_lane_axes() -> None:
     def value(sample: str, lane: int, left: int) -> dict[str, object]:
         return {
