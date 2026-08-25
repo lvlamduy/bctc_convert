@@ -1,0 +1,201 @@
+{
+  "candidate_selection_policy": "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL",
+  "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+  "expected_lane_unit_kind_alternatives": [
+    [
+      "MONEY",
+      "MONEY"
+    ],
+    [
+      "MONEY",
+      "PERCENT",
+      "MONEY",
+      "PERCENT"
+    ]
+  ],
+  "family_id": "LOAN_ENTERPRISE_FAMILY12",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+  "hierarchical_closure_spec": {
+    "equations": [
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "STATE_ENTERPRISE_LOANS",
+              "LIMITED_LIABILITY_COMPANY_LOANS",
+              "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS",
+              "STATE_MAJORITY_LLC_LOANS",
+              "OTHER_LLC_LOANS",
+              "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+              "OTHER_JOINT_STOCK_COMPANY_LOANS",
+              "PRIVATE_ENTERPRISE_LOANS",
+              "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+              "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+              "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS",
+              "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS",
+              "PARTNERSHIP_COMPANY_LOANS",
+              "FOREIGN_INVESTED_COMPANY_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "ECONOMIC_ORGANIZATION_LOANS_GROUP"
+        ],
+        "visible_source_policy": "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "HOUSEHOLD_AND_INDIVIDUAL_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "INDIVIDUAL_LOANS_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "INDIVIDUAL_LOANS_GROUP"
+        ],
+        "visible_source_policy": "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
+              "OTHER_ENTERPRISE_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "OTHER_CUSTOMER_LOANS_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "OTHER_CUSTOMER_LOANS_GROUP"
+        ],
+        "visible_source_policy": "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+              "FOREIGN_BRANCH_INDIVIDUAL_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+        ],
+        "visible_source_policy": "ALLOW_ONLY_WHEN_NO_DECLARED_COMPONENT_ROLE_VISIBLE"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+              "INDIVIDUAL_LOANS_GROUP",
+              "OTHER_CUSTOMER_LOANS_GROUP",
+              "STATE_ENTERPRISE_LOANS",
+              "LIMITED_LIABILITY_COMPANY_LOANS",
+              "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS",
+              "STATE_MAJORITY_LLC_LOANS",
+              "OTHER_LLC_LOANS",
+              "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+              "OTHER_JOINT_STOCK_COMPANY_LOANS",
+              "PRIVATE_ENTERPRISE_LOANS",
+              "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+              "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+              "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS",
+              "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS",
+              "PARTNERSHIP_COMPANY_LOANS",
+              "FOREIGN_INVESTED_COMPANY_LOANS",
+              "HOUSEHOLD_AND_INDIVIDUAL_LOANS",
+              "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
+              "OTHER_ENTERPRISE_LOANS",
+              "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+        ],
+        "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          },
+          {
+            "component_roles": [
+              "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+              "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+          }
+        ],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "LOAN_ENTERPRISE_FAMILY12",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": [
+          "EXPLICIT_LOAN_ENTERPRISE_TOTAL"
+        ],
+        "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS"
+      }
+    ],
+    "family_id": "LOAN_ENTERPRISE_FAMILY12",
+    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V3",
+    "repeated_role_policy": {
+      "aggregate_roles": [],
+      "local_subtotal_roles": [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+        "INDIVIDUAL_LOANS_GROUP",
+        "OTHER_CUSTOMER_LOANS_GROUP"
+      ]
+    },
+    "source_role_policy": {
+      "one_edit_role_or_scope_match_policy": "VETO",
+      "source_only_veto_roles": []
+    }
+  },
+  "occurrence_row_axis_policy": {
+    "format_version": "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1",
+    "require_authenticated_existing_dash_pixels": true,
+    "retain_all_context_bound_role_occurrences": true
+  },
+  "period_semantics": "BALANCE_COMPARATIVE"
+}

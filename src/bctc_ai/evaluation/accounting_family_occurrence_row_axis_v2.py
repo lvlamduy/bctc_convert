@@ -635,6 +635,11 @@ _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS = (
 _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE = "TALL_CHROMATIC_INTERNAL_COMPONENT_CHAIN"
 _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE = "CLIPPED_NEUTRAL_EXTERNAL_PEER_CHAIN"
 _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V3"
+_PRINTED_NOTE_REFERENCE_V3_LEGACY_TOPOLOGY_DEPENDENCY_REF = {
+    "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+    "sha256": "60da089b5df5a6ee9f53dac8569bc4a9484bf5816721fb992f8d4d09a43bc236",
+    "size_bytes": 68_515,
+}
 _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V4"
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
 _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
@@ -1004,12 +1009,12 @@ _DEPENDENCIES = {
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "60da089b5df5a6ee9f53dac8569bc4a9484bf5816721fb992f8d4d09a43bc236",
-        "size_bytes": 68_515,
+        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "size_bytes": 75_614,
     },
     "topology_candidates_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_candidates_v2.py",
-        "sha256": "609f914fa16baf85c11c44d994e1e8b554f5700b7b46971b225322406e68aad7",
+        "sha256": "76ab3e2b83dd669fe2351cd497fccc8eb9c17b92839931b4ec421974c29e356d",
         "size_bytes": 32_335,
     },
 }
@@ -1110,6 +1115,38 @@ def _selected_scan_region(
     if len(exact) == 1:
         return canonical_clone_v1(exact[0])
     raise _error("occurrence region is not one exact selected V1 topology candidate")
+
+
+def _printed_note_reference_v3_topology_candidates_id(
+    topology_candidates: Mapping[str, Any] | None,
+) -> str | None:
+    """Preserve the persisted integer-note V3 semantic candidate identity.
+
+    The V3 furniture envelope predates additive topology-spec V4.  Its stored
+    candidate identity is a semantic binding, not authority for loading the
+    dependency bytes.  Public replay still validates the current candidate
+    envelope and rebuilds the V3 evidence exactly; only this inner persisted
+    compatibility identity retains the original dependency commitment.
+    """
+
+    if topology_candidates is None:
+        return None
+    try:
+        current = candidates_v2._validate_result(topology_candidates)  # noqa: SLF001
+    except candidates_v2.AccountingFamilyTopologyCandidatesV2Error as exc:
+        raise _error("printed-note V3 topology candidate envelope drifted") from exc
+    material = canonical_clone_v1(current)
+    material.pop("result_id")
+    dependency_refs = material.get("dependency_content_refs")
+    if type(dependency_refs) is not dict or set(dependency_refs) != {
+        "coextensive_parent_total_projector_v1",
+        "topology_v1",
+    }:
+        raise _error("printed-note V3 topology dependency axis drifted")
+    dependency_refs["topology_v1"] = canonical_clone_v1(
+        _PRINTED_NOTE_REFERENCE_V3_LEGACY_TOPOLOGY_DEPENDENCY_REF
+    )
+    return "aftcv2:result:" + canonical_json_sha256_v1(material)
 
 
 def _match_signature(match: Mapping[str, Any]) -> tuple[Any, ...]:
@@ -7921,6 +7958,7 @@ def _build_numeric_sample_universe(
     coextensive_evidence: Sequence[Mapping[str, Any]],
     *,
     topology_candidates_id: str | None,
+    printed_note_v3_topology_candidates_id: str | None,
     selected_snapshot: Mapping[str, Any] | None,
     render_snapshots: Sequence[Mapping[str, Any]],
     printed_note_candidate_sample_ids: frozenset[str] = frozenset(),
@@ -8212,7 +8250,11 @@ def _build_numeric_sample_universe(
                     )
                     note_evidence, note_render_required = printed_note_builder(
                         pages=pages,
-                        topology_candidates_id=topology_candidates_id,
+                        topology_candidates_id=(
+                            topology_candidates_id
+                            if printed_note_furniture_version == 4
+                            else printed_note_v3_topology_candidates_id
+                        ),
                         page=page,
                         ordered_numeric_lines=ordered,
                         cluster=cluster,
@@ -9716,7 +9758,10 @@ def _validate_printed_note_reference_furniture_evidence_axis_v3(
             or evidence["page_sequence"] <= 0
             or type(evidence.get("sample_id")) is not str
             or not evidence["sample_id"]
-            or evidence.get("topology_candidates_id") != topology_candidates_id
+            or type(topology_candidates_id) is not str
+            or not topology_candidates_id.startswith("aftcv2:result:")
+            or type(evidence.get("topology_candidates_id")) is not str
+            or not evidence["topology_candidates_id"].startswith("aftcv2:result:")
         ):
             raise _error("authenticated printed note-reference furniture evidence drifted")
         material = canonical_clone_v1(evidence)
@@ -12404,6 +12449,9 @@ def _build(
             prepared_topology_binding,
         )
     )
+    printed_note_v3_topology_candidates_id = _printed_note_reference_v3_topology_candidates_id(
+        topology_candidates
+    )
     one_edit_exact_source_structural_proofs, expanded_matches = (
         _one_edit_exact_source_structural_proofs_v2(
             parsed_pages,
@@ -12478,6 +12526,7 @@ def _build(
             preliminary_axis,
             preliminary_coextensive,
             topology_candidates_id=topology_candidates_id,
+            printed_note_v3_topology_candidates_id=printed_note_v3_topology_candidates_id,
             selected_snapshot=selected_snapshot,
             render_snapshots=render_snapshots,
         )
@@ -12553,6 +12602,7 @@ def _build(
         projected_axis,
         coextensive_evidence,
         topology_candidates_id=topology_candidates_id,
+        printed_note_v3_topology_candidates_id=printed_note_v3_topology_candidates_id,
         selected_snapshot=selected_snapshot,
         render_snapshots=render_snapshots,
         printed_note_candidate_sample_ids=printed_note_candidate_sample_ids,
@@ -12592,6 +12642,7 @@ def _build(
             original_axis,
             coextensive_evidence,
             topology_candidates_id=topology_candidates_id,
+            printed_note_v3_topology_candidates_id=printed_note_v3_topology_candidates_id,
             selected_snapshot=selected_snapshot,
             render_snapshots=render_snapshots,
         )

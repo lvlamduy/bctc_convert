@@ -37,6 +37,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
     "SPEC_FORMAT_VERSION_V3",
+    "SPEC_FORMAT_VERSION_V4",
     "AccountingFamilyTopologyV1Error",
     "build_accounting_family_topology_scan_v1",
     "enumerate_accounting_family_role_occurrences_v1",
@@ -48,6 +49,7 @@ FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SCAN_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
 SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
+SPEC_FORMAT_VERSION_V4 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4"
 CLAIM_BOUNDARY = (
     "COMPLETE_DOCUMENT_BANK_BLIND_FRESH_VIETOCR_PRIMARY_EXACT_BOUND_SOURCE_TEXT_"
     "CHALLENGER_PARENT_REQUIRED_OPTIONAL_SIBLING_"
@@ -87,6 +89,7 @@ _SPEC_V2_FIELDS = {
     "required_role_combinations",
 }
 _SPEC_V3_FIELDS = _SPEC_V2_FIELDS
+_SPEC_V4_FIELDS = {*_SPEC_V3_FIELDS, "required_role_pools"}
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -177,6 +180,7 @@ def _spec(value: Any) -> dict[str, Any]:
         set(value) != _SPEC_FIELDS
         and set(value) != _SPEC_V2_FIELDS
         and set(value) != _SPEC_V3_FIELDS
+        and set(value) != _SPEC_V4_FIELDS
     ):
         raise _error("accounting family topology spec fields drifted")
     family_id = _nonempty_string(value["family_id"], "family ID")
@@ -185,10 +189,13 @@ def _spec(value: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION,
         SPEC_FORMAT_VERSION_V2,
         SPEC_FORMAT_VERSION_V3,
+        SPEC_FORMAT_VERSION_V4,
     }:
         raise _error("accounting family topology spec version drifted")
     if (spec_version == SPEC_FORMAT_VERSION) is not (set(value) == _SPEC_FIELDS):
         raise _error("accounting family topology spec version/field set drifted")
+    if (spec_version == SPEC_FORMAT_VERSION_V4) is not (set(value) == _SPEC_V4_FIELDS):
+        raise _error("accounting family topology V4 spec version/field set drifted")
     parent = value["parent"]
     if type(parent) is not dict or set(parent) != {"aliases", "resolution_mode", "role"}:
         raise _error("accounting family parent spec fields drifted")
@@ -205,7 +212,7 @@ def _spec(value: Any) -> dict[str, Any]:
     for raw in raw_children:
         expected_child_fields = (
             {"matchers", "presence", "role", "role_kind"}
-            if spec_version == SPEC_FORMAT_VERSION_V3
+            if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
             else {"aliases", "presence", "role", "role_kind"}
         )
         if type(raw) is not dict or set(raw) != expected_child_fields:
@@ -220,7 +227,7 @@ def _spec(value: Any) -> dict[str, Any]:
         if type(role_kind) is not str or role_kind not in _ROLE_KINDS:
             raise _error("accounting family child semantic kind drifted")
         roles.add(role)
-        if spec_version == SPEC_FORMAT_VERSION_V3:
+        if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}:
             raw_matchers = raw["matchers"]
             if type(raw_matchers) is not list or not raw_matchers:
                 raise _error("contextual accounting family role needs at least one matcher")
@@ -265,7 +272,7 @@ def _spec(value: Any) -> dict[str, Any]:
                 "role_kind": role_kind,
             }
         )
-    if spec_version == SPEC_FORMAT_VERSION_V3:
+    if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}:
         child_roles = {child["role"] for child in children}
         role_kind_by_role = {child["role"]: child["role_kind"] for child in children}
         for child in children:
@@ -340,6 +347,28 @@ def _spec(value: Any) -> dict[str, Any]:
             )
         ):
             raise _error("alternative-core presence evidence mode drifted")
+    required_role_pools = []
+    if spec_version == SPEC_FORMAT_VERSION_V4:
+        child_roles = {child["role"] for child in children}
+        raw_pools = value["required_role_pools"]
+        if type(raw_pools) is not list or not raw_pools:
+            raise _error("flexible topology needs at least one required role pool")
+        seen_pools: set[frozenset[str]] = set()
+        for raw_pool in raw_pools:
+            if (
+                type(raw_pool) is not dict
+                or set(raw_pool) != {"minimum_count", "roles"}
+                or type(raw_pool["roles"]) is not list
+                or len(raw_pool["roles"]) < 2
+                or raw_pool["roles"] != list(dict.fromkeys(raw_pool["roles"]))
+                or any(role not in child_roles for role in raw_pool["roles"])
+                or type(raw_pool["minimum_count"]) is not int
+                or not 2 <= raw_pool["minimum_count"] <= len(raw_pool["roles"])
+                or frozenset(raw_pool["roles"]) in seen_pools
+            ):
+                raise _error("flexible topology required role pool drifted")
+            seen_pools.add(frozenset(raw_pool["roles"]))
+            required_role_pools.append(canonical_clone_v1(raw_pool))
 
     limits = value["limits"]
     if type(limits) is not dict or set(limits) != {
@@ -373,9 +402,12 @@ def _spec(value: Any) -> dict[str, Any]:
         },
         "presence_evidence_mode": presence_evidence_mode,
         "required_role_combinations": required_role_combinations,
+        "required_role_pools": required_role_pools,
         "spec_format_version": spec_version,
         "structural_parent_by_role": (
-            structural_parent if spec_version == SPEC_FORMAT_VERSION_V3 else {}
+            structural_parent
+            if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
+            else {}
         ),
         "structural_reset_aliases": _aliases(
             value["structural_reset_aliases"], "structural reset", allow_empty=True
@@ -828,7 +860,10 @@ def _page_hits(
 ) -> dict[str, Any]:
     lines = page["lines"]
     max_span = spec["limits"]["max_label_line_span"]
-    allow_decorative_parenthetical_removal = spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3
+    allow_decorative_parenthetical_removal = spec["spec_format_version"] in {
+        SPEC_FORMAT_VERSION_V3,
+        SPEC_FORMAT_VERSION_V4,
+    }
     surfaces = _surface_candidates(lines, max_span)
     children = {}
     for child in spec["children"]:
@@ -906,6 +941,51 @@ def _first_after(hits: Sequence[Mapping[str, Any]], index: int) -> int | None:
     return min(positions) if positions else None
 
 
+def _matched_required_role_evidence(
+    spec: Mapping[str, Any], observed_roles: set[str]
+) -> tuple[list[list[str]], list[dict[str, Any]]]:
+    """Return exact combination and flexible-pool presence evidence.
+
+    Pool minima count distinct semantic roles, never repeated occurrences of a
+    single role.  This primitive only proves family presence; later shared
+    stages still prove row lanes, exhaustive direct frontiers, and totals.
+    """
+
+    matched_combinations = [
+        combination
+        for combination in spec["required_role_combinations"]
+        if set(combination).issubset(observed_roles)
+    ]
+    matched_pools = [
+        pool
+        for pool in spec["required_role_pools"]
+        if len(observed_roles.intersection(pool["roles"])) >= pool["minimum_count"]
+    ]
+    return matched_combinations, matched_pools
+
+
+def _required_role_deficits(spec: Mapping[str, Any], observed_roles: set[str]) -> set[str]:
+    """Return roles that can still complete one unsatisfied presence path."""
+
+    matched_combinations, matched_pools = _matched_required_role_evidence(spec, observed_roles)
+    if matched_combinations or matched_pools:
+        return set()
+    deficits = {
+        role
+        for combination in spec["required_role_combinations"]
+        for role in combination
+        if role not in observed_roles
+    }
+    deficits.update(
+        role
+        for pool in spec["required_role_pools"]
+        if len(observed_roles.intersection(pool["roles"])) < pool["minimum_count"]
+        for role in pool["roles"]
+        if role not in observed_roles
+    )
+    return deficits
+
+
 def _child_records_in_range(
     hits: Mapping[str, Sequence[Mapping[str, Any]]],
     spec: Mapping[str, Any],
@@ -934,8 +1014,62 @@ def _child_records_in_range(
     def visually_precedes(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
         return visual_position(left) < visual_position(right)
 
+    valid_contextual_hit_ids: set[int] = set()
+    shadowed_context_free_spans: set[tuple[int, int]] = set()
+
+    def span(hit: Mapping[str, Any]) -> tuple[int, int]:
+        return hit["document_line_ordinal"], hit["end_document_line_ordinal"]
+
+    def visible_context_hit(hit: Mapping[str, Any]) -> bool:
+        within_role = hit.get("_within_role")
+        return (
+            id(hit) in valid_contextual_hit_ids
+            if within_role is not None
+            else span(hit) not in shadowed_context_free_spans
+        )
+
+    if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V4:
+        contextual_hits = sorted(
+            (
+                (role, hit)
+                for role, role_hits in hits.items()
+                for hit in role_hits
+                if hit.get("_within_role") is not None
+            ),
+            key=lambda item: (*visual_position(item[1]), item[0]),
+        )
+        for _role, hit in contextual_hits:
+            within_role = hit["_within_role"]
+            contexts = [
+                item
+                for item in hits[within_role]
+                if start < item["document_line_ordinal"] < stop
+                and visually_precedes(item, hit)
+                and visible_context_hit(item)
+            ]
+            if not contexts:
+                continue
+            context = max(contexts, key=visual_position)
+            context_depth = structural_depth(within_role)
+            intervening_boundaries = [
+                item
+                for role in structural_roles
+                if structural_depth(role) <= context_depth
+                for item in hits[role]
+                if start < item["document_line_ordinal"] < stop
+                and visually_precedes(context, item)
+                and visually_precedes(item, hit)
+                and visible_context_hit(item)
+            ]
+            if intervening_boundaries:
+                continue
+            valid_contextual_hit_ids.add(id(hit))
+            shadowed_context_free_spans.add(span(hit))
+
     def context_bound(hit: Mapping[str, Any]) -> bool:
         within_role = hit.get("_within_role")
+        if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V4:
+            return visible_context_hit(hit)
         if within_role is None:
             return True
         contexts = [
@@ -1006,7 +1140,10 @@ def _child_records_in_range(
             selected = [min(unique_candidates, key=lambda item: item["document_line_ordinal"])]
         for occurrence_ordinal, hit in enumerate(selected):
             public_hit = {key: item for key, item in hit.items() if not key.startswith("_")}
-            if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
+            if spec["spec_format_version"] in {
+                SPEC_FORMAT_VERSION_V3,
+                SPEC_FORMAT_VERSION_V4,
+            }:
                 public_hit["matched_within_role"] = hit.get("_within_role")
             record = {
                 **canonical_clone_v1(public_hit),
@@ -1018,6 +1155,26 @@ def _child_records_in_range(
             if retain_all_occurrences:
                 record["role_occurrence_ordinal"] = occurrence_ordinal
             records.append(record)
+    if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V4:
+        records_by_span: dict[tuple[int, int], list[dict[str, Any]]] = {}
+        for record in records:
+            records_by_span.setdefault(
+                (
+                    record["document_line_ordinal"],
+                    record["end_document_line_ordinal"],
+                ),
+                [],
+            ).append(record)
+        retained_records = []
+        for span_records in records_by_span.values():
+            contextual = [
+                record for record in span_records if record.get("matched_within_role") is not None
+            ]
+            # One exact nested matcher is stronger than context-free aliases at
+            # the same source span.  Multiple contextual roles remain visible
+            # and ambiguous rather than being assigned by declaration order.
+            retained_records.extend(contextual if len(contextual) == 1 else span_records)
+        records = retained_records
     return sorted(records, key=lambda item: item["document_line_ordinal"])
 
 
@@ -1044,24 +1201,20 @@ def _candidate(
         ):
             continue
         roles_without = {item["role"] for item in records if item is not record}
-        if any(
-            set(combination).issubset(roles_without)
-            for combination in spec["required_role_combinations"]
-        ):
+        matched_without, matched_pools_without = _matched_required_role_evidence(
+            spec, roles_without
+        )
+        if matched_without or matched_pools_without:
             pruned_records.remove(record)
     records = pruned_records
     observed_roles = [record["role"] for record in records]
-    matched_combinations = [
-        combination
-        for combination in spec["required_role_combinations"]
-        if set(combination).issubset(observed_roles)
-    ]
+    matched_combinations, matched_pools = _matched_required_role_evidence(spec, set(observed_roles))
     hard_negatives = [
         canonical_clone_v1(hit)
         for hit in hard_negative_hits
         if start <= hit["document_line_ordinal"] < stop
     ]
-    if matched_combinations:
+    if matched_combinations or matched_pools:
         reasons = []
     elif spec["spec_format_version"] == SPEC_FORMAT_VERSION:
         reasons = [
@@ -1069,11 +1222,23 @@ def _candidate(
             for role in spec["required_role_combinations"][0]
             if role not in observed_roles
         ]
-    else:
+    elif spec["spec_format_version"] != SPEC_FORMAT_VERSION_V4:
         encoded = "|".join(
             "+".join(combination) for combination in spec["required_role_combinations"]
         )
         reasons = [f"MISSING_REQUIRED_ROLE_COMBINATION:{encoded}"]
+    else:
+        encoded_combinations = "|".join(
+            "+".join(combination) for combination in spec["required_role_combinations"]
+        )
+        encoded_pools = "|".join(
+            f"MINIMUM_{pool['minimum_count']}:" + "+".join(pool["roles"])
+            for pool in spec["required_role_pools"]
+        )
+        reasons = [
+            f"MISSING_REQUIRED_ROLE_COMBINATION:{encoded_combinations}",
+            f"MISSING_REQUIRED_ROLE_POOL:{encoded_pools}",
+        ]
     if hard_negatives:
         reasons.append("HARD_NEGATIVE_FAMILY_IN_CLUSTER")
     preferred = sorted(records, key=lambda item: item["preferred_ordinal"])
@@ -1165,13 +1330,7 @@ def _explicit_candidates(
                 record for record in records if record["page_sequence"] == page_sequence
             ]
             new_records = [record for record in page_records if record["role"] not in observed]
-            deficits = {
-                role
-                for combination in spec["required_role_combinations"]
-                if not set(combination).issubset(observed)
-                for role in combination
-                if role not in observed
-            }
+            deficits = _required_role_deficits(spec, observed)
             page_structural_groups = {
                 record["role"]
                 for record in page_records
@@ -1219,7 +1378,7 @@ def _explicit_candidates(
             current_allowed_end_page: int = allowed_end_page,
         ) -> bool:
             return (
-                spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3
+                spec["spec_format_version"] in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
                 and hit["page_sequence"] == current_page + 1
                 and hit["page_sequence"] <= current_allowed_end_page
                 and "tiep theo" in hit["normalized_surface"]
@@ -1446,7 +1605,7 @@ def _build(
     ]
 
     complete = [candidate for candidate in candidates if not candidate["unresolved_reasons"]]
-    if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
+    if spec["spec_format_version"] in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}:
         # A filing can repeat a broad parent + two aggregate rows in the
         # primary statements or accounting-policy prose before presenting the
         # full note later.  If one complete proposal exposes a strict superset
@@ -1474,6 +1633,7 @@ def _build(
     core_roles = {
         role for combination in spec["required_role_combinations"] for role in combination
     }
+    core_roles.update(role for pool in spec["required_role_pools"] for role in pool["roles"])
     if spec["presence_evidence_mode"] == "WITHIN_EXPLICIT_PARENT_CLUSTER":
         scoped_core_hits = {
             (record["role"], record["document_line_ordinal"])

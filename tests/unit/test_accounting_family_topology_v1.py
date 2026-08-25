@@ -348,6 +348,102 @@ def _contextual_interbank_spec() -> dict[str, object]:
     }
 
 
+def _flexible_role_pool_spec() -> dict[str, object]:
+    def child(
+        role: str, alias: str, *, within_role: str | None = None, kind: str = "ADDITIVE_CHILD"
+    ) -> dict[str, object]:
+        return {
+            "matchers": [{"aliases": [alias], "within_role": within_role}],
+            "presence": "OPTIONAL",
+            "role": role,
+            "role_kind": kind,
+        }
+
+    return {
+        "children": [
+            child("BRANCH", "Theo loại hình", kind="STRUCTURAL_GROUP"),
+            child("ALPHA", "Loại A", within_role="BRANCH"),
+            child("BETA", "Loại B"),
+            child("GAMMA", "Loại C"),
+        ],
+        "family_id": "FLEXIBLE_SIBLING_FAMILY",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+        "hard_negative_aliases": ["Bảng tiền gửi"],
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Bảng cho vay"],
+            "resolution_mode": "EXPLICIT_ONLY",
+            "role": "FLEXIBLE_SIBLING_FAMILY",
+        },
+        "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+        "required_role_combinations": [["BRANCH", "ALPHA"]],
+        "required_role_pools": [{"minimum_count": 2, "roles": ["ALPHA", "BETA", "GAMMA"]}],
+        "structural_reset_aliases": ["Bảng khác"],
+    }
+
+
+def test_v4_flexible_role_pool_accepts_exact_combination_or_two_distinct_siblings() -> None:
+    spec = _flexible_role_pool_spec()
+    contextual = build_accounting_family_topology_scan_v1(
+        [_page(["Bảng cho vay", "Theo loại hình", "Loại A"])], spec
+    )
+    branchless = build_accounting_family_topology_scan_v1(
+        [_page(["Bảng cho vay", "Loại C", "Loại B"])], spec
+    )
+
+    assert contextual["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert contextual["regions"][0]["observed_roles"] == ["BRANCH", "ALPHA"]
+    assert contextual["regions"][0]["child_matches"][1]["matched_within_role"] == "BRANCH"
+    assert branchless["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert branchless["regions"][0]["observed_roles"] == ["GAMMA", "BETA"]
+
+
+def test_v4_flexible_role_pool_counts_distinct_roles_and_fills_continuation_deficit() -> None:
+    spec = _flexible_role_pool_spec()
+    repeated_one_role = build_accounting_family_topology_scan_v1(
+        [_page(["Bảng cho vay", "Loại B", "Loại B"])], spec
+    )
+    continued = build_accounting_family_topology_scan_v1(
+        [
+            _page(["Bảng cho vay", "Loại B"], page_sequence=1),
+            _page(["Loại C"], page_sequence=2),
+        ],
+        spec,
+    )
+
+    assert repeated_one_role["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert repeated_one_role["near_regions"][0]["unresolved_reasons"] == [
+        "MISSING_REQUIRED_ROLE_COMBINATION:BRANCH+ALPHA",
+        "MISSING_REQUIRED_ROLE_POOL:MINIMUM_2:ALPHA+BETA+GAMMA",
+    ]
+    assert continued["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert continued["regions"][0]["continuation_page_count"] == 1
+    assert continued["metrics"]["core_semantic_anchor_hit_count"] == 2
+
+
+def test_v4_flexible_role_pool_spec_rejects_field_and_semantic_drift() -> None:
+    missing = _flexible_role_pool_spec()
+    missing.pop("required_role_pools")
+    with pytest.raises(AccountingFamilyTopologyV1Error):
+        build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], missing)
+
+    duplicate = _flexible_role_pool_spec()
+    duplicate["required_role_pools"].append(
+        {"minimum_count": 2, "roles": ["GAMMA", "BETA", "ALPHA"]}
+    )
+    with pytest.raises(AccountingFamilyTopologyV1Error):
+        build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], duplicate)
+
+    partial_minimum = _flexible_role_pool_spec()
+    partial_minimum["required_role_pools"][0]["minimum_count"] = 1
+    with pytest.raises(AccountingFamilyTopologyV1Error):
+        build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], partial_minimum)
+
+
 def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> None:
     pages = [
         _page(

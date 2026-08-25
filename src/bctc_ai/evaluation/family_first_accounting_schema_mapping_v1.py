@@ -33,6 +33,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION_V3",
     "SPEC_FORMAT_VERSION_V4",
     "SPEC_FORMAT_VERSION_V5",
+    "SPEC_FORMAT_VERSION_V6",
     "FamilyFirstAccountingSchemaMappingV1Error",
     "build_authenticated_family_first_accounting_schema_mapping_v1",
     "validate_authenticated_family_first_accounting_schema_mapping_replay_v1",
@@ -45,6 +46,7 @@ SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V2"
 SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3"
 SPEC_FORMAT_VERSION_V4 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4"
 SPEC_FORMAT_VERSION_V5 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5"
+SPEC_FORMAT_VERSION_V6 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
 SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
@@ -76,6 +78,7 @@ _SPEC_V2_FIELDS = {*_SPEC_FIELDS, "aggregate_role_bindings"}
 _SPEC_V3_FIELDS = {*_SPEC_FIELDS, "ignored_roles"}
 _SPEC_V4_FIELDS = {*_SPEC_V3_FIELDS, "family_root_mapping_policy"}
 _SPEC_V5_FIELDS = _SPEC_V4_FIELDS
+_SPEC_V6_FIELDS = {*_SPEC_V5_FIELDS, "family_owner_report_norm_id"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
 _ROLE_BINDING_PARENT_FIELDS = {*_ROLE_BINDING_FIELDS, "parent_report_norm_id"}
 _ROLE_BINDING_SUBSCOPE_FIELDS = {
@@ -151,7 +154,12 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
     family_roles = (
         all_roles
         if candidate_version
-        in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4, SPEC_FORMAT_VERSION_V5}
+        in {
+            SPEC_FORMAT_VERSION_V3,
+            SPEC_FORMAT_VERSION_V4,
+            SPEC_FORMAT_VERSION_V5,
+            SPEC_FORMAT_VERSION_V6,
+        }
         else nonstructural_roles
     )
     if (
@@ -166,6 +174,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         frozenset(_SPEC_V3_FIELDS),
         frozenset(_SPEC_V4_FIELDS),
         frozenset(_SPEC_V5_FIELDS),
+        frozenset(_SPEC_V6_FIELDS),
     }:
         raise _error("family schema-binding specification fields drifted")
     spec_version = value["format_version"]
@@ -175,6 +184,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V3: _SPEC_V3_FIELDS,
         SPEC_FORMAT_VERSION_V4: _SPEC_V4_FIELDS,
         SPEC_FORMAT_VERSION_V5: _SPEC_V5_FIELDS,
+        SPEC_FORMAT_VERSION_V6: _SPEC_V6_FIELDS,
     }
     if spec_version not in expected_fields or set(value) != expected_fields[spec_version]:
         raise _error("family schema-binding specification version drifted")
@@ -190,7 +200,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
     for raw in value["role_bindings"]:
         allowed_role_binding_fields = (
             [_ROLE_BINDING_PARENT_FIELDS, _ROLE_BINDING_SUBSCOPE_FIELDS]
-            if spec_version == SPEC_FORMAT_VERSION_V5
+            if spec_version in {SPEC_FORMAT_VERSION_V5, SPEC_FORMAT_VERSION_V6}
             else [_ROLE_BINDING_FIELDS]
         )
         if (
@@ -247,6 +257,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V3,
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
+        SPEC_FORMAT_VERSION_V6,
     } and (
         type(ignored_roles) is not list
         or any(type(role) is not str or not role for role in ignored_roles)
@@ -265,6 +276,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V3,
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
+        SPEC_FORMAT_VERSION_V6,
     }:
         if (
             aggregates
@@ -283,17 +295,26 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             )
         ):
             raise _error("hierarchical schema binding must partition the exact role axis")
-        if spec_version in {SPEC_FORMAT_VERSION_V4, SPEC_FORMAT_VERSION_V5} and value[
-            "family_root_mapping_policy"
-        ] not in {
+        if spec_version in {
+            SPEC_FORMAT_VERSION_V4,
+            SPEC_FORMAT_VERSION_V5,
+            SPEC_FORMAT_VERSION_V6,
+        } and value["family_root_mapping_policy"] not in {
             "REQUIRE_HIERARCHICALLY_RESOLVED",
             "MAP_WHEN_HIERARCHICALLY_RESOLVED",
         }:
             raise _error("hierarchical family-root mapping policy drifted")
-        if spec_version == SPEC_FORMAT_VERSION_V5 and any(
+        if spec_version in {SPEC_FORMAT_VERSION_V5, SPEC_FORMAT_VERSION_V6} and any(
             "parent_report_norm_id" not in binding for binding in direct
         ):
-            raise _error("V5 hierarchical schema binding requires every exact parent")
+            raise _error("hierarchical schema binding requires every exact parent")
+        if spec_version == SPEC_FORMAT_VERSION_V6 and (
+            type(value["family_owner_report_norm_id"]) is not int
+            or value["family_owner_report_norm_id"] <= 0
+            or value["family_owner_report_norm_id"] == value["family_report_norm_id"]
+            or value["family_owner_report_norm_id"] in target_ids
+        ):
+            raise _error("V6 family schema owner identity drifted")
         return canonical_clone_v1(value)
     if (
         any(role not in role_order for role in [*direct_roles, *aggregate_source_roles])
@@ -356,6 +377,20 @@ def _bind_schema(
         or not _schema_contract_axes_are_closed(parent)
     ):
         raise _error("family ReportNormId is not one live TM schema parent")
+    family_owner = (
+        nodes.get(spec["family_owner_report_norm_id"])
+        if spec["format_version"] == SPEC_FORMAT_VERSION_V6
+        else parent
+    )
+    if spec["format_version"] == SPEC_FORMAT_VERSION_V6 and (
+        type(family_owner) is not dict
+        or family_owner.get("statement_type") != "TM"
+        or type(family_owner.get("children")) is not list
+        or parent.get("parent_id") != family_owner.get("schema_id")
+        or parent.get("schema_id") not in family_owner["children"]
+        or not _schema_contract_axes_are_closed(family_owner)
+    ):
+        raise _error("family ReportNormId is not an exact child of its declared schema owner")
     by_role: dict[str, dict[str, Any]] = {}
     aggregate_bindings: list[tuple[dict[str, Any], dict[str, Any]]] = []
     bindings = [
@@ -368,6 +403,7 @@ def _bind_schema(
             SPEC_FORMAT_VERSION_V3,
             SPEC_FORMAT_VERSION_V4,
             SPEC_FORMAT_VERSION_V5,
+            SPEC_FORMAT_VERSION_V6,
         }:
             return (
                 node.get("parent_id") == parent["schema_id"]
@@ -387,7 +423,7 @@ def _bind_schema(
                 or cursor.get("schema_id") not in next_parent["children"]
             ):
                 return False
-            if parent_id == parent["schema_id"]:
+            if parent_id == family_owner["schema_id"]:
                 return True
             cursor = next_parent
         return False
@@ -414,7 +450,8 @@ def _bind_schema(
         ):
             raise _error(
                 "role ReportNormId is not an admitted live descendant of its family"
-                if spec["format_version"] in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V5}
+                if spec["format_version"]
+                in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V5, SPEC_FORMAT_VERSION_V6}
                 else "role ReportNormId is not a direct live child of its family"
             )
         if "source_roles" in binding:
@@ -820,6 +857,7 @@ def _trial(
         SPEC_FORMAT_VERSION_V3,
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
+        SPEC_FORMAT_VERSION_V6,
     }:
         closure = trial["additive_closure"]
         if (

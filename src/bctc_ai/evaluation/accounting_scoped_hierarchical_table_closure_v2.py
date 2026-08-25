@@ -6,8 +6,10 @@ child may repeat under the nearest repeated structural parent.  Local printed
 subtotals are checked exactly or by the V2 integer display-unit rounding
 receipt only against children bound to that exact parent
 occurrence; declared repeatable roles are then aggregated once across disjoint
-scopes.  Every component alternative is exhaustive -- there is no
-``minimum_component_count`` escape hatch and no source digit is backsolved.
+scopes.  Every component alternative is exhaustive.  V3 may declare one
+bounded optional-role pool, but the selected frontier is still exactly every
+visible role from that pool; it is never a minimum-count or partial-sum escape
+hatch, and no source digit is backsolved.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
+    "SPEC_FORMAT_VERSION_V3",
     "AccountingScopedHierarchicalTableClosureV2Error",
     "build_accounting_scoped_hierarchical_table_closure_v2",
     "validate_accounting_scoped_hierarchical_table_closure_replay_v2",
@@ -41,6 +44,7 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2"
 SPEC_FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V2"
+SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V3"
 CLAIM_BOUNDARY = (
     "VISIBLE_COMPLETE_ROLE_OCCURRENCES_NEAREST_PARENT_LOCAL_SUBTOTAL_AND_"
     "DECLARED_DISJOINT_SCOPE_AGGREGATION_WITH_EXHAUSTIVE_COMPONENT_ALTERNATIVES_"
@@ -50,6 +54,7 @@ CLAIM_BOUNDARY = (
 _SAFETY = {
     "accounting_equation_can_change_or_supply_source_digits": False,
     "all_component_alternatives_are_exhaustive": True,
+    "flexible_component_pool_selects_every_visible_declared_role": True,
     "blank_or_unproved_dash_means_zero": False,
     "local_subtotal_may_consume_other_parent_scope": False,
     "mapping_authority": False,
@@ -68,6 +73,7 @@ _SPEC_FIELDS_V1 = {
     "repeated_role_policy",
 }
 _SPEC_FIELDS_V2 = {*_SPEC_FIELDS_V1, "source_role_policy"}
+_SPEC_FIELDS_V3 = _SPEC_FIELDS_V2
 _REPEAT_POLICY_FIELDS = {"aggregate_roles", "local_subtotal_roles"}
 _SOURCE_ROLE_POLICY_FIELDS = {
     "one_edit_role_or_scope_match_policy",
@@ -81,7 +87,12 @@ _EQUATION_FIELDS = {
     "visible_source_policy",
     "visible_result_roles",
 }
+_EQUATION_FIELDS_V3 = {*_EQUATION_FIELDS, "component_selection_policy"}
 _ALTERNATIVE_FIELDS = {"component_roles", "coverage_policy", "derivation_policy"}
+_COMPONENT_SELECTION_POLICIES = {
+    "DECLARED_EXACT_ALTERNATIVE",
+    "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+}
 _DERIVATION_POLICIES = {
     "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS",
     "VISIBLE_RESULT_CORROBORATION_ONLY",
@@ -243,6 +254,12 @@ _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS = {
 }
 _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS = (
     "EXACT_ALL_LANES_DECLARED_EQUATION_FRONTIER_BOUND_TO_UNIQUE_TARGET_OCCURRENCE"
+)
+_DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND = (
+    "DECLARED_UNLABELED_INTERMEDIATE_DIRECT_FRONTIER"
+)
+_DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS = (
+    "EXACT_ALL_LANES_DECLARED_EQUATION_FRONTIER_BOUND_TO_UNLABELED_INTERMEDIATE_RESULT"
 )
 _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES = {
     "DEMAND_DEPOSIT_GROUP": [
@@ -470,13 +487,13 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "51caa97eda42667938c269696778ff9affd45cefdc589ca110641b95ff082a25",
-        "size_bytes": 576_112,
+        "sha256": "0c0d6629371ded9ace8e9a5b04194552bef20a9b6c02d2df2c9aa039c3ca8734",
+        "size_bytes": 578_654,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "60da089b5df5a6ee9f53dac8569bc4a9484bf5816721fb992f8d4d09a43bc236",
-        "size_bytes": 68_515,
+        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "size_bytes": 75_614,
     },
 }
 
@@ -612,6 +629,8 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         if version == SPEC_FORMAT_VERSION
         else _SPEC_FIELDS_V2
         if version == SPEC_FORMAT_VERSION_V2
+        else _SPEC_FIELDS_V3
+        if version == SPEC_FORMAT_VERSION_V3
         else None
     )
     if (
@@ -630,7 +649,7 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     known_roles = {topology["parent"]["role"], *child_roles}
     source_role_policy = (
         canonical_clone_v1(value["source_role_policy"])
-        if version == SPEC_FORMAT_VERSION_V2
+        if version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3}
         else {
             "one_edit_role_or_scope_match_policy": "ALLOW",
             "source_only_veto_roles": [],
@@ -641,7 +660,7 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         or set(source_role_policy) != _SOURCE_ROLE_POLICY_FIELDS
         or source_role_policy["one_edit_role_or_scope_match_policy"] not in {"ALLOW", "VETO"}
         or (
-            version == SPEC_FORMAT_VERSION_V2
+            version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3}
             and source_role_policy["one_edit_role_or_scope_match_policy"] != "VETO"
         )
         or type(source_role_policy["source_only_veto_roles"]) is not list
@@ -664,9 +683,16 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     trailing_equation_count = 0
     equations = []
     for raw in value["equations"]:
+        component_selection_policy = (
+            raw.get("component_selection_policy")
+            if version == SPEC_FORMAT_VERSION_V3 and type(raw) is dict
+            else "DECLARED_EXACT_ALTERNATIVE"
+        )
         if (
             type(raw) is not dict
-            or set(raw) != _EQUATION_FIELDS
+            or set(raw)
+            != (_EQUATION_FIELDS_V3 if version == SPEC_FORMAT_VERSION_V3 else _EQUATION_FIELDS)
+            or component_selection_policy not in _COMPONENT_SELECTION_POLICIES
             or raw["result_role"] not in known_roles
             or raw["result_role"] in result_roles
             or raw["application_policy"] != _APPLICATION_POLICY
@@ -679,6 +705,10 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
             or raw["visible_source_policy"] not in _VISIBLE_SOURCE_POLICIES
             or type(raw["component_role_alternatives"]) is not list
             or not raw["component_role_alternatives"]
+            or (
+                component_selection_policy == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
+                and len(raw["component_role_alternatives"]) != 1
+            )
         ):
             raise _error("scoped hierarchical equation contract drifted")
         alternatives = []
@@ -708,6 +738,11 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
             {
                 "component_role_alternatives": alternatives,
                 "application_policy": raw["application_policy"],
+                **(
+                    {"component_selection_policy": component_selection_policy}
+                    if version == SPEC_FORMAT_VERSION_V3
+                    else {}
+                ),
                 "result_role": raw["result_role"],
                 "trailing_result_policy": raw["trailing_result_policy"],
                 "visible_source_policy": raw["visible_source_policy"],
@@ -1349,17 +1384,59 @@ def _aggregate_source_roles(
     return resolved, occurrences, reasons
 
 
+def _effective_component_roles(
+    equation: Mapping[str, Any],
+    alternative: Mapping[str, Any],
+    available_roles: set[str],
+    required_component_roles: set[str],
+    selected_component_owner_roles: Mapping[str, frozenset[str]] | None = None,
+) -> list[str] | None:
+    declared = alternative["component_roles"]
+    if equation.get("component_selection_policy") == ("EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"):
+        visible_roles = [role for role in declared if role in available_roles]
+        owner_roles = selected_component_owner_roles or {}
+
+        def selected_ancestors(role: str) -> set[str]:
+            ancestors: set[str] = set()
+            pending = list(owner_roles.get(role, frozenset()))
+            while pending:
+                owner = pending.pop()
+                if owner in ancestors:
+                    continue
+                ancestors.add(owner)
+                pending.extend(owner_roles.get(owner, frozenset()))
+            return ancestors
+
+        roles = [
+            role
+            for role in visible_roles
+            if not (selected_ancestors(role) & (set(visible_roles) - {role}))
+        ]
+        accounted_roles = set(visible_roles)
+    else:
+        roles = list(declared) if all(role in available_roles for role in declared) else []
+        accounted_roles = set(roles)
+    if not roles or not required_component_roles <= accounted_roles:
+        return None
+    return roles
+
+
 def _complete_alternatives(
-    alternatives: Sequence[Mapping[str, Any]],
+    equation: Mapping[str, Any],
     resolved: Mapping[str, Mapping[str, Any]],
     required_component_roles: set[str],
+    selected_component_owner_roles: Mapping[str, frozenset[str]],
 ) -> list[dict[str, Any]]:
     result = []
-    for alternative in alternatives:
-        roles = alternative["component_roles"]
-        if not required_component_roles <= set(roles) or not all(
-            role in resolved for role in roles
-        ):
+    for alternative in equation["component_role_alternatives"]:
+        roles = _effective_component_roles(
+            equation,
+            alternative,
+            set(resolved),
+            required_component_roles,
+            selected_component_owner_roles,
+        )
+        if roles is None:
             continue
         records = [resolved[role] for role in roles]
         printed_axes = [record.get(_PRINTED_SOURCE_CELLS_KEY) for record in records]
@@ -1535,10 +1612,10 @@ def _local_equations(
             equation["shared_component_roles"]
         )
         for alternative in equation["component_role_alternatives"]:
-            roles = alternative["component_roles"]
-            if not required_component_roles <= set(roles) or not all(
-                len(scoped_by_role.get(role, [])) == 1 for role in roles
-            ):
+            roles = _effective_component_roles(
+                equation, alternative, set(scoped_by_role), required_component_roles
+            )
+            if roles is None or not all(len(scoped_by_role.get(role, [])) == 1 for role in roles):
                 continue
             alternatives.append(
                 {
@@ -1687,7 +1764,10 @@ def _select_global_equation(
         resolved
     )
     alternatives = _complete_alternatives(
-        equation["component_role_alternatives"], resolved, required_component_roles
+        equation,
+        resolved,
+        required_component_roles,
+        selected_component_owner_roles,
     )
     # One source adjustment can be declared at both a child subtotal and an
     # ancestor total.  Once an exact descendant equation has selected it, an
@@ -2744,6 +2824,8 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     role_occurrences: Sequence[Mapping[str, Any]],
     row_axis: Mapping[str, Any],
     source_candidates: Sequence[Mapping[str, Any]],
+    synthetic_intermediate_allowed: bool = False,
+    target_role_kind: str | None = None,
 ) -> dict[str, Any] | None:
     """Bind one exact subtotal to one V4 equation frontier occurrence interval.
 
@@ -2772,6 +2854,8 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         or type(component_roles) is not list
         or not component_roles
         or equation_record.get("selected_trailing_candidate_ordinal") is not None
+        or type(synthetic_intermediate_allowed) is not bool
+        or target_role_kind != "STRUCTURAL_GROUP"
         or type(target) is not dict
         or target.get("source") is not None
         or target.get("resolution_kind") != "DERIVED_EXACT_COMPONENT_SUM"
@@ -2783,7 +2867,18 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     selected_specs = [
         alternative
         for alternative in equation_spec.get("component_role_alternatives", [])
-        if alternative["component_roles"] == component_roles
+        if (
+            set(component_roles).issubset(alternative["component_roles"])
+            if equation_spec.get("component_selection_policy")
+            == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
+            else _effective_component_roles(
+                equation_spec,
+                alternative,
+                set(resolved_by_role),
+                set(component_roles),
+            )
+            == component_roles
+        )
         and alternative["derivation_policy"]
         == "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
     ]
@@ -2958,30 +3053,39 @@ def _occurrence_bound_unlabeled_exact_subtotal(
             or occurrence.get("scope_owner_occurrence_id") == inferred_owner_id
         )
     ]
-    if not target_candidates:
-        return None
-    nearest_target_source = max(
-        occurrence["label_match"]["source_line_index"] for occurrence in target_candidates
-    )
-    nearest_targets = [
-        occurrence
-        for occurrence in target_candidates
-        if occurrence["label_match"]["source_line_index"] == nearest_target_source
+    all_target_occurrences = [
+        occurrence for occurrence in role_occurrences if occurrence.get("role") == target_role
     ]
-    if len(nearest_targets) != 1:
-        return None
-    target_occurrence = nearest_targets[0]
-    target_occurrence_id = target_occurrence["occurrence_id"]
-    target_parent_occurrence_id = target_occurrence.get("scope_owner_occurrence_id")
-    binding_kind = (
-        "DIRECT_PARENT_FRONTIER"
-        if target_occurrence_id == inferred_owner_id
-        else "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER"
-    )
-    if (
-        binding_kind == "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER"
-        and target_parent_occurrence_id != inferred_owner_id
-    ):
+    if target_candidates:
+        nearest_target_source = max(
+            occurrence["label_match"]["source_line_index"] for occurrence in target_candidates
+        )
+        nearest_targets = [
+            occurrence
+            for occurrence in target_candidates
+            if occurrence["label_match"]["source_line_index"] == nearest_target_source
+        ]
+        if len(nearest_targets) != 1:
+            return None
+        target_occurrence = nearest_targets[0]
+        target_occurrence_id = target_occurrence["occurrence_id"]
+        target_parent_occurrence_id = target_occurrence.get("scope_owner_occurrence_id")
+        binding_kind = (
+            "DIRECT_PARENT_FRONTIER"
+            if target_occurrence_id == inferred_owner_id
+            else "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER"
+        )
+        if (
+            binding_kind == "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER"
+            and target_parent_occurrence_id != inferred_owner_id
+        ):
+            return None
+    elif synthetic_intermediate_allowed and not all_target_occurrences:
+        nearest_target_source = None
+        target_occurrence_id = None
+        target_parent_occurrence_id = inferred_owner_id
+        binding_kind = _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+    else:
         return None
 
     recursive_support_ids = set(all_support_occurrence_ids) | set(all_anchor_occurrence_ids)
@@ -3029,7 +3133,7 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     component_first_source = min(
         occurrence["label_match"]["source_line_index"] for occurrence in recursive_support
     )
-    if nearest_target_source >= component_first_source:
+    if nearest_target_source is not None and nearest_target_source >= component_first_source:
         return None
 
     boundary_owner_id = (
@@ -3178,7 +3282,11 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         "source_record_sha256": canonical_json_sha256_v1(selected["source_record"]),
         "source_row_kind": selected["row_kind"],
         "source_sample_ids": canonical_clone_v1(selected["sample_ids"]),
-        "status": _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS,
+        "status": (
+            _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS
+            if binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+            else _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
+        ),
         "target_occurrence_id": target_occurrence_id,
         "target_parent_occurrence_id": target_parent_occurrence_id,
         "target_role": target_role,
@@ -3421,6 +3529,8 @@ def _unlabeled_exact_subtotal_for_equation(
     equation_records: Sequence[Mapping[str, Any]] | None = None,
     equation_spec: Mapping[str, Any] | None = None,
     hierarchy_spec_sha256: str | None = None,
+    synthetic_intermediate_allowed: bool = False,
+    target_role_kind: str | None = None,
 ) -> dict[str, Any] | None:
     """Recognize one exact printed subtotal as coverage/corroboration only.
 
@@ -3458,6 +3568,8 @@ def _unlabeled_exact_subtotal_for_equation(
         role_occurrences=role_occurrences,
         row_axis=row_axis,
         source_candidates=source_candidates,
+        synthetic_intermediate_allowed=synthetic_intermediate_allowed,
+        target_role_kind=target_role_kind,
     )
     if occurrence_bound is not None:
         return occurrence_bound
@@ -3941,6 +4053,12 @@ def _validate_occurrence_bound_subtotal_receipt(
 ) -> None:
     interval = receipt.get("interval") if type(receipt) is dict else None
     frontier = receipt.get("ordered_component_frontier") if type(receipt) is dict else None
+    binding_kind = receipt.get("binding_kind") if type(receipt) is dict else None
+    expected_status = (
+        _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS
+        if binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+        else _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
+    )
     if (
         type(receipt) is not dict
         or set(receipt)
@@ -3948,7 +4066,7 @@ def _validate_occurrence_bound_subtotal_receipt(
             _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_FIELDS,
             _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS,
         )
-        or receipt.get("status") != _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
+        or receipt.get("status") != expected_status
         or type(interval) is not dict
         or set(interval) != _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS
         or type(frontier) is not list
@@ -3979,6 +4097,7 @@ def _validate_occurrence_bound_subtotal_receipt(
         not in {
             "DIRECT_PARENT_FRONTIER",
             "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER",
+            _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
         }
         or (
             set(receipt) == _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS
@@ -4056,15 +4175,28 @@ def _validate_occurrence_bound_subtotal_receipt(
         occurrence_by_id.get(occurrence_id)
         for occurrence_id in receipt["ordered_component_occurrence_ids"]
     ]
-    if (
-        type(target) is not dict
-        or target.get("role") != receipt["target_role"]
-        or target.get("role_kind") != "STRUCTURAL_GROUP"
-        or target.get("has_bound_value_row") is not False
-        or target.get("scope_owner_occurrence_id") != receipt["target_parent_occurrence_id"]
-        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+    synthetic_intermediate = (
+        receipt["binding_kind"] == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+    )
+    target_binding_valid = (
+        receipt["target_occurrence_id"] is None
+        and receipt["target_parent_occurrence_id"] == receipt["inferred_owner_occurrence_id"]
+        and not any(
+            occurrence.get("role") == receipt["target_role"]
+            for occurrence in value["role_occurrences"]
+        )
+        if synthetic_intermediate
+        else type(target) is dict
+        and target.get("role") == receipt["target_role"]
+        and target.get("role_kind") == "STRUCTURAL_GROUP"
+        and target.get("has_bound_value_row") is False
+        and target.get("scope_owner_occurrence_id") == receipt["target_parent_occurrence_id"]
+        and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
             target.get("label_match", {})
         )
+    )
+    if (
+        not target_binding_valid
         or any(type(anchor) is not dict for anchor in anchors)
         or any(
             anchor.get("scope_owner_occurrence_id") != receipt["inferred_owner_occurrence_id"]
@@ -4081,6 +4213,7 @@ def _validate_occurrence_bound_subtotal_receipt(
             receipt["binding_kind"] == "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER"
             and receipt["target_parent_occurrence_id"] != receipt["inferred_owner_occurrence_id"]
         )
+        or (synthetic_intermediate and interval.get("target_source_line_index") is not None)
     ):
         raise _error("occurrence-bound subtotal target or parent ownership drifted")
     nonadditive_occurrences = [
@@ -4186,8 +4319,14 @@ def _validate_occurrence_bound_subtotal_receipt(
                 or receipt["intervening_furniture_evidence_ids"] != expected_furniture_ids
             )
         )
-        or interval["target_source_line_index"] != target["label_match"].get("source_line_index")
-        or interval["page_sequence"] != target["label_match"].get("page_sequence")
+        or (
+            not synthetic_intermediate
+            and (
+                interval["target_source_line_index"]
+                != target["label_match"].get("source_line_index")
+                or interval["page_sequence"] != target["label_match"].get("page_sequence")
+            )
+        )
     ):
         raise _error("occurrence-bound subtotal exact interval or value axis drifted")
 
@@ -6736,7 +6875,10 @@ def _build(
     ]
     valued_rows = [row for row in accounting_rows if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
     aggregate_roles = set(spec["repeated_role_policy"]["aggregate_roles"])
-    allow_rounding = spec["format_version"] == SPEC_FORMAT_VERSION_V2
+    allow_rounding = spec["format_version"] in {
+        SPEC_FORMAT_VERSION_V2,
+        SPEC_FORMAT_VERSION_V3,
+    }
     local_records = []
     local_roles = set(spec["repeated_role_policy"]["local_subtotal_roles"])
     locally_valid_results: set[str] = set()
@@ -6839,6 +6981,19 @@ def _build(
         reserved_unlabeled_source_keys.add(evidence["source_key"])
         unlabeled_subtotal_by_source_key[evidence["source_key"]] = evidence
     descendant_result_roles_by_role = _descendant_result_roles_by_role(spec["equations"])
+    declared_component_roles = {
+        role
+        for equation in spec["equations"]
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+    }
+    occurrence_roles = {occurrence["role"] for occurrence in axis["role_occurrences"]}
+    synthetic_intermediate_roles = {
+        role
+        for role in local_roles & declared_component_roles
+        if spec["role_kind_by_role"].get(role) == "STRUCTURAL_GROUP"
+        and role not in occurrence_roles
+    }
     selected_component_owner_roles: dict[str, set[str]] = {}
     global_records = []
     for equation in spec["equations"]:
@@ -6881,6 +7036,9 @@ def _build(
                 ],
                 equation_spec=equation,
                 hierarchy_spec_sha256=hierarchy_spec_sha256,
+                synthetic_intermediate_allowed=record["result_role"]
+                in synthetic_intermediate_roles,
+                target_role_kind=spec["role_kind_by_role"].get(record["result_role"]),
             )
         )
         if unlabeled_subtotal is not None:
@@ -6896,6 +7054,19 @@ def _build(
                     + ":"
                     + str(source_key[1])
                 )
+    synthetic_receipt_roles = {
+        evidence["role"]
+        for evidence in unlabeled_subtotal_by_source_key.values()
+        if evidence.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
+        == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+    }
+    reasons.extend(
+        "DECLARED_UNLABELED_INTERMEDIATE_RESULT_REQUIRED:" + record["result_role"]
+        for record in global_records
+        if record["result_role"] in synthetic_intermediate_roles
+        and record["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        and record["result_role"] not in synthetic_receipt_roles
+    )
     for subgroup_role in _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES:
         subgroup_records = [
             record for record in global_records if record["result_role"] == subgroup_role

@@ -23,6 +23,9 @@ from time import perf_counter
 from typing import Any
 
 from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1
+from bctc_ai.evaluation import (
+    accounting_family_column_context_multilevel_v2 as column_context_multilevel_v2,
+)
 from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
 from bctc_ai.evaluation import accounting_family_one_edit_exact_authority_v1 as one_edit_v1
@@ -67,6 +70,7 @@ EVALUATION_SPEC_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1"
 EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
+EVALUATION_SPEC_FORMAT_V5 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
 _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
 _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
@@ -117,6 +121,10 @@ _SPEC_FIELDS_V4 = {
     "candidate_selection_policy",
     "occurrence_row_axis_policy",
 }
+_SPEC_FIELDS_V5 = {
+    *(_SPEC_FIELDS_V4 - {"expected_lane_unit_kinds"}),
+    "expected_lane_unit_kind_alternatives",
+}
 _SOURCE_GROUP_EQUIVALENCE_FIELDS = {"component_roles", "group_role"}
 _TRIAL_FIELDS = {
     "additive_closure",
@@ -149,6 +157,38 @@ class FamilyFirstAccountingEvidenceSweepV1Error(ValueError):
 
 def _error(message: str) -> FamilyFirstAccountingEvidenceSweepV1Error:
     return FamilyFirstAccountingEvidenceSweepV1Error(message)
+
+
+def _is_scoped_evaluation_format(value: Any) -> bool:
+    return value in {EVALUATION_SPEC_FORMAT_V4, EVALUATION_SPEC_FORMAT_V5}
+
+
+def _is_scoped_evaluation_policy(value: Any) -> bool:
+    return type(value) is dict and _is_scoped_evaluation_format(value.get("format_version"))
+
+
+def _lane_unit_kind_alternatives(evaluation_spec: Mapping[str, Any]) -> list[list[str]]:
+    if evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V5:
+        return canonical_clone_v1(evaluation_spec["expected_lane_unit_kind_alternatives"])
+    return [canonical_clone_v1(evaluation_spec["expected_lane_unit_kinds"])]
+
+
+def _resolved_lane_unit_kinds(
+    evaluation_spec: Mapping[str, Any], column_context: Mapping[str, Any]
+) -> list[str]:
+    try:
+        resolved = [
+            record["unit_kind"]
+            for record in sorted(
+                column_context["unit_axis"], key=lambda record: record["column_ordinal"]
+            )
+        ]
+    except (KeyError, TypeError):
+        raise _error("column context lost its resolved lane unit axis") from None
+    alternatives = _lane_unit_kind_alternatives(evaluation_spec)
+    if resolved not in alternatives:
+        raise _error("column context unit axis is outside the declared alternatives")
+    return resolved
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -222,11 +262,14 @@ def _evaluation_spec(
     is_v2 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V2
     is_v3 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V3
     is_v4 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+    is_v5 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V5
     if (
         type(value) is not dict
         or set(value)
         != (
-            _SPEC_FIELDS_V4
+            _SPEC_FIELDS_V5
+            if is_v5
+            else _SPEC_FIELDS_V4
             if is_v4
             else _SPEC_FIELDS_V3
             if is_v3
@@ -240,6 +283,7 @@ def _evaluation_spec(
             EVALUATION_SPEC_FORMAT_V2,
             EVALUATION_SPEC_FORMAT_V3,
             EVALUATION_SPEC_FORMAT_V4,
+            EVALUATION_SPEC_FORMAT_V5,
         }
         or value["family_id"] != family_spec["family_id"]
         or value["period_semantics"] not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}
@@ -250,12 +294,34 @@ def _evaluation_spec(
             "REQUIRE_EXACT_UNIQUE_VISIBLE_TRAILING_TOTAL",
             "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
         }
-        or type(value["expected_lane_unit_kinds"]) is not list
-        or not value["expected_lane_unit_kinds"]
-        or any(item not in {"MONEY", "PERCENT"} for item in value["expected_lane_unit_kinds"])
+        or (
+            not is_v5
+            and (
+                type(value["expected_lane_unit_kinds"]) is not list
+                or not value["expected_lane_unit_kinds"]
+                or any(
+                    item not in {"MONEY", "PERCENT"} for item in value["expected_lane_unit_kinds"]
+                )
+            )
+        )
     ):
         raise _error("family evaluation specification drifted")
-    if is_v4:
+    if is_v5:
+        alternatives = value["expected_lane_unit_kind_alternatives"]
+        if (
+            type(alternatives) is not list
+            or not alternatives
+            or len(alternatives)
+            != len({tuple(item) for item in alternatives if type(item) is list})
+            or any(
+                type(item) is not list
+                or not item
+                or any(kind not in {"MONEY", "PERCENT"} for kind in item)
+                for item in alternatives
+            )
+        ):
+            raise _error("family evaluation lane-unit alternatives drifted")
+    if is_v4 or is_v5:
         if (
             value["closure_policy"] != "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE"
             or value["candidate_selection_policy"]
@@ -3136,12 +3202,10 @@ def _select_candidate_evidence(
     candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, list[str]]:
     ready = [candidate for candidate in candidate_evidence if not candidate["reasons"]]
-    canonicalize_all_presentations = (
-        evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
-    )
+    canonicalize_all_presentations = _is_scoped_evaluation_policy(evaluation_spec)
     if (
         ready
-        and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+        and _is_scoped_evaluation_policy(evaluation_spec)
         and evaluation_spec.get("candidate_selection_policy")
         == "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
     ):
@@ -3448,6 +3512,7 @@ def _selected_v4_one_edit_authority_v1(
                 or type(visible_dash_rescues) is not tuple
             ):
                 raise _error("selected V4 parent-frontier authority lost structural evidence")
+            selected_lane_unit_kinds = _resolved_lane_unit_kinds(evaluation_spec, column_context)
             one_edit_v1._validate_parent_frontier_column_context_replay_v1(  # noqa: SLF001
                 column_context,
                 row_axis=selected["row_axis"],
@@ -3455,7 +3520,7 @@ def _selected_v4_one_edit_authority_v1(
                 authority_pages=authority_pages,
                 family_spec=family_spec,
                 period_semantics=evaluation_spec.get("period_semantics"),
-                expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                expected_lane_unit_kinds=selected_lane_unit_kinds,
                 visible_dash_rescues=visible_dash_rescues,
             )
             structural_evidence = {
@@ -3477,7 +3542,7 @@ def _selected_v4_one_edit_authority_v1(
                         topology_candidates["regions"][ordinal],
                         column_context_document_pages=joined_pages,
                         period_semantics=evaluation_spec.get("period_semantics"),
-                        expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                        expected_lane_unit_kinds=selected_lane_unit_kinds,
                         visible_dash_rescues=visible_dash_rescues,
                     )
                 )
@@ -3493,7 +3558,7 @@ def _selected_v4_one_edit_authority_v1(
                         evaluation_spec.get("hierarchical_closure_spec"),
                         column_context_document_pages=joined_pages,
                         period_semantics=evaluation_spec.get("period_semantics"),
-                        expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                        expected_lane_unit_kinds=selected_lane_unit_kinds,
                         visible_dash_rescues=visible_dash_rescues,
                     )
                 )
@@ -3504,6 +3569,48 @@ def _selected_v4_one_edit_authority_v1(
     if not same_typed_json_v1(receipt, rebuilt):
         raise _error("selected V4 one-edit exact authority differs from occurrence proof")
     return rebuilt, canonical_clone_v1(rebuilt["unresolved_reasons"])
+
+
+def _build_column_context_for_evaluation_v1(
+    row_axis: dict[str, Any],
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    *,
+    visible_dash_rescues: tuple[dict[str, Any], ...],
+) -> tuple[dict[str, Any], list[str]]:
+    """Resolve exactly one declared lane layout without family/layout routing."""
+
+    if evaluation_spec["format_version"] != EVALUATION_SPEC_FORMAT_V5:
+        lane_unit_kinds = evaluation_spec["expected_lane_unit_kinds"]
+        context = column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(
+            row_axis,
+            joined_pages,
+            family_spec,
+            period_semantics=evaluation_spec["period_semantics"],
+            expected_lane_unit_kinds=lane_unit_kinds,
+            visible_dash_rescues=visible_dash_rescues,
+        )
+        return context, canonical_clone_v1(lane_unit_kinds)
+
+    resolved_contexts = []
+    for lane_unit_kinds in _lane_unit_kind_alternatives(evaluation_spec):
+        proposed_context = (
+            column_context_multilevel_v2.build_accounting_family_column_context_multilevel_v2(
+                row_axis,
+                joined_pages,
+                family_spec,
+                period_semantics=evaluation_spec["period_semantics"],
+                expected_lane_unit_kinds=lane_unit_kinds,
+                visible_dash_rescues=visible_dash_rescues,
+            )
+        )
+        if proposed_context["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY":
+            resolved_contexts.append((proposed_context, lane_unit_kinds))
+    if len(resolved_contexts) != 1:
+        raise _error("exactly one declared lane-unit alternative must resolve per candidate")
+    context, lane_unit_kinds = resolved_contexts[0]
+    return context, canonical_clone_v1(lane_unit_kinds)
 
 
 def _candidate_evidence_from_joined_pages(
@@ -3519,7 +3626,7 @@ def _candidate_evidence_from_joined_pages(
     prepared_snapshot: Any = None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> list[dict[str, Any]]:
-    is_v4 = evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+    is_v4 = _is_scoped_evaluation_policy(evaluation_spec)
     if is_v4:
         topology_pages = row_axis_v1._topology_pages(joined_pages)
         if prepared_topology_bindings:
@@ -3636,12 +3743,11 @@ def _candidate_evidence_from_joined_pages(
             )
             continue
         try:
-            column_context = column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(
+            column_context, selected_lane_unit_kinds = _build_column_context_for_evaluation_v1(
                 row_axis,
                 joined_pages,
                 family_spec,
-                period_semantics=evaluation_spec["period_semantics"],
-                expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+                evaluation_spec,
                 visible_dash_rescues=dash_rescues,
             )
         except ValueError as exc:
@@ -3677,7 +3783,7 @@ def _candidate_evidence_from_joined_pages(
                     family_spec,
                     topology_region,
                     period_semantics=evaluation_spec["period_semantics"],
-                    expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+                    expected_lane_unit_kinds=selected_lane_unit_kinds,
                     visible_dash_rescues=dash_rescues,
                 )
                 one_edit_exact_source_structural_proofs = occurrence_axis[
@@ -3706,7 +3812,7 @@ def _candidate_evidence_from_joined_pages(
                     topology_region,
                     evaluation_spec["hierarchical_closure_spec"],
                     period_semantics=evaluation_spec["period_semantics"],
-                    expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+                    expected_lane_unit_kinds=selected_lane_unit_kinds,
                     visible_dash_rescues=dash_rescues,
                 )
                 one_edit_exact_source_structural_proofs = occurrence_axis[
@@ -3816,7 +3922,7 @@ def _trial(
     render_snapshots: tuple[dict[str, Any], ...],
     topology_candidates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         if topology_candidates is None:
             topology_scan, topology_candidates = _v4_topology_authority(
                 _blind_pages(document),
@@ -3847,7 +3953,7 @@ def _trial(
         "source_pdf_ref": canonical_clone_v1(document["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         base["one_edit_exact_authority_receipt"] = None
     if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
@@ -3891,7 +3997,7 @@ def _trial(
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
     one_edit_receipt = None
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
             selected,
             joined_pages=joined_pages,
@@ -3912,7 +4018,7 @@ def _trial(
         ),
         **(
             {"one_edit_exact_authority_receipt": one_edit_receipt}
-            if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+            if _is_scoped_evaluation_policy(evaluation_spec)
             else {}
         ),
         "row_axis": selected["row_axis"] if selected is not None else None,
@@ -3940,7 +4046,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         raise _error("family topology specification drifted") from exc
     policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
     expected_trial_fields = (
-        _TRIAL_FIELDS_V4 if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4 else _TRIAL_FIELDS
+        _TRIAL_FIELDS_V4 if _is_scoped_evaluation_policy(policy) else _TRIAL_FIELDS
     )
     if (
         type(baseline_trial) is not dict
@@ -3988,7 +4094,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         or sum(len(page.get("lines", [])) for page in joined_pages) != packet["line_count"]
     ):
         raise _error("bounded document snapshot denominator drifted")
-    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(policy):
         _rebuilt_scan, topology_candidates = _v4_topology_authority(
             row_axis_v1._topology_pages(joined_pages),
             family_spec,
@@ -4037,7 +4143,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, policy)
     one_edit_receipt = None
-    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(policy):
         one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
             selected,
             joined_pages=joined_pages,
@@ -4060,7 +4166,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
             "private_provenance": baseline_trial["private_provenance"],
             **(
                 {"one_edit_exact_authority_receipt": one_edit_receipt}
-                if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4
+                if _is_scoped_evaluation_policy(policy)
                 else {}
             ),
             "row_axis": selected["row_axis"] if selected is not None else None,
@@ -4248,10 +4354,7 @@ def _missing_render_pages_for_document_store_trial_v1(
     ambiguity therefore does not trigger an unnecessary PDF render.
     """
 
-    is_v4 = (
-        evaluation_spec is not None
-        and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
-    )
+    is_v4 = evaluation_spec is not None and _is_scoped_evaluation_policy(evaluation_spec)
     if topology_candidates is not None and not is_v4:
         raise _error("pre-pruning render-page candidates require evaluation V4")
 
@@ -4329,10 +4432,7 @@ def _missing_render_pages_for_document_store_trial_v1(
             for row in row_axis["rows"]
             if row["missing_column_ordinals"]
         }
-        if (
-            evaluation_spec is not None
-            and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
-        ):
+        if evaluation_spec is not None and _is_scoped_evaluation_policy(evaluation_spec):
             missing_pages.update(
                 trailing["page_sequence"]
                 for trailing in row_axis["trailing_value_rows"]
@@ -4557,7 +4657,7 @@ def _trial_from_document_store_snapshot_v1(
     _v4_runtime_context: dict[str, Any] | None = None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> dict[str, Any]:
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         prepared_context = (
             _v4_runtime_context.get("prepared_context") if _v4_runtime_context is not None else None
         )
@@ -4613,7 +4713,7 @@ def _trial_from_document_store_snapshot_v1(
         "source_pdf_ref": canonical_clone_v1(packet["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         base["one_edit_exact_authority_receipt"] = None
     if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
@@ -4665,7 +4765,7 @@ def _trial_from_document_store_snapshot_v1(
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
     one_edit_receipt = None
-    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(evaluation_spec):
         one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
             selected,
             joined_pages=projected_pages,
@@ -4686,7 +4786,7 @@ def _trial_from_document_store_snapshot_v1(
         ),
         **(
             {"one_edit_exact_authority_receipt": one_edit_receipt}
-            if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+            if _is_scoped_evaluation_policy(evaluation_spec)
             else {}
         ),
         "row_axis": selected["row_axis"] if selected is not None else None,
@@ -4704,7 +4804,7 @@ def _document_store_trial_with_render_rescue_v1(
     topology_scan: dict[str, Any] | None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> dict[str, Any]:
-    is_v4 = policy["format_version"] == EVALUATION_SPEC_FORMAT_V4
+    is_v4 = _is_scoped_evaluation_policy(policy)
     runtime_context: dict[str, Any] = {}
     trial = _trial_from_document_store_snapshot_v1(
         snapshot,
@@ -4814,7 +4914,7 @@ def _v4_document_store_render_preflight_worker_v1(
         or type(snapshot) is not dict
         or type(family_spec) is not dict
         or type(policy) is not dict
-        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+        or not _is_scoped_evaluation_policy(policy)
     ):
         raise _error("V4 document-store render preflight request binding drifted")
     if _V4_RENDER_PREFLIGHT_CONTEXT_CACHE:
@@ -4988,7 +5088,7 @@ def _v4_document_store_preflight_bound_trial_worker_v1(
         or type(snapshot) is not dict
         or type(family_spec) is not dict
         or type(policy) is not dict
-        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+        or not _is_scoped_evaluation_policy(policy)
         or type(render_snapshots) is not tuple
         or any(type(render) is not dict for render in render_snapshots)
     ):
@@ -5157,7 +5257,7 @@ def _v4_document_store_trial_worker_v1(
         or type(snapshot) is not dict
         or type(family_spec) is not dict
         or type(policy) is not dict
-        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+        or not _is_scoped_evaluation_policy(policy)
         or type(render_snapshots) is not tuple
         or any(type(render) is not dict for render in render_snapshots)
         or (topology_scan is not None and type(topology_scan) is not dict)
@@ -5634,9 +5734,9 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
     document_count = projection["metrics"]["document_count"]
     if type(jobs) is not int or not 1 <= jobs <= _MAX_DOCUMENT_STORE_V4_JOBS:
         raise _error("document-store worker count must be an integer from 1 to 16")
-    if jobs != 1 and policy["format_version"] != EVALUATION_SPEC_FORMAT_V4:
+    if jobs != 1 and not _is_scoped_evaluation_policy(policy):
         raise _error("parallel document-store trials require evaluation V4")
-    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(policy):
         topology_scans = None
     else:
         topology_scans = document_store_v1.read_authenticated_family_first_topology_scans_v1(
@@ -5646,7 +5746,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
         if len(topology_scans) != document_count:
             raise _error("document-store topology denominator differs from its packet axis")
     trials = []
-    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(policy):
         packets = tuple(
             document_store_v1.read_authenticated_family_first_document_packet_v1(
                 document_store_capability,
@@ -5792,7 +5892,7 @@ def _validate(value: Any) -> dict[str, Any]:
         raise _error("family-first accounting evidence sweep shape drifted")
     evaluation_format = value["evaluation_spec"]["value"].get("format_version")
     expected_trial_fields = (
-        _TRIAL_FIELDS_V4 if evaluation_format == EVALUATION_SPEC_FORMAT_V4 else _TRIAL_FIELDS
+        _TRIAL_FIELDS_V4 if _is_scoped_evaluation_format(evaluation_format) else _TRIAL_FIELDS
     )
     for ordinal, trial in enumerate(value["trials"], 1):
         if (
@@ -5812,7 +5912,7 @@ def _validate(value: Any) -> dict[str, Any]:
             or set(trial["document_axis_binding"]) != _BINDING_FIELDS
         ):
             raise _error("family-first document-axis binding drifted")
-        if evaluation_format == EVALUATION_SPEC_FORMAT_V4:
+        if _is_scoped_evaluation_format(evaluation_format):
             receipt = trial["one_edit_exact_authority_receipt"]
             if (
                 trial["evidence_status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
@@ -5883,7 +5983,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     except (ValueError, RuntimeError) as exc:
         raise _error("family topology specification drifted") from exc
     policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
-    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+    if _is_scoped_evaluation_policy(policy):
         raise _error("V4_REQUIRES_AUTHENTICATED_DOCUMENT_STORE_SELECTED_SNAPSHOT")
     try:
         semantic_projection = semantic_v1.project_authenticated_family_first_semantic_index_v1(
@@ -5910,7 +6010,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     prepared = []
     for document in semantic_documents:
         topology_pages = _blind_pages(document)
-        if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        if _is_scoped_evaluation_policy(policy):
             topology_scan, topology_candidates = _v4_topology_authority(
                 topology_pages,
                 family_spec,

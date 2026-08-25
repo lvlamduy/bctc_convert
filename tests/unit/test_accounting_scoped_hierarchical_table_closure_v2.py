@@ -205,6 +205,84 @@ def _rounding_hierarchy(*, v2: bool = True) -> dict[str, object]:
     return hierarchy
 
 
+def _flexible_optional_sibling_hierarchy() -> dict[str, object]:
+    hierarchy = _rounding_hierarchy(v2=True)
+    hierarchy["format_version"] = subject.SPEC_FORMAT_VERSION_V3
+    hierarchy["equations"][0]["component_selection_policy"] = (
+        "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
+    )
+    return hierarchy
+
+
+def _nested_flexible_direct_frontier_specs() -> tuple[dict[str, object], dict[str, object]]:
+    topology = copy.deepcopy(_topology())
+    topology["children"] = [
+        {
+            "matchers": [_matcher("Nhóm Alpha")],
+            "presence": "OPTIONAL",
+            "role": "GROUP_ALPHA",
+            "role_kind": "STRUCTURAL_GROUP",
+        },
+        {
+            "matchers": [_matcher("Khoản Alpha", "GROUP_ALPHA")],
+            "presence": "OPTIONAL",
+            "role": "COMPONENT_1",
+            "role_kind": "ADDITIVE_CHILD",
+        },
+        {
+            "matchers": [_matcher("Khoản Bravo", "GROUP_ALPHA")],
+            "presence": "OPTIONAL",
+            "role": "COMPONENT_2",
+            "role_kind": "ADDITIVE_CHILD",
+        },
+        {
+            "matchers": [_matcher("Khoản Charlie")],
+            "presence": "OPTIONAL",
+            "role": "COMPONENT_3",
+            "role_kind": "ADDITIVE_CHILD",
+        },
+        {
+            "matchers": [_matcher("Tổng cộng")],
+            "presence": "OPTIONAL",
+            "role": "EXPLICIT_FAMILY_TOTAL",
+            "role_kind": "TOTAL",
+        },
+    ]
+    topology["required_role_combinations"] = [["GROUP_ALPHA", "COMPONENT_3"]]
+    hierarchy = {
+        "equations": [
+            {
+                "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+                "component_role_alternatives": [_alternative(["COMPONENT_1", "COMPONENT_2"])],
+                "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+                "result_role": "GROUP_ALPHA",
+                "trailing_result_policy": "IGNORE",
+                "visible_result_roles": ["GROUP_ALPHA"],
+                "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS",
+            },
+            {
+                "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+                "component_role_alternatives": [
+                    _alternative(["GROUP_ALPHA", "COMPONENT_1", "COMPONENT_2", "COMPONENT_3"])
+                ],
+                "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+                "result_role": "INTERBANK",
+                "trailing_result_policy": "IGNORE",
+                "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS",
+            },
+        ],
+        "family_id": "INTERBANK",
+        "format_version": subject.SPEC_FORMAT_VERSION_V3,
+        "repeated_role_policy": {"aggregate_roles": [], "local_subtotal_roles": []},
+        "source_role_policy": {
+            "one_edit_role_or_scope_match_policy": "VETO",
+            "source_only_veto_roles": [],
+        },
+    }
+    return topology, hierarchy
+
+
 def _line(ordinal: int, text: str, numeric: str, bbox: list[int]) -> dict[str, object]:
     return {
         "bbox": bbox,
@@ -858,6 +936,333 @@ def _insert_off_lane_body_numeric(pages: list[dict], token: str) -> None:
             "sha256": f"{ordinal + 1:064x}",
             "size_bytes": 100 + ordinal,
         }
+
+
+def test_v3_flexible_optional_sibling_pool_selects_every_visible_declared_role() -> None:
+    topology = _rounding_topology()
+    topology["required_role_combinations"] = [["COMPONENT_1", "COMPONENT_3"]]
+    pages = _pages(
+        [
+            ("Khoản Alpha", "10", "8"),
+            ("Khoản Charlie", "20", "15"),
+            ("Khoản Foxtrot", "30", "22"),
+        ],
+        trailing=[("60", "45")],
+    )
+
+    _axis_result, closure = _closure(
+        pages,
+        topology=topology,
+        hierarchy=_flexible_optional_sibling_hierarchy(),
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equation = closure["equations"]["global"][0]
+    assert equation["component_roles_present"] == [
+        "COMPONENT_1",
+        "COMPONENT_3",
+        "COMPONENT_6",
+    ]
+    assert equation["status"] == "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+
+
+def test_v3_flexible_optional_sibling_pool_cannot_omit_one_visible_role() -> None:
+    topology = _rounding_topology()
+    topology["required_role_combinations"] = [["COMPONENT_1", "COMPONENT_3"]]
+    pages = _pages(
+        [
+            ("Khoản Alpha", "10", "8"),
+            ("Khoản Bravo", "7", "6"),
+            ("Khoản Charlie", "20", "15"),
+            ("Khoản Foxtrot", "30", "22"),
+        ],
+        # This total deliberately omits COMPONENT_2.  A minimum-count or
+        # arbitrary-subset implementation would incorrectly accept 60/45.
+        trailing=[("60", "45")],
+    )
+
+    _axis_result, closure = _closure(
+        pages,
+        topology=topology,
+        hierarchy=_flexible_optional_sibling_hierarchy(),
+    )
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:INTERBANK")
+        for reason in closure["unresolved_reasons"]
+    )
+
+
+def test_v3_flexible_pool_selects_one_exact_direct_frontier_not_parent_and_children() -> None:
+    topology, hierarchy = _nested_flexible_direct_frontier_specs()
+    pages = _pages(
+        [
+            ("Nhóm Alpha", "30", "20"),
+            ("Khoản Alpha", "10", "8"),
+            ("Khoản Bravo", "20", "12"),
+            ("Khoản Charlie", "5", "4"),
+            ("Tổng cộng", "35", "24"),
+        ]
+    )
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equations = {record["result_role"]: record for record in closure["equations"]["global"]}
+    assert equations["GROUP_ALPHA"]["component_roles_present"] == [
+        "COMPONENT_1",
+        "COMPONENT_2",
+    ]
+    assert equations["INTERBANK"]["component_roles_present"] == [
+        "GROUP_ALPHA",
+        "COMPONENT_3",
+    ]
+    assert not any("USE_COUNT_NOT_ONE" in reason for reason in closure["unresolved_reasons"])
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_v3_flexible_pool_does_not_hide_unowned_visible_child_behind_source_only_group() -> None:
+    topology, hierarchy = _nested_flexible_direct_frontier_specs()
+    pages = _pages(
+        [
+            ("Nhóm Alpha", "30", "20"),
+            # Only one declared group child is visible, so GROUP_ALPHA cannot
+            # establish an exact selected child frontier for the second row.
+            ("Khoản Alpha", "10", "8"),
+            ("Khoản Charlie", "5", "4"),
+            ("Tổng cộng", "35", "24"),
+        ]
+    )
+
+    _axis_result, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM:GROUP_ALPHA")
+        for reason in closure["unresolved_reasons"]
+    )
+
+
+def _family12_nested_group_core_and_grand_total_pages() -> list[dict[str, object]]:
+    lines = [
+        _line(0, "Cho vay khách hàng", "", [25, 15, 500, 38]),
+        _line(1, "31/12/2025", "", [610, 45, 700, 65]),
+        _line(2, "31/12/2024", "", [810, 45, 900, 65]),
+        _line(3, "Đơn vị: Triệu đồng", "", [610, 72, 900, 94]),
+    ]
+
+    def append_row(
+        label: str, current: int, prior: int, *, top_override: int | None = None
+    ) -> None:
+        ordinal = len(lines)
+        top = 110 + (ordinal - 4) // 3 * 45 if top_override is None else top_override
+        lines.extend(
+            [
+                _line(ordinal, label, "", [45, top, 520, top + 20]),
+                _line(ordinal + 1, str(current), str(current), [610, top, 700, top + 20]),
+                _line(ordinal + 2, str(prior), str(prior), [810, top, 900, top + 20]),
+            ]
+        )
+
+    append_row("Cho vay các TCKT", 100, 80)
+    append_row("Doanh nghiệp nhà nước", 60, 50)
+    append_row("Công ty TNHH", 40, 30)
+    append_row("Cho vay cá nhân", 20, 15)
+    append_row("Hộ kinh doanh, cá nhân", 20, 15)
+    append_row("Cho vay khác", 8, 6)
+    append_row("Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội", 5, 4)
+    append_row("Khác", 3, 2)
+    append_row("Cho vay tại Chi nhánh và ngân hàng con nước ngoài", 9, 6)
+    append_row("Cho vay Doanh nghiệp", 7, 5)
+    append_row("Cho vay cá nhân", 2, 1)
+
+    core_top = lines[-1]["bbox"][1] + 45
+    lines.extend(
+        [
+            _line(len(lines), "137", "137", [610, core_top, 700, core_top + 20]),
+            _line(len(lines) + 1, "107", "107", [810, core_top, 900, core_top + 20]),
+        ]
+    )
+    append_row("Cho vay giao dịch ký quỹ", 3, 2, top_override=core_top + 45)
+    total_top = lines[-1]["bbox"][1] + 45
+    lines.extend(
+        [
+            _line(len(lines), "140", "140", [610, total_top, 700, total_top + 20]),
+            _line(len(lines) + 1, "109", "109", [810, total_top, 900, total_top + 20]),
+        ]
+    )
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
+def test_family12_nested_groups_feed_one_core_then_one_grand_total_direct_frontier() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_nested_group_core_and_grand_total_pages()
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equations = {record["result_role"]: record for record in closure["equations"]["global"]}
+    assert equations["ECONOMIC_ORGANIZATION_LOANS_GROUP"]["component_roles_present"] == [
+        "STATE_ENTERPRISE_LOANS",
+        "LIMITED_LIABILITY_COMPANY_LOANS",
+    ]
+    assert equations["FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"]["component_roles_present"] == [
+        "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+        "FOREIGN_BRANCH_INDIVIDUAL_LOANS",
+    ]
+    assert equations["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["component_roles_present"] == [
+        "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+        "INDIVIDUAL_LOANS_GROUP",
+        "OTHER_CUSTOMER_LOANS_GROUP",
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+    ]
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["component_roles_present"] == [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+    ]
+    core_coverage = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )
+    assert core_coverage["occurrence_id"] is None
+    assert core_coverage["occurrence_binding_receipt"]["binding_kind"] == (
+        "DECLARED_UNLABELED_INTERMEDIATE_DIRECT_FRONTIER"
+    )
+    assert (
+        len(
+            [
+                record
+                for record in closure["coverage_receipt"]
+                if record["role"] == "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+            ]
+        )
+        == 1
+    )
+    assert not any("USE_COUNT_NOT_ONE" in reason for reason in closure["unresolved_reasons"])
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    ["MISSING_CORE", "PARTIAL_CORE", "MISMATCHED_CORE", "MIXED_LEVEL_DOUBLE_COUNT"],
+)
+def test_family12_unlabeled_core_requires_one_complete_exact_direct_frontier(
+    attack: str,
+) -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_nested_group_core_and_grand_total_pages()
+    lines = pages[0]["lines"]
+    margin_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Cho vay giao dịch ký quỹ"
+    )
+    core = lines[margin_index - 2 : margin_index]
+    assert [line["vietocr_text"] for line in core] == ["137", "107"]
+    if attack == "MISSING_CORE":
+        del lines[margin_index - 2 : margin_index]
+    elif attack == "PARTIAL_CORE":
+        del lines[margin_index - 1]
+    else:
+        values = ("138", "107") if attack == "MISMATCHED_CORE" else ("237", "187")
+        for line, token in zip(core, values, strict=True):
+            line["vietocr_text"] = token
+            line["numeric_recognition"]["raw_prediction"] = token
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith(
+            "DECLARED_UNLABELED_INTERMEDIATE_RESULT_REQUIRED:CORE_LOAN_ENTERPRISE_SUBTOTAL"
+        )
+        or reason.startswith("SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:")
+        or reason.startswith("VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_family12_unlabeled_intermediate_receipt_coherent_parent_tamper_rejects() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _family12_nested_group_core_and_grand_total_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    core = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )
+    receipt = core["occurrence_binding_receipt"]
+    receipt["target_parent_occurrence_id"] = "aforav2:occurrence:" + "f" * 64
+    material = copy.deepcopy(receipt)
+    material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:occurrence-bound-subtotal:" + (
+        canonical_json_sha256_v1(material)
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="target or parent ownership|replay exactly",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked, axis, topology, hierarchy
+        )
 
 
 @pytest.mark.parametrize("token", ["0", "7", "-"])

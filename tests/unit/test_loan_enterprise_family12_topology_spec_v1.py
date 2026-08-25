@@ -5,6 +5,7 @@ from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
 )
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
     build_accounting_family_topology_scan_v1,
+    enumerate_accounting_family_role_occurrences_v1,
 )
 from bctc_ai.evaluation.accounting_minimal_unique_anchor_resolution_v1 import (
     build_accounting_minimal_unique_anchor_resolution_v1,
@@ -40,21 +41,22 @@ def _all_keys(value: object) -> set[str]:
     return set()
 
 
-def test_family12_topology_spec_is_schema_free_shared_v3_data() -> None:
+def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     spec = build_loan_enterprise_family12_topology_spec_v1()
     leaf_roles = {child["role"]: child for child in spec["children"]}
 
     assert spec["family_id"] == FAMILY_ID
-    assert spec["format_version"] == "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
+    assert spec["format_version"] == "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4"
     assert spec["parent"] == {
         "aliases": [
             "Cho vay khách hàng",
             "Cho vay khách hàng (tiếp theo)",
             "Các khoản cho vay khách hàng",
             "Dư nợ cho vay khách hàng",
+            "Dư nợ cho vay khách hàng của Ngân hàng",
         ],
         "resolution_mode": "EXPLICIT_ONLY",
-        "role": "CUSTOMER_LOAN_OWNER",
+        "role": FAMILY_ID,
     }
     assert spec["limits"] == {
         "max_cluster_span_lines": 160,
@@ -62,14 +64,32 @@ def test_family12_topology_spec_is_schema_free_shared_v3_data() -> None:
         "max_label_line_span": 3,
     }
     assert leaf_roles["ENTERPRISE_TYPE_BRANCH"]["role_kind"] == "STRUCTURAL_GROUP"
+    assert leaf_roles["ECONOMIC_ORGANIZATION_LOANS_GROUP"]["role_kind"] == ("STRUCTURAL_GROUP")
+    assert leaf_roles["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["role_kind"] == "STRUCTURAL_GROUP"
+    assert leaf_roles["EXPLICIT_LOAN_ENTERPRISE_TOTAL"]["role_kind"] == "TOTAL"
     foreign = leaf_roles["FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"]
     assert foreign["presence"] == "OPTIONAL"
-    assert foreign["role_kind"] == "NONADDITIVE_CHILD"
+    assert foreign["role_kind"] == "STRUCTURAL_GROUP"
     assert foreign["matchers"][0]["within_role"] == "ENTERPRISE_TYPE_BRANCH"
+    assert foreign["matchers"][1]["within_role"] is None
+    assert foreign["matchers"][1]["aliases"] == foreign["matchers"][0]["aliases"]
     assert "Cho vay tại chi nhánh và ngân hàng con nước ngoài" in foreign["matchers"][0]["aliases"]
     assert ["ENTERPRISE_TYPE_BRANCH", "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"] in spec[
         "required_role_combinations"
     ]
+    assert len(spec["required_role_pools"]) == 1
+    assert spec["required_role_pools"][0]["minimum_count"] == 2
+    pool_roles = spec["required_role_pools"][0]["roles"]
+    assert len(pool_roles) == 19
+    assert {
+        "STATE_ENTERPRISE_LOANS",
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+    } <= set(pool_roles)
+    assert {
+        "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+        "FOREIGN_BRANCH_INDIVIDUAL_LOANS",
+    }.isdisjoint(pool_roles)
     assert "Các giao dịch với bên liên quan" in spec["hard_negative_aliases"]
     assert {
         "bank",
@@ -117,7 +137,7 @@ def test_family12_same_page_owner_branch_child_uses_pair_before_triple() -> None
         "combination_size": 2,
         "pair_before_triple_search": True,
         "selected_roles": [
-            "PARENT:CUSTOMER_LOAN_OWNER",
+            "PARENT:LOAN_ENTERPRISE_FAMILY12",
             "CHILD:ENTERPRISE_TYPE_BRANCH",
         ],
     }
@@ -147,6 +167,108 @@ def test_family12_child_can_continue_exactly_one_reset_free_page() -> None:
     )
     assert company["page_sequence"] == 2
     assert company["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
+def test_family12_branch_before_wrapped_owner_uses_two_exact_context_free_leaves() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+                    "Dư nợ cho vay khách hàng của Ngân",
+                    "hàng",
+                    "Công ty Nhà nước",
+                    "Công ty TNHH khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["parent_match"]["source_line_index"] == 1
+    assert region["parent_match"]["end_source_line_index"] == 2
+    assert region["observed_roles"] == [
+        "STATE_ENTERPRISE_LOANS",
+        "OTHER_LLC_LOANS",
+    ]
+    assert all(item["matched_within_role"] is None for item in region["child_matches"])
+
+
+def test_family12_branchless_owner_requires_two_distinct_exact_leaf_roles() -> None:
+    spec = build_loan_enterprise_family12_topology_spec_v1()
+    positive = build_accounting_family_topology_scan_v1(
+        [_page(["Cho vay khách hàng", "Công ty TNHH khác", "Doanh nghiệp nhà nước"])],
+        spec,
+    )
+    partial = build_accounting_family_topology_scan_v1(
+        [_page(["Cho vay khách hàng", "Công ty TNHH khác"])],
+        spec,
+    )
+
+    assert positive["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert positive["regions"][0]["observed_roles"] == [
+        "OTHER_LLC_LOANS",
+        "STATE_ENTERPRISE_LOANS",
+    ]
+    assert partial["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert partial["metrics"]["complete_region_count"] == 0
+
+
+def test_family12_deposit_enterprise_table_without_loan_owner_is_not_observed() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "TIỀN GỬI CỦA KHÁCH HÀNG",
+                    "Theo đối tượng khách hàng, loại hình doanh nghiệp",
+                    "Công ty nhà nước",
+                    "Công ty cổ phần khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert result["regions"] == []
+    assert result["near_regions"] == []
+
+
+def test_family12_nested_same_label_prefers_exact_contextual_source_child() -> None:
+    pages = [
+        _page(
+            [
+                "Cho vay khách hàng",
+                "Cho vay các TCKT",
+                "Công ty Nhà nước",
+                "Cho vay cá nhân",
+                "Hộ kinh doanh, cá nhân",
+                "Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+                "Cho vay Doanh nghiệp",
+                "Cho vay cá nhân",
+            ]
+        )
+    ]
+    spec = build_loan_enterprise_family12_topology_spec_v1()
+    result = build_accounting_family_topology_scan_v1(pages, spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    occurrences = enumerate_accounting_family_role_occurrences_v1(pages, spec, result["regions"][0])
+    by_role = {}
+    for occurrence in occurrences:
+        by_role.setdefault(occurrence["role"], []).append(occurrence)
+    assert [item["source_line_index"] for item in by_role["ECONOMIC_ORGANIZATION_LOANS_GROUP"]] == [
+        1
+    ]
+    assert [item["source_line_index"] for item in by_role["INDIVIDUAL_LOANS_GROUP"]] == [3]
+    assert by_role["FOREIGN_BRANCH_ENTERPRISE_LOANS"][0]["matched_within_role"] == (
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+    )
+    assert by_role["FOREIGN_BRANCH_INDIVIDUAL_LOANS"][0]["matched_within_role"] == (
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+    )
 
 
 def test_family12_reset_fenced_span_retains_a_known_long_same_table_child() -> None:
@@ -264,7 +386,7 @@ def test_family12_distinct_targets_require_shared_pair_controls_before_triples()
                 "LIMITED_LIABILITY_COMPANY_LOANS",
             ],
             "disposition": "COMPLETE",
-            "parent_anchor_id": "CUSTOMER_LOAN_OWNER",
+            "parent_anchor_id": "LOAN_ENTERPRISE_FAMILY12",
         },
         {
             "candidate_id": "complete-state",
@@ -273,13 +395,13 @@ def test_family12_distinct_targets_require_shared_pair_controls_before_triples()
                 "STATE_ENTERPRISE_LOANS",
             ],
             "disposition": "COMPLETE",
-            "parent_anchor_id": "CUSTOMER_LOAN_OWNER",
+            "parent_anchor_id": "LOAN_ENTERPRISE_FAMILY12",
         },
         {
             "candidate_id": "near-owner-company",
             "child_anchor_ids": ["LIMITED_LIABILITY_COMPANY_LOANS"],
             "disposition": "NEAR",
-            "parent_anchor_id": "CUSTOMER_LOAN_OWNER",
+            "parent_anchor_id": "LOAN_ENTERPRISE_FAMILY12",
         },
         {
             "candidate_id": "near-branch-company",
@@ -294,7 +416,7 @@ def test_family12_distinct_targets_require_shared_pair_controls_before_triples()
             "candidate_id": "near-owner-state",
             "child_anchor_ids": ["STATE_ENTERPRISE_LOANS"],
             "disposition": "NEAR",
-            "parent_anchor_id": "CUSTOMER_LOAN_OWNER",
+            "parent_anchor_id": "LOAN_ENTERPRISE_FAMILY12",
         },
         {
             "candidate_id": "near-branch-state",
@@ -314,12 +436,12 @@ def test_family12_distinct_targets_require_shared_pair_controls_before_triples()
     }
 
     assert complete["complete-company"]["selected_anchor_ids"] == [
-        "CUSTOMER_LOAN_OWNER",
+        "LOAN_ENTERPRISE_FAMILY12",
         "ENTERPRISE_TYPE_BRANCH",
         "LIMITED_LIABILITY_COMPANY_LOANS",
     ]
     assert complete["complete-state"]["selected_anchor_ids"] == [
-        "CUSTOMER_LOAN_OWNER",
+        "LOAN_ENTERPRISE_FAMILY12",
         "ENTERPRISE_TYPE_BRANCH",
         "STATE_ENTERPRISE_LOANS",
     ]

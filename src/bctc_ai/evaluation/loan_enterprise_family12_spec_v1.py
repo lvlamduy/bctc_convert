@@ -34,7 +34,7 @@ FORMAT_VERSION = "LOAN_ENTERPRISE_FAMILY12_SPEC_V1"
 FAMILY_ID = "LOAN_ENTERPRISE_FAMILY12"
 REPORT_NORM_ID = 766
 PARENT_REPORT_NORM_ID = 716
-TOPOLOGY_SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
+TOPOLOGY_SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4"
 
 
 _BRANCH_ALIASES = [
@@ -71,6 +71,7 @@ _OWNER_ALIASES = [
     "Cho vay khách hàng (tiếp theo)",
     "Các khoản cho vay khách hàng",
     "Dư nợ cho vay khách hàng",
+    "Dư nợ cho vay khách hàng của Ngân hàng",
 ]
 
 _CONTEXT_CLASSES = [
@@ -379,17 +380,104 @@ def _distinct_aliases(aliases: list[str]) -> list[str]:
 
 def _topology_child(child: dict[str, Any]) -> dict[str, Any]:
     report_norm_id = child["report_norm_id"]
+    aliases = _distinct_aliases(child["aliases"])
     return {
         "matchers": [
             {
-                "aliases": _distinct_aliases(child["aliases"]),
+                "aliases": aliases,
                 "within_role": "ENTERPRISE_TYPE_BRANCH",
-            }
+            },
+            {
+                "aliases": aliases,
+                "within_role": None,
+            },
         ],
         "presence": "OPTIONAL",
         "role": _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[report_norm_id],
-        "role_kind": ("NONADDITIVE_CHILD" if report_norm_id == 6058 else "ADDITIVE_CHILD"),
+        "role_kind": ("STRUCTURAL_GROUP" if report_norm_id == 6058 else "ADDITIVE_CHILD"),
     }
+
+
+_TOPOLOGY_SOURCE_GROUP_CHILDREN = [
+    {
+        "matchers": [
+            {
+                "aliases": [
+                    "Cho vay các TCKT",
+                    "Cho vay các tổ chức kinh tế",
+                    "Cho vay doanh nghiệp",
+                ],
+                "within_role": None,
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+        "role_kind": "STRUCTURAL_GROUP",
+    },
+    {
+        "matchers": [{"aliases": ["Cho vay cá nhân"], "within_role": None}],
+        "presence": "OPTIONAL",
+        "role": "INDIVIDUAL_LOANS_GROUP",
+        "role_kind": "STRUCTURAL_GROUP",
+    },
+    {
+        "matchers": [{"aliases": ["Cho vay khác"], "within_role": None}],
+        "presence": "OPTIONAL",
+        "role": "OTHER_CUSTOMER_LOANS_GROUP",
+        "role_kind": "STRUCTURAL_GROUP",
+    },
+    {
+        "matchers": [
+            {
+                "aliases": [
+                    "Tổng dư nợ cho vay theo loại hình doanh nghiệp",
+                    "Tổng dư nợ cho vay khách hàng theo loại hình doanh nghiệp",
+                ],
+                "within_role": None,
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+        "role_kind": "STRUCTURAL_GROUP",
+    },
+    {
+        "matchers": [
+            {
+                "aliases": ["Tổng cộng", "Tổng dư nợ cho vay khách hàng"],
+                "within_role": None,
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "EXPLICIT_LOAN_ENTERPRISE_TOTAL",
+        "role_kind": "TOTAL",
+    },
+]
+
+
+_TOPOLOGY_NESTED_SOURCE_CHILDREN = [
+    {
+        "matchers": [
+            {
+                "aliases": ["Cho vay Doanh nghiệp"],
+                "within_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+        "role_kind": "ADDITIVE_CHILD",
+    },
+    {
+        "matchers": [
+            {
+                "aliases": ["Cho vay cá nhân"],
+                "within_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+            }
+        ],
+        "presence": "OPTIONAL",
+        "role": "FOREIGN_BRANCH_INDIVIDUAL_LOANS",
+        "role_kind": "ADDITIVE_CHILD",
+    },
+]
 
 
 _TOPOLOGY_CHILDREN = [
@@ -404,7 +492,13 @@ _TOPOLOGY_CHILDREN = [
         "role": "ENTERPRISE_TYPE_BRANCH",
         "role_kind": "STRUCTURAL_GROUP",
     },
+    *_TOPOLOGY_SOURCE_GROUP_CHILDREN,
     *[_topology_child(child) for child in _CHILDREN],
+    *_TOPOLOGY_NESTED_SOURCE_CHILDREN,
+]
+
+_TOPOLOGY_LEAF_ROLES = [
+    _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[child["report_norm_id"]] for child in _CHILDREN
 ]
 
 _TOPOLOGY_SPEC: dict[str, Any] = {
@@ -427,12 +521,17 @@ _TOPOLOGY_SPEC: dict[str, Any] = {
     "parent": {
         "aliases": _distinct_aliases(_OWNER_ALIASES),
         "resolution_mode": "EXPLICIT_ONLY",
-        "role": "CUSTOMER_LOAN_OWNER",
+        "role": FAMILY_ID,
     },
     "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
     "required_role_combinations": [
-        ["ENTERPRISE_TYPE_BRANCH", _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[child["report_norm_id"]]]
-        for child in _CHILDREN
+        *[["ENTERPRISE_TYPE_BRANCH", role] for role in _TOPOLOGY_LEAF_ROLES],
+    ],
+    "required_role_pools": [
+        {
+            "minimum_count": 2,
+            "roles": _TOPOLOGY_LEAF_ROLES,
+        }
     ],
     "structural_reset_aliases": _distinct_aliases(_STRUCTURAL_RESET_ALIASES),
 }

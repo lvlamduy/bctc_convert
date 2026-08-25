@@ -779,6 +779,109 @@ def test_v4_hierarchical_binding_maps_complete_leaf_without_inventing_family_roo
     assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [562]
 
 
+def _v6_common_owner_schema() -> tuple[dict[str, object], dict[int, dict[str, object]]]:
+    family = _family_spec()
+    binding = {
+        "family_id": "CASH_PRECIOUS_METALS",
+        "family_owner_report_norm_id": 560,
+        "family_report_norm_id": 561,
+        "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+        "format_version": subject.SPEC_FORMAT_VERSION_V6,
+        "ignored_roles": [],
+        "role_bindings": [
+            {
+                "parent_report_norm_id": 561,
+                "report_norm_id": 562,
+                "role": "CASH_VND",
+            },
+            {
+                "parent_report_norm_id": 564,
+                "report_norm_id": 563,
+                "role": "CASH_FOREIGN",
+            },
+        ],
+    }
+    nodes = {
+        node["schema_id"]: node
+        for node in map(json.loads, _schema_payload(foreign_parent=564).decode().splitlines())
+    }
+    axes = {
+        "allowed_period_type": ["SNAPSHOT", "DURATION"],
+        "allowed_sign": ["POSITIVE", "NEGATIVE", "ZERO"],
+        "scope": ["SEPARATE", "CONSOLIDATED"],
+        "statement_type": "TM",
+    }
+    nodes[560] = {
+        **axes,
+        "canonical_name": "Common schema owner",
+        "children": [561, 564],
+        "parent_id": 500,
+        "schema_id": 560,
+    }
+    nodes[561]["children"] = [562]
+    nodes[564] = {
+        **axes,
+        "canonical_name": "Reviewed sibling taxonomy",
+        "children": [563],
+        "parent_id": 560,
+        "schema_id": 564,
+    }
+    return {"binding": binding, "family": family}, nodes
+
+
+def test_v6_binding_reuses_exact_sibling_taxonomy_node_under_one_declared_owner() -> None:
+    material, nodes = _v6_common_owner_schema()
+
+    parsed = subject._schema_spec(material["binding"], material["family"])
+    parent, direct, aggregates = subject._bind_schema(nodes, parsed)
+
+    assert parent["schema_id"] == 561
+    assert {role: node["schema_id"] for role, node in direct.items()} == {
+        "CASH_VND": 562,
+        "CASH_FOREIGN": 563,
+    }
+    assert direct["CASH_FOREIGN"]["parent_id"] == 564
+    assert aggregates == []
+
+
+@pytest.mark.parametrize(
+    "mutation, error",
+    [
+        (
+            lambda material, nodes: material["binding"].__setitem__(
+                "family_owner_report_norm_id", 561
+            ),
+            "owner identity",
+        ),
+        (
+            lambda material, nodes: nodes[561].__setitem__("parent_id", 500),
+            "exact child",
+        ),
+        (
+            lambda material, nodes: material["binding"]["role_bindings"][1].__setitem__(
+                "parent_report_norm_id", 561
+            ),
+            "role ReportNormId",
+        ),
+        (
+            lambda material, nodes: nodes[564].__setitem__("parent_id", 500),
+            "role ReportNormId",
+        ),
+    ],
+)
+def test_v6_binding_rejects_wrong_owner_exact_parent_and_outside_subtree(mutation, error) -> None:
+    material, nodes = _v6_common_owner_schema()
+    mutation(material, nodes)
+
+    if error == "owner identity":
+        with pytest.raises(subject.FamilyFirstAccountingSchemaMappingV1Error, match=error):
+            subject._schema_spec(material["binding"], material["family"])
+        return
+    parsed = subject._schema_spec(material["binding"], material["family"])
+    with pytest.raises(subject.FamilyFirstAccountingSchemaMappingV1Error, match=error):
+        subject._bind_schema(nodes, parsed)
+
+
 def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants() -> None:
     config_root = _PROJECT_ROOT / "config/families"
     family = json.loads(

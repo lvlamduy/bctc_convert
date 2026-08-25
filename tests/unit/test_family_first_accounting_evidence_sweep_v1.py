@@ -5825,6 +5825,130 @@ def test_evaluation_policy_type_and_enum_drift_fail_closed(monkeypatch, mutation
         )
 
 
+def _v5_lane_alternative_policy() -> dict[str, object]:
+    return {
+        **_strict_same_population_selection_policy(),
+        "expected_lane_unit_kind_alternatives": [
+            ["MONEY", "MONEY"],
+            ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+        ],
+        "family_id": "CASH_PRECIOUS_METALS",
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V5,
+        "hierarchical_closure_spec": {"generic": "hierarchy"},
+        "occurrence_row_axis_policy": {"generic": "occurrence"},
+        "period_semantics": "BALANCE_COMPARATIVE",
+    }
+
+
+def test_v5_evaluation_accepts_only_unique_declared_lane_layouts(monkeypatch) -> None:
+    monkeypatch.setattr(subject.occurrence_row_v2, "_policy", lambda value: value)
+    monkeypatch.setattr(subject.scoped_v2, "_spec", lambda value, _family: value)
+
+    policy = subject._evaluation_spec(
+        _v5_lane_alternative_policy(),
+        _family_spec(),
+        raw_family_spec=_family_spec(),
+    )
+
+    assert policy["expected_lane_unit_kind_alternatives"] == [
+        ["MONEY", "MONEY"],
+        ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "alternatives",
+    [
+        [],
+        [["MONEY", "MONEY"], ["MONEY", "MONEY"]],
+        [["MONEY", "BANK_SPECIFIC"]],
+        ["MONEY", "PERCENT"],
+    ],
+)
+def test_v5_evaluation_rejects_empty_duplicate_or_untyped_lane_layouts(
+    monkeypatch, alternatives
+) -> None:
+    monkeypatch.setattr(subject.occurrence_row_v2, "_policy", lambda value: value)
+    monkeypatch.setattr(subject.scoped_v2, "_spec", lambda value, _family: value)
+    policy = _v5_lane_alternative_policy()
+    policy["expected_lane_unit_kind_alternatives"] = alternatives
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="lane-unit alternatives",
+    ):
+        subject._evaluation_spec(policy, _family_spec(), raw_family_spec=_family_spec())
+
+
+def test_v5_column_context_selects_one_layout_and_rejects_zero_or_multiple(
+    monkeypatch,
+) -> None:
+    policy = _v5_lane_alternative_policy()
+    calls = []
+
+    def build(_row, _pages, _family, *, expected_lane_unit_kinds, **_kwargs):
+        calls.append(copy.deepcopy(expected_lane_unit_kinds))
+        return {
+            "status": (
+                "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+                if expected_lane_unit_kinds == ["MONEY", "PERCENT", "MONEY", "PERCENT"]
+                else "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+            ),
+            "unit_axis": [
+                {"column_ordinal": ordinal, "unit_kind": kind}
+                for ordinal, kind in enumerate(expected_lane_unit_kinds)
+            ],
+        }
+
+    monkeypatch.setattr(
+        subject.column_context_multilevel_v2,
+        "build_accounting_family_column_context_multilevel_v2",
+        build,
+    )
+    context, selected = subject._build_column_context_for_evaluation_v1(
+        {}, [], {}, policy, visible_dash_rescues=()
+    )
+
+    assert selected == ["MONEY", "PERCENT", "MONEY", "PERCENT"]
+    assert subject._resolved_lane_unit_kinds(policy, context) == selected
+    assert calls == policy["expected_lane_unit_kind_alternatives"]
+
+    for resolved_count in (0, 2):
+        count = 0
+
+        def ambiguous(
+            _row,
+            _pages,
+            _family,
+            *,
+            expected_lane_unit_kinds,
+            _resolved_count=resolved_count,
+            **_kwargs,
+        ):
+            nonlocal count
+            count += 1
+            return {
+                "status": (
+                    "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+                    if count <= _resolved_count
+                    else "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+                )
+            }
+
+        monkeypatch.setattr(
+            subject.column_context_multilevel_v2,
+            "build_accounting_family_column_context_multilevel_v2",
+            ambiguous,
+        )
+        with pytest.raises(
+            subject.FamilyFirstAccountingEvidenceSweepV1Error,
+            match="exactly one declared lane-unit alternative",
+        ):
+            subject._build_column_context_for_evaluation_v1(
+                {}, [], {}, policy, visible_dash_rescues=()
+            )
+
+
 @pytest.mark.parametrize("equivalences", [[], 0, False, {}])
 def test_v2_source_group_equivalence_requires_one_exact_nonempty_list(equivalences) -> None:
     family = _family_spec()
