@@ -212,15 +212,9 @@ _DISCOUNT_SCOPE_TARGETS = {
 }
 _PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
 _COEXTENSIVE_TABLE_SECTION_ORDINAL = re.compile(r"[IVXLCDM]+[.)]?", re.IGNORECASE)
-_RECURSIVE_PARENT_PROVISION_BINDING_KIND = (
-    "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
-)
-_RECURSIVE_PARENT_PROVISION_EQUATION_STATUS = (
-    "EXACT_ORDERED_DIRECT_COMPONENT_FRONTIER_CORROBORATED"
-)
-_RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS = (
-    "EXACT_VISUAL_PARENT_INTERVAL_AND_DIRECT_FRONTIER"
-)
+_RECURSIVE_PARENT_PROVISION_BINDING_KIND = "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+_RECURSIVE_PARENT_PROVISION_EQUATION_STATUS = "EXACT_ORDERED_DIRECT_COMPONENT_FRONTIER_CORROBORATED"
+_RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS = "EXACT_VISUAL_PARENT_INTERVAL_AND_DIRECT_FRONTIER"
 _RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
     {
         "direct_component_descendant_roles": (
@@ -941,8 +935,8 @@ _DEPENDENCIES = {
     },
     "row_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
-        "sha256": "ac09dbf13b7f1f3620ed96be8c4c05e172c8230177000118b5d397b94fc8aa2f",
-        "size_bytes": 85_540,
+        "sha256": "4e1d76569bae5f85f37cdf079183083b061ca3c83c725da17c990b88d78ac67d",
+        "size_bytes": 85_486,
     },
     "selected_snapshot_validator": {
         "path": "src/bctc_ai/evaluation/authenticated_semantic_region_snapshot_v1.py",
@@ -1806,15 +1800,11 @@ def _recursive_direct_component_support_is_exact(
     spec = matching_specs[0]
     descendant_pairs = spec["direct_component_descendant_roles"]
     direct_roles = {
-        role
-        for alternative in spec["component_role_alternatives"]
-        for role in alternative
+        role for alternative in spec["component_role_alternatives"] for role in alternative
     }
     if {pair[0] for pair in descendant_pairs} != direct_roles:
         raise _error("recursive direct-component support descendants drifted")
-    direct_by_descendant: dict[str, set[str]] = {
-        role: {role} for role in direct_roles
-    }
+    direct_by_descendant: dict[str, set[str]] = {role: {role} for role in direct_roles}
     for direct_role, descendants in descendant_pairs:
         for descendant in descendants:
             direct_by_descendant.setdefault(descendant, set()).add(direct_role)
@@ -1836,20 +1826,15 @@ def _recursive_direct_component_support_is_exact(
         result_match.get("scope_owner_occurrence_id"),
     )
 
-    def coextensive(
-        occurrence: Mapping[str, Any], owner: Mapping[str, Any]
-    ) -> bool:
+    def coextensive(occurrence: Mapping[str, Any], owner: Mapping[str, Any]) -> bool:
         match = _recursive_frontier_item_match(occurrence)
         owner_match = _recursive_frontier_item_match(owner)
         return (
             match["page_sequence"] == owner_match["page_sequence"]
-            and match["document_line_ordinal"]
-            == owner_match["document_line_ordinal"]
-            and match["end_document_line_ordinal"]
-            == owner_match["end_document_line_ordinal"]
+            and match["document_line_ordinal"] == owner_match["document_line_ordinal"]
+            and match["end_document_line_ordinal"] == owner_match["end_document_line_ordinal"]
             and match["source_line_index"] == owner_match["source_line_index"]
-            and match["end_source_line_index"]
-            == owner_match["end_source_line_index"]
+            and match["end_source_line_index"] == owner_match["end_source_line_index"]
         )
 
     result_key = _visual_match_key(result_match)
@@ -1861,8 +1846,7 @@ def _recursive_direct_component_support_is_exact(
                 for occurrence in interval_occurrences
                 if effective_roles.get(id(occurrence))
                 in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
-                and _visual_match_key(_recursive_frontier_item_match(occurrence))
-                > result_key
+                and _visual_match_key(_recursive_frontier_item_match(occurrence)) > result_key
             ),
             default=None,
         )
@@ -1887,15 +1871,11 @@ def _recursive_direct_component_support_is_exact(
             )
         explicit_owner = occurrence_by_id.get(owner_id)
         if type(explicit_owner) is dict:
-            return (
-                effective_roles.get(id(explicit_owner)) in expected_direct_owners
-                and belongs_to_exact_result(explicit_owner, visited)
-            )
+            return effective_roles.get(
+                id(explicit_owner)
+            ) in expected_direct_owners and belongs_to_exact_result(explicit_owner, visited)
         if coextensive(occurrence, result_occurrence):
-            return (
-                role in direct_roles
-                and owner_id == result_scope_owner_occurrence_id
-            )
+            return role in direct_roles and owner_id == result_scope_owner_occurrence_id
         if result_role != "INTERBANK_DEPOSIT_GROUP":
             return False
         key = _visual_match_key(match)
@@ -1919,16 +1899,11 @@ def _recursive_direct_component_support_is_exact(
         for occurrence in interval_occurrences
         if effective_roles.get(id(occurrence)) in direct_by_descendant
     ]
-    if any(
-        not belongs_to_exact_result(occurrence)
-        for occurrence in relevant_occurrences
-    ):
+    if any(not belongs_to_exact_result(occurrence) for occurrence in relevant_occurrences):
         return False
     required_direct_roles = set()
     support_occurrences = [
-        occurrence
-        for occurrence in interval_occurrences
-        if belongs_to_exact_result(occurrence)
+        occurrence for occurrence in interval_occurrences if belongs_to_exact_result(occurrence)
     ]
     for occurrence in support_occurrences:
         owners = direct_by_descendant.get(effective_roles.get(id(occurrence)), set())
@@ -1959,9 +1934,7 @@ def _recursive_direct_component_support_is_exact(
     if frontier_roles not in spec["component_role_alternatives"]:
         return False
     result_receipt = _direct_frontier_row_receipt(result_row)
-    component_receipts = [
-        _direct_frontier_row_receipt(row) for _role, row in frontier
-    ]
+    component_receipts = [_direct_frontier_row_receipt(row) for _role, row in frontier]
     if result_receipt is None or not _direct_frontier_sum_is_exact(
         result_receipt, component_receipts
     ):
@@ -2012,9 +1985,7 @@ def _complete_recursive_parent_direct_frontier(
         or not alternatives
     ):
         raise _error("recursive parent direct-frontier declaration drifted")
-    direct_roles = {
-        role for alternative in alternatives for role in alternative
-    }
+    direct_roles = {role for alternative in alternatives for role in alternative}
     declared_direct_roles = {pair[0] for pair in descendant_pairs}
     if (
         any(
@@ -2028,9 +1999,7 @@ def _complete_recursive_parent_direct_frontier(
         or declared_direct_roles != direct_roles
     ):
         raise _error("recursive parent direct-frontier descendants drifted")
-    direct_by_descendant: dict[str, set[str]] = {
-        role: {role} for role in direct_roles
-    }
+    direct_by_descendant: dict[str, set[str]] = {role: {role} for role in direct_roles}
     for direct_role, descendant_roles in descendant_pairs:
         for descendant_role in descendant_roles:
             direct_by_descendant.setdefault(descendant_role, set()).add(direct_role)
@@ -2040,9 +2009,9 @@ def _complete_recursive_parent_direct_frontier(
         if match["page_sequence"] != page_sequence:
             return False
         key = _visual_match_key(match)
-        return (
-            interval_start is None or interval_start < key
-        ) and (interval_end is None or key < interval_end)
+        return (interval_start is None or interval_start < key) and (
+            interval_end is None or key < interval_end
+        )
 
     interval_occurrences = [item for item in occurrences if in_interval(item)]
     required_direct_roles = set()
@@ -2056,9 +2025,7 @@ def _complete_recursive_parent_direct_frontier(
         )
         role = occurrence.get("role", match.get("role"))
         effective_role = (
-            binding_spec["target_role"]
-            if retrieval_id == source_retrieval_occurrence_id
-            else role
+            binding_spec["target_role"] if retrieval_id == source_retrieval_occurrence_id else role
         )
         effective_roles[id(occurrence)] = effective_role
         owners = direct_by_descendant.get(effective_role, set())
@@ -2312,8 +2279,7 @@ def _recursive_parent_provision_equation_geometry(
     return {
         "equation": equation,
         "ordered_source_label_bboxes": [
-            canonical_clone_v1(row["label_match"]["source_label_bbox"])
-            for row in component_rows
+            canonical_clone_v1(row["label_match"]["source_label_bbox"]) for row in component_rows
         ],
         "status": _RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS,
     }
@@ -2351,8 +2317,7 @@ def _recursive_parent_provision_geometry_is_valid(
         or type(equation["component_frontier"]) is not list
         or not equation["component_frontier"]
         or type(equation["result"]) is not dict
-        or set(equation["result"])
-        != {"numbers", "occurrence_id", "role", "sample_ids"}
+        or set(equation["result"]) != {"numbers", "occurrence_id", "role", "sample_ids"}
     ):
         return False
 
@@ -2362,8 +2327,7 @@ def _recursive_parent_provision_geometry_is_valid(
             and bool(value)
             and all(
                 type(number) is dict
-                and set(number)
-                == {"coefficient", "percentage_mark_present", "scale"}
+                and set(number) == {"coefficient", "percentage_mark_present", "scale"}
                 and type(number["coefficient"]) is int
                 and type(number["percentage_mark_present"]) is bool
                 and type(number["scale"]) is int
@@ -2386,8 +2350,7 @@ def _recursive_parent_provision_geometry_is_valid(
         or any(type(sample_id) is not str or not sample_id for sample_id in result["sample_ids"])
         or any(
             type(component) is not dict
-            or set(component)
-            != {"numbers", "retrieval_occurrence_id", "role", "sample_ids"}
+            or set(component) != {"numbers", "retrieval_occurrence_id", "role", "sample_ids"}
             or type(component["retrieval_occurrence_id"]) is not str
             or not component["retrieval_occurrence_id"]
             or type(component["role"]) is not str
@@ -2398,8 +2361,7 @@ def _recursive_parent_provision_geometry_is_valid(
             or len(component["sample_ids"]) != len(component["numbers"])
             or len(component["sample_ids"]) != len(set(component["sample_ids"]))
             or any(
-                type(sample_id) is not str or not sample_id
-                for sample_id in component["sample_ids"]
+                type(sample_id) is not str or not sample_id for sample_id in component["sample_ids"]
             )
             for component in components
         )
@@ -2427,17 +2389,9 @@ def _recursive_parent_provision_geometry_is_valid(
             and result["occurrence_id"] != equation["parent_occurrence_id"]
         )
         or sum(component["role"] == role for component in components) != 1
-        or len(
-            {component["retrieval_occurrence_id"] for component in components}
-        )
+        or len({component["retrieval_occurrence_id"] for component in components})
         != len(components)
-        or len(
-            {
-                sample_id
-                for component in components
-                for sample_id in component["sample_ids"]
-            }
-        )
+        or len({sample_id for component in components for sample_id in component["sample_ids"]})
         != sum(len(component["sample_ids"]) for component in components)
     ):
         return False
@@ -2465,10 +2419,12 @@ def _recursive_parent_provision_geometry_is_valid(
         != sorted((bbox[1] + bbox[3], bbox[0]) for bbox in bboxes)
     ):
         return False
-    material = {key: canonical_clone_v1(value) for key, value in equation.items() if key != "equation_id"}
-    return equation["equation_id"] == "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(
-        material
-    )
+    material = {
+        key: canonical_clone_v1(value) for key, value in equation.items() if key != "equation_id"
+    }
+    return equation[
+        "equation_id"
+    ] == "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(material)
 
 
 def _bound_one_edit_exact_source_check(
@@ -2953,38 +2909,32 @@ def _project_recursive_parent_provision_bindings(
     definitions = {child["role"]: child for child in compiled_family["children"]}
     required_roles = {
         _PROVISION_GENERIC_ROLE,
-        *(
-            spec["target_role"]
-            for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
-        ),
+        *(spec["target_role"] for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS),
     }
     if not required_roles <= set(definitions):
         return projected
     rows = [
-        row
-        for row in preliminary_axis["rows"]
-        if _direct_frontier_row_receipt(row) is not None
+        row for row in preliminary_axis["rows"] if _direct_frontier_row_receipt(row) is not None
     ]
     all_rows = preliminary_axis["rows"]
     rows_by_role: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         rows_by_role.setdefault(row["role"], []).append(row)
-    grids_by_page = {
-        grid["page_sequence"]: grid for grid in preliminary_axis["column_grids"]
-    }
+    grids_by_page = {grid["page_sequence"]: grid for grid in preliminary_axis["column_grids"]}
     generic_occurrences = [
         match
         for match in preliminary_matches
         if match["role"] == _PROVISION_GENERIC_ROLE
         and _match_has_effective_exact_source_authority(match)
         and match["occurrence_id"]
-        in {row["label_match"]["occurrence_id"] for row in rows_by_role.get(_PROVISION_GENERIC_ROLE, [])}
+        in {
+            row["label_match"]["occurrence_id"]
+            for row in rows_by_role.get(_PROVISION_GENERIC_ROLE, [])
+        }
     ]
     if not generic_occurrences:
         return projected
-    row_by_occurrence = {
-        row["label_match"]["occurrence_id"]: row for row in rows
-    }
+    row_by_occurrence = {row["label_match"]["occurrence_id"]: row for row in rows}
     projected_by_retrieval_id = {
         match.get("retrieval_occurrence_id", match.get("occurrence_id")): match
         for match in projected
@@ -2999,9 +2949,7 @@ def _project_recursive_parent_provision_bindings(
     parent_match = canonical_clone_v1(selected_region["parent_match"])
     parent_match["role"] = compiled_family["family_id"]
     parent_match["source_label_bbox"] = _source_line_bbox(pages, parent_match)
-    parent_result = _direct_frontier_parent_row_receipt(
-        pages, parent_match, preliminary_axis
-    )
+    parent_result = _direct_frontier_parent_row_receipt(pages, parent_match, preliminary_axis)
 
     proposals: list[dict[str, Any]] = []
     for generic in generic_occurrences:
@@ -3024,8 +2972,7 @@ def _project_recursive_parent_provision_bindings(
                     for result_role in binding_spec["result_roles"]
                     for row in rows_by_role.get(result_role, [])
                     if row["label_match"]["page_sequence"] == generic["page_sequence"]
-                    and row["label_match"].get("scope_owner_occurrence_id")
-                    == root_scope_id
+                    and row["label_match"].get("scope_owner_occurrence_id") == root_scope_id
                 ]
                 if (
                     parent_result is not None
@@ -3085,9 +3032,7 @@ def _project_recursive_parent_provision_bindings(
 
                 frontier_page_sequence = generic["page_sequence"]
                 frontier_start = (
-                    None
-                    if parent_row is None
-                    else _visual_match_key(parent_row["label_match"])
+                    None if parent_row is None else _visual_match_key(parent_row["label_match"])
                 )
                 frontier_end = next_parent_boundary
 
@@ -3121,15 +3066,11 @@ def _project_recursive_parent_provision_bindings(
                     interval_start=frontier_start,
                     page_sequence=frontier_page_sequence,
                     parent_occurrence_id=parent_occurrence_id,
-                    source_retrieval_occurrence_id=generic[
-                        "retrieval_occurrence_id"
-                    ],
+                    source_retrieval_occurrence_id=generic["retrieval_occurrence_id"],
                 )
                 if complete_frontier is None:
                     continue
-                complete_frontier_roles = tuple(
-                    role for role, _row in complete_frontier
-                )
+                complete_frontier_roles = tuple(role for role, _row in complete_frontier)
                 grid = grids_by_page.get(generic["page_sequence"])
                 interval_parent_match = (
                     parent_match if parent_row is None else parent_row["label_match"]
@@ -3148,17 +3089,14 @@ def _project_recursive_parent_provision_bindings(
                     for result_occurrence_id, _result_role, result_receipt in result_candidates
                     if result_receipt is not None
                 ]
-                if (
-                    type(grid) is not dict
-                    or _has_unmatched_complete_labeled_numeric_row(
-                        pages,
-                        preliminary_matches,
-                        allowed_coextensive_results=allowed_coextensive_results,
-                        lower_bbox=interval_parent_match["source_label_bbox"],
-                        page_sequence=generic["page_sequence"],
-                        upper_bbox=generic["source_label_bbox"],
-                        expected_lane_count=len(grid["column_centers"]),
-                    )
+                if type(grid) is not dict or _has_unmatched_complete_labeled_numeric_row(
+                    pages,
+                    preliminary_matches,
+                    allowed_coextensive_results=allowed_coextensive_results,
+                    lower_bbox=interval_parent_match["source_label_bbox"],
+                    page_sequence=generic["page_sequence"],
+                    upper_bbox=generic["source_label_bbox"],
+                    expected_lane_count=len(grid["column_centers"]),
                 ):
                     continue
                 for alternative in binding_spec["direct_component_role_alternatives"]:
@@ -3190,9 +3128,7 @@ def _project_recursive_parent_provision_bindings(
                         if (
                             len({row["label_match"]["occurrence_id"] for row in component_rows})
                             != len(component_rows)
-                            or [
-                                _visual_match_key(match) for match in component_matches
-                            ]
+                            or [_visual_match_key(match) for match in component_matches]
                             != sorted(_visual_match_key(match) for match in component_matches)
                             or _visual_match_key(component_matches[-1]) != generic_key
                         ):
@@ -3206,11 +3142,8 @@ def _project_recursive_parent_provision_bindings(
                             _direct_frontier_row_receipt(row) for row in component_rows
                         ]
                         for result_occurrence_id, result_role, result_receipt in result_candidates:
-                            if (
-                                result_receipt is None
-                                or not _direct_frontier_sum_is_exact(
-                                    result_receipt, component_receipts
-                                )
+                            if result_receipt is None or not _direct_frontier_sum_is_exact(
+                                result_receipt, component_receipts
                             ):
                                 continue
                             geometry = _recursive_parent_provision_equation_geometry(
@@ -3224,17 +3157,13 @@ def _project_recursive_parent_provision_bindings(
                                 result_role=result_role,
                             )
                             anchor_row = (
-                                parent_row
-                                if parent_row is not None
-                                else component_rows[-2]
+                                parent_row if parent_row is not None else component_rows[-2]
                             )
                             source_proposals.append(
                                 {
                                     "anchor": anchor_row["label_match"],
                                     "geometry": geometry,
-                                    "matched_within_role": binding_spec[
-                                        "matched_within_role"
-                                    ],
+                                    "matched_within_role": binding_spec["matched_within_role"],
                                     "parent_occurrence_id": parent_occurrence_id,
                                     "source": generic,
                                     "target_role": target_role,
@@ -3249,17 +3178,15 @@ def _project_recursive_parent_provision_bindings(
 
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for proposal in proposals:
-        grouped.setdefault(
-            (proposal["parent_occurrence_id"], proposal["target_role"]), []
-        ).append(proposal)
+        grouped.setdefault((proposal["parent_occurrence_id"], proposal["target_role"]), []).append(
+            proposal
+        )
     for group in grouped.values():
         if len(group) != 1:
             continue
         proposal = group[0]
         source = proposal["source"]
-        projected_source = projected_by_retrieval_id.get(
-            source["retrieval_occurrence_id"]
-        )
+        projected_source = projected_by_retrieval_id.get(source["retrieval_occurrence_id"])
         if projected_source is None or projected_source["role"] != _PROVISION_GENERIC_ROLE:
             continue
         anchor = proposal["anchor"]
@@ -3268,15 +3195,11 @@ def _project_recursive_parent_provision_bindings(
             anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(anchor),
             binding_kind=_RECURSIVE_PARENT_PROVISION_BINDING_KIND,
             geometry=proposal["geometry"],
-            interval_end_exclusive=selected_region[
-                "cluster_end_document_line_ordinal_exclusive"
-            ],
+            interval_end_exclusive=selected_region["cluster_end_document_line_ordinal_exclusive"],
             interval_start=selected_region["cluster_start_document_line_ordinal"],
             source=projected_source,
             source_role=_PROVISION_GENERIC_ROLE,
-            source_scope_role=(
-                proposal["matched_within_role"] or compiled_family["family_id"]
-            ),
+            source_scope_role=(proposal["matched_within_role"] or compiled_family["family_id"]),
             target_role=proposal["target_role"],
         )
         definition = definitions[proposal["target_role"]]
@@ -10223,8 +10146,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             later_parent_boundary_keys = [
                 _visual_match_key(candidate["label_match"])
                 for candidate in value["role_occurrences"]
-                if candidate["role"]
-                in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                if candidate["role"] in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
                 and candidate["occurrence_id"] != parent_occurrence_id
                 and candidate["label_match"]["page_sequence"]
                 == parent_occurrence_for_interval["label_match"]["page_sequence"]
@@ -10236,9 +10158,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             spec
             for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
             if spec["target_role"] == item["role"]
-            and tuple(
-                component["role"] for component in equation["component_frontier"]
-            )
+            and tuple(component["role"] for component in equation["component_frontier"])
             in spec["direct_component_role_alternatives"]
         ]
         if len(matching_specs) != 1:
@@ -10257,9 +10177,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             parent_occurrence_id=parent_occurrence_id,
             source_retrieval_occurrence_id=item["retrieval_occurrence_id"],
         )
-        if complete_frontier is None or tuple(
-            role for role, _row in complete_frontier
-        ) != tuple(
+        if complete_frontier is None or tuple(role for role, _row in complete_frontier) != tuple(
             component["role"] for component in equation["component_frontier"]
         ):
             raise _error("recursive parent equation direct frontier is incomplete or mixed")
@@ -10269,9 +10187,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             geometry["ordered_source_label_bboxes"],
             strict=True,
         ):
-            candidates = occurrences_by_retrieval_id.get(
-                component["retrieval_occurrence_id"], []
-            )
+            candidates = occurrences_by_retrieval_id.get(component["retrieval_occurrence_id"], [])
             if len(candidates) != 1:
                 raise _error(
                     "recursive parent equation component is not one actual retrieval occurrence"
@@ -10279,28 +10195,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
             component_occurrence = candidates[0]
             component_row = row_by_occurrence.get(component_occurrence["occurrence_id"])
             component_receipt = (
-                _direct_frontier_row_receipt(component_row)
-                if type(component_row) is dict
-                else None
+                _direct_frontier_row_receipt(component_row) if type(component_row) is dict else None
             )
             component_key = _visual_match_key(component_occurrence["label_match"])
             component_is_in_exact_parent_interval = (
-                component_occurrence["scope_owner_occurrence_id"]
-                == parent_occurrence_id
+                component_occurrence["scope_owner_occurrence_id"] == parent_occurrence_id
                 if equation["parent_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
                 else type(parent_occurrence_for_interval) is dict
-                and _visual_match_key(parent_occurrence_for_interval["label_match"])
-                < component_key
-                and (
-                    next_parent_boundary_key is None
-                    or component_key < next_parent_boundary_key
-                )
+                and _visual_match_key(parent_occurrence_for_interval["label_match"]) < component_key
+                and (next_parent_boundary_key is None or component_key < next_parent_boundary_key)
             )
             if (
                 component_occurrence["role"] != component["role"]
                 or not component_is_in_exact_parent_interval
-                or component_occurrence["label_match"].get("source_label_bbox")
-                != expected_bbox
+                or component_occurrence["label_match"].get("source_label_bbox") != expected_bbox
                 or component_receipt is None
                 or component_receipt["numbers"] != component["numbers"]
                 or component_receipt["sample_ids"] != component["sample_ids"]
@@ -10310,15 +10218,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 )
             component_occurrences.append(component_occurrence)
         target_components = [
-            occurrence
-            for occurrence in component_occurrences
-            if occurrence["role"] == item["role"]
+            occurrence for occurrence in component_occurrences if occurrence["role"] == item["role"]
         ]
         if (
             len(target_components) != 1
             or target_components[0]["occurrence_id"] != item["occurrence_id"]
-            or equation["source_retrieval_occurrence_id"]
-            != item["retrieval_occurrence_id"]
+            or equation["source_retrieval_occurrence_id"] != item["retrieval_occurrence_id"]
             or item["scope_owner_occurrence_id"] != parent_occurrence_id
         ):
             raise _error("recursive parent equation source occurrence or owner drifted")
@@ -10330,18 +10235,14 @@ def _validate_result(value: Any) -> dict[str, Any]:
             else None
         )
         result_receipt = (
-            _direct_frontier_row_receipt(result_row)
-            if type(result_row) is dict
-            else None
+            _direct_frontier_row_receipt(result_row) if type(result_row) is dict else None
         )
         if result_receipt is None:
             result_records = [
                 universe_by_sample_id.get(sample_id) for sample_id in result["sample_ids"]
             ]
             result_numbers = [
-                _direct_frontier_number(record)
-                if type(record) is dict
-                else None
+                _direct_frontier_number(record) if type(record) is dict else None
                 for record in result_records
             ]
             if any(number is None for number in result_numbers):
@@ -10353,10 +10254,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if (
             result_receipt["numbers"] != result["numbers"]
             or result_receipt["sample_ids"] != result["sample_ids"]
-            or (
-                type(result_occurrence) is dict
-                and result_occurrence["role"] != result["role"]
-            )
+            or (type(result_occurrence) is dict and result_occurrence["role"] != result["role"])
             or (
                 type(result_occurrence) is not dict
                 and (
@@ -10378,10 +10276,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 or item["scope_owner_role"] != equation["parent_role"]
             ):
                 raise _error("recursive parent equation exact parent occurrence drifted")
-        elif (
-            parent_occurrence_id not in root_scope_ids
-            or item["scope_owner_role"] is not None
-        ):
+        elif parent_occurrence_id not in root_scope_ids or item["scope_owner_role"] is not None:
             raise _error("recursive root equation exact parent scope drifted")
     actual_span_occurrences: dict[str, list[Mapping[str, Any]]] = {}
     for occurrence in value["role_occurrences"]:
@@ -10461,13 +10356,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
         ):
             raise _error("reviewed schema source-scope anchor exact-source proof drifted")
         document_order_precedes = (
-            anchor_match["end_document_line_ordinal"]
-            < source_match["document_line_ordinal"]
+            anchor_match["end_document_line_ordinal"] < source_match["document_line_ordinal"]
         )
-        visual_order_precedes = (
-            anchor_match["page_sequence"] == source_match["page_sequence"]
-            and _visual_match_key(anchor_match) < _visual_match_key(source_match)
-        )
+        visual_order_precedes = anchor_match["page_sequence"] == source_match[
+            "page_sequence"
+        ] and _visual_match_key(anchor_match) < _visual_match_key(source_match)
         if anchor_match["page_sequence"] != source_match["page_sequence"] or not (
             document_order_precedes
             or kind == _RECURSIVE_PARENT_PROVISION_BINDING_KIND
@@ -10626,27 +10519,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 "INTERBANK_LOAN_GROUP",
             }:
                 expected_anchor = occurrence_by_id.get(parent_occurrence_id)
-                later_parent_boundaries = [
-                    candidate
-                    for candidate in value["role_occurrences"]
-                    if candidate["role"]
-                    in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
-                    and candidate["occurrence_id"] != parent_occurrence_id
-                    and candidate["label_match"]["page_sequence"]
-                    == source_match["page_sequence"]
-                    and _visual_match_key(candidate["label_match"])
-                    > _visual_match_key(expected_anchor["label_match"])
-                ] if type(expected_anchor) is dict else []
+                later_parent_boundaries = (
+                    [
+                        candidate
+                        for candidate in value["role_occurrences"]
+                        if candidate["role"] in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                        and candidate["occurrence_id"] != parent_occurrence_id
+                        and candidate["label_match"]["page_sequence"]
+                        == source_match["page_sequence"]
+                        and _visual_match_key(candidate["label_match"])
+                        > _visual_match_key(expected_anchor["label_match"])
+                    ]
+                    if type(expected_anchor) is dict
+                    else []
+                )
                 next_parent_boundary = min(
                     later_parent_boundaries,
                     key=lambda candidate: _visual_match_key(candidate["label_match"]),
                     default=None,
                 )
-                source_precedes_boundary = (
-                    next_parent_boundary is None
-                    or _visual_match_key(source_match)
-                    < _visual_match_key(next_parent_boundary["label_match"])
-                )
+                source_precedes_boundary = next_parent_boundary is None or _visual_match_key(
+                    source_match
+                ) < _visual_match_key(next_parent_boundary["label_match"])
             else:
                 expected_anchor_candidates = [
                     candidates[0]
@@ -10659,9 +10553,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     == 1
                 ]
                 expected_anchor = (
-                    expected_anchor_candidates[-1]
-                    if expected_anchor_candidates
-                    else None
+                    expected_anchor_candidates[-1] if expected_anchor_candidates else None
                 )
                 source_precedes_boundary = True
             topology_region = axis["topology_region"]
@@ -10670,14 +10562,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 or expected_anchor["occurrence_id"] != anchor["occurrence_id"]
                 or not source_precedes_boundary
                 or len(same_parent_targets) != 1
-                or same_parent_targets[0]["occurrence_id"]
-                != occurrence["occurrence_id"]
+                or same_parent_targets[0]["occurrence_id"] != occurrence["occurrence_id"]
                 or receipt["interval"]["start_document_line_ordinal"]
                 != topology_region["cluster_start_document_line_ordinal"]
                 or receipt["interval"]["end_document_line_ordinal_exclusive"]
-                != topology_region[
-                    "cluster_end_document_line_ordinal_exclusive"
-                ]
+                != topology_region["cluster_end_document_line_ordinal_exclusive"]
             ):
                 raise _error("recursive parent provision interval or unique owner drifted")
         elif kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
@@ -11254,14 +11143,12 @@ def _build(
             )
         except row_v1.AccountingFamilyRowAxisV1Error as exc:
             raise _error("sealed preliminary recursive-parent row projection failed") from exc
-        preliminary_axis, _preliminary_unique_dash_evidence = (
-            _project_unique_dash_speck_rescues_v2(
-                preliminary_axis,
-                preliminary_matches,
-                visible_dash_rescues,
-                topology_candidates_id=topology_candidates_id,
-                topology_scan_id=scan["scan_id"],
-            )
+        preliminary_axis, _preliminary_unique_dash_evidence = _project_unique_dash_speck_rescues_v2(
+            preliminary_axis,
+            preliminary_matches,
+            visible_dash_rescues,
+            topology_candidates_id=topology_candidates_id,
+            topology_scan_id=scan["scan_id"],
         )
         preliminary_axis, _preliminary_dash_evidence, _preliminary_dash_reasons = (
             _authenticate_existing_dashes(
@@ -11271,9 +11158,7 @@ def _build(
             )
         )
         preliminary_axis, _preliminary_structural_rejections = (
-            _project_structural_owner_only_rescue_rejections(
-                preliminary_axis, preliminary_matches
-            )
+            _project_structural_owner_only_rescue_rejections(preliminary_axis, preliminary_matches)
         )
         try:
             preliminary_axis, preliminary_coextensive = (

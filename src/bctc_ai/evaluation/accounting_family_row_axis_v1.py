@@ -1479,9 +1479,7 @@ def _rescue_completed_structural_group_keys(
     }
     for key in keys:
         base = [
-            row
-            for row in base_rows
-            if (row["role"], row["label_match"]["page_sequence"]) == key
+            row for row in base_rows if (row["role"], row["label_match"]["page_sequence"]) == key
         ]
         completed = [
             row
@@ -1503,9 +1501,7 @@ def _rescue_completed_structural_group_keys(
             or not base_row["values"]
             or not missing
             or completed_row["status"] != "VISIBLE_VALUE_LANES_BOUND"
-            or not same_typed_json_v1(
-                base_row["label_match"], completed_row["label_match"]
-            )
+            or not same_typed_json_v1(base_row["label_match"], completed_row["label_match"])
             or len(projections) != len(missing)
             or sorted(projection["column_ordinal"] for projection in projections) != missing
         ):

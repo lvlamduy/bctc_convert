@@ -538,13 +538,14 @@ def test_dash_completed_structural_allow_set_rejects_repeated_same_role_occurren
         "role": "GROUP",
     }
     repeated = copy.deepcopy(base_row)
-    repeated["label_match"].update(
-        {"end_source_line_index": 9, "source_line_index": 9}
-    )
+    repeated["label_match"].update({"end_source_line_index": 9, "source_line_index": 9})
 
-    assert row_axis_v1._rescue_completed_structural_group_keys(
-        [base_row, repeated], [completed_row], [projection]
-    ) == set()
+    assert (
+        row_axis_v1._rescue_completed_structural_group_keys(
+            [base_row, repeated], [completed_row], [projection]
+        )
+        == set()
+    )
 
 
 def test_cluster_reassignment_updates_both_source_and_target_missing_lane_axes() -> None:

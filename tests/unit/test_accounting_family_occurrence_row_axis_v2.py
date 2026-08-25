@@ -3899,15 +3899,12 @@ def test_f3_recursive_provision_validator_rejects_coherent_zero_frontier_removal
     receipt["geometry"]["ordered_source_label_bboxes"].pop(term_index)
     equation_material = copy.deepcopy(equation)
     equation_material.pop("equation_id")
-    equation["equation_id"] = (
-        "aforav2:direct-frontier-equation:"
-        + canonical_json_sha256_v1(equation_material)
+    equation["equation_id"] = "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(
+        equation_material
     )
     binding_material = copy.deepcopy(receipt)
     binding_material.pop("binding_id")
-    receipt["binding_id"] = (
-        "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
-    )
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
     _coherently_replace_source_scope_binding(attacked, provision, receipt)
     _coherently_rehash_occurrence(attacked)
 
@@ -3921,12 +3918,12 @@ def test_f3_recursive_provision_validator_rejects_coherent_zero_frontier_removal
 def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> None:
     _scan, axis = _build_f3(
         _f3_pages(
-                [
-                    ("Tiền gửi tại các TCTD khác", "100", "90"),
-                    ("Cho vay các TCTD khác", "52", "41"),
-                    ("Bằng VND", "52", "41"),
-                    ("Dự phòng rủi ro", "-2", "-1"),
-                ]
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "52", "41"),
+                ("Bằng VND", "52", "41"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
         )
     )
 
@@ -4042,8 +4039,7 @@ def test_recursive_support_rejects_leaf_owned_by_repeated_same_role_parent() -> 
         if row["label_match"]["occurrence_id"] == demand["occurrence_id"]
     )
     rows_by_occurrence_id = {
-        row["label_match"]["occurrence_id"]: [row]
-        for row in axis["row_axis"]["rows"]
+        row["label_match"]["occurrence_id"]: [row] for row in axis["row_axis"]["rows"]
     }
     occurrences = copy.deepcopy(axis["role_occurrences"])
     effective_roles = {id(occurrence): occurrence["role"] for occurrence in occurrences}
@@ -4057,17 +4053,13 @@ def test_recursive_support_rejects_leaf_owned_by_repeated_same_role_parent() -> 
 
     repeated = copy.deepcopy(
         next(
-            occurrence
-            for occurrence in occurrences
-            if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+            occurrence for occurrence in occurrences if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
         )
     )
     repeated["occurrence_id"] = "aforav2:occurrence:" + "f" * 64
     repeated["label_match"]["occurrence_id"] = repeated["occurrence_id"]
     leaf = next(
-        occurrence
-        for occurrence in occurrences
-        if occurrence["role"] == "DEMAND_DEPOSIT_VND"
+        occurrence for occurrence in occurrences if occurrence["role"] == "DEMAND_DEPOSIT_VND"
     )
     leaf["scope_owner_occurrence_id"] = repeated["occurrence_id"]
     leaf["label_match"]["scope_owner_occurrence_id"] = repeated["occurrence_id"]
@@ -4108,8 +4100,7 @@ def test_recursive_deposit_support_rejects_visual_child_with_wrong_structural_ow
         if row["label_match"]["occurrence_id"] == deposit["occurrence_id"]
     )
     rows_by_occurrence_id = {
-        row["label_match"]["occurrence_id"]: [row]
-        for row in axis["row_axis"]["rows"]
+        row["label_match"]["occurrence_id"]: [row] for row in axis["row_axis"]["rows"]
     }
     occurrences = copy.deepcopy(axis["role_occurrences"])
     effective_roles = {id(occurrence): occurrence["role"] for occurrence in occurrences}
@@ -4122,14 +4113,10 @@ def test_recursive_deposit_support_rejects_visual_child_with_wrong_structural_ow
     )
 
     loan = next(
-        occurrence
-        for occurrence in occurrences
-        if occurrence["role"] == "INTERBANK_LOAN_GROUP"
+        occurrence for occurrence in occurrences if occurrence["role"] == "INTERBANK_LOAN_GROUP"
     )
     demand = next(
-        occurrence
-        for occurrence in occurrences
-        if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+        occurrence for occurrence in occurrences if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
     )
     demand["scope_owner_occurrence_id"] = loan["occurrence_id"]
     demand["label_match"]["scope_owner_occurrence_id"] = loan["occurrence_id"]
@@ -4287,8 +4274,7 @@ def test_f3_same_generic_label_binds_distinct_exact_deposit_and_loan_parents() -
     provisions = [
         occurrence
         for occurrence in axis["role_occurrences"]
-        if occurrence["role"]
-        in {"INTERBANK_DEPOSIT_PROVISION", "INTERBANK_LOAN_PROVISION"}
+        if occurrence["role"] in {"INTERBANK_DEPOSIT_PROVISION", "INTERBANK_LOAN_PROVISION"}
     ]
     assert [occurrence["role"] for occurrence in provisions] == [
         "INTERBANK_DEPOSIT_PROVISION",
@@ -4297,9 +4283,7 @@ def test_f3_same_generic_label_binds_distinct_exact_deposit_and_loan_parents() -
     assert len({occurrence["retrieval_occurrence_id"] for occurrence in provisions}) == 2
     assert len({occurrence["scope_owner_occurrence_id"] for occurrence in provisions}) == 2
     assert all(
-        occurrence["source_scope_binding"]["geometry"]["equation"][
-            "parent_occurrence_id"
-        ]
+        occurrence["source_scope_binding"]["geometry"]["equation"]["parent_occurrence_id"]
         == occurrence["scope_owner_occurrence_id"]
         for occurrence in provisions
     )
@@ -4341,9 +4325,7 @@ def test_f3_recursive_provision_retarget_preserves_opaque_dash_region_bytes() ->
         subject.AccountingFamilyOccurrenceRowAxisV2Error,
         match="dash item must remain one mapping",
     ):
-        subject._retarget_recursive_parent_provision_dash_rescues(
-            (b"opaque",), [], []
-        )
+        subject._retarget_recursive_parent_provision_dash_rescues((b"opaque",), [], [])
 
 
 def test_f3_bare_provision_before_loan_leaf_remains_source_only_ambiguous() -> None:
@@ -5293,9 +5275,8 @@ def test_f3_recursive_parent_provision_receipts_rederive_rows_and_geometry() -> 
     equation["result"]["numbers"][0]["coefficient"] += 1
     equation_material = copy.deepcopy(equation)
     equation_material.pop("equation_id")
-    equation["equation_id"] = (
-        "aforav2:direct-frontier-equation:"
-        + canonical_json_sha256_v1(equation_material)
+    equation["equation_id"] = "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(
+        equation_material
     )
     material = copy.deepcopy(receipt)
     material.pop("binding_id")
@@ -5365,7 +5346,9 @@ def test_f3_recursive_parent_provision_public_replay_rejects_parent_tamper(
     scan, axis = _build_f3(pages)
     attacked = copy.deepcopy(axis)
     provision = next(
-        occurrence for occurrence in attacked["role_occurrences"] if occurrence["role"] == target_role
+        occurrence
+        for occurrence in attacked["role_occurrences"]
+        if occurrence["role"] == target_role
     )
     receipt = provision["source_scope_binding"]
     equation = receipt["geometry"]["equation"]
@@ -5380,15 +5363,12 @@ def test_f3_recursive_parent_provision_public_replay_rejects_parent_tamper(
         equation["parent_occurrence_id"] = "aforav2:root:" + "0" * 64
     equation_material = copy.deepcopy(equation)
     equation_material.pop("equation_id")
-    equation["equation_id"] = (
-        "aforav2:direct-frontier-equation:"
-        + canonical_json_sha256_v1(equation_material)
+    equation["equation_id"] = "aforav2:direct-frontier-equation:" + canonical_json_sha256_v1(
+        equation_material
     )
     binding_material = copy.deepcopy(receipt)
     binding_material.pop("binding_id")
-    receipt["binding_id"] = (
-        "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
-    )
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
     _coherently_replace_source_scope_binding(attacked, provision, receipt)
     _coherently_rehash_occurrence(attacked)
     effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
