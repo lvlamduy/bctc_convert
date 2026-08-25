@@ -3415,6 +3415,8 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     nested_discount: bool = False,
     off_frontier_row: bool = False,
     partial_provision: bool = False,
+    root_scoped_demand_line: int = 5,
+    root_scoped_term_line: int = 30,
     root_adjustment: bool = False,
     same_role_group_sources: bool = False,
     trailing_detail_root: bool = False,
@@ -3572,13 +3574,13 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         _v4_direct_visible_test_record(
             "TERM_DEPOSIT_VND",
             (15, 15),
-            line_ordinal=100,
+            line_ordinal=40 if same_role_group_sources else 100,
             role_kind="ADDITIVE_CHILD",
         ),
         _v4_direct_visible_test_record(
             "TERM_DEPOSIT_FOREIGN_CURRENCY",
             (5, 5),
-            line_ordinal=110,
+            line_ordinal=50 if same_role_group_sources else 110,
             role_kind="ADDITIVE_CHILD",
         ),
         _v4_direct_visible_test_record(
@@ -3691,6 +3693,8 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     if same_role_group_sources:
         for role, coefficients, line_ordinal in (
             (deposit, deposit_axis, 1),
+            (demand, (50, 40), root_scoped_demand_line),
+            (term, (20, 20), root_scoped_term_line),
             (loan, loan_axis, 60),
         ):
             result = next(record for record in derived_records if record["role"] == role)
@@ -3701,6 +3705,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                 role_kind="STRUCTURAL_GROUP",
             )
             result["source"] = source["source"]
+            result["resolution_kind"] = "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
     detail = {
         "additive_closure": {
             "equations": {
@@ -3711,7 +3716,11 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                             "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
                         ],
                         "result_role": demand,
-                        "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                        "status": (
+                            "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                            if same_role_group_sources
+                            else "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+                        ),
                         "visible_result_roles": [demand],
                     },
                     {
@@ -3720,7 +3729,11 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                             "TERM_DEPOSIT_FOREIGN_CURRENCY",
                         ],
                         "result_role": term,
-                        "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                        "status": (
+                            "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                            if same_role_group_sources
+                            else "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+                        ),
                         "visible_result_roles": [term],
                     },
                     {
@@ -3767,7 +3780,11 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         "INTERBANK_LOAN_VND": loan,
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
         provision: deposit if wrong_provision_parent else loan,
-        **({deposit: family, loan: family} if same_role_group_sources else {}),
+        **(
+            {deposit: family, demand: family, term: family, loan: family}
+            if same_role_group_sources
+            else {}
+        ),
         **({root_adjustment_role: family} if root_adjustment else {}),
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL": deposit,
         "EXPLICIT_INTERBANK_LOAN_TOTAL": loan,
@@ -3900,6 +3917,37 @@ def test_v4_trailing_root_detail_requires_one_exact_source_bound_receipt(
     else:
         root["source"]["record"]["values"][0]["raw_prediction"] = "101"
     _v4_reseal_candidate_envelopes(detail)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+@pytest.mark.parametrize(
+    ("demand_line", "term_line"),
+    [
+        (0, 30),
+        (5, 65),
+    ],
+)
+def test_v4_root_owned_subgroup_result_requires_parent_to_next_sibling_interval(
+    demand_line: int,
+    term_line: int,
+) -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        root_adjustment=True,
+        root_scoped_demand_line=demand_line,
+        root_scoped_term_line=term_line,
+        same_role_group_sources=True,
+        trailing_detail_root=True,
+    )
 
     selected, reasons = subject._select_candidate_evidence(
         [summary, detail],

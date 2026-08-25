@@ -2566,6 +2566,88 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
         )
         if (
             exact is None
+            and source_role == role
+            and parent_role is not None
+            and expected_kind == "STRUCTURAL_GROUP"
+        ):
+            # Some printed subgroup subtotals remain root-owned in the public
+            # topology even though their own children are exact-owned and the
+            # compiled equation places the subgroup under a preceding direct
+            # parent.  Associate only for this selector proof: the parent row
+            # must already be authenticated, the subgroup must lie on the same
+            # page/root strictly after it and before the next visible sibling
+            # in the parent's own direct frontier.  No occurrence is reparented.
+            parent_record = records.get(parent_role)
+            parent_source = parent_record.get("source") if type(parent_record) is dict else None
+            parent_source_record = (
+                parent_source.get("record") if type(parent_source) is dict else None
+            )
+            parent_label = (
+                parent_source_record.get("label_match")
+                if type(parent_source_record) is dict
+                else None
+            )
+            child_label = source_record.get("label_match")
+            parent_occurrence_id = (
+                parent_label.get("occurrence_id") if type(parent_label) is dict else None
+            )
+            owner_equations = [
+                candidate
+                for candidate in equations.values()
+                if type(candidate.get("component_roles_present")) is list
+                and parent_role in candidate["component_roles_present"]
+            ]
+            sibling_labels = []
+            if len(owner_equations) == 1:
+                for sibling_role in owner_equations[0]["component_roles_present"]:
+                    if sibling_role == parent_role:
+                        continue
+                    sibling = records.get(sibling_role)
+                    sibling_source = sibling.get("source") if type(sibling) is dict else None
+                    sibling_record = (
+                        sibling_source.get("record") if type(sibling_source) is dict else None
+                    )
+                    sibling_label = (
+                        sibling_record.get("label_match") if type(sibling_record) is dict else None
+                    )
+                    if type(sibling_label) is dict:
+                        sibling_labels.append(sibling_label)
+            later_sibling_lines = [
+                sibling_label["document_line_ordinal"]
+                for sibling_label in sibling_labels
+                if type(parent_label) is dict
+                and type(sibling_label.get("document_line_ordinal")) is int
+                and sibling_label.get("page_sequence") == parent_label.get("page_sequence")
+                and sibling_label["document_line_ordinal"]
+                > parent_label.get("document_line_ordinal", sibling_label["document_line_ordinal"])
+            ]
+            if (
+                type(parent_label) is dict
+                and type(child_label) is dict
+                and type(parent_occurrence_id) is str
+                and parent_occurrence_id in consumed_occurrences
+                and parent_source_record.get("role") == parent_role
+                and parent_source_record.get("role_kind") == "STRUCTURAL_GROUP"
+                and parent_label.get("scope_owner_role") is None
+                and child_label.get("scope_owner_role") is None
+                and parent_label.get("scope_owner_occurrence_id")
+                == child_label.get("scope_owner_occurrence_id")
+                and parent_label.get("page_sequence") == child_label.get("page_sequence")
+                and type(parent_label.get("end_document_line_ordinal")) is int
+                and type(child_label.get("document_line_ordinal")) is int
+                and parent_label["end_document_line_ordinal"] < child_label["document_line_ordinal"]
+                and later_sibling_lines
+                and child_label["document_line_ordinal"] < min(later_sibling_lines)
+            ):
+                exact = _v4_exact_visible_role_axis(
+                    visible_record,
+                    axes,
+                    expected_parent_role=family_id,
+                    expected_role_kind=expected_kind,
+                    allow_family_root_scope_without_binding=True,
+                )
+        if (
+            exact is None
             or not same_typed_json_v1(exact[0], _v4_resolved_number_axis(record))
             or exact[1] in consumed_occurrences
         ):
