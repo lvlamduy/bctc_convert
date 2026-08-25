@@ -628,6 +628,47 @@ def test_cached_evidence_without_render_pixels_defers_dash_rescue() -> None:
     )
 
 
+def test_selected_public_replay_input_binds_opaque_dash_region_by_validated_ref() -> None:
+    rescue = {
+        "column_ordinal": 0,
+        "page_sequence": 1,
+        "region": _dash_region(1, 1, [550, 100, 650, 130]),
+        "role": "GENERIC_ADDITIVE_ROLE",
+    }
+    selected = {
+        "additive_closure": {},
+        "column_context": {},
+        "column_context_visible_dash_rescues": (rescue,),
+        "row_axis": {},
+    }
+
+    observed = subject._selected_one_edit_public_replay_input_v1(
+        authority_pages_sha256="1" * 64,
+        evaluation_spec={},
+        family_spec={},
+        receipt={},
+        selected=selected,
+        selected_topology_region={},
+    )
+
+    assert observed["visible_dash_rescues_sha256"] == (
+        subject.one_edit_v1._visible_dash_rescues_sha256_v1((rescue,))
+    )
+    different = copy.deepcopy(rescue)
+    different["region"] = _dash_region(1, 1, [560, 100, 660, 130])
+    assert (
+        subject.one_edit_v1._visible_dash_rescues_sha256_v1((different,))
+        != observed["visible_dash_rescues_sha256"]
+    )
+    tampered = copy.deepcopy(rescue)
+    tampered["region"]["region_png_bytes"] += b"tamper"
+    with pytest.raises(
+        subject.one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="visible-dash region replay failed",
+    ):
+        subject.one_edit_v1._visible_dash_rescues_sha256_v1((tampered,))
+
+
 def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkeypatch) -> None:
     _documents, numeric, _render_calls = _patch_live_inputs(monkeypatch)
     numeric[1]["lines"][10]["raw_prediction"] = "121"

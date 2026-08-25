@@ -527,6 +527,45 @@ def _error(message: str) -> AccountingFamilyOneEditExactAuthorityV1Error:
     return AccountingFamilyOneEditExactAuthorityV1Error(message)
 
 
+def _visible_dash_rescues_sha256_v1(value: Any) -> str:
+    """Bind opaque dash crops through their independently replayed region refs."""
+
+    if type(value) is not tuple:
+        raise _error("one-edit visible-dash rescues must be one exact tuple")
+    bindings = []
+    for rescue in value:
+        if (
+            type(rescue) is not dict
+            or set(rescue) != {"column_ordinal", "page_sequence", "region", "role"}
+            or type(rescue["column_ordinal"]) is not int
+            or rescue["column_ordinal"] < 0
+            or type(rescue["page_sequence"]) is not int
+            or rescue["page_sequence"] <= 0
+            or type(rescue["role"]) is not str
+            or not rescue["role"]
+        ):
+            raise _error("one-edit visible-dash rescue binding drifted")
+        try:
+            region = row_v1._region_record(  # noqa: SLF001
+                rescue["region"], page_sequence=rescue["page_sequence"]
+            )
+        except row_v1.AccountingFamilyRowAxisV1Error as exc:
+            raise _error("one-edit visible-dash region replay failed") from exc
+        bindings.append(
+            {
+                "column_ordinal": rescue["column_ordinal"],
+                "page_sequence": rescue["page_sequence"],
+                "region": {
+                    key: canonical_clone_v1(item)
+                    for key, item in region.items()
+                    if key != "region_png_bytes"
+                },
+                "role": rescue["role"],
+            }
+        )
+    return canonical_json_sha256_v1(bindings)
+
+
 def _is_one_edit(match: Mapping[str, Any]) -> bool:
     return str(match.get("match_kind", "")).startswith("ONE_EDIT_ALIAS")
 
@@ -5233,7 +5272,7 @@ def project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
     column_policy = {
         "expected_lane_unit_kinds": canonical_clone_v1(expected_lane_unit_kinds),
         "period_semantics": period_semantics,
-        "visible_dash_rescues_sha256": canonical_json_sha256_v1(list(visible_dash_rescues)),
+        "visible_dash_rescues_sha256": _visible_dash_rescues_sha256_v1(visible_dash_rescues),
     }
     input_binding = _hierarchy_frontier_input_binding_v1(
         source, evidence, context, hierarchy_spec, column_policy

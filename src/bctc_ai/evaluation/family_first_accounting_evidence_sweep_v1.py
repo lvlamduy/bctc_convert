@@ -3538,7 +3538,9 @@ def _selected_one_edit_public_replay_input_v1(
         "receipt_sha256": canonical_json_sha256_v1(receipt),
         "row_axis_sha256": canonical_json_sha256_v1(selected.get("row_axis")),
         "selected_topology_region_sha256": canonical_json_sha256_v1(selected_topology_region),
-        "visible_dash_rescues_sha256": canonical_json_sha256_v1(list(visible_dash_rescues)),
+        "visible_dash_rescues_sha256": one_edit_v1._visible_dash_rescues_sha256_v1(  # noqa: SLF001
+            visible_dash_rescues
+        ),
     }
 
 
