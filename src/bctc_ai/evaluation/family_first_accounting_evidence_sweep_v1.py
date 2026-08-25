@@ -207,6 +207,18 @@ class _PreparedV4DocumentStoreContextV1:
 _PREPARED_V4_DOCUMENT_CONTEXT_SEAL = object()
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedSelectedOneEditPublicReplayV1:
+    """One successful selected replay, reusable only for identical inputs."""
+
+    input_sha256: str
+    receipt_sha256: str
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL = object()
+
+
 def _prepared_v4_document_context_material_v1(
     *,
     caller_snapshot_sha256: str,
@@ -3458,6 +3470,31 @@ def _one_edit_authority_pages_v1(
     ]
 
 
+def _selected_one_edit_public_replay_input_v1(
+    *,
+    authority_pages_sha256: str,
+    evaluation_spec: Any,
+    family_spec: Any,
+    receipt: Mapping[str, Any],
+    selected: Mapping[str, Any],
+    selected_topology_region: Mapping[str, Any],
+) -> dict[str, str]:
+    visible_dash_rescues = selected.get("column_context_visible_dash_rescues", ())
+    if type(visible_dash_rescues) is not tuple:
+        raise _error("selected V4 public replay lost its dash-rescue tuple")
+    return {
+        "additive_closure_sha256": canonical_json_sha256_v1(selected.get("additive_closure")),
+        "authority_pages_sha256": authority_pages_sha256,
+        "column_context_sha256": canonical_json_sha256_v1(selected.get("column_context")),
+        "evaluation_spec_sha256": canonical_json_sha256_v1(evaluation_spec),
+        "family_spec_sha256": canonical_json_sha256_v1(family_spec),
+        "receipt_sha256": canonical_json_sha256_v1(receipt),
+        "row_axis_sha256": canonical_json_sha256_v1(selected.get("row_axis")),
+        "selected_topology_region_sha256": canonical_json_sha256_v1(selected_topology_region),
+        "visible_dash_rescues_sha256": canonical_json_sha256_v1(list(visible_dash_rescues)),
+    }
+
+
 def _selected_v4_one_edit_authority_v1(
     selected: dict[str, Any] | None,
     *,
@@ -3466,6 +3503,7 @@ def _selected_v4_one_edit_authority_v1(
     topology_candidates: dict[str, Any] | None,
     evaluation_spec: dict[str, Any] | None = None,
     prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
+    prepared_public_replay_cache: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Gate only the downstream-selected V4 candidate, never a discarded one."""
 
@@ -3483,26 +3521,51 @@ def _selected_v4_one_edit_authority_v1(
         )
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
         raise _error("selected V4 one-edit exact authority drifted") from exc
+    selected_topology_region = topology_candidates["regions"][ordinal]
     authority_pages = _one_edit_authority_pages_v1(joined_pages)
+    authority_pages_sha256 = canonical_json_sha256_v1(authority_pages)
     if (
         receipt["family_id"] != family_spec["family_id"]
-        or receipt["input_binding"]["document_pages_sha256"]
-        != canonical_json_sha256_v1(authority_pages)
+        or receipt["input_binding"]["document_pages_sha256"] != authority_pages_sha256
         or receipt["input_binding"]["family_spec_sha256"] != canonical_json_sha256_v1(family_spec)
         or receipt["input_binding"]["selected_topology_region_sha256"]
-        != canonical_json_sha256_v1(topology_candidates["regions"][ordinal])
+        != canonical_json_sha256_v1(selected_topology_region)
     ):
         raise _error("selected V4 one-edit exact authority input binding drifted")
+    public_replay_input_sha256 = canonical_json_sha256_v1(
+        _selected_one_edit_public_replay_input_v1(
+            authority_pages_sha256=authority_pages_sha256,
+            evaluation_spec=evaluation_spec,
+            family_spec=family_spec,
+            receipt=receipt,
+            selected=selected,
+            selected_topology_region=selected_topology_region,
+        )
+    )
+    receipt_sha256 = canonical_json_sha256_v1(receipt)
+    if prepared_public_replay_cache is not None:
+        if type(prepared_public_replay_cache) is not dict:
+            raise _error("selected V4 public-replay cache shape drifted")
+        prepared_replay = prepared_public_replay_cache.get(public_replay_input_sha256)
+        if prepared_replay is not None:
+            if (
+                type(prepared_replay) is not _PreparedSelectedOneEditPublicReplayV1
+                or prepared_replay.seal is not _PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL
+                or prepared_replay.input_sha256 != public_replay_input_sha256
+                or prepared_replay.receipt_sha256 != receipt_sha256
+            ):
+                raise _error("selected V4 public-replay cache binding drifted")
+            return canonical_clone_v1(receipt), canonical_clone_v1(receipt["unresolved_reasons"])
     try:
         canonical_expanded = one_edit_v1._canonical_expanded_occurrence_region_v1(  # noqa: SLF001
             one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages),  # noqa: SLF001
             family_spec,
-            topology_candidates["regions"][ordinal],
+            selected_topology_region,
         )
         rebuilt_source = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
             authority_pages,
             family_spec,
-            topology_candidates["regions"][ordinal],
+            selected_topology_region,
             canonical_expanded,
             _prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
         )
@@ -3541,7 +3604,7 @@ def _selected_v4_one_edit_authority_v1(
                         column_context,
                         authority_pages,
                         family_spec,
-                        topology_candidates["regions"][ordinal],
+                        selected_topology_region,
                         column_context_document_pages=joined_pages,
                         period_semantics=evaluation_spec.get("period_semantics"),
                         expected_lane_unit_kinds=selected_lane_unit_kinds,
@@ -3556,7 +3619,7 @@ def _selected_v4_one_edit_authority_v1(
                         column_context,
                         authority_pages,
                         family_spec,
-                        topology_candidates["regions"][ordinal],
+                        selected_topology_region,
                         evaluation_spec.get("hierarchical_closure_spec"),
                         column_context_document_pages=joined_pages,
                         period_semantics=evaluation_spec.get("period_semantics"),
@@ -3570,6 +3633,14 @@ def _selected_v4_one_edit_authority_v1(
         raise _error(f"selected V4 one-edit exact authority replay failed:{exc}") from exc
     if not same_typed_json_v1(receipt, rebuilt):
         raise _error("selected V4 one-edit exact authority differs from occurrence proof")
+    if prepared_public_replay_cache is not None:
+        prepared_public_replay_cache[public_replay_input_sha256] = (
+            _PreparedSelectedOneEditPublicReplayV1(
+                input_sha256=public_replay_input_sha256,
+                receipt_sha256=receipt_sha256,
+                seal=_PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL,
+            )
+        )
     return rebuilt, canonical_clone_v1(rebuilt["unresolved_reasons"])
 
 
@@ -4760,6 +4831,7 @@ def _trial_from_document_store_snapshot_v1(
     ]
     if _v4_runtime_context is None:
         source_exact_axis_cache: dict[tuple[str, str], Any] = {}
+        selected_public_replay_cache: dict[str, Any] = {}
     else:
         source_exact_axis_cache = _v4_runtime_context.setdefault(
             "source_exact_axis_cache",
@@ -4767,6 +4839,12 @@ def _trial_from_document_store_snapshot_v1(
         )
         if type(source_exact_axis_cache) is not dict:
             raise _error("V4 runtime one-edit source-axis cache shape drifted")
+        selected_public_replay_cache = _v4_runtime_context.setdefault(
+            "selected_public_replay_cache",
+            {},
+        )
+        if type(selected_public_replay_cache) is not dict:
+            raise _error("V4 runtime selected public-replay cache shape drifted")
     candidates = _candidate_evidence_from_joined_pages(
         joined_pages=projected_pages,
         topology_scan=topology_scan,
@@ -4792,6 +4870,7 @@ def _trial_from_document_store_snapshot_v1(
             topology_candidates=topology_candidates,
             evaluation_spec=evaluation_spec,
             prepared_source_exact_axis_cache=source_exact_axis_cache,
+            prepared_public_replay_cache=selected_public_replay_cache,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {

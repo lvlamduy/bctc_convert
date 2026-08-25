@@ -4,6 +4,7 @@ import copy
 import hashlib
 import io
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -6477,6 +6478,89 @@ def test_f3_hierarchy_frontier_public_replay_rejects_coherently_rehashed_equival
             family_spec=_f3_spec(),
             topology_candidates=scan,
             evaluation_spec=json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8")),
+        )
+
+
+def test_f3_selected_public_replay_cache_reuses_only_identical_bound_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = _f3_hierarchy_frontier_ctg_pages()
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    selected = {
+        "additive_closure": closure,
+        "candidate_ordinal": 0,
+        "column_context": context,
+        "column_context_visible_dash_rescues": (),
+        "one_edit_exact_source_structural_proofs": projected[
+            "one_edit_exact_source_structural_proofs"
+        ],
+        "row_axis": projected["row_axis"],
+    }
+    evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
+    original_projector = (
+        one_edit_v1.project_accounting_family_one_edit_hierarchy_frontier_authority_v1
+    )
+    projector_calls = 0
+
+    def counted_projector(*args: object, **kwargs: object) -> dict[str, object]:
+        nonlocal projector_calls
+        projector_calls += 1
+        return original_projector(*args, **kwargs)
+
+    monkeypatch.setattr(
+        one_edit_v1,
+        "project_accounting_family_one_edit_hierarchy_frontier_authority_v1",
+        counted_projector,
+    )
+    cache: dict[str, object] = {}
+    first = sweep_v1._selected_v4_one_edit_authority_v1(
+        selected,
+        joined_pages=pages,
+        family_spec=_f3_spec(),
+        topology_candidates=scan,
+        evaluation_spec=evaluation,
+        prepared_public_replay_cache=cache,
+    )
+    second = sweep_v1._selected_v4_one_edit_authority_v1(
+        selected,
+        joined_pages=pages,
+        family_spec=_f3_spec(),
+        topology_candidates=scan,
+        evaluation_spec=evaluation,
+        prepared_public_replay_cache=cache,
+    )
+    assert second == first
+    assert projector_calls == 1
+    assert len(cache) == 1
+
+    changed = copy.deepcopy(selected)
+    changed["column_context"]["document_unit_context"]["currency"] = "USD"
+    with pytest.raises(ValueError, match="one-edit exact authority replay failed"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            changed,
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=evaluation,
+            prepared_public_replay_cache=cache,
+        )
+    assert projector_calls == 2
+
+    cache_key = next(iter(cache))
+    cache[cache_key] = replace(cache[cache_key], receipt_sha256="0" * 64)
+    with pytest.raises(ValueError, match="public-replay cache binding drifted"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            selected,
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=evaluation,
+            prepared_public_replay_cache=cache,
         )
 
 
