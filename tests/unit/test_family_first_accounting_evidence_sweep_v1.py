@@ -1624,6 +1624,23 @@ def _direct_visible_provision_record(
     *,
     parent_role: str,
 ) -> dict:
+    line_ordinal = {
+        "TOTAL_INTERBANK_PROVISION": 10,
+        "INTERBANK_DEPOSIT_PROVISION": 20,
+        "INTERBANK_LOAN_PROVISION": 30,
+    }[role]
+    occurrence_material = {
+        "document_line_ordinal": line_ordinal,
+        "end_document_line_ordinal": line_ordinal,
+        "page_sequence": 1,
+        "role": role,
+        "role_occurrence_ordinal": 0,
+    }
+    scope_binding_material = {
+        "source_scope_role": parent_role,
+        "status": "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING",
+        "target_role": role,
+    }
     values = [
         {
             "column_ordinal": ordinal,
@@ -1644,6 +1661,7 @@ def _direct_visible_provision_record(
                 ),
                 **value["number"],
             },
+            "sample_id": f"sample:{role}:{value['column_ordinal']}",
         }
         for value in values
     ]
@@ -1655,16 +1673,24 @@ def _direct_visible_provision_record(
             "kind": "ROLE_ROW",
             "record": {
                 "label_match": {
+                    "document_line_ordinal": line_ordinal,
+                    "end_document_line_ordinal": line_ordinal,
                     "match_kind": "EXACT_ACCENTLESS_ALIAS",
-                    "occurrence_id": f"aforav2:occurrence:{role.lower()}",
+                    "occurrence_id": (
+                        "aforav2:occurrence:" + canonical_json_sha256_v1(occurrence_material)
+                    ),
+                    "page_sequence": 1,
                     "role": role,
                     "role_kind": "ADDITIVE_CHILD",
+                    "role_occurrence_ordinal": 0,
                     "scope_owner_occurrence_id": f"aforav2:owner:{parent_role.lower()}",
                     "scope_owner_role": None if parent_role == "FAMILY" else parent_role,
                     "source_scope_binding": {
-                        "source_scope_role": parent_role,
-                        "status": "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING",
-                        "target_role": role,
+                        **scope_binding_material,
+                        "binding_id": (
+                            "aforav2:scope-binding:"
+                            + canonical_json_sha256_v1(scope_binding_material)
+                        ),
                     },
                 },
                 "missing_column_ordinals": [],
@@ -1679,6 +1705,18 @@ def _direct_visible_provision_record(
 
 
 def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple[dict, dict]:
+    coarse_provision = (0, -50_000)
+    gross_loan = (494_565, 1_216_832)
+    deposit = tuple(
+        root_value - loan_value - provision_value
+        for root_value, loan_value, provision_value in zip(
+            root, gross_loan, coarse_provision, strict=True
+        )
+    )
+    net_loan = tuple(
+        loan_value + provision_value
+        for loan_value, provision_value in zip(gross_loan, coarse_provision, strict=True)
+    )
     summary = _ready_hierarchical_candidate(
         [
             "EXPLICIT_FAMILY_TOTAL",
@@ -1711,12 +1749,33 @@ def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple
             record
         )
 
+    def resolved_record(role: str, coefficients: tuple[int, int]) -> dict:
+        return {
+            "component_roles": [],
+            "resolution_kind": "DERIVED_EXACT_COMPONENT_SUM",
+            "role": role,
+            "source": None,
+            "values": [
+                {
+                    "column_ordinal": ordinal,
+                    "number": {
+                        "coefficient": coefficient,
+                        "percentage_mark_present": False,
+                        "scale": 0,
+                    },
+                }
+                for ordinal, coefficient in enumerate(coefficients)
+            ],
+        }
+
     replace_role(
         summary,
         _direct_visible_provision_record(
-            "TOTAL_INTERBANK_PROVISION", (0, -50_000), parent_role="FAMILY"
+            "TOTAL_INTERBANK_PROVISION", coarse_provision, parent_role="FAMILY"
         ),
     )
+    replace_role(summary, resolved_record("INTERBANK_DEPOSIT_GROUP", deposit))
+    replace_role(summary, resolved_record("INTERBANK_LOAN_GROUP", gross_loan))
     replace_role(
         detail,
         _direct_visible_provision_record(
@@ -1729,10 +1788,34 @@ def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple
         detail,
         _direct_visible_provision_record(
             "INTERBANK_LOAN_PROVISION",
-            (0, -50_000),
+            coarse_provision,
             parent_role="INTERBANK_LOAN_GROUP",
         ),
     )
+    replace_role(detail, resolved_record("DEMAND_DEPOSIT_VND", deposit))
+    replace_role(detail, resolved_record("INTERBANK_DEPOSIT_GROUP", deposit))
+    replace_role(detail, resolved_record("INTERBANK_LOAN_VND", gross_loan))
+    replace_role(detail, resolved_record("INTERBANK_LOAN_GROUP", net_loan))
+    summary["row_axis"] = {
+        "rows": [
+            copy.deepcopy(
+                next(
+                    record
+                    for record in summary["additive_closure"]["resolved_roles"]
+                    if record["role"] == "TOTAL_INTERBANK_PROVISION"
+                )["source"]["record"]
+            )
+        ],
+        "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+    }
+    detail["row_axis"] = {
+        "rows": [
+            copy.deepcopy(record["source"]["record"])
+            for record in detail["additive_closure"]["resolved_roles"]
+            if record["role"] in {"INTERBANK_DEPOSIT_PROVISION", "INTERBANK_LOAN_PROVISION"}
+        ],
+        "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+    }
     summary["additive_closure"]["equations"] = {
         "global": [
             {
@@ -1858,6 +1941,118 @@ def test_v4_provision_presentation_stays_incomparable_without_exact_split_proof(
 
     selected, reasons = subject._select_candidate_evidence(
         [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_provision_projection_recomputes_stale_exact_equations_per_lane() -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+
+    for candidate, role in (
+        (summary, "TOTAL_INTERBANK_PROVISION"),
+        (detail, "INTERBANK_LOAN_PROVISION"),
+    ):
+        record = next(
+            item for item in candidate["additive_closure"]["resolved_roles"] if item["role"] == role
+        )
+        row = next(item for item in candidate["row_axis"]["rows"] if item["role"] == role)
+        record["values"][1]["number"]["coefficient"] += 1
+        record["source"]["record"]["values"][1]["parsed_token"]["coefficient"] += 1
+        row["values"][1]["parsed_token"]["coefficient"] += 1
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "COHERENTLY_REHASHED_SOURCE_OCCURRENCE",
+        "DUPLICATE_ROW_OCCURRENCE",
+        "WRONG_ROW_VALUE",
+        "WRONG_ROW_PARENT_OCCURRENCE",
+        "WRONG_SOURCE_SCOPE_BINDING",
+        "INCOMPLETE_ROW",
+    ],
+)
+def test_v4_provision_projection_requires_one_exact_authenticated_row_binding(
+    mutation: str,
+) -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+    deposit = next(
+        item
+        for item in detail["additive_closure"]["resolved_roles"]
+        if item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    source_row = deposit["source"]["record"]
+    row = next(
+        item for item in detail["row_axis"]["rows"] if item["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    if mutation == "COHERENTLY_REHASHED_SOURCE_OCCURRENCE":
+        label = source_row["label_match"]
+        label["document_line_ordinal"] += 1
+        label["end_document_line_ordinal"] += 1
+        label["occurrence_id"] = "aforav2:occurrence:" + canonical_json_sha256_v1(
+            {
+                "document_line_ordinal": label["document_line_ordinal"],
+                "end_document_line_ordinal": label["end_document_line_ordinal"],
+                "page_sequence": label["page_sequence"],
+                "role": label["role"],
+                "role_occurrence_ordinal": label["role_occurrence_ordinal"],
+            }
+        )
+    elif mutation == "DUPLICATE_ROW_OCCURRENCE":
+        detail["row_axis"]["rows"].append(copy.deepcopy(row))
+    elif mutation == "WRONG_ROW_VALUE":
+        row["values"][1]["parsed_token"]["coefficient"] += 1
+    elif mutation == "WRONG_ROW_PARENT_OCCURRENCE":
+        row["label_match"]["scope_owner_occurrence_id"] = "aforav2:occurrence:wrong-parent"
+    elif mutation == "WRONG_SOURCE_SCOPE_BINDING":
+        binding = source_row["label_match"]["source_scope_binding"]
+        binding["source_scope_role"] = "INTERBANK_LOAN_GROUP"
+        material = copy.deepcopy(binding)
+        material.pop("binding_id")
+        binding["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    else:
+        row["missing_column_ordinals"] = [1]
+        row["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_provision_projection_rejects_reused_occurrence_ids_across_candidates() -> None:
+    summary, _ = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+    richer = copy.deepcopy(summary)
+    richer["candidate_ordinal"] = 1
+    richer["additive_closure"]["resolved_roles"].append(
+        {"role": "ADDITIONAL_EXACT_INTERBANK_DETAIL"}
+    )
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, richer],
         {
             **_strict_same_population_selection_policy(),
             "format_version": subject.EVALUATION_SPEC_FORMAT_V4,

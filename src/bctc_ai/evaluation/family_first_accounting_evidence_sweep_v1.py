@@ -929,12 +929,49 @@ _V4_INTERBANK_PROVISION_ROLES = {
     *_V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES,
 }
 _V4_INTERBANK_PROVISION_CONTRIBUTION_TOKEN = "__V4_EXACT_INTERBANK_PROVISION_CONTRIBUTION__"
+_V4_EXACT_EQUATION_STATUSES = {
+    "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+    "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+}
+
+
+def _v4_resolved_number_axis(record: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+    """Project one complete, typed resolved lane axis without its provenance."""
+
+    values = record.get("values")
+    if type(values) is not list or not values:
+        return None
+    axis = []
+    for value in values:
+        number = value.get("number") if type(value) is dict else None
+        if (
+            type(value) is not dict
+            or type(value.get("column_ordinal")) is not int
+            or type(number) is not dict
+            or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+            or type(number.get("coefficient")) is not int
+            or number.get("percentage_mark_present") is not False
+            or type(number.get("scale")) is not int
+            or number["scale"] < 0
+        ):
+            return None
+        axis.append(
+            {
+                "column_ordinal": value["column_ordinal"],
+                "number": canonical_clone_v1(number),
+            }
+        )
+    axis.sort(key=lambda item: item["column_ordinal"])
+    return axis if [item["column_ordinal"] for item in axis] == list(range(len(axis))) else None
 
 
 def _v4_exact_visible_role_axis(
-    record: Mapping[str, Any], *, expected_parent_role: str
+    record: Mapping[str, Any],
+    row_axis: Mapping[str, Any],
+    *,
+    expected_parent_role: str,
 ) -> tuple[list[dict[str, Any]], str] | None:
-    """Return one exact visible leaf axis bound to its declared source parent."""
+    """Return one exact visible leaf bound to one authenticated row projection."""
 
     role = record.get("role")
     source = record.get("source")
@@ -959,11 +996,119 @@ def _v4_exact_visible_role_axis(
         or not label_match["scope_owner_occurrence_id"]
         or type(label_match.get("match_kind")) is not str
         or not label_match["match_kind"].startswith("EXACT_")
+        or type(label_match.get("document_line_ordinal")) is not int
+        or type(label_match.get("end_document_line_ordinal")) is not int
+        or type(label_match.get("page_sequence")) is not int
+        or type(label_match.get("role_occurrence_ordinal")) is not int
+        or label_match["role_occurrence_ordinal"] < 0
+        or row_axis.get("status") != "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+        or type(row_axis.get("rows")) is not list
+    ):
+        return None
+
+    occurrence_material = {
+        "document_line_ordinal": label_match["document_line_ordinal"],
+        "end_document_line_ordinal": label_match["end_document_line_ordinal"],
+        "page_sequence": label_match["page_sequence"],
+        "role": role,
+        "role_occurrence_ordinal": label_match["role_occurrence_ordinal"],
+    }
+    if label_match["occurrence_id"] != "aforav2:occurrence:" + canonical_json_sha256_v1(
+        occurrence_material
+    ):
+        return None
+
+    def row_binding_projection(row: Mapping[str, Any]) -> dict[str, Any] | None:
+        row_label = row.get("label_match")
+        values = row.get("values")
+        if (
+            row.get("role") != role
+            or row.get("role_kind") != "ADDITIVE_CHILD"
+            or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or row.get("missing_column_ordinals") != []
+            or type(row_label) is not dict
+            or row_label.get("role") != role
+            or row_label.get("role_kind") != "ADDITIVE_CHILD"
+            or type(values) is not list
+            or not values
+        ):
+            return None
+        label_fields = (
+            "document_line_ordinal",
+            "end_document_line_ordinal",
+            "match_kind",
+            "occurrence_id",
+            "page_sequence",
+            "role",
+            "role_kind",
+            "scope_owner_occurrence_id",
+            "scope_owner_role",
+        )
+        if any(field not in row_label for field in label_fields):
+            return None
+        projected_values = []
+        for value in values:
+            parsed = value.get("parsed_token") if type(value) is dict else None
+            if (
+                type(value) is not dict
+                or type(value.get("column_ordinal")) is not int
+                or type(value.get("sample_id")) is not str
+                or not value["sample_id"]
+                or type(parsed) is not dict
+                or parsed.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                or type(parsed.get("coefficient")) is not int
+                or parsed.get("percentage_mark_present") is not False
+                or type(parsed.get("scale")) is not int
+                or parsed["scale"] < 0
+            ):
+                return None
+            projected_values.append(
+                {
+                    "column_ordinal": value["column_ordinal"],
+                    "parsed_token": {
+                        "classification": parsed["classification"],
+                        "coefficient": parsed["coefficient"],
+                        "percentage_mark_present": False,
+                        "scale": parsed["scale"],
+                    },
+                    "sample_id": value["sample_id"],
+                }
+            )
+        projected_values.sort(key=lambda value: value["column_ordinal"])
+        if [value["column_ordinal"] for value in projected_values] != list(
+            range(len(projected_values))
+        ):
+            return None
+        return {
+            "label_match": {field: canonical_clone_v1(row_label[field]) for field in label_fields},
+            "missing_column_ordinals": [],
+            "role": role,
+            "role_kind": "ADDITIVE_CHILD",
+            "status": "VISIBLE_VALUE_LANES_BOUND",
+            "values": projected_values,
+        }
+
+    source_row_projection = row_binding_projection(source_record)
+    matching_rows = [
+        row for row in row_axis["rows"] if type(row) is dict and row.get("role") == role
+    ]
+    matching_row_projection = (
+        row_binding_projection(matching_rows[0]) if len(matching_rows) == 1 else None
+    )
+    if (
+        source_row_projection is None
+        or matching_row_projection is None
+        or not same_typed_json_v1(matching_row_projection, source_row_projection)
     ):
         return None
 
     parent_role = label_match.get("scope_owner_role")
     scope_binding = label_match.get("source_scope_binding")
+    if type(scope_binding) is dict:
+        binding_material = canonical_clone_v1(scope_binding)
+        binding_id = binding_material.pop("binding_id", None)
+        if binding_id != "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material):
+            return None
     if parent_role != expected_parent_role:
         if not (
             parent_role is None
@@ -979,32 +1124,6 @@ def _v4_exact_visible_role_axis(
         or scope_binding.get("source_scope_role") != expected_parent_role
     ):
         return None
-
-    def resolved_axis(values: Any) -> list[dict[str, Any]] | None:
-        if type(values) is not list or not values:
-            return None
-        axis = []
-        for value in values:
-            number = value.get("number") if type(value) is dict else None
-            if (
-                type(value) is not dict
-                or type(value.get("column_ordinal")) is not int
-                or type(number) is not dict
-                or set(number) != {"coefficient", "percentage_mark_present", "scale"}
-                or type(number.get("coefficient")) is not int
-                or number.get("percentage_mark_present") is not False
-                or type(number.get("scale")) is not int
-                or number["scale"] < 0
-            ):
-                return None
-            axis.append(
-                {
-                    "column_ordinal": value["column_ordinal"],
-                    "number": canonical_clone_v1(number),
-                }
-            )
-        axis.sort(key=lambda item: item["column_ordinal"])
-        return axis if [item["column_ordinal"] for item in axis] == list(range(len(axis))) else None
 
     def source_axis(values: Any) -> list[dict[str, Any]] | None:
         if type(values) is not list or not values:
@@ -1037,7 +1156,7 @@ def _v4_exact_visible_role_axis(
         axis.sort(key=lambda item: item["column_ordinal"])
         return axis if [item["column_ordinal"] for item in axis] == list(range(len(axis))) else None
 
-    visible_axis = resolved_axis(record.get("values"))
+    visible_axis = _v4_resolved_number_axis(record)
     direct_source_axis = source_axis(source_record.get("values"))
     if (
         visible_axis is None
@@ -1094,15 +1213,71 @@ def _v4_canonical_exact_sum_axis(
     return result
 
 
+def _v4_exact_equation_holds(
+    equation: Mapping[str, Any],
+    resolved_by_role: Mapping[str, Mapping[str, Any]],
+    expected_column_ordinals: Sequence[int],
+) -> bool:
+    """Recompute one claimed exact equation from its complete resolved lanes."""
+
+    result_role = equation.get("result_role")
+    component_roles = equation.get("component_roles_present")
+    if (
+        equation.get("status") not in _V4_EXACT_EQUATION_STATUSES
+        or type(result_role) is not str
+        or not result_role
+        or type(component_roles) is not list
+        or not component_roles
+        or any(type(role) is not str or not role for role in component_roles)
+        or len(component_roles) != len(set(component_roles))
+        or result_role in component_roles
+    ):
+        return False
+    result_axis = _v4_resolved_number_axis(resolved_by_role.get(result_role, {}))
+    component_axes = [
+        _v4_resolved_number_axis(resolved_by_role.get(role, {})) for role in component_roles
+    ]
+    if result_axis is None or any(axis is None for axis in component_axes):
+        return False
+    if any(
+        [lane["column_ordinal"] for lane in axis] != list(expected_column_ordinals)
+        for axis in [result_axis, *(axis for axis in component_axes if axis is not None)]
+    ):
+        return False
+    canonical_result = _v4_canonical_exact_sum_axis([result_axis])
+    canonical_components = _v4_canonical_exact_sum_axis(
+        [axis for axis in component_axes if axis is not None]
+    )
+    return (
+        canonical_result is not None
+        and canonical_components is not None
+        and same_typed_json_v1(canonical_result, canonical_components)
+    )
+
+
 def _v4_interbank_provision_projection(
     candidate: Mapping[str, Any], role_set: set[str]
-) -> tuple[str, list[dict[str, Any]], dict[str, list[dict[str, Any]]]] | None:
+) -> (
+    tuple[
+        str,
+        list[dict[str, Any]],
+        dict[str, list[dict[str, Any]]],
+        tuple[str, ...],
+    ]
+    | None
+):
     """Project either the one coarse provision or both exact parented leaves."""
 
     closure = candidate.get("additive_closure")
     resolved = closure.get("resolved_roles") if type(closure) is dict else None
     family_id = closure.get("family_id") if type(closure) is dict else None
-    if type(resolved) is not list or type(family_id) is not str or not family_id:
+    row_axis = candidate.get("row_axis")
+    if (
+        type(resolved) is not list
+        or type(family_id) is not str
+        or not family_id
+        or type(row_axis) is not dict
+    ):
         return None
     role_records: dict[str, Mapping[str, Any]] = {}
     for record in resolved:
@@ -1116,7 +1291,7 @@ def _v4_interbank_provision_projection(
     if observed != role_set & _V4_INTERBANK_PROVISION_ROLES:
         return None
     if not observed:
-        return "NONE", [], {}
+        return "NONE", [], {}, ()
     population = _candidate_population_signature(dict(candidate))
     population_lanes = population.get("numeric_lanes") if type(population) is dict else None
     if type(population_lanes) is not list or not population_lanes:
@@ -1127,8 +1302,18 @@ def _v4_interbank_provision_projection(
     global_equations = equations.get("global") if type(equations) is dict else None
     if type(global_equations) is not list:
         return None
+    claimed_exact_equations = [
+        equation
+        for equation in global_equations
+        if type(equation) is dict and equation.get("status") in _V4_EXACT_EQUATION_STATUSES
+    ]
+    if not claimed_exact_equations or any(
+        not _v4_exact_equation_holds(equation, role_records, expected_column_ordinals)
+        for equation in claimed_exact_equations
+    ):
+        return None
 
-    def exact_group_reconciliation(result_role: str, component_role: str) -> bool:
+    def exact_group_reconciliation(result_role: str, required_component_roles: set[str]) -> bool:
         matches = []
         for equation in global_equations:
             component_roles = (
@@ -1145,7 +1330,8 @@ def _v4_interbank_provision_projection(
                 and type(component_roles) is list
                 and all(type(role) is str and role for role in component_roles)
                 and len(component_roles) == len(set(component_roles))
-                and component_role in component_roles
+                and required_component_roles <= set(component_roles)
+                and _v4_exact_equation_holds(equation, role_records, expected_column_ordinals)
             ):
                 matches.append(equation)
         return len(matches) == 1
@@ -1153,12 +1339,20 @@ def _v4_interbank_provision_projection(
     if observed == {_V4_COARSE_INTERBANK_PROVISION_ROLE}:
         exact = _v4_exact_visible_role_axis(
             role_records[_V4_COARSE_INTERBANK_PROVISION_ROLE],
+            row_axis,
             expected_parent_role=family_id,
         )
         if (
             exact is None
             or family_id not in role_records
-            or not exact_group_reconciliation(family_id, _V4_COARSE_INTERBANK_PROVISION_ROLE)
+            or not exact_group_reconciliation(
+                family_id,
+                {
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                    _V4_COARSE_INTERBANK_PROVISION_ROLE,
+                },
+            )
         ):
             return None
         canonical = _v4_canonical_exact_sum_axis([exact[0]])
@@ -1167,7 +1361,12 @@ def _v4_interbank_provision_projection(
             or [lane["column_ordinal"] for lane in canonical] != expected_column_ordinals
         ):
             return None
-        return ("COARSE", canonical, {_V4_COARSE_INTERBANK_PROVISION_ROLE: exact[0]})
+        return (
+            "COARSE",
+            canonical,
+            {_V4_COARSE_INTERBANK_PROVISION_ROLE: exact[0]},
+            (exact[1],),
+        )
 
     split_roles = set(_V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES)
     if observed != split_roles or any(
@@ -1175,12 +1374,18 @@ def _v4_interbank_provision_projection(
     ):
         return None
     if any(
-        not exact_group_reconciliation(parent, role)
+        not exact_group_reconciliation(parent, {role})
         for role, parent in _V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES.items()
+    ) or not exact_group_reconciliation(
+        family_id, set(_V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES.values())
     ):
         return None
     exact_split = {
-        role: _v4_exact_visible_role_axis(record, expected_parent_role=parent)
+        role: _v4_exact_visible_role_axis(
+            record,
+            row_axis,
+            expected_parent_role=parent,
+        )
         for role, parent in _V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES.items()
         for record in [role_records[role]]
     }
@@ -1193,7 +1398,12 @@ def _v4_interbank_provision_projection(
         [split_axes[role] for role in _V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES]
     )
     return (
-        ("SPLIT", canonical, split_axes)
+        (
+            "SPLIT",
+            canonical,
+            split_axes,
+            tuple(value[1] for value in exact_split.values() if value is not None),
+        )
         if canonical is not None
         and [lane["column_ordinal"] for lane in canonical] == expected_column_ordinals
         else None
@@ -1220,6 +1430,14 @@ def _v4_strict_role_richness_subset(
         or candidate_projection[0] == "NONE"
         or other_projection[0] == "NONE"
         or not same_typed_json_v1(candidate_projection[1], other_projection[1])
+    ):
+        return False
+    candidate_occurrences = candidate_projection[3]
+    other_occurrences = other_projection[3]
+    if (
+        len(candidate_occurrences) != len(set(candidate_occurrences))
+        or len(other_occurrences) != len(set(other_occurrences))
+        or set(candidate_occurrences) & set(other_occurrences)
     ):
         return False
     if candidate_projection[0] == other_projection[0] == "SPLIT" and not same_typed_json_v1(
