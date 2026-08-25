@@ -2186,6 +2186,424 @@ def _v4_ready_exact_component_detail_supersedes_visible_summary(
     return True
 
 
+def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
+    summary: Mapping[str, Any],
+    detail: Mapping[str, Any],
+    summary_roles: set[str],
+    detail_roles: set[str],
+) -> bool:
+    """Prove a visible-total detail is one exact expansion of a summary.
+
+    This is intentionally independent of role-count and provision-presentation
+    equivalence.  Both candidates retain visible root authority, while the
+    detail must authenticate every recursive direct-frontier row, presentation
+    total, and nonadditive memo row against its sealed occurrence axis.  A
+    source parent plus one of its descendants can therefore never appear in the
+    same additive frontier merely because the arithmetic happens to close.
+    """
+
+    if (
+        summary.get("reasons") != []
+        or detail.get("reasons") != []
+        or type(summary.get("candidate_ordinal")) is not int
+        or type(detail.get("candidate_ordinal")) is not int
+        or summary["candidate_ordinal"] == detail["candidate_ordinal"]
+        or not summary_roles < detail_roles
+    ):
+        return False
+    summary_axes = _v4_authenticated_candidate_axes(summary)
+    detail_axes = _v4_authenticated_candidate_axes(detail)
+    if summary_axes is None or detail_axes is None:
+        return False
+
+    def unique_role_records(
+        closure: Mapping[str, Any],
+    ) -> dict[str, Mapping[str, Any]] | None:
+        records = closure.get("resolved_roles")
+        if type(records) is not list or not records:
+            return None
+        result: dict[str, Mapping[str, Any]] = {}
+        for record in records:
+            role = record.get("role") if type(record) is dict else None
+            if type(role) is not str or not role or role in result:
+                return None
+            result[role] = record
+        return result
+
+    def unique_global_equations(
+        closure: Mapping[str, Any],
+    ) -> dict[str, Mapping[str, Any]] | None:
+        equations = closure.get("equations")
+        global_equations = equations.get("global") if type(equations) is dict else None
+        if type(global_equations) is not list or not global_equations:
+            return None
+        result: dict[str, Mapping[str, Any]] = {}
+        for equation in global_equations:
+            role = equation.get("result_role") if type(equation) is dict else None
+            if type(role) is not str or not role or role in result:
+                return None
+            result[role] = equation
+        return result
+
+    summary_closure = summary_axes["closure"]
+    detail_closure = detail_axes["closure"]
+    family_id = summary_closure.get("family_id")
+    summary_records = unique_role_records(summary_closure)
+    detail_records = unique_role_records(detail_closure)
+    summary_equations = unique_global_equations(summary_closure)
+    detail_equations = unique_global_equations(detail_closure)
+    summary_signature = _candidate_population_signature(dict(summary))
+    detail_signature = _candidate_population_signature(dict(detail))
+    if (
+        type(family_id) is not str
+        or not family_id
+        or detail_closure.get("family_id") != family_id
+        or summary_axes.get("root_occurrence_id") == detail_axes.get("root_occurrence_id")
+        or summary_records is None
+        or detail_records is None
+        or summary_equations is None
+        or detail_equations is None
+        or summary_signature is None
+        or detail_signature is None
+        or not same_typed_json_v1(summary_signature, detail_signature)
+    ):
+        return False
+    expected_ordinals = [lane["column_ordinal"] for lane in summary_signature["numeric_lanes"]]
+
+    summary_root_equation = summary_equations.get(family_id)
+    detail_root_equation = detail_equations.get(family_id)
+    top_roles = (
+        summary_root_equation.get("component_roles_present")
+        if type(summary_root_equation) is dict
+        else None
+    )
+    if (
+        type(top_roles) is not list
+        or len(top_roles) < 2
+        or any(type(role) is not str or not role for role in top_roles)
+        or len(top_roles) != len(set(top_roles))
+        or summary_roles != {family_id, *top_roles}
+        or type(detail_root_equation) is not dict
+        or detail_root_equation.get("component_roles_present") != top_roles
+        or summary_root_equation.get("status")
+        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or detail_root_equation.get("status")
+        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or not _v4_exact_equation_holds(
+            summary_root_equation,
+            summary_records,
+            expected_ordinals,
+        )
+        or not _v4_exact_equation_holds(
+            detail_root_equation,
+            detail_records,
+            expected_ordinals,
+        )
+    ):
+        return False
+    if any(
+        role not in detail_records
+        or not same_typed_json_v1(
+            _v4_resolved_number_axis(summary_records[role]),
+            _v4_resolved_number_axis(detail_records[role]),
+        )
+        for role in summary_roles
+    ):
+        return False
+
+    def declared_aliases(
+        equations: Mapping[str, Mapping[str, Any]],
+    ) -> dict[str, str] | None:
+        result: dict[str, str] = {}
+        for result_role, equation in equations.items():
+            visible_roles = equation.get("visible_result_roles")
+            if (
+                type(visible_roles) is not list
+                or any(type(role) is not str or not role for role in visible_roles)
+                or len(visible_roles) != len(set(visible_roles))
+            ):
+                return None
+            for alias in visible_roles:
+                if alias == result_role:
+                    continue
+                if alias in result:
+                    return None
+                result[alias] = result_role
+        return result
+
+    summary_aliases = declared_aliases(summary_equations)
+    detail_aliases = declared_aliases(detail_equations)
+    if summary_aliases is None or detail_aliases is None:
+        return False
+
+    def authenticate_correlated_result(
+        *,
+        role: str,
+        parent_role: str | None,
+        records: Mapping[str, Mapping[str, Any]],
+        equations: Mapping[str, Mapping[str, Any]],
+        aliases: Mapping[str, str],
+        axes: Mapping[str, Any],
+        consumed_occurrences: set[str],
+        consumed_alias_roles: set[str],
+    ) -> bool:
+        record = records.get(role)
+        equation = equations.get(role)
+        source = record.get("source") if type(record) is dict else None
+        source_record = source.get("record") if type(source) is dict else None
+        source_role = source_record.get("role") if type(source_record) is dict else None
+        if (
+            type(record) is not dict
+            or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+            or type(equation) is not dict
+            or equation.get("status") != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+            or type(source_role) is not str
+            or not source_role
+        ):
+            return False
+
+        if source_role == role:
+            visible_record = record
+            expected_parent = family_id if parent_role is None else parent_role
+            expected_kind = source_record.get("role_kind")
+        else:
+            if aliases.get(source_role) != role:
+                return False
+            visible_record = records.get(source_role)
+            expected_parent = family_id if role == family_id else role
+            expected_kind = (
+                visible_record.get("source", {}).get("record", {}).get("role_kind")
+                if type(visible_record) is dict
+                else None
+            )
+            if type(visible_record) is not dict or not same_typed_json_v1(
+                record.get("source"), visible_record.get("source")
+            ):
+                return False
+            consumed_alias_roles.add(source_role)
+        if expected_kind not in {"STRUCTURAL_GROUP", "TOTAL"}:
+            return False
+        exact = _v4_exact_visible_role_axis(
+            visible_record,
+            axes,
+            expected_parent_role=expected_parent,
+            expected_role_kind=expected_kind,
+            allow_family_root_scope_without_binding=expected_parent == family_id,
+        )
+        if (
+            exact is None
+            or not same_typed_json_v1(exact[0], _v4_resolved_number_axis(record))
+            or exact[1] in consumed_occurrences
+        ):
+            return False
+        consumed_occurrences.add(exact[1])
+        return True
+
+    summary_consumed: set[str] = set()
+    summary_consumed_aliases: set[str] = set()
+    if not authenticate_correlated_result(
+        role=family_id,
+        parent_role=None,
+        records=summary_records,
+        equations=summary_equations,
+        aliases=summary_aliases,
+        axes=summary_axes,
+        consumed_occurrences=summary_consumed,
+        consumed_alias_roles=summary_consumed_aliases,
+    ):
+        return False
+    for role in top_roles:
+        exact = _v4_exact_visible_role_axis(
+            summary_records[role],
+            summary_axes,
+            expected_parent_role=family_id,
+            expected_role_kind="STRUCTURAL_GROUP",
+            allow_family_root_scope_without_binding=True,
+        )
+        if exact is None or exact[1] in summary_consumed:
+            return False
+        summary_consumed.add(exact[1])
+
+    detail_consumed: set[str] = set()
+    detail_consumed_aliases: set[str] = set()
+    terminal_occurrences: dict[str, str] = {}
+    tree_roles: set[str] = set()
+    internal_roles: set[str] = set()
+    active: set[str] = set()
+
+    def authenticate_tree(role: str, parent_role: str | None) -> bool:
+        if role in active or role in tree_roles:
+            return False
+        record = detail_records.get(role)
+        if type(record) is not dict:
+            return False
+        tree_roles.add(role)
+        equation = detail_equations.get(role)
+        components = equation.get("component_roles_present") if equation is not None else None
+        if type(equation) is dict:
+            if (
+                equation.get("status") not in _V4_EXACT_EQUATION_STATUSES
+                or type(components) is not list
+                or not components
+                or any(type(component) is not str or not component for component in components)
+                or len(components) != len(set(components))
+                or role in components
+                or not _v4_exact_equation_holds(equation, detail_records, expected_ordinals)
+            ):
+                return False
+            internal_roles.add(role)
+            resolution_kind = record.get("resolution_kind")
+            if resolution_kind == "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS":
+                if not authenticate_correlated_result(
+                    role=role,
+                    parent_role=parent_role,
+                    records=detail_records,
+                    equations=detail_equations,
+                    aliases=detail_aliases,
+                    axes=detail_axes,
+                    consumed_occurrences=detail_consumed,
+                    consumed_alias_roles=detail_consumed_aliases,
+                ):
+                    return False
+            elif (
+                resolution_kind != "DERIVED_EXACT_COMPONENT_SUM" or record.get("source") is not None
+            ):
+                return False
+            active.add(role)
+            accepted = all(authenticate_tree(component, role) for component in components)
+            active.remove(role)
+            return accepted
+        if parent_role is None or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE":
+            return False
+        exact = _v4_exact_visible_role_axis(
+            record,
+            detail_axes,
+            expected_parent_role=parent_role,
+        )
+        if exact is None or exact[1] in detail_consumed:
+            return False
+        detail_consumed.add(exact[1])
+        terminal_occurrences[role] = exact[1]
+        return True
+
+    if (
+        not authenticate_tree(family_id, None)
+        or set(detail_equations) != internal_roles
+        or not summary_roles < tree_roles
+        or not tree_roles <= detail_roles
+    ):
+        return False
+
+    nonadditive_roles: set[str] = set()
+    for extra_role in set(detail_records) - tree_roles - detail_consumed_aliases:
+        extra_record = detail_records[extra_role]
+        source = extra_record.get("source")
+        source_record = source.get("record") if type(source) is dict else None
+        label = source_record.get("label_match") if type(source_record) is dict else None
+        parent_role = label.get("scope_owner_role") if type(label) is dict else None
+        parent_occurrence_id = terminal_occurrences.get(parent_role)
+        parent_occurrence = (
+            detail_axes["occurrence_by_id"].get(parent_occurrence_id)
+            if type(parent_occurrence_id) is str
+            else None
+        )
+        if (
+            source_record.get("role_kind") if type(source_record) is dict else None
+        ) != "NONADDITIVE_CHILD" or type(parent_occurrence) is not dict:
+            return False
+        if detail_equations.get(extra_role) is not None:
+            return False
+        exact = _v4_exact_visible_role_axis(
+            extra_record,
+            detail_axes,
+            expected_parent_role=parent_role,
+            expected_role_kind="NONADDITIVE_CHILD",
+            expected_parent_role_kind=parent_occurrence.get("role_kind"),
+            expected_parent_occurrence_id=parent_occurrence_id,
+        )
+        if exact is None or exact[1] in detail_consumed:
+            return False
+        detail_consumed.add(exact[1])
+        nonadditive_roles.add(extra_role)
+
+    if (
+        detail_roles != tree_roles | nonadditive_roles
+        or set(summary_records) != summary_roles | summary_consumed_aliases
+        or set(detail_records) != tree_roles | detail_consumed_aliases | nonadditive_roles
+    ):
+        return False
+
+    def has_authenticated_numeric_sample_partition(axes: Mapping[str, Any]) -> bool:
+        """Replay every row, subtotal, and non-accounting sample owner."""
+
+        closure = axes["closure"]
+        occurrence_binding = closure.get("occurrence_axis_binding")
+        topology_candidates_id = (
+            occurrence_binding.get("topology_candidates_id")
+            if type(occurrence_binding) is dict
+            else None
+        )
+        if type(topology_candidates_id) is not str:
+            return False
+        numeric_projection = dict(closure)
+        numeric_projection["topology_candidates_id"] = topology_candidates_id
+        try:
+            occurrence_row_v2._validate_numeric_sample_universe(  # noqa: SLF001
+                numeric_projection,
+                axes["row_axis"],
+                axes["occurrence_by_id"],
+            )
+            scoped_v2._validate_unlabeled_exact_subtotal_receipts(closure)  # noqa: SLF001
+            scoped_v2._validate_numeric_sample_coverage(closure)  # noqa: SLF001
+        except (AttributeError, IndexError, KeyError, RuntimeError, TypeError, ValueError):
+            return False
+        return True
+
+    if not has_authenticated_numeric_sample_partition(
+        summary_axes
+    ) or not has_authenticated_numeric_sample_partition(detail_axes):
+        return False
+
+    def every_bound_row_consumed_once(
+        axes: Mapping[str, Any], consumed_occurrences: set[str]
+    ) -> bool:
+        rows = axes["row_axis"].get("rows")
+        if type(rows) is not list:
+            return False
+        row_occurrences = []
+        sample_ids = []
+        for row in rows:
+            label = row.get("label_match") if type(row) is dict else None
+            values = row.get("values") if type(row) is dict else None
+            occurrence_id = label.get("occurrence_id") if type(label) is dict else None
+            if (
+                type(occurrence_id) is not str
+                or not occurrence_id
+                or type(values) is not list
+                or any(
+                    type(value) is not dict
+                    or type(value.get("sample_id")) is not str
+                    or not value["sample_id"]
+                    for value in values
+                )
+            ):
+                return False
+            row_occurrences.append(occurrence_id)
+            sample_ids.extend(value["sample_id"] for value in values)
+        return (
+            len(row_occurrences) == len(set(row_occurrences))
+            and set(row_occurrences) == consumed_occurrences
+            and set(axes["coverage_by_occurrence"]) == consumed_occurrences
+            and len(sample_ids) == len(set(sample_ids))
+            and set(sample_ids) <= set(axes["sample_by_id"])
+        )
+
+    return every_bound_row_consumed_once(
+        summary_axes,
+        summary_consumed,
+    ) and every_bound_row_consumed_once(detail_axes, detail_consumed)
+
+
 def _threat_matches_ready_component_population(
     ready: Mapping[str, Any], threat: Mapping[str, Any]
 ) -> bool:
@@ -2564,34 +2982,47 @@ def _select_candidate_evidence(
                     and other is not None
                     and (
                         (
-                            population_signatures[index] is not None
-                            and population_signatures[other_index] is not None
-                            and same_typed_json_v1(
-                                population_signatures[index],
-                                population_signatures[other_index],
-                            )
-                        )
-                        or (
                             canonicalize_all_presentations
-                            and population_signatures[index] is not None
-                            and population_signatures[other_index] is None
-                            and _v4_ready_exact_component_detail_supersedes_visible_summary(
+                            and _v4_ready_visible_correlated_detail_supersedes_visible_summary(
                                 candidate,
                                 ready[other_index],
                                 role_sets[index],
                                 other,
                             )
                         )
-                    )
-                    and (
-                        _v4_strict_role_richness_subset(
-                            candidate,
-                            ready[other_index],
-                            role_sets[index],
-                            other,
+                        or (
+                            (
+                                (
+                                    population_signatures[index] is not None
+                                    and population_signatures[other_index] is not None
+                                    and same_typed_json_v1(
+                                        population_signatures[index],
+                                        population_signatures[other_index],
+                                    )
+                                )
+                                or (
+                                    canonicalize_all_presentations
+                                    and population_signatures[index] is not None
+                                    and population_signatures[other_index] is None
+                                    and _v4_ready_exact_component_detail_supersedes_visible_summary(
+                                        candidate,
+                                        ready[other_index],
+                                        role_sets[index],
+                                        other,
+                                    )
+                                )
+                            )
+                            and (
+                                _v4_strict_role_richness_subset(
+                                    candidate,
+                                    ready[other_index],
+                                    role_sets[index],
+                                    other,
+                                )
+                                if canonicalize_all_presentations
+                                else role_sets[index] < other
+                            )
                         )
-                        if canonicalize_all_presentations
-                        else role_sets[index] < other
                     )
                     for other_index, other in enumerate(role_sets)
                 )
@@ -3372,6 +3803,73 @@ def _selected_topology_pages_v1(
     return selected
 
 
+def _v4_candidate_scoped_missing_dimension_render_pages(
+    trial: Mapping[str, Any],
+    joined_pages: list[dict[str, Any]],
+    topology_candidates: Mapping[str, Any] | None,
+) -> tuple[int, ...]:
+    """Bind one exact missing-render error to one pre-pruning candidate page."""
+
+    reasons = trial.get("unresolved_reasons")
+    regions = topology_candidates.get("regions") if type(topology_candidates) is dict else None
+    if type(reasons) is not list or type(regions) is not list:
+        return ()
+    pattern = re.compile(
+        r"^CANDIDATE_([1-9][0-9]{0,8}):"
+        r"ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+        r"missing-lane page lacks authenticated render dimensions$"
+    )
+    requested_pages = []
+    for reason in reasons:
+        match = pattern.fullmatch(reason) if type(reason) is str else None
+        if match is None:
+            continue
+        candidate_number = int(match.group(1))
+        if candidate_number > len(regions):
+            continue
+        region = regions[candidate_number - 1]
+        if (
+            type(region) is not dict
+            or type(region.get("cluster_start_document_line_ordinal")) is not int
+            or type(region.get("cluster_end_document_line_ordinal_exclusive")) is not int
+            or region["cluster_start_document_line_ordinal"]
+            >= region["cluster_end_document_line_ordinal_exclusive"]
+        ):
+            continue
+        candidate_pages = _selected_topology_pages_v1(
+            joined_pages,
+            {"regions": [region]},
+        )
+        if len(candidate_pages) == 1:
+            requested_pages.append(next(iter(candidate_pages)))
+    return (requested_pages[0],) if len(requested_pages) == 1 else ()
+
+
+def _canonical_authenticated_render_snapshot_order_v1(
+    *groups: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    """Merge already authenticated page renders onto one unique page axis."""
+
+    by_page: dict[int, Mapping[str, Any]] = {}
+    for snapshot in (snapshot for group in groups for snapshot in group):
+        physical_page = snapshot.get("physical_page") if type(snapshot) is dict else None
+        render_id = snapshot.get("render_id") if type(snapshot) is dict else None
+        if (
+            type(physical_page) is not int
+            or physical_page <= 0
+            or type(render_id) is not str
+            or not render_id
+        ):
+            raise _error("authenticated page-render merge axis drifted")
+        previous = by_page.get(physical_page)
+        if previous is not None:
+            if previous.get("render_id") != render_id or previous != snapshot:
+                raise _error("authenticated page-render merge repeats a conflicting page")
+            continue
+        by_page[physical_page] = snapshot
+    return tuple(dict(by_page[page]) for page in sorted(by_page))
+
+
 def _missing_render_pages_for_document_store_trial_v1(
     trial: dict[str, Any],
     topology_scan: dict[str, Any],
@@ -3397,6 +3895,20 @@ def _missing_render_pages_for_document_store_trial_v1(
     )
     if topology_candidates is not None and not is_v4:
         raise _error("pre-pruning render-page candidates require evaluation V4")
+
+    # The row-axis builder can fail before it has a public row projection when
+    # the one page containing an otherwise accepted candidate has not been
+    # rendered yet.  The candidate-scoped helper is also reused after the first
+    # ordinary render pass, because only then can a different candidate expose
+    # this exact error.
+    if is_v4 and (
+        missing_dimension_pages := _v4_candidate_scoped_missing_dimension_render_pages(
+            trial,
+            joined_pages,
+            topology_candidates,
+        )
+    ):
+        return missing_dimension_pages
 
     margin_render_pages: set[int] = set()
     margin_pattern = re.compile(
@@ -3890,6 +4402,43 @@ def _document_store_trial_with_render_rescue_v1(
             _v4_runtime_context=runtime_context if is_v4 else None,
             runtime_telemetry=runtime_telemetry,
         )
+        if is_v4:
+            candidate_scoped_pages = tuple(
+                page
+                for page in _v4_candidate_scoped_missing_dimension_render_pages(
+                    trial,
+                    snapshot["joined_pages"],
+                    render_topology_candidates,
+                )
+                if page not in set(missing_pages)
+            )
+            if candidate_scoped_pages:
+                _telemetry_add(runtime_telemetry, "render_retry_count", 1)
+                _telemetry_add(
+                    runtime_telemetry,
+                    "render_page_count",
+                    len(candidate_scoped_pages),
+                )
+                candidate_renders = (
+                    document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+                        document_store_capability,
+                        document_ordinal=packet["document_ordinal"],
+                        physical_pages=candidate_scoped_pages,
+                    )
+                )
+                trial = _trial_from_document_store_snapshot_v1(
+                    snapshot,
+                    family_spec,
+                    policy,
+                    render_snapshots=_canonical_authenticated_render_snapshot_order_v1(
+                        renders,
+                        candidate_renders,
+                    ),
+                    topology_scan=trial["topology_scan"],
+                    expected_packet=packet,
+                    _v4_runtime_context=runtime_context,
+                    runtime_telemetry=runtime_telemetry,
+                )
     return trial
 
 

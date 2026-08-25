@@ -2015,9 +2015,12 @@ def _v4_seal_generic_visible_axes(
 
     rows = [copy.deepcopy(record["source"]["record"]) for record in visible_records]
     candidate["row_axis"] = {
+        "column_grids": [],
         "family_id": family_id,
         "rows": rows,
         "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+        "trailing_value_rows": [],
+        "visible_dash_rescues": [],
     }
     role_occurrences = [
         _v4_role_occurrence(label, has_bound_value_row=False) for label in parent_labels.values()
@@ -2066,8 +2069,11 @@ def _v4_seal_generic_visible_axes(
     occurrence_axis_id = "aforav2:axis:" + canonical_json_sha256_v1(occurrence_axis_material)
     closure.update(
         {
+            "authenticated_extreme_margin_furniture_evidence": [],
+            "coextensive_structural_numeric_evidence": [],
             "coverage_receipt": coverage_receipt,
             "dependency_content_refs": subject.scoped_v2._dependency_refs(),
+            "internal_unassigned_numeric_clusters": [],
             "numeric_sample_universe": numeric_sample_universe,
             "occurrence_axis_binding": {
                 "dependency_content_refs": subject.occurrence_row_v2._dependency_refs(),
@@ -2367,6 +2373,458 @@ def test_v4_derived_detail_stays_incomparable_without_complete_typed_frontier(
 
 def test_v4_duplicate_exact_detail_candidates_preserve_ambiguity() -> None:
     summary, detail = _v4_visible_summary_and_derived_detail_candidates()
+    competing = copy.deepcopy(detail)
+    competing["candidate_ordinal"] = 2
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail, competing],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def _v4_visible_summary_and_correlated_detail_candidates(
+    *,
+    adjustment_axis: tuple[int, int] = (0, 0),
+    adjustment_role: str = "INTERBANK_LOAN_PROVISION",
+    nested_discount: bool = False,
+    off_frontier_row: bool = False,
+    partial_provision: bool = False,
+    wrong_provision_parent: bool = False,
+) -> tuple[dict, dict]:
+    family = "INTERBANK_DEPOSITS_AND_LOANS"
+    deposit = "INTERBANK_DEPOSIT_GROUP"
+    loan = "INTERBANK_LOAN_GROUP"
+    demand = "DEMAND_DEPOSIT_GROUP"
+    term = "TERM_DEPOSIT_GROUP"
+    provision = adjustment_role
+    root_axis = (100, 100)
+    deposit_axis = (70, 60)
+    loan_axis = (30, 40)
+    loan_direct_axis = tuple(
+        total - adjustment for total, adjustment in zip(loan_axis, adjustment_axis, strict=True)
+    )
+
+    def values(coefficients: tuple[int, int]) -> list[dict]:
+        return [
+            {
+                "column_ordinal": ordinal,
+                "number": {
+                    "coefficient": coefficient,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+            }
+            for ordinal, coefficient in enumerate(coefficients)
+        ]
+
+    def result_record(
+        role: str,
+        coefficients: tuple[int, int],
+        components: list[str],
+        *,
+        resolution_kind: str,
+    ) -> dict:
+        return {
+            "component_roles": components,
+            "resolution_kind": resolution_kind,
+            "role": role,
+            "source": None,
+            "values": values(coefficients),
+        }
+
+    context = _ready_hierarchical_candidate(
+        ["FAMILY"],
+        candidate_ordinal=0,
+        coefficients=root_axis,
+    )["column_context"]
+
+    summary_deposit = _v4_direct_visible_test_record(
+        deposit,
+        deposit_axis,
+        line_ordinal=20,
+        role_kind="STRUCTURAL_GROUP",
+    )
+    summary_loan = _v4_direct_visible_test_record(
+        loan,
+        loan_axis,
+        line_ordinal=50,
+        role_kind="STRUCTURAL_GROUP",
+    )
+    summary_root_alias = _v4_direct_visible_test_record(
+        "EXPLICIT_FAMILY_TOTAL",
+        root_axis,
+        line_ordinal=80,
+        role_kind="TOTAL",
+    )
+    summary_root = result_record(
+        family,
+        root_axis,
+        [deposit, loan],
+        resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+    )
+    summary = {
+        "additive_closure": {
+            "equations": {
+                "global": [
+                    {
+                        "component_roles_present": [],
+                        "result_role": deposit,
+                        "status": "VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+                        "visible_result_roles": [deposit],
+                    },
+                    {
+                        "component_roles_present": [],
+                        "result_role": loan,
+                        "status": "VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+                        "visible_result_roles": [loan],
+                    },
+                    {
+                        "component_roles_present": [deposit, loan],
+                        "result_role": family,
+                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                    },
+                ],
+                "local": [],
+            },
+            "family_id": family,
+            "resolved_roles": [
+                summary_deposit,
+                summary_loan,
+                summary_root_alias,
+                summary_root,
+            ],
+        },
+        "candidate_ordinal": 0,
+        "column_context": copy.deepcopy(context),
+        "reasons": [],
+    }
+    _v4_seal_generic_visible_axes(
+        summary,
+        parent_roles={
+            deposit: family,
+            loan: family,
+            "EXPLICIT_FAMILY_TOTAL": family,
+        },
+    )
+    summary_root["source"] = copy.deepcopy(summary_root_alias["source"])
+    _v4_reseal_candidate_envelopes(summary)
+
+    visible_records = [
+        _v4_direct_visible_test_record(
+            "DEMAND_DEPOSIT_VND",
+            (40, 30),
+            line_ordinal=10,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+            (10, 10),
+            line_ordinal=20,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "TERM_DEPOSIT_VND",
+            (15, 15),
+            line_ordinal=100,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "TERM_DEPOSIT_FOREIGN_CURRENCY",
+            (5, 5),
+            line_ordinal=110,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "INTERBANK_LOAN_VND",
+            loan_direct_axis,
+            line_ordinal=70,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+            (7, 8),
+            line_ordinal=75,
+            role_kind="NONADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            provision,
+            adjustment_axis,
+            line_ordinal=80,
+            role_kind="ADDITIVE_CHILD",
+        ),
+        _v4_direct_visible_test_record(
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+            deposit_axis,
+            line_ordinal=120,
+            role_kind="TOTAL",
+        ),
+        _v4_direct_visible_test_record(
+            "EXPLICIT_INTERBANK_LOAN_TOTAL",
+            loan_axis,
+            line_ordinal=90,
+            role_kind="TOTAL",
+        ),
+        _v4_direct_visible_test_record(
+            "EXPLICIT_FAMILY_TOTAL",
+            root_axis,
+            line_ordinal=130,
+            role_kind="TOTAL",
+        ),
+    ]
+    if partial_provision:
+        provision_record = next(record for record in visible_records if record["role"] == provision)
+        provision_record["source"]["record"]["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+        provision_record["source"]["record"]["missing_column_ordinals"] = [1]
+    if off_frontier_row:
+        visible_records.append(
+            _v4_direct_visible_test_record(
+                "UNRELATED_ZERO_ADDITIVE_ROW",
+                (0, 0),
+                line_ordinal=85,
+                role_kind="ADDITIVE_CHILD",
+            )
+        )
+    if nested_discount:
+        visible_records.append(
+            _v4_direct_visible_test_record(
+                "NESTED_DISCOUNT_MEMO",
+                (1, 1),
+                line_ordinal=78,
+                role_kind="NONADDITIVE_CHILD",
+            )
+        )
+
+    derived_records = [
+        result_record(
+            demand,
+            (50, 40),
+            ["DEMAND_DEPOSIT_VND", "DEMAND_DEPOSIT_FOREIGN_CURRENCY"],
+            resolution_kind="DERIVED_EXACT_COMPONENT_SUM",
+        ),
+        result_record(
+            term,
+            (20, 20),
+            ["TERM_DEPOSIT_VND", "TERM_DEPOSIT_FOREIGN_CURRENCY"],
+            resolution_kind="DERIVED_EXACT_COMPONENT_SUM",
+        ),
+        result_record(
+            deposit,
+            deposit_axis,
+            [demand, term],
+            resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+        ),
+        result_record(
+            loan,
+            loan_axis,
+            ["INTERBANK_LOAN_VND", provision],
+            resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+        ),
+        result_record(
+            family,
+            root_axis,
+            [deposit, loan],
+            resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+        ),
+    ]
+    detail = {
+        "additive_closure": {
+            "equations": {
+                "global": [
+                    {
+                        "component_roles_present": [
+                            "DEMAND_DEPOSIT_VND",
+                            "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+                        ],
+                        "result_role": demand,
+                        "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                        "visible_result_roles": [demand],
+                    },
+                    {
+                        "component_roles_present": [
+                            "TERM_DEPOSIT_VND",
+                            "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                        ],
+                        "result_role": term,
+                        "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                        "visible_result_roles": [term],
+                    },
+                    {
+                        "component_roles_present": [demand, term],
+                        "result_role": deposit,
+                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "visible_result_roles": [deposit, "EXPLICIT_INTERBANK_DEPOSIT_TOTAL"],
+                    },
+                    {
+                        "component_roles_present": ["INTERBANK_LOAN_VND", provision],
+                        "result_role": loan,
+                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "visible_result_roles": [loan, "EXPLICIT_INTERBANK_LOAN_TOTAL"],
+                    },
+                    {
+                        "component_roles_present": [deposit, loan],
+                        "result_role": family,
+                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                    },
+                ],
+                "local": [],
+            },
+            "family_id": family,
+            "resolved_roles": [*visible_records, *derived_records],
+        },
+        "candidate_ordinal": 1,
+        "column_context": copy.deepcopy(context),
+        "reasons": [],
+    }
+    detail_parent_roles = {
+        "DEMAND_DEPOSIT_VND": demand,
+        "DEMAND_DEPOSIT_FOREIGN_CURRENCY": demand,
+        "TERM_DEPOSIT_VND": term,
+        "TERM_DEPOSIT_FOREIGN_CURRENCY": term,
+        "INTERBANK_LOAN_VND": loan,
+        "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
+        provision: deposit if wrong_provision_parent else loan,
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL": deposit,
+        "EXPLICIT_INTERBANK_LOAN_TOTAL": loan,
+        "EXPLICIT_FAMILY_TOTAL": family,
+    }
+    if off_frontier_row:
+        detail_parent_roles["UNRELATED_ZERO_ADDITIVE_ROW"] = loan
+    if nested_discount:
+        detail_parent_roles["NESTED_DISCOUNT_MEMO"] = "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    _v4_seal_generic_visible_axes(detail, parent_roles=detail_parent_roles)
+    aliases = {
+        deposit: "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+        loan: "EXPLICIT_INTERBANK_LOAN_TOTAL",
+        family: "EXPLICIT_FAMILY_TOTAL",
+    }
+    records = {record["role"]: record for record in detail["additive_closure"]["resolved_roles"]}
+    for role, alias in aliases.items():
+        records[role]["source"] = copy.deepcopy(records[alias]["source"])
+    _v4_reseal_candidate_envelopes(detail)
+    return summary, detail
+
+
+@pytest.mark.parametrize(
+    ("adjustment_role", "adjustment_axis"),
+    [
+        ("INTERBANK_LOAN_PROVISION", (0, 0)),
+        ("OTHER_EXACT_LOAN_ADJUSTMENT", (2, -3)),
+    ],
+)
+def test_v4_visible_summary_yields_to_unique_visible_correlated_exact_detail(
+    adjustment_role: str,
+    adjustment_axis: tuple[int, int],
+) -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        adjustment_axis=adjustment_axis,
+        adjustment_role=adjustment_role,
+    )
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is detail
+    assert reasons == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "AXIS_MISMATCH",
+        "PERIOD_MISMATCH",
+        "UNSEALED",
+        "PARTIAL",
+        "DUPLICATE_ROLE",
+        "WRONG_PARENT",
+        "OFF_FRONTIER",
+        "MIXED_LEVEL",
+        "NESTED_DISCOUNT",
+        "UNCLAIMED_NUMERIC_SAMPLE",
+    ],
+)
+def test_v4_visible_correlated_detail_requires_one_exhaustive_direct_frontier(
+    mutation: str,
+) -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        nested_discount=mutation == "NESTED_DISCOUNT",
+        off_frontier_row=mutation == "OFF_FRONTIER",
+        partial_provision=mutation == "PARTIAL",
+        wrong_provision_parent=mutation == "WRONG_PARENT",
+    )
+    if mutation == "AXIS_MISMATCH":
+        record = next(
+            record
+            for record in detail["additive_closure"]["resolved_roles"]
+            if record["role"] == "INTERBANK_DEPOSIT_GROUP"
+        )
+        record["values"][0]["number"]["coefficient"] += 1
+        _v4_reseal_candidate_envelopes(detail)
+    elif mutation == "PERIOD_MISMATCH":
+        detail["column_context"]["period_axis"][0]["resolved_period"] = "30/06/2025"
+    elif mutation == "UNSEALED":
+        detail["row_axis"]["rows"][0]["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+    elif mutation == "DUPLICATE_ROLE":
+        detail["additive_closure"]["resolved_roles"].append(
+            copy.deepcopy(detail["additive_closure"]["resolved_roles"][0])
+        )
+        _v4_reseal_candidate_envelopes(detail)
+    elif mutation == "MIXED_LEVEL":
+        equation = next(
+            equation
+            for equation in detail["additive_closure"]["equations"]["global"]
+            if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+        )
+        equation["component_roles_present"].append("INTERBANK_LOAN_PROVISION")
+        root = next(
+            record
+            for record in detail["additive_closure"]["resolved_roles"]
+            if record["role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+        )
+        root["component_roles"].append("INTERBANK_LOAN_PROVISION")
+        _v4_reseal_candidate_envelopes(detail)
+    elif mutation == "UNCLAIMED_NUMERIC_SAMPLE":
+        sample = copy.deepcopy(detail["additive_closure"]["numeric_sample_universe"][0])
+        sample["sample_id"] += ":unclaimed"
+        sample["owner_kind"] = "SOURCE_ONLY_INTERNAL_CLUSTER"
+        sample["owner_id"] = "aforav2:unassigned:" + "3" * 64
+        detail["additive_closure"]["numeric_sample_universe"].append(sample)
+        detail["additive_closure"]["numeric_sample_universe"].sort(
+            key=lambda record: (
+                record["page_sequence"],
+                record["line_ordinal"],
+                record["column_ordinal"],
+                record["sample_id"],
+            )
+        )
+        _v4_reseal_candidate_envelopes(detail)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_two_visible_correlated_exact_details_preserve_ambiguity() -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates()
     competing = copy.deepcopy(detail)
     competing["candidate_ordinal"] = 2
 
@@ -3639,6 +4097,291 @@ def test_v4_extreme_margin_render_request_selects_only_its_bound_candidate_page(
         evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
         topology_candidates=topology_candidates,
     ) == (2,)
+
+
+def test_v4_candidate_scoped_missing_render_dimension_requests_only_its_single_page() -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2, 3)]
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            topology_scan["regions"][0],
+            {
+                "cluster_start_document_line_ordinal": 22,
+                "cluster_end_document_line_ordinal_exclusive": 28,
+            },
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {
+        "row_axis": None,
+        "unresolved_reasons": [
+            "CANDIDATE_1:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE",
+            "CANDIDATE_2:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "missing-lane page lacks authenticated render dimensions",
+        ],
+    }
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial,
+        topology_scan,
+        joined_pages,
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        topology_candidates=topology_candidates,
+    ) == (3,)
+
+
+@pytest.mark.parametrize(
+    ("reason", "candidate_regions"),
+    [
+        (
+            "ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "missing-lane page lacks authenticated render dimensions",
+            [(22, 28)],
+        ),
+        (
+            "CANDIDATE_2:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "missing-lane page lacks authenticated render dimension",
+            [(2, 8), (22, 28)],
+        ),
+        (
+            "CANDIDATE_2:ROW_AXIS_ERROR:OtherError:"
+            "missing-lane page lacks authenticated render dimensions",
+            [(2, 8), (22, 28)],
+        ),
+        (
+            "CANDIDATE_3:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "missing-lane page lacks authenticated render dimensions",
+            [(2, 8), (22, 28)],
+        ),
+        (
+            "CANDIDATE_1:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "missing-lane page lacks authenticated render dimensions",
+            [(8, 22)],
+        ),
+        (
+            "CANDIDATE_1:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+            "numeric row missing",
+            [(22, 28)],
+        ),
+    ],
+)
+def test_v4_missing_render_dimension_retry_rejects_unbound_or_inexact_request(
+    reason: str,
+    candidate_regions: list[tuple[int, int]],
+) -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2, 3)]
+    topology_scan = {
+        "regions": [],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": start,
+                "cluster_end_document_line_ordinal_exclusive": end,
+            }
+            for start, end in candidate_regions
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            {"row_axis": None, "unresolved_reasons": [reason]},
+            topology_scan,
+            joined_pages,
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            topology_candidates=topology_candidates,
+        )
+        == ()
+    )
+
+
+def test_v4_missing_render_dimension_retry_rejects_duplicate_and_v3_requests() -> None:
+    reason = (
+        "CANDIDATE_1:ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+        "missing-lane page lacks authenticated render dimensions"
+    )
+    trial = {"row_axis": None, "unresolved_reasons": [reason, reason]}
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": topology_scan["regions"],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": 1}]
+
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial,
+            topology_scan,
+            joined_pages,
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            topology_candidates=topology_candidates,
+        )
+        == ()
+    )
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            {"row_axis": None, "unresolved_reasons": [reason]},
+            topology_scan,
+            joined_pages,
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V3},
+        )
+        == ()
+    )
+
+
+@pytest.mark.parametrize(("ordinary_page", "candidate_page"), [(1, 2), (2, 1)])
+def test_v4_exact_candidate_missing_dimension_gets_one_bounded_second_render_pass(
+    monkeypatch,
+    ordinary_page: int,
+    candidate_page: int,
+) -> None:
+    joined_pages = [
+        {
+            "lines": [
+                {
+                    "bbox": [0, line * 10, 100, line * 10 + 8],
+                    "line_ordinal": line,
+                    "vietocr_text": f"line-{page}-{line}",
+                }
+                for line in range(10)
+            ],
+            "page_sequence": page,
+        }
+        for page in (1, 2)
+    ]
+    legacy_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            legacy_scan["regions"][0],
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            },
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial_render_pages = []
+
+    def trial_from_snapshot(
+        _snapshot,
+        _family,
+        _policy,
+        *,
+        render_snapshots=(),
+        **_kwargs,
+    ):
+        pages = tuple(render["physical_page"] for render in render_snapshots)
+        trial_render_pages.append(pages)
+        if not pages:
+            reasons = [
+                f"CANDIDATE_{ordinary_page}:"
+                f"EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:{ordinary_page}"
+            ]
+        elif pages == (ordinary_page,):
+            reasons = [
+                f"CANDIDATE_{candidate_page}:"
+                "ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+                "missing-lane page lacks authenticated render dimensions"
+            ]
+        else:
+            reasons = []
+        return {
+            "row_axis": (
+                {
+                    "rows": [],
+                    "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+                    "trailing_value_rows": [],
+                }
+                if not reasons
+                else None
+            ),
+            "topology_scan": legacy_scan,
+            "unresolved_reasons": reasons,
+        }
+
+    render_calls = []
+
+    def read_renders(_capability, *, document_ordinal, physical_pages):
+        render_calls.append((document_ordinal, physical_pages))
+        return tuple(
+            {"physical_page": page, "render_id": f"authenticated-render:{page}"}
+            for page in physical_pages
+        )
+
+    monkeypatch.setattr(subject, "_trial_from_document_store_snapshot_v1", trial_from_snapshot)
+    monkeypatch.setattr(
+        subject,
+        "_v4_topology_authority",
+        lambda *_args, **_kwargs: (legacy_scan, topology_candidates),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        read_renders,
+    )
+    telemetry = {}
+
+    trial = subject._document_store_trial_with_render_rescue_v1(
+        object(),
+        packet={"document_ordinal": 1},
+        snapshot={"joined_pages": joined_pages},
+        family_spec={},
+        policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        topology_scan=None,
+        runtime_telemetry=telemetry,
+    )
+
+    assert trial["unresolved_reasons"] == []
+    assert trial_render_pages == [(), (ordinary_page,), (1, 2)]
+    assert render_calls == [(1, (ordinary_page,)), (1, (candidate_page,))]
+    assert telemetry == {"render_page_count": 2, "render_retry_count": 2}
+
+
+def test_authenticated_render_merge_deduplicates_only_one_exact_render_identity() -> None:
+    page = {"physical_page": 2, "render_id": "authenticated-render:2", "sealed": True}
+
+    assert subject._canonical_authenticated_render_snapshot_order_v1(
+        ({"physical_page": 3, "render_id": "authenticated-render:3"}, page),
+        (copy.deepcopy(page), {"physical_page": 1, "render_id": "authenticated-render:1"}),
+    ) == (
+        {"physical_page": 1, "render_id": "authenticated-render:1"},
+        page,
+        {"physical_page": 3, "render_id": "authenticated-render:3"},
+    )
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="conflicting page",
+    ):
+        subject._canonical_authenticated_render_snapshot_order_v1(
+            (page,),
+            ({"physical_page": 2, "render_id": "authenticated-render:other"},),
+        )
 
 
 @pytest.mark.parametrize(
