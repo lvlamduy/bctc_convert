@@ -32,6 +32,7 @@ from typing import Any
 from PIL import Image, ImageFilter
 
 from bctc_ai.evaluation import accounting_family_coextensive_parent_total_v1 as total_v1
+from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
@@ -12781,10 +12782,8 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
 
     if period_semantics is None or expected_lane_unit_kinds is None:
         try:
-            replay_context = one_edit_v1.column_context_v1._validate_result(  # noqa: SLF001
-                column_context
-            )
-        except one_edit_v1.column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+            replay_context = column_context_v1._validate_result(column_context)  # noqa: SLF001
+        except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
             raise _error("one-edit parent-frontier column policy input drifted") from exc
         if period_semantics is None:
             period_semantics = replay_context["period_semantics"]

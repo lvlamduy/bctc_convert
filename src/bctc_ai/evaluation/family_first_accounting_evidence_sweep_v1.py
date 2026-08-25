@@ -3522,16 +3522,6 @@ def _selected_v4_one_edit_authority_v1(
             ):
                 raise _error("selected V4 parent-frontier authority lost structural evidence")
             selected_lane_unit_kinds = _resolved_lane_unit_kinds(evaluation_spec, column_context)
-            one_edit_v1._validate_parent_frontier_column_context_replay_v1(  # noqa: SLF001
-                column_context,
-                row_axis=selected["row_axis"],
-                document_pages=joined_pages,
-                authority_pages=authority_pages,
-                family_spec=family_spec,
-                period_semantics=evaluation_spec.get("period_semantics"),
-                expected_lane_unit_kinds=selected_lane_unit_kinds,
-                visible_dash_rescues=visible_dash_rescues,
-            )
             structural_evidence = {
                 "authenticated_extreme_margin_furniture_evidence": closure[
                     "authenticated_extreme_margin_furniture_evidence"
