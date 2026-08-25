@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-23T14:55:26Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-25T13:52:17Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -45,15 +45,21 @@ older queue priorities where they conflict.
   double count and rejects narrative-date contamination unless one unique local
   period subset matches both document periods and column geometry.
 - `INTERBANK_DEPOSITS_AND_LOANS`, the third schema-order family, is now formally
-  complete across all 140 available filings. One authenticated evidence+mapping
-  traversal produced mapping
-  `ffasmv1:mapping:a0281df098238a711f394c2425f1f4afc4766fc959c18568b510a703c2445528`:
-  **84 verified documents / 701 mappings / 14 not observed / 42 unresolved**.
-  Shared reset, child-subtotal and period-header fixes promoted 18 additional
-  filings versus the preceding 66/60 checkpoint without weakening closure
-  vetoes. The immutable OCR SQLite base remains 140 documents / 8,947 pages /
-  667,224 lines; refreshing the 140-trial family sidecar took 0.477 seconds and
-  the final reason query 0.009 seconds.
+  complete across all 140 available filings. Formal evidence sweep
+  `ffaesv1:sweep:a49421a235c1503f8bacaa790ef41716f800439c59c6e62011ca04325f824d7d`
+  and mapping
+  `ffasmv1:mapping:1d006fcfb4c67cb15bcbc43c2234a942a7ba6817a32abdf9cfcc4d39cbf828`
+  yield **126 verified documents / 763 mappings / 14 not observed / 0
+  unresolved**. Presence by bank is ACB 18, MBB 18, VPB 18, HDB 16, VCB 18,
+  CTG 16, BID 4 and VIB 18; the 14 bounded absences are CTG 2 plus BID 12.
+  Shared source-bound occurrence, direct-frontier, one-edit, subtotal/grand-total,
+  render-retry and same-population detail-selection primitives require exact
+  period/unit/lane/source replay, forbid parent+descendant mixed levels and
+  consume every additive role once. Accounting only corroborates or vetoes
+  source-observed values. The canonical single-LF artifacts were built and
+  replay-verified at clean engine Git `827d5a736e4816c1f1fea014f9a746c444212355`;
+  compact seal E-0178 binds both read-only files. Historical 84/701/14/42 and
+  annual E-0109 receipts remain immutable subsets, not the current queue.
 - `TRADING_SECURITIES`, the fourth schema-order family, has now been swept over
   all 140 available filings through the authenticated document store. Evidence
   sweep `ffaesv1:sweep:956dad7d687c5bf999460b6074f1f26df3ac71088fbd35cebfaf11618e242be5`
@@ -2430,7 +2436,7 @@ Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
 Completed through: preserved source-complete MBB development baseline; universal schema 1,955 at @6076 and TM partition 1,721 with symmetric fixed-asset movement parents, dedicated Government/NHNN liability leaves 6070–6072, combined annual-family leaves 6073–6074 and annual interest-income leaves 6075–6076 registered; append-only compatibility proves the 1,717 legacy TM identities retain exactly `890 MAPPED + 804 NOT_OBSERVED + 23 NOT_APPLICABLE`, while an older owner leaves new 6073–6076 as four explicit `UNRESOLVED` identities rather than changing a prior mapping; preserved VPB main-statement and bounded native-TM source/mapping/Excel evidence; exact registered inventory of 27 banks / 2,567 PDF paths; locked 27-document Wave 1; reproducible route and pre-OCR feature accounting for all 1,449 pages; independent Role-A Level-1 boundary references for 27/27 documents and 139 statement blocks; sealed exact 1,449-page Role-B read plan; authenticated 24-page/14-document OCR sentinel; preserved and restore-tested full-reader V1/V2 incidents; committed/frozen V3 producer; finalized 1,449-request V3 denominator with 1,390 complete + 59 terminal dispositions; deep verify/finalize; zero-new-native/deep/render resume with no output mutation; one content-addressed full-restore-tested S3 checkpoint of finalized V3 plus sealed plan; byte-frozen source-first Role-B inventory for all 27 documents / 1,449 pages / 1,454,160 neutral atoms with geometry/topology diagnostics; sealed blind Role-B statement-family/disposition inventory for all 1,449 pages with 24 ranked block alternatives across 13 documents and 14 explicitly unresolved documents; separately sealed machine-reference agreement diagnostics over all 27 documents without Role-A feedback into discovery; byte-frozen all-page prestructural graph inventory with 1,449 graph identities and exact candidate table/row/cell/axis/unresolved accounting across all 27 documents; committed threshold-free adjacent-page table/axis geometry contract with exact Cartesian and terminal/no-counterpart accounting; combined-evidence exhaustive adjacent-page candidate measurement over all 1,422 pairs with 899 fragment and 122,573 axis-distance relations, exact retention accounting and a retained no-write PASS summary; committed blind source-only geometry seed gate with fused six-input authority, complete candidate/disposition accounting, no accepted continuation claim and no same-Wave-1 generalization claim; committed compact one-pass gate-inventory producer/validator/publisher with exact chain/no-drop authority and structural-only standalone validation
-Currently working on: Family10 `LOAN_CURRENCY_CLASSIFICATION` is sealed by E-0173 at 10 verified-present + 130 verified bounded absences, 20 mappings/40 money cells/36 equations and zero unresolved. E-0174 S3 registration is deliberately `NOT_RUN_SECURITY_HOLD` pending owner-confirmed rotation/revocation of both exposed Gemini API keys; no new checkpoint was written. Family11 loan geography has started read-only cache-first SQL inventory only; no mapping, code change or Gemma request has started. Annual-2025 TM traversal remains complete within its approved scope, and related-party transactions root 5750 remains `SKIPPED_BY_USER`. No canonicalization or Excel promotion is active
+Currently working on: Family3 `INTERBANK_DEPOSITS_AND_LOANS` is formally closed by E-0178 at 126 verified + 14 bounded not-observed, 763 mappings and zero unresolved on the fixed 140-filing corpus. Family12 `LOAN_ENTERPRISE_CLASSIFICATION` is next in schema order; its read-only preflight is complete but no formal 140 result is claimed yet. E-0174 S3 registration remains `NOT_RUN_SECURITY_HOLD` pending owner-confirmed rotation/revocation of both exposed Gemini API keys; no new checkpoint was written. Annual-2025 TM traversal remains complete within its approved scope, and related-party transactions root 5750 remains `SKIPPED_BY_USER`. No canonicalization or Excel promotion is active
 Paused regression work: exhaustive VPB TM identity-by-identity completion; the 30 unresolved contexts and partial canonical coverage remain preserved for later corpus-driven replay
 Not yet completed: any independently mapped row in E-0047/E-0049 (numeric cells are independently verified, mappings are not); accepted broad Wave-1 statement/table/logical-row/cell/value-position/axis/hierarchy coverage; cross-bank generic graph seams for inherited context/unit and multi-lane variants; broad bank/period/scope holdout verification; scalable unseen-filing canonicalization
 Production approved: fresh full-document VietOCR semantic proposal evidence YES/frozen; exact SHB p24 plus bounded fixed-8-bank maturity, loan-quality (including bounded-context 1944 separation), loan-type, loan-industry, loan-enterprise, loan-geography, purchased-debt, provision-movement, customer-deposit, trading-securities balance, trading-securities activity, investment-securities activity, combined-securities-net, capital-contribution/dividend-income, operating-expense, credit-risk-provision-expense, investment-securities balance, other-long-term-investments, tangible-fixed-assets, other-assets, government/NHNN-liabilities, liability-side interbank funding, entrusted/investment-risk-capital, issued-valuable-papers, other-payables/liabilities, interest-income, interest-expense, net-interest-income, service-activity income/expense/net, FX/gold-activity income/expense/net, employee-income, State-budget-obligation, customer-collateral, bank-owned pledged/discounted assets, contingent liabilities/commitments, financial-instrument carrying/fair-value, currency-risk, interest-rate-risk, liquidity-risk, end-period exchange-rate, consolidated-segment-report, cash/precious-metals, central-bank-deposit/asset-side interbank-deposit-loan and derivative source-row verification YES but noncanonical/nonexport; Family10 loan-currency 140-filing result YES for exactly 10 verified-present filings and 130 verified bounded absences, not a broad-corpus absence claim; related-party-transactions mapping NO/SKIPPED_BY_USER; project-owner-confirmed MBB foreign-central-bank aggregation to 574 and VIB 804→805 hierarchy YES; broad Wave-1 family structure/mapping NO; end-to-end unseen-filing digitization NO

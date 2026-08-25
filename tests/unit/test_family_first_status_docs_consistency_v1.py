@@ -58,9 +58,19 @@ STALE_SCHEMA_LIVE_REFS = {
 INTERBANK_EVIDENCE = (
     ROOT
     / "output/calibration/family-first-accounting-evidence-sweeps-v1"
-    / "interbank-deposits-and-loans.json"
+    / "interbank-deposits-and-loans-v4.json"
 )
 INTERBANK_MAPPING = (
+    ROOT
+    / "output/calibration/family-first-accounting-schema-mappings-v1"
+    / "interbank-deposits-and-loans-v4.json"
+)
+HISTORICAL_INTERBANK_EVIDENCE = (
+    ROOT
+    / "output/calibration/family-first-accounting-evidence-sweeps-v1"
+    / "interbank-deposits-and-loans.json"
+)
+HISTORICAL_INTERBANK_MAPPING = (
     ROOT
     / "output/calibration/family-first-accounting-schema-mappings-v1"
     / "interbank-deposits-and-loans.json"
@@ -231,6 +241,18 @@ def _canonical_open_source_rows() -> list[list[str]]:
     ]
 
 
+def _historical_family3_open_source_rows() -> list[list[str]]:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    start = ledger.index("<!-- HISTORICAL_FAMILY3_OPEN_SOURCE_ROWS_BEGIN -->")
+    stop = ledger.index("<!-- HISTORICAL_FAMILY3_OPEN_SOURCE_ROWS_END -->")
+    block = ledger[start:stop]
+    return [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for line in block.splitlines()
+        if line.startswith("| F3-")
+    ]
+
+
 def _rendered_physical_page_count(page_locator: str) -> int:
     physical = page_locator.removeprefix("PDF ").split(";", 1)[0]
     count = 0
@@ -385,12 +407,12 @@ def _primary_interbank_cause(trial: dict[str, object]) -> str:
 
 
 @pytest.mark.skipif(
-    not INTERBANK_EVIDENCE.exists() or not INTERBANK_MAPPING.exists(),
-    reason="ignored family-first artifacts are not restored in this checkout",
+    not HISTORICAL_INTERBANK_EVIDENCE.exists() or not HISTORICAL_INTERBANK_MAPPING.exists(),
+    reason="ignored historical family-first artifacts are not restored in this checkout",
 )
-def test_interbank_575_ledger_rows_exact_match_both_replayed_artifacts() -> None:
-    evidence = json.loads(INTERBANK_EVIDENCE.read_text(encoding="utf-8"))
-    mapping = json.loads(INTERBANK_MAPPING.read_text(encoding="utf-8"))
+def test_historical_interbank_575_ledger_rows_exact_match_both_replayed_artifacts() -> None:
+    evidence = json.loads(HISTORICAL_INTERBANK_EVIDENCE.read_text(encoding="utf-8"))
+    mapping = json.loads(HISTORICAL_INTERBANK_MAPPING.read_text(encoding="utf-8"))
     ledger = LEDGER.read_text(encoding="utf-8")
     evidence_trials = {
         trial["document_ordinal"]: trial
@@ -405,8 +427,8 @@ def test_interbank_575_ledger_rows_exact_match_both_replayed_artifacts() -> None
     rows = _interbank_unresolved_rows()
     review_rows = {int(row[1]): row for row in _interbank_pdf_review_rows()}
 
-    assert f"`{hashlib.sha256(INTERBANK_EVIDENCE.read_bytes()).hexdigest()}`" in ledger
-    assert f"`{hashlib.sha256(INTERBANK_MAPPING.read_bytes()).hexdigest()}`" in ledger
+    assert f"`{hashlib.sha256(HISTORICAL_INTERBANK_EVIDENCE.read_bytes()).hexdigest()}`" in ledger
+    assert f"`{hashlib.sha256(HISTORICAL_INTERBANK_MAPPING.read_bytes()).hexdigest()}`" in ledger
     assert len(rows) == len(evidence_trials) == len(mapping_trials) == 42
     assert set(evidence_trials) == set(mapping_trials) == {int(row[1]) for row in rows}
     assert set(review_rows) == set(evidence_trials)
@@ -468,20 +490,53 @@ def test_family_completion_rule_and_interbank_summary_are_in_both_status_docs() 
     assert "COMPLETED_TM_FAMILIES.md" in ledger
     assert "UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved" in completed
     assert "UNRESOLVED_MAPPING_LEDGER.md#open-family3-rnid575" in completed
-    assert "Family chưa hoàn tất" in completed
+    assert "Có family nhưng còn thiếu:** 0 filing" in completed
     assert "`PDF_VIEWED = 42`" in completed
     assert "`17 + 12 + 29 = 58`" in completed
-    assert "41 filing\n  `OPEN — RESOLVABLE_PENDING_GENERIC_FIX`" in completed
-    assert "Unresolved thực sự sau PDF review" in completed
-    assert "MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18" in completed
-    assert "`2 triệu đồng`" in completed
-    canonical_family3 = [row for row in _canonical_open_source_rows() if row[0].startswith("F3-")]
-    assert sum(row[7] == "RESOLVABLE_PENDING_GENERIC_FIX" for row in canonical_family3) == 41
-    assert sum(row[7] == "KEEP_UNRESOLVED_SOURCE_CONFLICT" for row in canonical_family3) == 1
+    assert "MBB Q1/2025 công ty mẹ" in completed
+    assert "`72.305.188`" in completed and "`72.305.186`" in completed
+    assert not any(row[0].startswith("F3-") for row in _canonical_open_source_rows())
+    historical_family3 = _historical_family3_open_source_rows()
+    assert sum(row[7] == "RESOLVABLE_PENDING_GENERIC_FIX" for row in historical_family3) == 41
+    assert sum(row[7] == "KEEP_UNRESOLVED_SOURCE_CONFLICT" for row in historical_family3) == 1
     assert "Technical/pre-review provenance appendix" in ledger
 
 
-def test_open_family_index_reconciles_247_items_and_links_every_open_heading() -> None:
+@pytest.mark.skipif(
+    not INTERBANK_EVIDENCE.exists() or not INTERBANK_MAPPING.exists(),
+    reason="ignored current Family3 V4 artifacts are not restored in this checkout",
+)
+def test_current_interbank_v4_pair_and_status_docs_report_zero_unresolved() -> None:
+    evidence = json.loads(INTERBANK_EVIDENCE.read_text(encoding="utf-8"))
+    mapping = json.loads(INTERBANK_MAPPING.read_text(encoding="utf-8"))
+    completed = COMPLETED.read_text(encoding="utf-8")
+    ledger = LEDGER.read_text(encoding="utf-8")
+
+    assert evidence["metrics"] == {
+        "document_count": 140,
+        "evidence_ready_for_schema_review_count": 126,
+        "mapping_verified_count": 0,
+        "not_observed_count": 14,
+        "unique_topology_document_count": 100,
+        "unresolved_document_count": 0,
+    }
+    assert mapping["metrics"] == {
+        "document_count": 140,
+        "not_observed_proposal_count": 14,
+        "unresolved_document_count": 0,
+        "verified_document_count": 126,
+        "verified_mapping_count": 763,
+    }
+    assert evidence["sweep_id"] == mapping["evidence_sweep_id"]
+    assert all(trial["unresolved_reasons"] == [] for trial in evidence["trials"])
+    assert all(trial["unresolved_reasons"] == [] for trial in mapping["trials"])
+    assert "126/140 filing" in completed and "tổng cộng 763" in completed
+    assert "0 filing; Family 3 không còn dòng trong queue" in completed
+    assert f"`{hashlib.sha256(INTERBANK_EVIDENCE.read_bytes()).hexdigest()}`" in ledger
+    assert f"`{hashlib.sha256(INTERBANK_MAPPING.read_bytes()).hexdigest()}`" in ledger
+
+
+def test_open_family_index_reconciles_205_items_and_links_every_open_heading() -> None:
     ledger = LEDGER.read_text(encoding="utf-8")
     lines = ledger.splitlines()
     start = ledger.index("<!-- OPEN_FAMILY_INDEX_BEGIN -->")
@@ -505,7 +560,6 @@ def test_open_family_index_reconciles_247_items_and_links_every_open_heading() -
 
     counts = {row[0]: int(row[1]) for row in index_rows}
     assert counts == {
-        "Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)": 42,
         "Tài sản/GTCG đem thế chấp, cầm cố, chiết khấu": 3,
         "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra": 26,
         "Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý": 5,
@@ -524,13 +578,9 @@ def test_open_family_index_reconciles_247_items_and_links_every_open_heading() -
         "Tiền gửi/vay TCTD khác — nguồn vốn": 2,
         "Báo cáo bộ phận hợp nhất": 17,
     }
-    assert counts["Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)"] == len(
-        _interbank_pdf_review_rows()
-    )
-    assert sum(counts.values()) == 247
-    assert sum(counts.values()) - 42 == 205
+    assert sum(counts.values()) == 205
     assert heading_targets <= indexed_targets
-    assert len(heading_targets) == 14
+    assert len(heading_targets) == 13
     assert {
         "open-equity-funds-legacy-current",
         "open-issued-valuable-papers-legacy-current",
@@ -544,10 +594,10 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     rows = _canonical_open_source_rows()
     ids = [row[0] for row in rows]
 
-    assert len(rows) == 247
+    assert len(rows) == 205
     assert all(len(row) == 10 for row in rows)
-    assert len(set(ids)) == 247
-    assert sum(item.startswith("F3-IDL-575-") for item in ids) == 42
+    assert len(set(ids)) == 205
+    assert sum(item.startswith("F3-IDL-575-") for item in ids) == 0
     assert sum(item.startswith("E") for item in ids) == 205
     assert "PM-001" not in " ".join(ids)
     assert not any(re.fullmatch(r"(?:CL|FI)-[0-9]+", item) for item in ids)
@@ -618,10 +668,10 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     assert Counter(row[7] for row in rows) == {
         "KEEP_UNRESOLVED_SCHEMA_GAP": 80,
         "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY": 76,
-        "RESOLVABLE_PENDING_GENERIC_FIX": 51,
+        "RESOLVABLE_PENDING_GENERIC_FIX": 10,
         "KEEP_UNRESOLVED_SEMANTIC_GAP": 17,
         "KEEP_UNRESOLVED_SOURCE_SCOPE": 11,
-        "KEEP_UNRESOLVED_SOURCE_CONFLICT": 7,
+        "KEEP_UNRESOLVED_SOURCE_CONFLICT": 6,
         "KEEP_UNRESOLVED_SOURCE_VALUE_UNAVAILABLE": 5,
     }
     for row in rows:
@@ -668,7 +718,7 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     )
     for stale in ("143 work item", "101 item", "441 / 143 OPEN"):
         assert stale not in ledger
-    assert "545 entries = 247 OPEN + 298 closed/history" in ledger
+    assert "545 entries = 205 OPEN + 340 closed/history" in ledger
     assert "CLOSED_STALE_PERIOD_GAP" in ledger
 
 

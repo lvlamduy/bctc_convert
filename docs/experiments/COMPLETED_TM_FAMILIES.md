@@ -62,29 +62,27 @@ Quy ước:
 
 ## 3. Tiền, vàng gửi tại và cho vay/vay các TCTD khác
 
-- **Đã map/xác minh trên ma trận family-first hiện có:** 84/140 filing, gồm ACB
-  8, MBB 16, VPB 14, HDB 6, VCB 18, CTG 13, BID 3 và VIB 6; tổng cộng 701
-  mapping. Logic chung hỗ trợ bảng tóm tắt hoặc chi tiết, parent tiền gửi/cho
-  vay có thể in giá trị hoặc chỉ làm group, child VND/ngoại tệ, subtotal con,
-  reordered siblings và reset trước bảng phân tích kế tiếp.
+- **Đã map/xác minh trên toàn ma trận family-first:** 126/140 filing, gồm ACB
+  18, MBB 18, VPB 18, HDB 16, VCB 18, CTG 16, BID 4 và VIB 18; tổng cộng 763
+  mapping. Formal sweep/mapping là
+  `ffaesv1:sweep:a49421a235c1503f8bacaa790ef41716f800439c59c6e62011ca04325f824d7d`
+  và `ffasmv1:mapping:1d006fcfb4c67cb15bcbc43c2234a942a7ba6817a32abdf9cfefcc4d39cbf828`.
 - **Không quan sát thấy trong phạm vi filing đã quét:** 14 filing, gồm BID 12 và
   CTG 2. Đây là `NOT_OBSERVED_PROPOSAL_ONLY` của đúng PDF đã bind, không phải
   khẳng định ngoài filing.
-- **Family chưa hoàn tất:** 42 filing đã được review trên PDF/pixel, gồm ACB 10,
-  MBB 2, VPB 4, HDB 10, CTG 3, BID 1 và VIB 12. Coverage review là
-  `PDF_VIEWED = 42`, tương ứng 58 ảnh physical page đã render qua ba lượt
-  `17 + 12 + 29 = 58`. Có 41 filing
-  `OPEN — RESOLVABLE_PENDING_GENERIC_FIX`: nguồn nhìn rõ, nhưng còn chờ sửa
-  shared header/lane, arbitration giữa vùng tóm tắt–chi tiết, exhaustive
-  source-group coverage, trailing-total boundary hoặc continuation qua trang.
-  Không ca nào trong 41 ca này được coi là closed.
-- **Unresolved thực sự sau PDF review:** đúng 1 filing — trial 18,
-  `IDL-575-008`, MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18. Sáu dòng
-  thành phần nhìn thấy trên lane `31/12/2024` cộng thành `72.305.188`, trong
-  khi tổng in là `72.305.186`, lệch `2 triệu đồng`; giữ nguyên source, không
-  backsolve hoặc sửa số để ép closure.
-  Xem [bảng human-review 42 filing](UNRESOLVED_MAPPING_LEDGER.md#open-family3-rnid575)
-  và [phụ lục technical/pre-review](UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved).
+- **Có family nhưng còn thiếu:** 0 filing; Family 3 không còn dòng trong queue
+  OPEN hiện hành. Primitive chung chọn đúng một direct frontier exhaustive cho
+  từng parent: child rows → subtotal, rồi child subtotals → subtotal/grand total;
+  không bao giờ cộng parent cùng descendants, trộn hai tầng hoặc dùng một role
+  hai lần. Mọi frontier phải replay đúng occurrence/root/page/source interval,
+  period, unit và toàn bộ lane; accounting chỉ corroborate/veto.
+- Bằng chứng review lịch sử `PDF_VIEWED = 42` / `17 + 12 + 29 = 58` vẫn được
+  giữ nguyên trong ledger. Với MBB Q1/2025 công ty mẹ, hai số nguồn
+  `72.305.188` và `72.305.186` không bị sửa/backsolve; V4 chỉ chấp nhận receipt
+  hierarchy exhaustive và disposition rounding đã khai báo từ đúng source.
+  Xem [lịch sử human-review](UNRESOLVED_MAPPING_LEDGER.md#open-family3-rnid575),
+  [phụ lục technical/pre-review](UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved)
+  và seal [E-0178](E-0178-family-first-interbank-deposits-loans-140-filing-schema-sweep-seal-v1.json).
 
 ## 4. Chứng khoán kinh doanh
 
@@ -1543,7 +1541,7 @@ dùng.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tiền, kim loại quý, đá quý | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; hai ô VIB mixed-separator đã đóng bằng same-crop + money-scale + exact-total consensus |
 | Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; ô MBB `55,307.732` đã đóng bằng cùng rule chung |
-| Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
+| Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 4 / — 12 | ✓ 18 | 0; 126/140 filing, 763 mapping; 14 bounded `NOT_OBSERVED` |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ 18 | ✓ 18 | ✓ 12 / — 6 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 16 | — 18 | 0; 114/140 filing, 457 mapping; 26 bounded `NOT_OBSERVED` |
 | Công cụ tài chính phái sinh | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 126/140 filing, 1.684 mapping; 14 filing VCB bounded không có family |

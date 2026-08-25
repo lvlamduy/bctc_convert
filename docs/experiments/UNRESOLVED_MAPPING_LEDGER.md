@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-24 (UTC)
+Updated: 2026-08-25 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -23,11 +23,12 @@ have one auditable filing row per unresolved trial here; a zero count must be
 stated explicitly. A family is not complete for handoff if either file is
 missing that update.
 
-Ledger total: **545 entries = 247 OPEN + 298 closed/history**. The 298 is the
+Ledger total: **545 entries = 205 OPEN + 340 closed/history**. The 340 is the
 existing **210 row/graph resolutions + 88 confirmed bound-report family
-absences**. The canonical OPEN queue is 42 Family 3 rows plus **205 rows outside
-Family 3**; that outside denominator is **134 annual-2025 + 71
-historical/current**. This replaces the stale 143/101 summary, which omitted
+absences + 42 superseded Family 3 review rows**. The canonical OPEN queue now
+contains **205 rows outside Family 3**: **134 annual-2025 + 71
+historical/current**. This replaces the stale 247/298 summary after E-0178 closed
+all 42 current Family 3 trials, and also replaces the older 143/101 summary which omitted
 E-0158/E-0159/E-0161 and historical/current OPEN rows. Bank/report/page fields
 are evidence locators only, never matching rules.
 
@@ -35,7 +36,11 @@ are evidence locators only, never matching rules.
 
 ## Canonical OPEN — một dòng cho mỗi source-row/filing
 
-Đây là queue OPEN duy nhất có hiệu lực để con người review: **247 dòng = 42 Family 3 + 205 dòng ngoài Family 3**. Phần ngoài Family 3 gồm **134 dòng annual-2025 + 71 dòng historical/current**; đủ 38 dòng E-0158/E-0159/E-0161 từng bị index bỏ sót. PM-001 không thuộc queue vì period gap cũ đã stale/superseded khi corpus có VPB Q2/2026.
+Đây là queue OPEN duy nhất có hiệu lực để con người review: **205 dòng**, gồm
+**134 dòng annual-2025 + 71 dòng historical/current** ngoài Family 3; đủ 38 dòng
+E-0158/E-0159/E-0161 từng bị index bỏ sót. 42 dòng Family 3 cũ đã chuyển thành
+closed history bởi E-0178 và nằm ngoài marker canonical này. PM-001 không thuộc
+queue vì period gap cũ đã stale/superseded khi corpus có VPB Q2/2026.
 
 DIRECT_PIXEL_REVIEW_2026-08-24 chỉ dùng cho sáu physical page vừa mở trực tiếp. PERSISTED_CODEX_PIXEL_REVIEW/PERSISTED_PIXEL_CROP_REVIEW là tái sử dụng artifact pixel/crop đã niêm phong, không giả là vừa mở lại PDF. Mọi dòng OPEN đều có bằng chứng trực tiếp hoặc persisted.
 
@@ -78,7 +83,7 @@ trong 12 artifact trên không bị đổi bởi lưu ý này.
 
 <!-- STALE_SCHEMA_PIN_LIVE_REPLAY_END -->
 
-<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->
+<!-- HISTORICAL_FAMILY3_OPEN_SOURCE_ROWS_BEGIN -->
 
 | Composite ID | Trial / source-row | Family | Ngân hàng / kỳ / scope / assurance | PDF path + SHA-256 | Physical / printed page | PDF_VIEWED | Trạng thái | Nguyên nhân tiếng Việt dễ hiểu | Machine reason / formal ref |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -124,6 +129,13 @@ trong 12 artifact trên không bị đổi bởi lưu ý này.
 | F3-IDL-575-040 | trial 102; source IDL-575-040 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ACB / Q2 2026 / BCTC công ty mẹ/riêng lẻ / không kiểm toán | vietstock_bctc/ACB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf<br>sha256:4bb54ef4451ecee9aa4e55b68e076dea2a4a2b9783d0d6165f7161bcc40438f7 | physical p16; printed: không ghi nhận | PERSISTED_DIRECT_PIXEL_REVIEW — 58 renders/42 filings; ref #open-family3-rnid575 | RESOLVABLE_PENDING_GENERIC_FIX | Tổng in `113.314.155 / 139.216.637`; khoản vay VND `8.229.242 / 1.294.915`, còn ngoại tệ/provision dùng dash không được bind đủ. | `ROLE_LANE_OR_HEADER_AXIS_INCOMPLETE`<br>`VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`HIERARCHICAL_CLOSURE:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>formal: #family-3-rnid-575-unresolved |
 | F3-IDL-575-041 | trial 139; source IDL-575-041 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | VIB / Q2 2026 / BCTC hợp nhất / không kiểm toán | vietstock_bctc/VIB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf<br>sha256:416a104007cb0ed20ca43f9771a698f789b812866f7937617ec42be85e0c852c | physical p5, p32; printed: không ghi nhận | PERSISTED_DIRECT_PIXEL_REVIEW — 58 renders/42 filings; ref #open-family3-rnid575 | RESOLVABLE_PENDING_GENERIC_FIX | p5 là summary có lane `Thuyết minh`; p32 là detail cùng population với các hàng VND/ngoại tệ và subtotal cho vay. | `MULTI_REGION_CANDIDATES_FAIL_DISTINCT_EVIDENCE_GATES`<br>`CANDIDATE_1:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`CANDIDATE_1:COLUMN_CONTEXT:BODY_DERIVED_COLUMN_AXIS_UNRESOLVED`<br>`CANDIDATE_1:COLUMN_CONTEXT:LOCAL_HEADER_REGION_UNRESOLVED`<br>`CANDIDATE_1:HIERARCHICAL_CLOSURE:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`CANDIDATE_2:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`CANDIDATE_2:HIERARCHICAL_CLOSURE:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>formal: #family-3-rnid-575-unresolved |
 | F3-IDL-575-042 | trial 140; source IDL-575-042 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | VIB / Q2 2026 / BCTC công ty mẹ/riêng lẻ / không kiểm toán | vietstock_bctc/VIB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf<br>sha256:98bd6458eb223b168acf4795703f6ae628dcec166ef0ef07d402fb86636a86ef | physical p5, p32; printed: không ghi nhận | PERSISTED_DIRECT_PIXEL_REVIEW — 58 renders/42 filings; ref #open-family3-rnid575 | RESOLVABLE_PENDING_GENERIC_FIX | Summary p5 và detail p32 là cùng population; ngay sau detail p32 bắt đầu family kế tiếp, nên candidate hiện bị kéo quá ranh giới. | `MULTI_REGION_CANDIDATES_FAIL_DISTINCT_EVIDENCE_GATES`<br>`CANDIDATE_1:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`CANDIDATE_1:COLUMN_CONTEXT:BODY_DERIVED_COLUMN_AXIS_UNRESOLVED`<br>`CANDIDATE_1:COLUMN_CONTEXT:LOCAL_HEADER_REGION_UNRESOLVED`<br>`CANDIDATE_1:HIERARCHICAL_CLOSURE:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE`<br>`CANDIDATE_2:HIERARCHICAL_CLOSURE:TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:INTERBANK_DEPOSITS_AND_LOANS:0`<br>formal: #family-3-rnid-575-unresolved |
+<!-- HISTORICAL_FAMILY3_OPEN_SOURCE_ROWS_END -->
+
+<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->
+
+| Composite ID | Trial / source-row | Family | Ngân hàng / kỳ / scope / assurance | PDF path + SHA-256 | Physical / printed page | PDF_VIEWED | Trạng thái | Nguyên nhân tiếng Việt dễ hiểu | Machine reason / formal ref |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
 | E0073-OA-001 | doc 3; source OA-001 | Tài sản Có khác | VPB / Q1 2026 / BCTC hợp nhất / không kiểm toán | vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf<br>sha256:614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde | physical p51; printed: không ghi trong artifact | PERSISTED_CODEX_PIXEL_REVIEW — docs/experiments/E-0073-other-assets-8bank-codex-pixel-review-v1.json | KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY | “Phải thu bán tài sản tài chính” không có leaf tương đương hoặc gộp nhiều khái niệm; giữ nhãn/số nguồn, không ép khoản gần nghĩa. | E-0073:Source is broader than schema 976 Phải thu từ bán chứng khoán; no forced narrowing.<br>formal: docs/experiments/E-0073-other-assets-8bank-codex-verified-mapping-v1.json |
 | E0073-OA-002 | doc 3; source OA-002 | Tài sản Có khác | VPB / Q1 2026 / BCTC hợp nhất / không kiểm toán | vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf<br>sha256:614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde | physical p51; printed: không ghi trong artifact | PERSISTED_CODEX_PIXEL_REVIEW — docs/experiments/E-0073-other-assets-8bank-codex-pixel-review-v1.json | KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY | “Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm” không có leaf tương đương hoặc gộp nhiều khái niệm; giữ nhãn/số nguồn, không ép khoản gần nghĩa. | E-0073:No equivalent receivable child in family 966-1023.<br>formal: docs/experiments/E-0073-other-assets-8bank-codex-verified-mapping-v1.json |
 | E0073-OA-003 | doc 3; source OA-003 | Tài sản Có khác | VPB / Q1 2026 / BCTC hợp nhất / không kiểm toán | vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf<br>sha256:614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde | physical p52; printed: không ghi trong artifact | PERSISTED_CODEX_PIXEL_REVIEW — docs/experiments/E-0073-other-assets-8bank-codex-pixel-review-v1.json | KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY | “Số dư đầu kỳ dự phòng rủi ro cho các tài sản Có nội bảng khác” không có leaf tương đương hoặc gộp nhiều khái niệm; giữ nhãn/số nguồn, không ép khoản gần nghĩa. | E-0073:Other-asset provision roll-forward has no equivalent branch in family 966-1023.<br>formal: docs/experiments/E-0073-other-assets-8bank-codex-verified-mapping-v1.json |
@@ -333,16 +345,14 @@ trong 12 artifact trên không bị đổi bởi lưu ý này.
 ## Danh mục OPEN cần xử lý
 
 Bảng này nằm trước toàn bộ phần `CLOSED` và dẫn tới mọi heading `OPEN` hiện có
-trong ledger. Nó tách case chờ sửa primitive chung khỏi case còn bất định sau
-review; **41 filing chờ generic fix của Family 3 vẫn là OPEN**, không được tính
-như đã đóng. Tổng hiện hành là **247 source-row OPEN = 42 Family 3 + 205 dòng
-ngoài Family 3**; bảng canonical phía trên là authority đếm.
+trong ledger. Tổng hiện hành là **205 source-row OPEN ngoài Family 3**; bảng
+canonical phía trên là authority đếm. Family 3 có 0 OPEN sau E-0178; 42 hàng
+review cũ được giữ ở closed history và không còn nằm trong index này.
 
 <!-- OPEN_FAMILY_INDEX_BEGIN -->
 
 | Family | Số OPEN | Tình trạng/nguyên nhân dễ hiểu | Link chi tiết |
 | --- | ---: | --- | --- |
-| Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575) | 42 | 41 filing nhìn rõ trên PDF, chờ sửa primitive chung; 1 filing MBB có tổng nguồn lệch 2 triệu sau pixel review. | [Bảng review 42 filing](#open-family3-rnid575) |
 | Tài sản/GTCG đem thế chấp, cầm cố, chiết khấu | 3 | Một hierarchy nguồn mâu thuẫn và hai dòng không tách loại chứng khoán. | [Canonical rows](#canonical-open-source-rows) |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | 26 | 13 annual + 13 historical/current; thiếu leaf L/C, ký quỹ, swap và dòng `Trong đó`. | [Chi tiết annual](#open-contingent-liabilities-annual-2025) |
 | Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý | 5 | 2 annual + 3 historical/current; PDF ghi `(*)`/không công bố giá trị số. | [Chi tiết annual](#open-financial-instruments-fair-value-annual-2025) |
@@ -365,21 +375,25 @@ ngoài Family 3**; bảng canonical phía trên là authority đếm.
 
 <a id="open-family3-rnid575"></a>
 
-## OPEN — Family 3: Tiền gửi tại/cho vay TCTD khác — tài sản (575)
+## CLOSED HISTORY — Family 3: Tiền gửi tại/cho vay TCTD khác — tài sản (575)
 
-Family này **chưa hoàn tất**. Toàn bộ 42/42 filing đã được xem trên pixel:
-`PDF_VIEWED = 42`, tương ứng 58 ảnh physical page đã render trong ba lượt
-`17 + 12 + 29 = 58`. Sau review, 41 filing là
-`RESOLVABLE_PENDING_GENERIC_FIX`: PDF đủ rõ và cần sửa primitive chung, không
-phải 41 ambiguity nguồn. Chỉ trial 18 / `IDL-575-008` là
-`UNRESOLVED_AFTER_PDF_REVIEW`: tại MBB Q1/2025 công ty mẹ p26, **sáu dòng
-thành phần trên lane 31/12/2024** cộng thành `72.305.188` nhưng tổng in là
-`72.305.186`, residual `2 triệu đồng`. Không backsolve hoặc sửa số nguồn để ép
-closure.
+E-0178 đã đóng Family 3 trên đủ 140 filing: **126 `VERIFIED_BY_CODEX`, 14
+`NOT_OBSERVED_PROPOSAL_ONLY`, 0 `UNRESOLVED`, 763 mapping**. Formal evidence
+SHA-256 là `12be4964a7ce6ad29200b51c3bbbb8a99595aa328fe426f710b4c3cf886e42a3`;
+formal mapping SHA-256 là
+`7b61a38464430808dbb3801ecc49e1a02dc3080a79c83d604ded021b6e32d3d4`.
+Hai artifact canonical single-LF, mode `0444`, nlink 1, đã build và exact-verify
+tại clean Git `827d5a736e4816c1f1fea014f9a746c444212355`; seal là
+`e0178:seal:71efeb5b5337250e489941b8b8e6dc7304e2b876f8abc4c55a46caf619fec3a6`.
 
-Bảng này là queue dành cho người review; không chứa SHA hay machine reason.
-Phụ lục [technical/pre-review provenance](#family-3-rnid-575-unresolved) bên
-dưới vẫn giữ nguyên source identity, region và reason của hai artifact.
+Toàn bộ 42/42 filing lịch sử vẫn được giữ nguyên dưới đây với
+`PDF_VIEWED = 42`, tương ứng 58 ảnh physical page qua ba lượt
+`17 + 12 + 29 = 58`. Các nhãn `OPEN` trong bảng là **trạng thái lịch sử đã bị
+E-0178 supersede**, không còn thuộc canonical queue. Trial 18 vẫn giữ nguyên hai
+số nguồn `72.305.188` và `72.305.186`; V4 không backsolve/sửa digit mà chỉ dùng
+receipt hierarchy exhaustive, source-bound và disposition rounding đã khai báo.
+Phụ lục [technical/pre-review provenance](#family-3-rnid-575-unresolved) tiếp tục
+bảo toàn source identity, region và machine reason của artifact cũ.
 
 <!-- INTERBANK_575_PDF_REVIEW_BEGIN -->
 
@@ -479,7 +493,7 @@ và 756 không phát sinh mapping, còn 130 absence trial không hydrate numeric
 evidence.
 
 Không có Family10-specific OPEN ID; queue canonical hiện hành vẫn được đếm độc
-lập ở đầu file (**247 OPEN / 545 entries**).
+lập ở đầu file (**205 OPEN / 545 entries**).
 E-0116 annual-2025 cùng E-0064 lượt tám PDF hiện hành được giữ làm tập con lịch
 sử. Seal:
 `docs/experiments/E-0173-family-first-loan-currency-140-filing-schema-sweep-seal-v1.json`.
@@ -2313,11 +2327,11 @@ Project-owner absence closure:
 ## Technical/pre-review provenance appendix — Family 3 (`INTERBANK_DEPOSITS_AND_LOANS`)
 
 Phụ lục này bảo toàn nguyên văn disposition và reason của machine sweep trước
-pixel review. Mọi nhãn `OPEN` trong phần bank summary bên dưới là trạng thái
-**pre-review**, không thay thế bảng human-review ở đầu file: hiện tại 41 filing
-chờ generic fix và chỉ trial 18 còn unresolved sau khi xem PDF.
+pixel review. Mọi nhãn `OPEN` bên dưới là trạng thái **pre-V4/pre-review đã bị
+E-0178 supersede**; current Family 3 có 0 unresolved. Chúng không thay thế formal
+V4 pair hay bảng closed-history ở đầu file.
 
-Current all-filing artifacts:
+Historical pre-V4 all-filing artifacts:
 `output/calibration/family-first-accounting-evidence-sweeps-v1/interbank-deposits-and-loans.json`
 and
 `output/calibration/family-first-accounting-schema-mappings-v1/interbank-deposits-and-loans.json`.
@@ -2406,33 +2420,33 @@ Diễn giải nguyên nhân chính:
 <!-- INTERBANK_575_UNRESOLVED_FILINGS_END -->
 
 
-- **OPEN — ACB (10 filing):** annual-2025 consolidated p7/p46 and H1-2025
+- **HISTORICAL OPEN — ACB (10 filing):** annual-2025 consolidated p7/p46 and H1-2025
   consolidated p7/p45 contain both a summary and detailed region headed
   `Tiền gửi và cho vay các TCTD khác`; neither candidate has a fully bound
   column/body axis. Q1/Q4-2025 and Q1/Q2-2026, both scopes, p15–16 retain the
   same owner but one or more visible role rows lack a complete two-lane axis.
-- **OPEN — MBB (2 filing):** Q1-2025 consolidated p29 and parent p26,
+- **HISTORICAL OPEN — MBB (2 filing):** Q1-2025 consolidated p29 and parent p26,
   `Tiền gửi và cho vay các TCTD khác`; the printed deposit/family result differs
   from the exact component population currently bound. Source values are not
   repaired to force closure.
-- **OPEN — VPB (4 filing):** annual-2025 and H1-2025, both scopes, p42/p36 and
+- **HISTORICAL OPEN — VPB (4 filing):** annual-2025 and H1-2025, both scopes, p42/p36 and
   p44/p36, owner `Tiền gửi và cấp tín dụng cho các TCTD khác`; one or more role
   rows lack a complete visible lane axis.
-- **OPEN — HDB (10 filing):** annual-2025 both scopes p34/p33 and Q3-2025 both
+- **HISTORICAL OPEN — HDB (10 filing):** annual-2025 both scopes p34/p33 and Q3-2025 both
   scopes p3 have incomplete visible role lanes; H1-2025 p31/p30 has a trailing
   result that is not one exact family-component sum; Q1/Q2-2025, both scopes,
   p3 has a printed `Cho vay các TCTD khác` result that does not equal the
   visible component population. The owner is `Tiền gửi tại và cho vay các
   TCTD khác`.
-- **OPEN — CTG (3 filing):** annual-2025 parent p39 lacks proven cross-page
+- **HISTORICAL OPEN — CTG (3 filing):** annual-2025 parent p39 lacks proven cross-page
   period/unit inheritance; H1-2025 parent p11/p21 has two competing regions;
   Q1-2025 consolidated p4 has an interbank-loan result that does not equal the
   visible component population. Source owner: `Tiền gửi và cho vay các TCTD
   khác`.
-- **OPEN — BID (1 filing):** H1-2025 consolidated p9, `Tiền gửi và cho vay các
+- **HISTORICAL OPEN — BID (1 filing):** H1-2025 consolidated p9, `Tiền gửi và cho vay các
   TCTD khác`; the trailing result is not one exact sum of the bound family
   components.
-- **OPEN — VIB (12 filing):** annual-2025 parent, H1-2025 both scopes,
+- **HISTORICAL OPEN — VIB (12 filing):** annual-2025 parent, H1-2025 both scopes,
   Q1-2025 both scopes, Q2-2025 parent, Q3/Q4-2025 both scopes and Q2-2026 both
   scopes contain both summary and detailed regions headed `Tiền gửi và cho vay
   các TCTD khác`. Pages are respectively p9/p37, p9–10/p37–38, p9–10/p37,
@@ -2442,8 +2456,8 @@ Diễn giải nguyên nhân chính:
 - **PRE-REVIEW MACHINE COUNTS:** 84/140 filing and 701 source mappings are
   `VERIFIED_BY_CODEX`; 14 filing are `NOT_OBSERVED_PROPOSAL_ONLY` (BID 12,
   CTG 2); machine sweep đã gắn 42 filing là `UNRESOLVED` trước pixel review.
-  Human-review hiện hành supersede disposition này thành 41 pending generic fix
-  và 1 unresolved-after-review, nhưng không sửa artifact lịch sử.
+  E-0178 supersede toàn bộ disposition hiện hành thành 126 verified / 14 bounded
+  not-observed / 0 unresolved, nhưng không sửa artifact hay nhãn lịch sử ở đây.
 
 ## Deposits at central banks (`CENTRAL_BANK_DEPOSITS`)
 

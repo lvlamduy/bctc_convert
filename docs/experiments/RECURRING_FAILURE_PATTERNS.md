@@ -113,8 +113,12 @@ Trạng thái:
 - **Current primitive:** declarative typed roles (`SOURCE_ONLY_GROUP_PARENT`,
   required/optional child, alternative component), owner/statement side,
   exact population/scope hard veto, complete exclusive lane axis và
-  same-population equations. Text chỉ là anchor; unmatched source axes được giữ
-  source-only hoặc unresolved.
+  same-population equations. Shared direct-frontier closure chọn đúng một tầng
+  component cho mỗi parent: child rows → subtotal, child subtotals → parent/grand
+  total. Frontier không được chứa đồng thời một role và descendant đã chọn của
+  role đó, không reuse occurrence/sample và phải exhaustive trên mọi lane trong
+  đúng root/page/source interval. Text chỉ là anchor; unmatched source axes được
+  giữ source-only hoặc unresolved.
 - **Status:** `MITIGATED`.
 
 ## RFP-005 — Period or unit is inherited from an unrelated scope
@@ -136,6 +140,9 @@ Trạng thái:
   surfaces/refs và compatibility với owner, period role, unit, axes và table
   block. Far/equidistant narrative dates, conflicting units và tampered context
   fail closed; period lane ordinal tách khỏi provider/source-column ordinal.
+  One-edit parent/component authority phải rebuild column context từ original
+  authenticated joined pages + evaluation policy; caller-supplied/rehashed
+  period hoặc unit context không tạo authority.
 - **Status:** `MITIGATED`.
 
 ## RFP-006 — Quarter, cumulative flow, balance, and roll-forward periods are conflated
@@ -213,7 +220,10 @@ Trạng thái:
   Family3 V4 cold build ngày 2026-08-24 mất khoảng 20 phút và targeted một
   filing vẫn vượt 30 giây dù hydrate snapshot chỉ dưới một giây. Profile chỉ ra
   cùng full-document snapshot/topology-candidate envelope bị build/replay lại
-  theo candidate, occurrence pass và render pass.
+  theo candidate, occurrence pass và render pass. Family3 E-0178 tại clean Git
+  `827d5a7` cần hai bounded build lượt vì lượt đầu đạt hard cap 300 s sau 83/140
+  head-bound checkpoint; lượt resume hoàn tất 140 trial, rồi formal verify mất
+  khoảng 44 s. Targeted document vẫn có ca vượt budget 30 s.
 - **Cause:** safe single-item accessor đặt trong corpus loop; retrieval,
   authentication, topology và downstream projection không có same-turn handoff.
 - **Anti-fix:** không bỏ replay/capability checks; không cache mutable objects;
@@ -224,7 +234,9 @@ Trạng thái:
   small family sidecars và content/spec/engine-keyed cache (không authority).
   Region-first retrieval chỉ shortlist selected/adjacent pages và full-document
   fallback khi coverage chưa proved. Final public replay/audit vẫn giữ riêng,
-  không nhân theo page/cell.
+  không nhân theo page/cell. Per-document checkpoint hiện giảm work bị lặp giữa
+  bounded attempts và writer canonical chỉ publish pair sau đủ 140 trial, nhưng
+  chưa làm cold run nằm dưới một lượt/budget.
 - **Status:** `ALGORITHM_REVIEW_REQUIRED` cho Family3 V4 cho tới khi same-turn
   prepared context loại bỏ rebuild multiplicative và targeted/cold telemetry
   trở lại dưới budget; các path đã mitigated khác vẫn giữ final public replay,
@@ -236,8 +248,9 @@ Trạng thái:
   partial/ambiguous structure và malformed local evidence đều trả một trạng
   thái; một filing lỗi làm abort cả sweep.
 - **Evidence:** Family11 giữ VPB/HDB/BID broad geography làm hard negatives thay
-  vì narrow; interbank sweep giữ 42 `UNRESOLVED` trong khi 84 verified và 14
-  `NOT_OBSERVED_PROPOSAL_ONLY`; trading sweep tiếp tục khi một document-local
+  vì narrow; Family3 pre-V4 lịch sử giữ 42 `UNRESOLVED` trong khi 84 verified và
+  14 `NOT_OBSERVED_PROPOSAL_ONLY`, còn E-0178 hiện tách 126 verified / 14 bounded
+  not-observed / 0 unresolved; trading sweep tiếp tục khi một document-local
   period/row gate fail.
 - **Cause:** retrieval hit/miss hoặc exception được xem là mapping/absence
   decision.
@@ -301,13 +314,16 @@ Trạng thái:
   không match là zero/absent; không bỏ unmatched numeric row, partial trailing
   row hoặc source-only group để làm phương trình đóng; không dùng accounting để
   chọn/sửa digit hay dấu.
-- **Current primitive:** hierarchical closure giữ visible/derived provenance và
-  dùng mismatch làm veto, nhưng chưa xuất một source-bound visible-coverage
-  receipt chứng minh toàn bộ body numeric axis đã bind và mọi equation dùng đúng
-  exhaustive population. Trước khi mapping derived parent cần shared coverage
-  gate: bound/unmatched rows, source-only groups, optional visible branches,
-  unique complete trailing total và exact component-policy receipt.
-- **Status:** `OPEN`.
+- **Current primitive:** Family3 V4 hiện xuất và public-replay source-bound
+  occurrence/hierarchy/direct-frontier receipts. Mỗi equation bind exact parent,
+  ordered direct component occurrence IDs, source rows/samples, root/page/source
+  interval, period/unit và toàn bộ lane. Visible/unmatched rows, optional branches,
+  source-only groups, internal/trailing subtotal và presentation aliases đều phải
+  được phân loại; partial/extra/duplicate/mixed-level/use-count≠1 hoặc coherent
+  tamper fail closed. Accounting chỉ corroborate/veto source-observed digits và
+  declared display-unit rounding; không backsolve.
+- **Status:** `MITIGATED` trên Family3 V4; primitive phải được tái chứng minh cho
+  mỗi family mới, đặc biệt Family12 nested group → core subtotal → grand total.
 
 ## RFP-013 — Model page JSON is treated as reconstructed table authority
 

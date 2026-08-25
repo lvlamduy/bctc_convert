@@ -1,0 +1,77 @@
+{
+  "format_version": "FAMILY_FIRST_INTERBANK_DEPOSITS_LOANS_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_INTERBANK_DEPOSITS_AND_LOANS_EVIDENCE_AND_SCHEMA_MAPPING_PAIR_LIVE_REPLAY_REQUIRED_NO_NOT_OBSERVED_MAPPING_SCHEMA_CREATION_BACKSOLVE_GEMMA_SOLE_AUTHORITY_CANONICAL_EXPORT_PRODUCTION_OR_BANK_PAGE_PERIOD_ROUTING_AUTHORITY",
+  "seal_id": "e0178:seal:71efeb5b5337250e489941b8b8e6dc7304e2b876f8abc4c55a46caf619fec3a6",
+  "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
+  "git_commit": "827d5a736e4816c1f1fea014f9a746c444212355",
+  "sweep_id": "ffaesv1:sweep:a49421a235c1503f8bacaa790ef41716f800439c59c6e62011ca04325f824d7d",
+  "mapping_id": "ffasmv1:mapping:1d006fcfb4c67cb15bcbc43c2234a942a7ba6817a32abdf9cfefcc4d39cbf828",
+  "formal_evidence_ref": {
+    "path": "output/calibration/family-first-accounting-evidence-sweeps-v1/interbank-deposits-and-loans-v4.json",
+    "sha256": "12be4964a7ce6ad29200b51c3bbbb8a99595aa328fe426f710b4c3cf886e42a3",
+    "size_bytes": 20950556,
+    "mode": "0444"
+  },
+  "formal_mapping_ref": {
+    "path": "output/calibration/family-first-accounting-schema-mappings-v1/interbank-deposits-and-loans-v4.json",
+    "sha256": "7b61a38464430808dbb3801ecc49e1a02dc3080a79c83d604ded021b6e32d3d4",
+    "size_bytes": 1087878,
+    "mode": "0444"
+  },
+  "metrics": {
+    "document_count": 140,
+    "ready_for_schema_review_document_count": 126,
+    "not_observed_document_count": 14,
+    "unresolved_document_count": 0,
+    "verified_document_count": 126,
+    "verified_mapping_count": 763,
+    "unique_topology_document_count": 100
+  },
+  "bank_summary": [
+    {"bank":"ACB","document_count":18,"verified_document_count":18,"not_observed_document_count":0,"verified_mapping_count":192},
+    {"bank":"MBB","document_count":18,"verified_document_count":18,"not_observed_document_count":0,"verified_mapping_count":183},
+    {"bank":"VPB","document_count":18,"verified_document_count":18,"not_observed_document_count":0,"verified_mapping_count":118},
+    {"bank":"HDB","document_count":16,"verified_document_count":16,"not_observed_document_count":0,"verified_mapping_count":53},
+    {"bank":"VCB","document_count":18,"verified_document_count":18,"not_observed_document_count":0,"verified_mapping_count":72},
+    {"bank":"CTG","document_count":18,"verified_document_count":16,"not_observed_document_count":2,"verified_mapping_count":49},
+    {"bank":"BID","document_count":16,"verified_document_count":4,"not_observed_document_count":12,"verified_mapping_count":33},
+    {"bank":"VIB","document_count":18,"verified_document_count":18,"not_observed_document_count":0,"verified_mapping_count":63}
+  ],
+  "not_observed_document_ordinals": [66,68,77,78,79,80,81,82,83,84,131,132,133,134],
+  "input_identities": {
+    "document_evidence_store_manifest_id": "ffdesv1:manifest:1d1bfcaf1c61274cea93c990a85e6e8dc9d2b42a077d4283150a1008987d5b93",
+    "numeric_receipt_id": "ffpniv3:receipt:2d5021adaa068363ea9dbbbdca934998ce27cd0d023fba4c402258fb571e5dc5",
+    "semantic_index_id": "ffsiv1:index:3aba376f04e965ba3bfb53290046c7b3488091022b74f2bd187ec5d5986890c2"
+  },
+  "input_refs": {
+    "family_spec": {"path":"config/families/tm-interbank-deposits-loans-topology-v4.json","sha256":"2f103569cc58b19edced5b85d51ad84c778127614e14e87ecf87cc93a5e7e7b6","size_bytes":19881},
+    "evaluation_spec": {"path":"config/families/tm-interbank-deposits-loans-evaluation-v4.json","sha256":"d1aca1ae92dd3ef1e9d90612e798560646880fa89530e639f07564fd27ab0976","size_bytes":14746},
+    "schema_binding_spec": {"path":"config/families/tm-interbank-deposits-loans-schema-binding-v4.json","sha256":"c2aa27451bc54711e7f9a345ce29eaefcfdd70b04c314dfe4a307cd04cb74233","size_bytes":2946},
+    "document_evidence_manifest": {"path":"data/registered/family_first_document_evidence_store_v1.json","sha256":"07b06a79e5fe830d9565082e96ce1d8ba7b83a85377d804c7154eba8becad32c","size_bytes":92051},
+    "region_retrieval_database": {"path":"data/local/family_first_ocr_query_cache_v1.sqlite3","sha256":"3a5ebecadf059b14df893fff20a7976717348558b77af13937876c8c6e3e8504","size_bytes":453050368},
+    "schema_graph": {"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376}
+  },
+  "implementation_refs": {
+    "sweep": {"path":"src/bctc_ai/evaluation/family_first_accounting_evidence_sweep_v1.py","sha256":"79bc1d9728abae53502e3bdc8c0cbcab764f52c5dc7008535495810ea1f5cd81","size_bytes":257723},
+    "occurrence_axis": {"path":"src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py","sha256":"51caa97eda42667938c269696778ff9affd45cefdc589ca110641b95ff082a25","size_bytes":576112},
+    "hierarchical_closure": {"path":"src/bctc_ai/evaluation/accounting_scoped_hierarchical_table_closure_v2.py","sha256":"b199e1869efdda6f83c4f970b03bb12656ae73252fe0e5d2f447c3e2638fcacd","size_bytes":328751},
+    "one_edit_authority": {"path":"src/bctc_ai/evaluation/accounting_family_one_edit_exact_authority_v1.py","sha256":"3b35ba6bea2fcded208cd0fc2006d9410cdaa0927755ef31a00117ae7cf9d270","size_bytes":219975},
+    "schema_mapping": {"path":"src/bctc_ai/evaluation/family_first_accounting_schema_mapping_v1.py","sha256":"dfd30db94125f7399d9bd1e733333b61172f72280d072488d072187cd1174c9d","size_bytes":46853},
+    "runner": {"path":"scripts/experiments/run_family_first_accounting_document_store_pipeline_v1.py","sha256":"273db9ec6e854c603cc296d289f0155d28cb6a636c17776c0377092b8cb5cf3f","size_bytes":5801},
+    "paired_artifact_writer": {"path":"scripts/experiments/run_family_first_accounting_pipeline_v1.py","sha256":"4138986afc46dd96699eb9185beecef980f73eb451e4317af5e32a12eb3a001e","size_bytes":7397}
+  },
+  "authority": {
+    "all_authenticated_documents_scanned": true,
+    "schema_mappings_verified_after_all_evidence_gates": true,
+    "not_observed_mapping_authority": false,
+    "accounting_backsolve_or_invented_value_authority": false,
+    "gemma4_used_as_sole_mapping_or_numeric_authority": false,
+    "bank_file_page_period_scope_used_for_matching_or_routing": false,
+    "schema_creation_authority": false,
+    "canonical_export_authority": false,
+    "production_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_live_replay_required": true
+  }
+}
