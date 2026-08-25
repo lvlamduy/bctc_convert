@@ -664,6 +664,34 @@ def test_valued_parent_cluster_is_not_reassigned_to_distant_child() -> None:
     ]
 
 
+def test_valued_parent_cluster_is_not_reassigned_to_later_touching_blank_child() -> None:
+    pages = [
+        _page(
+            [
+                _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Tiền gửi tại TCTD khác", "", [50, 100, 300, 135]),
+                _line(4, "100", "100", [600, 100, 700, 135]),
+                _line(5, "90", "90", [800, 100, 900, 135]),
+                _line(6, "Bằng VND", "", [80, 135, 300, 169]),
+                _line(7, "Cho vay TCTD khác", "", [50, 220, 300, 242]),
+                _line(8, "20", "20", [600, 220, 700, 242]),
+                _line(9, "10", "10", [800, 220, 900, 242]),
+            ]
+        )
+    ]
+
+    result = build_accounting_family_row_axis_v1(pages, _contextual_summary_spec())
+
+    by_role = {row["role"]: row for row in result["rows"]}
+    assert [value["raw_prediction"] for value in by_role["DEPOSIT_GROUP"]["values"]] == [
+        "100",
+        "90",
+    ]
+    assert by_role["DEPOSIT_VND"]["values"] == []
+
+
 def test_optional_blank_child_under_valued_structural_parent_is_label_only() -> None:
     pages = [
         _page(

@@ -474,8 +474,8 @@ _DEPENDENCIES = {
     },
     "row_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
-        "sha256": "46b4a8ec584998a7cea532818745ad2ca63571e9bd1a2b586e229fd5c2ee05d6",
-        "size_bytes": 81_740,
+        "sha256": "21779eef10775399e49c25a76d978b8841ac77d6fdc63c8abb11157001be1ab7",
+        "size_bytes": 82_731,
     },
     "selected_snapshot_validator": {
         "path": "src/bctc_ai/evaluation/authenticated_semantic_region_snapshot_v1.py",
@@ -3288,13 +3288,28 @@ def _project_unique_dash_speck_rescues_v2(
         receipts.append(receipt)
         claimed_keys.add(key)
     for row in completed["rows"]:
-        row["status"] = (
-            "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
-            if not row["values"]
-            else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
-            if row["missing_column_ordinals"]
-            else "VISIBLE_VALUE_LANES_BOUND"
-        )
+        if not row["missing_column_ordinals"]:
+            row["status"] = "VISIBLE_VALUE_LANES_BOUND"
+        elif row["status"] in {
+            "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+            "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+        }:
+            # V1 has already authenticated every remaining missing lane as a
+            # blank pixel crop under one complete structural parent.  The V4
+            # speck bridge is additive: a failed or unrelated promotion must
+            # not erase that sealed optional-row disposition and turn a safe
+            # blank into an unresolved accounting cell.
+            row["status"] = (
+                "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+                if row["values"]
+                else "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS"
+            )
+        else:
+            row["status"] = (
+                "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+                if row["values"]
+                else "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+            )
     return _regenerate_v1_axis(completed), receipts
 
 

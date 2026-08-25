@@ -496,6 +496,36 @@ def test_existing_dash_authentication_preserves_sealed_optional_blank_status_wit
     assert reasons == []
 
 
+@pytest.mark.parametrize(
+    ("partial", "expected_status"),
+    [
+        (False, "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS"),
+        (True, "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"),
+    ],
+)
+def test_v4_unique_dash_speck_pass_preserves_sealed_optional_blank_status_without_receipt(
+    partial: bool, expected_status: str
+) -> None:
+    axis = _optional_blank_v1_axis(partial=partial)
+    before = next(row for row in axis["rows"] if row["role"] == "DEPOSIT_VND")
+    assert before["status"] == expected_status
+
+    completed, receipts = subject._project_unique_dash_speck_rescues_v2(
+        axis,
+        (),
+        (),
+        topology_candidates_id="afotcv2:result:" + "a" * 64,
+        topology_scan_id="afotv1:scan:" + "b" * 64,
+    )
+
+    after = next(row for row in completed["rows"] if row["role"] == "DEPOSIT_VND")
+    assert completed == axis
+    assert after["status"] == expected_status
+    assert after["values"] == before["values"]
+    assert completed["visible_dash_rescues"] == axis["visible_dash_rescues"]
+    assert receipts == []
+
+
 def test_repeated_children_bind_nearest_parent_and_foreign_term_row_survives() -> None:
     pages = _pages(
         [
