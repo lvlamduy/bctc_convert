@@ -39,8 +39,8 @@ CLAIM_BOUNDARY = (
 DEPENDENCY_REFS_V1 = {
     "family14_topology_adapter_ref": {
         "path": "src/bctc_ai/evaluation/purchased_debt_family14_region_query_v1.py",
-        "sha256": "098235b9a3acbe243e1e47218dd20728ffa64e84a61b99a36b4301230c291897",
-        "size_bytes": 15_380,
+        "sha256": "b4cab94b82474833c3809fe6abdbd52b9e60ed3cee3d4eeea9253e8cdc71f121",
+        "size_bytes": 15_368,
     },
     "owner_local_oracle_ref": {
         "path": "src/bctc_ai/evaluation/accounting_owner_local_branchless_oracle_v1.py",
@@ -49,7 +49,7 @@ DEPENDENCY_REFS_V1 = {
     },
     "shared_topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
         "size_bytes": 75_614,
     },
 }
@@ -201,9 +201,8 @@ def _build(source_pages: Any) -> dict[str, Any]:
     near = topology["metrics"]["near_region_count"]
     core_hits = topology["metrics"]["core_semantic_anchor_hit_count"]
     challengers = branchless["metrics"]["challenger_count"]
-    topology_zero = (
-        topology["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
-        and all(type(count) is int and count == 0 for count in (complete, near, core_hits))
+    topology_zero = topology["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY" and all(
+        type(count) is int and count == 0 for count in (complete, near, core_hits)
     )
     if complete == 1 and near == 0 and challengers == 0:
         status = "STRUCTURAL_READY_PROPOSAL_ONLY"

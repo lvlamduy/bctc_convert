@@ -378,7 +378,7 @@ def _spec(value: Any) -> dict[str, Any]:
     }:
         raise _error("accounting family topology limits drifted")
     max_label_span = _positive_int(limits["max_label_line_span"], "maximum label line span")
-    if max_label_span > 4:
+    if max_label_span > 6:
         raise _error("maximum label line span exceeds the bounded generic policy")
     return {
         "children": children,

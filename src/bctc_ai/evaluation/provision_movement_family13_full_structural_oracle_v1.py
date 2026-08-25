@@ -37,7 +37,7 @@ CLAIM_BOUNDARY = (
 DEPENDENCY_REFS = {
     "family13_adapter_ref": {
         "path": "src/bctc_ai/evaluation/provision_movement_family13_region_query_v1.py",
-        "sha256": "c269a01daef00f77b3f9dc616573647d92a53de37cf53d81362e091d0b007e5e",
+        "sha256": "7a5b52255f747280867d22308fd031fa1fab6aca3bd524ff6a01fe58a6483339",
         "size_bytes": 14_815,
     },
     "owner_local_oracle_ref": {
@@ -47,7 +47,7 @@ DEPENDENCY_REFS = {
     },
     "topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
         "size_bytes": 75_614,
     },
 }

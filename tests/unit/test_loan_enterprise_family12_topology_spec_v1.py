@@ -61,7 +61,7 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     assert spec["limits"] == {
         "max_cluster_span_lines": 160,
         "max_continuation_pages": 1,
-        "max_label_line_span": 3,
+        "max_label_line_span": 6,
     }
     assert leaf_roles["ENTERPRISE_TYPE_BRANCH"]["role_kind"] == "STRUCTURAL_GROUP"
     assert leaf_roles["ECONOMIC_ORGANIZATION_LOANS_GROUP"]["role_kind"] == ("STRUCTURAL_GROUP")
@@ -221,6 +221,36 @@ def test_family12_wrapped_state_majority_source_variants_resolve_exact_roles() -
         item["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
         for item in result["regions"][0]["child_matches"]
     )
+
+
+def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Công ty cổ phần có vốn góp của",
+                    "Nhà nước trên 50% vốn điều lệ",
+                    "hoặc tổng số cổ phần có quyền",
+                    "biểu quyết, hoặc nhà nước giữ",
+                    "quyền chi phối trong Điều lệ của",
+                    "công ty",
+                    "Công ty Nhà nước",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    majority = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
+    )
+    assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+    assert majority["source_line_index"] == 1
+    assert majority["end_source_line_index"] == 6
 
 
 def test_family12_branchless_owner_requires_two_distinct_exact_leaf_roles() -> None:

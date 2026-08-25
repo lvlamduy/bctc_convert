@@ -197,6 +197,7 @@ _CHILDREN = [
             "Công ty TNHH một thành viên vốn nhà nước 100%",
             "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ",
             "Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ",
         ],
     ),
     _child(
@@ -209,6 +210,8 @@ _CHILDREN = [
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
+            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% "
+            "vốn điều lệ hoặc Nhà nước giữ quyền chi phối",
         ],
     ),
     _child(
@@ -225,6 +228,9 @@ _CHILDREN = [
             "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
             "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số "
+            "cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ "
+            "của công ty",
         ],
     ),
     _child(773, "Công ty cổ phần khác", ["Công ty cổ phần khác", "Công ty CP khác"]),
@@ -322,6 +328,7 @@ _CHILDREN = [
             "Ứng trước tiền bán chứng khoán",
             "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
             "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+            "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
         ],
     ),
 ]
@@ -524,7 +531,7 @@ _TOPOLOGY_SPEC: dict[str, Any] = {
     "limits": {
         "max_cluster_span_lines": 160,
         "max_continuation_pages": 1,
-        "max_label_line_span": 3,
+        "max_label_line_span": 6,
     },
     "parent": {
         "aliases": _distinct_aliases(_OWNER_ALIASES),

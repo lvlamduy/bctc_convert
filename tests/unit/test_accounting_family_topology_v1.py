@@ -444,6 +444,23 @@ def test_v4_flexible_role_pool_spec_rejects_field_and_semantic_drift() -> None:
         build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], partial_minimum)
 
 
+def test_wrapped_label_span_policy_is_bounded_at_six_lines() -> None:
+    admitted = _generic_spec()
+    admitted["limits"]["max_label_line_span"] = 6
+    rejected = copy.deepcopy(admitted)
+    rejected["limits"]["max_label_line_span"] = 7
+
+    assert (
+        build_accounting_family_topology_scan_v1(
+            [_page(["Phân tích dư nợ theo thời gian", "Nợ ngắn hạn", "Nợ trung hạn"])],
+            admitted,
+        )["status"]
+        == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    )
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="maximum label line span"):
+        build_accounting_family_topology_scan_v1([_page(["Nợ ngắn hạn"])], rejected)
+
+
 def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> None:
     pages = [
         _page(

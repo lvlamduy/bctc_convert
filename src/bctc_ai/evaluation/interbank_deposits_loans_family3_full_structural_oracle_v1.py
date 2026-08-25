@@ -29,7 +29,7 @@ CLAIM_BOUNDARY = (
 TRUST_CLOSURE = {
     "accounting_topology_engine": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
         "size_bytes": 75_614,
     },
     "evaluation_config": {

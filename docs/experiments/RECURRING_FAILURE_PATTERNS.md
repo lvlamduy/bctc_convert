@@ -43,7 +43,9 @@ Trạng thái:
   exact/accentless index, bounded one-edit và đúng một whitespace-fusion channel
   chỉ tạo shortlist. Owner, population, roles, geometry, period/unit và
   accounting gates mới quyết định candidate; collision/near-neighbour thì
-  unresolved. Region-first FTS/q-gram retrieval không có mapping/absence
+  unresolved. Nhãn semantic quấn dòng chỉ được ghép từ tối đa sáu source line
+  liên tiếp trong cùng exact owner; bảy dòng trở lên bị chặn để không hút nhầm
+  paragraph kế bên. Region-first FTS/q-gram retrieval không có mapping/absence
   authority.
 - **Status:** `MITIGATED`.
 

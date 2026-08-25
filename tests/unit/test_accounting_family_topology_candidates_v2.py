@@ -107,7 +107,7 @@ def test_prepruning_axis_retains_summary_and_detail_while_v1_stays_sealed() -> N
     payload = topology_path.read_bytes()
     assert len(payload) == 75_614
     assert hashlib.sha256(payload).hexdigest() == (
-        "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12"
+        "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e"
     )
     legacy = topology_v1.build_accounting_family_topology_scan_v1(_pages(), _spec())
     result = subject.build_accounting_family_topology_candidates_v2(_pages(), _spec())

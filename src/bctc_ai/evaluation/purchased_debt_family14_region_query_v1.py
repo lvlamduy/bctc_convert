@@ -54,9 +54,7 @@ CLAIM_BOUNDARY = (
 )
 RECOVERY_STATUS_V1 = {
     "absence_authority": False,
-    "branchless_distinct_role_pair": (
-        "NOT_IMPLEMENTED_PENDING_OWNER_LOCAL_RESET_FENCED_ORACLE"
-    ),
+    "branchless_distinct_role_pair": ("NOT_IMPLEMENTED_PENDING_OWNER_LOCAL_RESET_FENCED_ORACLE"),
     "complete_family_retrieval_authority": False,
     "indexed_result_requirement": "LATER_FULL_DOCUMENT_RESET_FENCED_TERMINAL_ORACLE",
     "ownerless_distinctive_rescue_scope": "DECLARED_SAME_PAGE_ONLY_NOT_ACTIVE",
@@ -82,7 +80,7 @@ PURCHASED_DEBT_FAMILY14_REGION_QUERY_TRUST_CLOSURE_V1 = {
     },
     "shared_topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "a9b2787b42a0b49243365731dc1de0bd4ce547c43343b8a679a3410643ee8a12",
+        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
         "size_bytes": 75_614,
     },
 }
@@ -244,9 +242,7 @@ def build_purchased_debt_family14_topology_scan_v1(pages: Any) -> dict[str, Any]
     )
 
 
-def validate_purchased_debt_family14_topology_replay_v1(
-    value: Any, pages: Any
-) -> dict[str, Any]:
+def validate_purchased_debt_family14_topology_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
     """Exact-replay a Family-14 topology proposal through the shared engine."""
 
     from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -346,9 +342,7 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
         ]
         for role, surfaces in _OWNERLESS_RESCUE_ROLE_SURFACES.items()
     }
-    target_ids = sorted(
-        anchor_id for ids in distinctive_ids_by_role.values() for anchor_id in ids
-    )
+    target_ids = sorted(anchor_id for ids in distinctive_ids_by_role.values() for anchor_id in ids)
     return {
         "anchors": sorted(anchors, key=lambda item: item["anchor_id"]),
         "family_id": FAMILY_ID,
@@ -377,7 +371,9 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
             ],
             key=lambda item: item["group_id"],
         ),
-        "semantic_assignment_adapter_ref": _content_ref(project_root, _ADAPTER_PATH, "query adapter"),
+        "semantic_assignment_adapter_ref": _content_ref(
+            project_root, _ADAPTER_PATH, "query adapter"
+        ),
         "structural_reset_fragments": sorted(set(map(_surface, _STRUCTURAL_RESET_SURFACES))),
         "structural_reset_max_line_ordinal": 3,
         "window_line_span": 1,

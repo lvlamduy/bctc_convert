@@ -176,9 +176,7 @@ def _retrieve(
     query: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     query = query or build_purchased_debt_family14_region_query_spec_v2(_PROJECT_ROOT)
-    return retrieval_v1._retrieve_from_state(
-        _state(path, pages), query, engine_ref=_ENGINE_REF
-    )
+    return retrieval_v1._retrieve_from_state(_state(path, pages), query, engine_ref=_ENGINE_REF)
 
 
 def _outcome(receipt: dict[str, Any]) -> dict[str, Any]:
@@ -196,8 +194,8 @@ def _all_keys(value: Any) -> set[str]:
 def _rehash_document_and_receipt(receipt: dict[str, Any]) -> None:
     document_material = copy.deepcopy(receipt["documents"][0])
     document_material.pop("outcome_id")
-    receipt["documents"][0]["outcome_id"] = (
-        "fffrrv2:document:" + canonical_json_sha256_v1(document_material)
+    receipt["documents"][0]["outcome_id"] = "fffrrv2:document:" + canonical_json_sha256_v1(
+        document_material
     )
     receipt_material = copy.deepcopy(receipt)
     receipt_material.pop("receipt_id")
@@ -353,9 +351,7 @@ def test_optional_only_owner_cannot_validate_local_region(tmp_path: Path) -> Non
         )
     )
 
-    assert outcome["selection_mode"] == (
-        "FULL_DOCUMENT_FALLBACK_NO_LOCALLY_VALIDATED_REGION"
-    )
+    assert outcome["selection_mode"] == ("FULL_DOCUMENT_FALLBACK_NO_LOCALLY_VALIDATED_REGION")
     assert outcome["selected_pages"] == [1, 2, 3]
 
 
@@ -459,9 +455,7 @@ def test_window_one_forbids_wrapped_owner_and_query_selects_before_after_one(
     assert split["selection_mode"] == "FULL_DOCUMENT_FALLBACK_NO_VALID_SEED_GROUP"
     assert indexed["selection_mode"] == "INDEXED_LOCALLY_VALIDATED_CANDIDATE_REGIONS"
     assert indexed["selected_pages"] == [1, 2, 3]
-    assert indexed["chosen_seed_groups"][0]["group_id"] == (
-        "EXPLICIT_PURCHASED_DEBT_OWNER"
-    )
+    assert indexed["chosen_seed_groups"][0]["group_id"] == ("EXPLICIT_PURCHASED_DEBT_OWNER")
     assert RECOVERY_STATUS_V1["same_page_reset_interval_fencing"] == (
         "NOT_IMPLEMENTED_BY_PAGE_LEVEL_QUERY_SHORTLIST"
     )
@@ -501,15 +495,18 @@ def test_zero_overflow_fallback_and_reset_fenced_branchless_challenger(
 
     assert zero["selection_mode"] == "FULL_DOCUMENT_FALLBACK_NO_VALID_SEED_GROUP"
     assert overflow["selection_mode"] == "FULL_DOCUMENT_FALLBACK_SEED_QUERY_OVERFLOW"
-    assert reset["selection_mode"] == (
-        "FULL_DOCUMENT_FALLBACK_NO_LOCALLY_VALIDATED_REGION"
-    )
+    assert reset["selection_mode"] == ("FULL_DOCUMENT_FALLBACK_NO_LOCALLY_VALIDATED_REGION")
     assert reset["structural_reset_pages"] == [2]
-    assert zero["selected_pages"] == overflow["selected_pages"] == reset["selected_pages"] == [
-        1,
-        2,
-        3,
-    ]
+    assert (
+        zero["selected_pages"]
+        == overflow["selected_pages"]
+        == reset["selected_pages"]
+        == [
+            1,
+            2,
+            3,
+        ]
+    )
 
 
 def test_query_is_bank_blind_non_authoritative_and_exactly_frozen() -> None:
@@ -558,7 +555,7 @@ def test_literal_refs_query_reorder_and_dependency_tamper(tmp_path: Path) -> Non
     adapter_path = _PROJECT_ROOT / adapter_ref["path"]
 
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
-        "fffrrv2:query:ed7aee7c70d33b4c394d0b189ab9fe1ab0dd45f3cdecc177e078f031ba7bf119"
+        "fffrrv2:query:8ffd97c8ca794e3cfefa38f9076465d5597f8bf9a285b85e5f1277503d00667f"
     )
     assert adapter_ref["size_bytes"] == adapter_path.stat().st_size
     assert adapter_ref["sha256"] == hashlib.sha256(adapter_path.read_bytes()).hexdigest()
