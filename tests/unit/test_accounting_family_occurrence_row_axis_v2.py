@@ -3907,6 +3907,29 @@ def test_f3_root_provision_rejects_unknown_or_duplicate_coextensive_fragments(
     ]
 
 
+@pytest.mark.parametrize("shape", ["DUPLICATE_SAME_ROLE", "PARTIAL_LANE"])
+def test_f3_root_provision_requires_one_complete_generic_occurrence(shape: str) -> None:
+    provision_prior = "" if shape == "PARTIAL_LANE" else "-1"
+    rows = [
+        ("Tiền gửi tại các TCTD khác", "100", "90"),
+        ("Cho vay các TCTD khác", "52", "41"),
+        ("Dự phòng rủi ro", "-2", provision_prior),
+    ]
+    if shape == "DUPLICATE_SAME_ROLE":
+        rows.append(("Dự phòng", "-2", "-1"))
+
+    _scan, axis = _build_f3(_f3_pages(rows))
+
+    assert not [
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+        or type(occurrence.get("source_scope_binding")) is dict
+        and occurrence["source_scope_binding"].get("binding_kind")
+        == "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+    ]
+
+
 def test_f3_root_provision_rejects_a_mixed_level_compensating_equation() -> None:
     pages = _f3_pages(
         [
@@ -4994,3 +5017,79 @@ def test_f3_recursive_parent_provision_receipts_rederive_rows_and_geometry() -> 
         match="component row or owner",
     ):
         subject._validate_result(attacked)
+
+
+@pytest.mark.parametrize("tamper", ["WRONG_LOCAL_PARENT", "WRONG_ROOT"])
+def test_f3_recursive_parent_provision_public_replay_rejects_parent_tamper(
+    tamper: str,
+) -> None:
+    if tamper == "WRONG_LOCAL_PARENT":
+        pages = _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "40", "40"),
+                ("Bằng VND", "40", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+        target_role = "INTERBANK_DEPOSIT_PROVISION"
+    else:
+        pages = _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "52", "41"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+        target_role = "TOTAL_INTERBANK_PROVISION"
+    scan, axis = _build_f3(pages)
+    attacked = copy.deepcopy(axis)
+    provision = next(
+        occurrence for occurrence in attacked["role_occurrences"] if occurrence["role"] == target_role
+    )
+    receipt = provision["source_scope_binding"]
+    equation = receipt["geometry"]["equation"]
+    if tamper == "WRONG_LOCAL_PARENT":
+        wrong_parent = next(
+            occurrence
+            for occurrence in attacked["role_occurrences"]
+            if occurrence["role"] == "INTERBANK_LOAN_GROUP"
+        )
+        equation["parent_occurrence_id"] = wrong_parent["occurrence_id"]
+    else:
+        equation["parent_occurrence_id"] = "aforav2:root:" + "0" * 64
+    equation_material = copy.deepcopy(equation)
+    equation_material.pop("equation_id")
+    equation["equation_id"] = (
+        "aforav2:direct-frontier-equation:"
+        + canonical_json_sha256_v1(equation_material)
+    )
+    binding_material = copy.deepcopy(receipt)
+    binding_material.pop("binding_id")
+    receipt["binding_id"] = (
+        "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
+    )
+    _coherently_replace_source_scope_binding(attacked, provision, receipt)
+    _coherently_rehash_occurrence(attacked)
+    effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
+        _f3_spec(), scan, scan["regions"][0]
+    )
+
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            attacked,
+            pages,
+            _f3_spec(),
+            scan,
+            scan["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=effective,
+        )

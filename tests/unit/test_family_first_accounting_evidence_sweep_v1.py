@@ -1065,6 +1065,21 @@ def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch)
     assert rebuilt["document_ordinal"] == 1
     assert rebuilt["evidence_status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
     assert rebuilt["document_axis_binding"] == baseline["document_axis_binding"]
+    wrong_period = copy.deepcopy(snapshot)
+    wrong_period["document_packet"]["period"] = "Q2"
+    wrong_period_material = copy.deepcopy(wrong_period)
+    wrong_period_material.pop("snapshot_id")
+    wrong_period["snapshot_id"] = (
+        "ffdesv1:snapshot:" + canonical_json_sha256_v1(wrong_period_material)
+    )
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="another family trial",
+    ):
+        subject.rebuild_family_first_accounting_trial_from_document_snapshot_v1(
+            baseline, wrong_period, family, policy
+        )
+
     snapshot["joined_pages"][0]["lines"][5]["numeric_recognition"]["raw_prediction"] = "999"
     with pytest.raises(
         subject.FamilyFirstAccountingEvidenceSweepV1Error,
