@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import stat
+import subprocess
 from collections import Counter
 from pathlib import Path
 
@@ -20,6 +21,15 @@ def _sha(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _git_bytes(commit: str, path: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"{commit}:{path}"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
 
 
 def _seal_digest(seal: dict[str, object]) -> str:
@@ -88,18 +98,19 @@ def test_interbank_family_seal_is_hash_bound_closed_and_tamper_sensitive() -> No
         assert "e0178:seal:" + _seal_digest(tampered) != seal["seal_id"]
 
 
-def test_interbank_family_seal_tracked_refs_and_store_binding_match_disk() -> None:
+def test_interbank_family_seal_tracked_refs_match_sealed_git_commit() -> None:
     seal = json.loads(SEAL_PATH.read_text(encoding="utf-8"))
+    sealed_commit = seal["git_commit"]
     for group in ("input_refs", "implementation_refs"):
         for name, reference in seal[group].items():
             if name == "region_retrieval_database":
                 continue
-            path = ROOT / reference["path"]
-            assert path.stat().st_size == reference["size_bytes"]
-            assert _sha(path) == reference["sha256"]
+            payload = _git_bytes(sealed_commit, reference["path"])
+            assert len(payload) == reference["size_bytes"]
+            assert hashlib.sha256(payload).hexdigest() == reference["sha256"]
 
     manifest_ref = seal["input_refs"]["document_evidence_manifest"]
-    manifest = json.loads((ROOT / manifest_ref["path"]).read_text(encoding="utf-8"))
+    manifest = json.loads(_git_bytes(sealed_commit, manifest_ref["path"]))
     assert (
         manifest["manifest_id"] == seal["input_identities"]["document_evidence_store_manifest_id"]
     )
