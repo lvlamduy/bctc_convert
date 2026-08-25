@@ -1464,6 +1464,13 @@ def _local_equations(
             status = "LOCAL_VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE"
             component_roles = []
             valid_results.add(result_occurrence)
+            # A component role shared with an ancestor equation is not part of
+            # this local result frontier.  Keep its exact occurrence scope
+            # eligible for the ancestor equation; that later equation must
+            # still consume it exactly once or the global use-count gate vetoes
+            # the closure.  Locally exclusive children continue through the
+            # exhaustive subtotal paths above.
+            authorized_component_scopes.add(result_occurrence)
         else:
             status = "LOCAL_VISIBLE_SUBTOTAL_INCOMPLETE_COMPONENT_SET_VETO"
             component_roles = []

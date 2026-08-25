@@ -2650,6 +2650,82 @@ def test_one_label_only_local_scope_can_use_exhaustive_global_derivation() -> No
     assert loan["component_roles"] == ["LOAN_VND", "LOAN_FOREIGN_CURRENCY"]
 
 
+@pytest.mark.parametrize(
+    ("provision", "family_total"),
+    [
+        (("0", "0"), ("130", "115")),
+        (("-5", "-4"), ("125", "111")),
+    ],
+)
+def test_visible_local_result_defers_shared_component_to_exact_ancestor_frontier(
+    provision: tuple[str, str], family_total: tuple[str, str]
+) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Dự phòng cho vay TCTD khác", *provision),
+            ("Tổng cộng", *family_total),
+        ]
+    )
+    _axis_value, closure = _closure(pages)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == []
+    assert closure["equations"]["local"] == [
+        {
+            "component_roles_present": [],
+            "result_occurrence_id": closure["equations"]["local"][0]["result_occurrence_id"],
+            "result_role": "LOAN_GROUP",
+            "status": "LOCAL_VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+        }
+    ]
+    family_equation = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK"
+    )
+    assert family_equation["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    assert family_equation["component_roles_present"] == [
+        "DEPOSIT_GROUP",
+        "LOAN_GROUP",
+        "LOAN_PROVISION",
+    ]
+    assert {record["role"] for record in closure["resolved_roles"]} >= {
+        "INTERBANK",
+        "LOAN_GROUP",
+        "LOAN_PROVISION",
+    }
+
+
+def test_shared_local_component_not_selected_by_ancestor_remains_unresolved() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Dự phòng cho vay TCTD khác", "-5", "-4"),
+            ("Tổng cộng", "130", "115"),
+        ]
+    )
+    _axis_value, closure = _closure(pages)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert (
+        "ACCOUNTING_COMPONENT_ROLE_USE_COUNT_NOT_ONE:LOAN_PROVISION:0"
+        in closure["unresolved_reasons"]
+    )
+    assert any(
+        reason.startswith("VISIBLE_ACCOUNTING_ROW_NOT_RESOLVED:LOAN_PROVISION:")
+        for reason in closure["unresolved_reasons"]
+    )
+    family_equation = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK"
+    )
+    assert family_equation["component_roles_present"] == ["DEPOSIT_GROUP", "LOAN_GROUP"]
+
+
 def test_missing_local_subtotals_cannot_authorize_cross_scope_leaf_aggregation() -> None:
     pages = _pages(
         [
