@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -714,6 +715,7 @@ def _hierarchical_mapping(
     record: dict[str, Any],
     node: dict[str, Any],
     contexts: dict[int, dict[str, Any]],
+    numeric_sample_by_id: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:
     source = record.get("source")
     source_surface = None
@@ -726,6 +728,42 @@ def _hierarchical_mapping(
             visible_values = source_record["values"]
         elif source["kind"] == "TRAILING_VALUE_ROW":
             visible_values = source_record["values"]
+        elif source["kind"] == "FAMILY_PARENT_CLUSTER":
+            sample_ids = source_record.get("sample_ids")
+            labels = source_record.get("same_row_label_evidence")
+            visible_values = (
+                [numeric_sample_by_id.get(sample_id) for sample_id in sample_ids]
+                if type(sample_ids) is list
+                else None
+            )
+            if (
+                record.get("resolution_kind")
+                != "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+                or type(labels) is not list
+                or not labels
+                or any(
+                    type(label) is not dict
+                    or type(label.get("vietocr_text")) is not str
+                    or not label["vietocr_text"]
+                    for label in labels
+                )
+                or type(visible_values) is not list
+                or any(type(value) is not dict for value in visible_values)
+                or [value["sample_id"] for value in visible_values] != sample_ids
+                or any(
+                    value.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                    or value.get("owner_id") != source_record.get("cluster_id")
+                    for value in visible_values
+                )
+                or [
+                    sample_id
+                    for value in record.get("values", [])
+                    for sample_id in value.get("source_sample_ids", [])
+                ]
+                != sample_ids
+            ):
+                raise _error("hierarchical family-parent cluster source binding drifted")
+            source_surface = " ".join(label["vietocr_text"] for label in labels)
         else:
             raise _error("hierarchical mapping source kind drifted")
         if set(value.get("column_ordinal") for value in visible_values) != set(contexts):
@@ -914,13 +952,18 @@ def _trial(
                 "mappings": [],
                 "unresolved_reasons": reviewed_subscope_reasons,
             }
+        numeric_sample_by_id = {
+            sample.get("sample_id"): sample
+            for sample in closure.get("numeric_sample_universe", [])
+            if type(sample) is dict and type(sample.get("sample_id")) is str
+        }
         mappings = (
-            [_hierarchical_mapping(family_record, parent, contexts)]
+            [_hierarchical_mapping(family_record, parent, contexts, numeric_sample_by_id)]
             if family_record is not None
             else []
         )
         mappings.extend(
-            _hierarchical_mapping(resolved[role], node, contexts)
+            _hierarchical_mapping(resolved[role], node, contexts, numeric_sample_by_id)
             for role, node in by_role.items()
             if role in resolved
         )

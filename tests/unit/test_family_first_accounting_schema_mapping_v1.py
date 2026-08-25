@@ -734,6 +734,67 @@ def test_hierarchical_trial_maps_derived_family_and_visible_descendant_roles() -
     ]
 
 
+def test_hierarchical_mapper_cross_binds_exact_family_parent_cluster_pixels() -> None:
+    trial = _ready_trial()
+    contexts = subject._context_by_column(trial)
+    source_values = copy.deepcopy(trial["row_axis"]["rows"][0]["values"])
+    cluster_id = "aforav2:unassigned:" + "1" * 64
+    for value in source_values:
+        value["owner_id"] = cluster_id
+        value["owner_kind"] = "SOURCE_ONLY_INTERNAL_CLUSTER"
+    sample_ids = [value["sample_id"] for value in source_values]
+    cluster = {
+        "cluster_id": cluster_id,
+        "same_row_label_evidence": [{"vietocr_text": "Tiền, kim loại quý và đá quý"}],
+        "sample_ids": sample_ids,
+    }
+    record = {
+        "component_roles": ["CASH_VND", "CASH_FOREIGN"],
+        "resolution_kind": "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS",
+        "role": "CASH_PRECIOUS_METALS",
+        "source": {"kind": "FAMILY_PARENT_CLUSTER", "record": cluster},
+        "values": [
+            {
+                "column_ordinal": value["column_ordinal"],
+                "number": copy.deepcopy(value["parsed_token"]),
+                "source_sample_ids": [value["sample_id"]],
+            }
+            for value in source_values
+        ],
+    }
+    node = next(
+        node
+        for node in map(json.loads, _schema_payload().decode("utf-8").splitlines())
+        if node["schema_id"] == 561
+    )
+
+    mapping = subject._hierarchical_mapping(
+        record,
+        node,
+        contexts,
+        {value["sample_id"]: value for value in source_values},
+    )
+
+    assert mapping["mapping_kind"] == (
+        "HIERARCHICAL_VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS"
+    )
+    assert mapping["source_surface"] == "Tiền, kim loại quý và đá quý"
+    assert [value["sample_id"] for value in mapping["values"]] == sample_ids
+
+    attacked = copy.deepcopy(source_values)
+    attacked[0]["owner_id"] = "aforav2:unassigned:" + "2" * 64
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="family-parent cluster source binding",
+    ):
+        subject._hierarchical_mapping(
+            record,
+            node,
+            contexts,
+            {value["sample_id"]: value for value in attacked},
+        )
+
+
 def test_v4_hierarchical_binding_maps_complete_leaf_without_inventing_family_root() -> None:
     trial = _ready_trial()
     cash_vnd = trial["row_axis"]["rows"][0]
