@@ -329,6 +329,64 @@ def test_explicit_money_leaves_do_not_leak_document_unit_locations() -> None:
     )
 
 
+def test_complete_explicit_money_leaves_override_ambiguous_document_unit_context() -> None:
+    pages = _complete_header_before_parent_pages()
+    pages[0]["lines"].pop(0)
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    for ordinal in (2, 4):
+        pages[0]["lines"][ordinal]["vietocr_text"] = "Triệu đồng"
+        pages[0]["lines"][ordinal]["numeric_recognition"]["raw_prediction"] = "Triệu đồng"
+    conflicting_unit = _line(99, "Đơn vị: nghìn VND", "", [480, 900, 920, 922], page=1)
+    conflicting_unit["line_ordinal"] = len(pages[0]["lines"])
+    pages[0]["lines"].append(conflicting_unit)
+
+    result = _build(pages)
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert (
+        result["document_unit_context"]["resolution"]
+        == "UNRESOLVED_CONFLICTING_EXPLICIT_DOCUMENT_UNITS"
+    )
+    money = [record for record in result["unit_axis"] if record["unit_kind"] == "MONEY"]
+    assert [(record["currency"], record["magnitude_power10"]) for record in money] == [
+        ("VND", 6),
+        ("VND", 6),
+    ]
+    assert all(
+        record["evidence_locations"]
+        == [
+            {
+                "page_sequence": 1,
+                "source_line_index": record["column_ordinal"] + 2,
+            }
+        ]
+        for record in money
+    )
+
+
+def test_partial_explicit_money_leaf_axis_cannot_override_ambiguous_document_unit() -> None:
+    pages = _complete_header_before_parent_pages()
+    pages[0]["lines"].pop(0)
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    pages[0]["lines"][2]["vietocr_text"] = "Triệu đồng"
+    pages[0]["lines"][2]["numeric_recognition"]["raw_prediction"] = "Triệu đồng"
+    conflicting_unit = _line(99, "Đơn vị: nghìn VND", "", [480, 900, 920, 922], page=1)
+    conflicting_unit["line_ordinal"] = len(pages[0]["lines"])
+    pages[0]["lines"].append(conflicting_unit)
+
+    result = _build(pages)
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert (
+        result["document_unit_context"]["resolution"]
+        == "UNRESOLVED_CONFLICTING_EXPLICIT_DOCUMENT_UNITS"
+    )
+    assert result["period_axis"] == []
+    assert result["unit_axis"] == []
+
+
 def test_explicit_money_leaves_cannot_override_conflicting_local_unit() -> None:
     pages = _complete_header_before_parent_pages()
     pages[0]["lines"][0]["vietocr_text"] = "Đơn vị tính: nghìn VND"

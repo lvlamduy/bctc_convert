@@ -287,8 +287,36 @@ def _shared_unit_axis(
         ["MONEY"] * len(centers),
         document_unit_context,
     )
-    if len(shared_money) != len(centers):
-        return []
+    shared_money_available = len(shared_money) == len(centers)
+    explicit_money_by_lane = {
+        leaf["column_ordinal"]: accounting_unit_surface_v1(leaf["header_surface"])
+        for leaf in leaves
+        if leaf["lane_kind"] == "MONEY"
+    }
+    if not shared_money_available:
+        if not explicit_money_by_lane or any(
+            unit is None or unit["unit_kind"] != "MONEY" for unit in explicit_money_by_lane.values()
+        ):
+            return []
+        explicit_signatures = {
+            (unit["unit_kind"], unit["currency"], unit["magnitude_power10"])
+            for unit in explicit_money_by_lane.values()
+            if unit is not None
+        }
+        if len(explicit_signatures) != 1:
+            return []
+        remaining_explicit_units = [
+            unit
+            for line in header_lines
+            if line["source_line_index"] not in leaf_indices
+            and (unit := accounting_unit_surface_v1(line["vietocr_text"])) is not None
+        ]
+        if remaining_explicit_units and any(
+            (unit["unit_kind"], unit["currency"], unit["magnitude_power10"])
+            not in explicit_signatures
+            for unit in remaining_explicit_units
+        ):
+            return []
     result = []
     for leaf in leaves:
         lane = leaf["column_ordinal"]
@@ -311,8 +339,26 @@ def _shared_unit_axis(
                 }
             )
             continue
-        record = canonical_clone_v1(shared_money[lane])
         explicit = accounting_unit_surface_v1(leaf["header_surface"])
+        if not shared_money_available:
+            if explicit is None:
+                return []
+            record = {
+                "column_center": leaf["column_center"],
+                "column_ordinal": lane,
+                "currency": explicit["currency"],
+                "evidence_locations": [
+                    {"page_sequence": header_page, "source_line_index": index}
+                    for index in leaf["header_evidence_source_line_indices"]
+                ],
+                "magnitude_power10": explicit["magnitude_power10"],
+                "projection_status": "LOCAL_EXPLICIT_MULTILEVEL_MONEY_LEAF_UNIT",
+                "unit_kind": explicit["unit_kind"],
+            }
+            record["projection_status"] += "_FOR_ACTIVE_PARENT_FENCED_MULTILEVEL_MONEY_LEAF"
+            result.append(record)
+            continue
+        record = canonical_clone_v1(shared_money[lane])
         if explicit is not None:
             explicit_signature = (
                 explicit["unit_kind"],
