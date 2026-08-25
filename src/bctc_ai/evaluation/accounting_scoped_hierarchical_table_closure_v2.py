@@ -3151,8 +3151,11 @@ def _occurrence_bound_unlabeled_exact_subtotal(
             and occurrence.get("label_match", {}).get("source_line_index", -1)
             > component_last_source
             and occurrence.get("scope_owner_occurrence_id") == boundary_owner_id
-            and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
-                occurrence.get("label_match", {})
+            and (
+                binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+                or occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                    occurrence.get("label_match", {})
+                )
             )
         ),
         key=lambda occurrence: (
@@ -4267,8 +4270,11 @@ def _validate_occurrence_bound_subtotal_receipt(
             and (
                 boundary.get("role") != interval["boundary_role"]
                 or boundary.get("label_match", {}).get("page_sequence") != interval["page_sequence"]
-                or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
-                    boundary.get("label_match", {})
+                or (
+                    not synthetic_intermediate
+                    and not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                        boundary.get("label_match", {})
+                    )
                 )
             )
         )

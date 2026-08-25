@@ -1168,6 +1168,53 @@ def test_family12_nested_groups_feed_one_core_then_one_grand_total_direct_fronti
     )
 
 
+def test_family12_unlabeled_core_uses_unbound_semantic_challenger_only_as_stop() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_nested_group_core_and_grand_total_pages()
+    margin = next(
+        line for line in pages[0]["lines"] if line["vietocr_text"] == "Cho vay giao dịch ký quỹ"
+    )
+    margin["vietocr_text"] = "Cho vay giao dịch ký quỹx"
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    margin_occurrence = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    )
+    assert margin_occurrence["label_match"]["match_kind"] == (
+        "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    )
+    core = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )
+    assert (
+        core["occurrence_binding_receipt"]["interval"]["boundary_occurrence_id"]
+        == (margin_occurrence["occurrence_id"])
+    )
+    assert not any(
+        reason.startswith(
+            "DECLARED_UNLABELED_INTERMEDIATE_RESULT_REQUIRED:CORE_LOAN_ENTERPRISE_SUBTOTAL"
+        )
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
 @pytest.mark.parametrize(
     "attack",
     ["MISSING_CORE", "PARTIAL_CORE", "MISMATCHED_CORE", "MIXED_LEVEL_DOUBLE_COUNT"],
