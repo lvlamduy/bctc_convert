@@ -168,7 +168,8 @@
         {
           "aliases": [
             "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
-            "Công ty TNHH MTV vốn nhà nước trên 50%",
+          "Công ty TNHH MTV vốn nhà nước trên 50%",
+          "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu"
@@ -178,7 +179,8 @@
         {
           "aliases": [
             "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
-            "Công ty TNHH MTV vốn nhà nước trên 50%",
+          "Công ty TNHH MTV vốn nhà nước trên 50%",
+          "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu"
@@ -215,7 +217,8 @@
       "matchers": [
         {
           "aliases": [
-            "Công ty cổ phần có vốn nhà nước trên 50%",
+          "Công ty cổ phần có vốn nhà nước trên 50%",
+          "Công ty cổ phần vốn nhà nước trên 50%",
             "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
             "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ"
@@ -224,7 +227,8 @@
         },
         {
           "aliases": [
-            "Công ty cổ phần có vốn nhà nước trên 50%",
+          "Công ty cổ phần có vốn nhà nước trên 50%",
+          "Công ty cổ phần vốn nhà nước trên 50%",
             "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
             "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ"
@@ -435,7 +439,8 @@
           "aliases": [
             "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
             "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
-            "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
             "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
@@ -444,7 +449,8 @@
           "aliases": [
             "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
             "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
-            "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
             "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
           ],
           "within_role": null
@@ -480,7 +486,8 @@
         {
           "aliases": [
             "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
-            "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+          "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+          "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
             "Chi nhánh và ngân hàng con tại nước ngoài",
             "Chi nhánh và công ty con tại nước ngoài",
@@ -491,7 +498,8 @@
         {
           "aliases": [
             "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
-            "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+          "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+          "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
             "Chi nhánh và ngân hàng con tại nước ngoài",
             "Chi nhánh và công ty con tại nước ngoài",
@@ -512,7 +520,8 @@
             "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay giao dịch ký quỹ",
             "Ứng trước tiền bán chứng khoán",
-            "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS"
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
@@ -522,7 +531,8 @@
             "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay giao dịch ký quỹ",
             "Ứng trước tiền bán chứng khoán",
-            "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS"
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
           ],
           "within_role": null
         }

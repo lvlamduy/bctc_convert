@@ -7405,11 +7405,19 @@ def _build(
         if evidence.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
         == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
     }
+    source_visible_intermediate_roles = {
+        record["result_role"]
+        for record in global_records
+        if record["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    }
     reasons.extend(
         "DECLARED_UNLABELED_INTERMEDIATE_RESULT_REQUIRED:" + record["result_role"]
         for record in global_records
         if record["result_role"] in synthetic_intermediate_roles
         and record["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        and any(
+            role in source_visible_intermediate_roles for role in record["component_roles_present"]
+        )
         and record["result_role"] not in synthetic_receipt_roles
     )
     for subgroup_role in _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES:

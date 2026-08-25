@@ -1108,6 +1108,130 @@ def _family12_nested_group_core_and_grand_total_pages() -> list[dict[str, object
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
 
 
+def _family12_flat_children_and_grand_total_pages(
+    *, grand_current: int = 131, grand_prior: int = 103
+) -> list[dict[str, object]]:
+    lines = [
+        _line(0, "Cho vay khách hàng", "", [25, 15, 500, 38]),
+        _line(1, "31/12/2025", "", [610, 45, 700, 65]),
+        _line(2, "31/12/2024", "", [810, 45, 900, 65]),
+        _line(3, "Đơn vị: Triệu đồng", "", [610, 72, 900, 94]),
+    ]
+
+    def append_row(label: str, current: int, prior: int) -> None:
+        ordinal = len(lines)
+        top = 110 + (ordinal - 4) // 3 * 45
+        lines.extend(
+            [
+                _line(ordinal, label, "", [45, top, 520, top + 20]),
+                _line(ordinal + 1, str(current), str(current), [610, top, 700, top + 20]),
+                _line(ordinal + 2, str(prior), str(prior), [810, top, 900, top + 20]),
+            ]
+        )
+
+    append_row("Doanh nghiệp nhà nước", 60, 50)
+    append_row("Công ty TNHH", 40, 30)
+    append_row("Hộ kinh doanh, cá nhân", 20, 15)
+    append_row("Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội", 5, 4)
+    append_row("Khác", 3, 2)
+    append_row("Cho vay giao dịch ký quỹ", 3, 2)
+    total_top = lines[-1]["bbox"][1] + 45
+    lines.extend(
+        [
+            _line(
+                len(lines),
+                str(grand_current),
+                str(grand_current),
+                [610, total_top, 700, total_top + 20],
+            ),
+            _line(
+                len(lines) + 1,
+                str(grand_prior),
+                str(grand_prior),
+                [810, total_top, 900, total_top + 20],
+            ),
+        ]
+    )
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
+def test_family12_flat_children_derive_virtual_groups_only_through_exact_grand_total() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_flat_children_and_grand_total_pages()
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equations = {record["result_role"]: record for record in closure["equations"]["global"]}
+    assert equations["ECONOMIC_ORGANIZATION_LOANS_GROUP"]["status"] == (
+        "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    )
+    assert equations["INDIVIDUAL_LOANS_GROUP"]["status"] == (
+        "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    )
+    assert equations["OTHER_CUSTOMER_LOANS_GROUP"]["status"] == (
+        "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    )
+    assert equations["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["status"] == (
+        "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    )
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["status"] == (
+        "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    )
+    assert not any(
+        record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL" for record in closure["coverage_receipt"]
+    )
+    assert not any(
+        reason.startswith("DECLARED_UNLABELED_INTERMEDIATE_RESULT_REQUIRED:")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_family12_flat_children_reject_grand_total_outside_rounding_bound() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_flat_children_and_grand_total_pages(grand_current=140)
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:LOAN_ENTERPRISE_FAMILY12")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
 def test_family12_nested_groups_feed_one_core_then_one_grand_total_direct_frontier() -> None:
     root = Path(__file__).resolve().parents[2] / "config" / "families"
     topology = json.loads(
