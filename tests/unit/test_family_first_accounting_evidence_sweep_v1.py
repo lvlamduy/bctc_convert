@@ -3314,6 +3314,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     nested_discount: bool = False,
     off_frontier_row: bool = False,
     partial_provision: bool = False,
+    trailing_detail_root: bool = False,
     wrong_provision_parent: bool = False,
 ) -> tuple[dict, dict]:
     family = "INTERBANK_DEPOSITS_AND_LOANS"
@@ -3406,7 +3407,11 @@ def _v4_visible_summary_and_correlated_detail_candidates(
                     {
                         "component_roles_present": [deposit, loan],
                         "result_role": family,
-                        "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                        "status": (
+                            "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                            if trailing_detail_root
+                            else "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                        ),
                         "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
                     },
                 ],
@@ -3659,6 +3664,23 @@ def test_v4_visible_summary_yields_to_unique_visible_correlated_exact_detail(
     assert reasons == []
 
 
+def test_v4_visible_summary_yields_to_exact_richer_trailing_root_detail() -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        trailing_detail_root=True,
+    )
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is detail
+    assert reasons == []
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -3674,13 +3696,16 @@ def test_v4_visible_summary_yields_to_unique_visible_correlated_exact_detail(
         "UNCLAIMED_NUMERIC_SAMPLE",
     ],
 )
+@pytest.mark.parametrize("trailing_detail_root", [False, True])
 def test_v4_visible_correlated_detail_requires_one_exhaustive_direct_frontier(
     mutation: str,
+    trailing_detail_root: bool,
 ) -> None:
     summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
         nested_discount=mutation == "NESTED_DISCOUNT",
         off_frontier_row=mutation == "OFF_FRONTIER",
         partial_provision=mutation == "PARTIAL",
+        trailing_detail_root=trailing_detail_root,
         wrong_provision_parent=mutation == "WRONG_PARENT",
     )
     if mutation == "AXIS_MISMATCH":

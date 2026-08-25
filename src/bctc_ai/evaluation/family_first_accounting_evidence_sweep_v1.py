@@ -994,9 +994,13 @@ _V4_INTERBANK_PROVISION_ROLES = {
     *_V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES,
 }
 _V4_INTERBANK_PROVISION_CONTRIBUTION_TOKEN = "__V4_EXACT_INTERBANK_PROVISION_CONTRIBUTION__"
+_V4_EXACT_VISIBLE_EQUATION_STATUSES = {
+    "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+    "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+}
 _V4_EXACT_EQUATION_STATUSES = {
     "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
-    "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+    *_V4_EXACT_VISIBLE_EQUATION_STATUSES,
 }
 
 
@@ -2296,10 +2300,8 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
         or summary_roles != {family_id, *top_roles}
         or type(detail_root_equation) is not dict
         or detail_root_equation.get("component_roles_present") != top_roles
-        or summary_root_equation.get("status")
-        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
-        or detail_root_equation.get("status")
-        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or summary_root_equation.get("status") not in _V4_EXACT_VISIBLE_EQUATION_STATUSES
+        or detail_root_equation.get("status") not in _V4_EXACT_VISIBLE_EQUATION_STATUSES
         or not _v4_exact_equation_holds(
             summary_root_equation,
             summary_records,
@@ -2367,7 +2369,7 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
             type(record) is not dict
             or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
             or type(equation) is not dict
-            or equation.get("status") != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+            or equation.get("status") not in _V4_EXACT_VISIBLE_EQUATION_STATUSES
             or type(source_role) is not str
             or not source_role
         ):
