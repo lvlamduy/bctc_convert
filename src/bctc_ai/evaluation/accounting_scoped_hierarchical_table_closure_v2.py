@@ -536,6 +536,71 @@ def _dependency_refs() -> dict[str, dict[str, Any]]:
     }
 
 
+def _dependency_ordered_equations(
+    equations: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return a stable child-before-parent order for one acyclic equation graph."""
+
+    result_roles = {equation["result_role"] for equation in equations}
+    dependencies_by_result_role = {
+        equation["result_role"]: {
+            role
+            for alternative in equation["component_role_alternatives"]
+            for role in alternative["component_roles"]
+            if role in result_roles
+        }
+        for equation in equations
+    }
+    ordered: list[dict[str, Any]] = []
+    resolved_result_roles: set[str] = set()
+    remaining = list(equations)
+    while remaining:
+        deferred = []
+        for equation in remaining:
+            result_role = equation["result_role"]
+            if not dependencies_by_result_role[result_role] <= resolved_result_roles:
+                deferred.append(equation)
+                continue
+            ordered.append(canonical_clone_v1(equation))
+            resolved_result_roles.add(result_role)
+        if len(deferred) == len(remaining):
+            raise _error("scoped hierarchical equation dependency graph contains a cycle")
+        remaining = deferred
+    return ordered
+
+
+def _descendant_result_roles_by_role(
+    equations: Sequence[Mapping[str, Any]],
+) -> dict[str, frozenset[str]]:
+    """Compute the transitive result-role frontier without declaration-order dependence."""
+
+    result_roles = {equation["result_role"] for equation in equations}
+    descendants = {
+        equation["result_role"]: {
+            role
+            for alternative in equation["component_role_alternatives"]
+            for role in alternative["component_roles"]
+            if role in result_roles
+        }
+        for equation in equations
+    }
+    changed = True
+    while changed:
+        changed = False
+        for result_role, current in descendants.items():
+            expanded = {
+                descendant
+                for child in current
+                for descendant in {child, *descendants.get(child, set())}
+            }
+            if result_role in expanded:
+                raise _error("scoped hierarchical equation dependency graph contains a cycle")
+            if not expanded <= current:
+                current.update(expanded)
+                changed = True
+    return {role: frozenset(values) for role, values in descendants.items()}
+
+
 def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     try:
         topology = topology_v1._spec(family_topology_spec)
@@ -636,12 +701,6 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
                 raise _error("scoped hierarchical component alternatives repeat")
             signatures.add(signature)
             alternatives.append(canonical_clone_v1(alternative))
-        if any(
-            role not in child_roles and role not in result_roles
-            for alternative in alternatives
-            for role in alternative["component_roles"]
-        ):
-            raise _error("scoped hierarchical equations are not in dependency order")
         result_roles.add(raw["result_role"])
         visible_roles.update(raw["visible_result_roles"])
         trailing_equation_count += raw["trailing_result_policy"] != "IGNORE"
@@ -655,6 +714,14 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
                 "visible_result_roles": canonical_clone_v1(raw["visible_result_roles"]),
             }
         )
+    if any(
+        role not in child_roles and role not in result_roles
+        for equation in equations
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+    ):
+        raise _error("scoped hierarchical equation references an undeclared result role")
+    equations = _dependency_ordered_equations(equations)
     if any(role not in result_roles for role in repeat["local_subtotal_roles"]):
         raise _error("local subtotal role has no declared equation")
     if trailing_equation_count > 1:
@@ -6771,19 +6838,7 @@ def _build(
         resolved[evidence["role"]] = canonical_clone_v1(evidence["resolution"])
         reserved_unlabeled_source_keys.add(evidence["source_key"])
         unlabeled_subtotal_by_source_key[evidence["source_key"]] = evidence
-    descendant_result_roles_by_role: dict[str, frozenset[str]] = {}
-    for equation in spec["equations"]:
-        descendants = {
-            descendant
-            for alternative in equation["component_role_alternatives"]
-            for component in alternative["component_roles"]
-            for descendant in {
-                component,
-                *descendant_result_roles_by_role.get(component, frozenset()),
-            }
-            if component in descendant_result_roles_by_role
-        }
-        descendant_result_roles_by_role[equation["result_role"]] = frozenset(descendants)
+    descendant_result_roles_by_role = _descendant_result_roles_by_role(spec["equations"])
     selected_component_owner_roles: dict[str, set[str]] = {}
     global_records = []
     for equation in spec["equations"]:

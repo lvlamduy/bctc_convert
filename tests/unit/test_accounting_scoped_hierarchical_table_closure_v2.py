@@ -1683,6 +1683,140 @@ def test_v4_loan_provision_is_consumed_once_at_the_selected_direct_frontier() ->
         )
 
 
+def test_v4_shared_provision_frontier_is_equation_dependency_order_independent() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    declared = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    forward_reference = copy.deepcopy(declared)
+    root_equation = forward_reference["equations"].pop()
+    loan_ordinal = next(
+        ordinal
+        for ordinal, equation in enumerate(forward_reference["equations"])
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    forward_reference["equations"].insert(loan_ordinal, root_equation)
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "30", "25"),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "0"),
+            ("Dự phòng cho vay các TCTD khác", "0", "0"),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "130", "115"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+
+    selected_frontiers = []
+    for hierarchy in (declared, forward_reference):
+        axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+        assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+        global_by_result = {
+            equation["result_role"]: equation for equation in closure["equations"]["global"]
+        }
+        loan_frontier = global_by_result["INTERBANK_LOAN_GROUP"]["component_roles_present"]
+        root_frontier = global_by_result["INTERBANK_DEPOSITS_AND_LOANS"]["component_roles_present"]
+        assert loan_frontier == [
+            "INTERBANK_LOAN_VND",
+            "INTERBANK_LOAN_FOREIGN_CURRENCY",
+            "INTERBANK_LOAN_PROVISION",
+        ]
+        assert root_frontier == ["INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"]
+        assert (
+            sum(
+                "INTERBANK_LOAN_PROVISION" in equation["component_roles_present"]
+                for equation in closure["equations"]["global"]
+            )
+            == 1
+        )
+        assert (
+            subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+                closure, axis, topology, hierarchy
+            )
+            == closure
+        )
+        selected_frontiers.append(
+            [
+                (equation["result_role"], equation["component_roles_present"])
+                for equation in closure["equations"]["global"]
+            ]
+        )
+
+    assert selected_frontiers[0] == selected_frontiers[1]
+
+
+def test_equation_dependency_graph_rejects_undeclared_result_and_cycle() -> None:
+    topology = _topology()
+    undeclared = _hierarchy()
+    undeclared["equations"] = [undeclared["equations"][0]]
+    undeclared["equations"][0]["component_role_alternatives"].append(_alternative(["INTERBANK"]))
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="undeclared result role",
+    ):
+        subject._spec(undeclared, topology)
+
+    cyclic = _hierarchy()
+    cyclic["equations"][0]["component_role_alternatives"].append(_alternative(["INTERBANK"]))
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="dependency graph contains a cycle",
+    ):
+        subject._spec(cyclic, topology)
+
+
+def test_shared_adjustment_claimed_by_unrelated_siblings_remains_ambiguous() -> None:
+    topology = _topology()
+    hierarchy = _hierarchy()
+    loan_equation, root_equation = hierarchy["equations"]
+    deposit_equation = {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [_alternative(["LOAN_PROVISION"])],
+        "result_role": "DEPOSIT_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": ["DEPOSIT_GROUP"],
+        "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS",
+    }
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "0", "0"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "0"),
+            ("Dự phòng cho vay TCTD khác", "0", "0"),
+            ("Tổng cộng", "30", "25"),
+        ]
+    )
+
+    for siblings in (
+        [deposit_equation, loan_equation],
+        [loan_equation, deposit_equation],
+    ):
+        candidate = copy.deepcopy(hierarchy)
+        candidate["equations"] = [*siblings, root_equation]
+        axis, closure = _closure(pages, topology=topology, hierarchy=candidate)
+
+        assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+        assert (
+            "ACCOUNTING_COMPONENT_ROLE_USE_COUNT_NOT_ONE:LOAN_PROVISION:2"
+            in closure["unresolved_reasons"]
+        )
+        assert (
+            subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+                closure, axis, topology, candidate
+            )
+            == closure
+        )
+
+
 def test_v4_direct_frontier_public_replay_rejects_double_consumed_provision() -> None:
     project_root = Path(__file__).resolve().parents[2]
     topology = json.loads(
