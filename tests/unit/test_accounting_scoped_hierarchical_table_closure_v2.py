@@ -437,6 +437,7 @@ def _acb2_acb4_shaped_unlabeled_demand_pages(
     deposit_total_prior: str = "106.836.456",
     family_total_current: str = "137.921.772",
     family_total_prior: str = "106.836.496",
+    demand_boundary_overlap: bool = False,
 ) -> list[dict[str, object]]:
     """Reproduce the sealed ACB2/4 demand and term subtotal intervals."""
 
@@ -474,6 +475,17 @@ def _acb2_acb4_shaped_unlabeled_demand_pages(
         ]
 
     insert_unlabeled_pair("Tiền gửi có kỳ hạn", demand_subtotal_current, demand_subtotal_prior)
+    if demand_boundary_overlap:
+        term_boundary = next(line for line in lines if line["vietocr_text"] == "Tiền gửi có kỳ hạn")
+        term_top = term_boundary["bbox"][1]
+        term_boundary["bbox"][3] = term_top + 39
+        for line in lines:
+            if line["numeric_recognition"]["raw_prediction"] in {
+                demand_subtotal_current,
+                demand_subtotal_prior,
+            }:
+                line["bbox"][1] = term_top - 29
+                line["bbox"][3] = term_top + 5
     insert_unlabeled_pair(
         "Tổng tiền gửi tại các TCTD khác", term_subtotal_current, term_subtotal_prior
     )
@@ -1467,7 +1479,7 @@ def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> 
 @pytest.mark.parametrize(
     "overrides",
     [
-        {},
+        {"demand_boundary_overlap": True},
         {
             "demand_vnd_current": "16.467.347",
             "demand_fx_current": "21.690.018",
@@ -1482,7 +1494,7 @@ def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> 
     ids=["acb2", "acb4"],
 )
 def test_v4_acb2_acb4_exact_unlabeled_demand_subtotal_is_coverage_only(
-    overrides: dict[str, str],
+    overrides: dict[str, str | bool],
 ) -> None:
     project_root = Path(__file__).resolve().parents[2]
     topology = json.loads(
@@ -1550,6 +1562,8 @@ def test_v4_acb2_acb4_exact_unlabeled_demand_subtotal_is_coverage_only(
     "attack",
     [
         "UNKNOWN_LABEL",
+        "SAME_ROW_LABEL",
+        "LARGE_BOUNDARY_OVERLAP",
         "PARTIAL",
         "MISMATCH",
         "DUPLICATE",
@@ -1583,16 +1597,18 @@ def test_v4_unlabeled_demand_subtotal_adversarial_sources_remain_unresolved(
     term_index = next(
         index for index, line in enumerate(lines) if line["vietocr_text"] == "Tiền gửi có kỳ hạn"
     )
-    if attack == "UNKNOWN_LABEL":
+    if attack in {"UNKNOWN_LABEL", "SAME_ROW_LABEL"}:
         lines.insert(
             lines.index(demand_current),
             _line(
                 30_001,
-                "Không xác định",
+                "Không xác định" if attack == "UNKNOWN_LABEL" else "Cộng tiền gửi không kỳ hạn",
                 "",
                 [45, demand_current["bbox"][1], 430, demand_current["bbox"][3]],
             ),
         )
+    elif attack == "LARGE_BOUNDARY_OVERLAP":
+        lines[term_index]["bbox"][1] = demand_current["bbox"][1]
     elif attack == "PARTIAL":
         demand_prior["vietocr_text"] = ""
         demand_prior["numeric_recognition"]["raw_prediction"] = ""

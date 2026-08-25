@@ -3012,7 +3012,6 @@ def _unlabeled_exact_subtotal_for_equation(
         and source["top"] > component_top
         and source["bottom"] > component_bottom
         and source["top"] < boundary_top
-        and source["bottom"] < boundary_top
     ]
     if not interval_sources:
         return None
