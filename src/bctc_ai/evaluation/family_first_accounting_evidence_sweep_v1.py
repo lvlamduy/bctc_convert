@@ -1036,6 +1036,10 @@ def _v4_authenticated_candidate_axes(
             "topology_scan_id",
         }
         or occurrence_binding.get("occurrence_axis_id") != occurrence_axis_id
+        or type(occurrence_binding.get("topology_candidates_id")) is not str
+        or not occurrence_binding["topology_candidates_id"].startswith("aftcv2:result:")
+        or type(occurrence_binding.get("topology_scan_id")) is not str
+        or not occurrence_binding["topology_scan_id"].startswith("aftv1:scan:")
         or not same_typed_json_v1(closure.get("dependency_content_refs"), closure_dependency_refs)
         or not same_typed_json_v1(
             occurrence_binding.get("dependency_content_refs"),
@@ -1091,6 +1095,19 @@ def _v4_authenticated_candidate_axes(
             return None
         occurrence_by_id[occurrence_id] = occurrence
 
+    root_owner_ids = {
+        occurrence.get("scope_owner_occurrence_id")
+        for occurrence in occurrence_by_id.values()
+        if occurrence.get("scope_owner_role") is None
+    }
+    if (
+        len(root_owner_ids) != 1
+        or type(next(iter(root_owner_ids))) is not str
+        or not next(iter(root_owner_ids)).startswith("aforav2:root:")
+    ):
+        return None
+    root_occurrence_id = next(iter(root_owner_ids))
+
     sample_by_id: dict[str, Mapping[str, Any]] = {}
     try:
         for sample in samples:
@@ -1124,6 +1141,7 @@ def _v4_authenticated_candidate_axes(
         "closure": closure,
         "coverage_by_occurrence": coverage_by_occurrence,
         "occurrence_by_id": occurrence_by_id,
+        "root_occurrence_id": root_occurrence_id,
         "row_axis": row_axis,
         "sample_by_id": sample_by_id,
     }
@@ -1142,6 +1160,7 @@ def _v4_exact_visible_role_axis(
     occurrence_by_id = authenticated_axes.get("occurrence_by_id")
     sample_by_id = authenticated_axes.get("sample_by_id")
     coverage_by_occurrence = authenticated_axes.get("coverage_by_occurrence")
+    root_occurrence_id = authenticated_axes.get("root_occurrence_id")
     role = record.get("role")
     source = record.get("source")
     source_record = source.get("record") if type(source) is dict else None
@@ -1152,6 +1171,7 @@ def _v4_exact_visible_role_axis(
         or type(occurrence_by_id) is not dict
         or type(sample_by_id) is not dict
         or type(coverage_by_occurrence) is not dict
+        or type(root_occurrence_id) is not str
         or type(role) is not str
         or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE"
         or type(source) is not dict
@@ -1292,6 +1312,7 @@ def _v4_exact_visible_role_axis(
         or receipt.get("occurrence_id") != occurrence_id
         or receipt.get("candidate_ordinal") is not None
         or receipt.get("row_kind") != "ROLE_ROW"
+        or receipt.get("coverage_id") != f"ashtcv2:coverage:role:{occurrence_id}"
         or not same_typed_json_v1(receipt.get("source_record"), source_record)
         or not same_typed_json_v1(matching_rows[0], source_record)
     ):
@@ -1301,16 +1322,7 @@ def _v4_exact_visible_role_axis(
     parent_role = label_match.get("scope_owner_role")
     family_id = closure.get("family_id")
     if expected_parent_role == family_id:
-        root_owner_ids = {
-            occurrence.get("scope_owner_occurrence_id")
-            for occurrence in occurrence_by_id.values()
-            if occurrence.get("scope_owner_role") is None
-        }
-        if (
-            parent_role is not None
-            or not parent_occurrence_id.startswith("aforav2:root:")
-            or root_owner_ids != {parent_occurrence_id}
-        ):
+        if parent_role is not None or parent_occurrence_id != root_occurrence_id:
             return None
     else:
         parent = occurrence_by_id.get(parent_occurrence_id)
@@ -1344,8 +1356,7 @@ def _v4_exact_visible_role_axis(
             or len(nearest) != 1
             or nearest[0].get("occurrence_id") != parent_occurrence_id
             or parent.get("scope_owner_role") is not None
-            or type(parent.get("scope_owner_occurrence_id")) is not str
-            or not parent["scope_owner_occurrence_id"].startswith("aforav2:root:")
+            or parent.get("scope_owner_occurrence_id") != root_occurrence_id
         ):
             return None
 

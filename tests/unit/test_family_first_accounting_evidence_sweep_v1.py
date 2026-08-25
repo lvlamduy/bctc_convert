@@ -2229,6 +2229,9 @@ def test_v4_provision_projection_requires_one_exact_authenticated_row_binding(
         "COHERENT_REHASHED_PHYSICAL_OCCURRENCE",
         "COHERENT_FORGED_SAMPLE_IDS",
         "REHASHED_DUPLICATE_SEALED_OCCURRENCE",
+        "REHASHED_CROSS_ROOT_PARENT",
+        "REHASHED_WRONG_COVERAGE_ID",
+        "REHASHED_WRONG_OCCURRENCE_PIN",
         "REHASHED_WRONG_ROW_BBOX",
     ],
 )
@@ -2273,6 +2276,23 @@ def test_v4_provision_projection_binds_dual_copies_to_authenticated_candidate_ax
         detail["additive_closure"]["role_occurrences"].append(
             copy.deepcopy(detail["additive_closure"]["role_occurrences"][-1])
         )
+    elif mutation == "REHASHED_CROSS_ROOT_PARENT":
+        parent = next(
+            occurrence
+            for occurrence in detail["additive_closure"]["role_occurrences"]
+            if occurrence["role"] == "INTERBANK_DEPOSIT_GROUP"
+        )
+        parent["scope_owner_occurrence_id"] = "aforav2:root:" + "3" * 64
+        parent["label_match"]["scope_owner_occurrence_id"] = parent["scope_owner_occurrence_id"]
+    elif mutation == "REHASHED_WRONG_COVERAGE_ID":
+        receipt = next(
+            receipt
+            for receipt in detail["additive_closure"]["coverage_receipt"]
+            if receipt["role"] == "INTERBANK_DEPOSIT_PROVISION"
+        )
+        receipt["coverage_id"] = "ashtcv2:coverage:role:forged"
+    elif mutation == "REHASHED_WRONG_OCCURRENCE_PIN":
+        detail["additive_closure"]["occurrence_axis_binding"]["dependency_content_refs"] = {}
     else:
         axis_row["values"][0]["bbox"][0] += 1
     _v4_reseal_candidate_envelopes(detail)
