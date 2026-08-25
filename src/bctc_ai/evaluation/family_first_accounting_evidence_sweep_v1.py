@@ -2077,6 +2077,15 @@ def _select_candidate_evidence(
                 for reason in threat["reasons"]
                 if any(token in reason for token in source_gap_tokens)
             ]
+            margin_render_reasons = [
+                reason
+                for reason in threat["reasons"]
+                if re.fullmatch(
+                    re.escape(occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX)
+                    + r"[1-9][0-9]{0,8}",
+                    reason,
+                )
+            ]
             threat_signature = _candidate_population_signature(threat)
             if not gap_reasons:
                 continue
@@ -2085,11 +2094,8 @@ def _select_candidate_evidence(
                 canonicalize_all_presentations=canonicalize_all_presentations,
             )
             if threat_roles is None:
-                blockers.extend(
-                    "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:"
-                    f"READY_CANDIDATE_{admitted['candidate_ordinal'] + 1}:"
-                    f"THREAT_CANDIDATE_{threat['candidate_ordinal'] + 1}:"
-                    f"THREAT_PAGES_{pages(threat)}:{reason}"
+                matching_ready = [
+                    admitted
                     for admitted in ready
                     if (
                         (
@@ -2100,9 +2106,22 @@ def _select_candidate_evidence(
                         )
                         or _threat_matches_ready_component_population(admitted, threat)
                     )
+                ]
+                blockers.extend(
+                    "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:"
+                    f"READY_CANDIDATE_{admitted['candidate_ordinal'] + 1}:"
+                    f"THREAT_CANDIDATE_{threat['candidate_ordinal'] + 1}:"
+                    f"THREAT_PAGES_{pages(threat)}:{reason}"
+                    for admitted in matching_ready
                     for reason in gap_reasons
                 )
+                if matching_ready:
+                    blockers.extend(
+                        f"CANDIDATE_{threat['candidate_ordinal'] + 1}:{reason}"
+                        for reason in margin_render_reasons
+                    )
                 continue
+            matched_threat = False
             for admitted in ready:
                 admitted_signature = _candidate_population_signature(admitted)
                 admitted_roles = _candidate_role_richness_set(
@@ -2126,12 +2145,18 @@ def _select_candidate_evidence(
                     # Defensive clarity: both compatibility routes require one
                     # authenticated visible READY root population.
                     continue
+                matched_threat = True
                 blockers.extend(
                     "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:"
                     f"READY_CANDIDATE_{admitted['candidate_ordinal'] + 1}:"
                     f"THREAT_CANDIDATE_{threat['candidate_ordinal'] + 1}:"
                     f"THREAT_PAGES_{pages(threat)}:{reason}"
                     for reason in gap_reasons
+                )
+            if matched_threat:
+                blockers.extend(
+                    f"CANDIDATE_{threat['candidate_ordinal'] + 1}:{reason}"
+                    for reason in margin_render_reasons
                 )
         if blockers:
             return None, list(dict.fromkeys(blockers))

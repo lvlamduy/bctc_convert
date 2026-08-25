@@ -2588,6 +2588,37 @@ def test_v4_same_population_summary_cannot_launder_detail_numeric_schema_gap() -
     ]
 
 
+def test_v4_compatible_numeric_gap_preserves_candidate_bound_margin_render_request() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    detail["reasons"] = [
+        "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:stamp",
+        "EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:33",
+    ]
+    detail["row_axis"] = {"rows": [{"label_match": {"page_sequence": 33}}]}
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == [
+        "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:READY_CANDIDATE_1:"
+        "THREAT_CANDIDATE_2:THREAT_PAGES_33:"
+        "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:stamp",
+        "CANDIDATE_2:EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:33",
+    ]
+
+
 def test_v4_ready_summary_cannot_launder_rootless_hdb_shaped_detail_gap() -> None:
     def values(coefficients: tuple[int, int]) -> list[dict]:
         return [
