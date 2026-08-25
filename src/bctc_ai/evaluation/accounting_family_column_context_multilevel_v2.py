@@ -195,12 +195,15 @@ def _fenced_header_lines(
         (row["label_match"] for row in value_rows),
         key=lambda match: column_v1._visual_match_key(parsed_pages, match),
     )
+    header_owner = _active_header_owner(region, parent, first_body)
+    if header_owner is None:
+        return None
     header_page = first_body["page_sequence"]
     if parent["page_sequence"] != header_page:
         return None
     start = max(
         region["cluster_start_document_line_ordinal"],
-        parent["end_document_line_ordinal"] + 1,
+        header_owner["end_document_line_ordinal"] + 1,
     )
     stop = min(
         first_body["document_line_ordinal"],
@@ -228,10 +231,10 @@ def _fenced_header_lines(
     # leaf projector must still prove the complete mixed lane axis from this
     # band alone; a prior table that exposes only dates/global unit remains U.
     page = next(item for item in parsed_pages if item["page_sequence"] == header_page)
-    parent_lines = column_v1._match_geometry(parsed_pages, parent)
-    if not parent_lines:
+    owner_lines = column_v1._match_geometry(parsed_pages, header_owner)
+    if not owner_lines:
         return None
-    parent_top = min(line["bbox"][1] for line in parent_lines)
+    owner_top = min(line["bbox"][1] for line in owner_lines)
     scale = row_axis_v1.median_text_height_v1(page["lines"])
     lane_gap = (
         min(right - left for left, right in zip(centers, centers[1:], strict=False))
@@ -240,12 +243,12 @@ def _fenced_header_lines(
     )
     band_left = centers[0] - lane_gap * 0.5
     band_right = centers[-1] + lane_gap * 0.5
-    lookback_top = parent_top - scale * 10.0
+    lookback_top = owner_top - scale * 10.0
     selected = [
         _header_line_record(line)
         for line in page["lines"]
         if line["vietocr_text"].strip()
-        and line["bbox"][1] < parent_top
+        and line["bbox"][1] < owner_top
         and line["bbox"][3] >= lookback_top
         and line["bbox"][2] >= band_left
         and line["bbox"][0] <= band_right
@@ -253,6 +256,66 @@ def _fenced_header_lines(
     if not selected or _contains_parent_or_reset_fence(selected, family_topology_spec):
         return None
     return selected, header_page
+
+
+def _active_header_owner(
+    region: Mapping[str, Any],
+    parent: Mapping[str, Any],
+    first_body: Mapping[str, Any],
+) -> Mapping[str, Any] | None:
+    """Bind the header fence to the first valued row's exact structural owner.
+
+    A loan-note parent can contain several sibling tables before the requested
+    family branch.  Contextual topology already seals the structural owner of
+    each child row; use that owner as the local header fence instead of
+    importing every header beneath the outer note parent.  Non-contextual
+    layouts retain the existing explicit-parent fence.
+    """
+
+    within_role = first_body.get("matched_within_role")
+    if within_role is None:
+        return parent
+    if type(within_role) is not str or not within_role:
+        return None
+    candidates = [
+        match
+        for match in region["child_matches"]
+        if match.get("role") == within_role and match.get("role_kind") == "STRUCTURAL_GROUP"
+    ]
+    if len(candidates) != 1:
+        return None
+    owner = candidates[0]
+    if (
+        type(owner.get("match_kind")) is not str
+        or not owner["match_kind"].startswith("EXACT_")
+        or owner.get("page_sequence") != first_body.get("page_sequence")
+        or type(owner.get("document_line_ordinal")) is not int
+        or type(owner.get("end_document_line_ordinal")) is not int
+        or owner["document_line_ordinal"] <= parent["end_document_line_ordinal"]
+        or owner["end_document_line_ordinal"] >= first_body["document_line_ordinal"]
+    ):
+        return None
+    occurrence_id = owner.get("occurrence_id")
+    scope_owner_id = first_body.get("scope_owner_occurrence_id")
+    if scope_owner_id is not None and (
+        type(scope_owner_id) is not str
+        or not scope_owner_id
+        or type(occurrence_id) is not str
+        or occurrence_id != scope_owner_id
+    ):
+        return None
+    if any(
+        match is not owner
+        and match.get("role_kind") == "STRUCTURAL_GROUP"
+        and match.get("page_sequence") == owner["page_sequence"]
+        and type(match.get("document_line_ordinal")) is int
+        and owner["end_document_line_ordinal"]
+        < match["document_line_ordinal"]
+        < first_body["document_line_ordinal"]
+        for match in region["child_matches"]
+    ):
+        return None
+    return owner
 
 
 def _header_line_record(line: Mapping[str, Any]) -> dict[str, Any]:

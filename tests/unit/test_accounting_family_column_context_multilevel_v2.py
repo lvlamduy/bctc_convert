@@ -52,6 +52,59 @@ def _spec() -> dict[str, object]:
     }
 
 
+def _nested_spec() -> dict[str, object]:
+    return {
+        "children": [
+            {
+                "matchers": [{"aliases": ["Theo loại hình doanh nghiệp"], "within_role": None}],
+                "presence": "OPTIONAL",
+                "role": "ENTERPRISE_TYPE_BRANCH",
+                "role_kind": "STRUCTURAL_GROUP",
+            },
+            {
+                "matchers": [
+                    {
+                        "aliases": ["Doanh nghiệp nhà nước"],
+                        "within_role": "ENTERPRISE_TYPE_BRANCH",
+                    }
+                ],
+                "presence": "OPTIONAL",
+                "role": "STATE_ENTERPRISE",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "matchers": [
+                    {
+                        "aliases": ["Công ty TNHH"],
+                        "within_role": "ENTERPRISE_TYPE_BRANCH",
+                    }
+                ],
+                "presence": "OPTIONAL",
+                "role": "LIMITED_COMPANY",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ],
+        "family_id": "GENERIC_NESTED_ENTERPRISE_TYPE",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+        "hard_negative_aliases": ["Tiền gửi của khách hàng"],
+        "limits": {
+            "max_cluster_span_lines": 40,
+            "max_continuation_pages": 0,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Cho vay khách hàng"],
+            "resolution_mode": "EXPLICIT_ONLY",
+            "role": "CUSTOMER_LOANS_NOTE",
+        },
+        "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+        "required_role_combinations": [
+            ["ENTERPRISE_TYPE_BRANCH", "STATE_ENTERPRISE", "LIMITED_COMPANY"]
+        ],
+        "structural_reset_aliases": ["Phân tích theo ngành nghề"],
+    }
+
+
 def _line(
     ordinal: int,
     text: str,
@@ -232,6 +285,57 @@ def _prior_unit_pages() -> list[dict[str, object]]:
     return pages
 
 
+def _nested_owner_pages() -> list[dict[str, object]]:
+    lines = [
+        ("Cho vay khách hàng", "", [20, 20, 430, 42]),
+        ("Lãi suất cho vay", "", [20, 50, 430, 72]),
+        ("30/06/2025", "", [480, 78, 680, 100]),
+        ("31/12/2023", "", [720, 78, 920, 100]),
+        ("Lãi suất bình quân", "", [20, 108, 430, 130]),
+        ("Theo loại hình doanh nghiệp", "", [20, 150, 430, 172]),
+        ("Đơn vị: Triệu đồng", "", [480, 178, 920, 198]),
+        ("31/12/2025", "", [480, 204, 680, 226]),
+        ("31/12/2024", "", [720, 204, 920, 226]),
+        ("Giá trị", "", [480, 232, 560, 254]),
+        ("%", "", [600, 232, 680, 254]),
+        ("Giá trị", "", [720, 232, 800, 254]),
+        ("%", "", [840, 232, 920, 254]),
+        ("Doanh nghiệp nhà nước", "", [40, 280, 360, 302]),
+        ("100", "100", [480, 280, 560, 302]),
+        ("60", "60", [600, 280, 680, 302]),
+        ("90", "90", [720, 280, 800, 302]),
+        ("55", "55", [840, 280, 920, 302]),
+        ("Công ty TNHH", "", [40, 325, 360, 347]),
+        ("200", "200", [480, 325, 560, 347]),
+        ("40", "40", [600, 325, 680, 347]),
+        ("180", "180", [720, 325, 800, 347]),
+        ("45", "45", [840, 325, 920, 347]),
+    ]
+    repeated_document_context = [
+        ("31/12/2025", "", [480, 20, 680, 42]),
+        ("31/12/2024", "", [720, 20, 920, 42]),
+        ("Phân tích theo ngành nghề", "", [20, 70, 430, 92]),
+    ]
+    return [
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=1)
+                for ordinal, (text, numeric, bbox) in enumerate(lines)
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        },
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=2)
+                for ordinal, (text, numeric, bbox) in enumerate(repeated_document_context)
+            ],
+            "page_sequence": 2,
+            "page_width": 1000,
+        },
+    ]
+
+
 def _axis(pages: list[dict[str, object]]) -> dict[str, object]:
     return row_axis_v1.build_accounting_family_row_axis_v1(pages, _spec())
 
@@ -241,6 +345,20 @@ def _build(pages: list[dict[str, object]]) -> dict[str, object]:
         _axis(pages),
         pages,
         _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=_KINDS,
+    )
+
+
+def _nested_axis(pages: list[dict[str, object]]) -> dict[str, object]:
+    return row_axis_v1.build_accounting_family_row_axis_v1(pages, _nested_spec())
+
+
+def _nested_build(pages: list[dict[str, object]]) -> dict[str, object]:
+    return build_accounting_family_column_context_multilevel_v2(
+        _nested_axis(pages),
+        pages,
+        _nested_spec(),
         period_semantics="BALANCE_COMPARATIVE",
         expected_lane_unit_kinds=_KINDS,
     )
@@ -411,6 +529,54 @@ def test_prior_table_header_cannot_cross_the_active_parent_fence() -> None:
     assert result["period_axis"] == []
     parent_end = _axis(pages)["topology_region"]["parent_match"]["end_document_line_ordinal"]
     assert parent_end == 3
+
+
+def test_contextual_structural_owner_fences_out_preceding_sibling_table_header() -> None:
+    pages = _nested_owner_pages()
+    axis = _nested_axis(pages)
+    parsed = row_axis_v1._pages(pages)
+    centers = v2.column_v1._lane_centers(axis)
+
+    assert centers is not None
+    fenced = v2._fenced_header_lines(axis, parsed, _nested_spec(), centers)
+    assert fenced is not None
+    assert [line["source_line_index"] for line in fenced[0]] == list(range(6, 13))
+    result = _nested_build(pages)
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2025",
+        "31/12/2024",
+        "31/12/2024",
+    ]
+
+
+@pytest.mark.parametrize("mutation", ["duplicate", "wrong_page", "nonexact", "owner_mismatch"])
+def test_contextual_structural_header_owner_must_replay_uniquely_and_exactly(
+    mutation: str,
+) -> None:
+    pages = _nested_owner_pages()
+    axis = _nested_axis(pages)
+    owner = next(
+        match
+        for match in axis["topology_region"]["child_matches"]
+        if match["role"] == "ENTERPRISE_TYPE_BRANCH"
+    )
+    first_body = next(row for row in axis["rows"] if row["values"])["label_match"]
+    if mutation == "duplicate":
+        axis["topology_region"]["child_matches"].append(copy.deepcopy(owner))
+    elif mutation == "wrong_page":
+        owner["page_sequence"] = 2
+    elif mutation == "nonexact":
+        owner["match_kind"] = "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    else:
+        owner["occurrence_id"] = "aforav2:occurrence:" + "1" * 64
+        first_body["scope_owner_occurrence_id"] = "aforav2:occurrence:" + "2" * 64
+    parsed = row_axis_v1._pages(pages)
+    centers = v2.column_v1._lane_centers(axis)
+
+    assert centers is not None
+    assert v2._fenced_header_lines(axis, parsed, _nested_spec(), centers) is None
 
 
 def test_prior_table_unit_axis_cannot_cross_the_active_parent_fence() -> None:
