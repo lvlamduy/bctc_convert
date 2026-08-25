@@ -3298,6 +3298,89 @@ def _public_resolution_for_occurrence_receipt(record: Mapping[str, Any]) -> dict
     return public
 
 
+def _occurrence_frontier_anchor_ids(
+    *,
+    role: str,
+    resolution: Mapping[str, Any],
+    support_occurrences: Sequence[Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[str] | None:
+    """Resolve one physical anchor axis for an exact derived component.
+
+    A printed component row anchors itself.  A structural group can instead
+    own every source row, or be the unique coextensive shadow of each source
+    row.  Some tables print only the group's children and the later subtotal;
+    for that shape, an already selected exact derived result is anchored by
+    its exhaustive source rows in physical order.  The latter is unavailable
+    when any competing structural occurrence for the result role exists.
+    """
+
+    if not support_occurrences or any(
+        type(occurrence) is not dict for occurrence in support_occurrences
+    ):
+        return None
+    if all(occurrence.get("role") == role for occurrence in support_occurrences):
+        return [occurrence["occurrence_id"] for occurrence in support_occurrences]
+    structural_role_occurrences = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("role") == role
+        and occurrence.get("role_kind") == "STRUCTURAL_GROUP"
+        and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            occurrence.get("label_match", {})
+        )
+    ]
+    recursive_anchors = [
+        occurrence
+        for occurrence in structural_role_occurrences
+        if all(
+            _occurrence_descends_from(
+                support_occurrence,
+                occurrence["occurrence_id"],
+                occurrence_by_id,
+            )
+            for support_occurrence in support_occurrences
+        )
+    ]
+    if len(recursive_anchors) == 1:
+        return [recursive_anchors[0]["occurrence_id"]]
+    if recursive_anchors:
+        return None
+    coextensive_axes = [
+        [
+            occurrence
+            for occurrence in structural_role_occurrences
+            if occurrence["label_match"].get("page_sequence")
+            == support_occurrence["label_match"].get("page_sequence")
+            and occurrence["label_match"].get("source_line_index")
+            == support_occurrence["label_match"].get("source_line_index")
+        ]
+        for support_occurrence in support_occurrences
+    ]
+    if all(len(axis) == 1 for axis in coextensive_axes):
+        return list(dict.fromkeys(axis[0]["occurrence_id"] for axis in coextensive_axes))
+    if (
+        any(coextensive_axes)
+        or structural_role_occurrences
+        or resolution.get("resolution_kind") != "DERIVED_EXACT_COMPONENT_SUM"
+        or resolution.get("source") is not None
+        or type(resolution.get("component_roles")) is not list
+        or not resolution["component_roles"]
+    ):
+        return None
+    return [
+        occurrence["occurrence_id"]
+        for occurrence in sorted(
+            support_occurrences,
+            key=lambda occurrence: (
+                occurrence["label_match"]["source_line_index"],
+                occurrence["occurrence_id"],
+            ),
+        )
+    ]
+
+
 def _occurrence_bound_unlabeled_exact_subtotal(
     *,
     equation_record: Mapping[str, Any],
@@ -3427,49 +3510,13 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         ):
             return None
 
-        if all(occurrence.get("role") == role for occurrence in support_occurrences):
-            anchor_ids = [occurrence["occurrence_id"] for occurrence in support_occurrences]
-        else:
-            recursive_anchors = [
-                occurrence
-                for occurrence in role_occurrences
-                if occurrence.get("role") == role
-                and occurrence.get("role_kind") == "STRUCTURAL_GROUP"
-                and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
-                    occurrence.get("label_match", {})
-                )
-                and all(
-                    _occurrence_descends_from(
-                        support_occurrence,
-                        occurrence["occurrence_id"],
-                        occurrence_by_id,
-                    )
-                    for support_occurrence in support_occurrences
-                )
-            ]
-            if len(recursive_anchors) == 1:
-                anchor_ids = [recursive_anchors[0]["occurrence_id"]]
-            else:
-                anchor_ids = []
-                for support_occurrence in support_occurrences:
-                    support_match = support_occurrence["label_match"]
-                    coextensive = [
-                        occurrence
-                        for occurrence in role_occurrences
-                        if occurrence.get("role") == role
-                        and occurrence.get("role_kind") == "STRUCTURAL_GROUP"
-                        and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
-                            occurrence.get("label_match", {})
-                        )
-                        and occurrence["label_match"].get("page_sequence")
-                        == support_match.get("page_sequence")
-                        and occurrence["label_match"].get("source_line_index")
-                        == support_match.get("source_line_index")
-                    ]
-                    if len(coextensive) != 1:
-                        return None
-                    anchor_ids.append(coextensive[0]["occurrence_id"])
-        anchor_ids = list(dict.fromkeys(anchor_ids))
+        anchor_ids = _occurrence_frontier_anchor_ids(
+            role=role,
+            resolution=resolution,
+            support_occurrences=support_occurrences,
+            role_occurrences=role_occurrences,
+            occurrence_by_id=occurrence_by_id,
+        )
         if not anchor_ids:
             return None
         ordered_frontier.append(
@@ -4751,6 +4798,7 @@ def _validate_occurrence_bound_subtotal_receipt(
         if equation.get("result_role") == receipt["target_role"]
     ]
     resolved_by_role = {record["role"]: record for record in value["resolved_roles"]}
+    occurrence_by_id = {item["occurrence_id"]: item for item in value["role_occurrences"]}
     target_resolution = resolved_by_role.get(receipt["target_role"])
     if (
         len(equations) != 1
@@ -4780,6 +4828,17 @@ def _validate_occurrence_bound_subtotal_receipt(
         or type(item["support_sample_ids"]) is not list
         or not item["support_sample_ids"]
         or len(item["support_sample_ids"]) != len(set(item["support_sample_ids"]))
+        or item["anchor_occurrence_ids"]
+        != _occurrence_frontier_anchor_ids(
+            role=item["role"],
+            resolution=resolved_by_role[item["role"]],
+            support_occurrences=[
+                occurrence_by_id.get(occurrence_id)
+                for occurrence_id in item["support_occurrence_ids"]
+            ],
+            role_occurrences=value["role_occurrences"],
+            occurrence_by_id=occurrence_by_id,
+        )
         for ordinal, item in enumerate(frontier)
     ):
         raise _error("occurrence-bound subtotal ordered frontier drifted")
@@ -4789,7 +4848,6 @@ def _validate_occurrence_bound_subtotal_receipt(
     if receipt["ordered_component_occurrence_ids"] != expected_ordered_occurrence_ids:
         raise _error("occurrence-bound subtotal ordered occurrence axis drifted")
 
-    occurrence_by_id = {item["occurrence_id"]: item for item in value["role_occurrences"]}
     sample_by_id = {item["sample_id"]: item for item in value["numeric_sample_universe"]}
     target = occurrence_by_id.get(receipt["target_occurrence_id"])
     anchors = [

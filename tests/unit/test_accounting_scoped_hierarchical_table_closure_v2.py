@@ -1113,12 +1113,22 @@ def _family12_provider_interleaved_terminal_core_pages(
     *,
     core_current: str = "137",
     duplicate_core: bool = False,
+    omit_derived_group_rows: bool = False,
     semantic_boundary: bool = False,
 ) -> list[dict[str, object]]:
     """Keep visual order while reproducing a provider-interleaved final subtotal."""
 
     pages = _family12_nested_group_core_and_grand_total_pages()
     lines = pages[0]["lines"]
+    if omit_derived_group_rows:
+        group_indices = [
+            next(index for index, line in enumerate(lines) if line["vietocr_text"] == label)
+            for label in ["Cho vay các TCKT", "Cho vay cá nhân", "Cho vay khác"]
+        ]
+        for index in sorted(group_indices, reverse=True):
+            assert lines[index + 1]["bbox"][1] == lines[index]["bbox"][1]
+            assert lines[index + 2]["bbox"][1] == lines[index]["bbox"][1]
+            del lines[index : index + 3]
     margin_index = next(
         index
         for index, line in enumerate(lines)
@@ -1663,6 +1673,56 @@ def test_family12_provider_interleaved_terminal_core_binds_largest_parent_once()
     assert (
         sum(core["sample_ids"] == record["sample_ids"] for record in closure["coverage_receipt"])
         == 1
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_family12_provider_interleaved_terminal_core_binds_unlabeled_derived_groups() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _family12_provider_interleaved_terminal_core_pages(omit_derived_group_rows=True),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    core = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )
+    receipt = core["occurrence_binding_receipt"]
+    occurrence_by_id = {item["occurrence_id"]: item for item in closure["role_occurrences"]}
+    derived_frontier = [
+        item
+        for item in receipt["ordered_component_frontier"]
+        if item["role"]
+        in {
+            "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+            "INDIVIDUAL_LOANS_GROUP",
+            "OTHER_CUSTOMER_LOANS_GROUP",
+        }
+    ]
+    assert derived_frontier
+    assert all(
+        item["anchor_occurrence_ids"] == item["support_occurrence_ids"]
+        and all(
+            occurrence_by_id[occurrence_id]["role"] != item["role"]
+            for occurrence_id in item["anchor_occurrence_ids"]
+        )
+        for item in derived_frontier
     )
     assert (
         subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
