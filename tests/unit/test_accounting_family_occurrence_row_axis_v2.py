@@ -3854,6 +3854,59 @@ def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> N
     ]
 
 
+def test_f3_root_provision_accepts_one_coextensive_roman_section_ordinal() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    pages[0]["lines"].insert(5, _line(900, "III", "", [2, 17, 20, 40]))
+    _reindex_page_lines(pages[0]["lines"])
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    assert provision["source_scope_binding"]["binding_kind"] == (
+        "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+    )
+
+
+@pytest.mark.parametrize("markers", [["UNKNOWN"], ["III", "IV"]])
+def test_f3_root_provision_rejects_unknown_or_duplicate_coextensive_fragments(
+    markers: list[str],
+) -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    for offset, marker in enumerate(markers):
+        pages[0]["lines"].insert(
+            5 + offset,
+            _line(900 + offset, marker, "", [2 + 20 * offset, 17, 18 + 20 * offset, 40]),
+        )
+    _reindex_page_lines(pages[0]["lines"])
+
+    _scan, axis = _build_f3(pages)
+
+    assert not [
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+        or type(occurrence.get("source_scope_binding")) is dict
+        and occurrence["source_scope_binding"].get("binding_kind")
+        == "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
+    ]
+
+
 def test_f3_root_provision_rejects_a_mixed_level_compensating_equation() -> None:
     pages = _f3_pages(
         [

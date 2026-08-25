@@ -211,6 +211,7 @@ _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_FOREIGN_CURRENCY": ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"),
 }
 _PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
+_COEXTENSIVE_TABLE_SECTION_ORDINAL = re.compile(r"[IVXLCDM]+[.)]?", re.IGNORECASE)
 _RECURSIVE_PARENT_PROVISION_BINDING_KIND = (
     "UNIQUE_EXACT_RECURSIVE_PARENT_DIRECT_FRONTIER_EQUATION"
 )
@@ -1625,6 +1626,7 @@ def _has_unmatched_complete_labeled_numeric_row(
     pages: Sequence[Mapping[str, Any]],
     matches: Sequence[Mapping[str, Any]],
     *,
+    allowed_coextensive_results: Sequence[Mapping[str, Any]],
     lower_bbox: Sequence[int],
     page_sequence: int,
     upper_bbox: Sequence[int],
@@ -1646,6 +1648,7 @@ def _has_unmatched_complete_labeled_numeric_row(
     }
     lower_center = lower_bbox[1] + lower_bbox[3]
     upper_center = upper_bbox[1] + upper_bbox[3]
+    unmatched_rows = []
     for source_line_index, line in enumerate(page["lines"]):
         bbox = line["bbox"]
         if (
@@ -1662,8 +1665,42 @@ def _has_unmatched_complete_labeled_numeric_row(
             and _same_row_fragment_distance(peer, bbox) is not None
         ]
         if len(numeric_peers) == expected_lane_count:
-            return True
-    return False
+            unmatched_rows.append((line, numeric_peers))
+    if not unmatched_rows:
+        return False
+
+    # OCR commonly emits a table section ordinal (for example ``III``) as a
+    # separate label fragment immediately to the left of an otherwise exact
+    # result row.  It is furniture, not another accounting row, only when its
+    # numeric peers are byte-for-byte the already selected result samples and
+    # the fragment is one isolated Roman ordinal on the same visual baseline.
+    # Unknown text, duplicate ordinals, and a marker for any other value row
+    # remain an unmatched-row veto.
+    if len(unmatched_rows) != 1:
+        return True
+    line, numeric_peers = unmatched_rows[0]
+    compact = re.sub(r"\s+", "", line["vietocr_text"].strip())
+    if _COEXTENSIVE_TABLE_SECTION_ORDINAL.fullmatch(compact) is None:
+        return True
+    peer_sample_ids = [
+        peer["sample_id"]
+        for peer in sorted(numeric_peers, key=lambda item: (item["bbox"][0], item["bbox"][2]))
+    ]
+    bbox = line["bbox"]
+    matching_results = []
+    for result in allowed_coextensive_results:
+        label_bbox = result["source_label_bbox"]
+        overlap = min(bbox[3], label_bbox[3]) - max(bbox[1], label_bbox[1])
+        minimum_height = min(bbox[3] - bbox[1], label_bbox[3] - label_bbox[1])
+        if (
+            peer_sample_ids == result["sample_ids"]
+            and bbox[2] <= label_bbox[0]
+            and label_bbox[0] - bbox[2] <= 4 * minimum_height
+            and overlap > 0
+            and 2 * overlap >= minimum_height
+        ):
+            matching_results.append(result)
+    return len(matching_results) != 1
 
 
 def _recursive_parent_provision_equation_geometry(
@@ -2531,11 +2568,26 @@ def _project_recursive_parent_provision_bindings(
                 interval_parent_match = (
                     parent_match if parent_row is None else parent_row["label_match"]
                 )
+                allowed_coextensive_results = [
+                    {
+                        "sample_ids": result_receipt["sample_ids"],
+                        "source_label_bbox": (
+                            row_by_occurrence[result_occurrence_id]["label_match"][
+                                "source_label_bbox"
+                            ]
+                            if result_occurrence_id in row_by_occurrence
+                            else interval_parent_match["source_label_bbox"]
+                        ),
+                    }
+                    for result_occurrence_id, _result_role, result_receipt in result_candidates
+                    if result_receipt is not None
+                ]
                 if (
                     type(grid) is not dict
                     or _has_unmatched_complete_labeled_numeric_row(
                         pages,
                         preliminary_matches,
+                        allowed_coextensive_results=allowed_coextensive_results,
                         lower_bbox=interval_parent_match["source_label_bbox"],
                         page_sequence=generic["page_sequence"],
                         upper_bbox=generic["source_label_bbox"],
