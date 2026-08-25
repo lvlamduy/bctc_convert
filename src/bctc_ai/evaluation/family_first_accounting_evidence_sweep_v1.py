@@ -3542,6 +3542,66 @@ def _selected_one_edit_public_replay_input_v1(
     }
 
 
+def _retain_selected_one_edit_public_replay_handoff_v1(
+    prepared_public_replay_cache: dict[str, Any] | None,
+    *,
+    candidate: Mapping[str, Any],
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    selected_topology_region: Mapping[str, Any],
+) -> None:
+    """Retain one projection that just ran on exact same-turn authorities."""
+
+    if prepared_public_replay_cache is None:
+        return
+    if type(prepared_public_replay_cache) is not dict:
+        raise _error("selected V4 public-replay handoff cache shape drifted")
+    persisted = candidate.get("one_edit_exact_source_structural_proofs")
+    try:
+        receipt = one_edit_v1.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+            persisted
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("selected V4 public-replay handoff receipt drifted") from exc
+    authority_pages = _one_edit_authority_pages_v1(joined_pages)
+    authority_pages_sha256 = canonical_json_sha256_v1(authority_pages)
+    if (
+        receipt["family_id"] != family_spec["family_id"]
+        or receipt["input_binding"]["document_pages_sha256"] != authority_pages_sha256
+        or receipt["input_binding"]["family_spec_sha256"] != canonical_json_sha256_v1(family_spec)
+        or receipt["input_binding"]["selected_topology_region_sha256"]
+        != canonical_json_sha256_v1(selected_topology_region)
+    ):
+        raise _error("selected V4 public-replay handoff input binding drifted")
+    input_sha256 = canonical_json_sha256_v1(
+        _selected_one_edit_public_replay_input_v1(
+            authority_pages_sha256=authority_pages_sha256,
+            evaluation_spec=evaluation_spec,
+            family_spec=family_spec,
+            receipt=receipt,
+            selected=candidate,
+            selected_topology_region=selected_topology_region,
+        )
+    )
+    receipt_sha256 = canonical_json_sha256_v1(receipt)
+    existing = prepared_public_replay_cache.get(input_sha256)
+    if existing is not None:
+        if (
+            type(existing) is not _PreparedSelectedOneEditPublicReplayV1
+            or existing.seal is not _PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL
+            or existing.input_sha256 != input_sha256
+            or existing.receipt_sha256 != receipt_sha256
+        ):
+            raise _error("selected V4 public-replay handoff cache binding drifted")
+        return
+    prepared_public_replay_cache[input_sha256] = _PreparedSelectedOneEditPublicReplayV1(
+        input_sha256=input_sha256,
+        receipt_sha256=receipt_sha256,
+        seal=_PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL,
+    )
+
+
 def _selected_v4_one_edit_authority_v1(
     selected: dict[str, Any] | None,
     *,
@@ -3904,6 +3964,7 @@ def _candidate_evidence_from_joined_pages(
     prepared_snapshot: Any = None,
     prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
     prepared_candidate_occurrence_axis_cache: dict[str, Any] | None = None,
+    prepared_public_replay_cache: dict[str, Any] | None = None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> list[dict[str, Any]]:
     is_v4 = _is_scoped_evaluation_policy(evaluation_spec)
@@ -3942,6 +4003,7 @@ def _candidate_evidence_from_joined_pages(
     candidate_evidence = []
     _telemetry_add(runtime_telemetry, "candidate_count", len(topology_regions))
     for candidate_ordinal, topology_region in enumerate(topology_regions):
+        one_edit_frontier_projection_performed = False
         candidate_render_snapshots = _candidate_local_render_snapshots_v1(
             joined_pages,
             topology_region,
@@ -4076,6 +4138,7 @@ def _candidate_evidence_from_joined_pages(
                     expected_lane_unit_kinds=selected_lane_unit_kinds,
                     visible_dash_rescues=dash_rescues,
                 )
+                one_edit_frontier_projection_performed = True
                 one_edit_exact_source_structural_proofs = occurrence_axis[
                     "one_edit_exact_source_structural_proofs"
                 ]
@@ -4105,6 +4168,7 @@ def _candidate_evidence_from_joined_pages(
                     expected_lane_unit_kinds=selected_lane_unit_kinds,
                     visible_dash_rescues=dash_rescues,
                 )
+                one_edit_frontier_projection_performed = True
                 one_edit_exact_source_structural_proofs = occurrence_axis[
                     "one_edit_exact_source_structural_proofs"
                 ]
@@ -4186,19 +4250,25 @@ def _candidate_evidence_from_joined_pages(
                 for reason in occurrence_axis["unresolved_reasons"]
                 if reason.startswith(occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX)
             )
-        candidate_evidence.append(
-            {
-                "additive_closure": closure,
-                "candidate_ordinal": candidate_ordinal,
-                "column_context": column_context,
-                "reasons": list(dict.fromkeys(reasons)),
-                "row_axis": row_axis,
-                "one_edit_exact_source_structural_proofs": (
-                    one_edit_exact_source_structural_proofs
-                ),
-                "column_context_visible_dash_rescues": dash_rescues,
-            }
-        )
+        candidate = {
+            "additive_closure": closure,
+            "candidate_ordinal": candidate_ordinal,
+            "column_context": column_context,
+            "reasons": list(dict.fromkeys(reasons)),
+            "row_axis": row_axis,
+            "one_edit_exact_source_structural_proofs": (one_edit_exact_source_structural_proofs),
+            "column_context_visible_dash_rescues": dash_rescues,
+        }
+        if one_edit_frontier_projection_performed:
+            _retain_selected_one_edit_public_replay_handoff_v1(
+                prepared_public_replay_cache,
+                candidate=candidate,
+                joined_pages=joined_pages,
+                family_spec=family_spec,
+                evaluation_spec=evaluation_spec,
+                selected_topology_region=topology_region,
+            )
+        candidate_evidence.append(candidate)
     return candidate_evidence
 
 
@@ -5275,6 +5345,7 @@ def _trial_from_document_store_snapshot_v1(
         ),
         prepared_source_exact_axis_cache=source_exact_axis_cache,
         prepared_candidate_occurrence_axis_cache=candidate_occurrence_axis_cache,
+        prepared_public_replay_cache=selected_public_replay_cache,
         runtime_telemetry=runtime_telemetry,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)

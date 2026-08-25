@@ -6564,6 +6564,55 @@ def test_f3_selected_public_replay_cache_reuses_only_identical_bound_inputs(
         )
 
 
+def test_f3_selected_public_replay_accepts_only_same_turn_projector_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = _f3_hierarchy_frontier_ctg_pages()
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    selected = {
+        "additive_closure": closure,
+        "candidate_ordinal": 0,
+        "column_context": context,
+        "column_context_visible_dash_rescues": (),
+        "one_edit_exact_source_structural_proofs": projected[
+            "one_edit_exact_source_structural_proofs"
+        ],
+        "reasons": [],
+        "row_axis": projected["row_axis"],
+    }
+    evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
+    cache: dict[str, object] = {}
+    sweep_v1._retain_selected_one_edit_public_replay_handoff_v1(
+        cache,
+        candidate=selected,
+        joined_pages=pages,
+        family_spec=_f3_spec(),
+        evaluation_spec=evaluation,
+        selected_topology_region=scan["regions"][0],
+    )
+    monkeypatch.setattr(
+        one_edit_v1,
+        "project_accounting_family_one_edit_hierarchy_frontier_authority_v1",
+        lambda *_args, **_kwargs: pytest.fail("same-turn handoff rebuilt its projector"),
+    )
+
+    receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
+        selected,
+        joined_pages=pages,
+        family_spec=_f3_spec(),
+        topology_candidates=scan,
+        evaluation_spec=evaluation,
+        prepared_public_replay_cache=cache,
+    )
+    assert receipt == projected["one_edit_exact_source_structural_proofs"]
+    assert reasons == []
+
+
 @pytest.mark.parametrize("attack", ["DELETE", "REORDER", "DUPLICATE"])
 def test_f3_hierarchy_frontier_public_replay_rejects_different_hierarchy_spec(
     attack: str,
