@@ -646,6 +646,74 @@ def test_numeric_universe_types_body_off_lane_number_but_excludes_header_and_foo
     assert lines[-1]["sample_id"] not in universe
 
 
+def test_source_only_numeric_fence_requires_one_exact_contextual_body_owner() -> None:
+    pages = [
+        {
+            "lines": [
+                _line(0, "Theo loại hình", "", [45, 100, 430, 122]),
+                _line(1, "Loại A", "", [45, 150, 430, 172]),
+                _line(2, "Loại B", "", [45, 190, 430, 212]),
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        }
+    ]
+    owner_id = "aforav2:occurrence:" + "a" * 64
+    owner = {
+        "end_source_line_index": 0,
+        "match_kind": "EXACT_ACCENTLESS_ALIAS",
+        "occurrence_id": owner_id,
+        "page_sequence": 1,
+        "role_kind": "STRUCTURAL_GROUP",
+        "source_line_index": 0,
+    }
+    rows = [
+        {
+            "label_match": {
+                "page_sequence": 1,
+                "scope_owner_occurrence_id": owner_id,
+            },
+            "role_kind": "ADDITIVE_CHILD",
+        },
+        {
+            "label_match": {
+                "page_sequence": 1,
+                "scope_owner_occurrence_id": owner_id,
+            },
+            "role_kind": "ADDITIVE_CHILD",
+        },
+    ]
+
+    assert subject._active_contextual_body_owner_top_by_page(pages, [owner], {"rows": rows}) == {
+        1: 100
+    }
+    assert subject._source_only_numeric_is_before_contextual_body(
+        {"bbox": [600, 78, 700, 100]}, 100
+    )
+    assert not subject._source_only_numeric_is_before_contextual_body(
+        {"bbox": [600, 99, 700, 101]}, 100
+    )
+    assert not subject._source_only_numeric_is_before_contextual_body(
+        {"bbox": [600, 78, 700, 100]}, None
+    )
+
+    mixed = copy.deepcopy(rows)
+    mixed[1]["label_match"]["scope_owner_occurrence_id"] = "aforav2:occurrence:" + "b" * 64
+    assert subject._active_contextual_body_owner_top_by_page(pages, [owner], {"rows": mixed}) == {}
+
+    for field, value in (
+        ("match_kind", "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"),
+        ("role_kind", "ADDITIVE_CHILD"),
+        ("page_sequence", 2),
+    ):
+        attacked = copy.deepcopy(owner)
+        attacked[field] = value
+        assert (
+            subject._active_contextual_body_owner_top_by_page(pages, [attacked], {"rows": rows})
+            == {}
+        )
+
+
 def test_prose_candidate_with_empty_v1_grid_is_typed_unresolved_without_margin_numeric() -> None:
     pages = [
         {

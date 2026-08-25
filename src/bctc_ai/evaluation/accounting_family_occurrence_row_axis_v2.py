@@ -7954,6 +7954,67 @@ def _project_authenticated_printed_note_reference_columns_v3(
     )
 
 
+def _active_contextual_body_owner_top_by_page(
+    pages: Sequence[Mapping[str, Any]],
+    matches: Sequence[Mapping[str, Any]],
+    axis: Mapping[str, Any],
+) -> dict[int, int]:
+    """Fence source-only numerics to one exact contextual child table.
+
+    An outer accounting-note parent can contain a preceding sibling table
+    before one explicit structural subgroup. When every visible additive row
+    on a page is owned by that same exact subgroup, unowned numerics ending at
+    or above the subgroup's top edge belong outside the active body. Mixed,
+    singleton, non-structural, non-exact, or cross-page ownership abstains.
+    """
+
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    additive_rows_by_page: dict[int, list[Mapping[str, Any]]] = {}
+    for row in axis["rows"]:
+        label = row["label_match"]
+        if row["role_kind"] != "ADDITIVE_CHILD":
+            continue
+        additive_rows_by_page.setdefault(label["page_sequence"], []).append(row)
+    result: dict[int, int] = {}
+    for page_sequence, rows in sorted(additive_rows_by_page.items()):
+        if len(rows) < 2:
+            continue
+        owner_ids = {row["label_match"].get("scope_owner_occurrence_id") for row in rows}
+        if len(owner_ids) != 1:
+            continue
+        owner_id = next(iter(owner_ids))
+        if type(owner_id) is not str or not owner_id:
+            continue
+        owners = [match for match in matches if match.get("occurrence_id") == owner_id]
+        if len(owners) != 1:
+            continue
+        owner = owners[0]
+        if (
+            owner.get("role_kind") != "STRUCTURAL_GROUP"
+            or owner.get("page_sequence") != page_sequence
+            or not str(owner.get("match_kind", "")).startswith("EXACT_")
+        ):
+            continue
+        page = page_by_sequence.get(page_sequence)
+        if page is None:
+            continue
+        owner_indices = row_v1._match_source_line_indices(owner)
+        boxes = [line["bbox"] for line in page["lines"] if line["line_ordinal"] in owner_indices]
+        if len(boxes) != len(owner_indices):
+            raise _error("contextual body owner lost exact source geometry")
+        result[page_sequence] = min(box[1] for box in boxes)
+    return result
+
+
+def _source_only_numeric_is_before_contextual_body(
+    line: Mapping[str, Any],
+    active_owner_top: int | None,
+) -> bool:
+    """Return true only for a source line wholly before the active body."""
+
+    return active_owner_top is not None and line["bbox"][3] <= active_owner_top
+
+
 def _build_numeric_sample_universe(
     pages: Sequence[Mapping[str, Any]],
     expanded_region: Mapping[str, Any],
@@ -8020,6 +8081,11 @@ def _build_numeric_sample_universe(
     furniture_evidence: list[dict[str, Any]] = []
     render_required_reasons: list[str] = []
     body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
+    contextual_body_owner_top_by_page = _active_contextual_body_owner_top_by_page(
+        pages,
+        matches,
+        axis,
+    )
     grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
     bound_occurrence_ids = {
         row["label_match"].get("occurrence_id")
@@ -8091,6 +8157,9 @@ def _build_numeric_sample_universe(
                 or line["line_ordinal"] in header_indices
                 or not row_v1._is_numeric(line)
             ):
+                continue
+            active_owner_top = contextual_body_owner_top_by_page.get(page_sequence)
+            if _source_only_numeric_is_before_contextual_body(line, active_owner_top):
                 continue
             center = (line["bbox"][0] + line["bbox"][2]) / 2
             if (

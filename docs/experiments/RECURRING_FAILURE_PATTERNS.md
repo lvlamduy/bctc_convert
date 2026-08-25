@@ -73,9 +73,10 @@ Trạng thái:
   label lane thay vì provider ordinal; numeric-only observation cùng baseline
   không được làm continuation fragment. Value row phải bind đúng một physical
   baseline của wrapped label (đầu hoặc cuối), không dùng tâm của union nhiều
-  dòng. Header của contextual child table được fence
-  từ exact structural owner của valued row đầu tiên, không từ outer note parent
-  nếu giữa hai scope còn sibling table. Header ngày tiếng Việt bị OCR tách dòng
+  dòng. Header và source-only numeric denominator của contextual child table
+  được fence từ một exact structural owner chung của các additive row, không từ
+  outer note parent nếu giữa hai scope còn sibling table; mixed/nonexact owner
+  thì abstain. Header ngày tiếng Việt bị OCR tách dòng
   chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
   có exact one-lane intersection anchor và hai nhóm typed leaf lặp lại tạo một
   partition đầy đủ; fragment rời/mơ hồ/low-confidence toàn bộ vẫn unresolved.
