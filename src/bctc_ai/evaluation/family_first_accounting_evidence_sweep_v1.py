@@ -1153,6 +1153,8 @@ def _v4_exact_visible_role_axis(
     *,
     expected_parent_role: str,
     expected_role_kind: str = "ADDITIVE_CHILD",
+    expected_parent_role_kind: str = "STRUCTURAL_GROUP",
+    expected_parent_occurrence_id: str | None = None,
     allow_family_root_scope_without_binding: bool = False,
 ) -> tuple[list[dict[str, Any]], str] | None:
     """Return one exact visible leaf bound to one authenticated row projection."""
@@ -1175,6 +1177,16 @@ def _v4_exact_visible_role_axis(
         or type(coverage_by_occurrence) is not dict
         or type(root_occurrence_id) is not str
         or type(role) is not str
+        or type(expected_role_kind) is not str
+        or not expected_role_kind
+        or type(expected_parent_role_kind) is not str
+        or not expected_parent_role_kind
+        or (
+            expected_parent_occurrence_id is not None
+            and (
+                type(expected_parent_occurrence_id) is not str or not expected_parent_occurrence_id
+            )
+        )
         or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE"
         or type(source) is not dict
         or source.get("kind") != "ROLE_ROW"
@@ -1333,7 +1345,7 @@ def _v4_exact_visible_role_axis(
             occurrence
             for occurrence in occurrence_by_id.values()
             if occurrence.get("role") == expected_parent_role
-            and occurrence.get("role_kind") == "STRUCTURAL_GROUP"
+            and occurrence.get("role_kind") == expected_parent_role_kind
             and type(occurrence.get("label_match")) is dict
             and occurrence["label_match"].get("end_document_line_ordinal", child_line + 1)
             <= child_line
@@ -1354,11 +1366,20 @@ def _v4_exact_visible_role_axis(
             parent_role != expected_parent_role
             or type(parent) is not dict
             or parent.get("role") != expected_parent_role
-            or parent.get("role_kind") != "STRUCTURAL_GROUP"
+            or parent.get("role_kind") != expected_parent_role_kind
             or len(nearest) != 1
             or nearest[0].get("occurrence_id") != parent_occurrence_id
-            or parent.get("scope_owner_role") is not None
-            or parent.get("scope_owner_occurrence_id") != root_occurrence_id
+            or (
+                expected_parent_occurrence_id is not None
+                and parent_occurrence_id != expected_parent_occurrence_id
+            )
+            or (
+                expected_parent_occurrence_id is None
+                and (
+                    parent.get("scope_owner_role") is not None
+                    or parent.get("scope_owner_occurrence_id") != root_occurrence_id
+                )
+            )
         ):
             return None
 
@@ -1978,7 +1999,7 @@ def _v4_ready_exact_component_detail_supersedes_visible_summary(
 
     expected_ordinals = [lane["column_ordinal"] for lane in summary_signature["numeric_lanes"]]
     tree_roles: set[str] = set()
-    terminal_occurrences: set[str] = set()
+    terminal_occurrences: dict[str, str] = {}
     active: set[str] = set()
     has_nested_terminal = False
 
@@ -2016,9 +2037,13 @@ def _v4_ready_exact_component_detail_supersedes_visible_summary(
             detail_axes,
             expected_parent_role=parent_role,
         )
-        if exact_leaf is None or exact_leaf[1] in terminal_occurrences:
+        if (
+            exact_leaf is None
+            or role in terminal_occurrences
+            or exact_leaf[1] in set(terminal_occurrences.values())
+        ):
             return False
-        terminal_occurrences.add(exact_leaf[1])
+        terminal_occurrences[role] = exact_leaf[1]
         has_nested_terminal = has_nested_terminal or parent_role != family_id
         return True
 
@@ -2028,9 +2053,82 @@ def _v4_ready_exact_component_detail_supersedes_visible_summary(
         or not tree_roles <= detail_roles
         or len(terminal_occurrences) < len(component_roles) + 1
         or not has_nested_terminal
-        or summary_occurrences & terminal_occurrences
+        or summary_occurrences & set(terminal_occurrences.values())
     ):
         return False
+
+    # Every resolved record outside the exhaustive additive tree must itself
+    # have a narrow authenticated meaning.  This prevents an unrelated or
+    # wrongly parented additive row from manufacturing role richness.  The only
+    # admitted extras are a sealed nonadditive child of an already authenticated
+    # terminal leaf, or a sealed visible presentation alias declared once by an
+    # equation whose result is already in the tree.
+    alias_results: dict[str, str] = {}
+    for equation in detail_equations.values():
+        result_role = equation.get("result_role")
+        visible_roles = equation.get("visible_result_roles")
+        if type(result_role) is not str or not result_role or type(visible_roles) is not list:
+            return False
+        for alias in visible_roles:
+            if type(alias) is not str or not alias:
+                return False
+            if alias == result_role:
+                continue
+            if alias in alias_results:
+                return False
+            alias_results[alias] = result_role
+    if detail_roles != set(detail_records) - set(alias_results):
+        return False
+    admitted_extra_occurrences: set[str] = set()
+    for extra_role in set(detail_records) - tree_roles:
+        extra_record = detail_records[extra_role]
+        source = extra_record.get("source")
+        source_record = source.get("record") if type(source) is dict else None
+        label = source_record.get("label_match") if type(source_record) is dict else None
+        role_kind = source_record.get("role_kind") if type(source_record) is dict else None
+        exact_extra: tuple[list[dict[str, Any]], str] | None = None
+        if role_kind == "NONADDITIVE_CHILD":
+            parent_role = label.get("scope_owner_role") if type(label) is dict else None
+            parent_occurrence_id = terminal_occurrences.get(parent_role)
+            parent_occurrence = (
+                detail_axes["occurrence_by_id"].get(parent_occurrence_id)
+                if type(parent_occurrence_id) is str
+                else None
+            )
+            if detail_equations.get(extra_role) is not None or type(parent_occurrence) is not dict:
+                return False
+            exact_extra = _v4_exact_visible_role_axis(
+                extra_record,
+                detail_axes,
+                expected_parent_role=parent_role,
+                expected_role_kind="NONADDITIVE_CHILD",
+                expected_parent_role_kind=parent_occurrence.get("role_kind"),
+                expected_parent_occurrence_id=parent_occurrence_id,
+            )
+        elif extra_role in alias_results:
+            result_role = alias_results[extra_role]
+            result_record = detail_records.get(result_role)
+            if result_role not in tree_roles or role_kind not in {"STRUCTURAL_GROUP", "TOTAL"}:
+                return False
+            exact_extra = _v4_exact_visible_role_axis(
+                extra_record,
+                detail_axes,
+                expected_parent_role=family_id,
+                expected_role_kind=role_kind,
+                allow_family_root_scope_without_binding=True,
+            )
+            if exact_extra is not None and not same_typed_json_v1(
+                exact_extra[0], _v4_resolved_number_axis(result_record or {})
+            ):
+                return False
+        if (
+            exact_extra is None
+            or exact_extra[1] in admitted_extra_occurrences
+            or exact_extra[1] in terminal_occurrences.values()
+            or exact_extra[1] in summary_occurrences
+        ):
+            return False
+        admitted_extra_occurrences.add(exact_extra[1])
     return True
 
 

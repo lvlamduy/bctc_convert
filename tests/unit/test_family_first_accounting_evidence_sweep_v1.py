@@ -1896,6 +1896,492 @@ def _v4_seal_candidate_axes(candidate: dict) -> None:
     _v4_reseal_candidate_envelopes(candidate)
 
 
+def _v4_direct_visible_test_record(
+    role: str,
+    coefficients: tuple[int, int],
+    *,
+    line_ordinal: int,
+    role_kind: str,
+) -> dict:
+    occurrence_material = {
+        "document_line_ordinal": line_ordinal,
+        "end_document_line_ordinal": line_ordinal,
+        "page_sequence": 1,
+        "role": role,
+        "role_occurrence_ordinal": 0,
+    }
+    label = {
+        **occurrence_material,
+        "match_kind": "EXACT_ACCENTLESS_ALIAS",
+        "occurrence_id": "aforav2:occurrence:" + canonical_json_sha256_v1(occurrence_material),
+        "role_kind": role_kind,
+        "scope_owner_occurrence_id": "aforav2:root:unsealed",
+        "scope_owner_role": None,
+    }
+    source_values = []
+    resolved_values = []
+    for ordinal, coefficient in enumerate(coefficients):
+        raw_prediction = str(coefficient)
+        sample = line_ordinal * 10 + ordinal
+        parsed = subject.parse_visible_financial_numeric_token_v1(raw_prediction)
+        source_values.append(
+            {
+                "bbox": [600 + ordinal * 200, line_ordinal, 680 + ordinal * 200, line_ordinal + 20],
+                "column_center": float(640 + ordinal * 200),
+                "column_ordinal": ordinal,
+                "crop_ref": _ref(sample),
+                "line_ordinal": line_ordinal + ordinal,
+                "page_sequence": 1,
+                "parsed_token": parsed,
+                "raw_prediction": raw_prediction,
+                "reader_score": 1.0,
+                "row_affinity": 1.0,
+                "sample_id": f"sample:{role}:{ordinal}",
+            }
+        )
+        resolved_values.append(
+            {
+                "column_ordinal": ordinal,
+                "number": {
+                    "coefficient": coefficient,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+            }
+        )
+    return {
+        "component_roles": [],
+        "resolution_kind": "VISIBLE_SOURCE_ROLE",
+        "role": role,
+        "source": {
+            "kind": "ROLE_ROW",
+            "record": {
+                "label_match": label,
+                "missing_column_ordinals": [],
+                "role": role,
+                "role_kind": role_kind,
+                "status": "VISIBLE_VALUE_LANES_BOUND",
+                "values": source_values,
+            },
+        },
+        "values": resolved_values,
+    }
+
+
+def _v4_seal_generic_visible_axes(
+    candidate: dict,
+    *,
+    parent_roles: dict[str, str],
+) -> None:
+    closure = candidate["additive_closure"]
+    family_id = closure["family_id"]
+    visible_records = [
+        record
+        for record in closure["resolved_roles"]
+        if type(record.get("source")) is dict and type(record["source"].get("record")) is dict
+    ]
+    root_material = {
+        "candidate_ordinal": candidate["candidate_ordinal"],
+        "family_id": family_id,
+        "visible_roles": [record["role"] for record in visible_records],
+    }
+    root_occurrence_id = "aforav2:root:" + canonical_json_sha256_v1(root_material)
+    visible_by_role = {record["role"]: record for record in visible_records}
+    nested_parent_roles = sorted(
+        {parent_roles[record["role"]] for record in visible_records} - {family_id}
+    )
+    unbound_parent_roles = [role for role in nested_parent_roles if role not in visible_by_role]
+    parent_labels = {
+        role: _v4_occurrence_label(
+            role,
+            line_ordinal=5 + ordinal * 30,
+            root_occurrence_id=root_occurrence_id,
+        )
+        for ordinal, role in enumerate(unbound_parent_roles)
+    }
+    for record in visible_records:
+        label = record["source"]["record"]["label_match"]
+        parent_role = parent_roles[record["role"]]
+        label["scope_owner_occurrence_id"] = (
+            root_occurrence_id
+            if parent_role == family_id
+            else (
+                visible_by_role[parent_role]["source"]["record"]["label_match"]["occurrence_id"]
+                if parent_role in visible_by_role
+                else parent_labels[parent_role]["occurrence_id"]
+            )
+        )
+        label["scope_owner_role"] = None if parent_role == family_id else parent_role
+
+    rows = [copy.deepcopy(record["source"]["record"]) for record in visible_records]
+    candidate["row_axis"] = {
+        "family_id": family_id,
+        "rows": rows,
+        "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+    }
+    role_occurrences = [
+        _v4_role_occurrence(label, has_bound_value_row=False) for label in parent_labels.values()
+    ] + [
+        _v4_role_occurrence(record["source"]["record"]["label_match"], has_bound_value_row=True)
+        for record in visible_records
+    ]
+    numeric_sample_universe = sorted(
+        (
+            subject.occurrence_row_v2._numeric_universe_record(
+                value,
+                owner_kind="ROLE_OCCURRENCE",
+                owner_id=record["source"]["record"]["label_match"]["occurrence_id"],
+            )
+            for record in visible_records
+            for value in record["source"]["record"]["values"]
+        ),
+        key=lambda sample: (
+            sample["page_sequence"],
+            sample["line_ordinal"],
+            sample["column_ordinal"],
+            sample["sample_id"],
+        ),
+    )
+    coverage_receipt = []
+    for record in visible_records:
+        source_record = record["source"]["record"]
+        occurrence_id = source_record["label_match"]["occurrence_id"]
+        coverage_receipt.append(
+            {
+                "candidate_ordinal": None,
+                "coverage_id": f"ashtcv2:coverage:role:{occurrence_id}",
+                "disposition": "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+                "occurrence_id": occurrence_id,
+                "role": record["role"],
+                "row_kind": "ROLE_ROW",
+                "sample_ids": [value["sample_id"] for value in source_record["values"]],
+                "source_record": copy.deepcopy(source_record),
+            }
+        )
+    occurrence_axis_material = {
+        "family_id": family_id,
+        "numeric_sample_universe": numeric_sample_universe,
+        "role_occurrences": role_occurrences,
+    }
+    occurrence_axis_id = "aforav2:axis:" + canonical_json_sha256_v1(occurrence_axis_material)
+    closure.update(
+        {
+            "coverage_receipt": coverage_receipt,
+            "dependency_content_refs": subject.scoped_v2._dependency_refs(),
+            "numeric_sample_universe": numeric_sample_universe,
+            "occurrence_axis_binding": {
+                "dependency_content_refs": subject.occurrence_row_v2._dependency_refs(),
+                "occurrence_axis_id": occurrence_axis_id,
+                "topology_candidates_id": "aftcv2:result:" + "1" * 64,
+                "topology_scan_id": "aftv1:scan:" + "2" * 64,
+            },
+            "occurrence_axis_id": occurrence_axis_id,
+            "role_occurrences": role_occurrences,
+            "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+        }
+    )
+    _v4_reseal_candidate_envelopes(candidate)
+
+
+def _v4_visible_summary_and_derived_detail_candidates(
+    *,
+    detail_deposit: tuple[int, int] = (70, 60),
+    detail_loan: tuple[int, int] = (30, 40),
+    detail_periods: tuple[str, str] = ("31/12/2025", "31/12/2024"),
+    partial_detail_leaf: bool = False,
+    wrong_detail_parent: bool = False,
+    with_authenticated_nonadditive_child: bool = False,
+) -> tuple[dict, dict]:
+    summary_deposit = (70, 60)
+    summary_loan = (30, 40)
+    summary_root = tuple(
+        deposit + loan for deposit, loan in zip(summary_deposit, summary_loan, strict=True)
+    )
+    detail_root = tuple(
+        deposit + loan for deposit, loan in zip(detail_deposit, detail_loan, strict=True)
+    )
+
+    def values(coefficients: tuple[int, int]) -> list[dict]:
+        return [
+            {
+                "column_ordinal": ordinal,
+                "number": {
+                    "coefficient": coefficient,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+            }
+            for ordinal, coefficient in enumerate(coefficients)
+        ]
+
+    def derived(role: str, coefficients: tuple[int, int], components: list[str]) -> dict:
+        return {
+            "component_roles": components,
+            "resolution_kind": "DERIVED_EXACT_COMPONENT_SUM",
+            "role": role,
+            "source": None,
+            "values": values(coefficients),
+        }
+
+    summary_deposit_record = _v4_direct_visible_test_record(
+        "DEPOSIT_GROUP", summary_deposit, line_ordinal=20, role_kind="STRUCTURAL_GROUP"
+    )
+    summary_loan_record = _v4_direct_visible_test_record(
+        "LOAN_GROUP", summary_loan, line_ordinal=50, role_kind="STRUCTURAL_GROUP"
+    )
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+        coefficients=summary_root,
+    )
+    summary["additive_closure"]["resolved_roles"] = [
+        summary_deposit_record,
+        summary_loan_record,
+        {
+            "component_roles": ["DEPOSIT_GROUP", "LOAN_GROUP"],
+            "resolution_kind": "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+            "role": "FAMILY",
+            "source": None,
+            "values": values(summary_root),
+        },
+    ]
+    summary["additive_closure"]["equations"] = {
+        "global": [
+            {
+                "component_roles_present": [],
+                "result_role": "DEPOSIT_GROUP",
+                "status": "VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+                "visible_result_roles": ["DEPOSIT_GROUP"],
+            },
+            {
+                "component_roles_present": [],
+                "result_role": "LOAN_GROUP",
+                "status": "VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+                "visible_result_roles": ["LOAN_GROUP"],
+            },
+            {
+                "component_roles_present": ["DEPOSIT_GROUP", "LOAN_GROUP"],
+                "result_role": "FAMILY",
+                "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                "visible_result_roles": ["FAMILY"],
+            },
+        ],
+        "local": [],
+    }
+    _v4_seal_generic_visible_axes(
+        summary,
+        parent_roles={"DEPOSIT_GROUP": "FAMILY", "LOAN_GROUP": "FAMILY"},
+    )
+
+    deposit_a = (40, 35)
+    deposit_b = tuple(total - left for total, left in zip(detail_deposit, deposit_a, strict=True))
+    loan_a = (20, 25)
+    loan_b = tuple(total - left for total, left in zip(detail_loan, loan_a, strict=True))
+    detail_leaf_records = [
+        _v4_direct_visible_test_record(
+            "DEPOSIT_A", deposit_a, line_ordinal=20, role_kind="ADDITIVE_CHILD"
+        ),
+        _v4_direct_visible_test_record(
+            "DEPOSIT_B", deposit_b, line_ordinal=30, role_kind="ADDITIVE_CHILD"
+        ),
+        _v4_direct_visible_test_record(
+            "LOAN_A", loan_a, line_ordinal=50, role_kind="ADDITIVE_CHILD"
+        ),
+        _v4_direct_visible_test_record(
+            "LOAN_B", loan_b, line_ordinal=60, role_kind="ADDITIVE_CHILD"
+        ),
+    ]
+    if partial_detail_leaf:
+        partial = detail_leaf_records[1]
+        partial["values"] = partial["values"][:1]
+        partial["source"]["record"]["values"] = partial["source"]["record"]["values"][:1]
+        partial["source"]["record"]["missing_column_ordinals"] = [1]
+        partial["source"]["record"]["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+    detail = _ready_hierarchical_candidate(
+        [
+            "DEPOSIT_A",
+            "DEPOSIT_B",
+            "DEPOSIT_GROUP",
+            "LOAN_A",
+            "LOAN_B",
+            "LOAN_GROUP",
+            "FAMILY",
+        ],
+        candidate_ordinal=1,
+        coefficients=detail_root,
+        periods=detail_periods,
+        root_resolution="DERIVED_EXACT_COMPONENT_SUM",
+    )
+    detail["additive_closure"]["resolved_roles"] = [
+        *detail_leaf_records[:2],
+        derived("DEPOSIT_GROUP", detail_deposit, ["DEPOSIT_A", "DEPOSIT_B"]),
+        *detail_leaf_records[2:],
+        derived("LOAN_GROUP", detail_loan, ["LOAN_A", "LOAN_B"]),
+        derived("FAMILY", detail_root, ["DEPOSIT_GROUP", "LOAN_GROUP"]),
+    ]
+    if with_authenticated_nonadditive_child:
+        detail["additive_closure"]["resolved_roles"].append(
+            _v4_direct_visible_test_record(
+                "LOAN_A_MEMO_BREAKDOWN",
+                (7, 8),
+                line_ordinal=55,
+                role_kind="NONADDITIVE_CHILD",
+            )
+        )
+    detail["additive_closure"]["equations"] = {
+        "global": [
+            {
+                "component_roles_present": ["DEPOSIT_A", "DEPOSIT_B"],
+                "result_role": "DEPOSIT_GROUP",
+                "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                "visible_result_roles": ["DEPOSIT_GROUP"],
+            },
+            {
+                "component_roles_present": ["LOAN_A", "LOAN_B"],
+                "result_role": "LOAN_GROUP",
+                "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                "visible_result_roles": ["LOAN_GROUP"],
+            },
+            {
+                "component_roles_present": ["DEPOSIT_GROUP", "LOAN_GROUP"],
+                "result_role": "FAMILY",
+                "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                "visible_result_roles": ["FAMILY"],
+            },
+        ],
+        "local": [],
+    }
+    parent_roles = {
+        "DEPOSIT_A": "LOAN_GROUP" if wrong_detail_parent else "DEPOSIT_GROUP",
+        "DEPOSIT_B": "DEPOSIT_GROUP",
+        "LOAN_A": "LOAN_GROUP",
+        "LOAN_B": "LOAN_GROUP",
+    }
+    if with_authenticated_nonadditive_child:
+        parent_roles["LOAN_A_MEMO_BREAKDOWN"] = "LOAN_A"
+    _v4_seal_generic_visible_axes(detail, parent_roles=parent_roles)
+    return summary, detail
+
+
+@pytest.mark.parametrize("with_nonadditive_child", [False, True])
+def test_v4_visible_summary_yields_to_authenticated_exact_component_detail(
+    with_nonadditive_child: bool,
+) -> None:
+    summary, detail = _v4_visible_summary_and_derived_detail_candidates(
+        with_authenticated_nonadditive_child=with_nonadditive_child
+    )
+    policy = {
+        **_strict_same_population_selection_policy(),
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+    }
+
+    selected, reasons = subject._select_candidate_evidence([summary, detail], policy)
+
+    assert selected is detail
+    assert reasons == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "SHARED_COMPONENT_MISMATCH",
+        "COMPENSATING_COMPONENT_MISMATCH",
+        "PARTIAL_DETAIL_LANE",
+        "ROUNDING_ONLY_ROOT",
+        "DIFFERENT_PERIOD",
+        "COHERENT_WRONG_PARENT",
+        "MISSING_SUMMARY_SOURCE_RECEIPT",
+        "ARITHMETIC_ONLY_UNSEALED_DETAIL",
+        "ARBITRARY_ADDITIVE_EXTRA_ROLE",
+    ],
+)
+def test_v4_derived_detail_stays_incomparable_without_complete_typed_frontier(
+    mutation: str,
+) -> None:
+    builder_kwargs: dict = {}
+    if mutation == "SHARED_COMPONENT_MISMATCH":
+        builder_kwargs["detail_deposit"] = (71, 60)
+    elif mutation == "COMPENSATING_COMPONENT_MISMATCH":
+        builder_kwargs.update(detail_deposit=(71, 60), detail_loan=(29, 40))
+    elif mutation == "PARTIAL_DETAIL_LANE":
+        builder_kwargs["partial_detail_leaf"] = True
+    elif mutation == "DIFFERENT_PERIOD":
+        builder_kwargs["detail_periods"] = ("30/06/2025", "31/12/2024")
+    elif mutation == "COHERENT_WRONG_PARENT":
+        builder_kwargs["wrong_detail_parent"] = True
+    summary, detail = _v4_visible_summary_and_derived_detail_candidates(**builder_kwargs)
+    if mutation == "ROUNDING_ONLY_ROOT":
+        root = next(
+            record
+            for record in detail["additive_closure"]["resolved_roles"]
+            if record["role"] == "FAMILY"
+        )
+        root["resolution_kind"] = "DERIVED_ROUNDING_COMPONENT_SUM"
+        equation = next(
+            equation
+            for equation in detail["additive_closure"]["equations"]["global"]
+            if equation["result_role"] == "FAMILY"
+        )
+        equation["status"] = "DERIVED_ROUNDING_EXHAUSTIVE_COMPONENT_SUM"
+        _v4_reseal_candidate_envelopes(detail)
+    elif mutation == "MISSING_SUMMARY_SOURCE_RECEIPT":
+        summary["additive_closure"]["coverage_receipt"] = summary["additive_closure"][
+            "coverage_receipt"
+        ][1:]
+        _v4_reseal_candidate_envelopes(summary)
+    elif mutation == "ARITHMETIC_ONLY_UNSEALED_DETAIL":
+        detail.pop("row_axis")
+    elif mutation == "ARBITRARY_ADDITIVE_EXTRA_ROLE":
+        detail["additive_closure"]["resolved_roles"].append(
+            {
+                "component_roles": [],
+                "resolution_kind": "DERIVED_EXACT_COMPONENT_SUM",
+                "role": "UNRELATED_ADDITIVE_DETAIL",
+                "source": None,
+                "values": [
+                    {
+                        "column_ordinal": ordinal,
+                        "number": {
+                            "coefficient": 0,
+                            "percentage_mark_present": False,
+                            "scale": 0,
+                        },
+                    }
+                    for ordinal in range(2)
+                ],
+            }
+        )
+        _v4_reseal_candidate_envelopes(detail)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_duplicate_exact_detail_candidates_preserve_ambiguity() -> None:
+    summary, detail = _v4_visible_summary_and_derived_detail_candidates()
+    competing = copy.deepcopy(detail)
+    competing["candidate_ordinal"] = 2
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail, competing],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
 def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple[dict, dict]:
     coarse_provision = (0, -50_000)
     gross_loan = (494_565, 1_216_832)
