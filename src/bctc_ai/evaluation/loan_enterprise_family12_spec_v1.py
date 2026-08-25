@@ -171,9 +171,10 @@ def _child(
     historical_disposition: str = "OBSERVED_OR_SCHEMA_DECLARED",
     bounded_edit: bool = True,
     binding_class: str = "STANDARD_SCHEMA_ROW",
+    contextual_only_aliases: list[str] | None = None,
     schema_parent_report_norm_id: int = REPORT_NORM_ID,
 ) -> dict[str, Any]:
-    return {
+    child = {
         "aliases": aliases,
         "binding_class": binding_class,
         "bounded_edit_on_exact_miss": bounded_edit,
@@ -182,6 +183,9 @@ def _child(
         "report_norm_id": report_norm_id,
         "schema_parent_report_norm_id": schema_parent_report_norm_id,
     }
+    if contextual_only_aliases:
+        child["contextual_only_aliases"] = contextual_only_aliases
+    return child
 
 
 _CHILDREN = [
@@ -319,6 +323,7 @@ _CHILDREN = [
             "Khác",
             "Thành phần kinh tế khác",
         ],
+        contextual_only_aliases=["Khác"],
     ),
     _child(
         6058,
@@ -420,17 +425,23 @@ def _distinct_aliases(aliases: list[str]) -> list[str]:
 def _topology_child(child: dict[str, Any]) -> dict[str, Any]:
     report_norm_id = child["report_norm_id"]
     aliases = _distinct_aliases(child["aliases"])
-    return {
-        "matchers": [
+    contextual_only = set(child.get("contextual_only_aliases", []))
+    context_free_aliases = [alias for alias in aliases if alias not in contextual_only]
+    matchers = [
+        {
+            "aliases": aliases,
+            "within_role": "ENTERPRISE_TYPE_BRANCH",
+        }
+    ]
+    if context_free_aliases:
+        matchers.append(
             {
-                "aliases": aliases,
-                "within_role": "ENTERPRISE_TYPE_BRANCH",
-            },
-            {
-                "aliases": aliases,
+                "aliases": context_free_aliases,
                 "within_role": None,
-            },
-        ],
+            }
+        )
+    return {
+        "matchers": matchers,
         "presence": "OPTIONAL",
         "role": _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[report_norm_id],
         "role_kind": ("STRUCTURAL_GROUP" if report_norm_id == 6058 else "ADDITIVE_CHILD"),

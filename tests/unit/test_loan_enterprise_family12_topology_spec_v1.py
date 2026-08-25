@@ -75,6 +75,17 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     assert foreign["matchers"][1]["aliases"] == foreign["matchers"][0]["aliases"]
     assert "Cho vay tại chi nhánh và ngân hàng con nước ngoài" in foreign["matchers"][0]["aliases"]
     assert "Dư nợ tại chi nhánh nước ngoài" in foreign["matchers"][0]["aliases"]
+    other = leaf_roles["OTHER_ENTERPRISE_LOANS"]
+    assert other["matchers"] == [
+        {
+            "aliases": ["Khác", "Thành phần kinh tế khác"],
+            "within_role": "ENTERPRISE_TYPE_BRANCH",
+        },
+        {
+            "aliases": ["Thành phần kinh tế khác"],
+            "within_role": None,
+        },
+    ]
     assert ["ENTERPRISE_TYPE_BRANCH", "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"] in spec[
         "required_role_combinations"
     ]
@@ -195,6 +206,41 @@ def test_family12_two_page_budget_keeps_late_contextual_other_row() -> None:
     )
     assert other["page_sequence"] == 2
     assert other["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
+def test_family12_bare_other_is_not_a_context_free_presence_anchor() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [_page(["Cho vay khách hàng", "Khác"])],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert result["metrics"]["core_semantic_anchor_hit_count"] == 0
+    assert result["near_regions"][0]["observed_roles"] == []
+
+
+def test_family12_explicit_other_wording_remains_a_context_free_role() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Thành phần kinh tế khác",
+                    "Công ty TNHH",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["regions"][0]["observed_roles"] == [
+        "OTHER_ENTERPRISE_LOANS",
+        "LIMITED_LIABILITY_COMPANY_LOANS",
+    ]
+    assert all(
+        item["matched_within_role"] is None for item in result["regions"][0]["child_matches"]
+    )
 
 
 def test_family12_branch_before_wrapped_owner_uses_two_exact_context_free_leaves() -> None:
