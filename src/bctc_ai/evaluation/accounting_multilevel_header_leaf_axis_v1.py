@@ -343,6 +343,78 @@ def _lane_kind(cell: Mapping[str, Any]) -> tuple[str, str] | None:
     return None
 
 
+def _leading_anchor_repeated_leaf_partition(
+    graph: Mapping[str, Any],
+    parents: Sequence[Mapping[str, Any]],
+    expected_lane_kinds: Sequence[str],
+) -> list[dict[str, Any]] | None:
+    """Recover two equal leaf groups from exact leading period anchors."""
+
+    lane_count = len(expected_lane_kinds)
+    if (
+        len(parents) != 2
+        or lane_count < 4
+        or lane_count % 2
+        or list(expected_lane_kinds[: lane_count // 2])
+        != list(expected_lane_kinds[lane_count // 2 :])
+        or any(len(parent["cell_ids"]) != 1 for parent in parents)
+    ):
+        return None
+    group_width = lane_count // 2
+    target_spans = [(0, group_width), (group_width, lane_count)]
+    if [(parent["column_start"], parent["column_stop"]) for parent in parents] == target_spans:
+        return None
+
+    cells_by_id = {cell["cell_id"]: cell for cell in graph["cells"]}
+    typed_by_lane: dict[int, list[Mapping[str, Any]]] = {
+        ordinal: [] for ordinal in range(lane_count)
+    }
+    for cell in graph["cells"]:
+        start = cell["column_start"]
+        if start is None or cell["column_stop"] != start + 1:
+            continue
+        classified = _lane_kind(cell)
+        if classified is not None:
+            typed_by_lane[start].append(cell)
+    if any(len(items) != 1 for items in typed_by_lane.values()) or [
+        _lane_kind(typed_by_lane[ordinal][0])[0]  # type: ignore[index]
+        for ordinal in range(lane_count)
+    ] != list(expected_lane_kinds):
+        return None
+
+    centers = graph["column_centers"]
+    minimum_gap = min(right - left for left, right in zip(centers, centers[1:], strict=False))
+    edges = {(edge["parent_cell_id"], edge["child_cell_id"]) for edge in graph["edges"]}
+    ordered = sorted(
+        parents,
+        key=lambda parent: sum(cells_by_id[parent["cell_ids"][0]]["bbox"][::2]),
+    )
+    rescued = []
+    for ordinal, (parent, (start, stop)) in enumerate(zip(ordered, target_spans, strict=True)):
+        parent_cell = cells_by_id[parent["cell_ids"][0]]
+        parent_center = (parent_cell["bbox"][0] + parent_cell["bbox"][2]) / 2
+        nearest_lane = min(range(lane_count), key=lambda lane: abs(parent_center - centers[lane]))
+        leading_leaf = typed_by_lane[start][0]
+        if (
+            nearest_lane != start
+            or abs(parent_center - centers[start]) > minimum_gap * 0.45
+            or (parent_cell["cell_id"], leading_leaf["cell_id"]) not in edges
+            or leading_leaf["level_start"] < parent_cell["level_stop"]
+            or leading_leaf["source_line_index"] <= parent_cell["source_line_index"]
+            or ordinal != start // group_width
+        ):
+            return None
+        rescued.append(
+            {
+                **canonical_clone_v1(parent),
+                "column_start": start,
+                "column_stop": stop,
+                "partition_resolution": "REPEATED_TYPED_LEAF_SEQUENCE_LEADING_PERIOD_ANCHOR",
+            }
+        )
+    return rescued
+
+
 def _typed_leaf_candidates(
     graph: Mapping[str, Any],
     parents: Sequence[Mapping[str, Any]],
@@ -377,6 +449,10 @@ def _typed_leaf_candidates(
         return [], "VISIBLE_HEADER_LEAF_KINDS_DIFFER_FROM_DECLARED_BODY_LANES"
 
     parent_by_cell_id = {cell_id: parent for parent in parents for cell_id in parent["cell_ids"]}
+    derived_partition = all(
+        parent.get("partition_resolution") == "REPEATED_TYPED_LEAF_SEQUENCE_LEADING_PERIOD_ANCHOR"
+        for parent in parents
+    )
     edges_by_child: dict[str, list[Mapping[str, Any]]] = {}
     for edge in graph["edges"]:
         edges_by_child.setdefault(edge["child_cell_id"], []).append(edge)
@@ -388,9 +464,19 @@ def _typed_leaf_candidates(
             for edge in edges_by_child.get(cell["cell_id"], [])
             if edge["parent_cell_id"] in parent_by_cell_id
         ]
-        if len(parent_edges) != 1:
-            return [], "TYPED_HEADER_LEAF_LACKS_ONE_UNIQUE_PERIOD_PARENT_EDGE"
-        parent = parent_by_cell_id[parent_edges[0]["parent_cell_id"]]
+        if derived_partition:
+            containing = [
+                parent
+                for parent in parents
+                if parent["column_start"] <= ordinal < parent["column_stop"]
+            ]
+            if len(containing) != 1:
+                return [], "TYPED_HEADER_LEAF_LACKS_ONE_UNIQUE_PERIOD_PARENT_EDGE"
+            parent = containing[0]
+        else:
+            if len(parent_edges) != 1:
+                return [], "TYPED_HEADER_LEAF_LACKS_ONE_UNIQUE_PERIOD_PARENT_EDGE"
+            parent = parent_by_cell_id[parent_edges[0]["parent_cell_id"]]
         if not parent["column_start"] <= ordinal < parent["column_stop"]:
             return [], "TYPED_HEADER_LEAF_EDGE_CROSSES_PERIOD_PARTITION"
         result.append(
@@ -600,6 +686,13 @@ def build_accounting_multilevel_header_leaf_axis_v1(
         parents, period_mode, period_reason = _graph_period_records(graph, period_context)
         if period_reason is not None:
             reasons.append(period_reason)
+        if not reasons:
+            rescued_parents = _leading_anchor_repeated_leaf_partition(
+                graph, parents, expected_kinds
+            )
+            if rescued_parents is not None:
+                parents = rescued_parents
+                period_mode += "_REPEATED_TYPED_LEAF_SEQUENCE_LEADING_ANCHOR_PARTITION"
         if not reasons:
             cursor = 0
             for parent in parents:

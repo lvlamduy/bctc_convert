@@ -97,6 +97,62 @@ def test_two_period_parents_project_to_four_typed_header_leaves() -> None:
     )
 
 
+def test_narrow_period_headers_can_anchor_two_identical_typed_leaf_groups() -> None:
+    headers = _headers()
+    headers[0]["bbox"] = [150, 20, 250, 45]
+    headers[1]["bbox"] = [550, 20, 650, 45]
+
+    result = _build(headers)
+
+    assert result["status"] == "MULTILEVEL_HEADER_LEAF_AXIS_BOUND_PROPOSAL_ONLY"
+    assert result["period_resolution_mode"].endswith(
+        "_REPEATED_TYPED_LEAF_SEQUENCE_LEADING_ANCHOR_PARTITION"
+    )
+    assert [
+        (leaf["period_parent_column_start"], leaf["period_parent_column_stop"])
+        for leaf in result["leaf_axis"]
+    ] == [(0, 2), (0, 2), (2, 4), (2, 4)]
+    assert (
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            result,
+            headers,
+            column_centers=_CENTERS,
+            page_width=1000,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+        == result
+    )
+
+    forged = copy.deepcopy(result)
+    forged["leaf_axis"][1]["period_parent_column_stop"] = 3
+    material = copy.deepcopy(forged)
+    material.pop("axis_id")
+    forged["axis_id"] = "amhlav1:axis:" + canonical_json_sha256_v1(material)
+    with pytest.raises(AccountingMultilevelHeaderLeafAxisV1Error):
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            forged,
+            headers,
+            column_centers=_CENTERS,
+            page_width=1000,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+
+
+def test_narrow_period_header_not_anchored_to_group_start_stays_unresolved() -> None:
+    headers = _headers()
+    headers[0]["bbox"] = [150, 20, 250, 45]
+    headers[1]["bbox"] = [750, 20, 850, 45]
+
+    result = _build(headers)
+
+    assert result["status"] == "UNRESOLVED_MULTILEVEL_HEADER_LEAF_AXIS"
+    assert result["leaf_axis"] == []
+
+
 def test_visual_canonicalization_is_provider_order_invariant() -> None:
     headers = _headers()
     expected = _build(headers)
