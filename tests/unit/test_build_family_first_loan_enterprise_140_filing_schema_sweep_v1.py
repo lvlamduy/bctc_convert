@@ -311,10 +311,14 @@ def test_column_gate_tries_two_and_four_lanes_and_accepts_only_one_resolved_layo
         unresolved["status"] = "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
         return unresolved
 
-    monkeypatch.setattr(sweep_v1.column_v1, "build_accounting_family_column_context_v1", build)
     monkeypatch.setattr(
-        sweep_v1.column_v1,
-        "validate_accounting_family_column_context_replay_v1",
+        sweep_v1.column_v2,
+        "build_accounting_family_column_context_multilevel_v2",
+        build,
+    )
+    monkeypatch.setattr(
+        sweep_v1.column_v2,
+        "validate_accounting_family_column_context_multilevel_replay_v2",
         lambda value, *_args, **_kwargs: value,
     )
 
