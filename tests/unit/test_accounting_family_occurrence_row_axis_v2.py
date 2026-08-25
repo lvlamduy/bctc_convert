@@ -2466,6 +2466,163 @@ def test_f3_one_edit_vnd_without_independent_exact_source_keeps_discount_ambiguo
     )
 
 
+def _exact_source_missing_term_foreign_fixture() -> list[dict[str, object]]:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "150", "130"),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "20", "10"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", "100", "90"),
+            ("Bằng ngoại lộ", "20", "20"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    foreign = next(line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng ngoại lộ")
+    foreign["numeric_recognition"]["raw_prediction"] = "Bằng ngoại tệ"
+    return pages
+
+
+def test_f3_exact_bound_source_recovers_one_absent_contextual_additive_leaf() -> None:
+    pages = _exact_source_missing_term_foreign_fixture()
+    spec = _f3_spec()
+    topology_pages = row_v1._topology_pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(topology_pages, spec)
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        topology_pages, spec, candidates, candidates["regions"][0]
+    )
+
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        spec,
+        scan,
+        candidates["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=binding["effective_topology_region"],
+        topology_candidates=candidates,
+    )
+
+    foreign = next(
+        item for item in axis["role_occurrences"] if item["role"] == "TERM_DEPOSIT_FOREIGN_CURRENCY"
+    )
+    owner = next(item for item in axis["role_occurrences"] if item["role"] == "TERM_DEPOSIT_GROUP")
+    assert foreign["label_match"]["match_kind"] == (
+        "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+    )
+    assert foreign["label_match"]["surface"] == "Bằng ngoại tệ"
+    assert foreign["scope_owner_occurrence_id"] == owner["occurrence_id"]
+    assert foreign["retrieval_occurrence_id"] == foreign["occurrence_id"]
+    row = next(
+        row for row in axis["row_axis"]["rows"] if row["role"] == "TERM_DEPOSIT_FOREIGN_CURRENCY"
+    )
+    assert [value["parsed_token"]["coefficient"] for value in row["values"]] == [20, 20]
+    assert not any(
+        check.get("role") == "TERM_DEPOSIT_FOREIGN_CURRENCY"
+        for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
+    )
+    subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+        axis,
+        pages,
+        spec,
+        scan,
+        candidates["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=binding["effective_topology_region"],
+        topology_candidates=candidates,
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "SOURCE_NOT_EXACT",
+        "ONE_EDIT_RETRIEVAL_EXISTS",
+        "OWNER_NOT_RETRIEVED_EXACTLY",
+        "NO_SAME_ROW_NUMERIC",
+        "REPEATED_SOURCE_CHALLENGER",
+    ],
+)
+def test_f3_bound_source_challenger_fails_closed_on_ambiguous_or_incomplete_shape(
+    mutation: str,
+) -> None:
+    pages = _exact_source_missing_term_foreign_fixture()
+    foreign = next(line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng ngoại lộ")
+    if mutation == "SOURCE_NOT_EXACT":
+        foreign["numeric_recognition"]["raw_prediction"] = "Bằng ngoại hế"
+    elif mutation == "ONE_EDIT_RETRIEVAL_EXISTS":
+        foreign["vietocr_text"] = "Bằng ngoại tệx"
+    elif mutation == "OWNER_NOT_RETRIEVED_EXACTLY":
+        owner = next(
+            line for line in pages[0]["lines"] if line["vietocr_text"] == "Tiền gửi có kỳ hạn"
+        )
+        owner["vietocr_text"] = "Tiền gửi có kỳ hạx"
+        owner["numeric_recognition"]["raw_prediction"] = "Tiền gửi có kỳ hạn"
+    elif mutation == "NO_SAME_ROW_NUMERIC":
+        label_ordinal = foreign["line_ordinal"]
+        for line in pages[0]["lines"]:
+            if line["line_ordinal"] in {label_ordinal + 1, label_ordinal + 2}:
+                line["vietocr_text"] = ""
+                line["numeric_recognition"]["raw_prediction"] = ""
+    elif mutation == "REPEATED_SOURCE_CHALLENGER":
+        lines = pages[0]["lines"]
+        insertion = foreign["line_ordinal"] + 3
+        top = foreign["bbox"][1] + 21
+        lines[insertion:insertion] = [
+            _line(900, "Bằng ngoại lộ", "Bằng ngoại tệ", [290, top, 470, top + 20]),
+            _line(901, "1", "1", [610, top, 700, top + 20]),
+            _line(902, "1", "1", [810, top, 900, top + 20]),
+        ]
+        _reindex_page_lines(lines)
+
+    _scan, axis = _build_f3(pages)
+    challenged = [
+        item
+        for item in axis["role_occurrences"]
+        if item["label_match"]["match_kind"]
+        == "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+    ]
+    assert not any(item["role"] == "TERM_DEPOSIT_FOREIGN_CURRENCY" for item in challenged)
+
+
+def test_f3_bound_source_challenger_never_admits_context_free_compound_or_bad_crop() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Tiền gửi có kỳ hạn bằng ngoại lộ", "20", "20"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    compound = next(
+        line
+        for line in pages[0]["lines"]
+        if line["vietocr_text"] == "Tiền gửi có kỳ hạn bằng ngoại lộ"
+    )
+    compound["numeric_recognition"]["raw_prediction"] = "Tiền gửi có kỳ hạn bằng ngoại tệ"
+    _scan, axis = _build_f3(pages)
+    assert not any(
+        item["label_match"]["match_kind"] == "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+        for item in axis["role_occurrences"]
+    )
+
+    del compound["crop_ref"]
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="shared input contract drifted",
+    ):
+        _build_f3(pages)
+
+
 @pytest.mark.parametrize(
     "intervening_label",
     ["Khác", "Dự phòng rủi ro cho vay các TCTD khác"],

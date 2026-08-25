@@ -61,6 +61,8 @@ FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_V2"
 POLICY_FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1"
 CLAIM_BOUNDARY = (
     "EXACT_SELECTED_TOPOLOGY_REGION_CONTEXT_BOUND_ROLE_OCCURRENCE_EXPANSION_"
+    "UNIQUE_EXACT_BOUND_SOURCE_CONTEXTUAL_ADDITIVE_CHALLENGER_UNDER_SELECTED_"
+    "EXACT_STRUCTURAL_OWNER_"
     "SEALED_V1_ROW_GEOMETRY_AUTHENTICATED_EXISTING_CELL_PIXEL_DASH_GATE_AND_"
     "AUTHENTICATED_V4_UNIQUE_MATERIAL_DASH_PLUS_ISOLATED_TINY_SCAN_SPECK_GATE_"
     "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_AND_REVIEWED_EXACT_"
@@ -71,6 +73,11 @@ CLAIM_BOUNDARY = (
 _SAFETY = {
     "accounting_authority": False,
     "bank_file_page_period_scope_used_for_routing": False,
+    "bound_source_challenger_may_create_structural_owner": False,
+    "bound_source_challenger_requires_exact_retrieved_structural_owner": True,
+    "bound_source_challenger_requires_exact_recursive_owner_chain": True,
+    "bound_source_challenger_requires_otherwise_absent_contextual_additive_role": True,
+    "bound_source_challenger_requires_unique_declared_alias_and_physical_row": True,
     "detector_hole_dash_authority_changed": False,
     "detector_hole_unique_dash_speck_requires_exact_occurrence_parent_lane": True,
     "existing_dash_text_alone_means_zero": False,
@@ -85,6 +92,7 @@ _SAFETY = {
     "schema_role_typing_requires_exact_source_scope_receipt": True,
     "sealed_row_axis_v1_bytes_changed": False,
     "split_dash_glyph_authority": False,
+    "source_channel_can_participate_in_topology_retrieval": False,
     "visible_existing_dash_requires_authenticated_exact_cell_pixels": True,
 }
 _POLICY_FIELDS = {
@@ -189,6 +197,9 @@ _ONE_EDIT_AUTHORITY_BOUND_STATUSES = {
     _ONE_EDIT_COMPLEMENTARY_BOUND_STATUS,
     _ONE_EDIT_EXACT_BOUND_STATUS,
 }
+_EXACT_BOUND_SOURCE_CONTEXT_CHALLENGER_MATCH_KIND = (
+    "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+)
 _DISCOUNT_GENERIC_ROLE = "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
 _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_VND": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
@@ -2436,6 +2447,230 @@ def _one_edit_exact_source_structural_proofs_v2(
         if type(check) is dict and check["status"] in _ONE_EDIT_AUTHORITY_BOUND_STATUSES:
             match["one_edit_exact_source_authority_check"] = canonical_clone_v1(check)
     return receipt, decorated
+
+
+def _project_exact_bound_source_context_challengers_v1(
+    pages: Sequence[Mapping[str, Any]],
+    compiled_family: Mapping[str, Any],
+    selected_region: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Recover one otherwise absent exact-PP contextual additive row.
+
+    V4 topology retrieval is intentionally VietOCR-only.  The sealed topology
+    matcher nevertheless has a stricter, existing source-channel match kind:
+    it uses PP-OCR only when VietOCR does not match and the bound PP surface is
+    an exact declared alias.  Ordinarily that challenger is useful only while
+    auditing a retrieved occurrence.  A filing can instead lose the entire
+    leaf when VietOCR is more than one edit from the alias.
+
+    This post-retrieval projector admits that existing exact challenger only
+    for an otherwise absent contextual additive role under the *same physical
+    structural owner already selected exactly by VietOCR*.  It does not admit
+    parents, totals, context-free aliases, wrapped labels, repeated candidates,
+    owner substitutions, or rows without visible same-row numeric evidence.
+    Accounting closure remains downstream and supplies no authority here.
+    """
+
+    start = selected_region["cluster_start_document_line_ordinal"]
+    stop = selected_region["cluster_end_document_line_ordinal_exclusive"]
+    topology_pages = [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "source_line_index": line["line_ordinal"],
+                    "source_text": line["numeric_recognition"]["raw_prediction"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in pages
+    ]
+    try:
+        parsed_source_pages = topology_v1._pages(topology_pages)  # noqa: SLF001
+        source_hits, _line_axis, _page_axis = topology_v1._document_hits(  # noqa: SLF001
+            parsed_source_pages,
+            compiled_family,
+        )
+        source_records = topology_v1._child_records_in_range(  # noqa: SLF001
+            source_hits["children"],
+            compiled_family,
+            retain_all_occurrences=True,
+            start=start,
+            stop=stop,
+        )
+    except topology_v1.AccountingFamilyTopologyV1Error as exc:
+        raise _error("bound-source contextual challenger replay failed") from exc
+
+    definition_by_role = {child["role"]: child for child in compiled_family["children"]}
+    original_roles = {match["role"] for match in matches}
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    match_by_occurrence_id = {match["occurrence_id"]: match for match in matches}
+
+    def has_exact_recursive_owner_chain(owner: Mapping[str, Any]) -> bool:
+        cursor = owner
+        visited: set[str] = set()
+        while cursor.get("scope_owner_role") is not None:
+            parent_id = cursor.get("scope_owner_occurrence_id")
+            if type(parent_id) is not str or parent_id in visited:
+                return False
+            visited.add(parent_id)
+            parent = match_by_occurrence_id.get(parent_id)
+            if (
+                parent is None
+                or parent["role"] != cursor["scope_owner_role"]
+                or not str(parent["match_kind"]).startswith("EXACT_")
+            ):
+                return False
+            cursor = parent
+        return True
+
+    def physical_signature(item: Mapping[str, Any]) -> tuple[Any, ...]:
+        explicit_indices = item.get("source_line_indices")
+        return (
+            item["role"],
+            item["page_sequence"],
+            item["document_line_ordinal"],
+            item["end_document_line_ordinal"],
+            item["source_line_index"],
+            item["end_source_line_index"],
+            tuple(explicit_indices) if type(explicit_indices) is list else None,
+        )
+
+    original_physical_signatures = {physical_signature(match) for match in matches}
+
+    def visual_position(hit: Mapping[str, Any]) -> tuple[int, float]:
+        bbox = hit["_bbox"]
+        return hit["page_sequence"], (bbox[1] + bbox[3]) / 2
+
+    def precedes(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+        return visual_position(left) < visual_position(right)
+
+    eligible: list[tuple[dict[str, Any], Mapping[str, Any]]] = []
+    for record in source_records:
+        within_role = record.get("matched_within_role")
+        definition = definition_by_role[record["role"]]
+        if (
+            record["match_kind"] != _EXACT_BOUND_SOURCE_CONTEXT_CHALLENGER_MATCH_KIND
+            or definition["role_kind"] != "ADDITIVE_CHILD"
+            or type(within_role) is not str
+            or not within_role
+            or record["role"] in original_roles
+            or record["document_line_ordinal"] != record["end_document_line_ordinal"]
+            or record["source_line_index"] != record["end_source_line_index"]
+            or "source_line_indices" in record
+            or physical_signature(record) in original_physical_signatures
+        ):
+            continue
+        page = page_by_sequence.get(record["page_sequence"])
+        source_index = record["source_line_index"]
+        if type(page) is not dict or not 0 <= source_index < len(page["lines"]):
+            continue
+        line = page["lines"][source_index]
+        source_surface = line["numeric_recognition"]["raw_prediction"]
+        alias_pointers = [
+            (child["role"], matcher_ordinal, alias_ordinal)
+            for child in compiled_family["children"]
+            for matcher_ordinal, matcher in enumerate(child["matchers"])
+            if matcher["within_role"] == within_role
+            for alias_ordinal, alias in enumerate(matcher["aliases"])
+            if alias == record["normalized_surface"]
+        ]
+        if (
+            len(alias_pointers) != 1
+            or alias_pointers[0][0] != record["role"]
+            or source_surface != record["surface"]
+            or normalize_vietnamese_anchor_v1(source_surface) != record["normalized_surface"]
+            or type(line.get("crop_ref")) is not dict
+            or type(line.get("sample_id")) is not str
+            or not line["sample_id"]
+            or not _same_row_numeric_samples(pages, record)
+        ):
+            continue
+        raw_hits = [
+            hit
+            for hit in source_hits["children"][record["role"]]
+            if hit.get("_within_role") == within_role
+            and hit["match_kind"] == record["match_kind"]
+            and hit["document_line_ordinal"] == record["document_line_ordinal"]
+            and hit["end_document_line_ordinal"] == record["end_document_line_ordinal"]
+            and hit["source_line_index"] == record["source_line_index"]
+            and hit["end_source_line_index"] == record["end_source_line_index"]
+        ]
+        if len(raw_hits) != 1:
+            continue
+        hit = raw_hits[0]
+        source_contexts = [
+            owner_hit
+            for owner_hit in source_hits["children"].get(within_role, [])
+            if start < owner_hit["document_line_ordinal"] < stop and precedes(owner_hit, hit)
+        ]
+        if not source_contexts:
+            continue
+        source_owner = max(source_contexts, key=visual_position)
+        original_owners = [
+            owner
+            for owner in matches
+            if owner["role"] == within_role
+            and owner["role_kind"] == "STRUCTURAL_GROUP"
+            and str(owner["match_kind"]).startswith("EXACT_")
+            and owner["page_sequence"] == source_owner["page_sequence"]
+            and owner["document_line_ordinal"] == source_owner["document_line_ordinal"]
+            and owner["end_document_line_ordinal"] == source_owner["end_document_line_ordinal"]
+            and owner["source_line_index"] == source_owner["source_line_index"]
+            and owner["end_source_line_index"] == source_owner["end_source_line_index"]
+        ]
+        if len(original_owners) != 1 or not has_exact_recursive_owner_chain(original_owners[0]):
+            continue
+        eligible.append((canonical_clone_v1(record), original_owners[0]))
+
+    # More than one source-only physical row for the same otherwise absent role
+    # is an ownership ambiguity, not an occurrence-expansion opportunity.
+    by_role: dict[str, list[tuple[dict[str, Any], Mapping[str, Any]]]] = {}
+    for item in eligible:
+        by_role.setdefault(item[0]["role"], []).append(item)
+    admitted = [items[0] for items in by_role.values() if len(items) == 1]
+    if not admitted:
+        return [canonical_clone_v1(match) for match in matches]
+
+    undecorated = []
+    for match in matches:
+        raw = canonical_clone_v1(match)
+        raw.pop("occurrence_id", None)
+        raw.pop("scope_owner_occurrence_id", None)
+        raw.pop("scope_owner_role", None)
+        undecorated.append(raw)
+    admitted_signatures: dict[tuple[Any, ...], Mapping[str, Any]] = {}
+    for challenger, owner in admitted:
+        challenger["role_occurrence_ordinal"] = 0
+        challenger["source_label_bbox"] = _source_line_bbox(pages, challenger)
+        challenger["retrieval_role"] = challenger["role"]
+        challenger["retrieval_role_kind"] = challenger["role_kind"]
+        challenger["retrieval_role_occurrence_ordinal"] = 0
+        challenger["retrieval_within_role"] = challenger["matched_within_role"]
+        admitted_signatures[physical_signature(challenger)] = owner
+        undecorated.append(challenger)
+    undecorated.sort(
+        key=lambda item: (
+            item["document_line_ordinal"],
+            item["end_document_line_ordinal"],
+            item["preferred_ordinal"],
+            item["role"],
+        )
+    )
+    decorated = _decorate_scopes(undecorated, selected_region)
+    for match in decorated:
+        owner = admitted_signatures.get(physical_signature(match))
+        if owner is None:
+            continue
+        if match["scope_owner_occurrence_id"] != owner["occurrence_id"]:
+            raise _error("bound-source challenger changed its exact structural owner")
+        match["retrieval_occurrence_id"] = match["occurrence_id"]
+        match["retrieval_scope_owner_occurrence_id"] = match["scope_owner_occurrence_id"]
+    return decorated
 
 
 def _local_page_sequence(selected_pages: Sequence[int], physical_page: int) -> int:
@@ -6673,6 +6908,12 @@ def _build(
             expected_effective,
             expanded_matches,
         )
+    )
+    expanded_matches = _project_exact_bound_source_context_challengers_v1(
+        parsed_pages,
+        compiled_family,
+        selected_region,
+        expanded_matches,
     )
     expanded_matches = _project_reviewed_schema_source_scopes(
         parsed_pages,
