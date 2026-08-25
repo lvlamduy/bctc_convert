@@ -3,7 +3,8 @@
 V1 remains byte-for-byte sealed.  This wrapper always builds V1 first and
 returns that exact result unless all of the following hold: V1 is unresolved,
 the caller declared ``BALANCE_COMPARATIVE``, the lane kinds are mixed, and one
-header band after the active explicit parent and before the first body row is
+header band after the active explicit parent, or after one exact contextual
+subgroup on the immediately following page, and before the first body row is
 fully proved by the shared multi-level leaf projector.
 
 The projected V2 context keeps the V1 consumer field shape.  Currency and
@@ -43,7 +44,8 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_FAMILY_COLUMN_CONTEXT_MULTILEVEL_V2"
 CLAIM_BOUNDARY = (
-    "EXACT_V1_FIRST_THEN_ACTIVE_PARENT_RESET_FENCED_TWO_PERIOD_MULTI_LEVEL_"
+    "EXACT_V1_FIRST_THEN_ACTIVE_PARENT_OR_EXACT_CONTEXTUAL_NEXT_PAGE_RESET_"
+    "FENCED_TWO_PERIOD_MULTI_LEVEL_"
     "MIXED_MONEY_PERCENT_HEADER_LEAF_PROJECTION_WITH_EXISTING_V1_UNIT_GATE_"
     "PROPOSAL_ONLY_NO_NUMERIC_ACCOUNTING_POPULATION_SCHEMA_MAPPING_"
     "CANONICALIZATION_OR_EXPORT_AUTHORITY"
@@ -52,7 +54,7 @@ _SAFETY = {
     "active_explicit_parent_and_cluster_fence_required": True,
     "bank_file_note_page_or_fixed_year_used_for_routing": False,
     "baseline_local_unit_axis_reused_without_active_fence": False,
-    "cross_page_continuation_fallback_allowed": False,
+    "cross_page_continuation_fallback_allowed": True,
     "currency_or_magnitude_inferred_from_money_leaf_kind": False,
     "mapping_authority": False,
     "mixed_balance_comparative_fallback_only": True,
@@ -65,6 +67,11 @@ _SAFETY = {
 _FALLBACK_ELIGIBLE_V1_REASONS = {
     "PERIOD_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN",
     "UNIT_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN",
+}
+_CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS = {
+    *_FALLBACK_ELIGIBLE_V1_REASONS,
+    "CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN",
+    "LOCAL_HEADER_REGION_UNRESOLVED",
 }
 PINNED_IMPLEMENTATION_REFS = {
     "sealed_column_context_v1": {
@@ -199,7 +206,16 @@ def _fenced_header_lines(
     if header_owner is None:
         return None
     header_page = first_body["page_sequence"]
-    if parent["page_sequence"] != header_page:
+    contextual_owner = header_owner is not parent
+    if contextual_owner and not _contextual_header_owner_covers_value_rows(
+        header_owner,
+        value_rows,
+        header_page,
+    ):
+        return None
+    if parent["page_sequence"] != header_page and (
+        not contextual_owner or region["continuation_page_count"] != 1
+    ):
         return None
     start = max(
         region["cluster_start_document_line_ordinal"],
@@ -256,6 +272,32 @@ def _fenced_header_lines(
     if not selected or _contains_parent_or_reset_fence(selected, family_topology_spec):
         return None
     return selected, header_page
+
+
+def _contextual_header_owner_covers_value_rows(
+    owner: Mapping[str, Any],
+    value_rows: Sequence[Mapping[str, Any]],
+    header_page: int,
+) -> bool:
+    """Require every valued row to replay under one exact local subgroup."""
+
+    role = owner.get("role")
+    if type(role) is not str or not role:
+        return False
+    occurrence_id = owner.get("occurrence_id")
+    for row in value_rows:
+        label = row["label_match"]
+        if label.get("page_sequence") != header_page or label.get("matched_within_role") != role:
+            return False
+        scope_owner_id = label.get("scope_owner_occurrence_id")
+        if scope_owner_id is not None and (
+            type(scope_owner_id) is not str
+            or not scope_owner_id
+            or type(occurrence_id) is not str
+            or occurrence_id != scope_owner_id
+        ):
+            return False
+    return True
 
 
 def _active_header_owner(
@@ -628,7 +670,6 @@ def _build_accounting_family_column_context_multilevel_v2(
         or type(expected_lane_unit_kinds) is not list
         or set(expected_lane_unit_kinds) != {"MONEY", "PERCENT"}
         or not baseline["unresolved_reasons"]
-        or not set(baseline["unresolved_reasons"]).issubset(_FALLBACK_ELIGIBLE_V1_REASONS)
     ):
         return baseline
     _validate_pinned_implementation_refs()
@@ -638,7 +679,7 @@ def _build_accounting_family_column_context_multilevel_v2(
     except row_axis_v1.AccountingFamilyRowAxisV1Error as exc:
         raise _error("multilevel V2 row-axis handoff drifted after V1 replay") from exc
     region = axis["topology_region"]
-    if type(region) is not dict or region["continuation_page_count"] != 0:
+    if type(region) is not dict or region["continuation_page_count"] not in {0, 1}:
         return baseline
     centers = column_v1._lane_centers(axis)
     if centers is None or len(centers) != len(expected_lane_unit_kinds):
@@ -647,6 +688,14 @@ def _build_accounting_family_column_context_multilevel_v2(
     if header is None:
         return baseline
     header_lines, header_page = header
+    parent_page = region["parent_match"]["page_sequence"]
+    eligible_reasons = (
+        _FALLBACK_ELIGIBLE_V1_REASONS
+        if parent_page == header_page
+        else _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS
+    )
+    if not set(baseline["unresolved_reasons"]).issubset(eligible_reasons):
+        return baseline
     page_width = next(
         page["page_width"] for page in parsed_pages if page["page_sequence"] == header_page
     )

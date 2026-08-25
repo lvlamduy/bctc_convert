@@ -42,6 +42,8 @@ _BRANCH_ALIASES = [
     "Theo loại hình doanh nghiệp",
     "Loại hình doanh nghiệp",
     "Phân loại dư nợ cho vay theo loại hình doanh nghiệp",
+    "Phân tích dư nợ theo loại hình doanh nghiệp",
+    "Phân tích dư nợ theo loại hình doanh nghiệp như sau",
     "Phân tích cho vay khách hàng theo loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay theo loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay khách hàng theo loại hình doanh nghiệp",

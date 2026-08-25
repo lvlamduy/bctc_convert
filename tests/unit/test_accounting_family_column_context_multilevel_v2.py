@@ -336,6 +336,54 @@ def _nested_owner_pages() -> list[dict[str, object]]:
     ]
 
 
+def _cross_page_nested_owner_pages() -> list[dict[str, object]]:
+    first = [
+        ("Cho vay khách hàng", "", [20, 20, 430, 42]),
+        ("Lãi suất cho vay", "", [20, 70, 430, 92]),
+        ("31/12/2025", "", [480, 100, 680, 122]),
+        ("31/12/2024", "", [720, 100, 920, 122]),
+    ]
+    second = [
+        ("Theo loại hình doanh nghiệp", "", [20, 20, 430, 42]),
+        ("Đơn vị: Triệu đồng", "", [480, 48, 920, 68]),
+        ("31/12/2025", "", [480, 74, 680, 96]),
+        ("31/12/2024", "", [720, 74, 920, 96]),
+        ("Giá trị", "", [480, 102, 560, 124]),
+        ("%", "", [600, 102, 680, 124]),
+        ("Giá trị", "", [720, 102, 800, 124]),
+        ("%", "", [840, 102, 920, 124]),
+        ("Doanh nghiệp nhà nước", "", [40, 150, 360, 172]),
+        ("100", "100", [480, 150, 560, 172]),
+        ("60", "60", [600, 150, 680, 172]),
+        ("90", "90", [720, 150, 800, 172]),
+        ("55", "55", [840, 150, 920, 172]),
+        ("Công ty TNHH", "", [40, 195, 360, 217]),
+        ("200", "200", [480, 195, 560, 217]),
+        ("40", "40", [600, 195, 680, 217]),
+        ("180", "180", [720, 195, 800, 217]),
+        ("45", "45", [840, 195, 920, 217]),
+        ("Phân tích theo ngành nghề", "", [20, 250, 430, 272]),
+    ]
+    return [
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=1)
+                for ordinal, (text, numeric, bbox) in enumerate(first)
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        },
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=2)
+                for ordinal, (text, numeric, bbox) in enumerate(second)
+            ],
+            "page_sequence": 2,
+            "page_width": 1000,
+        },
+    ]
+
+
 def _axis(pages: list[dict[str, object]]) -> dict[str, object]:
     return row_axis_v1.build_accounting_family_row_axis_v1(pages, _spec())
 
@@ -549,6 +597,81 @@ def test_contextual_structural_owner_fences_out_preceding_sibling_table_header()
         "31/12/2024",
         "31/12/2024",
     ]
+
+
+def test_exact_cross_page_contextual_owner_projects_only_its_local_header() -> None:
+    pages = _cross_page_nested_owner_pages()
+    spec = _nested_spec()
+    spec["limits"]["max_continuation_pages"] = 1
+    axis = row_axis_v1.build_accounting_family_row_axis_v1(pages, spec)
+
+    assert axis["topology_region"]["continuation_page_count"] == 1
+    owner = next(
+        match
+        for match in axis["topology_region"]["child_matches"]
+        if match["role"] == "ENTERPRISE_TYPE_BRANCH"
+    )
+    assert owner["page_sequence"] == 2
+    assert all(
+        row["label_match"]["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+        for row in axis["rows"]
+        if row["values"]
+    )
+
+    result = build_accounting_family_column_context_multilevel_v2(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=_KINDS,
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert {item["evidence_locations"][0]["page_sequence"] for item in result["period_axis"]} == {2}
+    assert (
+        validate_accounting_family_column_context_multilevel_replay_v2(
+            result,
+            axis,
+            pages,
+            spec,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=_KINDS,
+        )
+        == result
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["duplicate", "nonexact", "mixed_owner", "not_next_page"],
+)
+def test_cross_page_contextual_header_abstains_without_one_exact_shared_owner(
+    mutation: str,
+) -> None:
+    pages = _cross_page_nested_owner_pages()
+    spec = _nested_spec()
+    spec["limits"]["max_continuation_pages"] = 1
+    axis = row_axis_v1.build_accounting_family_row_axis_v1(pages, spec)
+    owner = next(
+        match
+        for match in axis["topology_region"]["child_matches"]
+        if match["role"] == "ENTERPRISE_TYPE_BRANCH"
+    )
+    if mutation == "duplicate":
+        axis["topology_region"]["child_matches"].append(copy.deepcopy(owner))
+    elif mutation == "nonexact":
+        owner["match_kind"] = "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    elif mutation == "mixed_owner":
+        next(row for row in axis["rows"] if row["values"])["label_match"]["matched_within_role"] = (
+            None
+        )
+    else:
+        axis["topology_region"]["continuation_page_count"] = 0
+    parsed = row_axis_v1._pages(pages)
+    centers = v2.column_v1._lane_centers(axis)
+
+    assert centers is not None
+    assert v2._fenced_header_lines(axis, parsed, spec, centers) is None
 
 
 @pytest.mark.parametrize("mutation", ["duplicate", "wrong_page", "nonexact", "owner_mismatch"])
