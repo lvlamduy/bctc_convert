@@ -76,9 +76,9 @@ Trạng thái:
   dòng. Header và source-only numeric denominator của contextual child table
   được fence từ một exact structural owner chung của các additive row, không từ
   outer note parent nếu giữa hai scope còn sibling table; mixed/nonexact owner
-  thì abstain. Nếu contextual subgroup nằm đúng trang kế tiếp outer parent, chỉ
-  header local giữa exact subgroup và valued row đầu tiên mới được project;
-  continuation thường, owner không đồng nhất hoặc xa hơn một trang vẫn
+  thì abstain. Nếu contextual subgroup nằm cùng hoặc đúng trang kế tiếp outer
+  parent, chỉ header local giữa exact subgroup và valued row đầu tiên mới được
+  project; continuation thường, owner không đồng nhất hoặc xa hơn một trang vẫn
   unresolved. Header ngày tiếng Việt bị OCR tách dòng
   chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
   có exact one-lane intersection anchor và hai nhóm typed leaf lặp lại tạo một

@@ -407,6 +407,47 @@ def _cross_page_nested_money_owner_pages() -> list[dict[str, object]]:
     return pages
 
 
+def _same_page_nested_money_owner_pages() -> list[dict[str, object]]:
+    lines = [
+        ("Cho vay khách hàng", "", [20, 20, 430, 42]),
+        ("Lãi suất cho vay", "", [20, 70, 430, 92]),
+        ("Theo loại hình doanh nghiệp", "", [20, 150, 430, 172]),
+        ("31/12/2025", "", [480, 204, 680, 226]),
+        ("31/12/2024", "", [720, 204, 920, 226]),
+        ("Triệu đồng", "", [480, 232, 560, 254]),
+        ("Triệu đồng", "", [720, 232, 800, 254]),
+        ("Doanh nghiệp nhà nước", "", [40, 280, 360, 302]),
+        ("100", "100", [480, 280, 560, 302]),
+        ("90", "90", [720, 280, 800, 302]),
+        ("Công ty TNHH", "", [40, 325, 360, 347]),
+        ("200", "200", [480, 325, 560, 347]),
+        ("180", "180", [720, 325, 800, 347]),
+    ]
+    repeated_document_context = [
+        ("31/12/2025", "", [480, 20, 680, 42]),
+        ("31/12/2024", "", [720, 20, 920, 42]),
+        ("Phân tích theo ngành nghề", "", [20, 70, 430, 92]),
+    ]
+    return [
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=1)
+                for ordinal, (text, numeric, bbox) in enumerate(lines)
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        },
+        {
+            "lines": [
+                _line(ordinal, text, numeric, bbox, page=2)
+                for ordinal, (text, numeric, bbox) in enumerate(repeated_document_context)
+            ],
+            "page_sequence": 2,
+            "page_width": 1000,
+        },
+    ]
+
+
 def _axis(pages: list[dict[str, object]]) -> dict[str, object]:
     return row_axis_v1.build_accounting_family_row_axis_v1(pages, _spec())
 
@@ -685,6 +726,36 @@ def test_exact_cross_page_contextual_owner_projects_two_money_lanes() -> None:
         "31/12/2025",
         "31/12/2024",
     ]
+    assert (
+        validate_accounting_family_column_context_multilevel_replay_v2(
+            result,
+            axis,
+            pages,
+            spec,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=kinds,
+        )
+        == result
+    )
+
+
+def test_exact_same_page_contextual_owner_projects_two_money_lanes() -> None:
+    pages = _same_page_nested_money_owner_pages()
+    spec = _nested_spec()
+    kinds = ["MONEY", "MONEY"]
+    axis = row_axis_v1.build_accounting_family_row_axis_v1(pages, spec)
+
+    result = build_accounting_family_column_context_multilevel_v2(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=kinds,
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["unit_kind"] for item in result["unit_axis"]] == kinds
+    assert {item["evidence_locations"][0]["page_sequence"] for item in result["unit_axis"]} == {1}
     assert (
         validate_accounting_family_column_context_multilevel_replay_v2(
             result,

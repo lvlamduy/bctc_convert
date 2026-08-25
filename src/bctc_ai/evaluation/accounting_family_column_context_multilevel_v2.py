@@ -4,8 +4,8 @@ V1 remains byte-for-byte sealed.  This wrapper always builds V1 first and
 returns that exact result unless all of the following hold: V1 is unresolved,
 the caller declared ``BALANCE_COMPARATIVE``, the lane kinds are mixed, and one
 header band after the active explicit parent, or after one exact contextual
-subgroup on the immediately following page, and before the first body row is
-fully proved by the shared multi-level leaf projector.
+subgroup on the same/immediately following page, and before the first body row
+is fully proved by the shared multi-level leaf projector.
 
 The projected V2 context keeps the V1 consumer field shape.  Currency and
 magnitude still come from V1's existing local/document unit gate; the leaf
@@ -44,7 +44,7 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_FAMILY_COLUMN_CONTEXT_MULTILEVEL_V2"
 CLAIM_BOUNDARY = (
-    "EXACT_V1_FIRST_THEN_ACTIVE_PARENT_OR_EXACT_CONTEXTUAL_NEXT_PAGE_RESET_"
+    "EXACT_V1_FIRST_THEN_ACTIVE_PARENT_OR_EXACT_CONTEXTUAL_SAME_OR_NEXT_PAGE_RESET_"
     "FENCED_TWO_PERIOD_MULTI_LEVEL_MIXED_OR_CONTEXTUAL_MONEY_HEADER_LEAF_"
     "PROJECTION_WITH_EXISTING_V1_UNIT_GATE_"
     "PROPOSAL_ONLY_NO_NUMERIC_ACCOUNTING_POPULATION_SCHEMA_MAPPING_"
@@ -71,6 +71,10 @@ _FALLBACK_ELIGIBLE_V1_REASONS = {
 _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS = {
     *_FALLBACK_ELIGIBLE_V1_REASONS,
     "CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN",
+    "LOCAL_HEADER_REGION_UNRESOLVED",
+}
+_CONTEXTUAL_SAME_PAGE_ELIGIBLE_V1_REASONS = {
+    *_FALLBACK_ELIGIBLE_V1_REASONS,
     "LOCAL_HEADER_REGION_UNRESOLVED",
 }
 PINNED_IMPLEMENTATION_REFS = {
@@ -689,17 +693,36 @@ def _build_accounting_family_column_context_multilevel_v2(
     if header is None:
         return baseline
     header_lines, header_page = header
-    parent_page = region["parent_match"]["page_sequence"]
+    parent = region["parent_match"]
+    parent_page = parent["page_sequence"]
     contextual_next_page = parent_page != header_page
-    if (not contextual_next_page and set(expected_lane_unit_kinds) != {"MONEY", "PERCENT"}) or (
-        contextual_next_page
-        and set(expected_lane_unit_kinds) not in ({"MONEY"}, {"MONEY", "PERCENT"})
+    value_rows = [row for row in axis["rows"] if row["values"]]
+    first_body = min(
+        (row["label_match"] for row in value_rows),
+        key=lambda match: column_v1._visual_match_key(parsed_pages, match),
+    )
+    header_owner = _active_header_owner(region, parent, first_body)
+    contextual_owner = (
+        header_owner is not None
+        and header_owner is not parent
+        and _contextual_header_owner_covers_value_rows(
+            header_owner,
+            value_rows,
+            header_page,
+        )
+    )
+    if (not contextual_owner and set(expected_lane_unit_kinds) != {"MONEY", "PERCENT"}) or (
+        contextual_owner and set(expected_lane_unit_kinds) not in ({"MONEY"}, {"MONEY", "PERCENT"})
     ):
         return baseline
     eligible_reasons = (
-        _FALLBACK_ELIGIBLE_V1_REASONS
-        if not contextual_next_page
-        else _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS
+        _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS
+        if contextual_next_page
+        else (
+            _CONTEXTUAL_SAME_PAGE_ELIGIBLE_V1_REASONS
+            if contextual_owner
+            else _FALLBACK_ELIGIBLE_V1_REASONS
+        )
     )
     if not set(baseline["unresolved_reasons"]).issubset(eligible_reasons):
         return baseline

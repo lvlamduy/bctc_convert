@@ -18,7 +18,8 @@
             "Phân tích dư nợ cho vay khách hàng theo đối tượng và loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
-            "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp"
+            "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
+            "Theo đối tượng khách hàng"
           ],
           "within_role": null
         }

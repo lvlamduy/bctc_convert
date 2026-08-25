@@ -501,7 +501,16 @@ _TOPOLOGY_CHILDREN = [
     {
         "matchers": [
             {
-                "aliases": _distinct_aliases(_BRANCH_ALIASES),
+                "aliases": _distinct_aliases(
+                    [
+                        *_BRANCH_ALIASES,
+                        *[
+                            alias
+                            for component in _BRANCH_COMPONENTS
+                            for alias in component["aliases"]
+                        ],
+                    ]
+                ),
                 "within_role": None,
             }
         ],
