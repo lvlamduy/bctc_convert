@@ -4758,7 +4758,15 @@ def _trial_from_document_store_snapshot_v1(
         }
         for page in joined_pages
     ]
-    source_exact_axis_cache: dict[tuple[str, str], Any] = {}
+    if _v4_runtime_context is None:
+        source_exact_axis_cache: dict[tuple[str, str], Any] = {}
+    else:
+        source_exact_axis_cache = _v4_runtime_context.setdefault(
+            "source_exact_axis_cache",
+            {},
+        )
+        if type(source_exact_axis_cache) is not dict:
+            raise _error("V4 runtime one-edit source-axis cache shape drifted")
     candidates = _candidate_evidence_from_joined_pages(
         joined_pages=projected_pages,
         topology_scan=topology_scan,
