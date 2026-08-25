@@ -1831,6 +1831,10 @@ def _recursive_direct_component_support_is_exact(
     if type(result_occurrence) is not dict:
         return False
     result_match = _recursive_frontier_item_match(result_occurrence)
+    result_scope_owner_occurrence_id = result_occurrence.get(
+        "scope_owner_occurrence_id",
+        result_match.get("scope_owner_occurrence_id"),
+    )
 
     def coextensive(
         occurrence: Mapping[str, Any], owner: Mapping[str, Any]
@@ -1888,11 +1892,16 @@ def _recursive_direct_component_support_is_exact(
                 and belongs_to_exact_result(explicit_owner, visited)
             )
         if coextensive(occurrence, result_occurrence):
-            return role in direct_roles
+            return (
+                role in direct_roles
+                and owner_id == result_scope_owner_occurrence_id
+            )
         if result_role != "INTERBANK_DEPOSIT_GROUP":
             return False
         key = _visual_match_key(match)
         if not (result_key < key and (deposit_boundary is None or key < deposit_boundary)):
+            return False
+        if owner_id != result_scope_owner_occurrence_id:
             return False
         if role in direct_roles:
             return True

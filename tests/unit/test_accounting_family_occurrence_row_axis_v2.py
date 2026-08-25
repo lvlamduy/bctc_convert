@@ -4142,6 +4142,33 @@ def test_recursive_deposit_support_rejects_visual_child_with_wrong_structural_ow
         result_row=deposit_row,
     )
 
+    for field in (
+        "document_line_ordinal",
+        "end_document_line_ordinal",
+        "end_source_line_index",
+        "page_sequence",
+        "source_line_index",
+    ):
+        demand["label_match"][field] = deposit["label_match"][field]
+    assert not subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="INTERBANK_DEPOSIT_GROUP",
+        result_row=deposit_row,
+    )
+
+    forged_owner_id = "aforav2:occurrence:" + "e" * 64
+    demand["scope_owner_occurrence_id"] = forged_owner_id
+    demand["label_match"]["scope_owner_occurrence_id"] = forged_owner_id
+    assert not subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="INTERBANK_DEPOSIT_GROUP",
+        result_row=deposit_row,
+    )
+
 
 def test_f3_root_provision_accepts_one_coextensive_roman_section_ordinal() -> None:
     pages = _f3_pages(
