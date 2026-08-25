@@ -3416,6 +3416,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     off_frontier_row: bool = False,
     partial_provision: bool = False,
     root_adjustment: bool = False,
+    same_role_group_sources: bool = False,
     trailing_detail_root: bool = False,
     wrong_provision_parent: bool = False,
 ) -> tuple[dict, dict]:
@@ -3598,17 +3599,23 @@ def _v4_visible_summary_and_correlated_detail_candidates(
             line_ordinal=80,
             role_kind="ADDITIVE_CHILD",
         ),
-        _v4_direct_visible_test_record(
-            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
-            deposit_axis,
-            line_ordinal=120,
-            role_kind="TOTAL",
-        ),
-        _v4_direct_visible_test_record(
-            "EXPLICIT_INTERBANK_LOAN_TOTAL",
-            loan_axis,
-            line_ordinal=90,
-            role_kind="TOTAL",
+        *(
+            []
+            if same_role_group_sources
+            else [
+                _v4_direct_visible_test_record(
+                    "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+                    deposit_axis,
+                    line_ordinal=120,
+                    role_kind="TOTAL",
+                ),
+                _v4_direct_visible_test_record(
+                    "EXPLICIT_INTERBANK_LOAN_TOTAL",
+                    loan_axis,
+                    line_ordinal=90,
+                    role_kind="TOTAL",
+                ),
+            ]
         ),
         _v4_direct_visible_test_record(
             "EXPLICIT_FAMILY_TOTAL",
@@ -3681,6 +3688,19 @@ def _v4_visible_summary_and_correlated_detail_candidates(
             resolution_kind="VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
         ),
     ]
+    if same_role_group_sources:
+        for role, coefficients, line_ordinal in (
+            (deposit, deposit_axis, 1),
+            (loan, loan_axis, 60),
+        ):
+            result = next(record for record in derived_records if record["role"] == role)
+            source = _v4_direct_visible_test_record(
+                role,
+                coefficients,
+                line_ordinal=line_ordinal,
+                role_kind="STRUCTURAL_GROUP",
+            )
+            result["source"] = source["source"]
     detail = {
         "additive_closure": {
             "equations": {
@@ -3747,6 +3767,7 @@ def _v4_visible_summary_and_correlated_detail_candidates(
         "INTERBANK_LOAN_VND": loan,
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
         provision: deposit if wrong_provision_parent else loan,
+        **({deposit: family, loan: family} if same_role_group_sources else {}),
         **({root_adjustment_role: family} if root_adjustment else {}),
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL": deposit,
         "EXPLICIT_INTERBANK_LOAN_TOTAL": loan,
@@ -3764,6 +3785,8 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     }
     records = {record["role"]: record for record in detail["additive_closure"]["resolved_roles"]}
     for role, alias in aliases.items():
+        if same_role_group_sources and role in {deposit, loan}:
+            continue
         records[role]["source"] = copy.deepcopy(records[alias]["source"])
     if trailing_detail_root:
         _v4_replace_visible_alias_with_trailing_result(
@@ -3812,6 +3835,7 @@ def test_v4_visible_summary_yields_to_unique_visible_correlated_exact_detail(
 def test_v4_visible_summary_yields_to_exact_richer_trailing_root_detail() -> None:
     summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
         root_adjustment=True,
+        same_role_group_sources=True,
         trailing_detail_root=True,
     )
 
@@ -3842,6 +3866,7 @@ def test_v4_trailing_root_detail_requires_one_exact_source_bound_receipt(
 ) -> None:
     summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
         root_adjustment=True,
+        same_role_group_sources=True,
         trailing_detail_root=True,
     )
     closure = detail["additive_closure"]
@@ -3912,6 +3937,7 @@ def test_v4_visible_correlated_detail_requires_one_exhaustive_direct_frontier(
         nested_discount=mutation == "NESTED_DISCOUNT",
         off_frontier_row=mutation == "OFF_FRONTIER",
         partial_provision=mutation == "PARTIAL",
+        same_role_group_sources=trailing_detail_root,
         trailing_detail_root=trailing_detail_root,
         wrong_provision_parent=mutation == "WRONG_PARENT",
     )

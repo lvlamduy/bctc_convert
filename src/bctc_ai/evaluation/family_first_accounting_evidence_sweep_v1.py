@@ -2523,9 +2523,15 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
             return False
 
         if source_role == role:
-            visible_record = record
             expected_parent = family_id if parent_role is None else parent_role
             expected_kind = source_record.get("role_kind")
+            visible_record = {
+                "component_roles": [],
+                "resolution_kind": "VISIBLE_SOURCE_ROLE",
+                "role": role,
+                "source": canonical_clone_v1(source),
+                "values": canonical_clone_v1(record.get("values")),
+            }
         else:
             if aliases.get(source_role) != role:
                 return False
