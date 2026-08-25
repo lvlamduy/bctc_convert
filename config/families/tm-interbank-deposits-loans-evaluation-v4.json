@@ -344,6 +344,15 @@
             "component_roles": [
               "INTERBANK_DEPOSIT_GROUP",
               "INTERBANK_LOAN_GROUP",
+              "INTERBANK_LOAN_PROVISION"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          },
+          {
+            "component_roles": [
+              "INTERBANK_DEPOSIT_GROUP",
+              "INTERBANK_LOAN_GROUP",
               "TOTAL_INTERBANK_PROVISION"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",

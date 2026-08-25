@@ -256,10 +256,10 @@ _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES = {
 }
 _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION = "LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION"
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_HIERARCHY_SPEC_SHA256 = (
-    "21dd1049f463dbac578b99f4623031f161f134ed97df2bc4e60effee11d506f6"
+    "462260f47b788d8d15967ad374ec4e637d649838eb8801037666c5a390c3bda3"
 )
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_EQUATION_SPEC_SHA256 = (
-    "f65af9cf8efab27a3f3444a1b6aa279bc37d3c512300b81456ffb98893f02e60"
+    "e34e4ad6ba255b3cc713e74d7c401cbb060a3ae0139178e191c38bb28c8a56ef"
 )
 _LOCAL_TRAILING_SUBGROUP_TRUSTED_COMPONENT_ROLE_SETS = (
     ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"),
@@ -395,7 +395,7 @@ def _local_trailing_subgroup_trusted_equation_spec() -> dict[str, Any]:
             "INTERBANK_LOAN_GROUP",
             "EXPLICIT_INTERBANK_LOAN_TOTAL",
         ],
-        "shared_component_roles": [],
+        "shared_component_roles": ["INTERBANK_LOAN_PROVISION"],
     }
 
 
@@ -470,7 +470,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "0a5edc682375d60f1f845ea1d61154c5114fd1077d1c72741c4941e6536982ce",
+        "sha256": "c4c3ec959d9a9f39f2708093eb7f16a000d17489f8aa274fc19099c4eab4b341",
         "size_bytes": 555_223,
     },
     "topology_v1": {
@@ -2279,7 +2279,11 @@ def _local_trailing_subgroup_subtotal_receipt(
     if len(additive_roles) != len(set(additive_roles)):
         return None
     additive_by_role = {occurrence["role"]: occurrence for occurrence in additive}
-    required_roles = set(additive_roles) - set(equation["shared_component_roles"])
+    # This selector proves the loan subtotal's own direct frontier.  A role
+    # shared with the family equation must still be consumed here when it is
+    # visibly inside this descendant interval; ancestor sharing only applies
+    # to the compact layout with a valued loan row and no exclusive children.
+    required_roles = set(additive_roles)
     applicable_alternatives = []
     for alternative_ordinal, alternative in enumerate(equation["component_role_alternatives"]):
         roles = list(alternative["component_roles"])
@@ -5446,7 +5450,7 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
             ]
         }
 
-    required_roles = set(additive_by_role) - set(trusted_equation["shared_component_roles"])
+    required_roles = set(additive_by_role)
     expected_alternatives = []
     for alternative_ordinal, alternative_spec in enumerate(
         trusted_equation["component_role_alternatives"]

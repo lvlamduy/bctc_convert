@@ -600,6 +600,7 @@ def _structural_group_cluster_assignments(
                 median((item["bbox"][1] + item["bbox"][3]) / 2 for item in cluster)
             )
             cluster_height = float(median(item["bbox"][3] - item["bbox"][1] for item in cluster))
+            cluster_bottom = max(item["bbox"][3] for item in cluster)
             cluster_lanes = {item["column_ordinal"] for item in cluster}
             residual_lanes = {
                 item["column_ordinal"]
@@ -620,10 +621,21 @@ def _structural_group_cluster_assignments(
                     for item in cluster
                 )
             )
+            child_top = child.get("_label_vertical_top")
+            valued_parent_cluster_precedes_or_touches_child = (
+                {item["sample_id"] for item in cluster} <= set(group_direct_by_sample)
+                and type(child_top) is float
+                # Half-open row geometry is directional: only a parent-owned
+                # cluster ending before (or exactly at) the following child
+                # label is preserved.  A cluster below the child must remain
+                # eligible for ordinary child-axis reassignment.
+                and cluster_bottom <= child_top
+            )
             if (
                 abs(cluster_center - child["_label_vertical_center"]) > cluster_height
                 or cluster_lanes & residual_lanes
                 or valued_parent_has_exact_direct_source_affinity
+                or valued_parent_cluster_precedes_or_touches_child
             ):
                 coherent = False
                 break
@@ -734,6 +746,7 @@ def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str
                 row["missing_column_ordinals"].sort()
     for row in rows:
         row.pop("_label_vertical_center")
+        row.pop("_label_vertical_top", None)
         row.pop("_lane_count")
         row["status"] = (
             "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
@@ -1161,6 +1174,7 @@ def _rows(
                 "_label_vertical_center": float(
                     median((box[1] + box[3]) / 2 for box in label_boxes)
                 ),
+                "_label_vertical_top": float(min(box[1] for box in label_boxes)),
                 "_lane_count": len(centers),
                 "label_match": canonical_clone_v1(match),
                 "missing_column_ordinals": missing,

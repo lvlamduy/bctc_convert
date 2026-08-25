@@ -425,6 +425,59 @@ def _vpb25_shaped_local_trailing_loan_subtotal_pages(
     return pages
 
 
+def _compact_gross_loan_provision_pages(
+    *,
+    family_total: tuple[str, str] = ("125", "111"),
+    deposit: tuple[str, str] = ("100", "90"),
+    loan: tuple[str, str] = ("30", "25"),
+    provision: tuple[str | None, str | None] = ("-5", "-4"),
+    duplicate_provision: bool = False,
+) -> list[dict[str, object]]:
+    """Compact gross-loan layout: D + L + direct pL = visible family total."""
+
+    lines = [
+        _line(0, "Tiền gửi và cho vay các TCTD khác", "", [25, 15, 500, 49]),
+        _line(1, family_total[0], family_total[0], [610, 17, 700, 44]),
+        _line(2, family_total[1], family_total[1], [810, 17, 900, 44]),
+        _line(3, "31/12/2025", "", [610, 65, 700, 92]),
+        _line(4, "31/12/2024", "", [810, 65, 900, 92]),
+        _line(5, "Đơn vị: Triệu đồng", "", [610, 96, 900, 123]),
+        _line(6, "Tiền gửi tại các TCTD khác", "", [45, 140, 430, 169]),
+        _line(7, deposit[0], deposit[0], [610, 140, 700, 175]),
+        _line(8, deposit[1], deposit[1], [810, 140, 900, 175]),
+        _line(9, "Cho vay các TCTD khác", "", [45, 205, 430, 234]),
+        _line(10, loan[0], loan[0], [610, 205, 700, 240]),
+        _line(11, loan[1], loan[1], [810, 205, 900, 240]),
+    ]
+
+    def append_provision(top: int) -> None:
+        ordinal = len(lines)
+        lines.append(
+            _line(
+                ordinal,
+                "Dự phòng cho vay các TCTD khác",
+                "",
+                [65, top, 430, top + 29],
+            )
+        )
+        for column_ordinal, token in enumerate(provision):
+            if token is None:
+                continue
+            ordinal = len(lines)
+            left = 610 if column_ordinal == 0 else 810
+            lines.append(_line(ordinal, token, token, [left, top, left + 90, top + 35]))
+
+    # The provision label begins exactly at the gross-loan value cells' lower
+    # edge.  This is the compact source geometry that must preserve L as a
+    # direct parent row instead of moving its cells into pL.
+    append_provision(240)
+    if duplicate_provision:
+        append_provision(290)
+    ordinal = len(lines)
+    lines.append(_line(ordinal, "Mức lãi suất", "", [45, 350, 430, 375]))
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
 def _acb_explicit_totals_unlabeled_term_pages(
     *,
     deposit_total_prior: str = "110",
@@ -1443,6 +1496,223 @@ def test_numeric_equivalent_alternatives_ignore_sources_but_require_unique_max_c
     assert subject._unique_maximum_component_coverage([narrow, tied]) is None
 
 
+def test_v4_compact_gross_loan_provision_uses_one_exact_direct_root_frontier() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _compact_gross_loan_provision_pages()
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == []
+    rows = {row["role"]: row for row in axis["row_axis"]["rows"]}
+    assert [value["raw_prediction"] for value in rows["INTERBANK_LOAN_GROUP"]["values"]] == [
+        "30",
+        "25",
+    ]
+    assert [value["raw_prediction"] for value in rows["INTERBANK_LOAN_PROVISION"]["values"]] == [
+        "-5",
+        "-4",
+    ]
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert local["status"] == "LOCAL_VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE"
+    root = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert root["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    assert root["component_roles_present"] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "INTERBANK_LOAN_PROVISION",
+    ]
+    family = next(
+        record
+        for record in closure["resolved_roles"]
+        if record["role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert family["resolution_kind"] == "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+    assert family["component_roles"] == root["component_roles_present"]
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_v4_loan_provision_is_consumed_once_at_the_selected_direct_frontier() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    detailed_pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "25", "21"),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "0"),
+            ("Dự phòng cho vay các TCTD khác", "-5", "-4"),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "125", "111"),
+        ]
+    )
+    detailed_pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+
+    cases = [
+        (
+            "detailed-local-frontier",
+            detailed_pages,
+            [
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+            ],
+            ["INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"],
+            "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
+        ),
+        (
+            "compact-root-frontier",
+            _compact_gross_loan_provision_pages(),
+            [],
+            [
+                "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_GROUP",
+                "INTERBANK_LOAN_PROVISION",
+            ],
+            "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+        ),
+    ]
+
+    for case_id, pages, expected_local, expected_root, expected_disposition in cases:
+        axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+        assert closure["status"] == ("HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"), (
+            case_id
+        )
+        local = next(
+            equation
+            for equation in closure["equations"]["local"]
+            if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+        )
+        root = next(
+            equation
+            for equation in closure["equations"]["global"]
+            if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+        )
+        assert local["component_roles_present"] == expected_local, case_id
+        assert root["component_roles_present"] == expected_root, case_id
+        selected_use_count = sum(
+            "INTERBANK_LOAN_PROVISION" in frontier
+            for frontier in (
+                local["component_roles_present"],
+                root["component_roles_present"],
+            )
+        )
+        assert selected_use_count == 1, case_id
+        provision_receipts = [
+            receipt
+            for receipt in closure["coverage_receipt"]
+            if receipt.get("role") == "INTERBANK_LOAN_PROVISION"
+        ]
+        assert len(provision_receipts) == 1, case_id
+        assert provision_receipts[0]["disposition"] == expected_disposition, case_id
+        assert (
+            subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+                closure, axis, topology, hierarchy
+            )
+            == closure
+        )
+
+
+def test_v4_direct_frontier_public_replay_rejects_double_consumed_provision() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _compact_gross_loan_provision_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    local = next(
+        equation
+        for equation in attacked["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    local["component_roles_present"] = ["INTERBANK_LOAN_PROVISION"]
+    local["status"] = "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="does not replay exactly|local equation|component role use count",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked, axis, topology, hierarchy
+        )
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [
+        _compact_gross_loan_provision_pages(family_total=("130", "111"), provision=(None, "-4")),
+        _compact_gross_loan_provision_pages(family_total=("125", "115")),
+        _compact_gross_loan_provision_pages(family_total=("120", "111")),
+        _compact_gross_loan_provision_pages(duplicate_provision=True),
+    ],
+    ids=["partial-nonzero", "mixed-lane-frontiers", "mismatch", "duplicate-source"],
+)
+def test_v4_compact_gross_loan_provision_adversarial_sources_fail_closed(
+    pages: list[dict[str, object]],
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        equation["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
 @pytest.mark.parametrize(
     "pages",
     [
@@ -1485,9 +1755,7 @@ def test_v4_partial_local_selector_adversarial_evidence_cannot_choose_an_alterna
 @pytest.mark.parametrize(
     "pages",
     [
-        _acb5_partial_local_loan_selector_pages(
-            selector_prior="150979", loan_provision_prior="0"
-        ),
+        _acb5_partial_local_loan_selector_pages(selector_prior="150979", loan_provision_prior="0"),
         _acb5_partial_local_loan_selector_pages(loan_provision_current="-1"),
     ],
 )
@@ -1682,14 +1950,12 @@ def test_v4_reduced_equation_cannot_replace_the_sealed_direct_frontier() -> None
 
     assert full_closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
     assert any(
-        equation["status"]
-        == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
         for equation in full_closure["equations"]["local"]
     )
     assert reduced_closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
     assert not any(
-        equation["status"]
-        == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
         for equation in reduced_closure["equations"]["local"]
     )
 
@@ -3126,9 +3392,7 @@ def test_optional_exact_zero_receipt_cannot_be_coherently_retyped(attack: str) -
     if attack == "DISPOSITION":
         receipt["disposition"] = "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
     elif attack == "STATUS":
-        receipt["source_record"]["status"] = (
-            "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
-        )
+        receipt["source_record"]["status"] = "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
     elif attack == "PRESENCE":
         occurrence["label_match"]["presence"] = "REQUIRED"
     elif attack == "MISSING_LANES":
