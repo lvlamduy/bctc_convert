@@ -1152,6 +1152,8 @@ def _v4_exact_visible_role_axis(
     authenticated_axes: Mapping[str, Any],
     *,
     expected_parent_role: str,
+    expected_role_kind: str = "ADDITIVE_CHILD",
+    allow_family_root_scope_without_binding: bool = False,
 ) -> tuple[list[dict[str, Any]], str] | None:
     """Return one exact visible leaf bound to one authenticated row projection."""
 
@@ -1178,12 +1180,12 @@ def _v4_exact_visible_role_axis(
         or source.get("kind") != "ROLE_ROW"
         or type(source_record) is not dict
         or source_record.get("role") != role
-        or source_record.get("role_kind") != "ADDITIVE_CHILD"
+        or source_record.get("role_kind") != expected_role_kind
         or source_record.get("status") != "VISIBLE_VALUE_LANES_BOUND"
         or source_record.get("missing_column_ordinals") != []
         or type(label_match) is not dict
         or label_match.get("role") != role
-        or label_match.get("role_kind") != "ADDITIVE_CHILD"
+        or label_match.get("role_kind") != expected_role_kind
         or type(label_match.get("occurrence_id")) is not str
         or not label_match["occurrence_id"]
         or type(label_match.get("scope_owner_occurrence_id")) is not str
@@ -1217,12 +1219,12 @@ def _v4_exact_visible_role_axis(
         values = row.get("values")
         if (
             row.get("role") != role
-            or row.get("role_kind") != "ADDITIVE_CHILD"
+            or row.get("role_kind") != expected_role_kind
             or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
             or row.get("missing_column_ordinals") != []
             or type(row_label) is not dict
             or row_label.get("role") != role
-            or row_label.get("role_kind") != "ADDITIVE_CHILD"
+            or row_label.get("role_kind") != expected_role_kind
             or type(values) is not list
             or not values
         ):
@@ -1277,7 +1279,7 @@ def _v4_exact_visible_role_axis(
             "label_match": {field: canonical_clone_v1(row_label[field]) for field in label_fields},
             "missing_column_ordinals": [],
             "role": role,
-            "role_kind": "ADDITIVE_CHILD",
+            "role_kind": expected_role_kind,
             "status": "VISIBLE_VALUE_LANES_BOUND",
             "values": projected_values,
         }
@@ -1302,7 +1304,7 @@ def _v4_exact_visible_role_axis(
     if (
         type(occurrence) is not dict
         or occurrence.get("role") != role
-        or occurrence.get("role_kind") != "ADDITIVE_CHILD"
+        or occurrence.get("role_kind") != expected_role_kind
         or occurrence.get("has_bound_value_row") is not True
         or not same_typed_json_v1(occurrence.get("label_match"), label_match)
         or occurrence.get("scope_owner_occurrence_id") != label_match["scope_owner_occurrence_id"]
@@ -1387,11 +1389,21 @@ def _v4_exact_visible_role_axis(
             return None
     if parent_role != expected_parent_role:
         if not (
-            parent_role is None
-            and type(scope_binding) is dict
-            and scope_binding.get("status") == "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
-            and scope_binding.get("target_role") == role
-            and scope_binding.get("source_scope_role") == expected_parent_role
+            (
+                allow_family_root_scope_without_binding
+                and expected_parent_role == family_id
+                and parent_role is None
+                and parent_occurrence_id == root_occurrence_id
+                and scope_binding is None
+            )
+            or (
+                parent_role is None
+                and type(scope_binding) is dict
+                and scope_binding.get("status")
+                == "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
+                and scope_binding.get("target_role") == role
+                and scope_binding.get("source_scope_role") == expected_parent_role
+            )
         ):
             return None
     elif type(scope_binding) is dict and (
@@ -1808,6 +1820,220 @@ def _candidate_role_richness_set(
     return roles - presentation_aliases
 
 
+def _v4_ready_exact_component_detail_supersedes_visible_summary(
+    summary: Mapping[str, Any],
+    detail: Mapping[str, Any],
+    summary_roles: set[str],
+    detail_roles: set[str],
+) -> bool:
+    """Prove one READY detail is the authenticated expansion of a summary.
+
+    A visible summary root is useful source authority, while a detailed note
+    may derive that root from an exhaustive hierarchy.  A matching arithmetic
+    total is not enough to choose the note: every terminal money row must be a
+    sealed occurrence owned by the exact typed parent declared by the detail's
+    equation graph.  This keeps identically named rows under different parents
+    incomparable.
+    """
+
+    if (
+        summary.get("reasons") != []
+        or detail.get("reasons") != []
+        or type(summary.get("candidate_ordinal")) is not int
+        or type(detail.get("candidate_ordinal")) is not int
+        or summary["candidate_ordinal"] == detail["candidate_ordinal"]
+        or not summary_roles < detail_roles
+        or (summary_roles | detail_roles) & _V4_INTERBANK_PROVISION_ROLES
+    ):
+        return False
+    summary_axes = _v4_authenticated_candidate_axes(summary)
+    detail_axes = _v4_authenticated_candidate_axes(detail)
+    if summary_axes is None or detail_axes is None:
+        return False
+    summary_closure = summary_axes["closure"]
+    detail_closure = detail_axes["closure"]
+    family_id = summary_closure.get("family_id")
+    if (
+        type(family_id) is not str
+        or not family_id
+        or detail_closure.get("family_id") != family_id
+        or summary_axes.get("root_occurrence_id") == detail_axes.get("root_occurrence_id")
+    ):
+        return False
+
+    def unique_role_records(closure: Mapping[str, Any]) -> dict[str, Mapping[str, Any]] | None:
+        records = closure.get("resolved_roles")
+        if type(records) is not list or not records:
+            return None
+        result: dict[str, Mapping[str, Any]] = {}
+        for record in records:
+            role = record.get("role") if type(record) is dict else None
+            if type(role) is not str or not role or role in result:
+                return None
+            result[role] = record
+        return result
+
+    def unique_global_equations(
+        closure: Mapping[str, Any],
+    ) -> dict[str, Mapping[str, Any]] | None:
+        equations = closure.get("equations")
+        global_equations = equations.get("global") if type(equations) is dict else None
+        if type(global_equations) is not list or not global_equations:
+            return None
+        result: dict[str, Mapping[str, Any]] = {}
+        for equation in global_equations:
+            role = equation.get("result_role") if type(equation) is dict else None
+            if type(role) is not str or not role or role in result:
+                return None
+            result[role] = equation
+        return result
+
+    summary_records = unique_role_records(summary_closure)
+    detail_records = unique_role_records(detail_closure)
+    summary_equations = unique_global_equations(summary_closure)
+    detail_equations = unique_global_equations(detail_closure)
+    summary_signature = _candidate_population_signature(dict(summary))
+    if (
+        summary_records is None
+        or detail_records is None
+        or summary_equations is None
+        or detail_equations is None
+        or summary_signature is None
+    ):
+        return False
+    summary_root = summary_records.get(family_id)
+    detail_root = detail_records.get(family_id)
+    summary_root_equation = summary_equations.get(family_id)
+    detail_root_equation = detail_equations.get(family_id)
+    component_roles = (
+        summary_root_equation.get("component_roles_present")
+        if type(summary_root_equation) is dict
+        else None
+    )
+    if (
+        type(summary_root) is not dict
+        or summary_root.get("resolution_kind") != "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+        or type(detail_root) is not dict
+        or detail_root.get("resolution_kind") != "DERIVED_EXACT_COMPONENT_SUM"
+        or type(component_roles) is not list
+        or len(component_roles) < 2
+        or any(type(role) is not str or not role for role in component_roles)
+        or len(component_roles) != len(set(component_roles))
+        or summary_root_equation.get("status")
+        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or detail_root_equation is None
+        or detail_root_equation.get("status") != "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        or detail_root_equation.get("component_roles_present") != component_roles
+        or not _v4_exact_equation_holds(
+            summary_root_equation,
+            summary_records,
+            [lane["column_ordinal"] for lane in summary_signature["numeric_lanes"]],
+        )
+        or not _v4_exact_equation_holds(
+            detail_root_equation,
+            detail_records,
+            [lane["column_ordinal"] for lane in summary_signature["numeric_lanes"]],
+        )
+        or not same_typed_json_v1(
+            _v4_resolved_number_axis(detail_root), summary_signature["numeric_lanes"]
+        )
+    ):
+        return False
+
+    # Compare the detail's independently parsed period/unit header against the
+    # summary without treating the detail's derived root as source authority.
+    synthetic_detail = copy.deepcopy(dict(detail))
+    synthetic_closure = synthetic_detail.get("additive_closure")
+    synthetic_records = (
+        synthetic_closure.get("resolved_roles") if type(synthetic_closure) is dict else None
+    )
+    if type(synthetic_records) is not list:
+        return False
+    synthetic_closure["resolved_roles"] = [
+        record for record in synthetic_records if record.get("role") != family_id
+    ] + [canonical_clone_v1(summary_root)]
+    if not same_typed_json_v1(_candidate_population_signature(synthetic_detail), summary_signature):
+        return False
+
+    summary_occurrences: set[str] = set()
+    for role in component_roles:
+        summary_record = summary_records.get(role)
+        detail_record = detail_records.get(role)
+        if type(summary_record) is not dict or type(detail_record) is not dict:
+            return False
+        exact_summary = _v4_exact_visible_role_axis(
+            summary_record,
+            summary_axes,
+            expected_parent_role=family_id,
+            expected_role_kind="STRUCTURAL_GROUP",
+            allow_family_root_scope_without_binding=True,
+        )
+        if exact_summary is None or not same_typed_json_v1(
+            exact_summary[0], _v4_resolved_number_axis(detail_record)
+        ):
+            return False
+        summary_occurrences.add(exact_summary[1])
+    if len(summary_occurrences) != len(component_roles):
+        return False
+
+    expected_ordinals = [lane["column_ordinal"] for lane in summary_signature["numeric_lanes"]]
+    tree_roles: set[str] = set()
+    terminal_occurrences: set[str] = set()
+    active: set[str] = set()
+    has_nested_terminal = False
+
+    def authenticate_tree(role: str, parent_role: str | None) -> bool:
+        nonlocal has_nested_terminal
+        if role in active:
+            return False
+        record = detail_records.get(role)
+        if type(record) is not dict:
+            return False
+        tree_roles.add(role)
+        equation = detail_equations.get(role)
+        components = equation.get("component_roles_present") if equation is not None else None
+        if (
+            type(equation) is dict
+            and equation.get("status") in _V4_EXACT_EQUATION_STATUSES
+            and type(components) is list
+            and components
+        ):
+            if (
+                any(type(component) is not str or not component for component in components)
+                or len(components) != len(set(components))
+                or role in components
+                or not _v4_exact_equation_holds(equation, detail_records, expected_ordinals)
+            ):
+                return False
+            active.add(role)
+            accepted = all(authenticate_tree(component, role) for component in components)
+            active.remove(role)
+            return accepted
+        if parent_role is None:
+            return False
+        exact_leaf = _v4_exact_visible_role_axis(
+            record,
+            detail_axes,
+            expected_parent_role=parent_role,
+        )
+        if exact_leaf is None or exact_leaf[1] in terminal_occurrences:
+            return False
+        terminal_occurrences.add(exact_leaf[1])
+        has_nested_terminal = has_nested_terminal or parent_role != family_id
+        return True
+
+    if (
+        not authenticate_tree(family_id, None)
+        or not summary_roles < tree_roles
+        or not tree_roles <= detail_roles
+        or len(terminal_occurrences) < len(component_roles) + 1
+        or not has_nested_terminal
+        or summary_occurrences & terminal_occurrences
+    ):
+        return False
+    return True
+
+
 def _threat_matches_ready_component_population(
     ready: Mapping[str, Any], threat: Mapping[str, Any]
 ) -> bool:
@@ -2184,10 +2410,26 @@ def _select_candidate_evidence(
                     other_index != index
                     and role_sets[index] is not None
                     and other is not None
-                    and population_signatures[index] is not None
-                    and population_signatures[other_index] is not None
-                    and same_typed_json_v1(
-                        population_signatures[index], population_signatures[other_index]
+                    and (
+                        (
+                            population_signatures[index] is not None
+                            and population_signatures[other_index] is not None
+                            and same_typed_json_v1(
+                                population_signatures[index],
+                                population_signatures[other_index],
+                            )
+                        )
+                        or (
+                            canonicalize_all_presentations
+                            and population_signatures[index] is not None
+                            and population_signatures[other_index] is None
+                            and _v4_ready_exact_component_detail_supersedes_visible_summary(
+                                candidate,
+                                ready[other_index],
+                                role_sets[index],
+                                other,
+                            )
+                        )
                     )
                     and (
                         _v4_strict_role_richness_subset(
