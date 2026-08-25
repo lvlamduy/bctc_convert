@@ -21,7 +21,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
+from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
@@ -35,19 +37,31 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "PARENT_FRONTIER_FORMAT_VERSION",
     "AccountingFamilyOneEditExactAuthorityV1Error",
     "build_accounting_family_one_edit_exact_authority_v1",
+    "family_parent_exact_frontier_result_cluster_v1",
+    "family_parent_has_exact_authority_v1",
+    "project_accounting_family_one_edit_parent_frontier_authority_v1",
     "validate_accounting_family_one_edit_exact_authority_receipt_shape_v1",
     "validate_accounting_family_one_edit_exact_authority_replay_v1",
 ]
 
 
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V2"
+PARENT_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V3"
 CLAIM_BOUNDARY = (
     "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_EITHER_INDEPENDENT_EXACT_"
     "BOUND_SOURCE_TEXT_ALIAS_OR_AUTHENTICATED_SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_"
     "COVERAGE_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_RECURSIVE_PARENT_CHAIN_PAGE_AND_LINE_"
     "SPAN_NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
+)
+PARENT_FRONTIER_CLAIM_BOUNDARY = (
+    "SELECTED_V4_ONE_EDIT_FAMILY_PARENT_MAY_ALSO_BE_STRUCTURALLY_BOUND_BY_ONE_"
+    "UNIQUE_EXACT_ORDERED_DIRECT_COMPONENT_FRONTIER_ON_THE_IDENTICAL_PHYSICAL_"
+    "PARENT_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_LANE_AXIS_WITH_SOURCE_OBSERVED_"
+    "NUMBERS_ONLY_NO_DIGIT_BACKSOLVE_PARENT_PLUS_OWN_LEAF_DOUBLE_COUNT_SCHEMA_"
+    "MAPPING_OR_BANK_FILE_PAGE_PERIOD_SCOPE_ROUTING_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
@@ -80,6 +94,19 @@ _AUTHORITY_SPEC = {
     },
     "selected_candidate_only": True,
 }
+_PARENT_FRONTIER_AUTHORITY_SPEC = {
+    **_AUTHORITY_SPEC,
+    "arithmetic_parent_frontier_authority": {
+        "component_frontier": "ORDERED_DIRECT_CHILD_OCCURRENCES_ONLY",
+        "exact_equation_required_in_every_lane": True,
+        "largest_visible_parent_result_required": True,
+        "one_physical_family_parent_occurrence_required": True,
+        "parent_and_own_leaf_double_count_forbidden": True,
+        "same_page_root_period_unit_and_complete_lane_axis_required": True,
+        "source_observed_numeric_assignments_only": True,
+        "unique_frontier_required": True,
+    },
+}
 _SAFETY = {
     "bank_file_page_period_scope_used_for_routing": False,
     "discarded_or_near_one_edit_match_can_veto_selected_candidate": False,
@@ -91,6 +118,14 @@ _SAFETY = {
     "same_role_span_with_different_parent_context_can_authorize": False,
     "source_text_exact_alias_or_same_crop_complementary_token_context_required": True,
     "expanded_occurrence_identity_required": True,
+}
+_PARENT_FRONTIER_SAFETY = {
+    **_SAFETY,
+    "accounting_can_invent_or_correct_a_numeric_token": False,
+    "competing_or_partial_frontier_can_authorize": False,
+    "direct_parent_and_its_own_descendants_can_share_one_frontier": False,
+    "same_label_under_a_different_parent_is_same_occurrence": False,
+    "structural_parent_frontier_requires_public_exact_replay": True,
 }
 _RESULT_FIELDS = {
     "authority_spec",
@@ -105,11 +140,25 @@ _RESULT_FIELDS = {
     "status",
     "unresolved_reasons",
 }
+_PARENT_FRONTIER_RESULT_FIELDS = {
+    *_RESULT_FIELDS,
+    "parent_frontier_authority",
+    "source_exact_authority_receipt",
+}
 _INPUT_BINDING_FIELDS = {
     "document_pages_sha256",
     "expanded_occurrence_region_sha256",
     "family_spec_sha256",
     "selected_topology_region_sha256",
+}
+_PARENT_FRONTIER_INPUT_BINDING_FIELDS = {
+    *_INPUT_BINDING_FIELDS,
+    "column_context_sha256",
+    "internal_unassigned_numeric_clusters_sha256",
+    "numeric_sample_universe_sha256",
+    "role_occurrences_sha256",
+    "row_axis_sha256",
+    "source_exact_authority_receipt_sha256",
 }
 _METRIC_FIELDS = {
     "exact_bound_count",
@@ -178,6 +227,44 @@ _CHECK_STATUSES = {
 _BOUND_CHECK_STATUSES = {
     "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND",
     "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND",
+}
+_PARENT_FRONTIER_BOUND_STATUS = "EXACT_ORDERED_PARENT_FRONTIER_AUTHORITY_BOUND"
+_PARENT_FRONTIER_PROOF_FORMAT_VERSION = (
+    "ACCOUNTING_FAMILY_ONE_EDIT_PARENT_FRONTIER_AUTHORITY_PROOF_V1"
+)
+_PARENT_FRONTIER_PROOF_FIELDS = {
+    "column_context_receipt",
+    "component_frontier_bindings",
+    "format_version",
+    "input_binding",
+    "parent_match_binding",
+    "proof_id",
+    "root_occurrence_id",
+    "source_check",
+    "source_scope_binding",
+    "status",
+    "target_label_match",
+    "target_occurrence_id",
+    "target_role",
+}
+_PARENT_FRONTIER_COMPONENT_BINDING_FIELDS = {
+    "component_ordinal",
+    "equation_component",
+    "occurrence_id",
+    "role_occurrence_sha256",
+    "row_receipt",
+    "row_sha256",
+    "retrieval_role",
+    "retrieval_within_role",
+    "source_line_indices",
+}
+_PARENT_MATCH_BINDING_FIELDS = {
+    "document_line_span",
+    "label_bbox",
+    "numbers",
+    "page_sequence",
+    "result_sample_ids",
+    "source_line_indices",
 }
 _COMPLEMENTARY_FORMAT_VERSION = "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_AUTHORITY_V1"
 _COMPLEMENTARY_FIELDS = {
@@ -373,6 +460,14 @@ def _occurrence_row_pages_v1(
             "lines": [
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
+                    **(
+                        {
+                            "crop_ref": canonical_clone_v1(line["crop_ref"]),
+                            "sample_id": line["sample_id"],
+                        }
+                        if "crop_ref" in line and "sample_id" in line
+                        else {}
+                    ),
                     "line_ordinal": line["source_line_index"],
                     "numeric_recognition": canonical_clone_v1(
                         line.get("numeric_recognition")
@@ -1822,6 +1917,1212 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
+def _parent_frontier_reason(check: Mapping[str, Any]) -> str:
+    return (
+        f"ONE_EDIT_EXACT_AUTHORITY:{check['status']}:{check['role']}:"
+        f"OCCURRENCE_{check['occurrence_id'] or 'FAMILY_PARENT'}:"
+        f"PAGE_{check['page_sequence']}:LINES_"
+        + ",".join(str(index) for index in check["source_line_indices"])
+    )
+
+
+def _parent_frontier_structural_evidence_v1(value: Any) -> dict[str, Any]:
+    if type(value) is not dict:
+        raise _error("one-edit parent-frontier structural evidence drifted")
+    required = {
+        "internal_unassigned_numeric_clusters",
+        "numeric_sample_universe",
+        "role_occurrences",
+        "row_axis",
+    }
+    if not required <= set(value):
+        raise _error("one-edit parent-frontier structural evidence fields drifted")
+    try:
+        row_axis = row_v1._validate_result(value["row_axis"])  # noqa: SLF001
+    except row_v1.AccountingFamilyRowAxisV1Error as exc:
+        raise _error("one-edit parent-frontier row axis drifted") from exc
+    axes = {
+        key: value[key]
+        for key in (
+            "internal_unassigned_numeric_clusters",
+            "numeric_sample_universe",
+            "role_occurrences",
+        )
+    }
+    if any(type(axis) is not list for axis in axes.values()):
+        raise _error("one-edit parent-frontier occurrence evidence axis drifted")
+    return {
+        "internal_unassigned_numeric_clusters": canonical_clone_v1(
+            axes["internal_unassigned_numeric_clusters"]
+        ),
+        "numeric_sample_universe": canonical_clone_v1(axes["numeric_sample_universe"]),
+        "role_occurrences": canonical_clone_v1(axes["role_occurrences"]),
+        "row_axis": row_axis,
+    }
+
+
+def _parent_frontier_input_binding_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    column_context: Mapping[str, Any],
+) -> dict[str, str]:
+    return {
+        **canonical_clone_v1(source_receipt["input_binding"]),
+        "column_context_sha256": canonical_json_sha256_v1(column_context),
+        "internal_unassigned_numeric_clusters_sha256": canonical_json_sha256_v1(
+            evidence["internal_unassigned_numeric_clusters"]
+        ),
+        "numeric_sample_universe_sha256": canonical_json_sha256_v1(
+            evidence["numeric_sample_universe"]
+        ),
+        "role_occurrences_sha256": canonical_json_sha256_v1(evidence["role_occurrences"]),
+        "row_axis_sha256": canonical_json_sha256_v1(evidence["row_axis"]),
+        "source_exact_authority_receipt_sha256": canonical_json_sha256_v1(source_receipt),
+    }
+
+
+def _parent_frontier_number_axis_is_valid(value: Any) -> bool:
+    return (
+        type(value) is list
+        and bool(value)
+        and all(
+            type(item) is dict
+            and set(item) == {"coefficient", "percentage_mark_present", "scale"}
+            and type(item["coefficient"]) is int
+            and type(item["percentage_mark_present"]) is bool
+            and type(item["scale"]) is int
+            and item["scale"] >= 0
+            for item in value
+        )
+    )
+
+
+def _validate_parent_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _PARENT_FRONTIER_PROOF_FIELDS
+        or value["format_version"] != _PARENT_FRONTIER_PROOF_FORMAT_VERSION
+        or value["status"] != _PARENT_FRONTIER_BOUND_STATUS
+        or type(value["source_check"]) is not dict
+        or type(value["root_occurrence_id"]) is not str
+        or not value["root_occurrence_id"].startswith("aforav2:root:")
+        or type(value["target_occurrence_id"]) is not str
+        or not value["target_occurrence_id"].startswith("aforav2:occurrence:")
+        or type(value["target_role"]) is not str
+        or not value["target_role"]
+        or type(value["component_frontier_bindings"]) is not list
+        or not value["component_frontier_bindings"]
+        or type(value["input_binding"]) is not dict
+        or set(value["input_binding"]) != _PARENT_FRONTIER_INPUT_BINDING_FIELDS
+        or any(
+            type(item) is not str
+            or len(item) != 64
+            or any(character not in "0123456789abcdef" for character in item)
+            for item in value["input_binding"].values()
+        )
+        or type(value["parent_match_binding"]) is not dict
+        or set(value["parent_match_binding"]) != _PARENT_MATCH_BINDING_FIELDS
+        or type(value["column_context_receipt"]) is not dict
+        or type(value["target_label_match"]) is not dict
+        or type(value["source_scope_binding"]) is not dict
+    ):
+        raise _error("one-edit parent-frontier proof shape drifted")
+    parent = value["parent_match_binding"]
+    bbox = parent["label_bbox"]
+    if (
+        type(parent["page_sequence"]) is not int
+        or parent["page_sequence"] <= 0
+        or type(parent["source_line_indices"]) is not list
+        or not parent["source_line_indices"]
+        or parent["source_line_indices"] != sorted(set(parent["source_line_indices"]))
+        or any(type(item) is not int or item < 0 for item in parent["source_line_indices"])
+        or type(parent["document_line_span"]) is not list
+        or len(parent["document_line_span"]) != 2
+        or any(type(item) is not int or item < 0 for item in parent["document_line_span"])
+        or parent["document_line_span"][1] < parent["document_line_span"][0]
+        or type(bbox) is not list
+        or len(bbox) != 4
+        or any(type(item) is not int for item in bbox)
+        or not bbox[0] < bbox[2]
+        or not bbox[1] < bbox[3]
+        or type(parent["result_sample_ids"]) is not list
+        or not parent["result_sample_ids"]
+        or len(parent["result_sample_ids"]) != len(set(parent["result_sample_ids"]))
+        or any(type(item) is not str or not item for item in parent["result_sample_ids"])
+        or not _parent_frontier_number_axis_is_valid(parent["numbers"])
+        or len(parent["numbers"]) != len(parent["result_sample_ids"])
+    ):
+        raise _error("one-edit parent-frontier parent binding drifted")
+    try:
+        context = column_context_v1._validate_result(  # noqa: SLF001
+            value["column_context_receipt"]
+        )
+    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+        raise _error("one-edit parent-frontier column binding drifted") from exc
+    lane_count = len(context["period_axis"])
+    if (
+        context["status"] != "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+        or lane_count == 0
+        or len(context["unit_axis"]) != lane_count
+        or len(parent["numbers"]) != lane_count
+        or len(
+            {
+                (item["unit_kind"], item["currency"], item["magnitude_power10"])
+                for item in context["unit_axis"]
+            }
+        )
+        != 1
+    ):
+        raise _error("one-edit parent-frontier column binding drifted")
+    label = canonical_clone_v1(value["target_label_match"])
+    label.pop("source_scope_binding", None)
+    if (
+        label.get("occurrence_id") != value["target_occurrence_id"]
+        or label.get("role") != value["target_role"]
+        or label.get("scope_owner_occurrence_id") != value["root_occurrence_id"]
+        or label.get("scope_owner_role") is not None
+    ):
+        raise _error("one-edit parent-frontier target occurrence drifted")
+    try:
+        occurrence_row_v2._validate_source_scope_binding(  # noqa: SLF001
+            value["source_scope_binding"],
+            label_match=label,
+            role=value["target_role"],
+        )
+    except occurrence_row_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("one-edit parent-frontier source equation drifted") from exc
+    equation = value["source_scope_binding"].get("geometry", {}).get("equation", {})
+    if (
+        equation.get("parent_occurrence_id") != value["root_occurrence_id"]
+        or equation.get("result", {}).get("occurrence_id") != value["root_occurrence_id"]
+        or equation.get("result", {}).get("sample_ids") != parent["result_sample_ids"]
+        or equation.get("result", {}).get("numbers") != parent["numbers"]
+        or len(equation.get("component_frontier", [])) != len(value["component_frontier_bindings"])
+    ):
+        raise _error("one-edit parent-frontier root equation binding drifted")
+    component_occurrence_ids = []
+    component_receipts = []
+    source_component_occurrence_ids = []
+    for ordinal, (binding, equation_component) in enumerate(
+        zip(
+            value["component_frontier_bindings"],
+            equation["component_frontier"],
+            strict=True,
+        )
+    ):
+        row_receipt = binding.get("row_receipt") if type(binding) is dict else None
+        if (
+            type(binding) is not dict
+            or set(binding) != _PARENT_FRONTIER_COMPONENT_BINDING_FIELDS
+            or binding["component_ordinal"] != ordinal
+            or not same_typed_json_v1(binding["equation_component"], equation_component)
+            or type(binding["occurrence_id"]) is not str
+            or not binding["occurrence_id"].startswith("aforav2:occurrence:")
+            or type(binding["retrieval_role"]) is not str
+            or not binding["retrieval_role"]
+            or (
+                binding["retrieval_within_role"] is not None
+                and (
+                    type(binding["retrieval_within_role"]) is not str
+                    or not binding["retrieval_within_role"]
+                )
+            )
+            or type(binding["source_line_indices"]) is not list
+            or not binding["source_line_indices"]
+            or binding["source_line_indices"] != sorted(set(binding["source_line_indices"]))
+            or any(type(item) is not int or item < 0 for item in binding["source_line_indices"])
+            or any(
+                type(binding[key]) is not str
+                or len(binding[key]) != 64
+                or any(character not in "0123456789abcdef" for character in binding[key])
+                for key in ("role_occurrence_sha256", "row_sha256")
+            )
+            or type(row_receipt) is not dict
+            or set(row_receipt) != {"numbers", "sample_ids"}
+            or not _parent_frontier_number_axis_is_valid(row_receipt["numbers"])
+            or len(row_receipt["numbers"]) != lane_count
+            or type(row_receipt["sample_ids"]) is not list
+            or len(row_receipt["sample_ids"]) != lane_count
+            or len(row_receipt["sample_ids"]) != len(set(row_receipt["sample_ids"]))
+            or any(type(item) is not str or not item for item in row_receipt["sample_ids"])
+            or row_receipt["numbers"] != equation_component.get("numbers")
+            or row_receipt["sample_ids"] != equation_component.get("sample_ids")
+        ):
+            raise _error("one-edit parent-frontier component binding drifted")
+        component_occurrence_ids.append(binding["occurrence_id"])
+        component_receipts.append(row_receipt)
+        if (
+            equation_component.get("retrieval_occurrence_id")
+            == equation.get("source_retrieval_occurrence_id")
+            and equation_component.get("role") == value["target_role"]
+        ):
+            source_component_occurrence_ids.append(binding["occurrence_id"])
+    if (
+        len(component_occurrence_ids) != len(set(component_occurrence_ids))
+        or source_component_occurrence_ids != [value["target_occurrence_id"]]
+        or not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+            {"numbers": parent["numbers"]}, component_receipts
+        )
+    ):
+        raise _error("one-edit parent-frontier ordered component axis drifted")
+    source_check = value["source_check"]
+    if (
+        set(source_check) != _CHECK_FIELDS
+        or source_check["status"] in _BOUND_CHECK_STATUSES
+        or source_check["match_scope"] != "FAMILY_PARENT"
+        or source_check["occurrence_id"] is not None
+        or source_check["page_sequence"] != parent["page_sequence"]
+        or source_check["source_line_indices"] != parent["source_line_indices"]
+    ):
+        raise _error("one-edit parent-frontier source check binding drifted")
+    material = canonical_clone_v1(value)
+    proof_id = material.pop("proof_id")
+    if proof_id != "afeoepfav1:proof:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit parent-frontier proof identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validate_parent_frontier_result_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _PARENT_FRONTIER_RESULT_FIELDS
+        or value.get("format_version") != PARENT_FRONTIER_FORMAT_VERSION
+        or value.get("claim_boundary") != PARENT_FRONTIER_CLAIM_BOUNDARY
+        or not same_typed_json_v1(value.get("safety"), _PARENT_FRONTIER_SAFETY)
+        or type(value.get("authority_spec")) is not dict
+        or set(value["authority_spec"]) != {"sha256", "value"}
+        or not same_typed_json_v1(value["authority_spec"]["value"], _PARENT_FRONTIER_AUTHORITY_SPEC)
+        or value["authority_spec"]["sha256"]
+        != canonical_json_sha256_v1(_PARENT_FRONTIER_AUTHORITY_SPEC)
+        or type(value.get("input_binding")) is not dict
+        or set(value["input_binding"]) != _PARENT_FRONTIER_INPUT_BINDING_FIELDS
+    ):
+        raise _error("one-edit parent-frontier receipt shape drifted")
+    source = _validate_result(value["source_exact_authority_receipt"])
+    proof = _validate_parent_frontier_proof_shape_v1(value["parent_frontier_authority"])
+    if (
+        value["family_id"] != source["family_id"]
+        or value["checks"] != source["checks"]
+        or value["input_binding"] != proof["input_binding"]
+        or value["input_binding"]["source_exact_authority_receipt_sha256"]
+        != canonical_json_sha256_v1(source)
+        or any(
+            value["input_binding"][key] != source["input_binding"][key]
+            for key in _INPUT_BINDING_FIELDS
+        )
+    ):
+        raise _error("one-edit parent-frontier source receipt binding drifted")
+    unbound_checks = [
+        check for check in source["checks"] if check["status"] not in _BOUND_CHECK_STATUSES
+    ]
+    if (
+        len(unbound_checks) != 1
+        or unbound_checks[0]["match_scope"] != "FAMILY_PARENT"
+        or not same_typed_json_v1(proof["source_check"], unbound_checks[0])
+    ):
+        raise _error("one-edit parent-frontier source check binding drifted")
+    source_reason = _parent_frontier_reason(unbound_checks[0])
+    expected_reasons = [
+        reason for reason in source["unresolved_reasons"] if reason != source_reason
+    ]
+    expected_metrics = {
+        "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+        "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+        "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+    }
+    expected_status = (
+        "EXACT_SOURCE_AUTHORITY_BOUND"
+        if not expected_reasons
+        else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    )
+    if (
+        value["metrics"] != expected_metrics
+        or value["unresolved_reasons"] != expected_reasons
+        or value["status"] != expected_status
+    ):
+        raise _error("one-edit parent-frontier status or metrics drifted")
+    material = canonical_clone_v1(value)
+    receipt_id = material.pop("receipt_id")
+    if receipt_id != "afeoeav1:receipt:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit parent-frontier receipt identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _replay_recursive_parent_direct_frontier_v1(
+    role_occurrences: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
+    equation: Mapping[str, Any],
+    *,
+    page_sequence: int,
+    root_occurrence_id: str,
+    target_role: str,
+) -> list[tuple[str, Mapping[str, Any]]] | None:
+    component_roles = tuple(
+        component.get("role") for component in equation.get("component_frontier", [])
+    )
+    matching_specs = [
+        spec
+        for spec in occurrence_row_v2._RECURSIVE_PARENT_PROVISION_BINDING_SPECS  # noqa: SLF001
+        if spec["target_role"] == target_role
+        and component_roles in spec["direct_component_role_alternatives"]
+    ]
+    if len(matching_specs) != 1:
+        return None
+    frontier = occurrence_row_v2._complete_recursive_parent_direct_frontier(  # noqa: SLF001
+        role_occurrences,
+        rows,
+        matching_specs[0],
+        interval_end=None,
+        interval_start=None,
+        page_sequence=page_sequence,
+        parent_occurrence_id=root_occurrence_id,
+        source_retrieval_occurrence_id=equation["source_retrieval_occurrence_id"],
+    )
+    if frontier is None or tuple(role for role, _row in frontier) != component_roles:
+        return None
+    return frontier
+
+
+def _validate_parent_frontier_against_structural_evidence_v1(
+    value: Any,
+    structural_evidence: Any,
+) -> dict[str, Any]:
+    """Rebind a V3 proof to the occurrence axis that downstream consumes."""
+
+    receipt = _validate_parent_frontier_result_v1(value)
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    proof = receipt["parent_frontier_authority"]
+    binding = receipt["input_binding"]
+    context = proof["column_context_receipt"]
+    if (
+        binding["internal_unassigned_numeric_clusters_sha256"]
+        != canonical_json_sha256_v1(evidence["internal_unassigned_numeric_clusters"])
+        or binding["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(evidence["numeric_sample_universe"])
+        or binding["role_occurrences_sha256"]
+        != canonical_json_sha256_v1(evidence["role_occurrences"])
+        or binding["row_axis_sha256"] != canonical_json_sha256_v1(evidence["row_axis"])
+        or binding["column_context_sha256"] != canonical_json_sha256_v1(context)
+        or context["family_id"] != receipt["family_id"]
+        or context["row_axis_id"] != evidence["row_axis"]["row_axis_id"]
+    ):
+        raise _error("one-edit parent-frontier structural input binding drifted")
+
+    parent = proof["parent_match_binding"]
+    page_sequence = parent["page_sequence"]
+    grids = [
+        grid
+        for grid in evidence["row_axis"]["column_grids"]
+        if grid["page_sequence"] == page_sequence
+    ]
+    if len(grids) != 1:
+        raise _error("one-edit parent-frontier physical page grid is not unique")
+    centers = grids[0]["column_centers"]
+    lane_count = len(centers)
+    if (
+        lane_count == 0
+        or [item["column_center"] for item in context["period_axis"]] != centers
+        or [item["column_center"] for item in context["unit_axis"]] != centers
+        or len(parent["numbers"]) != lane_count
+    ):
+        raise _error("one-edit parent-frontier complete column axis drifted")
+
+    role_occurrences = evidence["role_occurrences"]
+    occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in role_occurrences
+        if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
+    }
+    rows = evidence["row_axis"]["rows"]
+    rows_by_occurrence: dict[str, list[Mapping[str, Any]]] = {}
+    for row in rows:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence.setdefault(occurrence_id, []).append(row)
+    if len(occurrence_by_id) != len(role_occurrences):
+        raise _error("one-edit parent-frontier role occurrence identity repeats")
+
+    equation = proof["source_scope_binding"]["geometry"]["equation"]
+    component_ids = []
+    component_receipts = []
+    component_keys = []
+    component_sample_ids: list[str] = []
+    for persisted, equation_component in zip(
+        proof["component_frontier_bindings"],
+        equation["component_frontier"],
+        strict=True,
+    ):
+        occurrence = occurrence_by_id.get(persisted["occurrence_id"])
+        matching_rows = rows_by_occurrence.get(persisted["occurrence_id"], [])
+        row = matching_rows[0] if len(matching_rows) == 1 else None
+        label_match = occurrence.get("label_match", {}) if type(occurrence) is dict else {}
+        explicit_indices = label_match.get("source_line_indices")
+        source_start = label_match.get("source_line_index")
+        source_stop = label_match.get("end_source_line_index")
+        occurrence_source_line_indices = (
+            explicit_indices
+            if type(explicit_indices) is list
+            else list(range(source_start, source_stop + 1))
+            if type(source_start) is int
+            and type(source_stop) is int
+            and source_stop >= source_start
+            else []
+        )
+        row_receipt = (
+            occurrence_row_v2._direct_frontier_row_receipt(row)  # noqa: SLF001
+            if type(row) is dict
+            else None
+        )
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != persisted["role_occurrence_sha256"]
+            or occurrence.get("retrieval_occurrence_id")
+            != equation_component["retrieval_occurrence_id"]
+            or occurrence.get("role") != equation_component["role"]
+            or label_match.get("retrieval_role") != persisted["retrieval_role"]
+            or label_match.get("retrieval_within_role") != persisted["retrieval_within_role"]
+            or occurrence_source_line_indices != persisted["source_line_indices"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("has_bound_value_row") is not True
+            or occurrence.get("label_match", {}).get("page_sequence") != page_sequence
+            or not occurrence_row_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence["label_match"]
+            )
+            or type(row) is not dict
+            or canonical_json_sha256_v1(row) != persisted["row_sha256"]
+            or not same_typed_json_v1(row_receipt, persisted["row_receipt"])
+            or not same_typed_json_v1(
+                row_receipt,
+                {
+                    "numbers": equation_component["numbers"],
+                    "sample_ids": equation_component["sample_ids"],
+                },
+            )
+            or [item.get("column_ordinal") for item in row["values"]] != list(range(lane_count))
+            or [item.get("column_center") for item in row["values"]] != centers
+        ):
+            raise _error("one-edit parent-frontier component occurrence/row binding drifted")
+        component_ids.append(occurrence["occurrence_id"])
+        component_receipts.append(row_receipt)
+        component_keys.append(occurrence_row_v2._visual_match_key(occurrence["label_match"]))  # noqa: SLF001
+        component_sample_ids.extend(row_receipt["sample_ids"])
+    if (
+        component_keys != sorted(component_keys)
+        or len(component_sample_ids) != len(set(component_sample_ids))
+        or not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+            {"numbers": parent["numbers"]}, component_receipts
+        )
+    ):
+        raise _error("one-edit parent-frontier component order or arithmetic drifted")
+
+    target = occurrence_by_id.get(proof["target_occurrence_id"])
+    target_label_match = canonical_clone_v1(target["label_match"]) if type(target) is dict else None
+    if type(target_label_match) is dict:
+        target_label_match.pop("source_scope_binding", None)
+    if (
+        type(target) is not dict
+        or not same_typed_json_v1(target_label_match, proof["target_label_match"])
+        or not same_typed_json_v1(target["source_scope_binding"], proof["source_scope_binding"])
+    ):
+        raise _error("one-edit parent-frontier target equation occurrence drifted")
+    direct_frontier = _replay_recursive_parent_direct_frontier_v1(
+        role_occurrences,
+        rows,
+        equation,
+        page_sequence=page_sequence,
+        root_occurrence_id=proof["root_occurrence_id"],
+        target_role=proof["target_role"],
+    )
+    if (
+        direct_frontier is None
+        or [row["label_match"]["occurrence_id"] for _role, row in direct_frontier] != component_ids
+    ):
+        raise _error("one-edit parent-frontier is partial, mixed, or non-direct")
+
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in evidence["numeric_sample_universe"]
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    if len(sample_by_id) != len(evidence["numeric_sample_universe"]):
+        raise _error("one-edit parent-frontier numeric sample identity repeats")
+    result_records = [sample_by_id.get(item) for item in parent["result_sample_ids"]]
+    result_numbers = [
+        occurrence_row_v2._direct_frontier_number(record)  # noqa: SLF001
+        if type(record) is dict
+        else None
+        for record in result_records
+    ]
+    if (
+        any(type(record) is not dict for record in result_records)
+        or result_numbers != parent["numbers"]
+        or any(record["page_sequence"] != page_sequence for record in result_records)
+        or [record["column_ordinal"] for record in result_records] != list(range(lane_count))
+        or [record["column_center"] for record in result_records] != centers
+        or set(parent["result_sample_ids"]) & set(component_sample_ids)
+    ):
+        raise _error("one-edit parent-frontier result sample axis drifted")
+    result_sample_ids = set(parent["result_sample_ids"])
+    result_clusters = [
+        cluster
+        for cluster in evidence["internal_unassigned_numeric_clusters"]
+        if type(cluster) is dict and set(cluster.get("sample_ids", [])) & result_sample_ids
+    ]
+    if (
+        len(result_clusters) != 1
+        or set(result_clusters[0].get("sample_ids", [])) != result_sample_ids
+        or result_clusters[0].get("page_sequence") != page_sequence
+        or result_clusters[0].get("status") != occurrence_row_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS  # noqa: SLF001
+        or result_clusters[0].get("label_lane_status")
+        != occurrence_row_v2._LABELED_LABEL_LANE_STATUS  # noqa: SLF001
+        or len(result_clusters[0].get("same_row_label_evidence", [])) != 1
+        or result_clusters[0]["same_row_label_evidence"][0].get("bbox") != parent["label_bbox"]
+        or result_clusters[0]["same_row_label_evidence"][0].get("line_ordinal")
+        not in parent["source_line_indices"]
+        or any(
+            record.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or record.get("owner_id") != result_clusters[0].get("cluster_id")
+            for record in result_records
+        )
+    ):
+        raise _error("one-edit parent-frontier physical parent cluster drifted")
+    return receipt
+
+
+def _validate_parent_frontier_against_closure_axes_v1(
+    value: Any,
+    *,
+    internal_unassigned_numeric_clusters: Any,
+    numeric_sample_universe: Any,
+    role_occurrences: Any,
+) -> dict[str, Any]:
+    """Rebind the sealed frontier to the exact axes persisted by closure.
+
+    Closure does not persist a second copy of the row axis.  It does retain
+    every occurrence, numeric sample, and internal cluster.  Those axes are
+    sufficient to authenticate the component identities/order, their printed
+    numbers, and the physical parent-result cluster; public replay remains the
+    stronger source-page check.
+    """
+
+    receipt = _validate_parent_frontier_result_v1(value)
+    if any(
+        type(axis) is not list
+        for axis in (
+            internal_unassigned_numeric_clusters,
+            numeric_sample_universe,
+            role_occurrences,
+        )
+    ):
+        raise _error("one-edit parent-frontier closure axis drifted")
+    binding = receipt["input_binding"]
+    if (
+        binding["internal_unassigned_numeric_clusters_sha256"]
+        != canonical_json_sha256_v1(internal_unassigned_numeric_clusters)
+        or binding["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(numeric_sample_universe)
+        or binding["role_occurrences_sha256"] != canonical_json_sha256_v1(role_occurrences)
+    ):
+        raise _error("one-edit parent-frontier closure input binding drifted")
+
+    proof = receipt["parent_frontier_authority"]
+    equation = proof["source_scope_binding"]["geometry"]["equation"]
+    parent = proof["parent_match_binding"]
+    page_sequence = parent["page_sequence"]
+    context = proof["column_context_receipt"]
+    centers = [item["column_center"] for item in context["period_axis"]]
+    lane_count = len(centers)
+    occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in role_occurrences
+        if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
+    }
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in numeric_sample_universe
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    if (
+        len(occurrence_by_id) != len(role_occurrences)
+        or len(sample_by_id) != len(numeric_sample_universe)
+        or lane_count == 0
+        or [item["column_center"] for item in context["unit_axis"]] != centers
+    ):
+        raise _error("one-edit parent-frontier closure identity axis repeats")
+
+    component_ids: list[str] = []
+    component_keys: list[tuple[Any, ...]] = []
+    component_receipts: list[dict[str, Any]] = []
+    component_sample_ids: list[str] = []
+    for persisted, equation_component in zip(
+        proof["component_frontier_bindings"],
+        equation["component_frontier"],
+        strict=True,
+    ):
+        occurrence = occurrence_by_id.get(persisted["occurrence_id"])
+        label_match = occurrence.get("label_match", {}) if type(occurrence) is dict else {}
+        explicit_indices = label_match.get("source_line_indices")
+        source_start = label_match.get("source_line_index")
+        source_stop = label_match.get("end_source_line_index")
+        source_line_indices = (
+            explicit_indices
+            if type(explicit_indices) is list
+            else list(range(source_start, source_stop + 1))
+            if type(source_start) is int
+            and type(source_stop) is int
+            and source_stop >= source_start
+            else []
+        )
+        row_receipt = persisted["row_receipt"]
+        records = [sample_by_id.get(sample_id) for sample_id in row_receipt["sample_ids"]]
+        numbers = [
+            occurrence_row_v2._direct_frontier_number(record)  # noqa: SLF001
+            if type(record) is dict
+            else None
+            for record in records
+        ]
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != persisted["role_occurrence_sha256"]
+            or occurrence.get("retrieval_occurrence_id")
+            != equation_component["retrieval_occurrence_id"]
+            or occurrence.get("role") != equation_component["role"]
+            or label_match.get("retrieval_role") != persisted["retrieval_role"]
+            or label_match.get("retrieval_within_role") != persisted["retrieval_within_role"]
+            or source_line_indices != persisted["source_line_indices"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("has_bound_value_row") is not True
+            or label_match.get("page_sequence") != page_sequence
+            or not occurrence_row_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                label_match
+            )
+            or len(records) != lane_count
+            or any(type(record) is not dict for record in records)
+            or numbers != row_receipt["numbers"]
+            or not same_typed_json_v1(
+                row_receipt,
+                {
+                    "numbers": equation_component["numbers"],
+                    "sample_ids": equation_component["sample_ids"],
+                },
+            )
+            or any(
+                record.get("owner_kind") != "ROLE_OCCURRENCE"
+                or record.get("owner_id") != persisted["occurrence_id"]
+                or record.get("page_sequence") != page_sequence
+                for record in records
+            )
+            or [record.get("column_ordinal") for record in records] != list(range(lane_count))
+            or [record.get("column_center") for record in records] != centers
+        ):
+            raise _error("one-edit parent-frontier closure component binding drifted")
+        component_ids.append(persisted["occurrence_id"])
+        component_keys.append(occurrence_row_v2._visual_match_key(label_match))  # noqa: SLF001
+        component_receipts.append(row_receipt)
+        component_sample_ids.extend(row_receipt["sample_ids"])
+    if (
+        component_keys != sorted(component_keys)
+        or len(component_sample_ids) != len(set(component_sample_ids))
+        or not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+            {"numbers": parent["numbers"]}, component_receipts
+        )
+    ):
+        raise _error("one-edit parent-frontier closure component axis drifted")
+
+    target = occurrence_by_id.get(proof["target_occurrence_id"])
+    target_label_match = canonical_clone_v1(target["label_match"]) if type(target) is dict else None
+    if type(target_label_match) is dict:
+        target_label_match.pop("source_scope_binding", None)
+    closure_rows = []
+    for occurrence in role_occurrences:
+        if occurrence.get("has_bound_value_row") is not True:
+            continue
+        occurrence_id = occurrence["occurrence_id"]
+        records = sorted(
+            (
+                sample
+                for sample in numeric_sample_universe
+                if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+                and sample.get("owner_id") == occurrence_id
+            ),
+            key=lambda sample: (sample.get("column_ordinal", -1), sample.get("sample_id", "")),
+        )
+        complete = len(records) == lane_count and [
+            record.get("column_ordinal") for record in records
+        ] == list(range(lane_count))
+        closure_rows.append(
+            {
+                "label_match": canonical_clone_v1(occurrence["label_match"]),
+                "status": "VISIBLE_VALUE_LANES_BOUND" if complete else "PARTIAL",
+                "values": canonical_clone_v1(records),
+            }
+        )
+    direct_frontier = _replay_recursive_parent_direct_frontier_v1(
+        role_occurrences,
+        closure_rows,
+        equation,
+        page_sequence=page_sequence,
+        root_occurrence_id=proof["root_occurrence_id"],
+        target_role=proof["target_role"],
+    )
+    if (
+        type(target) is not dict
+        or not same_typed_json_v1(target_label_match, proof["target_label_match"])
+        or not same_typed_json_v1(target["source_scope_binding"], proof["source_scope_binding"])
+        or direct_frontier is None
+        or [row["label_match"]["occurrence_id"] for _role, row in direct_frontier] != component_ids
+    ):
+        raise _error("one-edit parent-frontier closure direct frontier drifted")
+
+    result_records = [sample_by_id.get(sample_id) for sample_id in parent["result_sample_ids"]]
+    result_numbers = [
+        occurrence_row_v2._direct_frontier_number(record)  # noqa: SLF001
+        if type(record) is dict
+        else None
+        for record in result_records
+    ]
+    result_sample_ids = set(parent["result_sample_ids"])
+    result_clusters = [
+        cluster
+        for cluster in internal_unassigned_numeric_clusters
+        if type(cluster) is dict and set(cluster.get("sample_ids", [])) & result_sample_ids
+    ]
+    if (
+        len(result_records) != lane_count
+        or any(type(record) is not dict for record in result_records)
+        or result_numbers != parent["numbers"]
+        or [record.get("column_ordinal") for record in result_records] != list(range(lane_count))
+        or [record.get("column_center") for record in result_records] != centers
+        or set(component_sample_ids) & result_sample_ids
+        or len(result_clusters) != 1
+        or set(result_clusters[0].get("sample_ids", [])) != result_sample_ids
+        or result_clusters[0].get("page_sequence") != page_sequence
+        or result_clusters[0].get("status") != occurrence_row_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS  # noqa: SLF001
+        or result_clusters[0].get("label_lane_status")
+        != occurrence_row_v2._LABELED_LABEL_LANE_STATUS  # noqa: SLF001
+        or len(result_clusters[0].get("same_row_label_evidence", [])) != 1
+        or result_clusters[0]["same_row_label_evidence"][0].get("bbox") != parent["label_bbox"]
+        or result_clusters[0]["same_row_label_evidence"][0].get("line_ordinal")
+        not in parent["source_line_indices"]
+        or any(
+            record.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or record.get("owner_id") != result_clusters[0].get("cluster_id")
+            or record.get("page_sequence") != page_sequence
+            for record in result_records
+        )
+    ):
+        raise _error("one-edit parent-frontier closure parent cluster drifted")
+    return canonical_clone_v1(result_clusters[0])
+
+
+def family_parent_exact_frontier_result_cluster_v1(
+    value: Any,
+    *,
+    structural_evidence: Any,
+) -> dict[str, Any] | None:
+    """Return the sole replayed physical parent-result cluster for V3."""
+
+    receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] != PARENT_FRONTIER_FORMAT_VERSION:
+        return None
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    _validate_parent_frontier_against_structural_evidence_v1(receipt, evidence)
+    return _validate_parent_frontier_against_closure_axes_v1(
+        receipt,
+        internal_unassigned_numeric_clusters=evidence["internal_unassigned_numeric_clusters"],
+        numeric_sample_universe=evidence["numeric_sample_universe"],
+        role_occurrences=evidence["role_occurrences"],
+    )
+
+
+def _build_parent_frontier_proof_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    column_context: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    compiled: Mapping[str, Any],
+    selected_region: Mapping[str, Any],
+    input_binding: Mapping[str, str],
+) -> dict[str, Any] | None:
+    unbound_checks = [
+        check for check in source_receipt["checks"] if check["status"] not in _BOUND_CHECK_STATUSES
+    ]
+    if (
+        len(unbound_checks) != 1
+        or unbound_checks[0]["match_scope"] != "FAMILY_PARENT"
+        or selected_region.get("parent_match") is None
+        or not _is_one_edit(selected_region["parent_match"])
+    ):
+        return None
+    source_check = unbound_checks[0]
+    parent_match = canonical_clone_v1(selected_region["parent_match"])
+    if (
+        source_check["role"] != compiled["parent"]["role"]
+        or source_check["page_sequence"] != parent_match["page_sequence"]
+        or source_check["source_line_indices"] != list(_match_line_indices(parent_match, pages))
+    ):
+        return None
+    occurrence_pages = _occurrence_row_pages_v1(pages)
+    parent_match["source_label_bbox"] = occurrence_row_v2._source_line_bbox(  # noqa: SLF001
+        occurrence_pages, parent_match
+    )
+    row_axis = evidence["row_axis"]
+    parent_result = occurrence_row_v2._direct_frontier_parent_row_receipt(  # noqa: SLF001
+        occurrence_pages,
+        parent_match,
+        row_axis,
+    )
+    if parent_result is None:
+        return None
+    root_occurrence_id = _root_scope_id_v1(selected_region)
+    role_occurrences = evidence["role_occurrences"]
+    candidates = []
+    for occurrence in role_occurrences:
+        binding = occurrence.get("source_scope_binding")
+        geometry = binding.get("geometry") if type(binding) is dict else None
+        equation = geometry.get("equation") if type(geometry) is dict else None
+        if (
+            type(binding) is dict
+            and binding.get("binding_kind")
+            == occurrence_row_v2._RECURSIVE_PARENT_PROVISION_BINDING_KIND  # noqa: SLF001
+            and type(equation) is dict
+            and equation.get("parent_role") == compiled["family_id"]
+            and equation.get("parent_occurrence_id") == root_occurrence_id
+            and equation.get("result", {}).get("role") == compiled["family_id"]
+            and equation.get("result", {}).get("occurrence_id") == root_occurrence_id
+            and occurrence.get("scope_owner_occurrence_id") == root_occurrence_id
+            and occurrence.get("scope_owner_role") is None
+        ):
+            candidates.append((occurrence, binding, equation))
+    if len(candidates) != 1:
+        return None
+    target, source_scope_binding, equation = candidates[0]
+    target_label_match = canonical_clone_v1(target["label_match"])
+    target_label_match.pop("source_scope_binding", None)
+    try:
+        if not occurrence_row_v2._recursive_parent_provision_geometry_is_valid(  # noqa: SLF001
+            source_scope_binding["geometry"],
+            label_match=target_label_match,
+            role=target["role"],
+        ):
+            return None
+    except (KeyError, TypeError):
+        return None
+    if (
+        target_label_match.get("page_sequence") != parent_match["page_sequence"]
+        or equation["result"].get("sample_ids") != parent_result["sample_ids"]
+        or equation["result"].get("numbers") != parent_result["numbers"]
+    ):
+        return None
+    occurrences_by_retrieval: dict[str, list[Mapping[str, Any]]] = {}
+    for occurrence in role_occurrences:
+        retrieval_id = occurrence.get("retrieval_occurrence_id")
+        if type(retrieval_id) is str:
+            occurrences_by_retrieval.setdefault(retrieval_id, []).append(occurrence)
+    rows_by_occurrence: dict[str, list[Mapping[str, Any]]] = {}
+    for row in row_axis["rows"]:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence.setdefault(occurrence_id, []).append(row)
+    component_occurrences = []
+    component_rows = []
+    component_receipts = []
+    for component in equation["component_frontier"]:
+        matching_occurrences = [
+            occurrence
+            for occurrence in occurrences_by_retrieval.get(component["retrieval_occurrence_id"], [])
+            if occurrence.get("role") == component["role"]
+        ]
+        if len(matching_occurrences) != 1:
+            return None
+        occurrence = matching_occurrences[0]
+        matching_rows = rows_by_occurrence.get(occurrence["occurrence_id"], [])
+        if (
+            len(matching_rows) != 1
+            or occurrence.get("scope_owner_occurrence_id") != root_occurrence_id
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("has_bound_value_row") is not True
+            or occurrence["label_match"].get("page_sequence") != parent_match["page_sequence"]
+            or not occurrence_row_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence["label_match"]
+            )
+        ):
+            return None
+        receipt = occurrence_row_v2._direct_frontier_row_receipt(  # noqa: SLF001
+            matching_rows[0]
+        )
+        if (
+            receipt is None
+            or receipt["numbers"] != component["numbers"]
+            or receipt["sample_ids"] != component["sample_ids"]
+        ):
+            return None
+        component_occurrences.append(occurrence)
+        component_rows.append(matching_rows[0])
+        component_receipts.append(receipt)
+    component_ids = [occurrence["occurrence_id"] for occurrence in component_occurrences]
+    if len(component_ids) != len(
+        set(component_ids)
+    ) or not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+        parent_result, component_receipts
+    ):
+        return None
+    direct_frontier = _replay_recursive_parent_direct_frontier_v1(
+        role_occurrences,
+        row_axis["rows"],
+        equation,
+        page_sequence=parent_match["page_sequence"],
+        root_occurrence_id=root_occurrence_id,
+        target_role=target["role"],
+    )
+    if (
+        direct_frontier is None
+        or [row["label_match"]["occurrence_id"] for _role, row in direct_frontier] != component_ids
+    ):
+        return None
+    result_samples = set(parent_result["sample_ids"])
+    component_samples = {
+        sample_id for receipt in component_receipts for sample_id in receipt["sample_ids"]
+    }
+    if result_samples & component_samples:
+        return None
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in evidence["numeric_sample_universe"]
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    result_records = [sample_by_id.get(sample_id) for sample_id in parent_result["sample_ids"]]
+    if any(type(record) is not dict for record in result_records):
+        return None
+    result_numbers = [
+        occurrence_row_v2._direct_frontier_number(record)  # noqa: SLF001
+        for record in result_records
+    ]
+    if (
+        any(number is None for number in result_numbers)
+        or result_numbers != parent_result["numbers"]
+        or any(
+            record.get("page_sequence") != parent_match["page_sequence"]
+            for record in result_records
+        )
+    ):
+        return None
+    result_clusters = [
+        cluster
+        for cluster in evidence["internal_unassigned_numeric_clusters"]
+        if type(cluster) is dict and set(cluster.get("sample_ids", [])) & result_samples
+    ]
+    if (
+        len(result_clusters) != 1
+        or set(result_clusters[0].get("sample_ids", [])) != result_samples
+        or any(
+            type(cluster) is dict
+            and cluster is not result_clusters[0]
+            and cluster.get("page_sequence") == parent_match["page_sequence"]
+            for cluster in evidence["internal_unassigned_numeric_clusters"]
+        )
+    ):
+        return None
+    grids = [
+        grid
+        for grid in row_axis["column_grids"]
+        if grid["page_sequence"] == parent_match["page_sequence"]
+    ]
+    if len(grids) != 1:
+        return None
+    centers = grids[0]["column_centers"]
+    lane_count = len(centers)
+    period_axis = sorted(column_context["period_axis"], key=lambda item: item["column_ordinal"])
+    unit_axis = sorted(column_context["unit_axis"], key=lambda item: item["column_ordinal"])
+    if (
+        column_context["status"] != "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+        or column_context["row_axis_id"] != row_axis["row_axis_id"]
+        or len(parent_result["numbers"]) != lane_count
+        or [item.get("column_ordinal") for item in period_axis] != list(range(lane_count))
+        or [item.get("column_ordinal") for item in unit_axis] != list(range(lane_count))
+        or any(
+            type(item.get("resolved_period")) is not str or not item["resolved_period"]
+            for item in period_axis
+        )
+        or any(
+            item.get("column_center") != centers[index] for index, item in enumerate(period_axis)
+        )
+        or any(item.get("column_center") != centers[index] for index, item in enumerate(unit_axis))
+        or len(
+            {
+                (item.get("unit_kind"), item.get("currency"), item.get("magnitude_power10"))
+                for item in unit_axis
+            }
+        )
+        != 1
+    ):
+        return None
+    parent_bbox = parent_match["source_label_bbox"]
+    parent_binding = {
+        "document_line_span": [
+            parent_match["document_line_ordinal"],
+            parent_match["end_document_line_ordinal"],
+        ],
+        "label_bbox": canonical_clone_v1(parent_bbox),
+        "numbers": canonical_clone_v1(parent_result["numbers"]),
+        "page_sequence": parent_match["page_sequence"],
+        "result_sample_ids": canonical_clone_v1(parent_result["sample_ids"]),
+        "source_line_indices": canonical_clone_v1(source_check["source_line_indices"]),
+    }
+    component_bindings = [
+        {
+            "component_ordinal": ordinal,
+            "equation_component": canonical_clone_v1(equation_component),
+            "occurrence_id": occurrence["occurrence_id"],
+            "role_occurrence_sha256": canonical_json_sha256_v1(occurrence),
+            "row_receipt": canonical_clone_v1(receipt),
+            "row_sha256": canonical_json_sha256_v1(row),
+            "retrieval_role": occurrence["label_match"]["retrieval_role"],
+            "retrieval_within_role": occurrence["label_match"]["retrieval_within_role"],
+            "source_line_indices": list(_match_line_indices(occurrence["label_match"], pages)),
+        }
+        for ordinal, (equation_component, occurrence, row, receipt) in enumerate(
+            zip(
+                equation["component_frontier"],
+                component_occurrences,
+                component_rows,
+                component_receipts,
+                strict=True,
+            )
+        )
+    ]
+    material = {
+        "column_context_receipt": canonical_clone_v1(column_context),
+        "component_frontier_bindings": component_bindings,
+        "format_version": _PARENT_FRONTIER_PROOF_FORMAT_VERSION,
+        "input_binding": canonical_clone_v1(input_binding),
+        "parent_match_binding": parent_binding,
+        "root_occurrence_id": root_occurrence_id,
+        "source_check": canonical_clone_v1(source_check),
+        "source_scope_binding": canonical_clone_v1(source_scope_binding),
+        "status": _PARENT_FRONTIER_BOUND_STATUS,
+        "target_label_match": target_label_match,
+        "target_occurrence_id": target["occurrence_id"],
+        "target_role": target["role"],
+    }
+    return _validate_parent_frontier_proof_shape_v1(
+        {
+            **material,
+            "proof_id": "afeoepfav1:proof:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def project_accounting_family_one_edit_parent_frontier_authority_v1(
+    source_exact_authority_receipt: Any,
+    structural_evidence: Any,
+    column_context: Any,
+    document_pages: Any,
+    family_spec: Any,
+    selected_topology_region: Any,
+) -> dict[str, Any]:
+    """Promote only one exact, exhaustive family-parent direct frontier.
+
+    This adapter never changes a source token or chooses among numeric
+    assignments.  It consumes the already authenticated row/occurrence axis,
+    one resolved period/unit column axis, and the recursive direct-frontier
+    equation emitted for a physical source occurrence.  Every ordinary V2
+    receipt is returned byte-for-byte when those gates do not close uniquely.
+    """
+
+    source = _validate_result(source_exact_authority_receipt)
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    try:
+        context = column_context_v1._validate_result(column_context)  # noqa: SLF001
+        pages = _pages_with_occurrence_geometry_v1(document_pages)
+        compiled = topology_v1._spec(family_spec)  # noqa: SLF001
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit parent-frontier authenticated input drifted") from exc
+    if (
+        type(selected_topology_region) is not dict
+        or source["family_id"] != compiled["family_id"]
+        or evidence["row_axis"]["family_id"] != compiled["family_id"]
+        or context["family_id"] != compiled["family_id"]
+        or source["input_binding"]["document_pages_sha256"]
+        != canonical_json_sha256_v1(document_pages)
+        or source["input_binding"]["family_spec_sha256"] != canonical_json_sha256_v1(family_spec)
+        or source["input_binding"]["selected_topology_region_sha256"]
+        != canonical_json_sha256_v1(selected_topology_region)
+    ):
+        raise _error("one-edit parent-frontier family/source binding drifted")
+    input_binding = _parent_frontier_input_binding_v1(source, evidence, context)
+    proof = _build_parent_frontier_proof_v1(
+        source,
+        evidence,
+        context,
+        pages,
+        compiled,
+        selected_topology_region,
+        input_binding,
+    )
+    if proof is None:
+        return canonical_clone_v1(source)
+    source_reason = _parent_frontier_reason(proof["source_check"])
+    reasons = [reason for reason in source["unresolved_reasons"] if reason != source_reason]
+    metrics = {
+        "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+        "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+        "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+    }
+    material = {
+        "authority_spec": {
+            "sha256": canonical_json_sha256_v1(_PARENT_FRONTIER_AUTHORITY_SPEC),
+            "value": canonical_clone_v1(_PARENT_FRONTIER_AUTHORITY_SPEC),
+        },
+        "checks": canonical_clone_v1(source["checks"]),
+        "claim_boundary": PARENT_FRONTIER_CLAIM_BOUNDARY,
+        "family_id": compiled["family_id"],
+        "format_version": PARENT_FRONTIER_FORMAT_VERSION,
+        "input_binding": input_binding,
+        "metrics": metrics,
+        "parent_frontier_authority": proof,
+        "safety": canonical_clone_v1(_PARENT_FRONTIER_SAFETY),
+        "source_exact_authority_receipt": canonical_clone_v1(source),
+        "status": (
+            "EXACT_SOURCE_AUTHORITY_BOUND"
+            if not reasons
+            else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+        ),
+        "unresolved_reasons": reasons,
+    }
+    persisted = {
+        **material,
+        "receipt_id": "afeoeav1:receipt:" + canonical_json_sha256_v1(material),
+    }
+    return _validate_parent_frontier_against_structural_evidence_v1(
+        persisted,
+        evidence,
+    )
+
+
+def family_parent_has_exact_authority_v1(
+    value: Any,
+    *,
+    structural_evidence: Any = None,
+) -> bool:
+    """Return whether the selected family parent has one replayable authority."""
+
+    receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if any(
+        check["match_scope"] == "FAMILY_PARENT" and check["status"] in _BOUND_CHECK_STATUSES
+        for check in receipt["checks"]
+    ):
+        return True
+    if receipt["format_version"] != PARENT_FRONTIER_FORMAT_VERSION:
+        return False
+    if structural_evidence is None:
+        return False
+    _validate_parent_frontier_against_structural_evidence_v1(receipt, structural_evidence)
+    return receipt["parent_frontier_authority"]["status"] == _PARENT_FRONTIER_BOUND_STATUS
+
+
 def _build_from_canonical_expanded_occurrences_v1(
     pages: Sequence[Mapping[str, Any]],
     compiled: Mapping[str, Any],
@@ -2002,6 +3303,8 @@ def validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
 ) -> dict[str, Any]:
     """Validate a closed receipt and all of its internal content hashes."""
 
+    if type(value) is dict and value.get("format_version") == PARENT_FRONTIER_FORMAT_VERSION:
+        return _validate_parent_frontier_result_v1(value)
     return _validate_result(value)
 
 
@@ -2011,15 +3314,30 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
     family_spec: Any,
     selected_topology_region: Any,
     expanded_occurrence_region: Any,
+    *,
+    structural_evidence: Any = None,
+    column_context: Any = None,
 ) -> dict[str, Any]:
     """Exact-rebuild a receipt from bound source text and the selected region."""
 
-    persisted = _validate_result(value)
-    expected = build_accounting_family_one_edit_exact_authority_v1(
+    persisted = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    source_expected = build_accounting_family_one_edit_exact_authority_v1(
         document_pages,
         family_spec,
         selected_topology_region,
         expanded_occurrence_region,
+    )
+    expected = (
+        project_accounting_family_one_edit_parent_frontier_authority_v1(
+            source_expected,
+            structural_evidence,
+            column_context,
+            document_pages,
+            family_spec,
+            selected_topology_region,
+        )
+        if persisted["format_version"] == PARENT_FRONTIER_FORMAT_VERSION
+        else source_expected
     )
     if not same_typed_json_v1(persisted, expected):
         raise _error("one-edit exact-authority receipt does not replay exactly")

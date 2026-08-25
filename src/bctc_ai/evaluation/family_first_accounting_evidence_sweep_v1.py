@@ -2637,12 +2637,34 @@ def _selected_v4_one_edit_authority_v1(
             family_spec,
             topology_candidates["regions"][ordinal],
         )
-        rebuilt = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
+        rebuilt_source = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
             authority_pages,
             family_spec,
             topology_candidates["regions"][ordinal],
             canonical_expanded,
         )
+        if receipt["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
+            closure = selected.get("additive_closure")
+            column_context = selected.get("column_context")
+            if type(closure) is not dict or type(column_context) is not dict:
+                raise _error("selected V4 parent-frontier authority lost structural evidence")
+            rebuilt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
+                rebuilt_source,
+                {
+                    "internal_unassigned_numeric_clusters": closure[
+                        "internal_unassigned_numeric_clusters"
+                    ],
+                    "numeric_sample_universe": closure["numeric_sample_universe"],
+                    "role_occurrences": closure["role_occurrences"],
+                    "row_axis": selected["row_axis"],
+                },
+                column_context,
+                authority_pages,
+                family_spec,
+                topology_candidates["regions"][ordinal],
+            )
+        else:
+            rebuilt = rebuilt_source
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
         raise _error("selected V4 one-edit exact authority replay failed") from exc
     if not same_typed_json_v1(receipt, rebuilt):
@@ -2795,6 +2817,42 @@ def _candidate_evidence_from_joined_pages(
                     "candidate_ordinal": candidate_ordinal,
                     "column_context": None,
                     "reasons": [f"COLUMN_CONTEXT_ERROR:{type(exc).__name__}:{exc}"],
+                    "row_axis": row_axis,
+                    "one_edit_exact_source_structural_proofs": (
+                        one_edit_exact_source_structural_proofs
+                    ),
+                }
+            )
+            continue
+        try:
+            parent_frontier_projection_required = any(
+                type(check) is dict
+                and check.get("match_scope") == "FAMILY_PARENT"
+                and check.get("status") not in occurrence_row_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
+                for check in (
+                    one_edit_exact_source_structural_proofs.get("checks", [])
+                    if type(one_edit_exact_source_structural_proofs) is dict
+                    else []
+                )
+            )
+            if occurrence_axis is not None and parent_frontier_projection_required:
+                occurrence_axis = occurrence_row_v2.project_accounting_family_one_edit_parent_frontier_authority_v2(
+                    occurrence_axis,
+                    column_context,
+                    joined_pages,
+                    family_spec,
+                    topology_region,
+                )
+                one_edit_exact_source_structural_proofs = occurrence_axis[
+                    "one_edit_exact_source_structural_proofs"
+                ]
+        except ValueError as exc:
+            candidate_evidence.append(
+                {
+                    "additive_closure": None,
+                    "candidate_ordinal": candidate_ordinal,
+                    "column_context": column_context,
+                    "reasons": [f"ONE_EDIT_PARENT_FRONTIER_ERROR:{type(exc).__name__}:{exc}"],
                     "row_axis": row_axis,
                     "one_edit_exact_source_structural_proofs": (
                         one_edit_exact_source_structural_proofs

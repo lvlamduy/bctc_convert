@@ -55,6 +55,7 @@ __all__ = [
     "POLICY_FORMAT_VERSION",
     "AccountingFamilyOccurrenceRowAxisV2Error",
     "build_accounting_family_occurrence_row_axis_v2",
+    "project_accounting_family_one_edit_parent_frontier_authority_v2",
     "validate_accounting_family_occurrence_row_axis_replay_v2",
 ]
 
@@ -11830,6 +11831,23 @@ def _validate_result(value: Any) -> dict[str, Any]:
         topology_scan_id=value["topology_scan_id"],
     )
     _validate_numeric_sample_universe(value, axis, occurrence_by_id)
+    if one_edit_proofs["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
+        try:
+            one_edit_v1._validate_parent_frontier_against_structural_evidence_v1(  # noqa: SLF001
+                one_edit_proofs,
+                {
+                    "internal_unassigned_numeric_clusters": value[
+                        "internal_unassigned_numeric_clusters"
+                    ],
+                    "numeric_sample_universe": value["numeric_sample_universe"],
+                    "role_occurrences": value["role_occurrences"],
+                    "row_axis": axis,
+                },
+            )
+        except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+            raise _error(
+                "one-edit parent-frontier proof does not bind the occurrence axis"
+            ) from exc
     dash_sample_ids = []
     for item in value["authenticated_existing_dash_evidence"]:
         embedded = item.get("dash_evidence") if type(item) is dict else None
@@ -12183,6 +12201,56 @@ def _build(
         "structural_owner_only_rescue_rejections": (structural_owner_only_rescue_rejections),
         "unresolved_reasons": list(dict.fromkeys(reasons)),
     }
+    return _validate_result(
+        {
+            **material,
+            "occurrence_axis_id": "aforav2:axis:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def project_accounting_family_one_edit_parent_frontier_authority_v2(
+    occurrence_axis: Any,
+    column_context: Any,
+    pages: Any,
+    family_spec: Any,
+    selected_topology_region: Any,
+) -> dict[str, Any]:
+    """Add one arithmetic family-parent proof without changing row evidence."""
+
+    axis = _validate_result(occurrence_axis)
+    try:
+        parsed_pages = row_v1._pages(pages)
+        compiled = topology_v1._spec(family_spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit parent-frontier projection input drifted") from exc
+    if axis["family_id"] != compiled["family_id"] or type(selected_topology_region) is not dict:
+        raise _error("one-edit parent-frontier projection family drifted")
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
+    )
+
+    projected_receipt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
+        axis["one_edit_exact_source_structural_proofs"],
+        {
+            "internal_unassigned_numeric_clusters": axis["internal_unassigned_numeric_clusters"],
+            "numeric_sample_universe": axis["numeric_sample_universe"],
+            "role_occurrences": axis["role_occurrences"],
+            "row_axis": axis["row_axis"],
+        },
+        column_context,
+        _one_edit_authority_pages_v2(parsed_pages),
+        family_spec,
+        selected_topology_region,
+    )
+    if same_typed_json_v1(
+        projected_receipt,
+        axis["one_edit_exact_source_structural_proofs"],
+    ):
+        return axis
+    material = canonical_clone_v1(axis)
+    material.pop("occurrence_axis_id")
+    material["one_edit_exact_source_structural_proofs"] = projected_receipt
     return _validate_result(
         {
             **material,

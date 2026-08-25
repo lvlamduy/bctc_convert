@@ -10,7 +10,9 @@ import pytest
 from PIL import Image, ImageDraw
 
 from bctc_ai.evaluation import accounting_family_coextensive_parent_total_v1 as total_v1
+from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as subject
+from bctc_ai.evaluation import accounting_family_one_edit_exact_authority_v1 as one_edit_v1
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
@@ -1013,6 +1015,43 @@ def _f3_pages(rows: list[tuple[str, str, str]]) -> list[dict[str, object]]:
     return pages
 
 
+def _f3_parent_frontier_pages(
+    rows: list[tuple[str, str, str]],
+) -> list[dict[str, object]]:
+    pages = _f3_pages(rows)
+    for line_index in (0, 3, 4):
+        bbox = pages[0]["lines"][line_index]["bbox"]
+        height = bbox[3] - bbox[1]
+        bbox[1:4:2] = [155, 155 + height]
+    pages[0]["lines"].insert(
+        3,
+        _line(999, "Đơn vị: Triệu đồng", "", [600, 75, 900, 95]),
+    )
+    _reindex_page_lines(pages[0]["lines"])
+
+    def document_context_page(
+        page_sequence: int, sample_base: int, *, with_reset: bool
+    ) -> dict[str, object]:
+        lines = [
+            _line(sample_base, "31/12/2025", "", [600, 30, 700, 52]),
+            _line(sample_base + 1, "31/12/2024", "", [800, 30, 900, 52]),
+            _line(sample_base + 2, "Đơn vị: Triệu đồng", "", [600, 60, 900, 82]),
+        ]
+        if with_reset:
+            lines.append(_line(sample_base + 3, "Cho vay khách hàng", "", [30, 100, 500, 122]))
+        for ordinal, line in enumerate(lines):
+            line["line_ordinal"] = ordinal
+        return {"lines": lines, "page_sequence": page_sequence, "page_width": 1000}
+
+    pages.extend(
+        [
+            document_context_page(2, 100, with_reset=True),
+            document_context_page(3, 200, with_reset=False),
+        ]
+    )
+    return pages
+
+
 def _reindex_page_lines(lines: list[dict[str, object]]) -> None:
     for ordinal, line in enumerate(lines):
         line["line_ordinal"] = ordinal
@@ -1064,6 +1103,26 @@ def _build_f3(pages: list[dict[str, object]]) -> tuple[dict, dict]:
         effective_topology_region=effective,
     )
     return scan, axis
+
+
+def _f3_column_context(axis: dict, pages: list[dict[str, object]]) -> dict:
+    evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
+    return column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(
+        axis["row_axis"],
+        pages,
+        _f3_spec(),
+        period_semantics=evaluation["period_semantics"],
+        expected_lane_unit_kinds=evaluation["expected_lane_unit_kinds"],
+    )
+
+
+def _f3_structural_evidence(axis: dict) -> dict:
+    return {
+        "internal_unassigned_numeric_clusters": axis["internal_unassigned_numeric_clusters"],
+        "numeric_sample_universe": axis["numeric_sample_universe"],
+        "role_occurrences": axis["role_occurrences"],
+        "row_axis": axis["row_axis"],
+    }
 
 
 def _f3_explicit_group_total_rows() -> list[tuple[str, str, str]]:
@@ -4558,6 +4617,250 @@ def test_recursive_deposit_support_rejects_visual_child_with_wrong_structural_ow
         result_role="INTERBANK_DEPOSIT_GROUP",
         result_row=deposit_row,
     )
+
+
+def test_f3_one_edit_family_parent_binds_only_through_exact_root_frontier() -> None:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Bằng VND", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Bằng VND", "40", "40"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Bằng VND", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    scan, axis = _build_f3(pages)
+    source_receipt = axis["one_edit_exact_source_structural_proofs"]
+    assert source_receipt["format_version"] == one_edit_v1.FORMAT_VERSION
+    assert source_receipt["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    assert source_receipt["metrics"] == {
+        "exact_bound_count": 0,
+        "selected_one_edit_match_count": 1,
+        "unresolved_match_count": 1,
+    }
+    context = _f3_column_context(axis, pages)
+    assert context["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+
+    projected = subject.project_accounting_family_one_edit_parent_frontier_authority_v2(
+        axis,
+        context,
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+    )
+
+    receipt = projected["one_edit_exact_source_structural_proofs"]
+    assert receipt["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+    assert receipt["unresolved_reasons"] == []
+    assert one_edit_v1.family_parent_has_exact_authority_v1(receipt) is False
+    assert (
+        one_edit_v1.family_parent_has_exact_authority_v1(
+            receipt,
+            structural_evidence=_f3_structural_evidence(projected),
+        )
+        is True
+    )
+    proof = receipt["parent_frontier_authority"]
+    equation = proof["source_scope_binding"]["geometry"]["equation"]
+    assert [item["role"] for item in equation["component_frontier"]] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    ]
+    repeated_vnd_occurrences = [
+        occurrence
+        for occurrence in projected["role_occurrences"]
+        if occurrence["label_match"]["normalized_surface"] == "bang vnd"
+    ]
+    assert len(repeated_vnd_occurrences) == 3
+    assert (
+        len({occurrence["occurrence_id"] for occurrence in repeated_vnd_occurrences})
+        == len({occurrence["scope_owner_occurrence_id"] for occurrence in repeated_vnd_occurrences})
+        == 3
+    )
+    assert [item["coefficient"] for item in equation["result"]["numbers"]] == [150, 130]
+    assert [item["resolved_period"] for item in proof["column_context_receipt"]["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["one_edit_exact_source_structural_proofs"] == receipt
+    assert [
+        record["disposition"]
+        for record in closure["coverage_receipt"]
+        if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    ] == ["ONE_EDIT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"]
+
+    authority_pages = subject._one_edit_authority_pages_v2(row_v1._pages(pages))
+    parsed_authority_pages = one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages)
+    expanded = one_edit_v1._canonical_expanded_occurrence_region_v1(
+        parsed_authority_pages,
+        _f3_spec(),
+        scan["regions"][0],
+    )
+    assert (
+        one_edit_v1.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            receipt,
+            authority_pages,
+            _f3_spec(),
+            scan["regions"][0],
+            expanded,
+            structural_evidence=_f3_structural_evidence(projected),
+            column_context=context,
+        )
+        == receipt
+    )
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-3", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "100", ""),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "50", "45"),
+            ("Tiền gửi tại các TCTD khác", "50", "45"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ],
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+            ("Cho vay các TCTD khác", "52", "41"),
+        ],
+    ],
+    ids=["one-lane-mismatch", "partial-lane", "duplicate-role", "reordered-frontier"],
+)
+def test_f3_one_edit_family_parent_frontier_fails_closed_without_one_complete_equation(
+    rows: list[tuple[str, str, str]],
+) -> None:
+    pages = _f3_parent_frontier_pages(rows)
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    scan, axis = _build_f3(pages)
+    context = _f3_column_context(axis, pages)
+
+    projected = subject.project_accounting_family_one_edit_parent_frontier_authority_v2(
+        axis,
+        context,
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+    )
+
+    assert projected["one_edit_exact_source_structural_proofs"]["format_version"] == (
+        one_edit_v1.FORMAT_VERSION
+    )
+    assert (
+        projected["one_edit_exact_source_structural_proofs"]
+        == (axis["one_edit_exact_source_structural_proofs"])
+    )
+
+
+def test_f3_one_edit_parent_frontier_coherent_component_id_swap_fails_in_closure() -> None:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    scan, axis = _build_f3(pages)
+    projected = subject.project_accounting_family_one_edit_parent_frontier_authority_v2(
+        axis,
+        _f3_column_context(axis, pages),
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+    )
+    attacked = copy.deepcopy(projected)
+    receipt = attacked["one_edit_exact_source_structural_proofs"]
+    proof = receipt["parent_frontier_authority"]
+    first = proof["component_frontier_bindings"][0]
+    second = proof["component_frontier_bindings"][1]
+    first["occurrence_id"], second["occurrence_id"] = (
+        second["occurrence_id"],
+        first["occurrence_id"],
+    )
+    proof_material = copy.deepcopy(proof)
+    proof_material.pop("proof_id")
+    proof["proof_id"] = "afeoepfav1:proof:" + canonical_json_sha256_v1(proof_material)
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "afeoeav1:receipt:" + canonical_json_sha256_v1(receipt_material)
+    _coherently_rehash_occurrence(attacked)
+
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="occurrence row-axis validation failed",
+    ):
+        closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+            attacked,
+            _f3_spec(),
+            _f3_hierarchy(),
+        )
+
+
+def test_f3_parent_frontier_cluster_cannot_be_coherently_downgraded_downstream() -> None:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    scan, axis = _build_f3(pages)
+    projected = subject.project_accounting_family_one_edit_parent_frontier_authority_v2(
+        axis,
+        _f3_column_context(axis, pages),
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    attacked = copy.deepcopy(closure)
+    cluster_receipt = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    )
+    cluster_id = cluster_receipt["source_record"]["cluster_id"]
+    cluster_receipt["coverage_id"] = "ashtcv2:coverage:source-only:" + cluster_id
+    cluster_receipt["disposition"] = "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+    attacked["status"] = "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    attacked["unresolved_reasons"] = ["SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:" + cluster_id]
+    closure_material = copy.deepcopy(attacked)
+    closure_material.pop("closure_id")
+    attacked["closure_id"] = "ashtcv2:closure:" + canonical_json_sha256_v1(closure_material)
+
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="parent-frontier cluster coverage drifted",
+    ):
+        closure_v2._validate_result(attacked)
 
 
 def test_f3_root_provision_accepts_one_coextensive_roman_section_ordinal() -> None:

@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_v2
+from bctc_ai.evaluation import accounting_family_one_edit_exact_authority_v1 as one_edit_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -181,6 +182,9 @@ _UNLABELED_SUBTOTAL_DISPOSITIONS = {
     _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
     _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
 }
+_ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION = (
+    "ONE_EDIT_FAMILY_PARENT_RESULT_EXACT_FRONTIER_CORROBORATION"
+)
 _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES = {
     "INTERBANK_DEPOSIT_GROUP",
     "INTERBANK_LOAN_GROUP",
@@ -466,8 +470,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "46b2ff26e8f9fcdb3edfb1deee1e6f9d899bdef49f2aed3f8791b123f532b3f6",
-        "size_bytes": 548_089,
+        "sha256": "6d54a2b8ce48589957f6c28aa03420f704295c4c58b40a2f0f0a0351fed741a9",
+        "size_bytes": 550_917,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -714,6 +718,7 @@ def _source_role_vetoes(
     role_occurrences: Sequence[Mapping[str, Any]],
     source_role_policy: Mapping[str, Any],
     one_edit_exact_source_structural_proofs: Mapping[str, Any],
+    one_edit_structural_evidence: Mapping[str, Any],
 ) -> tuple[set[str], set[str], list[str]]:
     """Separate typed source evidence that is ineligible for schema closure."""
 
@@ -726,10 +731,9 @@ def _source_role_vetoes(
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
         and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
-    family_parent_is_bound = any(
-        check["match_scope"] == "FAMILY_PARENT"
-        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
-        for check in one_edit_exact_source_structural_proofs["checks"]
+    family_parent_is_bound = one_edit_v1.family_parent_has_exact_authority_v1(
+        one_edit_exact_source_structural_proofs,
+        structural_evidence=one_edit_structural_evidence,
     )
     source_only_occurrences: set[str] = set()
     one_edit_occurrences: set[str] = set()
@@ -4951,9 +4955,17 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
                 type(cluster) is not dict
                 or not same_typed_json_v1(receipt["source_record"], cluster)
                 or receipt["disposition"]
-                not in {expected_disposition, *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS}
+                not in {
+                    expected_disposition,
+                    *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+                    _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
+                }
                 or (
-                    receipt["disposition"] in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
+                    receipt["disposition"]
+                    in {
+                        *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+                        _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
+                    }
                     and cluster["status"] != occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
                 )
             ):
@@ -4997,7 +5009,11 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
     }
     if any(
-        receipt["disposition"] not in _UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS
+        receipt["disposition"]
+        not in {
+            *_UNLABELED_SOURCE_SUBTOTAL_DISPOSITIONS,
+            _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
+        }
         and (
             (
                 "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
@@ -5757,6 +5773,23 @@ def _validate_result(value: Any) -> dict[str, Any]:
         for occurrence in value["role_occurrences"]
         if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
     }
+    parent_frontier_result_cluster = None
+    if one_edit_proofs["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
+        try:
+            parent_frontier_result_cluster = (
+                one_edit_v1._validate_parent_frontier_against_closure_axes_v1(  # noqa: SLF001
+                    one_edit_proofs,
+                    internal_unassigned_numeric_clusters=value[
+                        "internal_unassigned_numeric_clusters"
+                    ],
+                    numeric_sample_universe=value["numeric_sample_universe"],
+                    role_occurrences=value["role_occurrences"],
+                )
+            )
+        except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+            raise _error(
+                "scoped hierarchical parent-frontier proof does not bind its persisted axes"
+            ) from exc
     proof_check_by_retrieval_occurrence_id = {
         check["occurrence_id"]: check
         for check in one_edit_proofs["checks"]
@@ -6050,6 +6083,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
         _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
         _LOCAL_TRAILING_SUBGROUP_SUBTOTAL_CORROBORATION,
+        _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
     }
     unlabeled_exact_subtotal_target_roles = {
         equation["result_role"]
@@ -6125,6 +6159,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                             not in {
                                 "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
                                 "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
+                                _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
                             }
                         )
                     )
@@ -6200,6 +6235,35 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
     ):
         raise _error("scoped hierarchical visible occurrence coverage receipt drifted")
+    parent_frontier_cluster_receipts = [
+        record
+        for record in value["coverage_receipt"]
+        if record["disposition"] == _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION
+    ]
+    if parent_frontier_result_cluster is None:
+        if parent_frontier_cluster_receipts:
+            raise _error("parent-frontier cluster coverage lacks one V3 authority")
+    else:
+        cluster_id = parent_frontier_result_cluster["cluster_id"]
+        expected_parent_frontier_cluster_receipt = {
+            "candidate_ordinal": None,
+            "coverage_id": "ashtcv2:coverage:one-edit-parent-frontier:" + cluster_id,
+            "disposition": _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION,
+            "occurrence_id": None,
+            "role": None,
+            "row_kind": "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+            "sample_ids": canonical_clone_v1(parent_frontier_result_cluster["sample_ids"]),
+            "source_record": canonical_clone_v1(parent_frontier_result_cluster),
+        }
+        if (
+            parent_frontier_cluster_receipts != [expected_parent_frontier_cluster_receipt]
+            or (
+                "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:" + cluster_id
+                in value["unresolved_reasons"]
+            )
+            or "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:" + cluster_id in value["unresolved_reasons"]
+        ):
+            raise _error("parent-frontier cluster coverage drifted")
     coextensive_receipts = {
         record["occurrence_id"]: record
         for record in value["coverage_receipt"]
@@ -6437,11 +6501,18 @@ def _build(
     numeric_accounting_rows = [
         row for row in numeric_rows if not _optional_incomplete_row_is_exact_equation_identity(row)
     ]
+    one_edit_structural_evidence = {
+        "internal_unassigned_numeric_clusters": axis["internal_unassigned_numeric_clusters"],
+        "numeric_sample_universe": axis["numeric_sample_universe"],
+        "role_occurrences": axis["role_occurrences"],
+        "row_axis": row_axis,
+    }
     source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
         numeric_accounting_rows,
         axis["role_occurrences"],
         spec["source_role_policy"],
         axis["one_edit_exact_source_structural_proofs"],
+        one_edit_structural_evidence,
     )
     reasons.extend(source_role_reasons)
     occurrence_by_id = {
@@ -6453,10 +6524,13 @@ def _build(
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
         and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
-    bound_one_edit_family_parent = any(
-        check["match_scope"] == "FAMILY_PARENT"
-        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
-        for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
+    bound_one_edit_family_parent = one_edit_v1.family_parent_has_exact_authority_v1(
+        axis["one_edit_exact_source_structural_proofs"],
+        structural_evidence=one_edit_structural_evidence,
+    )
+    parent_frontier_result_cluster = one_edit_v1.family_parent_exact_frontier_result_cluster_v1(
+        axis["one_edit_exact_source_structural_proofs"],
+        structural_evidence=one_edit_structural_evidence,
     )
 
     def one_edit_source_or_owner_is_unbound(
@@ -6564,7 +6638,13 @@ def _build(
         locally_authorized_component_scopes,
     )
     reasons.extend(repeated_reasons)
-    reserved_unlabeled_source_keys: set[tuple[str, str | int]] = set()
+    reserved_unlabeled_source_keys: set[tuple[str, str | int]] = (
+        {
+            ("cluster", parent_frontier_result_cluster["cluster_id"]),
+        }
+        if parent_frontier_result_cluster is not None
+        else set()
+    )
     unlabeled_subtotal_by_source_key: dict[tuple[str, str | int], dict[str, Any]] = {}
     for evidence in provisional_local_trailing_subtotals:
         if _local_trailing_subgroup_has_equal_vector_collision(
@@ -6886,7 +6966,13 @@ def _build(
         cluster_id = cluster["cluster_id"]
         off_lane = cluster["status"] == occurrence_v2._OFF_LANE_NUMERIC_CLUSTER_STATUS
         unlabeled_subtotal = unlabeled_subtotal_by_source_key.get(("cluster", cluster_id))
-        if unlabeled_subtotal is None:
+        parent_frontier_result = (
+            parent_frontier_result_cluster is not None
+            and cluster_id == parent_frontier_result_cluster["cluster_id"]
+        )
+        if parent_frontier_result and unlabeled_subtotal is not None:
+            raise _error("parent-frontier result cluster was claimed by another subtotal")
+        if unlabeled_subtotal is None and not parent_frontier_result:
             reasons.append(
                 (
                     "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:"
@@ -6899,7 +6985,9 @@ def _build(
             {
                 "candidate_ordinal": None,
                 "coverage_id": (
-                    (
+                    "ashtcv2:coverage:one-edit-parent-frontier:" + cluster_id
+                    if parent_frontier_result
+                    else (
                         "ashtcv2:coverage:local-trailing-subgroup-subtotal:"
                         if unlabeled_subtotal is not None
                         and unlabeled_subtotal["disposition"]
@@ -6913,7 +7001,9 @@ def _build(
                     else "ashtcv2:coverage:source-only:" + cluster_id
                 ),
                 "disposition": (
-                    unlabeled_subtotal["disposition"]
+                    _ONE_EDIT_PARENT_FRONTIER_RESULT_DISPOSITION
+                    if parent_frontier_result
+                    else unlabeled_subtotal["disposition"]
                     if unlabeled_subtotal is not None
                     else "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY"
                     if off_lane
