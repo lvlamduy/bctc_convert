@@ -160,16 +160,19 @@ def _foreground_recognition_bbox(
     if not components:
         return list(proposed_bbox), "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
 
-    # A lone short rule fragment clipped by the proposal's lower-right edge is
-    # not a DASH observation.  Preserve the full cell so the downstream
-    # centered-glyph classifier rejects the boundary mark instead of recentring
-    # it and manufacturing zero authority.
+    # A lone component clipped by both exact lower-right proposal boundaries is
+    # not an independently localized DASH observation, regardless of its
+    # morphology.  Preserve the full cell so the downstream centered-glyph
+    # classifier sees the boundary position instead of recentring the component
+    # and manufacturing zero authority.  Keep the narrower morphology gate for
+    # near-bottom fragments which do not touch that exact lower boundary.
     if len(components) == 1:
         component = components[0]
         component_left, component_top, component_right, component_bottom = component["bbox"]
         component_width = component_right - component_left
         component_height = component_bottom - component_top
-        if (
+        touches_exact_lower_right_boundary = component_right == width and component_bottom == height
+        is_short_near_bottom_rule_fragment = (
             component_width > 0
             and component_height > 0
             and component_right == width
@@ -178,7 +181,8 @@ def _foreground_recognition_bbox(
             and component_width / component_height >= 6.0
             and 0.05 <= component_width / width <= 0.25
             and component_height / height <= 0.12
-        ):
+        )
+        if touches_exact_lower_right_boundary or is_short_near_bottom_rule_fragment:
             return (
                 list(proposed_bbox),
                 "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_ONLY_FULL_PROPOSED_CELL_PRESERVED",

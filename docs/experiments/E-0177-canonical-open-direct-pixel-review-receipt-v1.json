@@ -19,7 +19,7 @@
   },
   "renderers": {
     "implementation": "src/bctc_ai/evaluation/family_first_authenticated_page_region_v1.py::_render_page",
-    "implementation_sha256": "5759b50dbe35aa5fe5a302f42f3e96229ec5764d3ae50f4c45a460533acd1def",
+    "implementation_sha256": "7a19254f73b625174d001ddbcad55d2b426ed9e137bde86070a09ce776c822af",
     "dpi": 200,
     "recipe": "fitz.open(stream=source, filetype='pdf'); document[physical_page - 1].get_pixmap(matrix=fitz.Matrix(dpi / 72, dpi / 72), colorspace=fitz.csRGB, alpha=False).tobytes('png')",
     "direct_review_observed": {

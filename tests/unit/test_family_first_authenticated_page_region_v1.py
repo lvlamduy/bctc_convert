@@ -603,6 +603,60 @@ def test_single_lower_right_edge_fragment_is_never_recentered_as_dash(
     assert evidence["normalized_value"] is None
 
 
+@pytest.mark.parametrize("fragment_width", range(3, 81))
+@pytest.mark.parametrize("fragment_height", range(1, 9))
+def test_single_exact_lower_right_boundary_component_matrix_never_becomes_dash(
+    fragment_width: int,
+    fragment_height: int,
+) -> None:
+    image = Image.new("RGB", (226, 49), "white")
+    ImageDraw.Draw(image).rectangle(
+        (
+            image.width - fragment_width,
+            image.height - fragment_height,
+            image.width - 1,
+            image.height - 1,
+        ),
+        fill="black",
+    )
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    render = stream.getvalue()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+
+    crop = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+    evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=crop["region_png_bytes"]
+    )
+
+    assert crop["recognition_raw_pixel_bbox"] == [0, 0, image.width, image.height]
+    assert evidence["classification"] != "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert evidence["normalized_value"] is None
+
+
+def test_single_centered_dash_still_localizes_and_replays_as_dash() -> None:
+    image = Image.new("RGB", (226, 49), "white")
+    ImageDraw.Draw(image).rectangle((108, 23, 116, 26), fill="black")
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    render = stream.getvalue()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+
+    crop = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+    evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=crop["region_png_bytes"]
+    )
+
+    assert crop["ink_localization_status"] == ("GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL")
+    assert crop["recognition_raw_pixel_bbox"] == [104, 20, 121, 30]
+    assert evidence["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert evidence["normalized_value"] == 0
+
+
 def test_foreground_localization_discards_widely_fragmented_rule_and_scan_specks() -> None:
     image = Image.new("RGB", (200, 58), "white")
     draw = ImageDraw.Draw(image)
