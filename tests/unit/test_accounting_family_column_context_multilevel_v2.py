@@ -384,6 +384,29 @@ def _cross_page_nested_owner_pages() -> list[dict[str, object]]:
     ]
 
 
+def _cross_page_nested_money_owner_pages() -> list[dict[str, object]]:
+    pages = _cross_page_nested_owner_pages()
+    second = [
+        ("Theo loại hình doanh nghiệp", "", [20, 20, 430, 42]),
+        ("31/12/2025", "", [480, 74, 680, 96]),
+        ("31/12/2024", "", [720, 74, 920, 96]),
+        ("Triệu đồng", "", [480, 102, 560, 124]),
+        ("Triệu đồng", "", [720, 102, 800, 124]),
+        ("Doanh nghiệp nhà nước", "", [40, 150, 360, 172]),
+        ("100", "100", [480, 150, 560, 172]),
+        ("90", "90", [720, 150, 800, 172]),
+        ("Công ty TNHH", "", [40, 195, 360, 217]),
+        ("200", "200", [480, 195, 560, 217]),
+        ("180", "180", [720, 195, 800, 217]),
+        ("Phân tích theo ngành nghề", "", [20, 250, 430, 272]),
+    ]
+    pages[1]["lines"] = [
+        _line(ordinal, text, numeric, bbox, page=2)
+        for ordinal, (text, numeric, bbox) in enumerate(second)
+    ]
+    return pages
+
+
 def _axis(pages: list[dict[str, object]]) -> dict[str, object]:
     return row_axis_v1.build_accounting_family_row_axis_v1(pages, _spec())
 
@@ -636,6 +659,40 @@ def test_exact_cross_page_contextual_owner_projects_only_its_local_header() -> N
             spec,
             period_semantics="BALANCE_COMPARATIVE",
             expected_lane_unit_kinds=_KINDS,
+        )
+        == result
+    )
+
+
+def test_exact_cross_page_contextual_owner_projects_two_money_lanes() -> None:
+    pages = _cross_page_nested_money_owner_pages()
+    spec = _nested_spec()
+    spec["limits"]["max_continuation_pages"] = 1
+    kinds = ["MONEY", "MONEY"]
+    axis = row_axis_v1.build_accounting_family_row_axis_v1(pages, spec)
+
+    result = build_accounting_family_column_context_multilevel_v2(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=kinds,
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["unit_kind"] for item in result["unit_axis"]] == kinds
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    assert (
+        validate_accounting_family_column_context_multilevel_replay_v2(
+            result,
+            axis,
+            pages,
+            spec,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=kinds,
         )
         == result
     )

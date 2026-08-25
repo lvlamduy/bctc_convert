@@ -1,4 +1,4 @@
-"""Add-only mixed MONEY/PERCENT multi-level header wrapper over column V1.
+"""Add-only local multi-level header wrapper over sealed column V1.
 
 V1 remains byte-for-byte sealed.  This wrapper always builds V1 first and
 returns that exact result unless all of the following hold: V1 is unresolved,
@@ -45,8 +45,8 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_COLUMN_CONTEXT_MULTILEVEL_V2"
 CLAIM_BOUNDARY = (
     "EXACT_V1_FIRST_THEN_ACTIVE_PARENT_OR_EXACT_CONTEXTUAL_NEXT_PAGE_RESET_"
-    "FENCED_TWO_PERIOD_MULTI_LEVEL_"
-    "MIXED_MONEY_PERCENT_HEADER_LEAF_PROJECTION_WITH_EXISTING_V1_UNIT_GATE_"
+    "FENCED_TWO_PERIOD_MULTI_LEVEL_MIXED_OR_CONTEXTUAL_MONEY_HEADER_LEAF_"
+    "PROJECTION_WITH_EXISTING_V1_UNIT_GATE_"
     "PROPOSAL_ONLY_NO_NUMERIC_ACCOUNTING_POPULATION_SCHEMA_MAPPING_"
     "CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
@@ -57,7 +57,7 @@ _SAFETY = {
     "cross_page_continuation_fallback_allowed": True,
     "currency_or_magnitude_inferred_from_money_leaf_kind": False,
     "mapping_authority": False,
-    "mixed_balance_comparative_fallback_only": True,
+    "mixed_or_contextual_money_balance_comparative_fallback_only": True,
     "numeric_authority": False,
     "prior_table_or_reset_header_can_supply_projector_evidence": False,
     "schema_authority": False,
@@ -668,7 +668,8 @@ def _build_accounting_family_column_context_multilevel_v2(
         baseline["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
         or period_semantics != "BALANCE_COMPARATIVE"
         or type(expected_lane_unit_kinds) is not list
-        or set(expected_lane_unit_kinds) != {"MONEY", "PERCENT"}
+        or not expected_lane_unit_kinds
+        or not set(expected_lane_unit_kinds) <= {"MONEY", "PERCENT"}
         or not baseline["unresolved_reasons"]
     ):
         return baseline
@@ -689,9 +690,15 @@ def _build_accounting_family_column_context_multilevel_v2(
         return baseline
     header_lines, header_page = header
     parent_page = region["parent_match"]["page_sequence"]
+    contextual_next_page = parent_page != header_page
+    if (not contextual_next_page and set(expected_lane_unit_kinds) != {"MONEY", "PERCENT"}) or (
+        contextual_next_page
+        and set(expected_lane_unit_kinds) not in ({"MONEY"}, {"MONEY", "PERCENT"})
+    ):
+        return baseline
     eligible_reasons = (
         _FALLBACK_ELIGIBLE_V1_REASONS
-        if parent_page == header_page
+        if not contextual_next_page
         else _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS
     )
     if not set(baseline["unresolved_reasons"]).issubset(eligible_reasons):
