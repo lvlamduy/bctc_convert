@@ -306,6 +306,44 @@ def test_complete_multilevel_header_immediately_before_explicit_parent_resolves(
     assert [item["unit_kind"] for item in result["unit_axis"]] == _KINDS
 
 
+def test_explicit_money_leaves_do_not_leak_document_unit_locations() -> None:
+    pages = _complete_header_before_parent_pages()
+    pages[0]["lines"].pop(0)
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    for ordinal in (2, 4):
+        pages[0]["lines"][ordinal]["vietocr_text"] = "Triệu đồng"
+        pages[0]["lines"][ordinal]["numeric_recognition"]["raw_prediction"] = "Triệu đồng"
+
+    result = _build(pages)
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    money = [record for record in result["unit_axis"] if record["unit_kind"] == "MONEY"]
+    assert len(money) == 2
+    assert {
+        location["page_sequence"] for record in money for location in record["evidence_locations"]
+    } == {1}
+    assert all(
+        record["projection_status"].startswith("LOCAL_EXPLICIT_MULTILEVEL_MONEY_LEAF_UNIT")
+        for record in money
+    )
+
+
+def test_explicit_money_leaves_cannot_override_conflicting_local_unit() -> None:
+    pages = _complete_header_before_parent_pages()
+    pages[0]["lines"][0]["vietocr_text"] = "Đơn vị tính: nghìn VND"
+    pages[0]["lines"][0]["numeric_recognition"]["raw_prediction"] = "Đơn vị tính: nghìn VND"
+    for ordinal in (3, 5):
+        pages[0]["lines"][ordinal]["vietocr_text"] = "Triệu đồng"
+        pages[0]["lines"][ordinal]["numeric_recognition"]["raw_prediction"] = "Triệu đồng"
+
+    result = _build(pages)
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert result["period_axis"] == []
+    assert result["unit_axis"] == []
+
+
 def test_prior_table_header_cannot_cross_the_active_parent_fence() -> None:
     pages = _pages(prior_header=True)
     result = _build(pages)

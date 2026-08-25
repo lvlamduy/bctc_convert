@@ -313,31 +313,47 @@ def _shared_unit_axis(
             continue
         record = canonical_clone_v1(shared_money[lane])
         explicit = accounting_unit_surface_v1(leaf["header_surface"])
-        if explicit is not None and (
-            explicit["unit_kind"],
-            explicit["currency"],
-            explicit["magnitude_power10"],
-        ) != (
-            record["unit_kind"],
-            record["currency"],
-            record["magnitude_power10"],
-        ):
-            return []
         if explicit is not None:
-            record["evidence_locations"] = sorted(
-                {
-                    (item["page_sequence"], item["source_line_index"]): item
-                    for item in [
-                        *record["evidence_locations"],
-                        *(
-                            {"page_sequence": header_page, "source_line_index": index}
-                            for index in leaf["header_evidence_source_line_indices"]
-                        ),
-                    ]
-                }.values(),
-                key=lambda item: (item["page_sequence"], item["source_line_index"]),
+            explicit_signature = (
+                explicit["unit_kind"],
+                explicit["currency"],
+                explicit["magnitude_power10"],
             )
-            record["projection_status"] += "_WITH_CONSISTENT_EXPLICIT_MONEY_LEAF"
+            shared_signature = (
+                record["unit_kind"],
+                record["currency"],
+                record["magnitude_power10"],
+            )
+            if record["projection_status"].startswith("LOCAL_EXPLICIT_"):
+                if explicit_signature != shared_signature:
+                    return []
+                record["evidence_locations"] = sorted(
+                    {
+                        (item["page_sequence"], item["source_line_index"]): item
+                        for item in [
+                            *record["evidence_locations"],
+                            *(
+                                {"page_sequence": header_page, "source_line_index": index}
+                                for index in leaf["header_evidence_source_line_indices"]
+                            ),
+                        ]
+                    }.values(),
+                    key=lambda item: (item["page_sequence"], item["source_line_index"]),
+                )
+                record["projection_status"] += "_WITH_CONSISTENT_EXPLICIT_MONEY_LEAF"
+            else:
+                record = {
+                    "column_center": leaf["column_center"],
+                    "column_ordinal": lane,
+                    "currency": explicit["currency"],
+                    "evidence_locations": [
+                        {"page_sequence": header_page, "source_line_index": index}
+                        for index in leaf["header_evidence_source_line_indices"]
+                    ],
+                    "magnitude_power10": explicit["magnitude_power10"],
+                    "projection_status": "LOCAL_EXPLICIT_MULTILEVEL_MONEY_LEAF_UNIT",
+                    "unit_kind": explicit["unit_kind"],
+                }
         record["projection_status"] += "_FOR_ACTIVE_PARENT_FENCED_MULTILEVEL_MONEY_LEAF"
         result.append(record)
     allowed_locations = {(header_page, line["source_line_index"]) for line in header_lines}
