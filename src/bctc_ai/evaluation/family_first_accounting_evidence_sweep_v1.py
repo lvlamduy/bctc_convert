@@ -2213,7 +2213,13 @@ def _one_edit_authority_pages_v1(
             "lines": [
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
+                    **(
+                        {"crop_ref": canonical_clone_v1(line["crop_ref"])}
+                        if "crop_ref" in line
+                        else {}
+                    ),
                     "numeric_recognition": canonical_clone_v1(line["numeric_recognition"]),
+                    **({"sample_id": line["sample_id"]} if "sample_id" in line else {}),
                     "source_line_index": line["line_ordinal"],
                     "source_text": line["numeric_recognition"]["raw_prediction"],
                     "vietocr_text": line["vietocr_text"],

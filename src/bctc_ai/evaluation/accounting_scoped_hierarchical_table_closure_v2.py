@@ -371,8 +371,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "bd69f0c5d2b3ac051212b5599d0c72500845ba40734b0b8e0297a23aa17a3ed9",
-        "size_bytes": 307_773,
+        "sha256": "2bb29a7239a762227933a2dd0e1c68a234150d26191c1995f4fa3f8299eeb20f",
+        "size_bytes": 308_290,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -629,11 +629,11 @@ def _source_role_vetoes(
         check["occurrence_id"]
         for check in one_edit_exact_source_structural_proofs["checks"]
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
-        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
     family_parent_is_bound = any(
         check["match_scope"] == "FAMILY_PARENT"
-        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
         for check in one_edit_exact_source_structural_proofs["checks"]
     )
     source_only_occurrences: set[str] = set()
@@ -5338,11 +5338,11 @@ def _build(
         check["occurrence_id"]
         for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
-        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
     bound_one_edit_family_parent = any(
         check["match_scope"] == "FAMILY_PARENT"
-        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
         for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
     )
 

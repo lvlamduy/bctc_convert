@@ -1,13 +1,15 @@
-"""Exact second-channel authority for selected one-edit topology anchors.
+"""Independent same-source authority for selected one-edit topology anchors.
 
 The topology reader may use one edit to *retrieve* a plausible family region.
 That tolerance is deliberately not accounting or mapping authority.  This
-module closes that gap for V4 callers: after downstream evidence has selected
-one candidate, every selected parent/expanded-occurrence one-edit match must be
-re-observed as an exact declared alias on the identical bound source-text
-lines, in the identical family/role/recursive structural-owner context.
-Expanded children are bound by occurrence ID so one exact occurrence can
-never corroborate a fuzzy repetition of the same role.
+module closes that gap for V4 callers.  The ordinary route re-observes an exact
+declared alias on the identical bound source-text lines.  V2 also permits one
+narrow same-crop route: two independent recognizers may cover complementary,
+disjoint exact tokens of one multi-token alias while each has exactly one
+character error in a different token.  Both routes retain the identical
+family/role/recursive structural-owner context.  Expanded children are bound
+by occurrence ID so one occurrence can never corroborate a fuzzy repetition
+of the same role.
 
 Only accent removal/case/punctuation normalization, an enumeration prefix,
 and the topology engine's bounded decorative parenthetical removal are exact
@@ -40,11 +42,12 @@ __all__ = [
 ]
 
 
-FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V1"
+FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V2"
 CLAIM_BOUNDARY = (
-    "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_INDEPENDENT_EXACT_"
-    "BOUND_SOURCE_TEXT_ALIAS_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_RECURSIVE_PARENT_CHAIN_"
-    "PAGE_AND_LINE_SPAN_NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
+    "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_EITHER_INDEPENDENT_EXACT_"
+    "BOUND_SOURCE_TEXT_ALIAS_OR_AUTHENTICATED_SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_"
+    "COVERAGE_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_RECURSIVE_PARENT_CHAIN_PAGE_AND_LINE_"
+    "SPAN_NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
@@ -60,6 +63,21 @@ _AUTHORITY_SPEC = {
     "exact_alias_requires_same_recursive_nearest_structural_owner_chain": True,
     "exact_source_occurrence_axis": "PPOCR_EXACT_DECLARED_ALIASES_ONLY",
     "one_edit_channel": "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY",
+    "same_crop_complementary_token_authority": {
+        "alias_candidate_count": 1,
+        "allowed_transform": "ACCENTLESS",
+        "channel_mismatch_token_count": 1,
+        "minimum_alias_token_count": 2,
+        "match_scope": "EXPANDED_OCCURRENCE_ONLY",
+        "mismatch_token_axes_must_be_disjoint": True,
+        "physical_source_line_count": 1,
+        "required_channels": [
+            "PPOCR_BOUND_SOURCE_TEXT",
+            "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY",
+        ],
+        "same_authenticated_crop_ref_and_sample_id_required": True,
+        "token_count_must_equal_declared_alias": True,
+    },
     "selected_candidate_only": True,
 }
 _SAFETY = {
@@ -67,9 +85,11 @@ _SAFETY = {
     "discarded_or_near_one_edit_match_can_veto_selected_candidate": False,
     "mapping_authority": False,
     "one_edit_similarity_can_grant_exact_authority": False,
+    "same_crop_reference_without_complementary_exact_token_coverage_can_grant_authority": False,
+    "shared_or_overlapping_channel_edit_can_grant_authority": False,
     "schema_authority": False,
     "same_role_span_with_different_parent_context_can_authorize": False,
-    "source_text_exact_alias_and_context_required": True,
+    "source_text_exact_alias_or_same_crop_complementary_token_context_required": True,
     "expanded_occurrence_identity_required": True,
 }
 _RESULT_FIELDS = {
@@ -97,6 +117,7 @@ _METRIC_FIELDS = {
     "unresolved_match_count",
 }
 _CHECK_FIELDS = {
+    "complementary_token_authority",
     "exact_channel",
     "match_scope",
     "occurrence_id",
@@ -152,6 +173,47 @@ _CHECK_STATUSES = {
     "MISSING_BOUND_SOURCE_TEXT",
     "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN",
     "RETRIEVAL_ONE_EDIT_ALIAS_SPEC_BINDING_DRIFTED",
+    "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND",
+}
+_BOUND_CHECK_STATUSES = {
+    "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND",
+    "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND",
+}
+_COMPLEMENTARY_FORMAT_VERSION = "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_AUTHORITY_V1"
+_COMPLEMENTARY_FIELDS = {
+    "alias_normalized",
+    "alias_pointer",
+    "alias_sha256",
+    "channel_proofs",
+    "crop_binding",
+    "crop_binding_sha256",
+    "format_version",
+    "proof_id",
+    "token_axis",
+}
+_COMPLEMENTARY_CHANNEL_FIELDS = {
+    "channel",
+    "edit",
+    "exact_token_indices",
+    "mismatch_token_indices",
+    "normalized_surface",
+    "surface",
+    "tokens",
+}
+_COMPLEMENTARY_EDIT_FIELDS = {
+    "alias_character",
+    "alias_character_index",
+    "candidate_character",
+    "candidate_character_index",
+    "kind",
+    "token_index",
+}
+_COMPLEMENTARY_CROP_BINDING_FIELDS = {
+    "bbox",
+    "crop_ref",
+    "page_sequence",
+    "sample_id",
+    "source_line_index",
 }
 
 
@@ -167,6 +229,22 @@ def _is_one_edit(match: Mapping[str, Any]) -> bool:
     return str(match.get("match_kind", "")).startswith("ONE_EDIT_ALIAS")
 
 
+def _crop_reference(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != {"path", "sha256", "size_bytes"}
+        or type(value["path"]) is not str
+        or not value["path"]
+        or type(value["sha256"]) is not str
+        or len(value["sha256"]) != 64
+        or any(character not in "0123456789abcdef" for character in value["sha256"])
+        or type(value["size_bytes"]) is not int
+        or value["size_bytes"] <= 0
+    ):
+        raise _error("one-edit exact-authority crop reference drifted")
+    return canonical_clone_v1(value)
+
+
 def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, Any]]:
     """Parse topology fields while retaining production occurrence evidence.
 
@@ -180,7 +258,7 @@ def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, An
         raise _error("one-edit exact-authority document pages drifted")
     topology_pages = []
     widths = []
-    numeric_axes = []
+    retained_axes = []
     for raw_page in document_pages:
         if type(raw_page) is not dict or set(raw_page) not in (
             {"lines", "page_sequence"},
@@ -193,17 +271,15 @@ def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, An
         if type(raw_page.get("lines")) is not list:
             raise _error("one-edit exact-authority document line axis drifted")
         topology_lines = []
-        numeric_axis = []
+        retained_axis = []
         for raw_line in raw_page["lines"]:
-            if type(raw_line) is not dict or set(raw_line) not in (
-                {"bbox", "source_line_index", "source_text", "vietocr_text"},
-                {
-                    "bbox",
-                    "numeric_recognition",
-                    "source_line_index",
-                    "source_text",
-                    "vietocr_text",
-                },
+            required_fields = {"bbox", "source_line_index", "source_text", "vietocr_text"}
+            optional_fields = {"crop_ref", "numeric_recognition", "sample_id"}
+            if (
+                type(raw_line) is not dict
+                or not required_fields <= set(raw_line)
+                or set(raw_line) - required_fields - optional_fields
+                or ("crop_ref" in raw_line) != ("sample_id" in raw_line)
             ):
                 raise _error("one-edit exact-authority document line drifted")
             numeric_recognition = raw_line.get("numeric_recognition")
@@ -212,6 +288,18 @@ def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, An
                 or type(numeric_recognition.get("raw_prediction")) is not str
             ):
                 raise _error("one-edit exact-authority numeric recognition drifted")
+            crop_ref = raw_line.get("crop_ref")
+            sample_id = raw_line.get("sample_id")
+            if sample_id is not None and (type(sample_id) is not str or not sample_id):
+                raise _error("one-edit exact-authority sample identity drifted")
+            retained = {"numeric_recognition": canonical_clone_v1(numeric_recognition)}
+            if crop_ref is not None:
+                retained.update(
+                    {
+                        "crop_ref": _crop_reference(crop_ref),
+                        "sample_id": sample_id,
+                    }
+                )
             topology_lines.append(
                 {
                     "bbox": canonical_clone_v1(raw_line["bbox"]),
@@ -220,7 +308,7 @@ def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, An
                     "vietocr_text": raw_line["vietocr_text"],
                 }
             )
-            numeric_axis.append(canonical_clone_v1(numeric_recognition))
+            retained_axis.append(retained)
         topology_pages.append(
             {
                 "lines": topology_lines,
@@ -228,13 +316,17 @@ def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, An
             }
         )
         widths.append(width)
-        numeric_axes.append(numeric_axis)
+        retained_axes.append(retained_axis)
     pages = topology_v1._pages(topology_pages)  # noqa: SLF001
-    for page, width, numeric_axis in zip(pages, widths, numeric_axes, strict=True):
+    for page, width, retained_axis in zip(pages, widths, retained_axes, strict=True):
         page["page_width"] = width
-        for line, numeric_recognition in zip(page["lines"], numeric_axis, strict=True):
+        for line, retained in zip(page["lines"], retained_axis, strict=True):
+            numeric_recognition = retained["numeric_recognition"]
             if numeric_recognition is not None:
                 line["numeric_recognition"] = numeric_recognition
+            if "crop_ref" in retained:
+                line["crop_ref"] = retained["crop_ref"]
+                line["sample_id"] = retained["sample_id"]
     return pages
 
 
@@ -623,6 +715,211 @@ def _retrieval_alias_candidates(
     )
 
 
+def _accentless_one_edit_alias_candidates(
+    surface: str, aliases: Sequence[Mapping[str, str]]
+) -> list[dict[str, str]]:
+    normalized = normalize_vietnamese_anchor_v1(surface)
+    return sorted(
+        {
+            alias["pointer"]: dict(alias)
+            for alias in aliases
+            if normalized != alias["alias"]
+            and topology_v1._one_edit_alias_is_safe(normalized, alias["alias"])  # noqa: SLF001
+        }.values(),
+        key=lambda item: item["pointer"],
+    )
+
+
+def _single_character_edit(
+    candidate: str, alias: str, *, token_index: int
+) -> dict[str, Any] | None:
+    if candidate == alias or not topology_v1._edit_distance_at_most_one(  # noqa: SLF001
+        candidate, alias
+    ):
+        return None
+    if len(candidate) == len(alias):
+        indices = [
+            index
+            for index, (candidate_character, alias_character) in enumerate(
+                zip(candidate, alias, strict=True)
+            )
+            if candidate_character != alias_character
+        ]
+        if len(indices) != 1:
+            return None
+        index = indices[0]
+        return {
+            "alias_character": alias[index],
+            "alias_character_index": index,
+            "candidate_character": candidate[index],
+            "candidate_character_index": index,
+            "kind": "SUBSTITUTE_CHANNEL_CHARACTER",
+            "token_index": token_index,
+        }
+    if len(candidate) + 1 == len(alias):
+        index = next(
+            (
+                position
+                for position, character in enumerate(candidate)
+                if character != alias[position]
+            ),
+            len(candidate),
+        )
+        if candidate[:index] + alias[index] + candidate[index:] != alias:
+            return None
+        return {
+            "alias_character": alias[index],
+            "alias_character_index": index,
+            "candidate_character": None,
+            "candidate_character_index": index,
+            "kind": "INSERT_MISSING_ALIAS_CHARACTER",
+            "token_index": token_index,
+        }
+    if len(candidate) == len(alias) + 1:
+        index = next(
+            (
+                position
+                for position, character in enumerate(alias)
+                if character != candidate[position]
+            ),
+            len(alias),
+        )
+        if candidate[:index] + candidate[index + 1 :] != alias:
+            return None
+        return {
+            "alias_character": None,
+            "alias_character_index": index,
+            "candidate_character": candidate[index],
+            "candidate_character_index": index,
+            "kind": "DISCARD_EXTRA_CHANNEL_CHARACTER",
+            "token_index": token_index,
+        }
+    return None
+
+
+def _same_crop_complementary_token_authority_v1(
+    match: Mapping[str, Any],
+    *,
+    aliases: Sequence[Mapping[str, str]],
+    pages: Sequence[Mapping[str, Any]],
+    retrieval_candidates: Sequence[Mapping[str, str]],
+) -> dict[str, Any] | None:
+    """Bind disjoint exact-token coverage from two readers of one crop.
+
+    Neither one-edit surface is promoted on similarity alone.  Every declared
+    alias token must instead be read exactly by at least one of the two pinned
+    recognizers, and their sole mismatching token positions must be disjoint.
+    The proof is limited to one authenticated source line so token evidence
+    cannot be assembled across crops or wrapped-label fragments.
+    """
+
+    indices = _match_line_indices(match, pages)
+    if len(indices) != 1 or len(retrieval_candidates) != 1:
+        return None
+    page = next(item for item in pages if item["page_sequence"] == match["page_sequence"])
+    line = next(item for item in page["lines"] if item["source_line_index"] == indices[0])
+    crop_ref = line.get("crop_ref")
+    sample_id = line.get("sample_id")
+    source_surface = line.get("source_text")
+    retrieval_surface = line.get("vietocr_text")
+    if (
+        type(crop_ref) is not dict
+        or type(sample_id) is not str
+        or not sample_id
+        or type(source_surface) is not str
+        or not source_surface.strip()
+        or type(retrieval_surface) is not str
+        or not retrieval_surface.strip()
+        or retrieval_surface != match.get("surface")
+    ):
+        return None
+    alias = dict(retrieval_candidates[0])
+    source_candidates = _accentless_one_edit_alias_candidates(source_surface, aliases)
+    if len(source_candidates) != 1 or source_candidates[0] != alias:
+        return None
+    alias_tokens = alias["alias"].split()
+    channel_axis = [
+        ("PPOCR_BOUND_SOURCE_TEXT", source_surface),
+        ("VIETOCR_TRANSFORMER_RETRIEVAL_ONLY", retrieval_surface),
+    ]
+    if len(alias_tokens) < 2:
+        return None
+    channel_proofs = []
+    mismatch_axes = []
+    for channel, surface in channel_axis:
+        normalized = normalize_vietnamese_anchor_v1(surface)
+        tokens = normalized.split()
+        if len(tokens) != len(alias_tokens):
+            return None
+        mismatches = [
+            index
+            for index, (candidate_token, alias_token) in enumerate(
+                zip(tokens, alias_tokens, strict=True)
+            )
+            if candidate_token != alias_token
+        ]
+        if len(mismatches) != 1:
+            return None
+        mismatch = mismatches[0]
+        edit = _single_character_edit(
+            tokens[mismatch], alias_tokens[mismatch], token_index=mismatch
+        )
+        if edit is None:
+            return None
+        exact_indices = [index for index in range(len(alias_tokens)) if index != mismatch]
+        channel_proofs.append(
+            {
+                "channel": channel,
+                "edit": edit,
+                "exact_token_indices": exact_indices,
+                "mismatch_token_indices": mismatches,
+                "normalized_surface": normalized,
+                "surface": surface,
+                "tokens": tokens,
+            }
+        )
+        mismatch_axes.append(set(mismatches))
+    if mismatch_axes[0] & mismatch_axes[1]:
+        return None
+    token_axis = []
+    for token_index, alias_token in enumerate(alias_tokens):
+        exact_channels = [
+            proof["channel"]
+            for proof in channel_proofs
+            if token_index in proof["exact_token_indices"]
+        ]
+        if not exact_channels:
+            return None
+        token_axis.append(
+            {
+                "alias_token": alias_token,
+                "exact_channels": exact_channels,
+                "token_index": token_index,
+            }
+        )
+    crop_binding = {
+        "bbox": canonical_clone_v1(line["bbox"]),
+        "crop_ref": _crop_reference(crop_ref),
+        "page_sequence": match["page_sequence"],
+        "sample_id": sample_id,
+        "source_line_index": indices[0],
+    }
+    material = {
+        "alias_normalized": alias["alias"],
+        "alias_pointer": alias["pointer"],
+        "alias_sha256": canonical_json_sha256_v1(alias["alias"]),
+        "channel_proofs": channel_proofs,
+        "crop_binding": crop_binding,
+        "crop_binding_sha256": canonical_json_sha256_v1(crop_binding),
+        "format_version": _COMPLEMENTARY_FORMAT_VERSION,
+        "token_axis": token_axis,
+    }
+    return {
+        **material,
+        "proof_id": "afcetav1:proof:" + canonical_json_sha256_v1(material),
+    }
+
+
 def _exact_alias_bindings(
     surface: str, aliases: Sequence[Mapping[str, str]]
 ) -> list[dict[str, str]]:
@@ -904,6 +1201,53 @@ def _exact_source_owner_chain_matches_retrieval_v1(
     )
 
 
+def _complementary_token_owner_chain_matches_retrieval_v1(
+    retrieval: Mapping[str, Any],
+    *,
+    compiled: Mapping[str, Any],
+    effective_matches: Sequence[Mapping[str, Any]],
+    pages: Sequence[Mapping[str, Any]],
+    source_occurrences: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Require the same independent recursive owner checks as exact PP text."""
+
+    retrieval_owner = _nearest_selected_owner(retrieval, effective_matches)
+    within_role = retrieval.get("matched_within_role")
+    if within_role is None:
+        return retrieval_owner is None
+    if retrieval_owner is None or retrieval_owner.get("role") != within_role:
+        return False
+    same_span_exact = [
+        source for source in source_occurrences if _same_match_span(source, retrieval_owner, pages)
+    ]
+    matching = [
+        source
+        for source in same_span_exact
+        if _exact_source_occurrence_matches_retrieval_v1(
+            retrieval_owner,
+            source,
+            compiled=compiled,
+            pages=pages,
+        )
+    ]
+    # An independently exact contradictory owner on the same physical span
+    # cannot be ignored.  Exact retrieval owners otherwise already seal their
+    # canonical role/geometry; one-edit owners still need one recursively
+    # exact source occurrence, matching the pre-existing authority rule.
+    if same_span_exact:
+        if len(same_span_exact) != 1 or len(matching) != 1:
+            return False
+        return _exact_source_owner_chain_matches_retrieval_v1(
+            retrieval_owner,
+            matching[0],
+            compiled=compiled,
+            effective_matches=effective_matches,
+            pages=pages,
+            source_occurrences=source_occurrences,
+        )
+    return not _is_one_edit(retrieval_owner)
+
+
 def _empty_exact_channel(
     *, source_surface: str | None, context_binding: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -1068,9 +1412,50 @@ def _check(
             source_occurrences=source_occurrences,
         )
     )
+    complementary_token_authority = (
+        _same_crop_complementary_token_authority_v1(
+            match,
+            aliases=aliases,
+            pages=pages,
+            retrieval_candidates=retrieval_candidates,
+        )
+        if match_scope == "EXPANDED_OCCURRENCE" and not exact_bindings
+        else None
+    )
+    complementary_owner_chain_bound = (
+        complementary_token_authority is not None
+        and _complementary_token_owner_chain_matches_retrieval_v1(
+            match,
+            compiled=compiled,
+            effective_matches=effective_matches,
+            pages=pages,
+            source_occurrences=source_occurrences,
+        )
+    )
     if retrieval_candidates and surface is not None:
         if not exact_bindings:
-            if any(
+            if (
+                complementary_token_authority is not None
+                and selected_parent is not None
+                and _is_one_edit(selected_parent)
+                and exact_parent is None
+            ):
+                status = "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
+            elif complementary_token_authority is not None and not complementary_owner_chain_bound:
+                status = "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
+            elif complementary_token_authority is not None:
+                status = "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+                exact_channel.update(
+                    {
+                        "alias_normalized": complementary_token_authority["alias_normalized"],
+                        "alias_pointer": complementary_token_authority["alias_pointer"],
+                        "alias_sha256": complementary_token_authority["alias_sha256"],
+                        "channel": "PPOCR_AND_VIETOCR_SAME_CROP_COMPLEMENTARY_TOKEN_EXACT",
+                        "normalized_surface": complementary_token_authority["alias_normalized"],
+                        "transform": "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_COVERAGE",
+                    }
+                )
+            elif any(
                 topology_v1._one_edit_alias_is_safe(  # noqa: SLF001
                     normalized, alias["alias"]
                 )
@@ -1124,6 +1509,11 @@ def _check(
         "FAMILY_PARENT" if match_scope == "FAMILY_PARENT" else str(match.get("role_kind", ""))
     )
     return {
+        "complementary_token_authority": (
+            complementary_token_authority
+            if status == "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+            else None
+        ),
         "exact_channel": exact_channel,
         "match_scope": match_scope,
         "occurrence_id": occurrence_id,
@@ -1135,6 +1525,110 @@ def _check(
         "status": status,
         "within_role": within_role,
     }
+
+
+def _validate_complementary_token_authority_shape_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _COMPLEMENTARY_FIELDS
+        or value["format_version"] != _COMPLEMENTARY_FORMAT_VERSION
+        or type(value["alias_normalized"]) is not str
+        or len(value["alias_normalized"].split()) < 2
+        or type(value["alias_pointer"]) is not str
+        or not value["alias_pointer"]
+        or value["alias_sha256"] != canonical_json_sha256_v1(value["alias_normalized"])
+        or type(value["channel_proofs"]) is not list
+        or len(value["channel_proofs"]) != 2
+        or type(value["crop_binding"]) is not dict
+        or set(value["crop_binding"]) != _COMPLEMENTARY_CROP_BINDING_FIELDS
+        or value["crop_binding_sha256"] != canonical_json_sha256_v1(value["crop_binding"])
+        or type(value["token_axis"]) is not list
+    ):
+        raise _error("same-crop complementary-token authority shape drifted")
+    crop_binding = value["crop_binding"]
+    bbox = crop_binding["bbox"]
+    if (
+        type(bbox) is not list
+        or len(bbox) != 4
+        or any(type(item) is not int for item in bbox)
+        or bbox[2] <= bbox[0]
+        or bbox[3] <= bbox[1]
+        or type(crop_binding["page_sequence"]) is not int
+        or crop_binding["page_sequence"] <= 0
+        or type(crop_binding["source_line_index"]) is not int
+        or crop_binding["source_line_index"] < 0
+        or type(crop_binding["sample_id"]) is not str
+        or not crop_binding["sample_id"]
+    ):
+        raise _error("same-crop complementary-token crop binding drifted")
+    _crop_reference(crop_binding["crop_ref"])
+    alias_tokens = value["alias_normalized"].split()
+    expected_channels = [
+        "PPOCR_BOUND_SOURCE_TEXT",
+        "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY",
+    ]
+    mismatch_axes = []
+    for proof, expected_channel in zip(value["channel_proofs"], expected_channels, strict=True):
+        if (
+            type(proof) is not dict
+            or set(proof) != _COMPLEMENTARY_CHANNEL_FIELDS
+            or proof["channel"] != expected_channel
+            or type(proof["surface"]) is not str
+            or not proof["surface"].strip()
+            or proof["normalized_surface"] != normalize_vietnamese_anchor_v1(proof["surface"])
+            or proof["tokens"] != proof["normalized_surface"].split()
+            or len(proof["tokens"]) != len(alias_tokens)
+            or type(proof["mismatch_token_indices"]) is not list
+            or type(proof["exact_token_indices"]) is not list
+        ):
+            raise _error("same-crop complementary-token channel proof drifted")
+        mismatches = [
+            index
+            for index, (candidate, alias) in enumerate(
+                zip(proof["tokens"], alias_tokens, strict=True)
+            )
+            if candidate != alias
+        ]
+        if (
+            proof["mismatch_token_indices"] != mismatches
+            or len(mismatches) != 1
+            or proof["exact_token_indices"]
+            != [index for index in range(len(alias_tokens)) if index not in mismatches]
+            or type(proof["edit"]) is not dict
+            or set(proof["edit"]) != _COMPLEMENTARY_EDIT_FIELDS
+            or proof["edit"]
+            != _single_character_edit(
+                proof["tokens"][mismatches[0]],
+                alias_tokens[mismatches[0]],
+                token_index=mismatches[0],
+            )
+        ):
+            raise _error("same-crop complementary-token edit proof drifted")
+        mismatch_axes.append(set(mismatches))
+    if mismatch_axes[0] & mismatch_axes[1]:
+        raise _error("same-crop complementary-token edit axes overlap")
+    expected_token_axis = [
+        {
+            "alias_token": alias_token,
+            "exact_channels": [
+                proof["channel"]
+                for proof in value["channel_proofs"]
+                if token_index in proof["exact_token_indices"]
+            ],
+            "token_index": token_index,
+        }
+        for token_index, alias_token in enumerate(alias_tokens)
+    ]
+    if (
+        any(not item["exact_channels"] for item in expected_token_axis)
+        or value["token_axis"] != expected_token_axis
+    ):
+        raise _error("same-crop complementary-token exact coverage drifted")
+    material = canonical_clone_v1(value)
+    proof_id = material.pop("proof_id")
+    if proof_id != "afcetav1:proof:" + canonical_json_sha256_v1(material):
+        raise _error("same-crop complementary-token proof identity drifted")
+    return canonical_clone_v1(value)
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -1170,6 +1664,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
     for check in value["checks"]:
         exact = check.get("exact_channel") if type(check) is dict else None
         retrieval = check.get("retrieval_channel") if type(check) is dict else None
+        complementary = check.get("complementary_token_authority") if type(check) is dict else None
+        if type(check) is dict and check.get("status") == (
+            "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+        ):
+            _validate_complementary_token_authority_shape_v1(complementary)
+        elif complementary is not None:
+            raise _error("unbound one-edit check retained complementary-token authority")
         if (
             type(check) is not dict
             or set(check) != _CHECK_FIELDS
@@ -1212,7 +1713,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
             != canonical_json_sha256_v1(retrieval["alias_candidates"])
             or type(exact) is not dict
             or set(exact) != _EXACT_FIELDS
-            or exact["channel"] != "PPOCR_BOUND_SOURCE_TEXT_EXACT"
+            or exact["channel"]
+            != (
+                "PPOCR_AND_VIETOCR_SAME_CROP_COMPLEMENTARY_TOKEN_EXACT"
+                if check["status"] == "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+                else "PPOCR_BOUND_SOURCE_TEXT_EXACT"
+            )
             or type(exact["context_binding"]) is not dict
             or set(exact["context_binding"]) != _CONTEXT_FIELDS
             or exact["context_binding"]["family_id"] != value["family_id"]
@@ -1237,19 +1743,43 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 != canonical_json_sha256_v1(exact["source_surface"])
             )
             or (
-                check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+                check["status"] in _BOUND_CHECK_STATUSES
                 and (
                     exact["alias_pointer"] is None
                     or exact["alias_normalized"] is None
                     or exact["alias_sha256"] != canonical_json_sha256_v1(exact["alias_normalized"])
-                    or exact["transform"] not in _AUTHORITY_SPEC["allowed_exact_transforms"]
+                    or (
+                        check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+                        and exact["transform"] not in _AUTHORITY_SPEC["allowed_exact_transforms"]
+                    )
+                    or (
+                        check["status"] == "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+                        and exact["transform"] != "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_COVERAGE"
+                    )
                 )
             )
         ):
             raise _error("one-edit exact-authority check axis drifted")
-    bound = sum(
-        check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for check in value["checks"]
-    )
+        if check["status"] == "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND" and (
+            check["match_scope"] != "EXPANDED_OCCURRENCE"
+            or check["source_line_indices"] != [complementary["crop_binding"]["source_line_index"]]
+            or check["page_sequence"] != complementary["crop_binding"]["page_sequence"]
+            or exact["alias_normalized"] != complementary["alias_normalized"]
+            or exact["alias_pointer"] != complementary["alias_pointer"]
+            or exact["alias_sha256"] != complementary["alias_sha256"]
+            or exact["source_surface"] != complementary["channel_proofs"][0]["surface"]
+            or retrieval["surface"] != complementary["channel_proofs"][1]["surface"]
+            or retrieval["alias_candidates"]
+            != [
+                {
+                    "alias_normalized": complementary["alias_normalized"],
+                    "alias_pointer": complementary["alias_pointer"],
+                    "alias_sha256": complementary["alias_sha256"],
+                }
+            ]
+        ):
+            raise _error("same-crop complementary-token check binding drifted")
+    bound = sum(check["status"] in _BOUND_CHECK_STATUSES for check in value["checks"])
     occurrence_ids = [
         check["occurrence_id"]
         for check in value["checks"]
@@ -1277,7 +1807,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             + ",".join(str(index) for index in check["source_line_indices"])
         )
         for check in value["checks"]
-        if check["status"] != "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+        if check["status"] not in _BOUND_CHECK_STATUSES
     ]
     if (
         not same_typed_json_v1(value["metrics"], metrics)
@@ -1378,7 +1908,7 @@ def _build_from_canonical_expanded_occurrences_v1(
                 match_scope=match_scope,
             )
         )
-    bound = sum(check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for check in checks)
+    bound = sum(check["status"] in _BOUND_CHECK_STATUSES for check in checks)
     metrics = {
         "exact_bound_count": bound,
         "selected_one_edit_match_count": len(checks),
@@ -1392,7 +1922,7 @@ def _build_from_canonical_expanded_occurrences_v1(
             + ",".join(str(index) for index in check["source_line_indices"])
         )
         for check in checks
-        if check["status"] != "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+        if check["status"] not in _BOUND_CHECK_STATUSES
     ]
     material = {
         "authority_spec": {

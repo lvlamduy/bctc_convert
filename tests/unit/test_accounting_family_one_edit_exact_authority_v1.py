@@ -263,6 +263,197 @@ def test_source_channel_that_is_still_one_edit_is_not_exact_authority() -> None:
     assert leaf["exact_channel"]["alias_pointer"] is None
 
 
+def _complementary_leaf_fixture(
+    *,
+    retrieval_surface: str = "Vietnam dong balancx",
+    source_surface: str = "Vietnan dong balance",
+    group_source: str = "Domestic deposits",
+) -> tuple[list[dict], dict, dict]:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", group_source),
+        _line(2, retrieval_surface, source_surface),
+        _line(3, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    expanded = _expanded(pages, region)
+    pages[0]["lines"][2].update(
+        {
+            "crop_ref": {
+                "path": "output/authenticated-crops/sample-000000003.png",
+                "sha256": "3" * 64,
+                "size_bytes": 321,
+            },
+            "sample_id": "sample-000000003",
+        }
+    )
+    return pages, region, expanded
+
+
+def test_same_crop_complementary_exact_tokens_bind_one_unique_alias() -> None:
+    pages, region, expanded = _complementary_leaf_fixture()
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, expanded
+    )
+
+    assert receipt["format_version"] == "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V2"
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+    assert receipt["metrics"] == {
+        "exact_bound_count": 1,
+        "selected_one_edit_match_count": 1,
+        "unresolved_match_count": 0,
+    }
+    leaf = receipt["checks"][0]
+    assert leaf["status"] == "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+    proof = leaf["complementary_token_authority"]
+    assert proof["alias_normalized"] == "vietnam dong balance"
+    assert proof["crop_binding"]["sample_id"] == "sample-000000003"
+    assert [item["mismatch_token_indices"] for item in proof["channel_proofs"]] == [
+        [0],
+        [2],
+    ]
+    assert [item["exact_channels"] for item in proof["token_axis"]] == [
+        ["VIETOCR_TRANSFORMER_RETRIEVAL_ONLY"],
+        ["PPOCR_BOUND_SOURCE_TEXT", "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY"],
+        ["PPOCR_BOUND_SOURCE_TEXT"],
+    ]
+    assert leaf["exact_channel"]["channel"] == (
+        "PPOCR_AND_VIETOCR_SAME_CROP_COMPLEMENTARY_TOKEN_EXACT"
+    )
+    subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+        receipt, pages, _spec(), region, expanded
+    )
+
+
+@pytest.mark.parametrize(
+    ("source_surface", "retrieval_surface"),
+    [
+        ("Vietnan dong balance", "Vietnan dong balance"),
+        ("Vietnamdong balance", "Vietnam dong balancx"),
+        ("Wrong source words", "Vietnam dong balancx"),
+    ],
+)
+def test_complementary_token_authority_rejects_shared_edit_token_token_count_and_distance(
+    source_surface: str, retrieval_surface: str
+) -> None:
+    pages, region, expanded = _complementary_leaf_fixture(
+        source_surface=source_surface,
+        retrieval_surface=retrieval_surface,
+    )
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, expanded
+    )
+
+    assert receipt["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    assert receipt["checks"][0]["status"] != ("SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND")
+    assert receipt["checks"][0]["complementary_token_authority"] is None
+
+
+def test_complementary_token_authority_rejects_independent_wrong_structural_owner() -> None:
+    pages, region, expanded = _complementary_leaf_fixture(group_source="Foreign deposits")
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, expanded
+    )
+
+    leaf = receipt["checks"][0]
+    assert leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
+    assert leaf["complementary_token_authority"] is None
+
+
+def test_complementary_token_authority_rejects_channels_pointing_to_different_aliases() -> None:
+    spec = _spec()
+    spec["children"][2]["matchers"][0]["aliases"] = [
+        "Vietnam dong balance",
+        "Vietnam dong ballast",
+    ]
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balancx", "Vietnam dong ballasx"),
+        _line(3, "Next family", "Next family"),
+    )
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+    pages[0]["lines"][2].update(
+        {
+            "crop_ref": {
+                "path": "output/authenticated-crops/sample-000000003.png",
+                "sha256": "3" * 64,
+                "size_bytes": 321,
+            },
+            "sample_id": "sample-000000003",
+        }
+    )
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    assert receipt["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    assert receipt["checks"][0]["complementary_token_authority"] is None
+
+
+def test_complementary_token_authority_never_composes_one_generic_token() -> None:
+    spec = _spec()
+    spec["children"][2]["matchers"][0]["aliases"] = ["VietnamBalance"]
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "VietnamBalancx", "VietnanBalance"),
+        _line(3, "Next family", "Next family"),
+    )
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+    pages[0]["lines"][2].update(
+        {
+            "crop_ref": {
+                "path": "output/authenticated-crops/sample-000000003.png",
+                "sha256": "3" * 64,
+                "size_bytes": 321,
+            },
+            "sample_id": "sample-000000003",
+        }
+    )
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    assert receipt["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    assert receipt["checks"][0]["complementary_token_authority"] is None
+
+
+def test_complementary_token_crop_binding_tamper_rehash_still_fails_exact_replay() -> None:
+    pages, region, expanded = _complementary_leaf_fixture()
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, expanded
+    )
+    tampered = copy.deepcopy(receipt)
+    proof = tampered["checks"][0]["complementary_token_authority"]
+    proof["crop_binding"]["crop_ref"]["sha256"] = "4" * 64
+    proof["crop_binding_sha256"] = subject.canonical_json_sha256_v1(proof["crop_binding"])
+    proof_material = copy.deepcopy(proof)
+    proof_material.pop("proof_id")
+    proof["proof_id"] = "afcetav1:proof:" + subject.canonical_json_sha256_v1(proof_material)
+    receipt_material = copy.deepcopy(tampered)
+    receipt_material.pop("receipt_id")
+    tampered["receipt_id"] = "afeoeav1:receipt:" + subject.canonical_json_sha256_v1(
+        receipt_material
+    )
+
+    subject.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(tampered)
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            tampered, pages, _spec(), region, expanded
+        )
+
+
 def test_exact_alias_on_a_different_source_span_does_not_corroborate_retrieval() -> None:
     pages = _pages(
         _line(0, "Family assets", "Family assets"),

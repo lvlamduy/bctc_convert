@@ -184,6 +184,11 @@ _SOURCE_SCOPE_BINDING_FIELDS = {
 _SOURCE_SCOPE_BINDING_STATUS = "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
 _AMBIGUOUS_WRAPPED_LABEL_STATUS = "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
 _ONE_EDIT_EXACT_BOUND_STATUS = "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+_ONE_EDIT_COMPLEMENTARY_BOUND_STATUS = "SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_ALIAS_BOUND"
+_ONE_EDIT_AUTHORITY_BOUND_STATUSES = {
+    _ONE_EDIT_COMPLEMENTARY_BOUND_STATUS,
+    _ONE_EDIT_EXACT_BOUND_STATUS,
+}
 _DISCOUNT_GENERIC_ROLE = "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
 _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_VND": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
@@ -1271,7 +1276,7 @@ def _bound_one_edit_exact_source_check(
     )
     if (
         type(check) is not dict
-        or check.get("status") != _ONE_EDIT_EXACT_BOUND_STATUS
+        or check.get("status") not in _ONE_EDIT_AUTHORITY_BOUND_STATUSES
         or check.get("match_scope") != "EXPANDED_OCCURRENCE"
         or check.get("occurrence_id") != retrieval_occurrence_id
         or check.get("page_sequence") != match.get("page_sequence")
@@ -2087,7 +2092,7 @@ def _validate_source_scope_binding(
         str(anchor.get("match_kind", "")).startswith("EXACT_")
         or (
             type(anchor_check) is dict
-            and anchor_check.get("status") == _ONE_EDIT_EXACT_BOUND_STATUS
+            and anchor_check.get("status") in _ONE_EDIT_AUTHORITY_BOUND_STATUSES
             and anchor_check.get("match_scope") == "EXPANDED_OCCURRENCE"
             and anchor_check.get("page_sequence") == anchor.get("page_sequence")
             and anchor_check.get("role") == anchor.get("role")
@@ -2353,7 +2358,13 @@ def _one_edit_authority_pages_v2(
             "lines": [
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
+                    **(
+                        {"crop_ref": canonical_clone_v1(line["crop_ref"])}
+                        if "crop_ref" in line
+                        else {}
+                    ),
                     "numeric_recognition": canonical_clone_v1(line["numeric_recognition"]),
+                    **({"sample_id": line["sample_id"]} if "sample_id" in line else {}),
                     "source_line_index": line["line_ordinal"],
                     "source_text": line["numeric_recognition"]["raw_prediction"],
                     "vietocr_text": line["vietocr_text"],
@@ -2422,7 +2433,7 @@ def _one_edit_exact_source_structural_proofs_v2(
         match["retrieval_scope_owner_occurrence_id"] = match["scope_owner_occurrence_id"]
         match["retrieval_within_role"] = match.get("matched_within_role")
         check = checks_by_occurrence_id.get(match["occurrence_id"])
-        if type(check) is dict and check["status"] == _ONE_EDIT_EXACT_BOUND_STATUS:
+        if type(check) is dict and check["status"] in _ONE_EDIT_AUTHORITY_BOUND_STATUSES:
             match["one_edit_exact_source_authority_check"] = canonical_clone_v1(check)
     return receipt, decorated
 
