@@ -1505,6 +1505,83 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
     assert trials[1]["rendered"] is False
 
 
+def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches(
+    monkeypatch,
+) -> None:
+    packets = tuple(
+        {
+            "document_ordinal": ordinal,
+            "packet_id": f"ffdesv1:document:{ordinal:064x}",
+            "page_count": 1,
+        }
+        for ordinal in range(1, 66)
+    )
+    snapshots = {
+        ordinal: {
+            "document_packet": packet,
+            "snapshot_id": f"ffdesv1:selected:{ordinal:064x}",
+        }
+        for ordinal, packet in enumerate(packets, 1)
+    }
+    selections = tuple((ordinal, (1,)) for ordinal in range(1, 66))
+    batches = []
+
+    class SynchronousExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            assert max_workers == 16
+            assert mp_context.get_start_method() == "spawn"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def map(self, function, requests, *, chunksize):
+            assert chunksize == 1
+            return tuple(function(request) for request in requests)
+
+    def selected(_cap, *, document_page_selections):
+        batches.append(document_page_selections)
+        return tuple(
+            copy.deepcopy(snapshots[ordinal]) for ordinal, _pages in document_page_selections
+        )
+
+    def worker(request):
+        packet, snapshot, _family, _policy, _renders, _scan, mode = request
+        assert mode == "FULL"
+        return {
+            "document_ordinal": packet["document_ordinal"],
+            "missing_render_pages": (),
+            "packet_id": packet["packet_id"],
+            "snapshot_id": snapshot["snapshot_id"],
+            "trial": {
+                "document_ordinal": packet["document_ordinal"],
+                "topology_scan": {"status": "NO_COMPLETE_TOPOLOGY_REGION"},
+            },
+        }
+
+    monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        selected,
+    )
+
+    trials = subject._parallel_v4_document_store_trials_v1(
+        object(),
+        packets=packets,
+        selections=selections,
+        family_spec=_family_spec(),
+        policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        jobs=16,
+    )
+
+    assert [len(batch) for batch in batches] == [64, 1]
+    assert [trial["document_ordinal"] for trial in trials] == list(range(1, 66))
+
+
 def test_parallel_v4_document_store_trials_execute_in_real_worker_processes(
     monkeypatch,
 ) -> None:

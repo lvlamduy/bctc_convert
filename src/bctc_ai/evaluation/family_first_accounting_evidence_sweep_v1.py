@@ -64,6 +64,7 @@ EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
 _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
+_MAX_DOCUMENT_STORE_PARALLEL_BATCH_SIZE = 64
 _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
 CLAIM_BOUNDARY = (
@@ -4594,8 +4595,12 @@ def _parallel_v4_document_store_trials_v1(
             max_workers=jobs,
             mp_context=get_context("spawn"),
         ) as executor:
-            for start in range(0, len(packets), _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE):
-                requested = selections[start : start + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE]
+            parallel_batch_size = min(
+                _MAX_DOCUMENT_STORE_PARALLEL_BATCH_SIZE,
+                max(_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE, jobs * 4),
+            )
+            for start in range(0, len(packets), parallel_batch_size):
+                requested = selections[start : start + parallel_batch_size]
                 snapshots = (
                     document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
                         document_store_capability,
