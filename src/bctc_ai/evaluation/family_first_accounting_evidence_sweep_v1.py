@@ -10,12 +10,15 @@ the strongest output is a replayable schema-review readiness proposal.
 from __future__ import annotations
 
 import copy
+import json
+import os
 import re
 from collections.abc import Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from multiprocessing import get_context
+from pathlib import Path
 from time import perf_counter
 from typing import Any
 
@@ -69,6 +72,7 @@ _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
 _V4_RENDER_PREFLIGHT_FORMAT_VERSION = "FAMILY_FIRST_DOCUMENT_RENDER_PREFLIGHT_V1"
 _V4_RENDER_PREFLIGHT_CONTEXT_CACHE: dict[str, dict[str, Any]] = {}
+_V4_TRIAL_CHECKPOINT_FORMAT_VERSION = "FAMILY_FIRST_DOCUMENT_TRIAL_CHECKPOINT_V1"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -5031,6 +5035,178 @@ def _validated_v4_document_store_worker_result_v1(
     return value["trial"], value["missing_render_pages"]
 
 
+def _v4_trial_checkpoint_context_v1(
+    document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    family_spec: dict[str, Any],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    state = document_store_v1._live_store(document_store_capability)
+    git_head = document_store_v1._clean_head(state.root)
+    family_spec_sha256 = canonical_json_sha256_v1(family_spec)
+    policy_sha256 = canonical_json_sha256_v1(policy)
+    directory = (
+        state.root
+        / "data/local/family_first_accounting_trial_checkpoints_v1"
+        / f"{git_head}-{family_spec_sha256}-{policy_sha256}"
+    )
+    return {
+        "directory": directory,
+        "family_spec_sha256": family_spec_sha256,
+        "git_head": git_head,
+        "manifest_id": state.manifest["manifest_id"],
+        "policy_sha256": policy_sha256,
+    }
+
+
+def _v4_trial_checkpoint_material_v1(
+    *,
+    binding: Mapping[str, Any],
+    packet: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+    worker_result: Mapping[str, Any],
+) -> dict[str, Any]:
+    serialized_result = dict(worker_result)
+    if type(serialized_result.get("missing_render_pages")) is not tuple:
+        raise _error("V4 document trial checkpoint received a non-runtime worker result")
+    serialized_result["missing_render_pages"] = list(serialized_result["missing_render_pages"])
+    return {
+        "document_ordinal": packet["document_ordinal"],
+        "family_spec_sha256": binding["family_spec_sha256"],
+        "format_version": _V4_TRIAL_CHECKPOINT_FORMAT_VERSION,
+        "git_head": binding["git_head"],
+        "manifest_id": binding["manifest_id"],
+        "packet_id": packet["packet_id"],
+        "policy_sha256": binding["policy_sha256"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "worker_result": canonical_clone_v1(serialized_result),
+        "worker_result_sha256": canonical_json_sha256_v1(serialized_result),
+    }
+
+
+def _v4_trial_checkpoint_bytes_v1(value: Mapping[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _read_v4_trial_checkpoint_v1(
+    *,
+    binding: Mapping[str, Any],
+    packet: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    path = binding["directory"] / f"document-{packet['document_ordinal']:03d}.json"
+    if not path.exists():
+        return None
+    try:
+        payload = path.read_bytes()
+        value = json.loads(payload.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise _error("V4 document trial checkpoint cannot be read exactly") from exc
+    if type(value) is not dict or payload != _v4_trial_checkpoint_bytes_v1(value):
+        raise _error("V4 document trial checkpoint is not canonical JSON")
+    fields = {
+        "checkpoint_id",
+        "document_ordinal",
+        "family_spec_sha256",
+        "format_version",
+        "git_head",
+        "manifest_id",
+        "packet_id",
+        "policy_sha256",
+        "snapshot_id",
+        "worker_result",
+        "worker_result_sha256",
+    }
+    if (
+        set(value) != fields
+        or value.get("format_version") != _V4_TRIAL_CHECKPOINT_FORMAT_VERSION
+        or value.get("document_ordinal") != packet.get("document_ordinal")
+        or value.get("packet_id") != packet.get("packet_id")
+        or value.get("snapshot_id") != snapshot.get("snapshot_id")
+        or value.get("git_head") != binding.get("git_head")
+        or value.get("manifest_id") != binding.get("manifest_id")
+        or value.get("family_spec_sha256") != binding.get("family_spec_sha256")
+        or value.get("policy_sha256") != binding.get("policy_sha256")
+        or type(value.get("worker_result")) is not dict
+        or value.get("worker_result_sha256") != canonical_json_sha256_v1(value["worker_result"])
+    ):
+        raise _error("V4 document trial checkpoint binding drifted")
+    material = dict(value)
+    checkpoint_id = material.pop("checkpoint_id")
+    if checkpoint_id != "ffdtcv1:checkpoint:" + canonical_json_sha256_v1(material):
+        raise _error("V4 document trial checkpoint identity drifted")
+    runtime_result = canonical_clone_v1(value["worker_result"])
+    if type(runtime_result.get("missing_render_pages")) is not list:
+        raise _error("V4 document trial checkpoint render axis drifted")
+    runtime_result["missing_render_pages"] = tuple(runtime_result["missing_render_pages"])
+    _trial, missing_pages = _validated_v4_document_store_worker_result_v1(
+        runtime_result,
+        packet=packet,
+        snapshot=snapshot,
+    )
+    if missing_pages:
+        raise _error("V4 document trial checkpoint retained a render request")
+    return runtime_result
+
+
+def _write_v4_trial_checkpoint_v1(
+    *,
+    binding: Mapping[str, Any],
+    packet: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+    worker_result: Mapping[str, Any],
+) -> None:
+    material = _v4_trial_checkpoint_material_v1(
+        binding=binding,
+        packet=packet,
+        snapshot=snapshot,
+        worker_result=worker_result,
+    )
+    value = {
+        **material,
+        "checkpoint_id": "ffdtcv1:checkpoint:" + canonical_json_sha256_v1(material),
+    }
+    payload = _v4_trial_checkpoint_bytes_v1(value)
+    directory: Path = binding["directory"]
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"document-{packet['document_ordinal']:03d}.json"
+    if path.exists():
+        observed = _read_v4_trial_checkpoint_v1(
+            binding=binding,
+            packet=packet,
+            snapshot=snapshot,
+        )
+        if not same_typed_json_v1(observed, worker_result):
+            raise _error("V4 document trial checkpoint conflicts with fresh evidence")
+        return
+    temporary = directory / f".{path.name}.{os.getpid()}.tmp"
+    try:
+        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        try:
+            remaining = memoryview(payload)
+            while remaining:
+                written = os.write(descriptor, remaining)
+                if written <= 0:
+                    raise OSError("document trial checkpoint write made no progress")
+                remaining = remaining[written:]
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, path)
+        path.chmod(0o444)
+    except OSError as exc:
+        raise _error("V4 document trial checkpoint cannot be published atomically") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def _parallel_v4_document_store_trials_v1(
     document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
     *,
@@ -5043,6 +5219,11 @@ def _parallel_v4_document_store_trials_v1(
     """Run bounded document trials in source order with parent-owned I/O."""
 
     final_trials: list[dict[str, Any] | None] = [None] * len(packets)
+    checkpoint_binding = _v4_trial_checkpoint_context_v1(
+        document_store_capability,
+        family_spec,
+        policy,
+    )
     try:
         # Spawn is a security boundary, not a portability preference.  Fork
         # would inherit the parent module's opaque authenticated-store handle
@@ -5090,11 +5271,27 @@ def _parallel_v4_document_store_trials_v1(
                 for offset, snapshot in enumerate(snapshots):
                     index = next_source_index + offset
                     active_snapshots[index] = snapshot
+                    cached_result = _read_v4_trial_checkpoint_v1(
+                        binding=checkpoint_binding,
+                        packet=packets[index],
+                        snapshot=snapshot,
+                    )
+                    if cached_result is not None:
+                        cached_trial, _missing_pages = (
+                            _validated_v4_document_store_worker_result_v1(
+                                cached_result,
+                                packet=packets[index],
+                                snapshot=snapshot,
+                            )
+                        )
+                        final_trials[index] = cached_trial
+                        del active_snapshots[index]
+                        continue
                     ready_source_indices.append(index)
                 next_source_index += len(snapshots)
 
             def dispatch_free_lanes() -> None:
-                if free_lanes and not ready_source_indices and next_source_index < len(packets):
+                while free_lanes and not ready_source_indices and next_source_index < len(packets):
                     hydrate_next_batch()
                 while free_lanes and ready_source_indices:
                     lane = free_lanes.pop(0)
@@ -5127,6 +5324,12 @@ def _parallel_v4_document_store_trials_v1(
                             if missing_pages:
                                 raise _error("V4 completed preflight retained a render request")
                             final_trials[index] = trial
+                            _write_v4_trial_checkpoint_v1(
+                                binding=checkpoint_binding,
+                                packet=packet,
+                                snapshot=snapshot,
+                                worker_result=completed_result,
+                            )
                             del active_snapshots[index]
                             free_lanes.append(lane)
                             continue
@@ -5154,14 +5357,21 @@ def _parallel_v4_document_store_trials_v1(
                         continue
                     if stage != "FINAL":
                         raise _error("V4 document-store worker stage drifted")
+                    final_result = future.result()
                     trial, missing_pages = _validated_v4_document_store_worker_result_v1(
-                        future.result(),
+                        final_result,
                         packet=packet,
                         snapshot=snapshot,
                     )
                     if missing_pages:
                         raise _error("V4 preflight-bound final trial retained a render request")
                     final_trials[index] = trial
+                    _write_v4_trial_checkpoint_v1(
+                        binding=checkpoint_binding,
+                        packet=packet,
+                        snapshot=snapshot,
+                        worker_result=final_result,
+                    )
                     del active_snapshots[index]
                     free_lanes.append(lane)
                 free_lanes.sort()

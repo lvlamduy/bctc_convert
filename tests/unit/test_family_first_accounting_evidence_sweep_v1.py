@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+import json
 from concurrent.futures import Future
 from dataclasses import replace
 from types import SimpleNamespace
@@ -1437,6 +1438,92 @@ def _render_preflight_fixture() -> tuple[dict, dict, dict]:
     return packet, snapshot, preflight
 
 
+def _disable_v4_trial_checkpoints(monkeypatch) -> None:
+    monkeypatch.setattr(subject, "_v4_trial_checkpoint_context_v1", lambda *_a, **_k: {})
+    monkeypatch.setattr(subject, "_read_v4_trial_checkpoint_v1", lambda **_kwargs: None)
+    monkeypatch.setattr(subject, "_write_v4_trial_checkpoint_v1", lambda **_kwargs: None)
+
+
+def test_v4_trial_checkpoint_round_trips_exact_current_binding(tmp_path) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[1])
+    packet = snapshot["document_packet"]
+    binding = {
+        "directory": tmp_path,
+        "family_spec_sha256": "a" * 64,
+        "git_head": "b" * 40,
+        "manifest_id": "ffdesv1:manifest:" + "c" * 64,
+        "policy_sha256": "d" * 64,
+    }
+    worker_result = {
+        "document_ordinal": 1,
+        "missing_render_pages": (),
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": {"document_ordinal": 1, "value": 42},
+    }
+
+    subject._write_v4_trial_checkpoint_v1(
+        binding=binding,
+        packet=packet,
+        snapshot=snapshot,
+        worker_result=worker_result,
+    )
+
+    assert (
+        subject._read_v4_trial_checkpoint_v1(
+            binding=binding,
+            packet=packet,
+            snapshot=snapshot,
+        )
+        == worker_result
+    )
+    path = tmp_path / "document-001.json"
+    assert path.stat().st_mode & 0o777 == 0o444
+
+
+def test_v4_trial_checkpoint_rejects_coherently_rehashed_revision_tamper(tmp_path) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[1])
+    packet = snapshot["document_packet"]
+    binding = {
+        "directory": tmp_path,
+        "family_spec_sha256": "a" * 64,
+        "git_head": "b" * 40,
+        "manifest_id": "ffdesv1:manifest:" + "c" * 64,
+        "policy_sha256": "d" * 64,
+    }
+    worker_result = {
+        "document_ordinal": 1,
+        "missing_render_pages": (),
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": {"document_ordinal": 1},
+    }
+    subject._write_v4_trial_checkpoint_v1(
+        binding=binding,
+        packet=packet,
+        snapshot=snapshot,
+        worker_result=worker_result,
+    )
+    path = tmp_path / "document-001.json"
+    path.chmod(0o600)
+    value = json.loads(path.read_text())
+    value["git_head"] = "e" * 40
+    material = dict(value)
+    material.pop("checkpoint_id")
+    value["checkpoint_id"] = "ffdtcv1:checkpoint:" + subject.canonical_json_sha256_v1(material)
+    path.write_bytes(subject._v4_trial_checkpoint_bytes_v1(value))
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="binding drifted",
+    ):
+        subject._read_v4_trial_checkpoint_v1(
+            binding=binding,
+            packet=packet,
+            snapshot=snapshot,
+        )
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -1596,6 +1683,7 @@ def test_v4_render_preflight_completes_no_render_trial_without_retaining_context
 def test_parallel_v4_document_store_trials_preserve_order_and_render_only_requests(
     monkeypatch,
 ) -> None:
+    _disable_v4_trial_checkpoints(monkeypatch)
     documents = _documents()
     snapshots = tuple(
         _authenticated_selected_document_store_snapshot(documents[ordinal]) for ordinal in (1, 2)
@@ -1707,6 +1795,7 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
     document_count,
     expected_batch_sizes,
 ) -> None:
+    _disable_v4_trial_checkpoints(monkeypatch)
     packets = tuple(
         {
             "document_ordinal": ordinal,
@@ -1807,6 +1896,7 @@ def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_sourc
 def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_tail(
     monkeypatch,
 ) -> None:
+    _disable_v4_trial_checkpoints(monkeypatch)
     packets = tuple(
         {
             "document_ordinal": ordinal,
@@ -1920,6 +2010,7 @@ def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_
 def test_parallel_v4_document_store_trials_execute_in_real_worker_processes(
     monkeypatch,
 ) -> None:
+    _disable_v4_trial_checkpoints(monkeypatch)
     documents = {
         ordinal: _document(
             ordinal,
@@ -1991,12 +2082,13 @@ def test_parallel_v4_document_store_workers_do_not_inherit_store_capabilities() 
 
 
 def test_parallel_v4_document_store_worker_exception_is_typed(monkeypatch) -> None:
+    _disable_v4_trial_checkpoints(monkeypatch)
     snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
     packet = snapshot["document_packet"]
 
     class BrokenExecutor:
         def __init__(self, *, max_workers, mp_context):
-            assert max_workers == 2
+            assert max_workers == 1
             assert mp_context.get_start_method() == "spawn"
 
         def __enter__(self):
