@@ -93,6 +93,39 @@ def test_wrapped_or_merged_label_boxes_form_one_row_band() -> None:
     )
 
 
+def test_long_wrapped_label_binds_values_at_terminal_visual_baseline() -> None:
+    lines = [
+        _line(0, "Công ty cổ phần có vốn góp của", [20, 100, 430, 126]),
+        _line(1, "Nhà nước trên 50% vốn điều lệ", [20, 128, 430, 154]),
+        _line(2, "hoặc tổng số cổ phần có quyền", [20, 156, 430, 182]),
+        _line(3, "biểu quyết hoặc Nhà nước giữ", [20, 184, 430, 210]),
+        _line(4, "quyền chi phối trong điều lệ của", [20, 212, 430, 238]),
+        _line(5, "công ty", [20, 240, 150, 266]),
+        _line(6, "20.728", [650, 239, 750, 265]),
+        _line(7, "93.813", [850, 240, 950, 266]),
+        _line(8, "Hàng kế tiếp", [20, 274, 250, 300]),
+        _line(9, "8.000", [650, 274, 750, 300]),
+        _line(10, "7.000", [850, 274, 950, 300]),
+    ]
+
+    values = assign_numeric_row_v1(
+        lines,
+        label_boxes=[line["bbox"] for line in lines[:6]],
+        is_numeric=_numeric,
+        page_width=1000,
+    )
+
+    assert [line["source_line_index"] for line in values] == [6, 7]
+    assert (
+        row_affinity_v1(
+            [line["bbox"] for line in lines[:6]],
+            lines[9]["bbox"],
+            median_text_height=median_text_height_v1(lines),
+        )
+        is None
+    )
+
+
 def test_adjacent_numeric_rows_do_not_collapse_under_dpi_scaling() -> None:
     lines = [
         _line(0, "A", [20, 100, 100, 124]),

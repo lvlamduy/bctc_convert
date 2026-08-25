@@ -79,23 +79,10 @@ def _union(boxes: Sequence[Any]) -> tuple[int, int, int, int]:
     )
 
 
-def _terminal_label_baseline(
+def _label_baseline_bboxes(
     boxes: Sequence[Any], *, median_text_height: float
-) -> tuple[tuple[int, int, int, int], bool]:
-    """Return the final physical baseline of a possibly wrapped label.
-
-    When every value cell on a row is an omitted dash, the detector supplies
-    no numeric sibling from which to recover the row band.  Centering a crop
-    on the union of a two-line label then places it between both baselines and
-    can miss values aligned to the terminal text line.  Group label boxes into
-    DPI-relative physical baselines and retain the lowest band only when more
-    than one distinct band exists.  Multiple tokens on one baseline remain a
-    single band.
-
-    This helper proposes geometry only.  The authenticated render crop must
-    still independently contain a recognized dash/number before it can become
-    value evidence.
-    """
+) -> list[tuple[int, int, int, int]]:
+    """Group a semantic label into its DPI-relative physical baselines."""
 
     if type(median_text_height) is not float or median_text_height <= 0:
         raise _error("median text height must be one positive float")
@@ -118,13 +105,29 @@ def _terminal_label_baseline(
             bands.append([box])
         else:
             target.append(box)
-    if len(bands) == 1:
-        return _union([list(box) for box in parsed]), False
-    terminal = max(
-        bands,
-        key=lambda band: float(median((item[1] + item[3]) / 2 for item in band)),
-    )
-    return _union([list(box) for box in terminal]), True
+    return [_union([list(box) for box in band]) for band in bands]
+
+
+def _terminal_label_baseline(
+    boxes: Sequence[Any], *, median_text_height: float
+) -> tuple[tuple[int, int, int, int], bool]:
+    """Return the final physical baseline of a possibly wrapped label.
+
+    When every value cell on a row is an omitted dash, the detector supplies
+    no numeric sibling from which to recover the row band.  Centering a crop
+    on the union of a two-line label then places it between both baselines and
+    can miss values aligned to the terminal text line.  Group label boxes into
+    DPI-relative physical baselines and retain the lowest band only when more
+    than one distinct band exists.  Multiple tokens on one baseline remain a
+    single band.
+
+    This helper proposes geometry only.  The authenticated render crop must
+    still independently contain a recognized dash/number before it can become
+    value evidence.
+    """
+
+    baselines = _label_baseline_bboxes(boxes, median_text_height=median_text_height)
+    return baselines[-1], len(baselines) > 1
 
 
 def row_affinity_v1(
@@ -132,31 +135,43 @@ def row_affinity_v1(
 ) -> float | None:
     """Score a candidate against a possibly wrapped label row.
 
-    A score is returned only when the vertical intervals overlap or their gap
-    is small relative to the page-local median glyph height.  The calculation
-    has no absolute pixel tolerance, so the same rule works across DPI scales.
+    A score is returned only when the candidate binds one physical label
+    baseline. This supports both values printed beside the first fragment and
+    values printed beside the terminal fragment without centering on the union
+    of a long wrapped label. The calculation has no absolute pixel tolerance,
+    so the same rule works across DPI scales.
     """
 
     if type(median_text_height) is not float or median_text_height <= 0:
         raise _error("median text height must be one positive float")
-    _lx0, ly0, _lx1, ly1 = _union(label_boxes)
+    baselines = _label_baseline_bboxes(
+        label_boxes,
+        median_text_height=median_text_height,
+    )
     _cx0, cy0, _cx1, cy1 = _bbox(candidate_bbox)
-    overlap = min(ly1, cy1) - max(ly0, cy0)
-    gap = max(0, ly0 - cy1, cy0 - ly1)
-    label_height = ly1 - ly0
     candidate_height = cy1 - cy0
-    scale = max(median_text_height, min(label_height, median_text_height * 2), candidate_height)
-    if gap > scale * 0.28:
-        return None
-    label_center = (ly0 + ly1) / 2
     candidate_center = (cy0 + cy1) / 2
-    normalized_distance = abs(candidate_center - label_center) / scale
-    # OCR boxes on adjacent rows can touch by a pixel or two.  That contact is
-    # not enough to overcome a near-full-line baseline displacement.
-    if normalized_distance > 0.8:
-        return None
-    overlap_ratio = max(0, overlap) / max(1, min(label_height, candidate_height))
-    return overlap_ratio * 2.0 - normalized_distance
+    affinities = []
+    for _lx0, ly0, _lx1, ly1 in baselines:
+        overlap = min(ly1, cy1) - max(ly0, cy0)
+        gap = max(0, ly0 - cy1, cy0 - ly1)
+        label_height = ly1 - ly0
+        scale = max(
+            median_text_height,
+            min(label_height, median_text_height * 2),
+            candidate_height,
+        )
+        if gap > scale * 0.28:
+            continue
+        label_center = (ly0 + ly1) / 2
+        normalized_distance = abs(candidate_center - label_center) / scale
+        # OCR boxes on adjacent rows can touch by a pixel or two.  That
+        # contact is not enough to overcome a near-full-line displacement.
+        if normalized_distance > 0.8:
+            continue
+        overlap_ratio = max(0, overlap) / max(1, min(label_height, candidate_height))
+        affinities.append(overlap_ratio * 2.0 - normalized_distance)
+    return max(affinities) if affinities else None
 
 
 def _x_center(line: Mapping[str, Any]) -> float:

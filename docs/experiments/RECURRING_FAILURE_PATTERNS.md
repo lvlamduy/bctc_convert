@@ -71,7 +71,9 @@ Trạng thái:
   quantization; reset/next-header/first-visible-row là hard fence và raw
   bbox/source line được giữ lại. Wrapped label dùng visual-y order trong exact
   label lane thay vì provider ordinal; numeric-only observation cùng baseline
-  không được làm continuation fragment. Header của contextual child table được fence
+  không được làm continuation fragment. Value row phải bind đúng một physical
+  baseline của wrapped label (đầu hoặc cuối), không dùng tâm của union nhiều
+  dòng. Header của contextual child table được fence
   từ exact structural owner của valued row đầu tiên, không từ outer note parent
   nếu giữa hai scope còn sibling table. Header ngày tiếng Việt bị OCR tách dòng
   chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
