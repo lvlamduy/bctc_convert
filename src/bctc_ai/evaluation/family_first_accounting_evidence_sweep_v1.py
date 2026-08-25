@@ -748,10 +748,34 @@ def _mixed_candidate_has_accounting_corroboration(
                 value["sample_id"] == sample_id for value in record["source"]["record"]["values"]
             )
         )
+        reachable_roles = set(accounting_roles)
+        exact_derived_status = "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        exact_visible_statuses = {
+            "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+            "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+        }
+        equations = closure["equations"]["global"]
+        while True:
+            changed = False
+            for equation in equations:
+                if equation["status"] not in exact_visible_statuses | {exact_derived_status}:
+                    continue
+                components = set(equation["component_roles_present"])
+                if not reachable_roles & components:
+                    continue
+                result_role = equation["result_role"]
+                if result_role not in reachable_roles:
+                    reachable_roles.add(result_role)
+                    changed = True
+            if not changed:
+                break
         return any(
-            equation["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
-            and accounting_roles & {equation["result_role"], *equation["component_roles_present"]}
-            for equation in closure["equations"]["global"]
+            equation["status"] in exact_visible_statuses
+            and (
+                equation["result_role"] in reachable_roles
+                or bool(reachable_roles & set(equation["component_roles_present"]))
+            )
+            for equation in equations
         )
     return False
 

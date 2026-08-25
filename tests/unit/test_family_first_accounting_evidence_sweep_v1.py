@@ -876,6 +876,59 @@ def test_scoped_closure_mixed_token_requires_exact_visible_equation_use() -> Non
     )
 
 
+def test_scoped_closure_mixed_token_reaches_visible_source_through_exact_derived_dag() -> None:
+    closure = {
+        "coverage_receipt": [
+            {
+                "candidate_ordinal": None,
+                "disposition": "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+                "occurrence_id": "leaf-occurrence",
+                "role": "EXACT_LEAF",
+                "row_kind": "ROLE_ROW",
+                "sample_ids": ["mixed-leaf"],
+                "source_record": {},
+            }
+        ],
+        "equations": {
+            "global": [
+                {
+                    "component_roles_present": ["DERIVED_CORE"],
+                    "result_role": "VISIBLE_ROOT",
+                    "status": "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                },
+                {
+                    "component_roles_present": ["DERIVED_GROUP"],
+                    "result_role": "DERIVED_CORE",
+                    "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                },
+                {
+                    "component_roles_present": ["EXACT_LEAF"],
+                    "result_role": "DERIVED_GROUP",
+                    "status": "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM",
+                },
+            ],
+            "local": [],
+        },
+        "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2",
+        "resolved_roles": [],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+
+    assert subject._mixed_candidate_has_accounting_corroboration(
+        role="EXACT_LEAF",
+        sample_id="mixed-leaf",
+        closure=closure,
+    )
+
+    no_visible_source = copy.deepcopy(closure)
+    no_visible_source["equations"]["global"][0]["status"] = "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    assert not subject._mixed_candidate_has_accounting_corroboration(
+        role="EXACT_LEAF",
+        sample_id="mixed-leaf",
+        closure=no_visible_source,
+    )
+
+
 def test_scoped_closure_mixed_token_is_bound_to_its_exact_local_occurrence() -> None:
     closure = {
         "coverage_receipt": [

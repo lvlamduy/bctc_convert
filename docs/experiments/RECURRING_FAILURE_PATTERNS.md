@@ -199,7 +199,12 @@ Trạng thái:
   `BLANK`/`DASH`/`PRINTED_ZERO`, chỉ cho equation select/veto đúng một already-
   observed assignment. Missing local printed control chỉ được thay bằng một
   public-replayed authenticated upstream control; không control nào được
-  backsolve.
+  backsolve. Một mixed-separator cell đã có independent crop reader chỉ được
+  dùng accounting corroboration khi exact coverage role của chính sample đó đi
+  theo chiều component → result qua toàn bộ derived direct-frontier DAG và kết
+  thúc ở một visible source total đã replay. Chuỗi chỉ-derived, nhánh rời,
+  đường ngược từ parent xuống child hoặc equation không exhaustive vẫn không
+  tạo numeric authority.
 - **Status:** `MITIGATED`.
 
 ## RFP-008 — Content hash or cheap validation is mistaken for source authority
