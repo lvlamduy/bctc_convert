@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 from scripts.experiments import run_family_first_accounting_document_store_pipeline_v1 as subject
 
 
@@ -86,8 +87,8 @@ def test_document_store_pipeline_builds_and_replays_without_ocr(
     assert built["upstream_ocr_replay_count"] == 0
     assert built["per_document_packet_root_recomputation_count"] == 140
     assert built["document_trial_worker_count"] == 1
-    assert json.loads((tmp_path / "evidence.json").read_text()) == evidence
-    assert json.loads((tmp_path / "mapping.json").read_text()) == mapping
+    assert (tmp_path / "evidence.json").read_bytes() == canonical_json_bytes_v1(evidence)
+    assert (tmp_path / "mapping.json").read_bytes() == canonical_json_bytes_v1(mapping)
     evidence_bytes = (tmp_path / "evidence.json").read_bytes()
     mapping_bytes = (tmp_path / "mapping.json").read_bytes()
 

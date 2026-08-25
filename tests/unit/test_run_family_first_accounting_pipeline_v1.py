@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
+from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 from scripts.experiments import run_family_first_accounting_pipeline_v1 as pipeline
 
 
@@ -93,8 +93,8 @@ def test_pipeline_build_and_verify_traverse_live_source_once_each(
     )
     assert built["source_traversal_count"] == 1
     assert calls["sweep"] == 1
-    assert json.loads((tmp_path / "evidence.json").read_text()) == evidence
-    assert json.loads((tmp_path / "mapping.json").read_text()) == mapping
+    assert (tmp_path / "evidence.json").read_bytes() == canonical_json_bytes_v1(evidence)
+    assert (tmp_path / "mapping.json").read_bytes() == canonical_json_bytes_v1(mapping)
 
     verified = pipeline.run_family_first_accounting_pipeline_v1(
         tmp_path,
@@ -127,3 +127,14 @@ def test_pipeline_rolls_back_first_owned_artifact_if_second_publish_fails(
         pipeline._publish_pair(evidence_path, evidence, mapping_path, mapping)
     assert not evidence_path.exists()
     assert not mapping_path.exists()
+
+
+def test_pipeline_rejects_redundant_final_newline(tmp_path: Path) -> None:
+    path = tmp_path / "double-newline.json"
+    path.write_bytes(canonical_json_bytes_v1({"family_id": "F"}) + b"\n")
+
+    with pytest.raises(
+        pipeline.FamilyFirstAccountingPipelineV1Error,
+        match="not canonical JSON",
+    ):
+        pipeline._read_canonical_object(path, "family artifact")

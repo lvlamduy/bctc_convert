@@ -89,9 +89,7 @@ def run_family_first_accounting_schema_mapping_v1(
             evaluation_spec,
             schema_binding_spec,
         )
-        topology_cli._write_exclusive(
-            root / output_relative, canonical_json_bytes_v1(result) + b"\n"
-        )
+        topology_cli._write_exclusive(root / output_relative, canonical_json_bytes_v1(result))
     else:
         payload = topology_cli._stable_bytes(
             root / output_relative, "family accounting schema mapping artifact"
@@ -103,7 +101,7 @@ def run_family_first_accounting_schema_mapping_v1(
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise _error("family accounting schema mapping artifact is not strict JSON") from exc
-        if type(persisted) is not dict or payload != canonical_json_bytes_v1(persisted) + b"\n":
+        if type(persisted) is not dict or payload != canonical_json_bytes_v1(persisted):
             raise _error("family accounting schema mapping artifact is not canonical JSON")
         result = validate_authenticated_family_first_accounting_schema_mapping_replay_v1(
             persisted,

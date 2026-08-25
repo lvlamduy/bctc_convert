@@ -59,7 +59,7 @@ def _read_canonical_object(path: Path, label: str) -> dict[str, Any]:
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise _error(f"{label} is not strict JSON") from exc
-    if type(value) is not dict or payload != canonical_json_bytes_v1(value) + b"\n":
+    if type(value) is not dict or payload != canonical_json_bytes_v1(value):
         raise _error(f"{label} is not canonical JSON")
     return value
 
@@ -83,8 +83,8 @@ def _publish_pair(
 ) -> None:
     if evidence_path.exists() or mapping_path.exists():
         raise _error("paired family evidence/mapping destination already exists")
-    evidence_payload = canonical_json_bytes_v1(evidence) + b"\n"
-    mapping_payload = canonical_json_bytes_v1(mapping) + b"\n"
+    evidence_payload = canonical_json_bytes_v1(evidence)
+    mapping_payload = canonical_json_bytes_v1(mapping)
     evidence_written = False
     try:
         topology_cli._write_exclusive(evidence_path, evidence_payload)

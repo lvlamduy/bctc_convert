@@ -74,7 +74,7 @@ def test_build_uses_fixed_family_path_and_no_clobber(tmp_path, monkeypatch) -> N
 
     expected = subject.OUTPUT_ROOT / "cash-precious-metals.json"
     assert summary["output_path"] == expected.as_posix()
-    assert (tmp_path / expected).read_bytes() == canonical_json_bytes_v1(built) + b"\n"
+    assert (tmp_path / expected).read_bytes() == canonical_json_bytes_v1(built)
     with pytest.raises(FileExistsError):
         subject.run_family_first_accounting_evidence_sweep_v1(
             tmp_path,
@@ -91,7 +91,7 @@ def test_verify_reads_canonical_artifact_and_calls_live_replay(tmp_path, monkeyp
     built = _result()
     output = tmp_path / subject.OUTPUT_ROOT / "cash-precious-metals.json"
     output.parent.mkdir(parents=True)
-    output.write_bytes(canonical_json_bytes_v1(built) + b"\n")
+    output.write_bytes(canonical_json_bytes_v1(built))
     calls = []
 
     def validate(value, semantic, numeric, family_spec, evaluation_spec):
@@ -115,6 +115,27 @@ def test_verify_reads_canonical_artifact_and_calls_live_replay(tmp_path, monkeyp
     assert summary["metrics"] == {"document_count": 140}
     assert len(calls) == 1
     assert calls[0][1:3] == ("semantic", "numeric")
+
+
+def test_verify_rejects_redundant_final_newline(tmp_path, monkeypatch) -> None:
+    family, evaluation = _write_specs(tmp_path)
+    _patch_auth(monkeypatch)
+    built = _result()
+    output = tmp_path / subject.OUTPUT_ROOT / "cash-precious-metals.json"
+    output.parent.mkdir(parents=True)
+    output.write_bytes(canonical_json_bytes_v1(built) + b"\n")
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepCliV1Error,
+        match="not canonical JSON",
+    ):
+        subject.run_family_first_accounting_evidence_sweep_v1(
+            tmp_path,
+            model_cache=tmp_path / "models",
+            family_spec_path=family,
+            evaluation_spec_path=evaluation,
+            command="verify",
+        )
 
 
 def test_family_and_evaluation_ids_must_match(tmp_path, monkeypatch) -> None:
