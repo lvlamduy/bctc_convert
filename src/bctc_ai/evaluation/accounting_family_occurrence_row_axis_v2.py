@@ -3769,7 +3769,22 @@ def _project_unique_contextual_structural_body_matches_v1(
     still rebuild the rows and require exhaustive direct-frontier closure.
     """
 
-    decorated = [canonical_clone_v1(match) for match in matches]
+    source_matches = [canonical_clone_v1(match) for match in matches]
+    # The production build invokes this projector before the public scope
+    # decorator, while focused callers may already provide decorated records.
+    # Derive scope ownership privately for selection and return the caller's
+    # original record shape so this source-only fence cannot mutate persisted
+    # occurrence bytes outside the selected subset.
+    decorated = (
+        source_matches
+        if all(
+            type(match.get("occurrence_id")) is str
+            and type(match.get("scope_owner_occurrence_id")) is str
+            and "scope_owner_role" in match
+            for match in source_matches
+        )
+        else _decorate_scopes(source_matches, region)
+    )
     page_by_sequence = {page["page_sequence"]: page for page in pages}
 
     def visual_key(match: Mapping[str, Any]) -> tuple[int, float, int]:
@@ -3808,7 +3823,7 @@ def _project_unique_contextual_structural_body_matches_v1(
         if len({match["role"] for match in direct_visible}) >= 2:
             candidates.append(owner)
     if len(candidates) != 1:
-        return decorated
+        return source_matches
 
     owner = candidates[0]
     owner_key = visual_key(owner)
@@ -3871,13 +3886,13 @@ def _project_unique_contextual_structural_body_matches_v1(
             or any(visual_key(match) >= owner_key for match in unowned_visible)
             or post_owner_unowned
         ):
-            return decorated
+            return source_matches
     following = [match for match in siblings if visual_key(match) > owner_key]
     stop_key: tuple[int, float, int] | None = None
     if following:
         first_key = min(visual_key(match) for match in following)
         if sum(visual_key(match) == first_key for match in following) != 1:
-            return decorated
+            return source_matches
         stop_key = first_key
 
     projected = [
@@ -3896,7 +3911,12 @@ def _project_unique_contextual_structural_body_matches_v1(
     }
     if len(projected_direct_roles) < 2:
         raise _error("contextual structural body projection lost its direct evidence")
-    return projected
+    projected_occurrence_ids = {match["occurrence_id"] for match in projected}
+    return [
+        source
+        for source, working in zip(source_matches, decorated, strict=True)
+        if working["occurrence_id"] in projected_occurrence_ids
+    ]
 
 
 def _validate_source_scope_binding(

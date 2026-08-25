@@ -903,14 +903,18 @@ def test_unique_contextual_structural_body_projects_exact_next_page_boundary() -
         "page_sequence": 1,
         "parent_match": {"role": "OUTER"},
     }
-    decorated = subject._decorate_scopes(raw, region)
-
-    projected = subject._project_unique_contextual_structural_body_matches_v1(
+    projected_raw = subject._project_unique_contextual_structural_body_matches_v1(
         pages,
-        decorated,
+        raw,
         region,
     )
+    decorated = subject._decorate_scopes(raw, region)
+    projected = subject._project_unique_contextual_structural_body_matches_v1(
+        pages, decorated, region
+    )
 
+    assert [item["role"] for item in projected_raw] == ["TARGET_VIEW", "TARGET_A", "TARGET_B"]
+    assert all("scope_owner_occurrence_id" not in item for item in projected_raw)
     assert [item["role"] for item in projected] == ["TARGET_VIEW", "TARGET_A", "TARGET_B"]
 
     wrong_continuation = copy.deepcopy(region)
