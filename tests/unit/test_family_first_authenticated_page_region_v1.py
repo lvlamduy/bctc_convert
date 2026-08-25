@@ -575,6 +575,34 @@ def test_lower_right_edge_fragment_localization_rejects_adversarial_glyphs_and_g
         assert evidence["normalized_value"] is None, label
 
 
+@pytest.mark.parametrize("fragment_top", (45, 46, 47))
+def test_single_lower_right_edge_fragment_is_never_recentered_as_dash(
+    fragment_top: int,
+) -> None:
+    image = Image.new("RGB", (226, 49), "white")
+    ImageDraw.Draw(image).rectangle(
+        (203, fragment_top, 225, min(48, fragment_top + 2)), fill="black"
+    )
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    render = stream.getvalue()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+
+    crop = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+    evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=crop["region_png_bytes"]
+    )
+
+    assert crop["ink_localization_status"] == (
+        "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_ONLY_FULL_PROPOSED_CELL_PRESERVED"
+    )
+    assert crop["recognition_raw_pixel_bbox"] == [0, 0, image.width, image.height]
+    assert evidence["classification"] != "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert evidence["normalized_value"] is None
+
+
 def test_foreground_localization_discards_widely_fragmented_rule_and_scan_specks() -> None:
     image = Image.new("RGB", (200, 58), "white")
     draw = ImageDraw.Draw(image)

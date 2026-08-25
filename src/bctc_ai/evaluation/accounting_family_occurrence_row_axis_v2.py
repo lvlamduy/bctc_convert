@@ -459,8 +459,8 @@ _DEPENDENCIES = {
     },
     "exact_page_render_validator": {
         "path": "src/bctc_ai/evaluation/family_first_authenticated_page_region_v1.py",
-        "sha256": "44b07ea38a49d5441a63c035ce080e07e5df428da065f154341230105ce46d64",
-        "size_bytes": 30_885,
+        "sha256": "fa8e5ce070f43724a4e711799361394befd8933f4e581bf1613bd89c8f418fd6",
+        "size_bytes": 30_843,
     },
     "existing_cell_dash_bridge": {
         "path": "src/bctc_ai/evaluation/family_first_authenticated_snapshot_cell_dash_v1.py",

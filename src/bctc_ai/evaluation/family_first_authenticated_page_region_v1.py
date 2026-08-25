@@ -173,7 +173,6 @@ def _foreground_recognition_bbox(
             component_width > 0
             and component_height > 0
             and component_right == width
-            and component_bottom < height
             and height - component_bottom <= max(3, int(round(height * 0.08)))
             and component_left >= width * 0.80
             and component_width / component_height >= 6.0
