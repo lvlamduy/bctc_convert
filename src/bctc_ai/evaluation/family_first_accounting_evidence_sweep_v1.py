@@ -1545,6 +1545,153 @@ def _v4_exact_visible_role_axis(
     return visible_axis, occurrence_id
 
 
+def _v4_exact_visible_trailing_result_axis(
+    record: Mapping[str, Any],
+    equation: Mapping[str, Any],
+    authenticated_axes: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], int] | None:
+    """Replay one selected visible trailing result against every sealed axis.
+
+    A trailing total has no semantic occurrence ID, so it cannot use the
+    ordinary role-row authenticator.  Bind it instead to the unique row-axis
+    candidate, numeric-universe owner, coverage receipt, and selected equation
+    evidence.  Arithmetic remains corroborative: no value is derived here.
+    """
+
+    closure = authenticated_axes.get("closure")
+    row_axis = authenticated_axes.get("row_axis")
+    sample_by_id = authenticated_axes.get("sample_by_id")
+    role = record.get("role")
+    source = record.get("source")
+    source_record = source.get("record") if type(source) is dict else None
+    candidate_ordinal = (
+        source_record.get("candidate_ordinal") if type(source_record) is dict else None
+    )
+    values = source_record.get("values") if type(source_record) is dict else None
+    if (
+        type(closure) is not dict
+        or type(row_axis) is not dict
+        or type(sample_by_id) is not dict
+        or type(role) is not str
+        or not role
+        or record.get("resolution_kind") != "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+        or type(source) is not dict
+        or source.get("kind") != "TRAILING_VALUE_ROW"
+        or type(source_record) is not dict
+        or type(candidate_ordinal) is not int
+        or candidate_ordinal < 0
+        or source_record.get("status") != "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+        or source_record.get("missing_column_ordinals") != []
+        or type(source_record.get("page_sequence")) is not int
+        or type(values) is not list
+        or not values
+        or equation.get("result_role") != role
+        or equation.get("status") != "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or equation.get("selected_trailing_candidate_ordinal") != candidate_ordinal
+    ):
+        return None
+
+    source_axis = []
+    sample_ids = []
+    owner_id = f"aforav2:trailing:{candidate_ordinal}"
+    try:
+        for expected_ordinal, value in enumerate(values):
+            parsed = value.get("parsed_token") if type(value) is dict else None
+            sample_id = value.get("sample_id") if type(value) is dict else None
+            if (
+                type(value) is not dict
+                or value.get("column_ordinal") != expected_ordinal
+                or value.get("page_sequence") != source_record["page_sequence"]
+                or type(sample_id) is not str
+                or not sample_id
+                or sample_id in sample_ids
+                or type(parsed) is not dict
+                or parsed.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                or type(parsed.get("coefficient")) is not int
+                or parsed.get("percentage_mark_present") is not False
+                or type(parsed.get("scale")) is not int
+                or parsed["scale"] < 0
+                or (parsed["classification"] == "DASH_ZERO" and parsed["coefficient"] != 0)
+            ):
+                return None
+            expected_sample = occurrence_row_v2._numeric_universe_record(  # noqa: SLF001
+                value,
+                owner_kind="TRAILING_VALUE_ROW",
+                owner_id=owner_id,
+            )
+            if not same_typed_json_v1(sample_by_id.get(sample_id), expected_sample):
+                return None
+            sample_ids.append(sample_id)
+            source_axis.append(
+                {
+                    "column_ordinal": expected_ordinal,
+                    "number": {
+                        "coefficient": parsed["coefficient"],
+                        "percentage_mark_present": False,
+                        "scale": parsed["scale"],
+                    },
+                }
+            )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    trailing_rows = row_axis.get("trailing_value_rows")
+    matching_rows = (
+        [
+            row
+            for row in trailing_rows
+            if type(row) is dict and row.get("candidate_ordinal") == candidate_ordinal
+        ]
+        if type(trailing_rows) is list
+        else []
+    )
+    coverage = closure.get("coverage_receipt")
+    matching_coverage = (
+        [
+            receipt
+            for receipt in coverage
+            if type(receipt) is dict
+            and receipt.get("row_kind") == "TRAILING_VALUE_ROW"
+            and receipt.get("candidate_ordinal") == candidate_ordinal
+        ]
+        if type(coverage) is list
+        else []
+    )
+    selected_evidence = equation.get("trailing_candidate_evidence")
+    matching_evidence = (
+        [
+            evidence
+            for evidence in selected_evidence
+            if type(evidence) is dict
+            and evidence.get("candidate_ordinal") == candidate_ordinal
+            and evidence.get("status") == "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+        ]
+        if type(selected_evidence) is list
+        else []
+    )
+    receipt = matching_coverage[0] if len(matching_coverage) == 1 else None
+    evidence = matching_evidence[0] if len(matching_evidence) == 1 else None
+    resolved_axis = _v4_resolved_number_axis(record)
+    if (
+        len(matching_rows) != 1
+        or not same_typed_json_v1(matching_rows[0], source_record)
+        or type(receipt) is not dict
+        or receipt.get("coverage_id") != f"ashtcv2:coverage:trailing:{candidate_ordinal}"
+        or receipt.get("disposition") != "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+        or receipt.get("occurrence_id") is not None
+        or receipt.get("role") is not None
+        or receipt.get("sample_ids") != sample_ids
+        or not same_typed_json_v1(receipt.get("source_record"), source_record)
+        or type(evidence) is not dict
+        or evidence.get("sample_ids") != sample_ids
+        or not same_typed_json_v1(evidence.get("source_record"), source_record)
+        or resolved_axis is None
+        or not same_typed_json_v1(resolved_axis, source_axis)
+    ):
+        return None
+    return resolved_axis, candidate_ordinal
+
+
 def _v4_canonical_exact_sum_axis(
     component_axes: Sequence[Sequence[Mapping[str, Any]]],
 ) -> list[dict[str, Any]] | None:
@@ -2443,6 +2590,7 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
         summary_consumed.add(exact[1])
 
     detail_consumed: set[str] = set()
+    detail_consumed_trailing: set[int] = set()
     detail_consumed_aliases: set[str] = set()
     terminal_occurrences: dict[str, str] = {}
     tree_roles: set[str] = set()
@@ -2483,6 +2631,20 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
                     consumed_alias_roles=detail_consumed_aliases,
                 ):
                     return False
+            elif resolution_kind == "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS":
+                exact_trailing = _v4_exact_visible_trailing_result_axis(
+                    record,
+                    equation,
+                    detail_axes,
+                )
+                if (
+                    role != family_id
+                    or parent_role is not None
+                    or exact_trailing is None
+                    or exact_trailing[1] in detail_consumed_trailing
+                ):
+                    return False
+                detail_consumed_trailing.add(exact_trailing[1])
             elif (
                 resolution_kind != "DERIVED_EXACT_COMPONENT_SUM" or record.get("source") is not None
             ):
@@ -2584,10 +2746,13 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
         return False
 
     def every_bound_row_consumed_once(
-        axes: Mapping[str, Any], consumed_occurrences: set[str]
+        axes: Mapping[str, Any],
+        consumed_occurrences: set[str],
+        consumed_trailing: set[int],
     ) -> bool:
         rows = axes["row_axis"].get("rows")
-        if type(rows) is not list:
+        trailing_rows = axes["row_axis"].get("trailing_value_rows")
+        if type(rows) is not list or type(trailing_rows) is not list:
             return False
         row_occurrences = []
         sample_ids = []
@@ -2609,10 +2774,30 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
                 return False
             row_occurrences.append(occurrence_id)
             sample_ids.extend(value["sample_id"] for value in values)
+        trailing_ordinals = []
+        for row in trailing_rows:
+            values = row.get("values") if type(row) is dict else None
+            candidate_ordinal = row.get("candidate_ordinal") if type(row) is dict else None
+            if (
+                type(candidate_ordinal) is not int
+                or candidate_ordinal < 0
+                or type(values) is not list
+                or any(
+                    type(value) is not dict
+                    or type(value.get("sample_id")) is not str
+                    or not value["sample_id"]
+                    for value in values
+                )
+            ):
+                return False
+            trailing_ordinals.append(candidate_ordinal)
+            sample_ids.extend(value["sample_id"] for value in values)
         return (
             len(row_occurrences) == len(set(row_occurrences))
             and set(row_occurrences) == consumed_occurrences
             and set(axes["coverage_by_occurrence"]) == consumed_occurrences
+            and len(trailing_ordinals) == len(set(trailing_ordinals))
+            and set(trailing_ordinals) == consumed_trailing
             and len(sample_ids) == len(set(sample_ids))
             and set(sample_ids) <= set(axes["sample_by_id"])
         )
@@ -2620,7 +2805,12 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
     return every_bound_row_consumed_once(
         summary_axes,
         summary_consumed,
-    ) and every_bound_row_consumed_once(detail_axes, detail_consumed)
+        set(),
+    ) and every_bound_row_consumed_once(
+        detail_axes,
+        detail_consumed,
+        detail_consumed_trailing,
+    )
 
 
 def _threat_matches_ready_component_population(

@@ -3008,6 +3008,107 @@ def _v4_seal_generic_visible_axes(
     _v4_reseal_candidate_envelopes(candidate)
 
 
+def _v4_replace_visible_alias_with_trailing_result(
+    candidate: dict,
+    *,
+    alias_role: str,
+    result_role: str,
+) -> None:
+    """Make a generic fixture mirror a real selected trailing-root receipt."""
+
+    closure = candidate["additive_closure"]
+    records = {record["role"]: record for record in closure["resolved_roles"]}
+    alias = records[alias_role]
+    result = records[result_role]
+    alias_source = alias["source"]["record"]
+    trailing = {
+        "candidate_ordinal": 0,
+        "missing_column_ordinals": [],
+        "page_sequence": alias_source["label_match"]["page_sequence"],
+        "status": "COMPLETE_VISIBLE_TRAILING_VALUE_ROW",
+        "values": copy.deepcopy(alias_source["values"]),
+    }
+    alias_occurrence_id = alias_source["label_match"]["occurrence_id"]
+    alias_sample_ids = [value["sample_id"] for value in trailing["values"]]
+
+    closure["resolved_roles"] = [
+        record for record in closure["resolved_roles"] if record["role"] != alias_role
+    ]
+    result["resolution_kind"] = "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+    result["source"] = {"kind": "TRAILING_VALUE_ROW", "record": copy.deepcopy(trailing)}
+    equation = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == result_role
+    )
+    equation["selected_trailing_candidate_ordinal"] = 0
+    equation["trailing_candidate_evidence"] = [
+        {
+            "candidate_ordinal": 0,
+            "sample_ids": alias_sample_ids,
+            "source_record": copy.deepcopy(trailing),
+            "status": "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
+        }
+    ]
+
+    candidate["row_axis"]["rows"] = [
+        row
+        for row in candidate["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] != alias_occurrence_id
+    ]
+    candidate["row_axis"]["trailing_value_rows"] = [copy.deepcopy(trailing)]
+    closure["role_occurrences"] = [
+        occurrence
+        for occurrence in closure["role_occurrences"]
+        if occurrence["occurrence_id"] != alias_occurrence_id
+    ]
+    closure["numeric_sample_universe"] = [
+        sample
+        for sample in closure["numeric_sample_universe"]
+        if sample["sample_id"] not in alias_sample_ids
+    ] + [
+        subject.occurrence_row_v2._numeric_universe_record(
+            value,
+            owner_kind="TRAILING_VALUE_ROW",
+            owner_id="aforav2:trailing:0",
+        )
+        for value in trailing["values"]
+    ]
+    closure["numeric_sample_universe"].sort(
+        key=lambda sample: (
+            sample["page_sequence"],
+            sample["line_ordinal"],
+            sample["column_ordinal"],
+            sample["sample_id"],
+        )
+    )
+    closure["coverage_receipt"] = [
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["occurrence_id"] != alias_occurrence_id
+    ] + [
+        {
+            "candidate_ordinal": 0,
+            "coverage_id": "ashtcv2:coverage:trailing:0",
+            "disposition": "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
+            "occurrence_id": None,
+            "role": None,
+            "row_kind": "TRAILING_VALUE_ROW",
+            "sample_ids": alias_sample_ids,
+            "source_record": copy.deepcopy(trailing),
+        }
+    ]
+    occurrence_axis_material = {
+        "family_id": closure["family_id"],
+        "numeric_sample_universe": closure["numeric_sample_universe"],
+        "role_occurrences": closure["role_occurrences"],
+    }
+    occurrence_axis_id = "aforav2:axis:" + canonical_json_sha256_v1(occurrence_axis_material)
+    closure["occurrence_axis_id"] = occurrence_axis_id
+    closure["occurrence_axis_binding"]["occurrence_axis_id"] = occurrence_axis_id
+    _v4_reseal_candidate_envelopes(candidate)
+
+
 def _v4_visible_summary_and_derived_detail_candidates(
     *,
     detail_deposit: tuple[int, int] = (70, 60),
@@ -3664,6 +3765,12 @@ def _v4_visible_summary_and_correlated_detail_candidates(
     records = {record["role"]: record for record in detail["additive_closure"]["resolved_roles"]}
     for role, alias in aliases.items():
         records[role]["source"] = copy.deepcopy(records[alias]["source"])
+    if trailing_detail_root:
+        _v4_replace_visible_alias_with_trailing_result(
+            detail,
+            alias_role="EXPLICIT_FAMILY_TOTAL",
+            result_role=family,
+        )
     _v4_reseal_candidate_envelopes(detail)
     return summary, detail
 
@@ -3712,6 +3819,67 @@ def test_v4_visible_summary_yields_to_exact_richer_trailing_root_detail() -> Non
 
     assert selected is detail
     assert reasons == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "DUPLICATE_TRAILING_ROW",
+        "WRONG_TRAILING_COVERAGE_DISPOSITION",
+        "WRONG_TRAILING_EQUATION_EVIDENCE",
+        "WRONG_TRAILING_NUMERIC_OWNER",
+        "MISMATCHED_TRAILING_SOURCE_ROW",
+    ],
+)
+def test_v4_trailing_root_detail_requires_one_exact_source_bound_receipt(
+    mutation: str,
+) -> None:
+    summary, detail = _v4_visible_summary_and_correlated_detail_candidates(
+        root_adjustment=True,
+        trailing_detail_root=True,
+    )
+    closure = detail["additive_closure"]
+    root = next(
+        record for record in closure["resolved_roles"] if record["role"] == closure["family_id"]
+    )
+    equation = next(
+        item
+        for item in closure["equations"]["global"]
+        if item["result_role"] == closure["family_id"]
+    )
+    trailing = detail["row_axis"]["trailing_value_rows"][0]
+    coverage = next(
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["row_kind"] == "TRAILING_VALUE_ROW"
+    )
+    if mutation == "DUPLICATE_TRAILING_ROW":
+        detail["row_axis"]["trailing_value_rows"].append(copy.deepcopy(trailing))
+    elif mutation == "WRONG_TRAILING_COVERAGE_DISPOSITION":
+        coverage["disposition"] = "UNRESOLVED_UNSELECTED_COMPLETE_TRAILING_NUMERIC_CHALLENGER"
+    elif mutation == "WRONG_TRAILING_EQUATION_EVIDENCE":
+        equation["trailing_candidate_evidence"][0]["sample_ids"].reverse()
+    elif mutation == "WRONG_TRAILING_NUMERIC_OWNER":
+        sample_id = trailing["values"][0]["sample_id"]
+        next(
+            sample
+            for sample in closure["numeric_sample_universe"]
+            if sample["sample_id"] == sample_id
+        )["owner_id"] = "aforav2:trailing:1"
+    else:
+        root["source"]["record"]["values"][0]["raw_prediction"] = "101"
+    _v4_reseal_candidate_envelopes(detail)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
 
 
 @pytest.mark.parametrize(
