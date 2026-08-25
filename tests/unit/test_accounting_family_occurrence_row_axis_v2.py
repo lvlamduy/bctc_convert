@@ -4214,6 +4214,240 @@ def test_f3_provision_schema_role_is_bound_by_exact_parent_interval(
     )
 
 
+def _remove_unlabeled_fixture_carrier_labels(
+    pages: list[dict[str, object]], labels: set[str]
+) -> None:
+    lines = pages[0]["lines"]
+    lines[:] = [line for line in lines if line["vietocr_text"] not in labels]
+    _reindex_page_lines(lines)
+
+
+def _f3_exact_trailing_root_provision_pages(
+    *,
+    extra_after_provision: tuple[tuple[str, str, str], ...] = (),
+    trailing_rows: tuple[tuple[str, str, str], ...] = (("UNLABELED ROOT", "150", "130"),),
+) -> list[dict[str, object]]:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", "30", "30"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Bằng VND", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+            *extra_after_provision,
+            *trailing_rows,
+        ]
+    )
+    lines = pages[0]["lines"]
+    lines[:] = [
+        line
+        for line in lines
+        if not (line["vietocr_text"] in {"150", "130"} and line["bbox"][1] == 155)
+    ]
+    _remove_unlabeled_fixture_carrier_labels(
+        pages, {label for label, _current, _prior in trailing_rows}
+    )
+    return pages
+
+
+def test_f3_generic_deposit_provision_uses_exact_immediate_internal_parent_subtotal() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Bằng VND", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Bằng VND", "40", "40"),
+            ("Dự phòng rủi ro", "0", "0"),
+            ("UNLABELED DEPOSIT", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    _remove_unlabeled_fixture_carrier_labels(pages, {"UNLABELED DEPOSIT"})
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    equation = provision["source_scope_binding"]["geometry"]["equation"]
+    assert provision["scope_owner_role"] == "INTERBANK_DEPOSIT_GROUP"
+    assert equation["parent_role"] == "INTERBANK_DEPOSIT_GROUP"
+    assert [component["role"] for component in equation["component_frontier"]] == [
+        "DEMAND_DEPOSIT_GROUP",
+        "TERM_DEPOSIT_GROUP",
+        "INTERBANK_DEPOSIT_PROVISION",
+    ]
+    assert [number["coefficient"] for number in equation["result"]["numbers"]] == [100, 90]
+    matching_clusters = [
+        cluster
+        for cluster in axis["internal_unassigned_numeric_clusters"]
+        if cluster["sample_ids"] == equation["result"]["sample_ids"]
+    ]
+    assert len(matching_clusters) == 1
+    assert (
+        closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+            axis, _f3_spec(), _f3_hierarchy()
+        )["status"]
+        == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    )
+
+
+def test_f3_generic_root_provision_uses_exact_immediate_trailing_result_and_context() -> None:
+    pages = _f3_exact_trailing_root_provision_pages()
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    equation = provision["source_scope_binding"]["geometry"]["equation"]
+    trailing = axis["row_axis"]["trailing_value_rows"]
+    assert len(trailing) == 1
+    assert equation["parent_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    assert equation["result"]["sample_ids"] == [
+        value["sample_id"] for value in trailing[0]["values"]
+    ]
+    assert [number["coefficient"] for number in equation["result"]["numbers"]] == [150, 130]
+    context = _f3_column_context(axis, pages)
+    assert context["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [lane["resolved_period"] for lane in context["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    assert [lane["magnitude_power10"] for lane in context["unit_axis"]] == [6, 6]
+    assert (
+        closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+            axis, _f3_spec(), _f3_hierarchy()
+        )["status"]
+        == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    )
+
+
+def test_f3_generic_root_provision_rejects_inexact_derived_structural_frontier() -> None:
+    pages = _f3_exact_trailing_root_provision_pages()
+    foreign_label = next(
+        line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng ngoại tệ"
+    )
+    current_value = pages[0]["lines"][foreign_label["line_ordinal"] + 1]
+    current_value["vietocr_text"] = "11"
+    current_value["numeric_recognition"]["raw_prediction"] = "11"
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["label_match"]["normalized_surface"] == "du phong rui ro"
+    )
+    assert provision["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    assert provision["source_scope_binding"] is None
+
+
+def test_f3_generic_root_provision_receipt_rejects_coherent_selected_interval_tamper() -> None:
+    pages = _f3_exact_trailing_root_provision_pages()
+    _scan, axis = _build_f3(pages)
+    attacked = copy.deepcopy(axis)
+    provision = next(
+        occurrence
+        for occurrence in attacked["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    receipt = provision["source_scope_binding"]
+    receipt["interval"]["end_document_line_ordinal_exclusive"] -= 1
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+    _coherently_replace_source_scope_binding(attacked, provision, receipt)
+    _coherently_rehash_occurrence(attacked)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="selected root interval drifted",
+    ):
+        subject._validate_result(attacked)
+
+
+@pytest.mark.parametrize(
+    ("trailing_rows", "extra_after_provision"),
+    [
+        ((("UNLABELED ROOT", "151", "130"),), ()),
+        ((("UNLABELED ROOT", "150", ""),), ()),
+        (
+            (
+                ("UNLABELED ROOT A", "150", "130"),
+                ("UNLABELED ROOT B", "150", "130"),
+            ),
+            (),
+        ),
+        (
+            (("UNLABELED ROOT", "150", "130"),),
+            (("Cho vay khách hàng", "", ""),),
+        ),
+    ],
+    ids=["nonexact", "partial", "duplicate-exact", "later-structural-reset"],
+)
+def test_f3_generic_root_provision_rejects_nonunique_or_out_of_interval_trailing_carrier(
+    trailing_rows: tuple[tuple[str, str, str], ...],
+    extra_after_provision: tuple[tuple[str, str, str], ...],
+) -> None:
+    pages = _f3_exact_trailing_root_provision_pages(
+        extra_after_provision=extra_after_provision,
+        trailing_rows=trailing_rows,
+    )
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["label_match"]["normalized_surface"] == "du phong rui ro"
+    )
+    assert provision["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    assert provision["source_scope_binding"] is None
+
+
+def test_f3_generic_deposit_provision_rejects_nonadjacent_internal_subtotal() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "60", "50"),
+            ("Bằng VND", "60", "50"),
+            ("Tiền gửi có kỳ hạn", "40", "40"),
+            ("Bằng VND", "40", "40"),
+            ("Dự phòng rủi ro", "0", "0"),
+            ("UNLABELED DEPOSIT", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    carrier_label = next(
+        line for line in pages[0]["lines"] if line["vietocr_text"] == "UNLABELED DEPOSIT"
+    )
+    carrier_label["vietocr_text"] = ""
+    carrier_label["numeric_recognition"]["raw_prediction"] = ""
+
+    _scan, axis = _build_f3(pages)
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["label_match"]["normalized_surface"] == "du phong rui ro"
+    )
+    assert provision["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    assert provision["source_scope_binding"] is None
+
+
 @pytest.mark.parametrize(
     "rows",
     [

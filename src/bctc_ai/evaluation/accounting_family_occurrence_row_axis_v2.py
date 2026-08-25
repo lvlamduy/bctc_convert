@@ -1832,6 +1832,104 @@ def _direct_frontier_row_receipt(row: Mapping[str, Any]) -> dict[str, Any] | Non
     }
 
 
+def _direct_frontier_trailing_row_receipt(
+    row: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Return one exact complete trailing-row lane receipt."""
+
+    values = sorted(row.get("values", []), key=lambda item: item.get("column_ordinal", -1))
+    if (
+        row.get("status") != "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+        or not values
+        or [value.get("column_ordinal") for value in values] != list(range(len(values)))
+    ):
+        return None
+    numbers = [_direct_frontier_number(value) for value in values]
+    if any(number is None for number in numbers):
+        return None
+    return {
+        "numbers": numbers,
+        "sample_ids": [value["sample_id"] for value in values],
+    }
+
+
+def _direct_frontier_internal_cluster_receipt(
+    cluster: Mapping[str, Any],
+    universe_by_sample_id: Mapping[str, Mapping[str, Any]],
+    *,
+    expected_column_ordinals: Sequence[int],
+) -> dict[str, Any] | None:
+    """Return one exact complete unlabeled internal-subtotal lane receipt."""
+
+    sample_ids = cluster.get("sample_ids")
+    if (
+        cluster.get("status") != _INTERNAL_UNASSIGNED_CLUSTER_STATUS
+        or cluster.get("label_lane_status") != _UNLABELED_LABEL_LANE_STATUS
+        or cluster.get("column_ordinals") != list(expected_column_ordinals)
+        or type(sample_ids) is not list
+        or len(sample_ids) != len(expected_column_ordinals)
+        or len(sample_ids) != len(set(sample_ids))
+    ):
+        return None
+    records = [universe_by_sample_id.get(sample_id) for sample_id in sample_ids]
+    if any(
+        type(record) is not dict
+        or record.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+        or record.get("owner_id") != cluster.get("cluster_id")
+        or record.get("page_sequence") != cluster.get("page_sequence")
+        or record.get("column_ordinal") != column_ordinal
+        for record, column_ordinal in zip(records, expected_column_ordinals, strict=True)
+    ):
+        return None
+    numbers = [
+        _direct_frontier_number(record) if type(record) is dict else None for record in records
+    ]
+    if any(number is None for number in numbers):
+        return None
+    return {
+        "numbers": numbers,
+        "sample_ids": list(sample_ids),
+    }
+
+
+def _has_immediate_post_carrier_financial_numeric_line(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    after_line_ordinal: int,
+    carrier_bboxes: Sequence[Sequence[int]],
+    column_centers: Sequence[float],
+    page_sequence: int,
+) -> bool:
+    """Reject another unlabeled financial row before the next text boundary."""
+
+    page = next(
+        (candidate for candidate in pages if candidate["page_sequence"] == page_sequence),
+        None,
+    )
+    if type(page) is not dict or not column_centers or not carrier_bboxes:
+        return True
+    carrier_bottom = max(bbox[3] for bbox in carrier_bboxes)
+    maximum_open_row_gap = 3 * max(bbox[3] - bbox[1] for bbox in carrier_bboxes)
+    spacing = min(
+        (right - left for left, right in zip(column_centers, column_centers[1:], strict=False)),
+        default=80.0,
+    )
+    tolerance = max(8.0, spacing / 4)
+    for line in page["lines"]:
+        if line["line_ordinal"] <= after_line_ordinal:
+            continue
+        if line["bbox"][1] - carrier_bottom > maximum_open_row_gap:
+            return False
+        if row_v1._is_numeric(line):  # noqa: SLF001
+            center = (line["bbox"][0] + line["bbox"][2]) / 2
+            if min(abs(center - expected) for expected in column_centers) <= tolerance:
+                return True
+            continue
+        if line["vietocr_text"].strip() or line["numeric_recognition"]["raw_prediction"].strip():
+            return False
+    return False
+
+
 def _recursive_frontier_item_match(item: Mapping[str, Any]) -> Mapping[str, Any]:
     label_match = item.get("label_match")
     return label_match if type(label_match) is dict else item
@@ -1842,6 +1940,7 @@ def _recursive_direct_component_support_is_exact(
     rows_by_occurrence_id: Mapping[str, Sequence[Mapping[str, Any]]],
     effective_roles: Mapping[int, str],
     *,
+    allow_derived_structural_frontier: bool = False,
     result_role: str,
     result_row: Mapping[str, Any],
 ) -> bool:
@@ -1985,15 +2084,107 @@ def _recursive_direct_component_support_is_exact(
         match = _recursive_frontier_item_match(occurrence)
         occurrence_id = occurrence.get("occurrence_id", match.get("occurrence_id"))
         direct_rows = rows_by_occurrence_id.get(occurrence_id, ())
-        if len(direct_rows) != 1 or _direct_frontier_row_receipt(direct_rows[0]) is None:
+        direct_receipt = (
+            _direct_frontier_row_receipt(direct_rows[0]) if len(direct_rows) == 1 else None
+        )
+        if direct_receipt is not None:
+            if not _recursive_direct_component_support_is_exact(
+                support_occurrences,
+                rows_by_occurrence_id,
+                effective_roles,
+                allow_derived_structural_frontier=allow_derived_structural_frontier,
+                result_role=direct_role,
+                result_row=direct_rows[0],
+            ):
+                return False
+            frontier.append((direct_role, match, [direct_receipt]))
+            continue
+        if not allow_derived_structural_frontier:
             return False
-        frontier.append((direct_role, direct_rows[0]))
-    frontier.sort(key=lambda item: _visual_match_key(item[1]["label_match"]))
-    frontier_roles = tuple(role for role, _row in frontier)
+        child_specs = [
+            candidate
+            for candidate in _RECURSIVE_PARENT_DIRECT_COMPONENT_SUPPORT_SPECS
+            if candidate["result_role"] == direct_role
+        ]
+        if len(child_specs) != 1:
+            return False
+        child_spec = child_specs[0]
+        child_direct_roles = {
+            role
+            for alternative in child_spec["component_role_alternatives"]
+            for role in alternative
+        }
+        owned_children = [
+            candidate
+            for candidate in support_occurrences
+            if candidate.get(
+                "scope_owner_occurrence_id",
+                _recursive_frontier_item_match(candidate).get("scope_owner_occurrence_id"),
+            )
+            == occurrence_id
+        ]
+        additive_children = [
+            candidate
+            for candidate in owned_children
+            if candidate.get(
+                "role_kind", _recursive_frontier_item_match(candidate).get("role_kind")
+            )
+            in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+        ]
+        if any(
+            effective_roles.get(id(candidate)) not in child_direct_roles
+            for candidate in additive_children
+        ):
+            return False
+        child_frontier = []
+        for child_role in child_direct_roles:
+            child_candidates = [
+                candidate
+                for candidate in additive_children
+                if effective_roles.get(id(candidate)) == child_role
+            ]
+            if not child_candidates:
+                continue
+            if len(child_candidates) != 1:
+                return False
+            child_occurrence = child_candidates[0]
+            child_match = _recursive_frontier_item_match(child_occurrence)
+            child_occurrence_id = child_occurrence.get(
+                "occurrence_id", child_match.get("occurrence_id")
+            )
+            child_rows = rows_by_occurrence_id.get(child_occurrence_id, ())
+            child_receipt = (
+                _direct_frontier_row_receipt(child_rows[0]) if len(child_rows) == 1 else None
+            )
+            if child_receipt is None or not _recursive_direct_component_support_is_exact(
+                owned_children,
+                rows_by_occurrence_id,
+                effective_roles,
+                allow_derived_structural_frontier=False,
+                result_role=child_role,
+                result_row=child_rows[0],
+            ):
+                return False
+            child_frontier.append((child_role, child_match, child_receipt))
+        child_frontier.sort(key=lambda item: _visual_match_key(item[1]))
+        if (
+            tuple(role for role, _match, _receipt in child_frontier)
+            not in child_spec["component_role_alternatives"]
+        ):
+            return False
+        frontier.append(
+            (
+                direct_role,
+                match,
+                [receipt for _role, _match, receipt in child_frontier],
+            )
+        )
+    frontier.sort(key=lambda item: _visual_match_key(item[1]))
+    frontier_roles = tuple(role for role, _match, _receipts in frontier)
     if frontier_roles not in spec["component_role_alternatives"]:
         return False
     result_receipt = _direct_frontier_row_receipt(result_row)
-    component_receipts = [_direct_frontier_row_receipt(row) for _role, row in frontier]
+    component_receipts = [receipt for _role, _match, receipts in frontier for receipt in receipts]
     if result_receipt is None or not _direct_frontier_sum_is_exact(
         result_receipt, component_receipts
     ):
@@ -2003,16 +2194,7 @@ def _recursive_direct_component_support_is_exact(
     ]
     if len(sample_ids) != len(set(sample_ids)):
         return False
-    return all(
-        _recursive_direct_component_support_is_exact(
-            support_occurrences,
-            rows_by_occurrence_id,
-            effective_roles,
-            result_role=role,
-            result_row=row,
-        )
-        for role, row in frontier
-    )
+    return True
 
 
 def _complete_recursive_parent_direct_frontier(
@@ -2132,6 +2314,7 @@ def _complete_recursive_parent_direct_frontier(
             interval_occurrences,
             rows_by_occurrence_id,
             effective_roles,
+            allow_derived_structural_frontier=binding_spec["parent_role"] is None,
             result_role=role,
             result_row=row,
         )
@@ -2952,6 +3135,8 @@ def _project_recursive_parent_provision_bindings(
     matches: Sequence[Mapping[str, Any]],
     preliminary_matches: Sequence[Mapping[str, Any]],
     preliminary_axis: Mapping[str, Any],
+    preliminary_internal_clusters: Sequence[Mapping[str, Any]],
+    preliminary_numeric_sample_universe: Sequence[Mapping[str, Any]],
     selected_region: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     """Bind a generic additive row only through one exact recursive equation.
@@ -2980,6 +3165,11 @@ def _project_recursive_parent_provision_bindings(
     for row in rows:
         rows_by_role.setdefault(row["role"], []).append(row)
     grids_by_page = {grid["page_sequence"]: grid for grid in preliminary_axis["column_grids"]}
+    preliminary_universe_by_sample_id = {
+        record.get("sample_id"): record
+        for record in preliminary_numeric_sample_universe
+        if type(record) is dict and type(record.get("sample_id")) is str
+    }
     generic_occurrences = [
         match
         for match in preliminary_matches
@@ -3019,46 +3209,23 @@ def _project_recursive_parent_provision_bindings(
             target_role = binding_spec["target_role"]
             parent_role = binding_spec["parent_role"]
             if parent_role is None:
-                parent_occurrence_id = root_scope_id
                 parent_role_for_receipt = compiled_family["family_id"]
-                parent_rows = [None]
-                result_candidates = [
-                    (
-                        row["label_match"]["occurrence_id"],
-                        row["role"],
-                        _direct_frontier_row_receipt(row),
-                    )
-                    for result_role in binding_spec["result_roles"]
-                    for row in rows_by_role.get(result_role, [])
-                    if row["label_match"]["page_sequence"] == generic["page_sequence"]
-                    and row["label_match"].get("scope_owner_occurrence_id") == root_scope_id
-                ]
-                if (
-                    parent_result is not None
-                    and parent_match["page_sequence"] == generic["page_sequence"]
-                    and parent_result["sample_ids"]
-                    not in [candidate[2]["sample_ids"] for candidate in result_candidates]
-                ):
-                    result_candidates.append(
-                        (
-                            root_scope_id,
-                            compiled_family["family_id"],
-                            parent_result,
-                        )
-                    )
+                parent_sources = [(root_scope_id, parent_match, None)]
             else:
-                parent_rows = [
-                    row
-                    for row in rows_by_role.get(parent_role, [])
-                    if row["label_match"]["page_sequence"] == generic["page_sequence"]
-                    and _match_has_effective_exact_source_authority(row["label_match"])
-                ]
-                parent_occurrence_id = ""
                 parent_role_for_receipt = parent_role
-                result_candidates = []
-            for parent_row in parent_rows:
-                if parent_row is not None:
-                    parent_occurrence_id = parent_row["label_match"]["occurrence_id"]
+                parent_sources = [
+                    (
+                        candidate["occurrence_id"],
+                        candidate,
+                        row_by_occurrence.get(candidate["occurrence_id"]),
+                    )
+                    for candidate in preliminary_matches
+                    if candidate["role"] == parent_role
+                    and candidate["page_sequence"] == generic["page_sequence"]
+                    and _match_has_effective_exact_source_authority(candidate)
+                ]
+            for parent_occurrence_id, interval_parent_match, parent_row in parent_sources:
+                if parent_role is None:
                     result_candidates = [
                         (
                             row["label_match"]["occurrence_id"],
@@ -3068,22 +3235,50 @@ def _project_recursive_parent_provision_bindings(
                         for result_role in binding_spec["result_roles"]
                         for row in rows_by_role.get(result_role, [])
                         if row["label_match"]["page_sequence"] == generic["page_sequence"]
-                        and row["label_match"]["occurrence_id"] == parent_occurrence_id
+                        and row["label_match"].get("scope_owner_occurrence_id") == root_scope_id
                     ]
+                    if (
+                        parent_result is not None
+                        and parent_match["page_sequence"] == generic["page_sequence"]
+                        and parent_result["sample_ids"]
+                        not in [
+                            candidate[2]["sample_ids"]
+                            for candidate in result_candidates
+                            if candidate[2] is not None
+                        ]
+                    ):
+                        result_candidates.append(
+                            (
+                                root_scope_id,
+                                compiled_family["family_id"],
+                                parent_result,
+                            )
+                        )
+                else:
+                    result_candidates = (
+                        [
+                            (
+                                parent_occurrence_id,
+                                parent_role,
+                                _direct_frontier_row_receipt(parent_row),
+                            )
+                        ]
+                        if parent_row is not None
+                        else []
+                    )
                 next_parent_boundary = None
-                if parent_row is not None:
+                if parent_role is not None:
                     later_parent_boundaries = [
-                        _visual_match_key(row["label_match"])
-                        for role in ("INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP")
-                        for row in rows_by_role.get(role, [])
-                        if row["label_match"]["page_sequence"] == generic["page_sequence"]
-                        and row["label_match"]["occurrence_id"] != parent_occurrence_id
-                        and _visual_match_key(row["label_match"])
-                        > _visual_match_key(parent_row["label_match"])
+                        _visual_match_key(candidate)
+                        for candidate in preliminary_matches
+                        if candidate["role"] in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                        and candidate["page_sequence"] == generic["page_sequence"]
+                        and candidate["occurrence_id"] != parent_occurrence_id
+                        and _visual_match_key(candidate) > _visual_match_key(interval_parent_match)
                     ]
                     next_parent_boundary = min(later_parent_boundaries, default=None)
                     if (
-                        generic_key <= _visual_match_key(parent_row["label_match"])
+                        generic_key <= _visual_match_key(interval_parent_match)
                         or next_parent_boundary is not None
                         and generic_key >= next_parent_boundary
                     ):
@@ -3091,7 +3286,7 @@ def _project_recursive_parent_provision_bindings(
 
                 frontier_page_sequence = generic["page_sequence"]
                 frontier_start = (
-                    None if parent_row is None else _visual_match_key(parent_row["label_match"])
+                    None if parent_role is None else _visual_match_key(interval_parent_match)
                 )
                 frontier_end = next_parent_boundary
 
@@ -3131,9 +3326,123 @@ def _project_recursive_parent_provision_bindings(
                     continue
                 complete_frontier_roles = tuple(role for role, _row in complete_frontier)
                 grid = grids_by_page.get(generic["page_sequence"])
-                interval_parent_match = (
-                    parent_match if parent_row is None else parent_row["label_match"]
-                )
+                if type(grid) is not dict:
+                    continue
+                expected_column_ordinals = list(range(len(grid["column_centers"])))
+                if parent_role is None:
+                    generic_source_end = max(
+                        [
+                            *row_v1._match_source_line_indices(generic),  # noqa: SLF001
+                            *(value["line_ordinal"] for value in generic_row["values"]),
+                        ]
+                    )
+                    trailing_rows_after_source = [
+                        trailing
+                        for trailing in preliminary_axis["trailing_value_rows"]
+                        if trailing.get("page_sequence") == generic["page_sequence"]
+                        and trailing.get("values")
+                        and min(value["line_ordinal"] for value in trailing["values"])
+                        > generic_source_end
+                    ]
+                    later_semantics = [
+                        candidate
+                        for candidate in preliminary_matches
+                        if candidate["occurrence_id"] != generic["occurrence_id"]
+                        and candidate["page_sequence"] == generic["page_sequence"]
+                        and _visual_match_key(candidate) > generic_key
+                    ]
+                    for trailing in (
+                        trailing_rows_after_source
+                        if len(trailing_rows_after_source) == 1
+                        and not later_semantics
+                        and parent_match["page_sequence"] == generic["page_sequence"]
+                        else []
+                    ):
+                        receipt = _direct_frontier_trailing_row_receipt(trailing)
+                        values = trailing.get("values", [])
+                        trailing_line_ordinals = sorted(value["line_ordinal"] for value in values)
+                        if (
+                            receipt is None
+                            or len(receipt["numbers"]) != len(expected_column_ordinals)
+                            or not values
+                            or trailing_line_ordinals
+                            != list(
+                                range(
+                                    generic_source_end + 1,
+                                    generic_source_end + 1 + len(values),
+                                )
+                            )
+                            or _has_immediate_post_carrier_financial_numeric_line(
+                                pages,
+                                after_line_ordinal=max(trailing_line_ordinals),
+                                carrier_bboxes=[value["bbox"] for value in values],
+                                column_centers=grid["column_centers"],
+                                page_sequence=generic["page_sequence"],
+                            )
+                            or min(value["bbox"][1] + value["bbox"][3] for value in values)
+                            <= generic["source_label_bbox"][1] + generic["source_label_bbox"][3]
+                        ):
+                            continue
+                        result_candidates.append(
+                            (root_scope_id, compiled_family["family_id"], receipt)
+                        )
+                else:
+                    for cluster in preliminary_internal_clusters:
+                        receipt = _direct_frontier_internal_cluster_receipt(
+                            cluster,
+                            preliminary_universe_by_sample_id,
+                            expected_column_ordinals=expected_column_ordinals,
+                        )
+                        records = [
+                            preliminary_universe_by_sample_id.get(sample_id)
+                            for sample_id in cluster.get("sample_ids", [])
+                        ]
+                        if (
+                            receipt is None
+                            or cluster.get("page_sequence") != generic["page_sequence"]
+                            or any(type(record) is not dict for record in records)
+                        ):
+                            continue
+                        result_key = min(
+                            (
+                                record["page_sequence"],
+                                record["bbox"][1] + record["bbox"][3],
+                                2 * record["bbox"][0],
+                                record["line_ordinal"],
+                            )
+                            for record in records
+                            if type(record) is dict
+                        )
+                        cluster_line_ordinals = sorted(
+                            record["line_ordinal"] for record in records if type(record) is dict
+                        )
+                        generic_source_end = max(
+                            [
+                                *row_v1._match_source_line_indices(generic),  # noqa: SLF001
+                                *(value["line_ordinal"] for value in generic_row["values"]),
+                            ]
+                        )
+                        if (
+                            cluster_line_ordinals
+                            != list(
+                                range(
+                                    generic_source_end + 1,
+                                    generic_source_end + 1 + len(records),
+                                )
+                            )
+                            or result_key <= generic_key
+                            or (frontier_end is not None and result_key >= frontier_end)
+                        ):
+                            continue
+                        intervening_semantics = [
+                            candidate
+                            for candidate in preliminary_matches
+                            if candidate["occurrence_id"] != generic["occurrence_id"]
+                            and generic_key < _visual_match_key(candidate) < result_key
+                        ]
+                        if intervening_semantics:
+                            continue
+                        result_candidates.append((parent_occurrence_id, parent_role, receipt))
                 allowed_coextensive_results = [
                     {
                         "sample_ids": result_receipt["sample_ids"],
@@ -3148,7 +3457,7 @@ def _project_recursive_parent_provision_bindings(
                     for result_occurrence_id, _result_role, result_receipt in result_candidates
                     if result_receipt is not None
                 ]
-                if type(grid) is not dict or _has_unmatched_complete_labeled_numeric_row(
+                if _has_unmatched_complete_labeled_numeric_row(
                     pages,
                     preliminary_matches,
                     allowed_coextensive_results=allowed_coextensive_results,
@@ -3192,8 +3501,8 @@ def _project_recursive_parent_provision_bindings(
                             or _visual_match_key(component_matches[-1]) != generic_key
                         ):
                             continue
-                        if parent_row is not None and not (
-                            _visual_match_key(parent_row["label_match"])
+                        if parent_role is not None and not (
+                            _visual_match_key(interval_parent_match)
                             < _visual_match_key(component_matches[0])
                         ):
                             continue
@@ -3215,12 +3524,14 @@ def _project_recursive_parent_provision_bindings(
                                 result_receipt=result_receipt,
                                 result_role=result_role,
                             )
-                            anchor_row = (
-                                parent_row if parent_row is not None else component_rows[-2]
+                            anchor_match = (
+                                interval_parent_match
+                                if parent_role is not None
+                                else component_rows[-2]["label_match"]
                             )
                             source_proposals.append(
                                 {
-                                    "anchor": anchor_row["label_match"],
+                                    "anchor": anchor_match,
                                     "geometry": geometry,
                                     "matched_within_role": binding_spec["matched_within_role"],
                                     "parent_occurrence_id": parent_occurrence_id,
@@ -10969,6 +11280,14 @@ def _validate_result(value: Any) -> dict[str, Any]:
             continue
         geometry = receipt["geometry"]
         equation = geometry["equation"]
+        topology_region = axis["topology_region"]
+        if receipt["interval"] != {
+            "end_document_line_ordinal_exclusive": topology_region[
+                "cluster_end_document_line_ordinal_exclusive"
+            ],
+            "start_document_line_ordinal": topology_region["cluster_start_document_line_ordinal"],
+        }:
+            raise _error("recursive parent equation selected root interval drifted")
         parent_occurrence_id = equation["parent_occurrence_id"]
         parent_occurrence_for_interval = occurrence_by_id.get(parent_occurrence_id)
         next_parent_boundary_key = None
@@ -11081,6 +11400,118 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 "numbers": result_numbers,
                 "sample_ids": list(result["sample_ids"]),
             }
+            if equation["parent_role"] in {
+                "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_GROUP",
+            }:
+                matching_clusters = [
+                    cluster
+                    for cluster in value["internal_unassigned_numeric_clusters"]
+                    if cluster.get("sample_ids") == result["sample_ids"]
+                    and _direct_frontier_internal_cluster_receipt(
+                        cluster,
+                        universe_by_sample_id,
+                        expected_column_ordinals=list(range(len(result["numbers"]))),
+                    )
+                    == result_receipt
+                ]
+                if len(matching_clusters) != 1:
+                    raise _error(
+                        "recursive parent equation result is not one exact internal subtotal"
+                    )
+                cluster = matching_clusters[0]
+                cluster_records = [
+                    universe_by_sample_id[sample_id] for sample_id in cluster["sample_ids"]
+                ]
+                source_row = row_by_occurrence.get(item["occurrence_id"])
+                if type(source_row) is not dict:
+                    raise _error("recursive parent equation source row is absent")
+                source_end = max(
+                    [
+                        *row_v1._match_source_line_indices(item["label_match"]),  # noqa: SLF001
+                        *(value_record["line_ordinal"] for value_record in source_row["values"]),
+                    ]
+                )
+                cluster_line_ordinals = sorted(record["line_ordinal"] for record in cluster_records)
+                result_key = min(
+                    (
+                        record["page_sequence"],
+                        record["bbox"][1] + record["bbox"][3],
+                        2 * record["bbox"][0],
+                        record["line_ordinal"],
+                    )
+                    for record in cluster_records
+                )
+                if (
+                    cluster["page_sequence"] != item["label_match"]["page_sequence"]
+                    or cluster_line_ordinals
+                    != list(range(source_end + 1, source_end + 1 + len(cluster_records)))
+                    or result_key <= _visual_match_key(item["label_match"])
+                    or next_parent_boundary_key is not None
+                    and result_key >= next_parent_boundary_key
+                    or any(
+                        candidate["occurrence_id"] != item["occurrence_id"]
+                        and _visual_match_key(item["label_match"])
+                        < _visual_match_key(candidate["label_match"])
+                        < result_key
+                        for candidate in value["role_occurrences"]
+                    )
+                ):
+                    raise _error(
+                        "recursive parent equation internal subtotal left its exact interval"
+                    )
+            elif {record.get("owner_kind") for record in result_records} == {"TRAILING_VALUE_ROW"}:
+                matching_trailing_rows = [
+                    trailing
+                    for trailing in value["row_axis"]["trailing_value_rows"]
+                    if _direct_frontier_trailing_row_receipt(trailing) == result_receipt
+                ]
+                if len(matching_trailing_rows) != 1:
+                    raise _error("recursive root equation result is not one exact trailing row")
+                trailing = matching_trailing_rows[0]
+                source_row = row_by_occurrence.get(item["occurrence_id"])
+                if type(source_row) is not dict:
+                    raise _error("recursive root equation source row is absent")
+                source_end = max(
+                    [
+                        *row_v1._match_source_line_indices(item["label_match"]),  # noqa: SLF001
+                        *(value_record["line_ordinal"] for value_record in source_row["values"]),
+                    ]
+                )
+                trailing_line_ordinals = sorted(
+                    value_record["line_ordinal"] for value_record in trailing["values"]
+                )
+                trailing_rows_after_source = [
+                    candidate
+                    for candidate in value["row_axis"]["trailing_value_rows"]
+                    if candidate["page_sequence"] == item["label_match"]["page_sequence"]
+                    and candidate["values"]
+                    and min(value_record["line_ordinal"] for value_record in candidate["values"])
+                    > source_end
+                ]
+                if (
+                    trailing["page_sequence"] != item["label_match"]["page_sequence"]
+                    or topology_region["parent_match"]["page_sequence"]
+                    != item["label_match"]["page_sequence"]
+                    or len(trailing_rows_after_source) != 1
+                    or trailing_line_ordinals
+                    != list(range(source_end + 1, source_end + 1 + len(trailing["values"])))
+                    or any(
+                        candidate["occurrence_id"] != item["occurrence_id"]
+                        and candidate["label_match"]["page_sequence"]
+                        == item["label_match"]["page_sequence"]
+                        and _visual_match_key(candidate["label_match"])
+                        > _visual_match_key(item["label_match"])
+                        for candidate in value["role_occurrences"]
+                    )
+                    or min(
+                        value_record["bbox"][1] + value_record["bbox"][3]
+                        for value_record in trailing["values"]
+                    )
+                    <= item["label_match"]["source_label_bbox"][1]
+                    + item["label_match"]["source_label_bbox"][3]
+                ):
+                    raise _error("recursive root trailing result left its exact source page")
         if (
             result_receipt["numbers"] != result["numbers"]
             or result_receipt["sample_ids"] != result["sample_ids"]
@@ -12035,12 +12466,29 @@ def _build(
                 preliminary_axis = _regenerate_v1_axis(preliminary_axis)
         except total_v1.AccountingFamilyCoextensiveParentTotalV1Error as exc:
             raise _error("recursive-parent preliminary subtotal projection failed") from exc
+        (
+            preliminary_numeric_sample_universe,
+            preliminary_internal_unassigned_numeric_clusters,
+            _preliminary_furniture_evidence,
+            _preliminary_furniture_reasons,
+        ) = _build_numeric_sample_universe(
+            parsed_pages,
+            preliminary_expanded,
+            preliminary_matches,
+            preliminary_axis,
+            preliminary_coextensive,
+            topology_candidates_id=topology_candidates_id,
+            selected_snapshot=selected_snapshot,
+            render_snapshots=render_snapshots,
+        )
         expanded_matches = _project_recursive_parent_provision_bindings(
             parsed_pages,
             compiled_family,
             expanded_matches,
             preliminary_matches,
             preliminary_axis,
+            preliminary_internal_unassigned_numeric_clusters,
+            preliminary_numeric_sample_universe,
             selected_region,
         )
         visible_dash_rescues = _retarget_recursive_parent_provision_dash_rescues(
