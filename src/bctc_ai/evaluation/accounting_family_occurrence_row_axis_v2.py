@@ -509,6 +509,10 @@ _RECURSIVE_PARENT_DIRECT_COMPONENT_SUPPORT_SPECS = (
         "result_role": "INTERBANK_LOAN_GROUP",
     },
 )
+_RECURSIVE_PARENT_OWNER_BOUND_NONADDITIVE_EXCLUSIONS = {
+    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+}
 _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS = {
     "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS": (
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
@@ -1815,8 +1819,109 @@ def _recursive_direct_component_support_is_exact(
         for descendant in descendants:
             direct_by_descendant.setdefault(descendant, set()).add(direct_role)
 
+    occurrence_by_id = {
+        occurrence.get(
+            "occurrence_id",
+            _recursive_frontier_item_match(occurrence).get("occurrence_id"),
+        ): occurrence
+        for occurrence in interval_occurrences
+    }
+    result_occurrence_id = result_row["label_match"].get("occurrence_id")
+    result_occurrence = occurrence_by_id.get(result_occurrence_id)
+    if type(result_occurrence) is not dict:
+        return False
+    result_match = _recursive_frontier_item_match(result_occurrence)
+
+    def coextensive(
+        occurrence: Mapping[str, Any], owner: Mapping[str, Any]
+    ) -> bool:
+        match = _recursive_frontier_item_match(occurrence)
+        owner_match = _recursive_frontier_item_match(owner)
+        return (
+            match["page_sequence"] == owner_match["page_sequence"]
+            and match["document_line_ordinal"]
+            == owner_match["document_line_ordinal"]
+            and match["end_document_line_ordinal"]
+            == owner_match["end_document_line_ordinal"]
+            and match["source_line_index"] == owner_match["source_line_index"]
+            and match["end_source_line_index"]
+            == owner_match["end_source_line_index"]
+        )
+
+    result_key = _visual_match_key(result_match)
+    deposit_boundary = None
+    if result_role == "INTERBANK_DEPOSIT_GROUP":
+        deposit_boundary = min(
+            (
+                _visual_match_key(_recursive_frontier_item_match(occurrence))
+                for occurrence in interval_occurrences
+                if effective_roles.get(id(occurrence))
+                in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                and _visual_match_key(_recursive_frontier_item_match(occurrence))
+                > result_key
+            ),
+            default=None,
+        )
+
+    def belongs_to_exact_result(
+        occurrence: Mapping[str, Any], visited: set[int] | None = None
+    ) -> bool:
+        visited = set() if visited is None else set(visited)
+        if id(occurrence) in visited:
+            return False
+        visited.add(id(occurrence))
+        match = _recursive_frontier_item_match(occurrence)
+        role = effective_roles.get(id(occurrence))
+        expected_direct_owners = direct_by_descendant.get(role, set())
+        owner_id = occurrence.get(
+            "scope_owner_occurrence_id", match.get("scope_owner_occurrence_id")
+        )
+        if owner_id == result_occurrence_id:
+            return role in direct_roles or (
+                role in _RECURSIVE_PARENT_OWNER_BOUND_NONADDITIVE_EXCLUSIONS
+                and len(expected_direct_owners) == 1
+            )
+        explicit_owner = occurrence_by_id.get(owner_id)
+        if type(explicit_owner) is dict:
+            return (
+                effective_roles.get(id(explicit_owner)) in expected_direct_owners
+                and belongs_to_exact_result(explicit_owner, visited)
+            )
+        if coextensive(occurrence, result_occurrence):
+            return role in direct_roles
+        if result_role != "INTERBANK_DEPOSIT_GROUP":
+            return False
+        key = _visual_match_key(match)
+        if not (result_key < key and (deposit_boundary is None or key < deposit_boundary)):
+            return False
+        if role in direct_roles:
+            return True
+        coextensive_direct_owners = [
+            candidate
+            for candidate in interval_occurrences
+            if effective_roles.get(id(candidate)) in expected_direct_owners
+            and coextensive(occurrence, candidate)
+            and belongs_to_exact_result(candidate, visited)
+        ]
+        return len(coextensive_direct_owners) == 1
+
+    relevant_occurrences = [
+        occurrence
+        for occurrence in interval_occurrences
+        if effective_roles.get(id(occurrence)) in direct_by_descendant
+    ]
+    if any(
+        not belongs_to_exact_result(occurrence)
+        for occurrence in relevant_occurrences
+    ):
+        return False
     required_direct_roles = set()
-    for occurrence in interval_occurrences:
+    support_occurrences = [
+        occurrence
+        for occurrence in interval_occurrences
+        if belongs_to_exact_result(occurrence)
+    ]
+    for occurrence in support_occurrences:
         owners = direct_by_descendant.get(effective_roles.get(id(occurrence)), set())
         if len(owners) > 1:
             return False
@@ -1828,7 +1933,7 @@ def _recursive_direct_component_support_is_exact(
     for direct_role in required_direct_roles:
         candidates = [
             occurrence
-            for occurrence in interval_occurrences
+            for occurrence in support_occurrences
             if effective_roles.get(id(occurrence)) == direct_role
         ]
         if len(candidates) != 1:
@@ -1859,7 +1964,7 @@ def _recursive_direct_component_support_is_exact(
         return False
     return all(
         _recursive_direct_component_support_is_exact(
-            interval_occurrences,
+            support_occurrences,
             rows_by_occurrence_id,
             effective_roles,
             result_role=role,

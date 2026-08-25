@@ -4017,6 +4017,132 @@ def test_f3_root_provision_recursively_rejects_invalid_demand_leaf_frontier(
     assert provision["source_scope_binding"] is None
 
 
+def test_recursive_support_rejects_leaf_owned_by_repeated_same_role_parent() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "38", "39"),
+                ("Bằng VND", "38", "39"),
+                ("Cho vay các TCTD khác", "54", "42"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+    demand = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    demand_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == demand["occurrence_id"]
+    )
+    rows_by_occurrence_id = {
+        row["label_match"]["occurrence_id"]: [row]
+        for row in axis["row_axis"]["rows"]
+    }
+    occurrences = copy.deepcopy(axis["role_occurrences"])
+    effective_roles = {id(occurrence): occurrence["role"] for occurrence in occurrences}
+    assert subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="DEMAND_DEPOSIT_GROUP",
+        result_row=demand_row,
+    )
+
+    repeated = copy.deepcopy(
+        next(
+            occurrence
+            for occurrence in occurrences
+            if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+        )
+    )
+    repeated["occurrence_id"] = "aforav2:occurrence:" + "f" * 64
+    repeated["label_match"]["occurrence_id"] = repeated["occurrence_id"]
+    leaf = next(
+        occurrence
+        for occurrence in occurrences
+        if occurrence["role"] == "DEMAND_DEPOSIT_VND"
+    )
+    leaf["scope_owner_occurrence_id"] = repeated["occurrence_id"]
+    leaf["label_match"]["scope_owner_occurrence_id"] = repeated["occurrence_id"]
+    occurrences.append(repeated)
+    effective_roles = {id(occurrence): occurrence["role"] for occurrence in occurrences}
+
+    assert not subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="DEMAND_DEPOSIT_GROUP",
+        result_row=demand_row,
+    )
+
+
+def test_recursive_deposit_support_rejects_visual_child_with_wrong_structural_owner() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "38", "39"),
+                ("Bằng VND", "38", "39"),
+                ("Cho vay các TCTD khác", "54", "42"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+    deposit = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    deposit_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == deposit["occurrence_id"]
+    )
+    rows_by_occurrence_id = {
+        row["label_match"]["occurrence_id"]: [row]
+        for row in axis["row_axis"]["rows"]
+    }
+    occurrences = copy.deepcopy(axis["role_occurrences"])
+    effective_roles = {id(occurrence): occurrence["role"] for occurrence in occurrences}
+    assert subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="INTERBANK_DEPOSIT_GROUP",
+        result_row=deposit_row,
+    )
+
+    loan = next(
+        occurrence
+        for occurrence in occurrences
+        if occurrence["role"] == "INTERBANK_LOAN_GROUP"
+    )
+    demand = next(
+        occurrence
+        for occurrence in occurrences
+        if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    demand["scope_owner_occurrence_id"] = loan["occurrence_id"]
+    demand["label_match"]["scope_owner_occurrence_id"] = loan["occurrence_id"]
+
+    assert not subject._recursive_direct_component_support_is_exact(
+        occurrences,
+        rows_by_occurrence_id,
+        effective_roles,
+        result_role="INTERBANK_DEPOSIT_GROUP",
+        result_row=deposit_row,
+    )
+
+
 def test_f3_root_provision_accepts_one_coextensive_roman_section_ordinal() -> None:
     pages = _f3_pages(
         [
