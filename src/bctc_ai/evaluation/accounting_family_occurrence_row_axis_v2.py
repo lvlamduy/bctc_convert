@@ -4147,6 +4147,8 @@ def _one_edit_exact_source_structural_proofs_v2(
     selected_region: Mapping[str, Any],
     effective_region: Mapping[str, Any],
     expanded_matches: Sequence[Mapping[str, Any]],
+    *,
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Derive structural-only exact-source proofs before schema projection.
 
@@ -4179,6 +4181,7 @@ def _one_edit_exact_source_structural_proofs_v2(
             family_spec=family_spec,
             selected_topology_region=selected_region,
             expanded_occurrence_region=retrieval_region,
+            prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
         )
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
         raise _error("one-edit exact-source structural proof replay failed") from exc
@@ -12443,6 +12446,7 @@ def _build(
     ),
     selected_snapshot: Mapping[str, Any] | None,
     prepared_snapshot: _PreparedAuthenticatedSnapshotProjectionV2 | None,
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None,
     render_snapshots: Sequence[Mapping[str, Any]],
     visible_dash_rescues: Any,
 ) -> dict[str, Any]:
@@ -12483,6 +12487,7 @@ def _build(
             selected_region,
             expected_effective,
             expanded_matches,
+            prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
         )
     )
     expanded_matches = _project_exact_bound_source_context_challengers_v1(
@@ -12900,6 +12905,7 @@ def build_accounting_family_occurrence_row_axis_v2(
     selected_snapshot: Mapping[str, Any] | None = None,
     render_snapshots: Sequence[Mapping[str, Any]] = (),
     visible_dash_rescues: Any = (),
+    _prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
 ) -> dict[str, Any]:
     """Expand context-bound occurrences and authenticate existing DASH cells."""
 
@@ -12914,6 +12920,7 @@ def build_accounting_family_occurrence_row_axis_v2(
         prepared_topology_binding=None,
         selected_snapshot=selected_snapshot,
         prepared_snapshot=None,
+        prepared_source_exact_axis_cache=_prepared_source_exact_axis_cache,
         render_snapshots=render_snapshots,
         visible_dash_rescues=visible_dash_rescues,
     )
@@ -12935,6 +12942,7 @@ def _build_accounting_family_occurrence_row_axis_from_authenticated_topology_sca
     prepared_snapshot: _PreparedAuthenticatedSnapshotProjectionV2 | None = None,
     render_snapshots: Sequence[Mapping[str, Any]] = (),
     visible_dash_rescues: Any = (),
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
 ) -> dict[str, Any]:
     return _build(
         pages,
@@ -12947,6 +12955,7 @@ def _build_accounting_family_occurrence_row_axis_from_authenticated_topology_sca
         prepared_topology_binding=prepared_topology_binding,
         selected_snapshot=selected_snapshot,
         prepared_snapshot=prepared_snapshot,
+        prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
         render_snapshots=render_snapshots,
         visible_dash_rescues=visible_dash_rescues,
     )

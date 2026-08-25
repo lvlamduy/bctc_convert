@@ -208,6 +208,84 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
     assert all(item["exact_channel"]["alias_pointer"] for item in receipt["checks"])
 
 
+def test_same_turn_exact_source_axis_is_reused_only_for_identical_pages_and_spec(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = _three_level_pages()
+    region = _selected(pages)
+    expanded = _expanded(pages, region)
+    original = subject._source_exact_axes
+    calls = []
+
+    def capture(*args: object, **kwargs: object) -> object:
+        calls.append(None)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(subject, "_source_exact_axes", capture)
+    cache: dict[tuple[str, str], object] = {}
+    first = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages,
+        _spec(),
+        region,
+        expanded,
+        _prepared_source_exact_axis_cache=cache,
+    )
+    replayed = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages,
+        _spec(),
+        region,
+        expanded,
+        _prepared_source_exact_axis_cache=cache,
+    )
+
+    assert replayed == first
+    assert len(calls) == 1
+    assert len(cache) == 1
+
+    changed_pages = copy.deepcopy(pages)
+    changed_pages[0]["lines"][1]["source_text"] = "Different source label"
+    changed = subject.build_accounting_family_one_edit_exact_authority_v1(
+        changed_pages,
+        _spec(),
+        region,
+        expanded,
+        _prepared_source_exact_axis_cache=cache,
+    )
+
+    assert changed["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    assert changed != first
+    assert len(calls) == 2
+    assert len(cache) == 2
+
+
+def test_same_turn_exact_source_axis_rejects_mutated_cached_hits() -> None:
+    pages = _three_level_pages()
+    region = _selected(pages)
+    expanded = _expanded(pages, region)
+    cache: dict[tuple[str, str], object] = {}
+    subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages,
+        _spec(),
+        region,
+        expanded,
+        _prepared_source_exact_axis_cache=cache,
+    )
+    prepared = next(iter(cache.values()))
+    prepared.exact_hits["parents"].append({})
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="prepared one-edit exact-source axis differs from its source",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages,
+            _spec(),
+            region,
+            expanded,
+            _prepared_source_exact_axis_cache=cache,
+        )
+
+
 def test_canonical_coextensive_effective_child_is_retained_on_exact_parent() -> None:
     spec = _spec()
     spec["children"].append(

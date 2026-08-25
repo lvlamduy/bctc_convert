@@ -19,6 +19,7 @@ transforms here.  Edit distance is never consulted by the authority channel.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 from bctc_ai.evaluation import (
@@ -88,6 +89,21 @@ RECURSIVE_HIERARCHY_FRONTIER_CLAIM_BOUNDARY = (
     "VISIBLE_ROOT_RESULT_ON_THE_IDENTICAL_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_"
     "MIXED_LANE_AXIS_NO_BACKSOLVE_ROUNDING_MIXED_LEVEL_DUPLICATE_OR_ROUTING_AUTHORITY"
 )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedOneEditExactSourceAxisV1:
+    """One same-turn exact-source scan, sealed to its document and spec."""
+
+    document_pages_sha256: str
+    exact_hits_sha256: str
+    family_spec_sha256: str
+    prepared_axis_sha256: str
+    exact_hits: Any = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_ONE_EDIT_EXACT_SOURCE_AXIS_SEAL = object()
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
         "ACCENTLESS",
@@ -1270,6 +1286,103 @@ def _source_exact_axes(
         ],
     }
     return exact_hits, source_pages
+
+
+def _prepared_exact_source_axis_material_v1(
+    *,
+    document_pages_sha256: str,
+    exact_hits_sha256: str,
+    family_spec_sha256: str,
+) -> dict[str, str]:
+    return {
+        "document_pages_sha256": document_pages_sha256,
+        "exact_hits_sha256": exact_hits_sha256,
+        "family_spec_sha256": family_spec_sha256,
+    }
+
+
+def _prepare_one_edit_exact_source_axis_v1(
+    pages: Sequence[Mapping[str, Any]],
+    compiled: Mapping[str, Any],
+    *,
+    document_pages: Any,
+    family_spec: Any,
+) -> _PreparedOneEditExactSourceAxisV1:
+    """Scan one authenticated document source axis once for this call tree."""
+
+    exact_hits, _source_pages = _source_exact_axes(pages, compiled)
+    document_pages_sha256 = canonical_json_sha256_v1(document_pages)
+    family_spec_sha256 = canonical_json_sha256_v1(family_spec)
+    exact_hits_sha256 = canonical_json_sha256_v1(exact_hits)
+    material = _prepared_exact_source_axis_material_v1(
+        document_pages_sha256=document_pages_sha256,
+        exact_hits_sha256=exact_hits_sha256,
+        family_spec_sha256=family_spec_sha256,
+    )
+    return _PreparedOneEditExactSourceAxisV1(
+        document_pages_sha256=document_pages_sha256,
+        exact_hits_sha256=exact_hits_sha256,
+        family_spec_sha256=family_spec_sha256,
+        prepared_axis_sha256=canonical_json_sha256_v1(material),
+        exact_hits=exact_hits,
+        seal=_PREPARED_ONE_EDIT_EXACT_SOURCE_AXIS_SEAL,
+    )
+
+
+def _open_prepared_one_edit_exact_source_axis_v1(
+    value: Any,
+    *,
+    document_pages_sha256: str,
+    family_spec_sha256: str,
+) -> dict[str, Any]:
+    if (
+        type(value) is not _PreparedOneEditExactSourceAxisV1
+        or value.seal is not _PREPARED_ONE_EDIT_EXACT_SOURCE_AXIS_SEAL
+        or value.document_pages_sha256 != document_pages_sha256
+        or value.family_spec_sha256 != family_spec_sha256
+        or value.exact_hits_sha256 != canonical_json_sha256_v1(value.exact_hits)
+    ):
+        raise _error("prepared one-edit exact-source axis differs from its source")
+    material = _prepared_exact_source_axis_material_v1(
+        document_pages_sha256=value.document_pages_sha256,
+        exact_hits_sha256=value.exact_hits_sha256,
+        family_spec_sha256=value.family_spec_sha256,
+    )
+    if value.prepared_axis_sha256 != canonical_json_sha256_v1(material):
+        raise _error("prepared one-edit exact-source axis binding drifted")
+    return canonical_clone_v1(value.exact_hits)
+
+
+def _same_turn_exact_source_hits_v1(
+    pages: Sequence[Mapping[str, Any]],
+    compiled: Mapping[str, Any],
+    *,
+    document_pages: Any,
+    family_spec: Any,
+    prepared_axis_cache: dict[tuple[str, str], Any] | None,
+) -> dict[str, Any]:
+    """Open one local content-bound scan or build it for public standalone use."""
+
+    if prepared_axis_cache is None:
+        exact_hits, _source_pages = _source_exact_axes(pages, compiled)
+        return exact_hits
+    document_pages_sha256 = canonical_json_sha256_v1(document_pages)
+    family_spec_sha256 = canonical_json_sha256_v1(family_spec)
+    key = (document_pages_sha256, family_spec_sha256)
+    prepared = prepared_axis_cache.get(key)
+    if prepared is None:
+        prepared = _prepare_one_edit_exact_source_axis_v1(
+            pages,
+            compiled,
+            document_pages=document_pages,
+            family_spec=family_spec,
+        )
+        prepared_axis_cache[key] = prepared
+    return _open_prepared_one_edit_exact_source_axis_v1(
+        prepared,
+        document_pages_sha256=document_pages_sha256,
+        family_spec_sha256=family_spec_sha256,
+    )
 
 
 def _context_bound_source_records(
@@ -5352,6 +5465,7 @@ def _build_from_canonical_expanded_occurrences_v1(
     family_spec: Any,
     selected_topology_region: Mapping[str, Any],
     expanded_occurrence_region: Mapping[str, Any],
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
 ) -> dict[str, Any]:
     """Build the receipt from one already canonical retrieval occurrence axis.
 
@@ -5411,7 +5525,13 @@ def _build_from_canonical_expanded_occurrences_v1(
     # strictly inside this branch preserves full replay for every real claim
     # while avoiding the same whole-document pass for exact-only candidates.
     if selected_matches:
-        exact_hits, _source_pages = _source_exact_axes(pages, compiled)
+        exact_hits = _same_turn_exact_source_hits_v1(
+            pages,
+            compiled,
+            document_pages=document_pages,
+            family_spec=family_spec,
+            prepared_axis_cache=prepared_source_exact_axis_cache,
+        )
         source_occurrences = _decorate_exact_source_occurrences_v1(
             _context_bound_source_records(
                 exact_hits,
@@ -5498,6 +5618,8 @@ def build_accounting_family_one_edit_exact_authority_v1(
     family_spec: Any,
     selected_topology_region: Any,
     expanded_occurrence_region: Any,
+    *,
+    _prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
 ) -> dict[str, Any]:
     """Gate one selected V4 candidate and every expanded role occurrence."""
 
@@ -5527,6 +5649,7 @@ def build_accounting_family_one_edit_exact_authority_v1(
         family_spec=family_spec,
         selected_topology_region=selected_topology_region,
         expanded_occurrence_region=canonical_expanded_occurrence_region,
+        prepared_source_exact_axis_cache=_prepared_source_exact_axis_cache,
     )
 
 

@@ -3465,6 +3465,7 @@ def _selected_v4_one_edit_authority_v1(
     family_spec: dict[str, Any],
     topology_candidates: dict[str, Any] | None,
     evaluation_spec: dict[str, Any] | None = None,
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Gate only the downstream-selected V4 candidate, never a discarded one."""
 
@@ -3503,6 +3504,7 @@ def _selected_v4_one_edit_authority_v1(
             family_spec,
             topology_candidates["regions"][ordinal],
             canonical_expanded,
+            _prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
         )
         if receipt["format_version"] in {
             one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION,
@@ -3632,6 +3634,7 @@ def _candidate_evidence_from_joined_pages(
     topology_candidates: dict[str, Any] | None = None,
     prepared_topology_bindings: tuple[Any, ...] = (),
     prepared_snapshot: Any = None,
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> list[dict[str, Any]]:
     is_v4 = _is_scoped_evaluation_policy(evaluation_spec)
@@ -3685,6 +3688,7 @@ def _candidate_evidence_from_joined_pages(
                     prepared_topology_binding=prepared_binding,
                     selected_snapshot=selected_snapshot,
                     prepared_snapshot=prepared_snapshot,
+                    prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
                     render_snapshots=render_snapshots,
                 )
                 _telemetry_add(runtime_telemetry, "occurrence_axis_build_count", 1)
@@ -3714,6 +3718,7 @@ def _candidate_evidence_from_joined_pages(
                         prepared_topology_binding=prepared_binding,
                         selected_snapshot=selected_snapshot,
                         prepared_snapshot=prepared_snapshot,
+                        prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
                         render_snapshots=render_snapshots,
                         visible_dash_rescues=dash_rescues,
                     )
@@ -3995,6 +4000,7 @@ def _trial(
         selected_page_render_snapshots=render_snapshots,
     )
     joined_pages = project_accounting_family_document_pages_v1(document_axis)
+    source_exact_axis_cache: dict[tuple[str, str], Any] = {}
     candidate_evidence = _candidate_evidence_from_joined_pages(
         joined_pages=joined_pages,
         topology_scan=topology_scan,
@@ -4002,6 +4008,7 @@ def _trial(
         evaluation_spec=evaluation_spec,
         render_snapshots=render_snapshots,
         topology_candidates=topology_candidates,
+        prepared_source_exact_axis_cache=source_exact_axis_cache,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
     one_edit_receipt = None
@@ -4012,6 +4019,7 @@ def _trial(
             family_spec=family_spec,
             topology_candidates=topology_candidates,
             evaluation_spec=evaluation_spec,
+            prepared_source_exact_axis_cache=source_exact_axis_cache,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
@@ -4141,6 +4149,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         )
     ):
         raise _error("bounded document snapshot selected-page axis drifted")
+    source_exact_axis_cache: dict[tuple[str, str], Any] = {}
     candidate_evidence = _candidate_evidence_from_joined_pages(
         joined_pages=joined_pages,
         topology_scan=topology_scan,
@@ -4148,6 +4157,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         evaluation_spec=policy,
         render_snapshots=(),
         topology_candidates=topology_candidates,
+        prepared_source_exact_axis_cache=source_exact_axis_cache,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, policy)
     one_edit_receipt = None
@@ -4158,6 +4168,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
             family_spec=family_spec,
             topology_candidates=topology_candidates,
             evaluation_spec=policy,
+            prepared_source_exact_axis_cache=source_exact_axis_cache,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return canonical_clone_v1(
@@ -4757,6 +4768,7 @@ def _trial_from_document_store_snapshot_v1(
         }
         for page in joined_pages
     ]
+    source_exact_axis_cache: dict[tuple[str, str], Any] = {}
     candidates = _candidate_evidence_from_joined_pages(
         joined_pages=projected_pages,
         topology_scan=topology_scan,
@@ -4769,6 +4781,7 @@ def _trial_from_document_store_snapshot_v1(
         prepared_snapshot=(
             prepared_context.prepared_snapshot if prepared_context is not None else None
         ),
+        prepared_source_exact_axis_cache=source_exact_axis_cache,
         runtime_telemetry=runtime_telemetry,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
@@ -4780,6 +4793,7 @@ def _trial_from_document_store_snapshot_v1(
             family_spec=family_spec,
             topology_candidates=topology_candidates,
             evaluation_spec=evaluation_spec,
+            prepared_source_exact_axis_cache=source_exact_axis_cache,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
