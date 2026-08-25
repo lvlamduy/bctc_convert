@@ -223,6 +223,26 @@ _RECURSIVE_PARENT_PROVISION_GEOMETRY_STATUS = (
 )
 _RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
     {
+        "direct_component_descendant_roles": (
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                (
+                    "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_VND",
+                ),
+            ),
+            (
+                "TERM_DEPOSIT_GROUP",
+                (
+                    "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_VND",
+                ),
+            ),
+            ("INTERBANK_DEPOSIT_OTHER", ()),
+            ("INTERBANK_DEPOSIT_PROVISION", ()),
+        ),
         "direct_component_role_alternatives": (
             (
                 "DEMAND_DEPOSIT_GROUP",
@@ -248,6 +268,26 @@ _RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
         "target_role": "INTERBANK_DEPOSIT_PROVISION",
     },
     {
+        "direct_component_descendant_roles": (
+            (
+                "INTERBANK_LOAN_VND",
+                (
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+                    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+                ),
+            ),
+            (
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                (
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+                    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+                ),
+            ),
+            ("INTERBANK_LOAN_OTHER", ()),
+            ("INTERBANK_LOAN_PROVISION", ()),
+        ),
         "direct_component_role_alternatives": (
             (
                 "INTERBANK_LOAN_VND",
@@ -273,6 +313,37 @@ _RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
         "target_role": "INTERBANK_LOAN_PROVISION",
     },
     {
+        "direct_component_descendant_roles": (
+            (
+                "INTERBANK_DEPOSIT_GROUP",
+                (
+                    "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_GROUP",
+                    "DEMAND_DEPOSIT_VND",
+                    "INTERBANK_DEPOSIT_OTHER",
+                    "INTERBANK_DEPOSIT_PROVISION",
+                    "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_GROUP",
+                    "TERM_DEPOSIT_VND",
+                ),
+            ),
+            (
+                "INTERBANK_LOAN_GROUP",
+                (
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+                    "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+                    "INTERBANK_LOAN_OTHER",
+                    "INTERBANK_LOAN_PROVISION",
+                    "INTERBANK_LOAN_VND",
+                ),
+            ),
+            ("TOTAL_INTERBANK_PROVISION", ()),
+        ),
         "direct_component_role_alternatives": (
             (
                 "INTERBANK_DEPOSIT_GROUP",
@@ -1552,6 +1623,132 @@ def _direct_frontier_row_receipt(row: Mapping[str, Any]) -> dict[str, Any] | Non
     }
 
 
+def _recursive_frontier_item_match(item: Mapping[str, Any]) -> Mapping[str, Any]:
+    label_match = item.get("label_match")
+    return label_match if type(label_match) is dict else item
+
+
+def _complete_recursive_parent_direct_frontier(
+    occurrences: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, Any]],
+    binding_spec: Mapping[str, Any],
+    *,
+    interval_end: tuple[int, int, int, int] | None,
+    interval_start: tuple[int, int, int, int] | None,
+    page_sequence: int,
+    parent_occurrence_id: str,
+    source_retrieval_occurrence_id: str,
+) -> list[tuple[str, Mapping[str, Any]]] | None:
+    """Rebuild one exhaustive, ordered direct-component frontier.
+
+    Every visible additive/structural occurrence in the exact parent interval
+    must map to exactly one declared direct component.  A component can enter
+    the frontier only through its own complete final row; a visible descendant
+    under a missing or incomplete direct subtotal therefore abstains instead
+    of letting an arithmetic coincidence skip that sibling subtree.
+    """
+
+    descendant_pairs = binding_spec.get("direct_component_descendant_roles")
+    alternatives = binding_spec.get("direct_component_role_alternatives")
+    if (
+        type(descendant_pairs) is not tuple
+        or not descendant_pairs
+        or type(alternatives) is not tuple
+        or not alternatives
+    ):
+        raise _error("recursive parent direct-frontier declaration drifted")
+    direct_roles = {
+        role for alternative in alternatives for role in alternative
+    }
+    declared_direct_roles = {pair[0] for pair in descendant_pairs}
+    if (
+        any(
+            type(pair) is not tuple
+            or len(pair) != 2
+            or type(pair[0]) is not str
+            or type(pair[1]) is not tuple
+            or any(type(role) is not str for role in pair[1])
+            for pair in descendant_pairs
+        )
+        or declared_direct_roles != direct_roles
+    ):
+        raise _error("recursive parent direct-frontier descendants drifted")
+    direct_by_descendant: dict[str, set[str]] = {
+        role: {role} for role in direct_roles
+    }
+    for direct_role, descendant_roles in descendant_pairs:
+        for descendant_role in descendant_roles:
+            direct_by_descendant.setdefault(descendant_role, set()).add(direct_role)
+
+    def in_interval(item: Mapping[str, Any]) -> bool:
+        match = _recursive_frontier_item_match(item)
+        if match["page_sequence"] != page_sequence:
+            return False
+        key = _visual_match_key(match)
+        return (
+            interval_start is None or interval_start < key
+        ) and (interval_end is None or key < interval_end)
+
+    interval_occurrences = [item for item in occurrences if in_interval(item)]
+    required_direct_roles = set()
+    effective_roles: dict[int, str] = {}
+    for occurrence in interval_occurrences:
+        match = _recursive_frontier_item_match(occurrence)
+        if occurrence.get("occurrence_id", match.get("occurrence_id")) == parent_occurrence_id:
+            continue
+        retrieval_id = occurrence.get(
+            "retrieval_occurrence_id", match.get("retrieval_occurrence_id")
+        )
+        role = occurrence.get("role", match.get("role"))
+        effective_role = (
+            binding_spec["target_role"]
+            if retrieval_id == source_retrieval_occurrence_id
+            else role
+        )
+        effective_roles[id(occurrence)] = effective_role
+        owners = direct_by_descendant.get(effective_role, set())
+        if len(owners) > 1:
+            return None
+        if len(owners) == 1:
+            required_direct_roles.update(owners)
+            continue
+        role_kind = occurrence.get("role_kind", match.get("role_kind"))
+        if (
+            role_kind in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+            and effective_role not in binding_spec["result_roles"]
+            and effective_role != binding_spec["parent_role"]
+        ):
+            return None
+
+    rows_by_occurrence_id: dict[str, list[Mapping[str, Any]]] = {}
+    for row in rows:
+        occurrence_id = row["label_match"].get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence_id.setdefault(occurrence_id, []).append(row)
+    frontier = []
+    for direct_role in required_direct_roles:
+        candidates = [
+            occurrence
+            for occurrence in interval_occurrences
+            if effective_roles.get(id(occurrence)) == direct_role
+        ]
+        if len(candidates) != 1:
+            return None
+        occurrence = candidates[0]
+        match = _recursive_frontier_item_match(occurrence)
+        occurrence_id = occurrence.get("occurrence_id", match.get("occurrence_id"))
+        direct_rows = rows_by_occurrence_id.get(occurrence_id, [])
+        if len(direct_rows) != 1 or _direct_frontier_row_receipt(direct_rows[0]) is None:
+            return None
+        frontier.append((direct_role, direct_rows[0]))
+    frontier.sort(key=lambda item: _visual_match_key(item[1]["label_match"]))
+    receipts = [_direct_frontier_row_receipt(row) for _role, row in frontier]
+    sample_ids = [sample_id for receipt in receipts for sample_id in receipt["sample_ids"]]
+    if len(sample_ids) != len(set(sample_ids)):
+        return None
+    return frontier
+
+
 def _direct_frontier_parent_row_receipt(
     pages: Sequence[Mapping[str, Any]],
     parent_match: Mapping[str, Any],
@@ -2543,20 +2740,6 @@ def _project_recursive_parent_provision_bindings(
                     key = _visual_match_key(match)
                     return start < key and (end is None or key < end)
 
-                declared_non_provision_roles = {
-                    role
-                    for alternative in binding_spec["direct_component_role_alternatives"]
-                    for role in alternative
-                    if role != target_role
-                }
-                owner_rows = [
-                    row
-                    for row in all_rows
-                    if row["role"] in declared_non_provision_roles
-                    and belongs_to_parent_frontier(row)
-                ]
-                if any(_direct_frontier_row_receipt(row) is None for row in owner_rows):
-                    continue
                 explicit_target_rows = [
                     row
                     for row in all_rows
@@ -2564,6 +2747,23 @@ def _project_recursive_parent_provision_bindings(
                 ]
                 if explicit_target_rows:
                     continue
+                complete_frontier = _complete_recursive_parent_direct_frontier(
+                    preliminary_matches,
+                    all_rows,
+                    binding_spec,
+                    interval_end=frontier_end,
+                    interval_start=frontier_start,
+                    page_sequence=frontier_page_sequence,
+                    parent_occurrence_id=parent_occurrence_id,
+                    source_retrieval_occurrence_id=generic[
+                        "retrieval_occurrence_id"
+                    ],
+                )
+                if complete_frontier is None:
+                    continue
+                complete_frontier_roles = tuple(
+                    role for role, _row in complete_frontier
+                )
                 grid = grids_by_page.get(generic["page_sequence"])
                 interval_parent_match = (
                     parent_match if parent_row is None else parent_row["label_match"]
@@ -2596,12 +2796,7 @@ def _project_recursive_parent_provision_bindings(
                 ):
                     continue
                 for alternative in binding_spec["direct_component_role_alternatives"]:
-                    expected_non_provision_roles = [
-                        role for role in alternative if role != target_role
-                    ]
-                    if sorted(row["role"] for row in owner_rows) != sorted(
-                        expected_non_provision_roles
-                    ):
+                    if complete_frontier_roles != alternative:
                         continue
                     source_roles = tuple(
                         _PROVISION_GENERIC_ROLE if role == target_role else role
@@ -9671,6 +9866,37 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 > _visual_match_key(parent_occurrence_for_interval["label_match"])
             ]
             next_parent_boundary_key = min(later_parent_boundary_keys, default=None)
+        matching_specs = [
+            spec
+            for spec in _RECURSIVE_PARENT_PROVISION_BINDING_SPECS
+            if spec["target_role"] == item["role"]
+            and tuple(
+                component["role"] for component in equation["component_frontier"]
+            )
+            in spec["direct_component_role_alternatives"]
+        ]
+        if len(matching_specs) != 1:
+            raise _error("recursive parent equation direct-frontier spec drifted")
+        complete_frontier = _complete_recursive_parent_direct_frontier(
+            value["role_occurrences"],
+            value["row_axis"]["rows"],
+            matching_specs[0],
+            interval_end=next_parent_boundary_key,
+            interval_start=(
+                _visual_match_key(parent_occurrence_for_interval["label_match"])
+                if type(parent_occurrence_for_interval) is dict
+                else None
+            ),
+            page_sequence=item["label_match"]["page_sequence"],
+            parent_occurrence_id=parent_occurrence_id,
+            source_retrieval_occurrence_id=item["retrieval_occurrence_id"],
+        )
+        if complete_frontier is None or tuple(
+            role for role, _row in complete_frontier
+        ) != tuple(
+            component["role"] for component in equation["component_frontier"]
+        ):
+            raise _error("recursive parent equation direct frontier is incomplete or mixed")
         component_occurrences = []
         for component, expected_bbox in zip(
             equation["component_frontier"],

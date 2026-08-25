@@ -3830,6 +3830,94 @@ def test_f3_recursive_parent_provision_fails_closed_without_one_exact_frontier(
     ]
 
 
+def test_f3_recursive_provision_rejects_visible_leaf_under_missing_direct_subtotal() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "58", "49"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                # This coextensive source creates a visible TERM leaf, but the
+                # structural TERM occurrence has no independently bound row.
+                ("Tiền gửi có kỳ hạn bằng VND", "40", "40"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+
+    term_group = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TERM_DEPOSIT_GROUP"
+    )
+    term_leaf = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TERM_DEPOSIT_VND"
+    )
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert term_group["has_bound_value_row"] is False
+    assert term_leaf["has_bound_value_row"] is True
+    assert provision["source_scope_binding"] is None
+
+
+def test_f3_recursive_provision_validator_rejects_coherent_zero_frontier_removal() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "58", "49"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "0", "0"),
+                ("Bằng VND", "0", "0"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+                ("Cho vay các TCTD khác", "50", "40"),
+                ("Bằng VND", "50", "40"),
+            ]
+        )
+    )
+    attacked = copy.deepcopy(axis)
+    provision = next(
+        occurrence
+        for occurrence in attacked["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    receipt = provision["source_scope_binding"]
+    equation = receipt["geometry"]["equation"]
+    term_index = next(
+        index
+        for index, component in enumerate(equation["component_frontier"])
+        if component["role"] == "TERM_DEPOSIT_GROUP"
+    )
+    equation["component_frontier"].pop(term_index)
+    receipt["geometry"]["ordered_source_label_bboxes"].pop(term_index)
+    equation_material = copy.deepcopy(equation)
+    equation_material.pop("equation_id")
+    equation["equation_id"] = (
+        "aforav2:direct-frontier-equation:"
+        + canonical_json_sha256_v1(equation_material)
+    )
+    binding_material = copy.deepcopy(receipt)
+    binding_material.pop("binding_id")
+    receipt["binding_id"] = (
+        "aforav2:scope-binding:" + canonical_json_sha256_v1(binding_material)
+    )
+    _coherently_replace_source_scope_binding(attacked, provision, receipt)
+    _coherently_rehash_occurrence(attacked)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="direct frontier is incomplete or mixed",
+    ):
+        subject._validate_result(attacked)
+
+
 def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> None:
     _scan, axis = _build_f3(
         _f3_pages(
