@@ -52,6 +52,7 @@ _BRANCH_ALIASES = [
     "Phân tích dư nợ cho vay khách hàng theo đối tượng và loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+    "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp như sau",
     "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
     "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
 ]

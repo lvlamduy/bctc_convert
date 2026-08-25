@@ -149,6 +149,10 @@ def test_spec_locks_schema_history_and_safety_policy() -> None:
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng "
             "và theo loại hình doanh nghiệp"
         ),
+        (
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng "
+            "và theo loại hình doanh nghiệp như sau"
+        ),
     ],
 )
 def test_generic_and_vpb_inserted_word_headings_need_and_accept_owner716(heading: str) -> None:
@@ -273,6 +277,33 @@ def test_split_heading_and_tightly_wrapped_child_label_are_composed() -> None:
     assert result["regions"][0]["branch"]["surface"] == (
         "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp"
     )
+
+
+def test_split_vpb_heading_with_trailing_nhu_sau_is_composed() -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(
+            1,
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp như",
+            40,
+            105,
+            920,
+            130,
+        ),
+        _line(2, "sau:", 40, 134, 130, 159),
+        _line(3, "Công ty TNHH", 70, 210, 500, 238),
+        _line(4, "100", 730, 210, 820, 238),
+        _line(5, "Công ty cổ phần khác", 70, 260, 570, 288),
+        _line(6, "200", 730, 260, 820, 288),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert _binding_ids(result) == [768, 773]
+    branch = result["regions"][0]["branch"]
+    assert branch["match_basis"] == "FULL_BRANCH_ALIAS"
+    assert branch["surface"].endswith("loại hình doanh nghiệp như sau:")
+    assert len(branch["evidence"]) == 2
 
 
 def test_split_component_fallback_is_geometry_cohesive_and_provider_order_invariant() -> None:
@@ -542,14 +573,24 @@ def test_deposit_and_related_party_closest_contexts_are_hard_veto(poison: str) -
     )
 
 
-def test_deposit_owner_with_generic_component_heading_remains_hard_veto() -> None:
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Loại hình doanh nghiệp",
+        (
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng "
+            "và theo loại hình doanh nghiệp như sau"
+        ),
+    ],
+)
+def test_deposit_owner_with_enterprise_heading_remains_hard_veto(heading: str) -> None:
     result = build_loan_enterprise_family12_graph_v1(
         [
             _page(
                 1,
                 _table_lines(
                     owner="Tiền gửi của khách hàng",
-                    heading="Loại hình doanh nghiệp",
+                    heading=heading,
                 ),
             )
         ]
