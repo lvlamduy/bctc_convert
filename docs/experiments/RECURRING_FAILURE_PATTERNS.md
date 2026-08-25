@@ -67,7 +67,12 @@ Trạng thái:
   spanning/deep-leaf headers và globally exclusive cells từ exact render
   dimensions. Jitter/gap/quorum là declarative closed limits với integer
   quantization; reset/next-header/first-visible-row là hard fence và raw
-  bbox/source line được giữ lại.
+  bbox/source line được giữ lại. Header của contextual child table được fence
+  từ exact structural owner của valued row đầu tiên, không từ outer note parent
+  nếu giữa hai scope còn sibling table. Header ngày tiếng Việt bị OCR tách dòng
+  chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
+  có exact one-lane intersection anchor và hai nhóm typed leaf lặp lại tạo một
+  partition đầy đủ; fragment rời/mơ hồ/low-confidence toàn bộ vẫn unresolved.
 - **Status:** `MITIGATED`.
 
 ## RFP-003 — Continuation or repeated period blocks are joined by adjacency

@@ -76,6 +76,33 @@ def _build(headers: list[dict[str, object]]) -> dict[str, object]:
     )
 
 
+def _split_vietnamese_date_headers() -> list[dict[str, object]]:
+    return [
+        _header_line(27, "Ngày 31 tháng 12", [790, 826, 1012, 860]),
+        _header_line(28, "Ngày 31 tháng 12", [1159, 824, 1376, 858]),
+        _header_line(29, "năm 2025", [879, 860, 1014, 894]),
+        _header_line(30, "năm 2024", [1248, 860, 1376, 894]),
+        _header_line(31, "(Trình bày lại)", [1199, 892, 1373, 928]),
+        _header_line(32, "Triệu đồng", [874, 931, 1014, 967]),
+        _header_line(33, "%", [1078, 931, 1120, 965]),
+        _header_line(34, "Triệu đồng", [1240, 931, 1376, 965]),
+        _header_line(35, "%", [1435, 928, 1477, 962]),
+    ]
+
+
+def _build_split_vietnamese_date_header(
+    headers: list[dict[str, object]],
+) -> dict[str, object]:
+    return build_accounting_multilevel_header_leaf_axis_v1(
+        headers,
+        column_centers=[957.5, 1084.5, 1330.0, 1442.25],
+        page_width=1623,
+        document_period_context=_context(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_kinds=_KINDS,
+    )
+
+
 def test_two_period_parents_project_to_four_typed_header_leaves() -> None:
     result = _build(_headers())
 
@@ -140,6 +167,60 @@ def test_narrow_period_headers_can_anchor_two_identical_typed_leaf_groups() -> N
             period_semantics="BALANCE_COMPARATIVE",
             expected_lane_kinds=_KINDS,
         )
+
+
+def test_split_vietnamese_date_fragments_use_exact_intersection_and_repeated_leaf_groups() -> None:
+    headers = _split_vietnamese_date_headers()
+    result = _build_split_vietnamese_date_header(headers)
+
+    assert result["status"] == "MULTILEVEL_HEADER_LEAF_AXIS_BOUND_PROPOSAL_ONLY"
+    assert result["period_resolution_mode"].endswith(
+        "_INTERSECTING_SPLIT_FRAGMENT_ANCHOR_REPEATED_TYPED_LEAF_SEQUENCE_LEADING_ANCHOR_PARTITION"
+    )
+    assert [leaf["resolved_period"] for leaf in result["leaf_axis"]] == [
+        "31/12/2025",
+        "31/12/2025",
+        "31/12/2024",
+        "31/12/2024",
+    ]
+    assert [leaf["period_evidence_source_line_indices"] for leaf in result["leaf_axis"]] == [
+        [27, 29],
+        [27, 29],
+        [28, 30],
+        [28, 30],
+    ]
+    assert (
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            result,
+            headers,
+            column_centers=[957.5, 1084.5, 1330.0, 1442.25],
+            page_width=1623,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+        == result
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation", ["disjoint_fragment", "same_level_fragment", "all_low_confidence"]
+)
+def test_split_period_fragments_require_one_connected_exact_leading_lane_anchor(
+    mutation: str,
+) -> None:
+    headers = _split_vietnamese_date_headers()
+    if mutation == "disjoint_fragment":
+        headers[3]["bbox"] = [879, 860, 1014, 894]
+    elif mutation == "same_level_fragment":
+        headers[3]["bbox"] = [1248, 824, 1376, 858]
+    else:
+        headers[2]["bbox"] = [790, 860, 1012, 894]
+
+    result = _build_split_vietnamese_date_header(headers)
+
+    assert result["status"] == "UNRESOLVED_MULTILEVEL_HEADER_LEAF_AXIS"
+    assert result["leaf_axis"] == []
 
 
 def test_narrow_period_header_not_anchored_to_group_start_stays_unresolved() -> None:

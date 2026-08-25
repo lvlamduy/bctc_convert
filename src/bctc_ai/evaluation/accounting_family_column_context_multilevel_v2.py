@@ -74,8 +74,8 @@ PINNED_IMPLEMENTATION_REFS = {
     },
     "multilevel_header_leaf_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_multilevel_header_leaf_axis_v1.py",
-        "sha256": "7c94306ea2889ee444d7babdc827702128772d33f566757087b9046886b70d73",
-        "size_bytes": 29_732,
+        "sha256": "734d7abc4879aaa2b5ca68f6667fe9455da273705e86767def9fb65342fcaa32",
+        "size_bytes": 32_875,
     },
 }
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]

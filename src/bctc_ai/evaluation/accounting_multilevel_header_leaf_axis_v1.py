@@ -299,7 +299,9 @@ def _graph_period_records(
     ):
         return [], mode, "VISIBLE_PERIOD_PARENTS_DIFFER_FROM_DOCUMENT_BALANCE_PERIODS"
 
+    graph_edges = {(edge["parent_cell_id"], edge["child_cell_id"]) for edge in graph["edges"]}
     expanded = []
+    intersecting_fragment_span_used = False
     for record in records:
         evidence_cells = [cells[ordinal] for ordinal in record["cell_ordinals"]]
         spans = {
@@ -307,9 +309,32 @@ def _graph_period_records(
             for cell in evidence_cells
             if cell["column_start"] is not None
         }
-        if len(spans) != 1:
-            return [], mode, "PERIOD_PARENT_FRAGMENTS_DO_NOT_SHARE_ONE_COLUMN_SPAN"
-        start, stop = next(iter(spans))
+        if len(spans) == 1:
+            start, stop = next(iter(spans))
+        else:
+            start = max(span[0] for span in spans)
+            stop = min(span[1] for span in spans)
+            cell_ids = {cell["cell_id"] for cell in evidence_cells}
+            connected_ids = {min(evidence_cells, key=lambda cell: cell["level_start"])["cell_id"]}
+            while True:
+                expanded_ids = connected_ids | {
+                    child
+                    for parent, child in graph_edges
+                    if parent in connected_ids and child in cell_ids
+                }
+                if expanded_ids == connected_ids:
+                    break
+                connected_ids = expanded_ids
+            if (
+                stop != start + 1
+                or not any(
+                    (cell["column_start"], cell["column_stop"]) == (start, stop)
+                    for cell in evidence_cells
+                )
+                or connected_ids != cell_ids
+            ):
+                return [], mode, "PERIOD_PARENT_FRAGMENTS_DO_NOT_SHARE_ONE_COLUMN_SPAN"
+            intersecting_fragment_span_used = True
         expanded.append(
             {
                 "cell_ids": sorted(cell["cell_id"] for cell in evidence_cells),
@@ -321,6 +346,8 @@ def _graph_period_records(
                 "resolved_period": record["resolved_period"],
             }
         )
+    if intersecting_fragment_span_used:
+        mode += "_INTERSECTING_SPLIT_FRAGMENT_ANCHOR"
     return (
         sorted(expanded, key=lambda item: (item["column_start"], item["column_stop"])),
         mode,
@@ -357,7 +384,6 @@ def _leading_anchor_repeated_leaf_partition(
         or lane_count % 2
         or list(expected_lane_kinds[: lane_count // 2])
         != list(expected_lane_kinds[lane_count // 2 :])
-        or any(len(parent["cell_ids"]) != 1 for parent in parents)
     ):
         return None
     group_width = lane_count // 2
@@ -384,23 +410,60 @@ def _leading_anchor_repeated_leaf_partition(
 
     centers = graph["column_centers"]
     minimum_gap = min(right - left for left, right in zip(centers, centers[1:], strict=False))
-    edges = {(edge["parent_cell_id"], edge["child_cell_id"]) for edge in graph["edges"]}
+    children_by_parent: dict[str, set[str]] = {}
+    for edge in graph["edges"]:
+        children_by_parent.setdefault(edge["parent_cell_id"], set()).add(edge["child_cell_id"])
+
+    def reaches(source_ids: set[str], target_id: str) -> bool:
+        seen = set(source_ids)
+        frontier = set(source_ids)
+        while frontier:
+            if target_id in frontier:
+                return True
+            frontier = {
+                child
+                for parent in frontier
+                for child in children_by_parent.get(parent, set())
+                if child not in seen
+            }
+            seen.update(frontier)
+        return False
+
     ordered = sorted(
         parents,
-        key=lambda parent: sum(cells_by_id[parent["cell_ids"][0]]["bbox"][::2]),
+        key=lambda parent: (
+            sum(
+                (cells_by_id[cell_id]["bbox"][0] + cells_by_id[cell_id]["bbox"][2]) / 2
+                for cell_id in parent["cell_ids"]
+            )
+            / len(parent["cell_ids"])
+        ),
     )
     rescued = []
     for ordinal, (parent, (start, stop)) in enumerate(zip(ordered, target_spans, strict=True)):
-        parent_cell = cells_by_id[parent["cell_ids"][0]]
-        parent_center = (parent_cell["bbox"][0] + parent_cell["bbox"][2]) / 2
+        parent_cells = [cells_by_id[cell_id] for cell_id in parent["cell_ids"]]
+        anchor_cells = [
+            cell
+            for cell in parent_cells
+            if (cell["column_start"], cell["column_stop"])
+            == (parent["column_start"], parent["column_stop"])
+        ]
+        if not anchor_cells:
+            return None
+        parent_center = sum((cell["bbox"][0] + cell["bbox"][2]) / 2 for cell in anchor_cells) / len(
+            anchor_cells
+        )
         nearest_lane = min(range(lane_count), key=lambda lane: abs(parent_center - centers[lane]))
         leading_leaf = typed_by_lane[start][0]
         if (
             nearest_lane != start
             or abs(parent_center - centers[start]) > minimum_gap * 0.45
-            or (parent_cell["cell_id"], leading_leaf["cell_id"]) not in edges
-            or leading_leaf["level_start"] < parent_cell["level_stop"]
-            or leading_leaf["source_line_index"] <= parent_cell["source_line_index"]
+            or not reaches({cell["cell_id"] for cell in parent_cells}, leading_leaf["cell_id"])
+            or any(
+                leading_leaf["level_start"] < cell["level_stop"]
+                or leading_leaf["source_line_index"] <= cell["source_line_index"]
+                for cell in parent_cells
+            )
             or ordinal != start // group_width
         ):
             return None
@@ -533,6 +596,22 @@ def _axis_graph_ambiguity_reasons(
         if cell["cell_id"] in relevant_cell_ids
         for level in range(cell["level_start"], cell["level_stop"])
     }
+    low_confidence_ids = {
+        ambiguity.get("cell_id")
+        for ambiguity in graph["ambiguities"]
+        if ambiguity["kind"] == "LOW_CONFIDENCE_COLUMN_SPAN"
+    }
+    replayed_split_fragment_ids = {
+        cell_id
+        for parent in parents
+        if parent.get("partition_resolution")
+        == "REPEATED_TYPED_LEAF_SEQUENCE_LEADING_PERIOD_ANCHOR"
+        and len(parent["cell_ids"]) > 1
+        and any(cell_id in low_confidence_ids for cell_id in parent["cell_ids"])
+        and any(cell_id not in low_confidence_ids for cell_id in parent["cell_ids"])
+        for cell_id in parent["cell_ids"]
+        if cell_id in low_confidence_ids
+    }
     reasons = []
     for ambiguity in graph["ambiguities"]:
         kind = ambiguity["kind"]
@@ -541,6 +620,11 @@ def _axis_graph_ambiguity_reasons(
             "MERGED_HEADER_TOKEN_GRID_AMBIGUOUS",
         }:
             reasons.append("MERGED_PERIOD_OR_LEAF_HEADER_WITHOUT_WORD_BOXES_UNRESOLVED")
+        elif (
+            kind == "LOW_CONFIDENCE_COLUMN_SPAN"
+            and ambiguity.get("cell_id") in replayed_split_fragment_ids
+        ):
+            continue
         elif ambiguity.get("cell_id") in relevant_cell_ids:
             reasons.append("SHARED_MULTILEVEL_HEADER_GRAPH_AMBIGUOUS_ON_PROJECTED_AXIS")
         elif kind == "NON_CROSSING_COLUMN_SPAN_ASSIGNMENT_FAILED" and any(
