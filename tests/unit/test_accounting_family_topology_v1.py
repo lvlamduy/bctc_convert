@@ -453,6 +453,30 @@ def test_v4_flexible_role_pool_accepts_exact_combination_or_two_distinct_sibling
     assert branchless["regions"][0]["observed_roles"] == ["GAMMA", "BETA"]
 
 
+def test_v4_weak_context_free_matcher_needs_one_independent_presence_anchor() -> None:
+    spec = _flexible_role_pool_spec()
+    beta = next(child for child in spec["children"] if child["role"] == "BETA")
+    beta["matchers"][0]["presence_anchor"] = False
+
+    weak_only = build_accounting_family_topology_scan_v1([_page(["Bảng cho vay", "Loại B"])], spec)
+    completed = build_accounting_family_topology_scan_v1(
+        [_page(["Bảng cho vay", "Loại B", "Loại C"])], spec
+    )
+
+    assert weak_only["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert weak_only["metrics"]["core_semantic_anchor_hit_count"] == 0
+    assert weak_only["near_regions"][0]["observed_roles"] == ["BETA"]
+    assert completed["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert completed["regions"][0]["observed_roles"] == ["BETA", "GAMMA"]
+    assert completed["metrics"]["core_semantic_anchor_hit_count"] == 1
+
+    invalid = copy.deepcopy(spec)
+    invalid_beta = next(child for child in invalid["children"] if child["role"] == "BETA")
+    invalid_beta["matchers"][0]["presence_anchor"] = "false"
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="matcher fields drifted"):
+        build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], invalid)
+
+
 def test_v4_flexible_role_pool_counts_distinct_roles_and_fills_continuation_deficit() -> None:
     spec = _flexible_role_pool_spec()
     repeated_one_role = build_accounting_family_topology_scan_v1(

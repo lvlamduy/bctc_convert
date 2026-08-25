@@ -85,6 +85,11 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
             "aliases": ["Thành phần kinh tế khác"],
             "within_role": None,
         },
+        {
+            "aliases": ["Khác"],
+            "presence_anchor": False,
+            "within_role": None,
+        },
     ]
     assert ["ENTERPRISE_TYPE_BRANCH", "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"] in spec[
         "required_role_combinations"
@@ -216,7 +221,7 @@ def test_family12_bare_other_is_not_a_context_free_presence_anchor() -> None:
 
     assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
     assert result["metrics"]["core_semantic_anchor_hit_count"] == 0
-    assert result["near_regions"][0]["observed_roles"] == []
+    assert result["near_regions"][0]["observed_roles"] == ["OTHER_ENTERPRISE_LOANS"]
 
 
 def test_family12_explicit_other_wording_remains_a_context_free_role() -> None:

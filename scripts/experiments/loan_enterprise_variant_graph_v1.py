@@ -161,6 +161,10 @@ _EXTENDED_BOUNDARY_PREFIXES = (
     "nghiep vu phat hanh thu tin dung tra cham",
 )
 _EXTENDED_BRANCH_ALIASES: tuple[str, ...] = ()
+_EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES = (
+    "tien gui cua khach hang",
+    "tien gui khach hang",
+)
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_or_missing_companion_cells_imputed_as_zero": False,
@@ -231,6 +235,7 @@ def _variable_population_engine() -> ModuleType:
     module._BOUNDARY_PREFIXES = _BOUNDARY_PREFIXES
     module._EXTENDED_BRANCH_ALIASES = _EXTENDED_BRANCH_ALIASES
     module._EXTENDED_BOUNDARY_PREFIXES = _EXTENDED_BOUNDARY_PREFIXES
+    module._EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES = _EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES
     module._EXTENDED_ROLE_ALIASES = _EXTENDED_ROLE_ALIASES
     return module
 

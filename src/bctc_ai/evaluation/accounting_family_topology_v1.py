@@ -232,11 +232,15 @@ def _spec(value: Any) -> dict[str, Any]:
             if type(raw_matchers) is not list or not raw_matchers:
                 raise _error("contextual accounting family role needs at least one matcher")
             matchers = []
-            seen_matchers: set[tuple[tuple[str, ...], str | None]] = set()
+            seen_matchers: set[tuple[tuple[str, ...], str | None, bool]] = set()
             for raw_matcher in raw_matchers:
                 if (
                     type(raw_matcher) is not dict
-                    or set(raw_matcher) != {"aliases", "within_role"}
+                    or set(raw_matcher)
+                    not in (
+                        {"aliases", "within_role"},
+                        {"aliases", "presence_anchor", "within_role"},
+                    )
                     or (
                         raw_matcher["within_role"] is not None
                         and (
@@ -244,24 +248,35 @@ def _spec(value: Any) -> dict[str, Any]:
                             or not raw_matcher["within_role"]
                         )
                     )
+                    or type(raw_matcher.get("presence_anchor", True)) is not bool
                 ):
                     raise _error("contextual accounting family matcher fields drifted")
                 matcher_aliases = _aliases(
                     raw_matcher["aliases"], f"{role} contextual matcher aliases"
                 )
-                signature = (tuple(matcher_aliases), raw_matcher["within_role"])
+                presence_anchor = raw_matcher.get("presence_anchor", True)
+                signature = (
+                    tuple(matcher_aliases),
+                    raw_matcher["within_role"],
+                    presence_anchor,
+                )
                 if signature in seen_matchers:
                     raise _error("contextual accounting family matchers must be unique")
                 seen_matchers.add(signature)
                 matchers.append(
                     {
                         "aliases": matcher_aliases,
+                        "presence_anchor": presence_anchor,
                         "within_role": raw_matcher["within_role"],
                     }
                 )
         else:
             matchers = [
-                {"aliases": _aliases(raw["aliases"], f"{role} aliases"), "within_role": None}
+                {
+                    "aliases": _aliases(raw["aliases"], f"{role} aliases"),
+                    "presence_anchor": True,
+                    "within_role": None,
+                }
             ]
         children.append(
             {
@@ -778,6 +793,7 @@ def _role_hits(
     page_sequence: int,
     surface_candidates: Sequence[Sequence[Mapping[str, Any]]] | None = None,
     within_role: str | None = None,
+    presence_anchor: bool = True,
     allow_bare_numeric_heading_prefix: bool = False,
     allow_decorative_parenthetical_removal: bool = False,
     allow_leading_alias: bool = False,
@@ -848,6 +864,8 @@ def _role_hits(
                 hit["source_line_indices"] = selected_source_indices
             if within_role is not None:
                 hit["_within_role"] = within_role
+            if not presence_anchor:
+                hit["_presence_anchor"] = False
             hits.append(hit)
             break
     # A wrapped match may also expose an exact shorter match beginning on its
@@ -884,6 +902,7 @@ def _page_hits(
                     page_sequence=page["page_sequence"],
                     surface_candidates=surfaces,
                     within_role=matcher["within_role"],
+                    presence_anchor=matcher["presence_anchor"],
                     allow_decorative_parenthetical_removal=(allow_decorative_parenthetical_removal),
                 )
             )
@@ -1634,13 +1653,24 @@ def _build(
     near = [candidate for candidate in candidates if candidate["unresolved_reasons"]]
     unique = len(complete) == 1 and complete[0]["minimal_unique_anchor"] is not None
     semantic_anchor_hit_count = len(combined_hits["parents"]) + sum(
-        len(hits) for hits in combined_hits["children"].values()
+        sum(hit.get("_presence_anchor", True) is True for hit in hits)
+        for hits in combined_hits["children"].values()
     )
     core_roles = {
         role for combination in spec["required_role_combinations"] for role in combination
     }
     core_roles.update(role for pool in spec["required_role_pools"] for role in pool["roles"])
     if spec["presence_evidence_mode"] == "WITHIN_EXPLICIT_PARENT_CLUSTER":
+
+        def record_is_presence_anchor(record: Mapping[str, Any]) -> bool:
+            return any(
+                hit["document_line_ordinal"] == record["document_line_ordinal"]
+                and hit["end_document_line_ordinal"] == record["end_document_line_ordinal"]
+                and hit.get("_within_role") == record.get("matched_within_role")
+                and hit.get("_presence_anchor", True) is True
+                for hit in combined_hits["children"][record["role"]]
+            )
+
         scoped_core_hits = {
             (record["role"], record["document_line_ordinal"])
             for candidate in explicit
@@ -1649,12 +1679,15 @@ def _build(
                 for record in candidate["child_matches"]
             )
             for record in candidate["child_matches"]
-            if record["role"] in core_roles
+            if record["role"] in core_roles and record_is_presence_anchor(record)
         }
         core_semantic_anchor_hit_count = len(scoped_core_hits)
     else:
         core_semantic_anchor_hit_count = sum(
-            len(combined_hits["children"][role]) for role in core_roles
+            sum(
+                hit.get("_presence_anchor", True) is True for hit in combined_hits["children"][role]
+            )
+            for role in core_roles
         )
     return {
         "metrics": {

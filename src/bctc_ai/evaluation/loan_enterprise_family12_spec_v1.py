@@ -171,7 +171,7 @@ def _child(
     historical_disposition: str = "OBSERVED_OR_SCHEMA_DECLARED",
     bounded_edit: bool = True,
     binding_class: str = "STANDARD_SCHEMA_ROW",
-    contextual_only_aliases: list[str] | None = None,
+    weak_context_free_aliases: list[str] | None = None,
     schema_parent_report_norm_id: int = REPORT_NORM_ID,
 ) -> dict[str, Any]:
     child = {
@@ -183,8 +183,8 @@ def _child(
         "report_norm_id": report_norm_id,
         "schema_parent_report_norm_id": schema_parent_report_norm_id,
     }
-    if contextual_only_aliases:
-        child["contextual_only_aliases"] = contextual_only_aliases
+    if weak_context_free_aliases:
+        child["weak_context_free_aliases"] = weak_context_free_aliases
     return child
 
 
@@ -323,7 +323,7 @@ _CHILDREN = [
             "Khác",
             "Thành phần kinh tế khác",
         ],
-        contextual_only_aliases=["Khác"],
+        weak_context_free_aliases=["Khác"],
     ),
     _child(
         6058,
@@ -425,18 +425,26 @@ def _distinct_aliases(aliases: list[str]) -> list[str]:
 def _topology_child(child: dict[str, Any]) -> dict[str, Any]:
     report_norm_id = child["report_norm_id"]
     aliases = _distinct_aliases(child["aliases"])
-    contextual_only = set(child.get("contextual_only_aliases", []))
-    context_free_aliases = [alias for alias in aliases if alias not in contextual_only]
+    weak_context_free = set(child.get("weak_context_free_aliases", []))
+    strong_context_free_aliases = [alias for alias in aliases if alias not in weak_context_free]
     matchers = [
         {
             "aliases": aliases,
             "within_role": "ENTERPRISE_TYPE_BRANCH",
         }
     ]
-    if context_free_aliases:
+    if strong_context_free_aliases:
         matchers.append(
             {
-                "aliases": context_free_aliases,
+                "aliases": strong_context_free_aliases,
+                "within_role": None,
+            }
+        )
+    if weak_context_free:
+        matchers.append(
+            {
+                "aliases": [alias for alias in aliases if alias in weak_context_free],
+                "presence_anchor": False,
                 "within_role": None,
             }
         )

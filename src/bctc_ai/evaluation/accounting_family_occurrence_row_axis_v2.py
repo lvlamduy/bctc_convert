@@ -1010,12 +1010,12 @@ _DEPENDENCIES = {
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "f3e8becbeda665740110773921135da7516346184e47572e9ef04b098af894f1",
-        "size_bytes": 76_058,
+        "sha256": "65e88f2a28a214a71ba47ce2d237dbbc021d5be5d1cf34794aa9776908b2ed66",
+        "size_bytes": 77_499,
     },
     "topology_candidates_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_candidates_v2.py",
-        "sha256": "92af9aeb66676b5642b53e9898a0e6ac8ac99fd076ef20b81392c36924ffba08",
+        "sha256": "133a36a83b9df2102690691887799d1b62ed83deee9981b58c96d847f55d36f7",
         "size_bytes": 32_335,
     },
 }
@@ -3821,7 +3821,57 @@ def _project_unique_contextual_structural_body_matches_v1(
         and not _same_row_numeric_samples(pages, match)
     ]
     if not siblings:
-        return decorated
+        # A contextual subgroup can begin on the sole continuation page after
+        # one or more valued sibling tables under the broad outer parent.  In
+        # that shape the subgroup heading itself is the exact visual fence;
+        # requiring a separate SOURCE_ONLY_GROUP_PARENT sibling would retain
+        # the preceding table and manufacture competing body grids.  Admit the
+        # boundary only when the outer region starts on the immediately prior
+        # page, every valued non-owned additive row is strictly before the
+        # subgroup, and every matched record at/after the subgroup is owned by
+        # it.  Same-page sibling-free layouts remain byte-for-byte unchanged.
+        region_page = region.get("page_sequence")
+        owner_page = owner.get("page_sequence")
+        unowned_visible = [
+            match
+            for match in decorated
+            if match.get("role_kind") == "ADDITIVE_CHILD"
+            and match.get("scope_owner_occurrence_id") != owner["occurrence_id"]
+            and _same_row_numeric_samples(pages, match)
+        ]
+        owner_visible = [
+            match
+            for match in decorated
+            if match.get("role_kind") == "ADDITIVE_CHILD"
+            and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
+            and _same_row_numeric_samples(pages, match)
+        ]
+        owner_lane_counts = {
+            len(_same_row_numeric_samples(pages, match)) for match in owner_visible
+        }
+        post_owner_unowned = [
+            match
+            for match in decorated
+            if match.get("occurrence_id") != owner["occurrence_id"]
+            and visual_key(match) >= owner_key
+            and match.get("scope_owner_occurrence_id") != owner["occurrence_id"]
+        ]
+        if (
+            type(region_page) is not int
+            or type(owner_page) is not int
+            or region.get("continuation_page_count") != 1
+            or owner_page != region_page + 1
+            or not unowned_visible
+            or len(owner_lane_counts) != 1
+            or 0 in owner_lane_counts
+            or any(
+                len(_same_row_numeric_samples(pages, match)) in owner_lane_counts
+                for match in unowned_visible
+            )
+            or any(visual_key(match) >= owner_key for match in unowned_visible)
+            or post_owner_unowned
+        ):
+            return decorated
     following = [match for match in siblings if visual_key(match) > owner_key]
     stop_key: tuple[int, float, int] | None = None
     if following:

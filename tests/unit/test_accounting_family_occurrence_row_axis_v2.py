@@ -829,6 +829,136 @@ def test_unique_contextual_structural_body_projects_only_exact_sibling_interval(
     )
 
 
+def test_unique_contextual_structural_body_projects_exact_next_page_boundary() -> None:
+    pages = [
+        {
+            "lines": [
+                _line(0, "Prior role", "", [45, 90, 430, 110]),
+                _line(1, "10", "10", [610, 90, 700, 110]),
+                _line(2, "9", "9", [810, 90, 900, 110]),
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        },
+        {
+            "lines": [
+                _line(0, "Prior role", "", [45, 40, 430, 60]),
+                _line(1, "8", "8", [610, 40, 700, 60]),
+                _line(2, "7", "7", [810, 40, 900, 60]),
+                _line(3, "Target view", "", [45, 120, 430, 140]),
+                _line(4, "Target A", "", [45, 170, 430, 190]),
+                _line(5, "60", "60", [610, 170, 700, 190]),
+                _line(6, "60%", "60%", [710, 170, 780, 190]),
+                _line(7, "50", "50", [810, 170, 900, 190]),
+                _line(8, "50%", "50%", [910, 170, 980, 190]),
+                _line(9, "Target B", "", [45, 210, 430, 230]),
+                _line(10, "40", "40", [610, 210, 700, 230]),
+                _line(11, "40%", "40%", [710, 210, 780, 230]),
+                _line(12, "35", "35", [810, 210, 900, 230]),
+                _line(13, "35%", "35%", [910, 210, 980, 230]),
+            ],
+            "page_sequence": 2,
+            "page_width": 1000,
+        },
+    ]
+
+    def match(
+        role: str,
+        role_kind: str,
+        page: int,
+        line: int,
+        document_line: int,
+        *,
+        within_role: str | None = None,
+        ordinal: int = 0,
+    ) -> dict[str, object]:
+        return {
+            "document_line_ordinal": document_line,
+            "end_document_line_ordinal": document_line,
+            "end_source_line_index": line,
+            "match_kind": "EXACT_ACCENTLESS_ALIAS",
+            "matched_within_role": within_role,
+            "normalized_surface": role.lower(),
+            "page_sequence": page,
+            "preferred_ordinal": document_line,
+            "presence": "OPTIONAL",
+            "role": role,
+            "role_kind": role_kind,
+            "role_occurrence_ordinal": ordinal,
+            "source_line_index": line,
+            "surface": role,
+        }
+
+    raw = [
+        match("PRIOR_ROLE", "ADDITIVE_CHILD", 1, 0, 0),
+        match("PRIOR_ROLE", "ADDITIVE_CHILD", 2, 0, 100, ordinal=1),
+        match("TARGET_VIEW", "STRUCTURAL_GROUP", 2, 3, 103),
+        match("TARGET_A", "ADDITIVE_CHILD", 2, 4, 104, within_role="TARGET_VIEW"),
+        match("TARGET_B", "ADDITIVE_CHILD", 2, 9, 109, within_role="TARGET_VIEW"),
+    ]
+    region = {
+        "cluster_end_document_line_ordinal_exclusive": 114,
+        "cluster_start_document_line_ordinal": 0,
+        "continuation_page_count": 1,
+        "page_sequence": 1,
+        "parent_match": {"role": "OUTER"},
+    }
+    decorated = subject._decorate_scopes(raw, region)
+
+    projected = subject._project_unique_contextual_structural_body_matches_v1(
+        pages,
+        decorated,
+        region,
+    )
+
+    assert [item["role"] for item in projected] == ["TARGET_VIEW", "TARGET_A", "TARGET_B"]
+
+    wrong_continuation = copy.deepcopy(region)
+    wrong_continuation["continuation_page_count"] = 0
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            pages,
+            decorated,
+            wrong_continuation,
+        )
+        == decorated
+    )
+
+    same_lane_pages = copy.deepcopy(pages)
+    same_lane_pages[1]["lines"] = [
+        line for line in same_lane_pages[1]["lines"] if line["line_ordinal"] not in {6, 8, 11, 13}
+    ]
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            same_lane_pages,
+            decorated,
+            region,
+        )
+        == decorated
+    )
+
+    pages_with_later_outer = copy.deepcopy(pages)
+    pages_with_later_outer[1]["lines"].extend(
+        [
+            _line(14, "Later outer", "", [45, 260, 430, 280]),
+            _line(15, "20", "20", [610, 260, 700, 280]),
+            _line(16, "18", "18", [810, 260, 900, 280]),
+        ]
+    )
+    attacked = subject._decorate_scopes(
+        [*raw, match("LATER_OUTER", "ADDITIVE_CHILD", 2, 14, 114)],
+        {**region, "cluster_end_document_line_ordinal_exclusive": 117},
+    )
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            pages_with_later_outer,
+            attacked,
+            {**region, "cluster_end_document_line_ordinal_exclusive": 117},
+        )
+        == attacked
+    )
+
+
 def test_prose_candidate_with_empty_v1_grid_is_typed_unresolved_without_margin_numeric() -> None:
     pages = [
         {

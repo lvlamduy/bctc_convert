@@ -105,9 +105,9 @@ def _pages(*, detail_first: bool = False) -> list[dict]:
 def test_prepruning_axis_retains_summary_and_detail_while_v1_stays_sealed() -> None:
     topology_path = _PROJECT_ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py"
     payload = topology_path.read_bytes()
-    assert len(payload) == 76_058
+    assert len(payload) == 77_499
     assert hashlib.sha256(payload).hexdigest() == (
-        "f3e8becbeda665740110773921135da7516346184e47572e9ef04b098af894f1"
+        "65e88f2a28a214a71ba47ce2d237dbbc021d5be5d1cf34794aa9776908b2ed66"
     )
     legacy = topology_v1.build_accounting_family_topology_scan_v1(_pages(), _spec())
     result = subject.build_accounting_family_topology_candidates_v2(_pages(), _spec())

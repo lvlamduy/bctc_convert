@@ -229,6 +229,7 @@ _BOUNDARY_PREFIXES = (
     "du phong rui ro cho vay khach hang",
 )
 _EXTENDED_BOUNDARY_PREFIXES = ("nghiep vu phat hanh thu tin dung tra cham",)
+_EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES: tuple[str, ...] = ()
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_or_missing_companion_cells_imputed_as_zero": False,
@@ -472,6 +473,34 @@ def _customer_loan_context(
                 selected["mode"] = "IMMEDIATE_PREVIOUS_PAGE_CUSTOMER_LOAN_OWNER"
                 return selected
     return None
+
+
+def _explicit_branch_parent_is_hard_vetoed(
+    lines: Sequence[Mapping[str, Any]],
+    branch_start: int,
+) -> bool:
+    """Keep a declared neighbouring-family owner stronger than a bare branch.
+
+    An explicit analysis branch may normally act as the family parent.  A
+    consuming family can nevertheless declare exact neighbouring owner
+    prefixes that must fence that fallback.  The veto is deliberately local:
+    the wrapped owner must end immediately before the branch, so an unrelated
+    earlier note heading cannot suppress a later independent table.
+    """
+
+    if not _EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES or branch_start <= 0:
+        return False
+    start_floor = max(0, branch_start - _MAX_LABEL_WIDTH)
+    for start in range(start_floor, branch_start):
+        normalized = normalize_vietnamese_anchor_v1(_joined(lines, start, branch_start))
+        without_ordinal = re.sub(r"^(?:\d+[a-z]?|[ivxlcdm]+)\s+", "", normalized)
+        if any(
+            candidate.startswith(prefix)
+            for candidate in (normalized, without_ordinal)
+            for prefix in _EXPLICIT_BRANCH_PARENT_HARD_VETO_PREFIXES
+        ):
+            return True
+    return False
 
 
 def _is_boundary(text: str, *, enable_extended_annual_variants: bool) -> bool:
@@ -1275,6 +1304,9 @@ def _region(
     )
     customer_loan_context = _customer_loan_context(pages, page, first_label)
     if customer_loan_context is None:
+        if _explicit_branch_parent_is_hard_vetoed(lines, branch_start):
+            near["unresolved_reasons"] = ["CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED"]
+            return None, near
         # The explicit industry-analysis branch is itself the family parent.
         # A separately printed ``Cho vay khach hang`` note owner is useful
         # context but not mandatory when the branch precedes a typed child

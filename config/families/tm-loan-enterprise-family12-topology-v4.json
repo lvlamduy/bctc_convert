@@ -562,6 +562,13 @@
             "Thành phần kinh tế khác"
           ],
           "within_role": null
+        },
+        {
+          "aliases": [
+            "Khác"
+          ],
+          "presence_anchor": false,
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
