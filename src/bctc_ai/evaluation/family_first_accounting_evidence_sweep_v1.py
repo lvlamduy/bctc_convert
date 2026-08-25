@@ -2531,16 +2531,24 @@ def _v4_ready_visible_correlated_detail_supersedes_visible_summary(
                 return False
             visible_record = records.get(source_role)
             expected_parent = family_id if role == family_id else role
-            expected_kind = (
-                visible_record.get("source", {}).get("record", {}).get("role_kind")
-                if type(visible_record) is dict
-                else None
-            )
-            if type(visible_record) is not dict or not same_typed_json_v1(
-                record.get("source"), visible_record.get("source")
-            ):
-                return False
-            consumed_alias_roles.add(source_role)
+            if type(visible_record) is dict:
+                expected_kind = visible_record.get("source", {}).get("record", {}).get("role_kind")
+                if not same_typed_json_v1(record.get("source"), visible_record.get("source")):
+                    return False
+                consumed_alias_roles.add(source_role)
+            else:
+                # Closure may retain the exact visible presentation row only
+                # as the corroborated structural result's source instead of
+                # emitting a second resolved-role alias.  Authenticate that
+                # row directly; never manufacture another accounting value.
+                expected_kind = source_record.get("role_kind")
+                visible_record = {
+                    "component_roles": [],
+                    "resolution_kind": "VISIBLE_SOURCE_ROLE",
+                    "role": source_role,
+                    "source": canonical_clone_v1(source),
+                    "values": canonical_clone_v1(record.get("values")),
+                }
         if expected_kind not in {"STRUCTURAL_GROUP", "TOTAL"}:
             return False
         exact = _v4_exact_visible_role_axis(

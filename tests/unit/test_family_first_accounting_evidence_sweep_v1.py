@@ -3771,6 +3771,12 @@ def _v4_visible_summary_and_correlated_detail_candidates(
             alias_role="EXPLICIT_FAMILY_TOTAL",
             result_role=family,
         )
+        detail["additive_closure"]["resolved_roles"] = [
+            record
+            for record in detail["additive_closure"]["resolved_roles"]
+            if record["role"]
+            not in {"EXPLICIT_INTERBANK_DEPOSIT_TOTAL", "EXPLICIT_INTERBANK_LOAN_TOTAL"}
+        ]
     _v4_reseal_candidate_envelopes(detail)
     return summary, detail
 
