@@ -29,6 +29,9 @@ from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
+from bctc_ai.evaluation.family_first_numeric_cell_evidence_v1 import (
+    parse_visible_financial_numeric_token_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -37,12 +40,14 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "HIERARCHY_FRONTIER_FORMAT_VERSION",
     "PARENT_FRONTIER_FORMAT_VERSION",
     "AccountingFamilyOneEditExactAuthorityV1Error",
     "build_accounting_family_one_edit_exact_authority_v1",
     "family_parent_exact_frontier_result_cluster_v1",
     "family_parent_has_exact_authority_v1",
     "project_accounting_family_one_edit_parent_frontier_authority_v1",
+    "project_accounting_family_one_edit_hierarchy_frontier_authority_v1",
     "validate_accounting_family_one_edit_exact_authority_receipt_shape_v1",
     "validate_accounting_family_one_edit_exact_authority_replay_v1",
 ]
@@ -50,6 +55,7 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V2"
 PARENT_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V3"
+HIERARCHY_FRONTIER_FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V4"
 CLAIM_BOUNDARY = (
     "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_EITHER_INDEPENDENT_EXACT_"
     "BOUND_SOURCE_TEXT_ALIAS_OR_AUTHENTICATED_SAME_CROP_COMPLEMENTARY_EXACT_TOKEN_"
@@ -62,6 +68,14 @@ PARENT_FRONTIER_CLAIM_BOUNDARY = (
     "PARENT_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_LANE_AXIS_WITH_SOURCE_OBSERVED_"
     "NUMBERS_ONLY_NO_DIGIT_BACKSOLVE_PARENT_PLUS_OWN_LEAF_DOUBLE_COUNT_SCHEMA_"
     "MAPPING_OR_BANK_FILE_PAGE_PERIOD_SCOPE_ROUTING_AUTHORITY"
+)
+HIERARCHY_FRONTIER_CLAIM_BOUNDARY = (
+    "SELECTED_V4_ONE_EDIT_COMPONENT_OR_FAMILY_PARENT_MAY_BE_BOUND_ONLY_BY_ONE_"
+    "HIERARCHY_DECLARED_EXHAUSTIVE_ORDERED_DIRECT_FRONTIER_WITH_ONE_SOURCE_"
+    "VISIBLE_RESULT_AND_ALL_SOURCE_VISIBLE_COMPONENT_VALUES_ON_THE_IDENTICAL_"
+    "PHYSICAL_PAGE_ROOT_PERIOD_UNIT_AND_COMPLETE_LANE_AXIS_MIXED_GROUPING_"
+    "REQUIRES_AUTHENTICATED_SAME_CROP_INDEPENDENT_EXACT_INTEGER_REPLAY_NO_"
+    "BACKSOLVE_ROUNDING_PARENT_PLUS_DESCENDANT_DOUBLE_COUNT_OR_ROUTING_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
@@ -107,6 +121,24 @@ _PARENT_FRONTIER_AUTHORITY_SPEC = {
         "unique_frontier_required": True,
     },
 }
+_HIERARCHY_FRONTIER_AUTHORITY_SPEC = {
+    **_AUTHORITY_SPEC,
+    "hierarchy_direct_frontier_authority": {
+        "component_frontier": (
+            "UNIQUE_EXHAUSTIVE_DIRECT_SOURCE_SIBLINGS_PERSISTED_IN_HIERARCHY_DECLARED_ORDER"
+        ),
+        "physical_sibling_order_is_bound_but_may_differ_from_declaration_order": True,
+        "exact_equation_required_in_every_lane": True,
+        "mixed_grouping_requires_same_crop_independent_exact_integer": True,
+        "mixed_node_requires_two_certified_lane_peers_and_one_raw_signed_anchor": True,
+        "one_source_visible_result_required": True,
+        "result_carriers": ["LABELED_PARENT_CLUSTER", "ROLE_OCCURRENCE"],
+        "same_page_root_period_unit_and_complete_lane_axis_required": True,
+        "source_observed_numeric_assignments_only": True,
+        "target_kinds": ["COMPONENT", "FAMILY_PARENT"],
+        "unique_exhaustive_frontier_required": True,
+    },
+}
 _SAFETY = {
     "bank_file_page_period_scope_used_for_routing": False,
     "discarded_or_near_one_edit_match_can_veto_selected_candidate": False,
@@ -127,6 +159,13 @@ _PARENT_FRONTIER_SAFETY = {
     "same_label_under_a_different_parent_is_same_occurrence": False,
     "structural_parent_frontier_requires_public_exact_replay": True,
 }
+_HIERARCHY_FRONTIER_SAFETY = {
+    **_PARENT_FRONTIER_SAFETY,
+    "arithmetic_can_backsolve_a_missing_result_or_component": False,
+    "hierarchy_alternative_can_be_selected_from_a_partial_visible_frontier": False,
+    "mixed_grouped_token_can_be_reclassified_or_mutated": False,
+    "result_and_component_source_samples_must_be_disjoint": True,
+}
 _RESULT_FIELDS = {
     "authority_spec",
     "checks",
@@ -145,6 +184,11 @@ _PARENT_FRONTIER_RESULT_FIELDS = {
     "parent_frontier_authority",
     "source_exact_authority_receipt",
 }
+_HIERARCHY_FRONTIER_RESULT_FIELDS = {
+    *_RESULT_FIELDS,
+    "hierarchy_direct_frontier_authority",
+    "source_exact_authority_receipt",
+}
 _INPUT_BINDING_FIELDS = {
     "document_pages_sha256",
     "expanded_occurrence_region_sha256",
@@ -159,6 +203,11 @@ _PARENT_FRONTIER_INPUT_BINDING_FIELDS = {
     "role_occurrences_sha256",
     "row_axis_sha256",
     "source_exact_authority_receipt_sha256",
+}
+_HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS = {
+    *_PARENT_FRONTIER_INPUT_BINDING_FIELDS,
+    "column_policy_sha256",
+    "hierarchy_spec_sha256",
 }
 _METRIC_FIELDS = {
     "exact_bound_count",
@@ -257,6 +306,80 @@ _PARENT_FRONTIER_COMPONENT_BINDING_FIELDS = {
     "retrieval_role",
     "retrieval_within_role",
     "source_line_indices",
+}
+_HIERARCHY_FRONTIER_BOUND_STATUS = "EXACT_HIERARCHY_DIRECT_FRONTIER_AUTHORITY_BOUND"
+_HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION = (
+    "ACCOUNTING_FAMILY_ONE_EDIT_HIERARCHY_DIRECT_FRONTIER_AUTHORITY_PROOF_V1"
+)
+_HIERARCHY_FRONTIER_PROOF_FIELDS = {
+    "column_context_receipt",
+    "component_frontier_bindings",
+    "format_version",
+    "hierarchy_equation_binding",
+    "input_binding",
+    "numeric_cell_certificates",
+    "page_sequence",
+    "proof_id",
+    "result_carrier_binding",
+    "root_occurrence_id",
+    "source_check",
+    "status",
+    "target_kind",
+    "target_occurrence_id",
+    "target_role",
+}
+_HIERARCHY_FRONTIER_EQUATION_BINDING_FIELDS = {
+    "alternative_ordinal",
+    "alternative_spec",
+    "compiled_equation_sha256",
+    "component_roles",
+    "hierarchy_spec_sha256",
+    "result_role",
+    "visible_result_roles",
+}
+_HIERARCHY_FRONTIER_RESULT_CARRIER_FIELDS = {
+    "carrier_kind",
+    "cluster_id",
+    "numbers",
+    "occurrence_id",
+    "role_occurrence_sha256",
+    "semantic_result_role",
+    "sample_ids",
+    "source_line_indices",
+    "source_record_sha256",
+    "source_role",
+}
+_HIERARCHY_FRONTIER_COMPONENT_FIELDS = {
+    "component_ordinal",
+    "numbers",
+    "occurrence_id",
+    "retrieval_occurrence_id",
+    "role",
+    "role_occurrence_sha256",
+    "row_sha256",
+    "sample_ids",
+    "source_line_indices",
+    "source_visual_ordinal",
+    "visual_match_key_sha256",
+}
+_HIERARCHY_FRONTIER_CELL_FIELDS = {
+    "bbox",
+    "certificate_kind",
+    "column_ordinal",
+    "crop_ref",
+    "node_kind",
+    "node_ordinal",
+    "number",
+    "numeric_sample_sha256",
+    "page_line_sha256",
+    "page_sequence",
+    "pp_classification",
+    "pp_surface",
+    "role",
+    "sample_id",
+    "source_line_index",
+    "vietocr_number",
+    "vietocr_surface",
 }
 _PARENT_MATCH_BINDING_FIELDS = {
     "document_line_span",
@@ -2785,7 +2908,10 @@ def family_parent_exact_frontier_result_cluster_v1(
 
     receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
     if receipt["format_version"] != PARENT_FRONTIER_FORMAT_VERSION:
-        return None
+        return hierarchy_frontier_result_cluster_v1(
+            receipt,
+            structural_evidence=structural_evidence,
+        )
     evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
     _validate_parent_frontier_against_structural_evidence_v1(receipt, evidence)
     return _validate_parent_frontier_against_closure_axes_v1(
@@ -3176,6 +3302,1540 @@ def project_accounting_family_one_edit_parent_frontier_authority_v1(
     )
 
 
+def _hierarchy_frontier_input_binding_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    column_context: Mapping[str, Any],
+    hierarchy_spec: Any,
+    column_policy: Mapping[str, Any],
+) -> dict[str, str]:
+    return {
+        **_parent_frontier_input_binding_v1(source_receipt, evidence, column_context),
+        "hierarchy_spec_sha256": canonical_json_sha256_v1(hierarchy_spec),
+        "column_policy_sha256": canonical_json_sha256_v1(column_policy),
+    }
+
+
+def _hierarchy_frontier_number(value: Mapping[str, Any]) -> dict[str, Any] | None:
+    return occurrence_row_v2._direct_frontier_number(value)  # noqa: SLF001
+
+
+def _hierarchy_frontier_source_line_indices(match: Mapping[str, Any]) -> list[int]:
+    explicit = match.get("source_line_indices")
+    if type(explicit) is list:
+        return canonical_clone_v1(explicit)
+    start = match.get("source_line_index")
+    stop = match.get("end_source_line_index")
+    if type(start) is int and type(stop) is int and stop >= start:
+        return list(range(start, stop + 1))
+    return []
+
+
+def _hierarchy_frontier_row_receipt_v1(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    return occurrence_row_v2._direct_frontier_row_receipt(row)  # noqa: SLF001
+
+
+def _hierarchy_frontier_cell_certificate_v1(
+    sample: Mapping[str, Any],
+    *,
+    node_kind: str,
+    node_ordinal: int,
+    role: str,
+    page_line_by_sample: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    sample_id = sample.get("sample_id")
+    line = page_line_by_sample.get(sample_id) if type(sample_id) is str else None
+    parsed = sample.get("parsed_token")
+    number = _hierarchy_frontier_number(sample)
+    if (
+        type(line) is not dict
+        or type(parsed) is not dict
+        or number is None
+        or line.get("sample_id") != sample_id
+        or line.get("source_line_index") != sample.get("line_ordinal")
+        or line.get("bbox") != sample.get("bbox")
+        or line.get("numeric_recognition", {}).get("raw_prediction") != sample.get("raw_prediction")
+        or type(line.get("vietocr_text")) is not str
+    ):
+        return None
+    try:
+        crop_ref = _crop_reference(line.get("crop_ref"))
+    except AccountingFamilyOneEditExactAuthorityV1Error:
+        return None
+    classification = parsed.get("classification")
+    vietocr_surface = line["vietocr_text"]
+    vietocr_parsed = parse_visible_financial_numeric_token_v1(vietocr_surface)
+    vietocr_number = None
+    if classification == "SIGNED_NUMBER":
+        certificate_kind = "RAW_SIGNED_SOURCE_VISIBLE"
+    elif classification == "MIXED_GROUPED_INTEGER_CANDIDATE":
+        if (
+            vietocr_parsed.get("classification") != "SIGNED_NUMBER"
+            or vietocr_parsed.get("coefficient") != number["coefficient"]
+            or vietocr_parsed.get("scale") != number["scale"]
+            or vietocr_parsed.get("percentage_mark_present")
+            is not number["percentage_mark_present"]
+            or number["scale"] != 0
+            or number["percentage_mark_present"] is not False
+        ):
+            return None
+        certificate_kind = "MIXED_SAME_CROP_EXACT_INTEGER"
+        vietocr_number = canonical_clone_v1(number)
+    else:
+        return None
+    return {
+        "bbox": canonical_clone_v1(sample["bbox"]),
+        "certificate_kind": certificate_kind,
+        "column_ordinal": sample["column_ordinal"],
+        "crop_ref": crop_ref,
+        "node_kind": node_kind,
+        "node_ordinal": node_ordinal,
+        "number": canonical_clone_v1(number),
+        "numeric_sample_sha256": canonical_json_sha256_v1(sample),
+        "page_line_sha256": canonical_json_sha256_v1(line),
+        "page_sequence": sample["page_sequence"],
+        "pp_classification": classification,
+        "pp_surface": sample["raw_prediction"],
+        "role": role,
+        "sample_id": sample_id,
+        "source_line_index": sample["line_ordinal"],
+        "vietocr_number": vietocr_number,
+        "vietocr_surface": vietocr_surface,
+    }
+
+
+def _hierarchy_frontier_page_line_from_sample_v1(
+    sample: Mapping[str, Any],
+    vietocr_surface: str,
+) -> dict[str, Any]:
+    """Rebuild the exact authority-page line committed by a V4 cell certificate."""
+
+    return {
+        "bbox": canonical_clone_v1(sample["bbox"]),
+        "crop_ref": canonical_clone_v1(sample["crop_ref"]),
+        "normalized_text": normalize_vietnamese_anchor_v1(vietocr_surface),
+        "numeric_recognition": {
+            "raw_prediction": sample["raw_prediction"],
+            "reader_score": sample["reader_score"],
+        },
+        "sample_id": sample["sample_id"],
+        "source_line_index": sample["line_ordinal"],
+        "source_text": sample["raw_prediction"],
+        "vietocr_text": vietocr_surface,
+    }
+
+
+def _compiled_hierarchy_frontier_equation_v1(
+    hierarchy_spec: Any,
+    family_spec: Any,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    # Lazy import avoids a module-import cycle: scoped closure imports this
+    # authority module, while this public projector reuses closure's sole
+    # hierarchy compiler instead of introducing a private parser.
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_scoped_hierarchical_table_closure_v2 as closure_v2,
+    )
+
+    try:
+        compiled = closure_v2._spec(hierarchy_spec, family_spec)  # noqa: SLF001
+    except closure_v2.AccountingScopedHierarchicalTableClosureV2Error as exc:
+        raise _error("one-edit hierarchy-frontier hierarchy spec drifted") from exc
+    roots = [
+        equation
+        for equation in compiled["equations"]
+        if equation["result_role"] == compiled["family_id"]
+    ]
+    if len(roots) != 1:
+        raise _error("one-edit hierarchy-frontier root equation is not unique")
+    return compiled, roots[0]
+
+
+def _build_hierarchy_frontier_proof_v1(
+    source_receipt: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    context: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    compiled_family: Mapping[str, Any],
+    family_spec: Any,
+    selected_region: Mapping[str, Any],
+    hierarchy_spec: Any,
+    input_binding: Mapping[str, str],
+) -> dict[str, Any] | None:
+    if len(source_receipt["checks"]) != 1:
+        return None
+    source_check = source_receipt["checks"][0]
+    retrieval = source_check.get("retrieval_channel")
+    if (
+        source_check["status"] != "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN"
+        or type(retrieval) is not dict
+        or retrieval.get("match_kind") != "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+        or type(retrieval.get("alias_candidates")) is not list
+        or len(retrieval["alias_candidates"]) != 1
+    ):
+        return None
+    target_kind = (
+        "FAMILY_PARENT"
+        if source_check["match_scope"] == "FAMILY_PARENT"
+        else "COMPONENT"
+        if source_check["match_scope"] == "EXPANDED_OCCURRENCE"
+        else None
+    )
+    if target_kind is None:
+        return None
+    parent_match = selected_region.get("parent_match")
+    if type(parent_match) is not dict:
+        return None
+    root_occurrence_id = _root_scope_id_v1(selected_region)
+    page_sequence = parent_match.get("page_sequence")
+    if type(page_sequence) is not int or page_sequence <= 0:
+        return None
+    if target_kind == "FAMILY_PARENT":
+        if (
+            not _is_one_edit(parent_match)
+            or source_check["occurrence_id"] is not None
+            or source_check["role"] != compiled_family["parent"]["role"]
+            or source_check["source_line_indices"] != list(_match_line_indices(parent_match, pages))
+        ):
+            return None
+    elif _is_one_edit(parent_match):
+        return None
+
+    try:
+        _compiled_hierarchy, equation = _compiled_hierarchy_frontier_equation_v1(
+            hierarchy_spec,
+            family_spec,
+        )
+    except AccountingFamilyOneEditExactAuthorityV1Error:
+        return None
+    component_role_universe = {
+        role
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+    }
+    occurrence_by_id = {
+        item.get("occurrence_id"): item
+        for item in evidence["role_occurrences"]
+        if type(item) is dict and type(item.get("occurrence_id")) is str
+    }
+    if len(occurrence_by_id) != len(evidence["role_occurrences"]):
+        return None
+    rows_by_occurrence: dict[str, list[Mapping[str, Any]]] = {}
+    for row in evidence["row_axis"]["rows"]:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence.setdefault(occurrence_id, []).append(row)
+    direct_candidates = []
+    extra_direct_rows = []
+    for occurrence in evidence["role_occurrences"]:
+        occurrence_id = occurrence["occurrence_id"]
+        rows = rows_by_occurrence.get(occurrence_id, [])
+        if (
+            occurrence.get("scope_owner_occurrence_id") != root_occurrence_id
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("label_match", {}).get("page_sequence") != page_sequence
+        ):
+            continue
+        role = occurrence["role"]
+        inventory_role = role in component_role_universe or occurrence.get("role_kind") in {
+            "ADDITIVE_CHILD",
+            "STRUCTURAL_GROUP",
+        }
+        if inventory_role and (
+            len(rows) != 1
+            or rows[0].get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or not rows[0].get("values")
+        ):
+            return None
+        if role in equation["visible_result_roles"] and (
+            len(rows) != 1
+            or rows[0].get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or not rows[0].get("values")
+        ):
+            return None
+        if role in component_role_universe:
+            direct_candidates.append((occurrence, rows[0]))
+        elif role not in equation["visible_result_roles"] and any(
+            row.get("values") for row in rows
+        ):
+            extra_direct_rows.append((occurrence, rows[0]))
+    visual_candidates = sorted(
+        direct_candidates,
+        key=lambda item: occurrence_row_v2._visual_match_key(item[0]["label_match"]),  # noqa: SLF001
+    )
+    observed_roles = [item[0]["role"] for item in visual_candidates]
+    selected_alternatives = [
+        (ordinal, alternative)
+        for ordinal, alternative in enumerate(equation["component_role_alternatives"])
+        if len(observed_roles) == len(set(observed_roles))
+        and len(alternative["component_roles"]) == len(observed_roles)
+        and set(alternative["component_roles"]) == set(observed_roles)
+        and alternative["coverage_policy"] == "EXHAUSTIVE_COMPONENT_SET"
+        and alternative["derivation_policy"]
+        == "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+    ]
+    if len(selected_alternatives) != 1 or extra_direct_rows:
+        return None
+    alternative_ordinal, alternative = selected_alternatives[0]
+    direct_by_role = {item[0]["role"]: item for item in visual_candidates}
+    visual_ordinal_by_occurrence = {
+        item[0]["occurrence_id"]: ordinal for ordinal, item in enumerate(visual_candidates)
+    }
+    direct_candidates = [direct_by_role[role] for role in alternative["component_roles"]]
+
+    component_receipts = []
+    for _occurrence, row in direct_candidates:
+        receipt = _hierarchy_frontier_row_receipt_v1(row)
+        if receipt is None:
+            return None
+        component_receipts.append(receipt)
+    component_ids = [item[0]["occurrence_id"] for item in direct_candidates]
+    if len(component_ids) != len(set(component_ids)):
+        return None
+
+    target_occurrence_id = None
+    target_role = source_check["role"]
+    if target_kind == "COMPONENT":
+        targets = [
+            occurrence
+            for occurrence, _row in direct_candidates
+            if occurrence["retrieval_occurrence_id"] == source_check["occurrence_id"]
+            and occurrence["role"] == source_check["role"]
+        ]
+        if len(targets) != 1 or not _is_one_edit(targets[0]["label_match"]):
+            return None
+        target_occurrence_id = targets[0]["occurrence_id"]
+        if source_check["source_line_indices"] != _hierarchy_frontier_source_line_indices(
+            targets[0]["label_match"]
+        ):
+            return None
+    for occurrence, _row in direct_candidates:
+        if occurrence["occurrence_id"] == target_occurrence_id:
+            continue
+        if not occurrence_row_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            occurrence["label_match"]
+        ):
+            return None
+
+    lane_grids = [
+        grid
+        for grid in evidence["row_axis"]["column_grids"]
+        if grid["page_sequence"] == page_sequence
+    ]
+    if len(lane_grids) != 1:
+        return None
+    centers = lane_grids[0]["column_centers"]
+    lane_count = len(centers)
+    if lane_count == 0:
+        return None
+    period_axis = sorted(context["period_axis"], key=lambda item: item["column_ordinal"])
+    unit_axis = sorted(context["unit_axis"], key=lambda item: item["column_ordinal"])
+    if (
+        context["status"] != "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+        or context["row_axis_id"] != evidence["row_axis"]["row_axis_id"]
+        or [item.get("column_ordinal") for item in period_axis] != list(range(lane_count))
+        or [item.get("column_ordinal") for item in unit_axis] != list(range(lane_count))
+        or [item.get("column_center") for item in period_axis] != centers
+        or [item.get("column_center") for item in unit_axis] != centers
+        or len(
+            {
+                (item.get("unit_kind"), item.get("currency"), item.get("magnitude_power10"))
+                for item in unit_axis
+            }
+        )
+        != 1
+        or any(len(receipt["numbers"]) != lane_count for receipt in component_receipts)
+    ):
+        return None
+
+    sample_by_id = {
+        item.get("sample_id"): item
+        for item in evidence["numeric_sample_universe"]
+        if type(item) is dict and type(item.get("sample_id")) is str
+    }
+    page_line_by_sample = {
+        line.get("sample_id"): line
+        for page in pages
+        for line in page["lines"]
+        if type(line.get("sample_id")) is str
+    }
+    if len(sample_by_id) != len(evidence["numeric_sample_universe"]) or len(
+        page_line_by_sample
+    ) != sum(1 for page in pages for line in page["lines"] if type(line.get("sample_id")) is str):
+        return None
+
+    role_result_candidates = []
+    for occurrence in evidence["role_occurrences"]:
+        rows = rows_by_occurrence.get(occurrence["occurrence_id"], [])
+        if (
+            occurrence["role"] in equation["visible_result_roles"]
+            and occurrence.get("scope_owner_occurrence_id") == root_occurrence_id
+            and occurrence.get("scope_owner_role") is None
+            and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+            and len(rows) == 1
+            and occurrence_row_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence["label_match"]
+            )
+        ):
+            receipt = _hierarchy_frontier_row_receipt_v1(rows[0])
+            if receipt is not None and len(receipt["numbers"]) == lane_count:
+                role_result_candidates.append((occurrence, rows[0], receipt))
+    parent_source_indices = list(_match_line_indices(parent_match, pages))
+    cluster_result_candidates = []
+    for cluster in evidence["internal_unassigned_numeric_clusters"]:
+        cluster_sample_ids = cluster.get("sample_ids")
+        samples = (
+            [sample_by_id.get(sample_id) for sample_id in cluster_sample_ids]
+            if type(cluster_sample_ids) is list
+            else None
+        )
+        label_indices = [
+            item.get("line_ordinal") for item in cluster.get("same_row_label_evidence", [])
+        ]
+        if (
+            cluster.get("status") != occurrence_row_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS  # noqa: SLF001
+            or cluster.get("label_lane_status") != occurrence_row_v2._LABELED_LABEL_LANE_STATUS  # noqa: SLF001
+            or cluster.get("page_sequence") != page_sequence
+            or label_indices != parent_source_indices
+            or type(samples) is not list
+            or any(type(item) is not dict for item in samples)
+            or [item.get("column_ordinal") for item in samples] != list(range(lane_count))
+            or [item.get("column_center") for item in samples] != centers
+            or any(
+                item.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or item.get("owner_id") != cluster.get("cluster_id")
+                or item.get("page_sequence") != page_sequence
+                for item in samples
+            )
+        ):
+            continue
+        numbers = [_hierarchy_frontier_number(item) for item in samples]
+        if any(item is None for item in numbers):
+            continue
+        cluster_result_candidates.append(
+            (
+                cluster,
+                {
+                    "numbers": numbers,
+                    "sample_ids": [item["sample_id"] for item in samples],
+                },
+                samples,
+            )
+        )
+    same_page_clusters = [
+        cluster
+        for cluster in evidence["internal_unassigned_numeric_clusters"]
+        if cluster.get("page_sequence") == page_sequence
+    ]
+    if len(role_result_candidates) + len(cluster_result_candidates) != 1 or len(
+        same_page_clusters
+    ) != len(cluster_result_candidates):
+        return None
+    if role_result_candidates:
+        result_occurrence, result_record, result_receipt = role_result_candidates[0]
+        result_carrier = {
+            "carrier_kind": "ROLE_OCCURRENCE",
+            "cluster_id": None,
+            "numbers": canonical_clone_v1(result_receipt["numbers"]),
+            "occurrence_id": result_occurrence["occurrence_id"],
+            "role_occurrence_sha256": canonical_json_sha256_v1(result_occurrence),
+            "semantic_result_role": equation["result_role"],
+            "sample_ids": canonical_clone_v1(result_receipt["sample_ids"]),
+            "source_line_indices": _hierarchy_frontier_source_line_indices(
+                result_occurrence["label_match"]
+            ),
+            "source_record_sha256": canonical_json_sha256_v1(result_record),
+            "source_role": result_occurrence["role"],
+        }
+        result_samples = result_record["values"]
+    else:
+        result_record, result_receipt, result_samples = cluster_result_candidates[0]
+        result_carrier = {
+            "carrier_kind": "LABELED_PARENT_CLUSTER",
+            "cluster_id": result_record["cluster_id"],
+            "numbers": canonical_clone_v1(result_receipt["numbers"]),
+            "occurrence_id": None,
+            "role_occurrence_sha256": None,
+            "semantic_result_role": equation["result_role"],
+            "sample_ids": canonical_clone_v1(result_receipt["sample_ids"]),
+            "source_line_indices": parent_source_indices,
+            "source_record_sha256": canonical_json_sha256_v1(result_record),
+            "source_role": None,
+        }
+    certificates = []
+    nodes = [("RESULT", 0, equation["result_role"], result_receipt, result_samples)] + [
+        ("COMPONENT", ordinal, occurrence["role"], receipt, row["values"])
+        for ordinal, ((occurrence, row), receipt) in enumerate(
+            zip(direct_candidates, component_receipts, strict=True)
+        )
+    ]
+    all_sample_ids = []
+    for node_kind, node_ordinal, role, receipt, node_samples in nodes:
+        samples = [sample_by_id.get(sample_id) for sample_id in receipt["sample_ids"]]
+        if (
+            len(samples) != lane_count
+            or any(type(sample) is not dict for sample in samples)
+            or [sample["column_ordinal"] for sample in samples] != list(range(lane_count))
+            or [sample["column_center"] for sample in samples] != centers
+            or [sample["page_sequence"] for sample in samples] != [page_sequence] * lane_count
+            or [sample["sample_id"] for sample in node_samples] != receipt["sample_ids"]
+        ):
+            return None
+        for sample in samples:
+            certificate = _hierarchy_frontier_cell_certificate_v1(
+                sample,
+                node_kind=node_kind,
+                node_ordinal=node_ordinal,
+                role=role,
+                page_line_by_sample=page_line_by_sample,
+            )
+            if certificate is None:
+                return None
+            certificates.append(certificate)
+            all_sample_ids.append(sample["sample_id"])
+    if len(all_sample_ids) != len(set(all_sample_ids)):
+        return None
+    for certificate in certificates:
+        if certificate["certificate_kind"] != "MIXED_SAME_CROP_EXACT_INTEGER":
+            continue
+        peers = [
+            item
+            for item in certificates
+            if item["column_ordinal"] == certificate["column_ordinal"]
+            and item["sample_id"] != certificate["sample_id"]
+        ]
+        anchors = [
+            item
+            for item in certificates
+            if item["column_ordinal"] == certificate["column_ordinal"]
+            and item["certificate_kind"] == "RAW_SIGNED_SOURCE_VISIBLE"
+        ]
+        if len(peers) < 2 or not anchors:
+            return None
+
+    certified_number_by_sample = {
+        certificate["sample_id"]: certificate["number"] for certificate in certificates
+    }
+    certified_result = {
+        "numbers": [
+            certified_number_by_sample[sample_id] for sample_id in result_receipt["sample_ids"]
+        ]
+    }
+    certified_components = [
+        {"numbers": [certified_number_by_sample[sample_id] for sample_id in receipt["sample_ids"]]}
+        for receipt in component_receipts
+    ]
+    if not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+        certified_result,
+        certified_components,
+    ):
+        return None
+
+    component_bindings = [
+        {
+            "component_ordinal": ordinal,
+            "numbers": canonical_clone_v1(receipt["numbers"]),
+            "occurrence_id": occurrence["occurrence_id"],
+            "retrieval_occurrence_id": occurrence["retrieval_occurrence_id"],
+            "role": occurrence["role"],
+            "role_occurrence_sha256": canonical_json_sha256_v1(occurrence),
+            "row_sha256": canonical_json_sha256_v1(row),
+            "sample_ids": canonical_clone_v1(receipt["sample_ids"]),
+            "source_line_indices": _hierarchy_frontier_source_line_indices(
+                occurrence["label_match"]
+            ),
+            "source_visual_ordinal": visual_ordinal_by_occurrence[occurrence["occurrence_id"]],
+            "visual_match_key_sha256": canonical_json_sha256_v1(
+                list(
+                    occurrence_row_v2._visual_match_key(  # noqa: SLF001
+                        occurrence["label_match"]
+                    )
+                )
+            ),
+        }
+        for ordinal, ((occurrence, row), receipt) in enumerate(
+            zip(direct_candidates, component_receipts, strict=True)
+        )
+    ]
+    hierarchy_binding = {
+        "alternative_ordinal": alternative_ordinal,
+        "alternative_spec": canonical_clone_v1(alternative),
+        "compiled_equation_sha256": canonical_json_sha256_v1(equation),
+        "component_roles": canonical_clone_v1(alternative["component_roles"]),
+        "hierarchy_spec_sha256": canonical_json_sha256_v1(hierarchy_spec),
+        "result_role": equation["result_role"],
+        "visible_result_roles": canonical_clone_v1(equation["visible_result_roles"]),
+    }
+    material = {
+        "column_context_receipt": canonical_clone_v1(context),
+        "component_frontier_bindings": component_bindings,
+        "format_version": _HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION,
+        "hierarchy_equation_binding": hierarchy_binding,
+        "input_binding": canonical_clone_v1(input_binding),
+        "numeric_cell_certificates": certificates,
+        "page_sequence": page_sequence,
+        "result_carrier_binding": result_carrier,
+        "root_occurrence_id": root_occurrence_id,
+        "source_check": canonical_clone_v1(source_check),
+        "status": _HIERARCHY_FRONTIER_BOUND_STATUS,
+        "target_kind": target_kind,
+        "target_occurrence_id": target_occurrence_id,
+        "target_role": target_role,
+    }
+    return {
+        **material,
+        "proof_id": "afeoehdfav1:proof:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _validate_hierarchy_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _HIERARCHY_FRONTIER_PROOF_FIELDS
+        or value.get("format_version") != _HIERARCHY_FRONTIER_PROOF_FORMAT_VERSION
+        or value.get("status") != _HIERARCHY_FRONTIER_BOUND_STATUS
+        or type(value.get("root_occurrence_id")) is not str
+        or not value["root_occurrence_id"].startswith("aforav2:root:")
+        or type(value.get("page_sequence")) is not int
+        or value["page_sequence"] <= 0
+        or value.get("target_kind") not in {"COMPONENT", "FAMILY_PARENT"}
+        or type(value.get("target_role")) is not str
+        or not value["target_role"]
+        or type(value.get("source_check")) is not dict
+        or type(value.get("input_binding")) is not dict
+        or set(value["input_binding"]) != _HIERARCHY_FRONTIER_INPUT_BINDING_FIELDS
+        or any(
+            type(item) is not str
+            or len(item) != 64
+            or any(character not in "0123456789abcdef" for character in item)
+            for item in value["input_binding"].values()
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier proof shape drifted")
+    if (value["target_kind"] == "FAMILY_PARENT" and value["target_occurrence_id"] is not None) or (
+        value["target_kind"] == "COMPONENT"
+        and (
+            type(value["target_occurrence_id"]) is not str
+            or not value["target_occurrence_id"].startswith("aforav2:occurrence:")
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier target identity drifted")
+    try:
+        context = column_context_v1._validate_result(  # noqa: SLF001
+            value["column_context_receipt"]
+        )
+    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+        raise _error("one-edit hierarchy-frontier column receipt drifted") from exc
+    lane_count = len(context["period_axis"])
+    equation = value.get("hierarchy_equation_binding")
+    carrier = value.get("result_carrier_binding")
+    components = value.get("component_frontier_bindings")
+    certificates = value.get("numeric_cell_certificates")
+    if (
+        lane_count == 0
+        or len(context["unit_axis"]) != lane_count
+        or type(equation) is not dict
+        or set(equation) != _HIERARCHY_FRONTIER_EQUATION_BINDING_FIELDS
+        or type(equation["alternative_ordinal"]) is not int
+        or equation["alternative_ordinal"] < 0
+        or type(equation["alternative_spec"]) is not dict
+        or set(equation["alternative_spec"])
+        != {
+            "component_roles",
+            "coverage_policy",
+            "derivation_policy",
+        }
+        or equation["alternative_spec"].get("coverage_policy") != "EXHAUSTIVE_COMPONENT_SET"
+        or equation["alternative_spec"].get("derivation_policy")
+        != "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+        or equation["component_roles"] != equation["alternative_spec"].get("component_roles")
+        or type(equation["component_roles"]) is not list
+        or not equation["component_roles"]
+        or len(equation["component_roles"]) != len(set(equation["component_roles"]))
+        or type(equation["result_role"]) is not str
+        or not equation["result_role"]
+        or type(equation["visible_result_roles"]) is not list
+        or not equation["visible_result_roles"]
+        or equation["hierarchy_spec_sha256"] != value["input_binding"]["hierarchy_spec_sha256"]
+        or any(
+            type(equation[key]) is not str
+            or len(equation[key]) != 64
+            or any(character not in "0123456789abcdef" for character in equation[key])
+            for key in ("compiled_equation_sha256", "hierarchy_spec_sha256")
+        )
+        or type(carrier) is not dict
+        or set(carrier) != _HIERARCHY_FRONTIER_RESULT_CARRIER_FIELDS
+        or carrier["carrier_kind"] not in {"LABELED_PARENT_CLUSTER", "ROLE_OCCURRENCE"}
+        or carrier["semantic_result_role"] != equation["result_role"]
+        or not _parent_frontier_number_axis_is_valid(carrier["numbers"])
+        or len(carrier["numbers"]) != lane_count
+        or type(carrier["sample_ids"]) is not list
+        or len(carrier["sample_ids"]) != lane_count
+        or len(carrier["sample_ids"]) != len(set(carrier["sample_ids"]))
+        or type(carrier["source_line_indices"]) is not list
+        or not carrier["source_line_indices"]
+        or carrier["source_line_indices"] != sorted(set(carrier["source_line_indices"]))
+        or type(carrier["source_record_sha256"]) is not str
+        or len(carrier["source_record_sha256"]) != 64
+        or type(components) is not list
+        or len(components) != len(equation["component_roles"])
+        or type(certificates) is not list
+        or len(certificates) != lane_count * (len(components) + 1)
+    ):
+        raise _error("one-edit hierarchy-frontier equation or result binding drifted")
+    if (
+        carrier["carrier_kind"] == "ROLE_OCCURRENCE"
+        and (
+            type(carrier["occurrence_id"]) is not str
+            or not carrier["occurrence_id"].startswith("aforav2:occurrence:")
+            or carrier["cluster_id"] is not None
+            or carrier["source_role"] not in equation["visible_result_roles"]
+            or type(carrier["role_occurrence_sha256"]) is not str
+            or len(carrier["role_occurrence_sha256"]) != 64
+        )
+    ) or (
+        carrier["carrier_kind"] == "LABELED_PARENT_CLUSTER"
+        and (
+            carrier["occurrence_id"] is not None
+            or carrier["role_occurrence_sha256"] is not None
+            or carrier["source_role"] is not None
+            or type(carrier["cluster_id"]) is not str
+            or not carrier["cluster_id"].startswith("aforav2:unassigned:")
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier result carrier drifted")
+    component_receipts = []
+    component_ids = []
+    sample_ids = list(carrier["sample_ids"])
+    for ordinal, (binding, role) in enumerate(
+        zip(components, equation["component_roles"], strict=True)
+    ):
+        if (
+            type(binding) is not dict
+            or set(binding) != _HIERARCHY_FRONTIER_COMPONENT_FIELDS
+            or binding["component_ordinal"] != ordinal
+            or binding["role"] != role
+            or type(binding["occurrence_id"]) is not str
+            or not binding["occurrence_id"].startswith("aforav2:occurrence:")
+            or type(binding["retrieval_occurrence_id"]) is not str
+            or not binding["retrieval_occurrence_id"].startswith("aforav2:occurrence:")
+            or not _parent_frontier_number_axis_is_valid(binding["numbers"])
+            or len(binding["numbers"]) != lane_count
+            or type(binding["sample_ids"]) is not list
+            or len(binding["sample_ids"]) != lane_count
+            or len(binding["sample_ids"]) != len(set(binding["sample_ids"]))
+            or type(binding["source_line_indices"]) is not list
+            or not binding["source_line_indices"]
+            or binding["source_line_indices"] != sorted(set(binding["source_line_indices"]))
+            or type(binding["source_visual_ordinal"]) is not int
+            or not 0 <= binding["source_visual_ordinal"] < len(components)
+            or any(
+                type(binding[key]) is not str or len(binding[key]) != 64
+                for key in (
+                    "role_occurrence_sha256",
+                    "row_sha256",
+                    "visual_match_key_sha256",
+                )
+            )
+        ):
+            raise _error("one-edit hierarchy-frontier component binding drifted")
+        component_ids.append(binding["occurrence_id"])
+        sample_ids.extend(binding["sample_ids"])
+        component_receipts.append({"numbers": binding["numbers"]})
+    if (
+        len(component_ids) != len(set(component_ids))
+        or len(sample_ids) != len(set(sample_ids))
+        or sorted(item["source_visual_ordinal"] for item in components)
+        != list(range(len(components)))
+    ):
+        raise _error("one-edit hierarchy-frontier component identity drifted")
+    expected_cell_keys = [
+        *(("RESULT", 0, equation["result_role"], lane) for lane in range(lane_count)),
+        *(
+            ("COMPONENT", ordinal, role, lane)
+            for ordinal, role in enumerate(equation["component_roles"])
+            for lane in range(lane_count)
+        ),
+    ]
+    observed_cell_keys = []
+    certificate_samples = []
+    for certificate in certificates:
+        if (
+            type(certificate) is not dict
+            or set(certificate) != _HIERARCHY_FRONTIER_CELL_FIELDS
+            or certificate["certificate_kind"]
+            not in {"RAW_SIGNED_SOURCE_VISIBLE", "MIXED_SAME_CROP_EXACT_INTEGER"}
+            or certificate["pp_classification"]
+            not in {"SIGNED_NUMBER", "MIXED_GROUPED_INTEGER_CANDIDATE"}
+            or (
+                certificate["certificate_kind"] == "RAW_SIGNED_SOURCE_VISIBLE"
+                and (
+                    certificate["pp_classification"] != "SIGNED_NUMBER"
+                    or certificate["vietocr_number"] is not None
+                )
+            )
+            or (
+                certificate["certificate_kind"] == "MIXED_SAME_CROP_EXACT_INTEGER"
+                and (
+                    certificate["pp_classification"] != "MIXED_GROUPED_INTEGER_CANDIDATE"
+                    or not same_typed_json_v1(certificate["vietocr_number"], certificate["number"])
+                )
+            )
+            or not _parent_frontier_number_axis_is_valid([certificate["number"]])
+            or type(certificate["sample_id"]) is not str
+            or not certificate["sample_id"]
+            or type(certificate["pp_surface"]) is not str
+            or type(certificate["vietocr_surface"]) is not str
+            or type(certificate["page_sequence"]) is not int
+            or certificate["page_sequence"] != value["page_sequence"]
+            or type(certificate["source_line_index"]) is not int
+            or certificate["source_line_index"] < 0
+            or type(certificate["bbox"]) is not list
+            or len(certificate["bbox"]) != 4
+            or any(type(item) is not int for item in certificate["bbox"])
+            or any(
+                type(certificate[key]) is not str or len(certificate[key]) != 64
+                for key in ("numeric_sample_sha256", "page_line_sha256")
+            )
+        ):
+            raise _error("one-edit hierarchy-frontier numeric certificate drifted")
+        _crop_reference(certificate["crop_ref"])
+        if certificate["certificate_kind"] == "MIXED_SAME_CROP_EXACT_INTEGER":
+            replayed_vietocr = parse_visible_financial_numeric_token_v1(
+                certificate["vietocr_surface"]
+            )
+            expected_number = certificate["vietocr_number"]
+            if (
+                replayed_vietocr.get("classification") != "SIGNED_NUMBER"
+                or replayed_vietocr.get("coefficient") != expected_number["coefficient"]
+                or replayed_vietocr.get("scale") != expected_number["scale"]
+                or replayed_vietocr.get("percentage_mark_present")
+                is not expected_number["percentage_mark_present"]
+            ):
+                raise _error("one-edit hierarchy-frontier VietOCR certificate drifted")
+        observed_cell_keys.append(
+            (
+                certificate["node_kind"],
+                certificate["node_ordinal"],
+                certificate["role"],
+                certificate["column_ordinal"],
+            )
+        )
+        certificate_samples.append(certificate["sample_id"])
+    if observed_cell_keys != expected_cell_keys or certificate_samples != sample_ids:
+        raise _error("one-edit hierarchy-frontier numeric certificate axis drifted")
+    for certificate in certificates:
+        if certificate["certificate_kind"] != "MIXED_SAME_CROP_EXACT_INTEGER":
+            continue
+        lane_peers = [
+            item
+            for item in certificates
+            if item["column_ordinal"] == certificate["column_ordinal"]
+            and item["sample_id"] != certificate["sample_id"]
+        ]
+        raw_anchors = [
+            item
+            for item in certificates
+            if item["column_ordinal"] == certificate["column_ordinal"]
+            and item["certificate_kind"] == "RAW_SIGNED_SOURCE_VISIBLE"
+        ]
+        if len(lane_peers) < 2 or not raw_anchors:
+            raise _error("one-edit hierarchy-frontier mixed peer axis drifted")
+    certified_by_sample = {item["sample_id"]: item["number"] for item in certificates}
+    certified_result = {"numbers": [certified_by_sample[item] for item in carrier["sample_ids"]]}
+    certified_components = [
+        {"numbers": [certified_by_sample[item] for item in binding["sample_ids"]]}
+        for binding in components
+    ]
+    if not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+        certified_result,
+        certified_components,
+    ):
+        raise _error("one-edit hierarchy-frontier certified arithmetic drifted")
+    source_check = value["source_check"]
+    target_components = [
+        item for item in components if item["occurrence_id"] == value["target_occurrence_id"]
+    ]
+    if (
+        set(source_check) != _CHECK_FIELDS
+        or source_check["status"] != "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN"
+        or source_check.get("retrieval_channel", {}).get("match_kind")
+        != "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+        or len(source_check.get("retrieval_channel", {}).get("alias_candidates", [])) != 1
+        or source_check["role"] != value["target_role"]
+        or source_check["page_sequence"] != value["page_sequence"]
+        or (
+            value["target_kind"] == "FAMILY_PARENT"
+            and (
+                source_check["match_scope"] != "FAMILY_PARENT"
+                or source_check["occurrence_id"] is not None
+                or source_check["source_line_indices"] != carrier["source_line_indices"]
+            )
+        )
+        or (
+            value["target_kind"] == "COMPONENT"
+            and (
+                len(target_components) != 1
+                or source_check["match_scope"] != "EXPANDED_OCCURRENCE"
+                or source_check["occurrence_id"]
+                != (target_components[0]["retrieval_occurrence_id"] if target_components else None)
+            )
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier source check drifted")
+    material = canonical_clone_v1(value)
+    proof_id = material.pop("proof_id")
+    if proof_id != "afeoehdfav1:proof:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit hierarchy-frontier proof identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validate_hierarchy_frontier_result_v1(value: Any) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _HIERARCHY_FRONTIER_RESULT_FIELDS
+        or value.get("format_version") != HIERARCHY_FRONTIER_FORMAT_VERSION
+        or value.get("claim_boundary") != HIERARCHY_FRONTIER_CLAIM_BOUNDARY
+        or not same_typed_json_v1(value.get("safety"), _HIERARCHY_FRONTIER_SAFETY)
+        or type(value.get("authority_spec")) is not dict
+        or set(value["authority_spec"]) != {"sha256", "value"}
+        or not same_typed_json_v1(
+            value["authority_spec"]["value"], _HIERARCHY_FRONTIER_AUTHORITY_SPEC
+        )
+        or value["authority_spec"]["sha256"]
+        != canonical_json_sha256_v1(_HIERARCHY_FRONTIER_AUTHORITY_SPEC)
+    ):
+        raise _error("one-edit hierarchy-frontier receipt shape drifted")
+    source = _validate_result(value["source_exact_authority_receipt"])
+    proof = _validate_hierarchy_frontier_proof_shape_v1(
+        value["hierarchy_direct_frontier_authority"]
+    )
+    unbound_checks = [
+        check for check in source["checks"] if check["status"] not in _BOUND_CHECK_STATUSES
+    ]
+    if (
+        len(source["checks"]) != 1
+        or len(unbound_checks) != 1
+        or not same_typed_json_v1(unbound_checks[0], proof["source_check"])
+        or value["family_id"] != source["family_id"]
+        or value["checks"] != source["checks"]
+        or value["input_binding"] != proof["input_binding"]
+        or value["input_binding"]["source_exact_authority_receipt_sha256"]
+        != canonical_json_sha256_v1(source)
+        or any(
+            value["input_binding"][key] != source["input_binding"][key]
+            for key in _INPUT_BINDING_FIELDS
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier source binding drifted")
+    source_reason = _parent_frontier_reason(unbound_checks[0])
+    expected_reasons = [
+        reason for reason in source["unresolved_reasons"] if reason != source_reason
+    ]
+    expected_metrics = {
+        "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+        "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+        "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+    }
+    expected_status = (
+        "EXACT_SOURCE_AUTHORITY_BOUND"
+        if not expected_reasons
+        else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+    )
+    if (
+        value["metrics"] != expected_metrics
+        or value["unresolved_reasons"] != expected_reasons
+        or value["status"] != expected_status
+    ):
+        raise _error("one-edit hierarchy-frontier status drifted")
+    material = canonical_clone_v1(value)
+    receipt_id = material.pop("receipt_id")
+    if receipt_id != "afeoeav1:receipt:" + canonical_json_sha256_v1(material):
+        raise _error("one-edit hierarchy-frontier receipt identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validate_hierarchy_frontier_against_structural_evidence_v1(
+    value: Any,
+    structural_evidence: Any,
+) -> dict[str, Any]:
+    receipt = _validate_hierarchy_frontier_result_v1(value)
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    context = proof["column_context_receipt"]
+    centers = [item["column_center"] for item in context["period_axis"]]
+    lane_count = len(centers)
+    context = proof["column_context_receipt"]
+    binding = receipt["input_binding"]
+    if (
+        binding["internal_unassigned_numeric_clusters_sha256"]
+        != canonical_json_sha256_v1(evidence["internal_unassigned_numeric_clusters"])
+        or binding["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(evidence["numeric_sample_universe"])
+        or binding["role_occurrences_sha256"]
+        != canonical_json_sha256_v1(evidence["role_occurrences"])
+        or binding["row_axis_sha256"] != canonical_json_sha256_v1(evidence["row_axis"])
+        or binding["column_context_sha256"] != canonical_json_sha256_v1(context)
+        or context["row_axis_id"] != evidence["row_axis"]["row_axis_id"]
+    ):
+        raise _error("one-edit hierarchy-frontier structural input drifted")
+    page_sequence = proof["page_sequence"]
+    grids = [
+        grid
+        for grid in evidence["row_axis"]["column_grids"]
+        if grid["page_sequence"] == page_sequence
+    ]
+    if len(grids) != 1:
+        raise _error("one-edit hierarchy-frontier page grid is not unique")
+    centers = grids[0]["column_centers"]
+    lane_count = len(centers)
+    if (
+        lane_count == 0
+        or [item["column_center"] for item in context["period_axis"]] != centers
+        or [item["column_center"] for item in context["unit_axis"]] != centers
+    ):
+        raise _error("one-edit hierarchy-frontier column axis drifted")
+    occurrence_by_id = {
+        occurrence.get("occurrence_id"): occurrence
+        for occurrence in evidence["role_occurrences"]
+        if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
+    }
+    rows_by_occurrence: dict[str, list[Mapping[str, Any]]] = {}
+    for row in evidence["row_axis"]["rows"]:
+        occurrence_id = row.get("label_match", {}).get("occurrence_id")
+        if type(occurrence_id) is str:
+            rows_by_occurrence.setdefault(occurrence_id, []).append(row)
+    sample_by_id = {
+        sample.get("sample_id"): sample
+        for sample in evidence["numeric_sample_universe"]
+        if type(sample) is dict and type(sample.get("sample_id")) is str
+    }
+    if len(occurrence_by_id) != len(evidence["role_occurrences"]) or len(sample_by_id) != len(
+        evidence["numeric_sample_universe"]
+    ):
+        raise _error("one-edit hierarchy-frontier structural identities repeat")
+    component_receipts = []
+    component_visual_axis = []
+    for binding_record in proof["component_frontier_bindings"]:
+        occurrence = occurrence_by_id.get(binding_record["occurrence_id"])
+        rows = rows_by_occurrence.get(binding_record["occurrence_id"], [])
+        row = rows[0] if len(rows) == 1 else None
+        receipt_row = _hierarchy_frontier_row_receipt_v1(row) if type(row) is dict else None
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != binding_record["role_occurrence_sha256"]
+            or occurrence.get("role") != binding_record["role"]
+            or occurrence.get("retrieval_occurrence_id")
+            != binding_record["retrieval_occurrence_id"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("label_match", {}).get("page_sequence") != page_sequence
+            or _hierarchy_frontier_source_line_indices(occurrence["label_match"])
+            != binding_record["source_line_indices"]
+            or canonical_json_sha256_v1(
+                list(
+                    occurrence_row_v2._visual_match_key(  # noqa: SLF001
+                        occurrence["label_match"]
+                    )
+                )
+            )
+            != binding_record["visual_match_key_sha256"]
+            or type(row) is not dict
+            or canonical_json_sha256_v1(row) != binding_record["row_sha256"]
+            or receipt_row
+            != {
+                "numbers": binding_record["numbers"],
+                "sample_ids": binding_record["sample_ids"],
+            }
+            or [item.get("column_ordinal") for item in row["values"]] != list(range(lane_count))
+            or [item.get("column_center") for item in row["values"]] != centers
+        ):
+            raise _error("one-edit hierarchy-frontier component structural binding drifted")
+        component_receipts.append(receipt_row)
+        component_visual_axis.append(
+            (occurrence_row_v2._visual_match_key(occurrence["label_match"]), binding_record)  # noqa: SLF001
+        )
+    if len({item[0] for item in component_visual_axis}) != len(component_visual_axis) or any(
+        binding_record["source_visual_ordinal"] != ordinal
+        for ordinal, (_key, binding_record) in enumerate(
+            sorted(component_visual_axis, key=lambda item: item[0])
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier source visual order drifted")
+    carrier = proof["result_carrier_binding"]
+    result_samples = [sample_by_id.get(item) for item in carrier["sample_ids"]]
+    if (
+        any(type(item) is not dict for item in result_samples)
+        or [_hierarchy_frontier_number(item) for item in result_samples] != carrier["numbers"]
+        or [item["column_ordinal"] for item in result_samples] != list(range(lane_count))
+        or [item["column_center"] for item in result_samples] != centers
+        or [item["page_sequence"] for item in result_samples] != [page_sequence] * lane_count
+    ):
+        raise _error("one-edit hierarchy-frontier result sample binding drifted")
+    if carrier["carrier_kind"] == "ROLE_OCCURRENCE":
+        occurrence = occurrence_by_id.get(carrier["occurrence_id"])
+        rows = rows_by_occurrence.get(carrier["occurrence_id"], [])
+        record = rows[0] if len(rows) == 1 else None
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != carrier["role_occurrence_sha256"]
+            or occurrence.get("role") != carrier["source_role"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or type(record) is not dict
+            or canonical_json_sha256_v1(record) != carrier["source_record_sha256"]
+            or _hierarchy_frontier_row_receipt_v1(record)
+            != {"numbers": carrier["numbers"], "sample_ids": carrier["sample_ids"]}
+        ):
+            raise _error("one-edit hierarchy-frontier role result drifted")
+    else:
+        clusters = [
+            item
+            for item in evidence["internal_unassigned_numeric_clusters"]
+            if item.get("cluster_id") == carrier["cluster_id"]
+        ]
+        if (
+            len(clusters) != 1
+            or canonical_json_sha256_v1(clusters[0]) != carrier["source_record_sha256"]
+            or clusters[0].get("sample_ids") != carrier["sample_ids"]
+            or clusters[0].get("page_sequence") != page_sequence
+            or [item.get("line_ordinal") for item in clusters[0].get("same_row_label_evidence", [])]
+            != carrier["source_line_indices"]
+        ):
+            raise _error("one-edit hierarchy-frontier cluster result drifted")
+    for certificate in proof["numeric_cell_certificates"]:
+        sample = sample_by_id.get(certificate["sample_id"])
+        if (
+            type(sample) is not dict
+            or canonical_json_sha256_v1(sample) != certificate["numeric_sample_sha256"]
+            or sample.get("page_sequence") != certificate["page_sequence"]
+            or sample.get("line_ordinal") != certificate["source_line_index"]
+            or sample.get("bbox") != certificate["bbox"]
+            or not same_typed_json_v1(sample.get("crop_ref"), certificate["crop_ref"])
+            or canonical_json_sha256_v1(
+                _hierarchy_frontier_page_line_from_sample_v1(
+                    sample,
+                    certificate["vietocr_surface"],
+                )
+            )
+            != certificate["page_line_sha256"]
+            or sample.get("raw_prediction") != certificate["pp_surface"]
+            or sample.get("parsed_token", {}).get("classification")
+            != certificate["pp_classification"]
+            or _hierarchy_frontier_number(sample) != certificate["number"]
+        ):
+            raise _error("one-edit hierarchy-frontier numeric sample drifted")
+    certified_by_sample = {
+        item["sample_id"]: item["number"] for item in proof["numeric_cell_certificates"]
+    }
+    certified_result = {"numbers": [certified_by_sample[item] for item in carrier["sample_ids"]]}
+    certified_components = [
+        {"numbers": [certified_by_sample[item] for item in binding["sample_ids"]]}
+        for binding in proof["component_frontier_bindings"]
+    ]
+    if not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+        certified_result,
+        certified_components,
+    ):
+        raise _error("one-edit hierarchy-frontier certified structural arithmetic drifted")
+    target = occurrence_by_id.get(proof["target_occurrence_id"])
+    if proof["target_kind"] == "COMPONENT":
+        target_bindings = [
+            item
+            for item in proof["component_frontier_bindings"]
+            if item["occurrence_id"] == proof["target_occurrence_id"]
+        ]
+        if (
+            type(target) is not dict
+            or not _is_one_edit(target["label_match"])
+            or target["role"] != proof["target_role"]
+            or len(target_bindings) != 1
+            or proof["source_check"]["source_line_indices"]
+            != target_bindings[0]["source_line_indices"]
+        ):
+            raise _error("one-edit hierarchy-frontier component target drifted")
+    return receipt
+
+
+def _validate_hierarchy_frontier_against_closure_axes_v1(
+    value: Any,
+    *,
+    internal_unassigned_numeric_clusters: Any,
+    numeric_sample_universe: Any,
+    role_occurrences: Any,
+) -> dict[str, Any]:
+    """Rebind V4 to the exact occurrence/sample/cluster axes retained by closure."""
+
+    receipt = _validate_hierarchy_frontier_result_v1(value)
+    if any(
+        type(axis) is not list
+        for axis in (
+            internal_unassigned_numeric_clusters,
+            numeric_sample_universe,
+            role_occurrences,
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier closure axes drifted")
+    binding = receipt["input_binding"]
+    if (
+        binding["internal_unassigned_numeric_clusters_sha256"]
+        != canonical_json_sha256_v1(internal_unassigned_numeric_clusters)
+        or binding["numeric_sample_universe_sha256"]
+        != canonical_json_sha256_v1(numeric_sample_universe)
+        or binding["role_occurrences_sha256"] != canonical_json_sha256_v1(role_occurrences)
+    ):
+        raise _error("one-edit hierarchy-frontier closure input binding drifted")
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    context = proof["column_context_receipt"]
+    centers = [item["column_center"] for item in context["period_axis"]]
+    lane_count = len(centers)
+    occurrence_by_id = {
+        item.get("occurrence_id"): item
+        for item in role_occurrences
+        if type(item) is dict and type(item.get("occurrence_id")) is str
+    }
+    sample_by_id = {
+        item.get("sample_id"): item
+        for item in numeric_sample_universe
+        if type(item) is dict and type(item.get("sample_id")) is str
+    }
+    if (
+        len(occurrence_by_id) != len(role_occurrences)
+        or len(sample_by_id) != len(numeric_sample_universe)
+        or lane_count == 0
+        or [item["column_center"] for item in context["unit_axis"]] != centers
+    ):
+        raise _error("one-edit hierarchy-frontier closure identities repeat")
+    component_visual_axis = []
+    for component in proof["component_frontier_bindings"]:
+        occurrence = occurrence_by_id.get(component["occurrence_id"])
+        samples = [sample_by_id.get(item) for item in component["sample_ids"]]
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != component["role_occurrence_sha256"]
+            or occurrence.get("role") != component["role"]
+            or occurrence.get("retrieval_occurrence_id") != component["retrieval_occurrence_id"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or _hierarchy_frontier_source_line_indices(occurrence["label_match"])
+            != component["source_line_indices"]
+            or canonical_json_sha256_v1(
+                list(
+                    occurrence_row_v2._visual_match_key(  # noqa: SLF001
+                        occurrence["label_match"]
+                    )
+                )
+            )
+            != component["visual_match_key_sha256"]
+            or any(type(item) is not dict for item in samples)
+            or [_hierarchy_frontier_number(item) for item in samples] != component["numbers"]
+            or [item.get("column_ordinal") for item in samples] != list(range(lane_count))
+            or [item.get("column_center") for item in samples] != centers
+            or any(
+                item.get("owner_kind") != "ROLE_OCCURRENCE"
+                or item.get("owner_id") != component["occurrence_id"]
+                or item.get("page_sequence") != proof["page_sequence"]
+                for item in samples
+            )
+        ):
+            raise _error("one-edit hierarchy-frontier closure component drifted")
+        component_visual_axis.append(
+            (occurrence_row_v2._visual_match_key(occurrence["label_match"]), component)  # noqa: SLF001
+        )
+    if len({item[0] for item in component_visual_axis}) != len(component_visual_axis) or any(
+        component["source_visual_ordinal"] != ordinal
+        for ordinal, (_key, component) in enumerate(
+            sorted(component_visual_axis, key=lambda item: item[0])
+        )
+    ):
+        raise _error("one-edit hierarchy-frontier closure visual order drifted")
+    carrier = proof["result_carrier_binding"]
+    result_samples = [sample_by_id.get(item) for item in carrier["sample_ids"]]
+    if (
+        any(type(item) is not dict for item in result_samples)
+        or [_hierarchy_frontier_number(item) for item in result_samples] != carrier["numbers"]
+        or [item.get("column_ordinal") for item in result_samples] != list(range(lane_count))
+        or [item.get("column_center") for item in result_samples] != centers
+        or any(item.get("page_sequence") != proof["page_sequence"] for item in result_samples)
+    ):
+        raise _error("one-edit hierarchy-frontier closure result samples drifted")
+    component_ids = {item["occurrence_id"] for item in proof["component_frontier_bindings"]}
+    result_occurrence_id = (
+        carrier["occurrence_id"] if carrier["carrier_kind"] == "ROLE_OCCURRENCE" else None
+    )
+    direct_inventory = []
+    for occurrence in role_occurrences:
+        if (
+            occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or occurrence.get("scope_owner_role") is not None
+            or occurrence.get("label_match", {}).get("page_sequence") != proof["page_sequence"]
+        ):
+            continue
+        owned_samples = [
+            sample
+            for sample in numeric_sample_universe
+            if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+            and sample.get("owner_id") == occurrence["occurrence_id"]
+        ]
+        if occurrence["occurrence_id"] == result_occurrence_id:
+            continue
+        if occurrence.get("role_kind") in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"} or owned_samples:
+            if (
+                occurrence["occurrence_id"] not in component_ids
+                or occurrence.get("has_bound_value_row") is not True
+                or len(owned_samples) != lane_count
+            ):
+                raise _error("one-edit hierarchy-frontier closure direct inventory drifted")
+            direct_inventory.append(occurrence["occurrence_id"])
+    if set(direct_inventory) != component_ids or len(direct_inventory) != len(component_ids):
+        raise _error("one-edit hierarchy-frontier closure frontier is not exhaustive")
+    result_cluster = None
+    if carrier["carrier_kind"] == "ROLE_OCCURRENCE":
+        occurrence = occurrence_by_id.get(carrier["occurrence_id"])
+        if (
+            type(occurrence) is not dict
+            or canonical_json_sha256_v1(occurrence) != carrier["role_occurrence_sha256"]
+            or occurrence.get("role") != carrier["source_role"]
+            or occurrence.get("scope_owner_occurrence_id") != proof["root_occurrence_id"]
+            or any(
+                item.get("owner_kind") != "ROLE_OCCURRENCE"
+                or item.get("owner_id") != carrier["occurrence_id"]
+                for item in result_samples
+            )
+        ):
+            raise _error("one-edit hierarchy-frontier closure role result drifted")
+    else:
+        matches = [
+            item
+            for item in internal_unassigned_numeric_clusters
+            if item.get("cluster_id") == carrier["cluster_id"]
+        ]
+        if (
+            len(matches) != 1
+            or canonical_json_sha256_v1(matches[0]) != carrier["source_record_sha256"]
+            or matches[0].get("sample_ids") != carrier["sample_ids"]
+            or any(
+                item.get("owner_kind") != "SOURCE_ONLY_INTERNAL_CLUSTER"
+                or item.get("owner_id") != carrier["cluster_id"]
+                for item in result_samples
+            )
+        ):
+            raise _error("one-edit hierarchy-frontier closure cluster result drifted")
+        result_cluster = canonical_clone_v1(matches[0])
+    for certificate in proof["numeric_cell_certificates"]:
+        sample = sample_by_id.get(certificate["sample_id"])
+        if (
+            type(sample) is not dict
+            or canonical_json_sha256_v1(sample) != certificate["numeric_sample_sha256"]
+            or _hierarchy_frontier_number(sample) != certificate["number"]
+            or sample.get("bbox") != certificate["bbox"]
+            or not same_typed_json_v1(sample.get("crop_ref"), certificate["crop_ref"])
+            or canonical_json_sha256_v1(
+                _hierarchy_frontier_page_line_from_sample_v1(
+                    sample,
+                    certificate["vietocr_surface"],
+                )
+            )
+            != certificate["page_line_sha256"]
+            or sample.get("line_ordinal") != certificate["source_line_index"]
+            or sample.get("raw_prediction") != certificate["pp_surface"]
+            or sample.get("parsed_token", {}).get("classification")
+            != certificate["pp_classification"]
+        ):
+            raise _error("one-edit hierarchy-frontier closure certificate drifted")
+    if proof["target_kind"] == "COMPONENT":
+        target_bindings = [
+            item
+            for item in proof["component_frontier_bindings"]
+            if item["occurrence_id"] == proof["target_occurrence_id"]
+        ]
+        if (
+            len(target_bindings) != 1
+            or proof["source_check"]["source_line_indices"]
+            != target_bindings[0]["source_line_indices"]
+        ):
+            raise _error("one-edit hierarchy-frontier closure target span drifted")
+    certified_by_sample = {
+        item["sample_id"]: item["number"] for item in proof["numeric_cell_certificates"]
+    }
+    if not occurrence_row_v2._direct_frontier_sum_is_exact(  # noqa: SLF001
+        {"numbers": [certified_by_sample[item] for item in carrier["sample_ids"]]},
+        [
+            {"numbers": [certified_by_sample[item] for item in component["sample_ids"]]}
+            for component in proof["component_frontier_bindings"]
+        ],
+    ):
+        raise _error("one-edit hierarchy-frontier closure certified arithmetic drifted")
+    return result_cluster
+
+
+def project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
+    source_exact_authority_receipt: Any,
+    structural_evidence: Any,
+    column_context: Any,
+    document_pages: Any,
+    family_spec: Any,
+    selected_topology_region: Any,
+    hierarchy_spec: Any,
+    *,
+    column_context_document_pages: Any,
+    period_semantics: Any,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Bind one source-visible hierarchy-declared root frontier, or abstain."""
+
+    source = _validate_result(source_exact_authority_receipt)
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    try:
+        context = column_context_v1._validate_result(column_context)  # noqa: SLF001
+        pages = _pages_with_occurrence_geometry_v1(document_pages)
+        compiled = topology_v1._spec(family_spec)  # noqa: SLF001
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit hierarchy-frontier authenticated input drifted") from exc
+    if (
+        type(selected_topology_region) is not dict
+        or source["family_id"] != compiled["family_id"]
+        or evidence["row_axis"]["family_id"] != compiled["family_id"]
+        or context["family_id"] != compiled["family_id"]
+        or source["input_binding"]["document_pages_sha256"]
+        != canonical_json_sha256_v1(document_pages)
+        or source["input_binding"]["family_spec_sha256"] != canonical_json_sha256_v1(family_spec)
+        or source["input_binding"]["selected_topology_region_sha256"]
+        != canonical_json_sha256_v1(selected_topology_region)
+    ):
+        raise _error("one-edit hierarchy-frontier source binding drifted")
+    context = _validate_parent_frontier_column_context_replay_v1(
+        context,
+        row_axis=evidence["row_axis"],
+        document_pages=column_context_document_pages,
+        authority_pages=document_pages,
+        family_spec=family_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+    )
+    _compiled_hierarchy_frontier_equation_v1(hierarchy_spec, family_spec)
+    column_policy = {
+        "expected_lane_unit_kinds": canonical_clone_v1(expected_lane_unit_kinds),
+        "period_semantics": period_semantics,
+        "visible_dash_rescues_sha256": canonical_json_sha256_v1(list(visible_dash_rescues)),
+    }
+    input_binding = _hierarchy_frontier_input_binding_v1(
+        source, evidence, context, hierarchy_spec, column_policy
+    )
+    proof = _build_hierarchy_frontier_proof_v1(
+        source,
+        evidence,
+        context,
+        pages,
+        compiled,
+        family_spec,
+        selected_topology_region,
+        hierarchy_spec,
+        input_binding,
+    )
+    if proof is None:
+        return canonical_clone_v1(source)
+    source_reason = _parent_frontier_reason(proof["source_check"])
+    reasons = [reason for reason in source["unresolved_reasons"] if reason != source_reason]
+    material = {
+        "authority_spec": {
+            "sha256": canonical_json_sha256_v1(_HIERARCHY_FRONTIER_AUTHORITY_SPEC),
+            "value": canonical_clone_v1(_HIERARCHY_FRONTIER_AUTHORITY_SPEC),
+        },
+        "checks": canonical_clone_v1(source["checks"]),
+        "claim_boundary": HIERARCHY_FRONTIER_CLAIM_BOUNDARY,
+        "family_id": compiled["family_id"],
+        "format_version": HIERARCHY_FRONTIER_FORMAT_VERSION,
+        "hierarchy_direct_frontier_authority": proof,
+        "input_binding": input_binding,
+        "metrics": {
+            "exact_bound_count": source["metrics"]["exact_bound_count"] + 1,
+            "selected_one_edit_match_count": source["metrics"]["selected_one_edit_match_count"],
+            "unresolved_match_count": source["metrics"]["unresolved_match_count"] - 1,
+        },
+        "safety": canonical_clone_v1(_HIERARCHY_FRONTIER_SAFETY),
+        "source_exact_authority_receipt": canonical_clone_v1(source),
+        "status": (
+            "EXACT_SOURCE_AUTHORITY_BOUND"
+            if not reasons
+            else "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
+        ),
+        "unresolved_reasons": reasons,
+    }
+    persisted = {
+        **material,
+        "receipt_id": "afeoeav1:receipt:" + canonical_json_sha256_v1(material),
+    }
+    return _validate_hierarchy_frontier_against_structural_evidence_v1(
+        persisted,
+        evidence,
+    )
+
+
+def hierarchy_frontier_bound_retrieval_occurrence_ids_v1(
+    value: Any,
+    *,
+    structural_evidence: Any,
+) -> set[str]:
+    """Return only component retrieval IDs sealed by one replayed V4 proof."""
+
+    receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
+        return set()
+    _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, structural_evidence)
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    if proof["target_kind"] != "COMPONENT":
+        return set()
+    return {
+        item["retrieval_occurrence_id"]
+        for item in proof["component_frontier_bindings"]
+        if item["occurrence_id"] == proof["target_occurrence_id"]
+    }
+
+
+def hierarchy_frontier_certified_sample_ids_v1(
+    value: Any,
+    *,
+    structural_evidence: Any,
+) -> set[str]:
+    """Return source samples whose V4 crop/reader bindings were sealed."""
+
+    receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
+        return set()
+    _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, structural_evidence)
+    return {
+        item["sample_id"]
+        for item in receipt["hierarchy_direct_frontier_authority"]["numeric_cell_certificates"]
+    }
+
+
+def hierarchy_frontier_result_cluster_v1(
+    value: Any,
+    *,
+    structural_evidence: Any,
+) -> dict[str, Any] | None:
+    """Return the sole V4 labeled parent-result cluster, when that is the carrier."""
+
+    receipt = validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(value)
+    if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
+        return None
+    evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
+    _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, evidence)
+    carrier = receipt["hierarchy_direct_frontier_authority"]["result_carrier_binding"]
+    if carrier["carrier_kind"] != "LABELED_PARENT_CLUSTER":
+        return None
+    matches = [
+        item
+        for item in evidence["internal_unassigned_numeric_clusters"]
+        if item.get("cluster_id") == carrier["cluster_id"]
+    ]
+    if len(matches) != 1:
+        raise _error("one-edit hierarchy-frontier result cluster is not unique")
+    return canonical_clone_v1(matches[0])
+
+
 def family_parent_has_exact_authority_v1(
     value: Any,
     *,
@@ -3190,7 +4850,16 @@ def family_parent_has_exact_authority_v1(
     ):
         return True
     if receipt["format_version"] != PARENT_FRONTIER_FORMAT_VERSION:
-        return False
+        if receipt["format_version"] != HIERARCHY_FRONTIER_FORMAT_VERSION:
+            return False
+        if structural_evidence is None:
+            return False
+        _validate_hierarchy_frontier_against_structural_evidence_v1(receipt, structural_evidence)
+        proof = receipt["hierarchy_direct_frontier_authority"]
+        return (
+            proof["target_kind"] == "FAMILY_PARENT"
+            and proof["status"] == _HIERARCHY_FRONTIER_BOUND_STATUS
+        )
     if structural_evidence is None:
         return False
     _validate_parent_frontier_against_structural_evidence_v1(receipt, structural_evidence)
@@ -3379,6 +5048,8 @@ def validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
 
     if type(value) is dict and value.get("format_version") == PARENT_FRONTIER_FORMAT_VERSION:
         return _validate_parent_frontier_result_v1(value)
+    if type(value) is dict and value.get("format_version") == HIERARCHY_FRONTIER_FORMAT_VERSION:
+        return _validate_hierarchy_frontier_result_v1(value)
     return _validate_result(value)
 
 
@@ -3395,6 +5066,7 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
     period_semantics: Any = None,
     expected_lane_unit_kinds: Any = None,
     visible_dash_rescues: Any = (),
+    hierarchy_spec: Any = None,
 ) -> dict[str, Any]:
     """Exact-rebuild a receipt from bound source text and the selected region."""
 
@@ -3419,6 +5091,20 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
             visible_dash_rescues=visible_dash_rescues,
         )
         if persisted["format_version"] == PARENT_FRONTIER_FORMAT_VERSION
+        else project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
+            source_expected,
+            structural_evidence,
+            column_context,
+            document_pages,
+            family_spec,
+            selected_topology_region,
+            hierarchy_spec,
+            column_context_document_pages=column_context_document_pages,
+            period_semantics=period_semantics,
+            expected_lane_unit_kinds=expected_lane_unit_kinds,
+            visible_dash_rescues=visible_dash_rescues,
+        )
+        if persisted["format_version"] == HIERARCHY_FRONTIER_FORMAT_VERSION
         else source_expected
     )
     if not same_typed_json_v1(persisted, expected):

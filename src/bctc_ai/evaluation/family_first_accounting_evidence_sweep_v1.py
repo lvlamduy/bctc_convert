@@ -509,8 +509,14 @@ def _axis_numeric_values(row_axis: dict[str, Any]) -> list[tuple[str | None, dic
 
 
 def _mixed_candidate_has_accounting_corroboration(
-    *, role: str | None, sample_id: str, closure: dict[str, Any]
+    *,
+    role: str | None,
+    sample_id: str,
+    closure: dict[str, Any],
+    hierarchy_frontier_certified_sample_ids: set[str] | None = None,
 ) -> bool:
+    if sample_id in (hierarchy_frontier_certified_sample_ids or set()):
+        return True
     if closure["format_version"] in {
         "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
         "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V2",
@@ -651,6 +657,36 @@ def _mixed_separator_consensus_reasons(
         return False
 
     values = _axis_numeric_values(row_axis)
+    hierarchy_frontier_certified_sample_ids: set[str] = set()
+    if (
+        closure.get("format_version") == "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2"
+        and type(closure.get("one_edit_exact_source_structural_proofs")) is dict
+        and closure["one_edit_exact_source_structural_proofs"].get("format_version")
+        == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION
+    ):
+        structural_evidence = {
+            "internal_unassigned_numeric_clusters": closure["internal_unassigned_numeric_clusters"],
+            "numeric_sample_universe": closure["numeric_sample_universe"],
+            "role_occurrences": closure["role_occurrences"],
+            "row_axis": row_axis,
+        }
+        hierarchy_frontier_certified_sample_ids = (
+            one_edit_v1.hierarchy_frontier_certified_sample_ids_v1(
+                closure["one_edit_exact_source_structural_proofs"],
+                structural_evidence=structural_evidence,
+            )
+        )
+        result_cluster = one_edit_v1.hierarchy_frontier_result_cluster_v1(
+            closure["one_edit_exact_source_structural_proofs"],
+            structural_evidence=structural_evidence,
+        )
+        if result_cluster is not None:
+            sample_by_id = {
+                sample["sample_id"]: sample for sample in closure["numeric_sample_universe"]
+            }
+            values.extend(
+                (None, sample_by_id[sample_id]) for sample_id in result_cluster["sample_ids"]
+            )
     candidates = [
         (role, value)
         for role, value in values
@@ -706,17 +742,35 @@ def _mixed_separator_consensus_reasons(
             for peer_role, value in values
             if value["sample_id"] != sample_id
             and value["column_ordinal"] == candidate["column_ordinal"]
-            and (peer_role is not None or value["sample_id"] in exact_total_samples)
+            and (
+                peer_role is not None
+                or value["sample_id"] in exact_total_samples
+                or value["sample_id"] in hierarchy_frontier_certified_sample_ids
+            )
+            and (
+                value["parsed_token"]["classification"] in {"DASH_ZERO", "SIGNED_NUMBER"}
+                or value["sample_id"] in hierarchy_frontier_certified_sample_ids
+            )
+        ]
+        raw_signed_anchors = [
+            value
+            for _peer_role, value in values
+            if value["column_ordinal"] == candidate["column_ordinal"]
             and value["parsed_token"]["classification"] in {"DASH_ZERO", "SIGNED_NUMBER"}
         ]
-        if len(peers) < 2 or any(
-            peer["scale"] != 0 or peer["percentage_mark_present"] is not False for peer in peers
+        if (
+            len(peers) < 2
+            or not raw_signed_anchors
+            or any(
+                peer["scale"] != 0 or peer["percentage_mark_present"] is not False for peer in peers
+            )
         ):
             reasons.append(reason_prefix + ":SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED:" + sample_id)
         if not _mixed_candidate_has_accounting_corroboration(
             role=role,
             sample_id=sample_id,
             closure=closure,
+            hierarchy_frontier_certified_sample_ids=(hierarchy_frontier_certified_sample_ids),
         ):
             reasons.append(reason_prefix + ":EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id)
     return list(dict.fromkeys(reasons))
@@ -2644,7 +2698,10 @@ def _selected_v4_one_edit_authority_v1(
             topology_candidates["regions"][ordinal],
             canonical_expanded,
         )
-        if receipt["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
+        if receipt["format_version"] in {
+            one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION,
+            one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION,
+        }:
             closure = selected.get("additive_closure")
             column_context = selected.get("column_context")
             visible_dash_rescues = selected.get("column_context_visible_dash_rescues", ())
@@ -2665,25 +2722,45 @@ def _selected_v4_one_edit_authority_v1(
                 expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
                 visible_dash_rescues=visible_dash_rescues,
             )
-            rebuilt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
-                rebuilt_source,
-                {
-                    "internal_unassigned_numeric_clusters": closure[
-                        "internal_unassigned_numeric_clusters"
-                    ],
-                    "numeric_sample_universe": closure["numeric_sample_universe"],
-                    "role_occurrences": closure["role_occurrences"],
-                    "row_axis": selected["row_axis"],
-                },
-                column_context,
-                authority_pages,
-                family_spec,
-                topology_candidates["regions"][ordinal],
-                column_context_document_pages=joined_pages,
-                period_semantics=evaluation_spec.get("period_semantics"),
-                expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
-                visible_dash_rescues=visible_dash_rescues,
-            )
+            structural_evidence = {
+                "internal_unassigned_numeric_clusters": closure[
+                    "internal_unassigned_numeric_clusters"
+                ],
+                "numeric_sample_universe": closure["numeric_sample_universe"],
+                "role_occurrences": closure["role_occurrences"],
+                "row_axis": selected["row_axis"],
+            }
+            if receipt["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
+                rebuilt = (
+                    one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
+                        rebuilt_source,
+                        structural_evidence,
+                        column_context,
+                        authority_pages,
+                        family_spec,
+                        topology_candidates["regions"][ordinal],
+                        column_context_document_pages=joined_pages,
+                        period_semantics=evaluation_spec.get("period_semantics"),
+                        expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                        visible_dash_rescues=visible_dash_rescues,
+                    )
+                )
+            else:
+                rebuilt = (
+                    one_edit_v1.project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
+                        rebuilt_source,
+                        structural_evidence,
+                        column_context,
+                        authority_pages,
+                        family_spec,
+                        topology_candidates["regions"][ordinal],
+                        evaluation_spec.get("hierarchical_closure_spec"),
+                        column_context_document_pages=joined_pages,
+                        period_semantics=evaluation_spec.get("period_semantics"),
+                        expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                        visible_dash_rescues=visible_dash_rescues,
+                    )
+                )
         else:
             rebuilt = rebuilt_source
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
@@ -2863,6 +2940,35 @@ def _candidate_evidence_from_joined_pages(
                     joined_pages,
                     family_spec,
                     topology_region,
+                    period_semantics=evaluation_spec["period_semantics"],
+                    expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+                    visible_dash_rescues=dash_rescues,
+                )
+                one_edit_exact_source_structural_proofs = occurrence_axis[
+                    "one_edit_exact_source_structural_proofs"
+                ]
+            hierarchy_frontier_projection_required = (
+                occurrence_axis is not None
+                and one_edit_exact_source_structural_proofs.get("format_version")
+                == one_edit_v1.FORMAT_VERSION
+                and len(
+                    [
+                        check
+                        for check in one_edit_exact_source_structural_proofs.get("checks", [])
+                        if check.get("status")
+                        not in occurrence_row_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
+                    ]
+                )
+                == 1
+            )
+            if hierarchy_frontier_projection_required:
+                occurrence_axis = occurrence_row_v2.project_accounting_family_one_edit_hierarchy_frontier_authority_v2(
+                    occurrence_axis,
+                    column_context,
+                    joined_pages,
+                    family_spec,
+                    topology_region,
+                    evaluation_spec["hierarchical_closure_spec"],
                     period_semantics=evaluation_spec["period_semantics"],
                     expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
                     visible_dash_rescues=dash_rescues,

@@ -5880,6 +5880,553 @@ def test_interleaved_wrapped_parent_lone_sample_is_owned_and_replay_bound() -> N
         )
 
 
+def _f3_hierarchy_frontier_hdb_pages(
+    *,
+    current_total: str = "150",
+    deposit_current: str = "100",
+    extra_rows: tuple[tuple[str, str, str], ...] = (),
+    loan_current: str = "50",
+    reverse_components: bool = False,
+    source_surface: str = "Tièn gn ti các TCTD khác",
+) -> list[dict[str, object]]:
+    components = [
+        ("Tiền gửi tại các TCTD khác", deposit_current, "90"),
+        ("Cho vay các TCTD khác", loan_current, "40"),
+    ]
+    if reverse_components:
+        components.reverse()
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tổng tiền gửi và cho vay các TCTD khác", current_total, "130"),
+            *components,
+            *extra_rows,
+        ]
+    )
+    for index in (5, 4):
+        pages[0]["lines"].pop(index)
+    _reindex_page_lines(pages[0]["lines"])
+    for line in pages[0]["lines"]:
+        if line["vietocr_text"] == "Tiền gửi tại các TCTD khác":
+            line["vietocr_text"] = "Tiần gửi tại các TCTD khác"
+            line["numeric_recognition"]["raw_prediction"] = source_surface
+    return pages
+
+
+def _f3_hierarchy_frontier_ctg_pages(
+    *,
+    loan_semantic_surface: str = "50.000.000",
+    loan_value: str = "50,000.000",
+    parent_semantic_surface: str = "150.000.000",
+    parent_value: str = "150.000,000",
+) -> list[dict[str, object]]:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100.000.000", "90.000.000"),
+            ("Cho vay các TCTD khác", loan_value, "40.000.000"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    lines[0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    lines[0]["numeric_recognition"]["raw_prediction"] = "Tin gi và cho vay các TCTD khác"
+    for index, pp_surface, semantic_surface in (
+        (4, parent_value, parent_semantic_surface),
+        (5, "130.000.000", "130.000.000"),
+        (10, loan_value, loan_semantic_surface),
+    ):
+        lines[index]["numeric_recognition"]["raw_prediction"] = pp_surface
+        lines[index]["vietocr_text"] = semantic_surface
+    return pages
+
+
+def _project_f3_hierarchy_frontier(
+    pages: list[dict[str, object]],
+) -> tuple[dict, dict, dict, dict]:
+    scan, axis = _build_f3(pages)
+    context = _f3_column_context(axis, pages)
+    assert context["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    projected = subject.project_accounting_family_one_edit_hierarchy_frontier_authority_v2(
+        axis,
+        context,
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+        _f3_hierarchy(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+    return scan, axis, context, projected
+
+
+@pytest.mark.parametrize(
+    ("shape", "target_kind", "carrier_kind"),
+    [
+        ("HDB_COMPONENT", "COMPONENT", "ROLE_OCCURRENCE"),
+        ("CTG_PARENT", "FAMILY_PARENT", "LABELED_PARENT_CLUSTER"),
+    ],
+)
+def test_f3_one_edit_hierarchy_frontier_binds_source_visible_root_equation(
+    shape: str,
+    target_kind: str,
+    carrier_kind: str,
+) -> None:
+    pages = (
+        _f3_hierarchy_frontier_hdb_pages()
+        if shape == "HDB_COMPONENT"
+        else _f3_hierarchy_frontier_ctg_pages()
+    )
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    receipt = projected["one_edit_exact_source_structural_proofs"]
+    assert receipt["format_version"] == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+    assert receipt["unresolved_reasons"] == []
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    assert proof["target_kind"] == target_kind
+    assert proof["result_carrier_binding"]["carrier_kind"] == carrier_kind
+    assert [item["role"] for item in proof["component_frontier_bindings"]] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+    ]
+    if shape == "CTG_PARENT":
+        assert [item["certificate_kind"] for item in proof["numeric_cell_certificates"]].count(
+            "MIXED_SAME_CROP_EXACT_INTEGER"
+        ) == 2
+
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == []
+    assert (
+        sweep_v1._mixed_separator_consensus_reasons(
+            row_axis=projected["row_axis"],
+            column_context=context,
+            closure=closure,
+            joined_pages=pages,
+        )
+        == []
+    )
+
+    authority_pages = subject._one_edit_authority_pages_v2(row_v1._pages(pages))
+    expanded = one_edit_v1._canonical_expanded_occurrence_region_v1(
+        one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages),
+        _f3_spec(),
+        scan["regions"][0],
+    )
+    assert (
+        one_edit_v1.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            receipt,
+            authority_pages,
+            _f3_spec(),
+            scan["regions"][0],
+            expanded,
+            structural_evidence=_f3_structural_evidence(projected),
+            column_context=context,
+            column_context_document_pages=pages,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=["MONEY", "MONEY"],
+            hierarchy_spec=_f3_hierarchy(),
+        )
+        == receipt
+    )
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [
+        _f3_hierarchy_frontier_hdb_pages(current_total="151"),
+        _f3_hierarchy_frontier_hdb_pages(current_total=""),
+        _f3_hierarchy_frontier_hdb_pages(deposit_current=""),
+        _f3_hierarchy_frontier_hdb_pages(source_surface=""),
+        _f3_hierarchy_frontier_hdb_pages(
+            extra_rows=(("Dự phòng rủi ro tiền gửi và cho vay các TCTD khác", "", "-1"),)
+        ),
+        _f3_hierarchy_frontier_hdb_pages(extra_rows=(("Tổng cho vay các TCTD khác", "1", "1"),)),
+        _f3_hierarchy_frontier_hdb_pages(extra_rows=(("Tiền gửi tại các TCTD khác", "1", "1"),)),
+        _f3_hierarchy_frontier_ctg_pages(parent_semantic_surface="151.000.000"),
+        _f3_hierarchy_frontier_ctg_pages(loan_semantic_surface="51.000.000"),
+    ],
+    ids=[
+        "one-lane-residual",
+        "missing-visible-result",
+        "partial-component",
+        "wrong-unbound-status",
+        "partial-declared-provision",
+        "root-nonadditive-row",
+        "duplicate-component-role",
+        "mixed-result-reader-disagreement",
+        "mixed-component-reader-disagreement",
+    ],
+)
+def test_f3_one_edit_hierarchy_frontier_abstains_on_incomplete_or_untrusted_axis(
+    pages: list[dict[str, object]],
+) -> None:
+    _scan, axis, _context, projected = _project_f3_hierarchy_frontier(pages)
+    assert (
+        projected["one_edit_exact_source_structural_proofs"]
+        == axis["one_edit_exact_source_structural_proofs"]
+    )
+    assert projected["one_edit_exact_source_structural_proofs"]["format_version"] == (
+        one_edit_v1.FORMAT_VERSION
+    )
+
+
+def test_f3_one_edit_hierarchy_frontier_preserves_reordered_physical_siblings() -> None:
+    _scan, _axis, _context, projected = _project_f3_hierarchy_frontier(
+        _f3_hierarchy_frontier_hdb_pages(reverse_components=True)
+    )
+    proof = projected["one_edit_exact_source_structural_proofs"][
+        "hierarchy_direct_frontier_authority"
+    ]
+    assert [item["role"] for item in proof["component_frontier_bindings"]] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+    ]
+    assert [item["source_visual_ordinal"] for item in proof["component_frontier_bindings"]] == [
+        1,
+        0,
+    ]
+
+
+def _coherently_rehash_hierarchy_frontier(axis: dict) -> None:
+    receipt = axis["one_edit_exact_source_structural_proofs"]
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    receipt["input_binding"] = copy.deepcopy(proof["input_binding"])
+    proof_material = copy.deepcopy(proof)
+    proof_material.pop("proof_id")
+    proof["proof_id"] = "afeoehdfav1:proof:" + canonical_json_sha256_v1(proof_material)
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "afeoeav1:receipt:" + canonical_json_sha256_v1(receipt_material)
+    _coherently_rehash_occurrence(axis)
+
+
+def _coherently_replace_hierarchy_frontier_source_check(
+    axis: dict,
+    check: dict,
+) -> None:
+    receipt = axis["one_edit_exact_source_structural_proofs"]
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    source = receipt["source_exact_authority_receipt"]
+    source["checks"] = [copy.deepcopy(check)]
+    source["unresolved_reasons"] = [one_edit_v1._parent_frontier_reason(check)]
+    source_material = copy.deepcopy(source)
+    source_material.pop("receipt_id")
+    source["receipt_id"] = "afeoeav1:receipt:" + canonical_json_sha256_v1(source_material)
+    proof["source_check"] = copy.deepcopy(check)
+    proof["input_binding"]["source_exact_authority_receipt_sha256"] = canonical_json_sha256_v1(
+        source
+    )
+    receipt["checks"] = [copy.deepcopy(check)]
+
+
+@pytest.mark.parametrize("attack", ["PERIOD", "UNIT", "CROP", "VIETOCR"])
+def test_f3_hierarchy_frontier_selected_public_replay_rejects_coherent_context_or_crop_tamper(
+    attack: str,
+) -> None:
+    pages = _f3_hierarchy_frontier_ctg_pages()
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    attacked = copy.deepcopy(projected)
+    proof = attacked["one_edit_exact_source_structural_proofs"][
+        "hierarchy_direct_frontier_authority"
+    ]
+    attacked_context = proof["column_context_receipt"]
+    if attack == "PERIOD":
+        attacked_context["period_axis"][0]["resolved_period"] = "31/12/2099"
+        attacked_context["document_period_context"]["current_period_end"] = "31/12/2099"
+        attacked_context["document_period_context"]["reporting_year"] = 2099
+        attacked_context["document_period_context"]["observed_dates"][1]["date"] = "31/12/2099"
+    elif attack == "UNIT":
+        attacked_context["document_unit_context"]["currency"] = "USD"
+        for lane in attacked_context["unit_axis"]:
+            lane["currency"] = "USD"
+    elif attack == "CROP":
+        certificate = proof["numeric_cell_certificates"][0]
+        certificate["crop_ref"]["sha256"] = "f" * 64
+        certificate["crop_ref"]["path"] = "opaque/coherently-forged-crop.png"
+    else:
+        certificate = proof["numeric_cell_certificates"][0]
+        assert certificate["certificate_kind"] == "MIXED_SAME_CROP_EXACT_INTEGER"
+        certificate["vietocr_surface"] = "151.000.000"
+    if attack in {"PERIOD", "UNIT"}:
+        context_material = copy.deepcopy(attacked_context)
+        context_material.pop("column_context_id")
+        attacked_context["column_context_id"] = "afccv1:context:" + canonical_json_sha256_v1(
+            context_material
+        )
+        proof["input_binding"]["column_context_sha256"] = canonical_json_sha256_v1(attacked_context)
+    _coherently_rehash_hierarchy_frontier(attacked)
+    if attack in {"CROP", "VIETOCR"}:
+        with pytest.raises(
+            one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error,
+            match="hierarchy-frontier",
+        ):
+            one_edit_v1._validate_hierarchy_frontier_against_structural_evidence_v1(
+                attacked["one_edit_exact_source_structural_proofs"],
+                _f3_structural_evidence(attacked),
+            )
+        return
+    attacked_closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        attacked,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    assert attacked_closure["status"] == ("HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO")
+    selected_context = attacked_context if attack in {"PERIOD", "UNIT"} else context
+    with pytest.raises(ValueError, match="column context does not replay exactly"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            {
+                "additive_closure": attacked_closure,
+                "candidate_ordinal": 0,
+                "column_context": selected_context,
+                "column_context_visible_dash_rescues": (),
+                "one_edit_exact_source_structural_proofs": attacked[
+                    "one_edit_exact_source_structural_proofs"
+                ],
+                "row_axis": attacked["row_axis"],
+            },
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8")),
+        )
+
+
+def test_f3_hierarchy_frontier_public_replay_rejects_coherently_rehashed_equivalent_reader_surface() -> (
+    None
+):
+    pages = _f3_hierarchy_frontier_ctg_pages()
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    attacked = copy.deepcopy(projected)
+    proof = attacked["one_edit_exact_source_structural_proofs"][
+        "hierarchy_direct_frontier_authority"
+    ]
+    certificate = next(
+        item
+        for item in proof["numeric_cell_certificates"]
+        if item["certificate_kind"] == "MIXED_SAME_CROP_EXACT_INTEGER"
+    )
+    certificate["vietocr_surface"] = str(certificate["number"]["coefficient"])
+    sample = next(
+        item
+        for item in attacked["numeric_sample_universe"]
+        if item["sample_id"] == certificate["sample_id"]
+    )
+    certificate["page_line_sha256"] = canonical_json_sha256_v1(
+        one_edit_v1._hierarchy_frontier_page_line_from_sample_v1(
+            sample,
+            certificate["vietocr_surface"],
+        )
+    )
+    _coherently_rehash_hierarchy_frontier(attacked)
+    assert subject._validate_result(attacked) == attacked
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        attacked,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    with pytest.raises(ValueError, match="differs from occurrence proof"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            {
+                "additive_closure": closure,
+                "candidate_ordinal": 0,
+                "column_context": context,
+                "column_context_visible_dash_rescues": (),
+                "one_edit_exact_source_structural_proofs": attacked[
+                    "one_edit_exact_source_structural_proofs"
+                ],
+                "row_axis": attacked["row_axis"],
+            },
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8")),
+        )
+
+
+@pytest.mark.parametrize("attack", ["DELETE", "REORDER", "DUPLICATE"])
+def test_f3_hierarchy_frontier_public_replay_rejects_different_hierarchy_spec(
+    attack: str,
+) -> None:
+    pages = _f3_hierarchy_frontier_hdb_pages()
+    scan, _axis, context, projected = _project_f3_hierarchy_frontier(pages)
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        projected,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
+    root_equation = next(
+        equation
+        for equation in evaluation["hierarchical_closure_spec"]["equations"]
+        if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    alternative = root_equation["component_role_alternatives"][0]
+    if attack == "DELETE":
+        root_equation["component_role_alternatives"].pop(0)
+    elif attack == "REORDER":
+        alternative["component_roles"].reverse()
+    else:
+        alternative["component_roles"][1] = alternative["component_roles"][0]
+    with pytest.raises(ValueError, match="one-edit exact authority"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            {
+                "additive_closure": closure,
+                "candidate_ordinal": 0,
+                "column_context": context,
+                "column_context_visible_dash_rescues": (),
+                "one_edit_exact_source_structural_proofs": projected[
+                    "one_edit_exact_source_structural_proofs"
+                ],
+                "row_axis": projected["row_axis"],
+            },
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=evaluation,
+        )
+
+
+@pytest.mark.parametrize(
+    ("shape", "attack"),
+    [
+        ("HDB", "WRONG_ROOT"),
+        ("HDB", "WRONG_PAGE"),
+        ("HDB", "WRONG_COMPONENT_PARENT"),
+        ("HDB", "DUPLICATE_COMPONENT_OCCURRENCE"),
+        ("HDB", "MIXED_LEVEL_RESULT_AS_COMPONENT"),
+        ("HDB", "DECLARED_BINDING_ORDER"),
+        ("HDB", "DUPLICATE_SAMPLE"),
+        ("HDB", "ROW_HASH"),
+        ("CTG", "RESULT_CLUSTER"),
+        ("CTG", "PAGE_LINE_HASH"),
+        ("HDB", "ARITHMETIC_RESIDUAL"),
+        ("HDB", "ROUNDING_SCALE"),
+    ],
+)
+def test_f3_hierarchy_frontier_occurrence_rejects_coherently_rehashed_receipt_tamper(
+    shape: str,
+    attack: str,
+) -> None:
+    pages = (
+        _f3_hierarchy_frontier_hdb_pages() if shape == "HDB" else _f3_hierarchy_frontier_ctg_pages()
+    )
+    _scan, _axis, _context, projected = _project_f3_hierarchy_frontier(pages)
+    attacked = copy.deepcopy(projected)
+    receipt = attacked["one_edit_exact_source_structural_proofs"]
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    components = proof["component_frontier_bindings"]
+    forged_root = "aforav2:root:" + "f" * 64
+    if attack == "WRONG_ROOT":
+        proof["root_occurrence_id"] = forged_root
+    elif attack == "WRONG_PAGE":
+        proof["page_sequence"] = 2
+        check = copy.deepcopy(proof["source_check"])
+        check["page_sequence"] = 2
+        _coherently_replace_hierarchy_frontier_source_check(attacked, check)
+        for certificate in proof["numeric_cell_certificates"]:
+            certificate["page_sequence"] = 2
+    elif attack == "WRONG_COMPONENT_PARENT":
+        occurrence = next(
+            item
+            for item in attacked["role_occurrences"]
+            if item["occurrence_id"] == components[0]["occurrence_id"]
+        )
+        occurrence["scope_owner_occurrence_id"] = forged_root
+        occurrence["retrieval_scope_owner_occurrence_id"] = forged_root
+        occurrence["label_match"]["scope_owner_occurrence_id"] = forged_root
+        occurrence["label_match"]["retrieval_scope_owner_occurrence_id"] = forged_root
+        components[0]["role_occurrence_sha256"] = canonical_json_sha256_v1(occurrence)
+        proof["input_binding"]["role_occurrences_sha256"] = canonical_json_sha256_v1(
+            attacked["role_occurrences"]
+        )
+    elif attack == "DUPLICATE_COMPONENT_OCCURRENCE":
+        components[1]["occurrence_id"] = components[0]["occurrence_id"]
+        components[1]["retrieval_occurrence_id"] = components[0]["retrieval_occurrence_id"]
+    elif attack == "MIXED_LEVEL_RESULT_AS_COMPONENT":
+        carrier = proof["result_carrier_binding"]
+        components[1]["occurrence_id"] = carrier["occurrence_id"]
+        components[1]["retrieval_occurrence_id"] = carrier["occurrence_id"]
+    elif attack == "DECLARED_BINDING_ORDER":
+        components.reverse()
+    elif attack == "DUPLICATE_SAMPLE":
+        duplicate = components[0]["sample_ids"][0]
+        components[1]["sample_ids"][0] = duplicate
+        certificate = next(
+            item
+            for item in proof["numeric_cell_certificates"]
+            if item["node_kind"] == "COMPONENT"
+            and item["node_ordinal"] == 1
+            and item["column_ordinal"] == 0
+        )
+        certificate["sample_id"] = duplicate
+    elif attack == "ROW_HASH":
+        components[0]["row_sha256"] = "f" * 64
+    elif attack == "RESULT_CLUSTER":
+        proof["result_carrier_binding"]["cluster_id"] = "aforav2:unassigned:" + "f" * 64
+    elif attack == "PAGE_LINE_HASH":
+        mixed = next(
+            item
+            for item in proof["numeric_cell_certificates"]
+            if item["certificate_kind"] == "MIXED_SAME_CROP_EXACT_INTEGER"
+        )
+        mixed["page_line_sha256"] = "f" * 64
+    else:
+        carrier = proof["result_carrier_binding"]
+        result_certificate = next(
+            item
+            for item in proof["numeric_cell_certificates"]
+            if item["node_kind"] == "RESULT" and item["column_ordinal"] == 0
+        )
+        if attack == "ARITHMETIC_RESIDUAL":
+            carrier["numbers"][0]["coefficient"] += 1
+            result_certificate["number"]["coefficient"] += 1
+        else:
+            carrier["numbers"][0]["scale"] = 1
+            result_certificate["number"]["scale"] = 1
+    _coherently_rehash_hierarchy_frontier(attacked)
+    with pytest.raises(
+        one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="hierarchy-frontier",
+    ):
+        one_edit_v1._validate_hierarchy_frontier_against_structural_evidence_v1(
+            receipt,
+            _f3_structural_evidence(attacked),
+        )
+
+
+def test_f3_hierarchy_frontier_occurrence_rejects_coherent_wrong_target_source_span() -> None:
+    _scan, _axis, _context, projected = _project_f3_hierarchy_frontier(
+        _f3_hierarchy_frontier_hdb_pages()
+    )
+    attacked = copy.deepcopy(projected)
+    receipt = attacked["one_edit_exact_source_structural_proofs"]
+    proof = receipt["hierarchy_direct_frontier_authority"]
+    source = receipt["source_exact_authority_receipt"]
+    wrong_lines = [proof["source_check"]["source_line_indices"][0] + 1]
+    proof["source_check"]["source_line_indices"] = wrong_lines
+    source["checks"][0]["source_line_indices"] = wrong_lines
+    receipt["checks"][0]["source_line_indices"] = wrong_lines
+    source["unresolved_reasons"] = [one_edit_v1._parent_frontier_reason(source["checks"][0])]
+    source_material = copy.deepcopy(source)
+    source_material.pop("receipt_id")
+    source["receipt_id"] = "afeoeav1:receipt:" + canonical_json_sha256_v1(source_material)
+    proof["input_binding"]["source_exact_authority_receipt_sha256"] = canonical_json_sha256_v1(
+        source
+    )
+    with pytest.raises(
+        one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="component target",
+    ):
+        _coherently_rehash_hierarchy_frontier(attacked)
+        one_edit_v1._validate_hierarchy_frontier_against_structural_evidence_v1(
+            attacked["one_edit_exact_source_structural_proofs"],
+            _f3_structural_evidence(attacked),
+        )
+
+
 def test_wrapped_parent_adjacent_outside_tolerance_number_stays_source_only() -> None:
     lines = [
         _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),

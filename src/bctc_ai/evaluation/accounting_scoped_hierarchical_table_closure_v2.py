@@ -470,8 +470,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "b424a27e8288af5eb02b42d6fffb73d791c7259d1208700e97cef0ea3a50cb5f",
-        "size_bytes": 551_888,
+        "sha256": "0a5edc682375d60f1f845ea1d61154c5114fd1077d1c72741c4941e6536982ce",
+        "size_bytes": 555_223,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -731,6 +731,12 @@ def _source_role_vetoes(
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
         and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
+    bound_retrieval_occurrence_ids.update(
+        one_edit_v1.hierarchy_frontier_bound_retrieval_occurrence_ids_v1(
+            one_edit_exact_source_structural_proofs,
+            structural_evidence=one_edit_structural_evidence,
+        )
+    )
     family_parent_is_bound = one_edit_v1.family_parent_has_exact_authority_v1(
         one_edit_exact_source_structural_proofs,
         structural_evidence=one_edit_structural_evidence,
@@ -5790,6 +5796,22 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error(
                 "scoped hierarchical parent-frontier proof does not bind its persisted axes"
             ) from exc
+    elif one_edit_proofs["format_version"] == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION:
+        try:
+            parent_frontier_result_cluster = (
+                one_edit_v1._validate_hierarchy_frontier_against_closure_axes_v1(  # noqa: SLF001
+                    one_edit_proofs,
+                    internal_unassigned_numeric_clusters=value[
+                        "internal_unassigned_numeric_clusters"
+                    ],
+                    numeric_sample_universe=value["numeric_sample_universe"],
+                    role_occurrences=value["role_occurrences"],
+                )
+            )
+        except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+            raise _error(
+                "scoped hierarchical hierarchy-frontier proof does not bind persisted axes"
+            ) from exc
     proof_check_by_retrieval_occurrence_id = {
         check["occurrence_id"]: check
         for check in one_edit_proofs["checks"]
@@ -6507,6 +6529,35 @@ def _build(
         "role_occurrences": axis["role_occurrences"],
         "row_axis": row_axis,
     }
+    one_edit_receipt = axis["one_edit_exact_source_structural_proofs"]
+    if one_edit_receipt["format_version"] == one_edit_v1.HIERARCHY_FRONTIER_FORMAT_VERSION:
+        proof_equation = one_edit_receipt["hierarchy_direct_frontier_authority"][
+            "hierarchy_equation_binding"
+        ]
+        root_equations = [
+            equation
+            for equation in spec["equations"]
+            if equation["result_role"] == spec["family_id"]
+        ]
+        alternative_ordinal = proof_equation.get("alternative_ordinal")
+        if (
+            one_edit_receipt["input_binding"]["hierarchy_spec_sha256"]
+            != canonical_json_sha256_v1(hierarchy_spec)
+            or len(root_equations) != 1
+            or type(alternative_ordinal) is not int
+            or not 0 <= alternative_ordinal < len(root_equations[0]["component_role_alternatives"])
+            or proof_equation["alternative_spec"]
+            != root_equations[0]["component_role_alternatives"][alternative_ordinal]
+            or proof_equation["component_roles"]
+            != root_equations[0]["component_role_alternatives"][alternative_ordinal][
+                "component_roles"
+            ]
+            or proof_equation["result_role"] != root_equations[0]["result_role"]
+            or proof_equation["visible_result_roles"] != root_equations[0]["visible_result_roles"]
+            or proof_equation["compiled_equation_sha256"]
+            != canonical_json_sha256_v1(root_equations[0])
+        ):
+            raise _error("hierarchy-frontier proof differs from the closure hierarchy spec")
     source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
         numeric_accounting_rows,
         axis["role_occurrences"],
@@ -6524,6 +6575,12 @@ def _build(
         if check["match_scope"] == "EXPANDED_OCCURRENCE"
         and check["status"] in occurrence_v2._ONE_EDIT_AUTHORITY_BOUND_STATUSES  # noqa: SLF001
     }
+    bound_one_edit_retrieval_occurrence_ids.update(
+        one_edit_v1.hierarchy_frontier_bound_retrieval_occurrence_ids_v1(
+            axis["one_edit_exact_source_structural_proofs"],
+            structural_evidence=one_edit_structural_evidence,
+        )
+    )
     bound_one_edit_family_parent = one_edit_v1.family_parent_has_exact_authority_v1(
         axis["one_edit_exact_source_structural_proofs"],
         structural_evidence=one_edit_structural_evidence,
