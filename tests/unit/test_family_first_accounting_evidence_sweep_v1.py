@@ -2314,6 +2314,62 @@ def test_document_store_v4_cached_context_reopens_inner_authority_before_early_r
         )
 
 
+def test_document_store_v4_render_topology_handoff_avoids_second_snapshot_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
+    packet = snapshot["document_packet"]
+    family_spec = _family_spec()
+    policy = {"format_version": subject.EVALUATION_SPEC_FORMAT_V4}
+    original_open = subject._open_prepared_v4_document_store_context_v1
+    full_open_count = 0
+
+    def counted_open(*args: object, **kwargs: object):
+        nonlocal full_open_count
+        full_open_count += 1
+        return original_open(*args, **kwargs)
+
+    monkeypatch.setattr(
+        subject,
+        "_open_prepared_v4_document_store_context_v1",
+        counted_open,
+    )
+    trial = subject._document_store_trial_with_render_rescue_v1(
+        object(),
+        packet=packet,
+        snapshot=snapshot,
+        family_spec=family_spec,
+        policy=policy,
+        topology_scan=None,
+    )
+
+    assert trial["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
+    assert full_open_count == 1
+
+    runtime_context: dict[str, object] = {}
+    trial = subject._trial_from_document_store_snapshot_v1(
+        snapshot,
+        family_spec,
+        policy,
+        expected_packet=packet,
+        _v4_runtime_context=runtime_context,
+    )
+    handoff = runtime_context["render_topology_handoff"]
+    runtime_context["render_topology_handoff"] = replace(
+        handoff,
+        topology_candidates_id="aftcv2:result:" + "0" * 64,
+    )
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="render-topology source binding drifted",
+    ):
+        subject._open_prepared_v4_render_topology_handoff_v1(
+            runtime_context["prepared_context"],
+            runtime_context["render_topology_handoff"],
+            expected_legacy_scan=trial["topology_scan"],
+        )
+
+
 def test_document_store_v4_rejects_forged_outer_prepared_context() -> None:
     snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
     family_spec = _family_spec()

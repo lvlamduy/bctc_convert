@@ -208,6 +208,19 @@ _PREPARED_V4_DOCUMENT_CONTEXT_SEAL = object()
 
 
 @dataclass(frozen=True, slots=True, eq=False)
+class _PreparedV4RenderTopologyHandoffV1:
+    """Topology authority already authenticated by one exact trial pass."""
+
+    legacy_topology_scan_id: str
+    prepared_context_sha256: str
+    topology_candidates_id: str
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_V4_RENDER_TOPOLOGY_HANDOFF_SEAL = object()
+
+
+@dataclass(frozen=True, slots=True, eq=False)
 class _PreparedSelectedOneEditPublicReplayV1:
     """One successful selected replay, reusable only for identical inputs."""
 
@@ -4726,6 +4739,48 @@ def _open_prepared_v4_document_store_context_v1(
     return selected_snapshot, topology_scan, topology_candidates, candidate_bindings
 
 
+def _open_prepared_v4_render_topology_handoff_v1(
+    prepared_context: Any,
+    handoff: Any,
+    *,
+    expected_legacy_scan: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reopen only the small topology authority after a full exact trial open."""
+
+    if (
+        type(prepared_context) is not _PreparedV4DocumentStoreContextV1
+        or prepared_context.seal is not _PREPARED_V4_DOCUMENT_CONTEXT_SEAL
+        or type(handoff) is not _PreparedV4RenderTopologyHandoffV1
+        or handoff.seal is not _PREPARED_V4_RENDER_TOPOLOGY_HANDOFF_SEAL
+        or handoff.prepared_context_sha256 != prepared_context.prepared_context_sha256
+    ):
+        raise _error("prepared V4 render-topology handoff identity drifted")
+    material = _prepared_v4_document_context_material_v1(
+        caller_snapshot_sha256=prepared_context.caller_snapshot_sha256,
+        evaluation_spec_sha256=prepared_context.evaluation_spec_sha256,
+        family_spec_sha256=prepared_context.family_spec_sha256,
+        prepared_snapshot=prepared_context.prepared_snapshot,
+        prepared_topology=prepared_context.prepared_topology,
+    )
+    if prepared_context.prepared_context_sha256 != canonical_json_sha256_v1(material):
+        raise _error("prepared V4 render-topology context binding drifted")
+    try:
+        topology_scan, topology_candidates, _candidate_bindings = (
+            topology_candidates_v2._prepared_accounting_family_topology_authority_v2(
+                prepared_context.prepared_topology
+            )
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("prepared V4 render-topology inner authority drifted") from exc
+    if (
+        handoff.legacy_topology_scan_id != topology_scan["scan_id"]
+        or handoff.topology_candidates_id != topology_candidates["result_id"]
+        or not same_typed_json_v1(topology_scan, expected_legacy_scan)
+    ):
+        raise _error("prepared V4 render-topology source binding drifted")
+    return topology_candidates
+
+
 def _trial_from_document_store_snapshot_v1(
     snapshot: dict[str, Any],
     family_spec: dict[str, Any],
@@ -4761,6 +4816,13 @@ def _trial_from_document_store_snapshot_v1(
                 expected_legacy_scan=topology_scan,
             )
         )
+        if _v4_runtime_context is not None:
+            _v4_runtime_context["render_topology_handoff"] = _PreparedV4RenderTopologyHandoffV1(
+                legacy_topology_scan_id=topology_scan["scan_id"],
+                prepared_context_sha256=prepared_context.prepared_context_sha256,
+                topology_candidates_id=topology_candidates["result_id"],
+                seal=_PREPARED_V4_RENDER_TOPOLOGY_HANDOFF_SEAL,
+            )
         topology_status = topology_candidates["status"]
         region_authority = topology_candidates
     elif topology_scan is None:
@@ -4916,16 +4978,12 @@ def _document_store_trial_with_render_rescue_v1(
     )
     if is_v4:
         prepared_context = runtime_context.get("prepared_context")
+        render_topology_handoff = runtime_context.get("render_topology_handoff")
         if type(prepared_context) is _PreparedV4DocumentStoreContextV1:
-            _selected_snapshot, _render_scan, render_topology_candidates, _bindings = (
-                _open_prepared_v4_document_store_context_v1(
-                    prepared_context,
-                    snapshot,
-                    family_spec,
-                    policy,
-                    expected_packet=packet,
-                    expected_legacy_scan=trial["topology_scan"],
-                )
+            render_topology_candidates = _open_prepared_v4_render_topology_handoff_v1(
+                prepared_context,
+                render_topology_handoff,
+                expected_legacy_scan=trial["topology_scan"],
             )
         else:
             _render_scan, render_topology_candidates = _v4_topology_authority(
