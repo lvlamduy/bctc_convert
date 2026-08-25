@@ -564,7 +564,7 @@ def _structural_group_cluster_assignments(
     """
 
     assignments: dict[str, int] = {}
-    for group in rows:
+    for group_index, group in enumerate(rows):
         if group["role_kind"] != "STRUCTURAL_GROUP":
             continue
         children = [
@@ -578,6 +578,7 @@ def _structural_group_cluster_assignments(
         lane_count = group["_lane_count"]
         if any(child["_lane_count"] != lane_count for _index, child in children):
             raise _error("one structural group spans inconsistent value-lane counts")
+        participant_indices = {group_index, *(index for index, _child in children)}
         participants = [group, *(child for _index, child in children)]
         clusters = _complete_physical_value_clusters(participants, lane_count=lane_count)
         if len(clusters) != len(children):
@@ -612,7 +613,38 @@ def _structural_group_cluster_assignments(
                 coherent = False
                 break
             for value in cluster:
-                proposed[value["sample_id"]] = child_index
+                sample_id = value["sample_id"]
+                participant_affinities = [
+                    contender["row_affinity"]
+                    for index, row in enumerate(rows)
+                    if index in participant_indices
+                    for contender in row["values"]
+                    if contender["sample_id"] == sample_id
+                ]
+                outsider_affinities = [
+                    contender["row_affinity"]
+                    for index, row in enumerate(rows)
+                    if index not in participant_indices
+                    for contender in row["values"]
+                    if contender["sample_id"] == sample_id
+                ]
+                if outsider_affinities:
+                    if any(
+                        type(affinity) is not float
+                        for affinity in [*participant_affinities, *outsider_affinities]
+                    ):
+                        raise _error("structural row-cluster contender affinity drifted")
+                    if max(outsider_affinities) > max(participant_affinities):
+                        # The ordered structural-owner axis can reconcile
+                        # staggered lanes among one parent and its children,
+                        # but it cannot preempt a directly observed row from
+                        # outside that participant set.  Abstain only for the
+                        # challenged source cell; the ordinary global
+                        # exclusivity pass below will retain its unique
+                        # strongest contender, while exact ties continue to
+                        # preserve the complete structural axis.
+                        continue
+                proposed[sample_id] = child_index
         if not coherent:
             continue
         for sample_id, child_index in proposed.items():

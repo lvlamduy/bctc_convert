@@ -455,6 +455,182 @@ def test_cluster_reassignment_updates_both_source_and_target_missing_lane_axes()
     assert by_role["CHILD"]["missing_column_ordinals"] == []
 
 
+def _cluster_owner_value(
+    sample_id: str,
+    *,
+    lane: int,
+    bbox: list[int],
+    coefficient: int,
+    row_affinity: float,
+) -> dict[str, object]:
+    return {
+        "bbox": bbox,
+        "column_center": (bbox[0] + bbox[2]) / 2,
+        "column_ordinal": lane,
+        "crop_ref": {
+            "path": f"opaque/{sample_id}.png",
+            "sha256": f"{coefficient:064x}",
+            "size_bytes": coefficient,
+        },
+        "line_ordinal": 28 + lane,
+        "page_sequence": 15,
+        "parsed_token": {
+            "classification": "SIGNED_NUMBER",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": str(coefficient),
+            "percentage_mark_present": False,
+            "scale": 0,
+            "separator_interpretation": "NONE",
+            "sign": 1,
+        },
+        "raw_prediction": f"{coefficient:,}".replace(",", "."),
+        "reader_score": 0.99,
+        "row_affinity": row_affinity,
+        "sample_id": sample_id,
+    }
+
+
+def _cluster_owner_arbitration_rows(
+    *,
+    outsider_affinities: tuple[float, float] | None,
+    same_parent_affinities: tuple[float, float] | None = None,
+) -> list[dict[str, object]]:
+    samples = (
+        ("sample-000042738", 0, [1152, 872, 1309, 906], 12_045_996),
+        ("sample-000042739", 1, [1385, 872, 1531, 914], 4_780_088),
+    )
+
+    def values(affinities: tuple[float, float]) -> list[dict[str, object]]:
+        return [
+            _cluster_owner_value(
+                sample_id,
+                lane=lane,
+                bbox=list(bbox),
+                coefficient=coefficient,
+                row_affinity=affinities[lane],
+            )
+            for sample_id, lane, bbox, coefficient in samples
+        ]
+
+    rows: list[dict[str, object]] = [
+        {
+            "_label_vertical_center": 820.0,
+            "_lane_count": 2,
+            "label_match": {"matched_within_role": None, "page_sequence": 15},
+            "missing_column_ordinals": ([] if same_parent_affinities is not None else [0, 1]),
+            "role": "INTERBANK_DEPOSIT_GROUP",
+            "role_kind": "STRUCTURAL_GROUP",
+            "status": (
+                "VISIBLE_VALUE_LANES_BOUND"
+                if same_parent_affinities is not None
+                else "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+            ),
+            "values": values(same_parent_affinities) if same_parent_affinities else [],
+        },
+        {
+            "_label_vertical_center": 926.0,
+            "_lane_count": 2,
+            "label_match": {
+                "matched_within_role": "INTERBANK_DEPOSIT_GROUP",
+                "page_sequence": 15,
+            },
+            "missing_column_ordinals": [],
+            "role": "INTERBANK_DEPOSIT_PROVISION",
+            "role_kind": "ADDITIVE_CHILD",
+            "status": "VISIBLE_VALUE_LANES_BOUND",
+            "values": values((-0.44588235, -0.04095238)),
+        },
+    ]
+    if outsider_affinities is not None:
+        rows.append(
+            {
+                "_label_vertical_center": 882.0,
+                "_lane_count": 2,
+                "label_match": {
+                    "matched_within_role": "TERM_DEPOSIT_GROUP",
+                    "page_sequence": 15,
+                },
+                "missing_column_ordinals": [],
+                "role": "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                "role_kind": "ADDITIVE_CHILD",
+                "status": "VISIBLE_VALUE_LANES_BOUND",
+                "values": values(outsider_affinities),
+            }
+        )
+    return rows
+
+
+def test_structural_cluster_abstains_for_strictly_stronger_outside_row_owner() -> None:
+    rows = _cluster_owner_arbitration_rows(
+        outsider_affinities=(1.86, 1.44666667),
+    )
+
+    first = row_axis_v1._enforce_exclusive_source_cells(copy.deepcopy(rows))
+    replay = row_axis_v1._enforce_exclusive_source_cells(copy.deepcopy(rows))
+
+    assert first == replay
+    by_role = {row["role"]: row for row in first}
+    assert by_role["INTERBANK_DEPOSIT_PROVISION"]["values"] == []
+    assert [value["sample_id"] for value in by_role["TERM_DEPOSIT_FOREIGN_CURRENCY"]["values"]] == [
+        "sample-000042738",
+        "sample-000042739",
+    ]
+
+
+def test_structural_cluster_retains_exact_outside_affinity_ties() -> None:
+    rows = _cluster_owner_arbitration_rows(
+        outsider_affinities=(-0.44588235, -0.04095238),
+    )
+
+    rebound = row_axis_v1._enforce_exclusive_source_cells(rows)
+
+    by_role = {row["role"]: row for row in rebound}
+    assert [value["sample_id"] for value in by_role["INTERBANK_DEPOSIT_PROVISION"]["values"]] == [
+        "sample-000042738",
+        "sample-000042739",
+    ]
+    assert by_role["TERM_DEPOSIT_FOREIGN_CURRENCY"]["values"] == []
+
+
+def test_structural_cluster_retains_same_parent_staggered_lane_contenders() -> None:
+    rows = _cluster_owner_arbitration_rows(
+        outsider_affinities=None,
+        same_parent_affinities=(1.86, 1.44666667),
+    )
+
+    rebound = row_axis_v1._enforce_exclusive_source_cells(rows)
+
+    by_role = {row["role"]: row for row in rebound}
+    assert by_role["INTERBANK_DEPOSIT_GROUP"]["values"] == []
+    assert [value["sample_id"] for value in by_role["INTERBANK_DEPOSIT_PROVISION"]["values"]] == [
+        "sample-000042738",
+        "sample-000042739",
+    ]
+
+
+def test_structural_cluster_without_outsider_retains_complete_child_axis() -> None:
+    rows = _cluster_owner_arbitration_rows(outsider_affinities=None)
+
+    rebound = row_axis_v1._enforce_exclusive_source_cells(rows)
+
+    by_role = {row["role"]: row for row in rebound}
+    assert [value["sample_id"] for value in by_role["INTERBANK_DEPOSIT_PROVISION"]["values"]] == [
+        "sample-000042738",
+        "sample-000042739",
+    ]
+
+
+def test_structural_cluster_rejects_nonfloat_outside_affinity_tamper() -> None:
+    rows = _cluster_owner_arbitration_rows(
+        outsider_affinities=(1.86, 1.44666667),
+    )
+    rows[2]["values"][0]["row_affinity"] = True
+
+    with pytest.raises(AccountingFamilyRowAxisV1Error, match="contender affinity drifted"):
+        row_axis_v1._enforce_exclusive_source_cells(rows)
+
+
 def test_valued_parent_cluster_is_not_reassigned_to_distant_child() -> None:
     detail = [
         _page(
