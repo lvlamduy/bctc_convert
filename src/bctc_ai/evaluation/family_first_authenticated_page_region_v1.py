@@ -160,6 +160,31 @@ def _foreground_recognition_bbox(
     if not components:
         return list(proposed_bbox), "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
 
+    # A lone short rule fragment clipped by the proposal's lower-right edge is
+    # not a DASH observation.  Preserve the full cell so the downstream
+    # centered-glyph classifier rejects the boundary mark instead of recentring
+    # it and manufacturing zero authority.
+    if len(components) == 1:
+        component = components[0]
+        component_left, component_top, component_right, component_bottom = component["bbox"]
+        component_width = component_right - component_left
+        component_height = component_bottom - component_top
+        if (
+            component_width > 0
+            and component_height > 0
+            and component_right == width
+            and component_bottom < height
+            and height - component_bottom <= max(3, int(round(height * 0.08)))
+            and component_left >= width * 0.80
+            and component_width / component_height >= 6.0
+            and 0.05 <= component_width / width <= 0.25
+            and component_height / height <= 0.12
+        ):
+            return (
+                list(proposed_bbox),
+                "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_ONLY_FULL_PROPOSED_CELL_PRESERVED",
+            )
+
     # A wrapped/tall row label can place its right-aligned DASH in the upper
     # part of the detector-free proposal while the printed subtotal underline
     # touches the proposal's bottom edge.  The ordinary central-component
@@ -204,6 +229,55 @@ def _foreground_recognition_bbox(
         if len(candidates) == 1:
             detached_bottom_rule_glyph = candidates[0]
             components = [detached_bottom_rule_glyph]
+
+    # A detector-free proposal can also end exactly inside the broken lower
+    # rule of the next accounting band.  In that geometry the ordinary DASH
+    # remains vertically central, while one short rule fragment is both well
+    # below and flush with the proposal's right boundary.  Keep this separate
+    # from the broad edge-rule filter: a digit, equals sign, second DASH, or a
+    # fragment that does not touch that exact boundary must remain unresolved.
+    # As above, localization grants no zero authority; the shared immutable
+    # pixel classifier still has to accept the resulting single-glyph crop.
+    lower_right_edge_fragment_glyph = None
+    if detached_bottom_rule_glyph is None and len(components) == 2:
+        candidates = []
+        for glyph in components:
+            fragment = components[1] if glyph is components[0] else components[0]
+            glyph_left, glyph_top, glyph_right, glyph_bottom = glyph["bbox"]
+            fragment_left, fragment_top, fragment_right, fragment_bottom = fragment["bbox"]
+            glyph_width = glyph_right - glyph_left
+            glyph_height = glyph_bottom - glyph_top
+            fragment_width = fragment_right - fragment_left
+            fragment_height = fragment_bottom - fragment_top
+            glyph_area = glyph_width * glyph_height
+            if (
+                glyph_width > 0
+                and glyph_height > 0
+                and fragment_width > 0
+                and fragment_height > 0
+                and glyph_width / glyph_height >= 1.8
+                and 0.03 <= glyph_width / width <= 0.25
+                and 0.02 <= glyph_height / height <= 0.25
+                and glyph["ink_pixel_count"] / glyph_area >= 0.65
+                and glyph_top > 0
+                and glyph_bottom < height
+                and abs((glyph_top + glyph_bottom) / 2 - height / 2) / height <= 0.12
+                and 0.60 <= (glyph_left + glyph_right) / (2 * width) <= 0.90
+                and fragment_right == width
+                and fragment_bottom < height
+                and height - fragment_bottom <= max(3, int(round(height * 0.08)))
+                and fragment_left > glyph_right
+                and fragment_left - glyph_right >= max(2, int(round(width * 0.03)))
+                and fragment_top - glyph_bottom >= max(2, int(round(height * 0.20)))
+                and fragment_width / fragment_height >= 6.0
+                and 0.05 <= fragment_width / width <= 0.25
+                and fragment_height / height <= 0.12
+                and fragment_width >= glyph_width * 2
+            ):
+                candidates.append(glyph)
+        if len(candidates) == 1:
+            lower_right_edge_fragment_glyph = candidates[0]
+            components = [lower_right_edge_fragment_glyph]
 
     # Printed table borders often enter the top or bottom edge of an otherwise
     # correct cell proposal.  PP-OCR may split one horizontal rule at column
@@ -319,11 +393,18 @@ def _foreground_recognition_bbox(
     ]
     if recognition[2] <= recognition[0] or recognition[3] <= recognition[1]:
         raise _error("foreground-localized recognition region has no positive area")
-    return recognition, (
-        "DETACHED_BOTTOM_EDGE_RULE_DISCARDED_GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
-        if detached_bottom_rule_glyph is not None
-        else "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
-    )
+    if detached_bottom_rule_glyph is not None:
+        status = (
+            "DETACHED_BOTTOM_EDGE_RULE_DISCARDED_GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+        )
+    elif lower_right_edge_fragment_glyph is not None:
+        status = (
+            "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_DISCARDED_"
+            "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+        )
+    else:
+        status = "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    return recognition, status
 
 
 def _document(plan: dict[str, Any], document_ordinal: int) -> dict[str, Any]:

@@ -482,6 +482,99 @@ def test_detached_bottom_rule_localization_rejects_every_nearby_geometry() -> No
         assert status != expected_status, label
 
 
+def _right_edge_fragment_image() -> Image.Image:
+    image = Image.new("RGB", (226, 49), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((180, 24, 188, 27), fill="black")
+    draw.rectangle((203, 44, 225, 46), fill="black")
+    return image
+
+
+def test_foreground_localization_discards_only_lower_right_edge_fragment_before_dash_replay() -> (
+    None
+):
+    image = _right_edge_fragment_image()
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    render = stream.getvalue()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+
+    first = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+    replay = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+
+    assert first == replay
+    assert first["ink_localization_status"] == (
+        "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_DISCARDED_"
+        "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    )
+    assert first["recognition_raw_pixel_bbox"] == [176, 21, 193, 31]
+    evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=first["region_png_bytes"]
+    )
+    assert evidence["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert evidence["normalized_value"] == 0
+
+
+def test_lower_right_edge_fragment_localization_rejects_adversarial_glyphs_and_geometry() -> None:
+    cases = {}
+
+    digit = _right_edge_fragment_image()
+    draw = ImageDraw.Draw(digit)
+    draw.rectangle((190, 18, 197, 35), fill="black")
+    cases["digit_and_minus"] = digit
+
+    equals_sign = Image.new("RGB", (226, 49), "white")
+    draw = ImageDraw.Draw(equals_sign)
+    draw.rectangle((180, 22, 188, 25), fill="black")
+    draw.rectangle((180, 30, 188, 33), fill="black")
+    cases["equals_sign"] = equals_sign
+
+    two_dashes = Image.new("RGB", (226, 49), "white")
+    draw = ImageDraw.Draw(two_dashes)
+    draw.rectangle((180, 24, 188, 27), fill="black")
+    draw.rectangle((203, 43, 211, 46), fill="black")
+    cases["two_dashes"] = two_dashes
+
+    nonedge_fragment = Image.new("RGB", (226, 49), "white")
+    draw = ImageDraw.Draw(nonedge_fragment)
+    draw.rectangle((180, 24, 188, 27), fill="black")
+    draw.rectangle((201, 44, 223, 46), fill="black")
+    cases["fragment_not_right_edge_touching"] = nonedge_fragment
+
+    vertical_overlap = Image.new("RGB", (226, 49), "white")
+    draw = ImageDraw.Draw(vertical_overlap)
+    draw.rectangle((180, 24, 188, 27), fill="black")
+    draw.rectangle((203, 26, 225, 28), fill="black")
+    cases["fragment_vertically_overlaps_dash"] = vertical_overlap
+
+    table_only = Image.new("RGB", (226, 49), "white")
+    ImageDraw.Draw(table_only).rectangle((203, 44, 225, 46), fill="black")
+    cases["table_fragment_only"] = table_only
+
+    expected_status = (
+        "LOWER_RIGHT_EDGE_BOUNDARY_FRAGMENT_DISCARDED_"
+        "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    )
+    for label, candidate in cases.items():
+        stream = io.BytesIO()
+        candidate.save(stream, format="PNG", optimize=False, compress_level=9)
+        render = stream.getvalue()
+        snapshot = {**_render_record(render), "render_png_bytes": render}
+        crop = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+            snapshot, raw_pixel_bbox=[0, 0, candidate.width, candidate.height]
+        )
+        evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+            crop_png_bytes=crop["region_png_bytes"]
+        )
+        assert crop["ink_localization_status"] != expected_status, label
+        assert evidence["classification"] != "VISIBLE_HORIZONTAL_DASH_GLYPH", label
+        assert evidence["normalized_value"] is None, label
+
+
 def test_foreground_localization_discards_widely_fragmented_rule_and_scan_specks() -> None:
     image = Image.new("RGB", (200, 58), "white")
     draw = ImageDraw.Draw(image)
