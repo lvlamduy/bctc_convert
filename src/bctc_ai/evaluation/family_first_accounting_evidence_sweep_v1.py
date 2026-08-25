@@ -2604,6 +2604,7 @@ def _selected_v4_one_edit_authority_v1(
     joined_pages: list[dict[str, Any]],
     family_spec: dict[str, Any],
     topology_candidates: dict[str, Any] | None,
+    evaluation_spec: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Gate only the downstream-selected V4 candidate, never a discarded one."""
 
@@ -2646,8 +2647,24 @@ def _selected_v4_one_edit_authority_v1(
         if receipt["format_version"] == one_edit_v1.PARENT_FRONTIER_FORMAT_VERSION:
             closure = selected.get("additive_closure")
             column_context = selected.get("column_context")
-            if type(closure) is not dict or type(column_context) is not dict:
+            visible_dash_rescues = selected.get("column_context_visible_dash_rescues", ())
+            if (
+                type(closure) is not dict
+                or type(column_context) is not dict
+                or type(evaluation_spec) is not dict
+                or type(visible_dash_rescues) is not tuple
+            ):
                 raise _error("selected V4 parent-frontier authority lost structural evidence")
+            one_edit_v1._validate_parent_frontier_column_context_replay_v1(  # noqa: SLF001
+                column_context,
+                row_axis=selected["row_axis"],
+                document_pages=joined_pages,
+                authority_pages=authority_pages,
+                family_spec=family_spec,
+                period_semantics=evaluation_spec.get("period_semantics"),
+                expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                visible_dash_rescues=visible_dash_rescues,
+            )
             rebuilt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
                 rebuilt_source,
                 {
@@ -2662,6 +2679,10 @@ def _selected_v4_one_edit_authority_v1(
                 authority_pages,
                 family_spec,
                 topology_candidates["regions"][ordinal],
+                column_context_document_pages=joined_pages,
+                period_semantics=evaluation_spec.get("period_semantics"),
+                expected_lane_unit_kinds=evaluation_spec.get("expected_lane_unit_kinds"),
+                visible_dash_rescues=visible_dash_rescues,
             )
         else:
             rebuilt = rebuilt_source
@@ -2842,6 +2863,9 @@ def _candidate_evidence_from_joined_pages(
                     joined_pages,
                     family_spec,
                     topology_region,
+                    period_semantics=evaluation_spec["period_semantics"],
+                    expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+                    visible_dash_rescues=dash_rescues,
                 )
                 one_edit_exact_source_structural_proofs = occurrence_axis[
                     "one_edit_exact_source_structural_proofs"
@@ -2934,6 +2958,7 @@ def _candidate_evidence_from_joined_pages(
                 "one_edit_exact_source_structural_proofs": (
                     one_edit_exact_source_structural_proofs
                 ),
+                "column_context_visible_dash_rescues": dash_rescues,
             }
         )
     return candidate_evidence
@@ -3030,6 +3055,7 @@ def _trial(
             joined_pages=joined_pages,
             family_spec=family_spec,
             topology_candidates=topology_candidates,
+            evaluation_spec=evaluation_spec,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
@@ -3175,6 +3201,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
             joined_pages=joined_pages,
             family_spec=family_spec,
             topology_candidates=topology_candidates,
+            evaluation_spec=policy,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return canonical_clone_v1(
@@ -3667,6 +3694,7 @@ def _trial_from_document_store_snapshot_v1(
             joined_pages=projected_pages,
             family_spec=family_spec,
             topology_candidates=topology_candidates,
+            evaluation_spec=evaluation_spec,
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {

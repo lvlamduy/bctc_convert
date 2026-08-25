@@ -12215,6 +12215,10 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
     pages: Any,
     family_spec: Any,
     selected_topology_region: Any,
+    *,
+    period_semantics: Any,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Add one arithmetic family-parent proof without changing row evidence."""
 
@@ -12242,6 +12246,10 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
         _one_edit_authority_pages_v2(parsed_pages),
         family_spec,
         selected_topology_region,
+        column_context_document_pages=parsed_pages,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
     )
     if same_typed_json_v1(
         projected_receipt,

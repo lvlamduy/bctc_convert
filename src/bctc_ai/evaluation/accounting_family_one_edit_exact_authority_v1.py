@@ -1981,6 +1981,65 @@ def _parent_frontier_input_binding_v1(
     }
 
 
+def _validate_parent_frontier_column_context_replay_v1(
+    value: Any,
+    *,
+    row_axis: Any,
+    document_pages: Any,
+    authority_pages: Any,
+    family_spec: Any,
+    period_semantics: Any,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Rebuild V3 period/unit evidence from the authenticated source pages.
+
+    A content hash over a caller-supplied column context is not source
+    authentication: a caller can coherently change a date or currency and
+    recompute every downstream identity.  V3 therefore re-runs the column
+    reader over the exact occurrence row axis and the original joined-page
+    evidence before it may project (or publicly replay) an authority.
+
+    ``authority_pages`` is the independently projected PP-OCR/VietOCR page
+    contract already bound by the V2 source receipt.  Re-projecting
+    ``document_pages`` must equal it exactly, so a forged context cannot be
+    rebuilt from a different page object.
+    """
+
+    try:
+        context = column_context_v1._validate_result(value)  # noqa: SLF001
+        parsed_context_pages = row_v1._pages(document_pages)  # noqa: SLF001
+        expected_authority_pages = occurrence_row_v2._one_edit_authority_pages_v2(  # noqa: SLF001
+            parsed_context_pages
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit parent-frontier column replay input drifted") from exc
+    if not same_typed_json_v1(expected_authority_pages, authority_pages):
+        raise _error("one-edit parent-frontier column pages differ from source authority")
+    if (
+        period_semantics not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}
+        or type(expected_lane_unit_kinds) is not list
+        or not expected_lane_unit_kinds
+        or any(item not in {"MONEY", "PERCENT"} for item in expected_lane_unit_kinds)
+        or type(visible_dash_rescues) is not tuple
+    ):
+        raise _error("one-edit parent-frontier column replay policy drifted")
+    try:
+        replayed = column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(  # noqa: SLF001
+            row_axis,
+            parsed_context_pages,
+            family_spec,
+            period_semantics=period_semantics,
+            expected_lane_unit_kinds=expected_lane_unit_kinds,
+            visible_dash_rescues=visible_dash_rescues,
+        )
+    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+        raise _error("one-edit parent-frontier column context replay failed") from exc
+    if not same_typed_json_v1(context, replayed):
+        raise _error("one-edit parent-frontier column context does not replay exactly")
+    return context
+
+
 def _parent_frontier_number_axis_is_valid(value: Any) -> bool:
     return (
         type(value) is list
@@ -3022,6 +3081,11 @@ def project_accounting_family_one_edit_parent_frontier_authority_v1(
     document_pages: Any,
     family_spec: Any,
     selected_topology_region: Any,
+    *,
+    column_context_document_pages: Any,
+    period_semantics: Any,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Promote only one exact, exhaustive family-parent direct frontier.
 
@@ -3052,6 +3116,16 @@ def project_accounting_family_one_edit_parent_frontier_authority_v1(
         != canonical_json_sha256_v1(selected_topology_region)
     ):
         raise _error("one-edit parent-frontier family/source binding drifted")
+    context = _validate_parent_frontier_column_context_replay_v1(
+        context,
+        row_axis=evidence["row_axis"],
+        document_pages=column_context_document_pages,
+        authority_pages=document_pages,
+        family_spec=family_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+    )
     input_binding = _parent_frontier_input_binding_v1(source, evidence, context)
     proof = _build_parent_frontier_proof_v1(
         source,
@@ -3317,6 +3391,10 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
     *,
     structural_evidence: Any = None,
     column_context: Any = None,
+    column_context_document_pages: Any = None,
+    period_semantics: Any = None,
+    expected_lane_unit_kinds: Any = None,
+    visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Exact-rebuild a receipt from bound source text and the selected region."""
 
@@ -3335,6 +3413,10 @@ def validate_accounting_family_one_edit_exact_authority_replay_v1(
             document_pages,
             family_spec,
             selected_topology_region,
+            column_context_document_pages=column_context_document_pages,
+            period_semantics=period_semantics,
+            expected_lane_unit_kinds=expected_lane_unit_kinds,
+            visible_dash_rescues=visible_dash_rescues,
         )
         if persisted["format_version"] == PARENT_FRONTIER_FORMAT_VERSION
         else source_expected

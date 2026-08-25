@@ -18,6 +18,7 @@ from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candi
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as closure_v2
 from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
+from bctc_ai.evaluation import family_first_accounting_evidence_sweep_v1 as sweep_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     propose_missing_value_lane_regions_v1,
@@ -4651,6 +4652,8 @@ def test_f3_one_edit_family_parent_binds_only_through_exact_root_frontier() -> N
         pages,
         _f3_spec(),
         scan["regions"][0],
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
     )
 
     receipt = projected["one_edit_exact_source_structural_proofs"]
@@ -4717,9 +4720,119 @@ def test_f3_one_edit_family_parent_binds_only_through_exact_root_frontier() -> N
             expanded,
             structural_evidence=_f3_structural_evidence(projected),
             column_context=context,
+            column_context_document_pages=pages,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=["MONEY", "MONEY"],
         )
         == receipt
     )
+
+
+def _coherently_rehash_parent_frontier_column_context(axis: dict) -> None:
+    receipt = axis["one_edit_exact_source_structural_proofs"]
+    proof = receipt["parent_frontier_authority"]
+    context = proof["column_context_receipt"]
+    context_material = copy.deepcopy(context)
+    context_material.pop("column_context_id")
+    context["column_context_id"] = "afccv1:context:" + canonical_json_sha256_v1(context_material)
+    receipt["input_binding"]["column_context_sha256"] = canonical_json_sha256_v1(context)
+    proof["input_binding"] = copy.deepcopy(receipt["input_binding"])
+    proof_material = copy.deepcopy(proof)
+    proof_material.pop("proof_id")
+    proof["proof_id"] = "afeoepfav1:proof:" + canonical_json_sha256_v1(proof_material)
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "afeoeav1:receipt:" + canonical_json_sha256_v1(receipt_material)
+    _coherently_rehash_occurrence(axis)
+
+
+@pytest.mark.parametrize("attack", ["PERIOD", "UNIT"])
+def test_f3_parent_frontier_public_replay_rejects_coherent_period_or_unit_tamper(
+    attack: str,
+) -> None:
+    pages = _f3_parent_frontier_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "52", "41"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho yay các TCTD khác"
+    scan, axis = _build_f3(pages)
+    context = _f3_column_context(axis, pages)
+    projected = subject.project_accounting_family_one_edit_parent_frontier_authority_v2(
+        axis,
+        context,
+        pages,
+        _f3_spec(),
+        scan["regions"][0],
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+    attacked = copy.deepcopy(projected)
+    attacked_context = attacked["one_edit_exact_source_structural_proofs"][
+        "parent_frontier_authority"
+    ]["column_context_receipt"]
+    if attack == "PERIOD":
+        attacked_context["period_axis"][0]["resolved_period"] = "31/12/2099"
+        attacked_context["document_period_context"]["current_period_end"] = "31/12/2099"
+        attacked_context["document_period_context"]["reporting_year"] = 2099
+        attacked_context["document_period_context"]["observed_dates"][1]["date"] = "31/12/2099"
+    else:
+        attacked_context["document_unit_context"]["currency"] = "USD"
+        for lane in attacked_context["unit_axis"]:
+            lane["currency"] = "USD"
+    _coherently_rehash_parent_frontier_column_context(attacked)
+
+    # Shape-only consumers cannot authenticate source pages.  The public
+    # replay boundary must reject the coherently rehashed object before it can
+    # become selected schema evidence.
+    attacked_closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        attacked,
+        _f3_spec(),
+        _f3_hierarchy(),
+    )
+    assert attacked_closure["status"] == ("HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO")
+    authority_pages = subject._one_edit_authority_pages_v2(row_v1._pages(pages))
+    expanded = one_edit_v1._canonical_expanded_occurrence_region_v1(
+        one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages),
+        _f3_spec(),
+        scan["regions"][0],
+    )
+    with pytest.raises(
+        one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="column context does not replay exactly",
+    ):
+        one_edit_v1.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            attacked["one_edit_exact_source_structural_proofs"],
+            authority_pages,
+            _f3_spec(),
+            scan["regions"][0],
+            expanded,
+            structural_evidence=_f3_structural_evidence(attacked),
+            column_context=attacked_context,
+            column_context_document_pages=pages,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=["MONEY", "MONEY"],
+        )
+    evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
+    with pytest.raises(ValueError, match="one-edit exact authority replay failed"):
+        sweep_v1._selected_v4_one_edit_authority_v1(
+            {
+                "additive_closure": attacked_closure,
+                "candidate_ordinal": 0,
+                "column_context": attacked_context,
+                "column_context_visible_dash_rescues": (),
+                "one_edit_exact_source_structural_proofs": attacked[
+                    "one_edit_exact_source_structural_proofs"
+                ],
+                "row_axis": attacked["row_axis"],
+            },
+            joined_pages=pages,
+            family_spec=_f3_spec(),
+            topology_candidates=scan,
+            evaluation_spec=evaluation,
+        )
 
 
 @pytest.mark.parametrize(
@@ -4763,6 +4876,8 @@ def test_f3_one_edit_family_parent_frontier_fails_closed_without_one_complete_eq
         pages,
         _f3_spec(),
         scan["regions"][0],
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
     )
 
     assert projected["one_edit_exact_source_structural_proofs"]["format_version"] == (
@@ -4790,6 +4905,8 @@ def test_f3_one_edit_parent_frontier_coherent_component_id_swap_fails_in_closure
         pages,
         _f3_spec(),
         scan["regions"][0],
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
     )
     attacked = copy.deepcopy(projected)
     receipt = attacked["one_edit_exact_source_structural_proofs"]
@@ -4835,6 +4952,8 @@ def test_f3_parent_frontier_cluster_cannot_be_coherently_downgraded_downstream()
         pages,
         _f3_spec(),
         scan["regions"][0],
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
     )
     closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
         projected,
