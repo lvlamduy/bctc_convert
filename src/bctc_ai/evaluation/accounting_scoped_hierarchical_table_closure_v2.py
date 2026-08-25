@@ -1607,6 +1607,8 @@ def _select_global_equation(
     trailing_rows: Sequence[Mapping[str, Any]],
     *,
     allow_rounding: bool,
+    descendant_result_roles_by_role: Mapping[str, frozenset[str]],
+    selected_component_owner_roles: Mapping[str, frozenset[str]],
 ) -> tuple[dict[str, Any], list[str]]:
     result_role = equation["result_role"]
     component_universe = {
@@ -1620,6 +1622,32 @@ def _select_global_equation(
     alternatives = _complete_alternatives(
         equation["component_role_alternatives"], resolved, required_component_roles
     )
+    # One source adjustment can be declared at both a child subtotal and an
+    # ancestor total.  Once an exact descendant equation has selected it, an
+    # ancestor alternative that also contains that same role would mix two
+    # hierarchy levels and consume the source twice.  Filter only when the
+    # prior owner is inside this particular alternative's recursive frontier;
+    # unrelated sibling ownership remains ambiguous and is left for the
+    # existing use-count veto rather than being assigned by equation order.
+    shared_roles = set(equation["shared_component_roles"])
+    alternatives = [
+        alternative
+        for alternative in alternatives
+        if not any(
+            role in shared_roles
+            and role in alternative["component_roles"]
+            and selected_component_owner_roles.get(role, frozenset())
+            & {
+                descendant
+                for component in alternative["component_roles"]
+                for descendant in {
+                    component,
+                    *descendant_result_roles_by_role.get(component, frozenset()),
+                }
+            }
+            for role in alternative["component_roles"]
+        )
+    ]
     visible_candidates = [
         resolved[role] for role in equation["visible_result_roles"] if role in resolved
     ]
@@ -6743,6 +6771,20 @@ def _build(
         resolved[evidence["role"]] = canonical_clone_v1(evidence["resolution"])
         reserved_unlabeled_source_keys.add(evidence["source_key"])
         unlabeled_subtotal_by_source_key[evidence["source_key"]] = evidence
+    descendant_result_roles_by_role: dict[str, frozenset[str]] = {}
+    for equation in spec["equations"]:
+        descendants = {
+            descendant
+            for alternative in equation["component_role_alternatives"]
+            for component in alternative["component_roles"]
+            for descendant in {
+                component,
+                *descendant_result_roles_by_role.get(component, frozenset()),
+            }
+            if component in descendant_result_roles_by_role
+        }
+        descendant_result_roles_by_role[equation["result_role"]] = frozenset(descendants)
+    selected_component_owner_roles: dict[str, set[str]] = {}
     global_records = []
     for equation in spec["equations"]:
         available_trailing_rows = [
@@ -6755,9 +6797,17 @@ def _build(
             resolved,
             available_trailing_rows,
             allow_rounding=allow_rounding,
+            descendant_result_roles_by_role=descendant_result_roles_by_role,
+            selected_component_owner_roles={
+                role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
+            },
         )
         global_records.append(record)
         reasons.extend(equation_reasons)
+        for component_role in record["component_roles_present"]:
+            selected_component_owner_roles.setdefault(component_role, set()).add(
+                record["result_role"]
+            )
         unlabeled_subtotal = (
             None
             if record["result_role"] in _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES

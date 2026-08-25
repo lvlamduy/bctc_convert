@@ -1574,6 +1574,19 @@ def test_v4_loan_provision_is_consumed_once_at_the_selected_direct_frontier() ->
         ]
     )
     detailed_pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    detailed_zero_provision_pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "30", "25"),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "0"),
+            ("Dự phòng cho vay các TCTD khác", "0", "0"),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "130", "115"),
+        ]
+    )
+    detailed_zero_provision_pages[0]["lines"][0]["vietocr_text"] = (
+        "Tiền gửi và cho vay các TCTD khác"
+    )
 
     cases = [
         (
@@ -1588,8 +1601,33 @@ def test_v4_loan_provision_is_consumed_once_at_the_selected_direct_frontier() ->
             "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
         ),
         (
+            "detailed-zero-provision-local-frontier",
+            detailed_zero_provision_pages,
+            [
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+            ],
+            ["INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"],
+            "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
+        ),
+        (
             "compact-root-frontier",
             _compact_gross_loan_provision_pages(),
+            [],
+            [
+                "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_GROUP",
+                "INTERBANK_LOAN_PROVISION",
+            ],
+            "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+        ),
+        (
+            "compact-zero-provision-root-frontier",
+            _compact_gross_loan_provision_pages(
+                family_total=("130", "115"),
+                provision=("0", "0"),
+            ),
             [],
             [
                 "INTERBANK_DEPOSIT_GROUP",
@@ -1617,10 +1655,15 @@ def test_v4_loan_provision_is_consumed_once_at_the_selected_direct_frontier() ->
         )
         assert local["component_roles_present"] == expected_local, case_id
         assert root["component_roles_present"] == expected_root, case_id
+        global_loan = next(
+            equation
+            for equation in closure["equations"]["global"]
+            if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+        )
         selected_use_count = sum(
             "INTERBANK_LOAN_PROVISION" in frontier
             for frontier in (
-                local["component_roles_present"],
+                global_loan["component_roles_present"],
                 root["component_roles_present"],
             )
         )
