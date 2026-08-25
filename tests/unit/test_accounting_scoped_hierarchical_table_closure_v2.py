@@ -1164,6 +1164,82 @@ def _family12_flat_children_and_grand_total_pages(
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
 
 
+def _family12_contextual_source_only_components_and_grand_total_pages() -> list[dict[str, object]]:
+    lines = [
+        _line(0, "Cho vay khách hàng", "", [25, 15, 500, 38]),
+        _line(1, "Theo loại hình cho vay", "", [45, 55, 520, 75]),
+        _line(2, "Cho vay giao dịch ký quỹ", "", [45, 90, 520, 110]),
+        _line(3, "999", "999", [610, 90, 700, 110]),
+        _line(4, "888", "888", [810, 90, 900, 110]),
+        _line(5, "Theo đối tượng khách hàng", "", [45, 145, 520, 165]),
+        _line(6, "31/12/2025", "", [610, 175, 700, 195]),
+        _line(7, "31/12/2024", "", [810, 175, 900, 195]),
+        _line(8, "Đơn vị: Triệu đồng", "", [610, 205, 900, 225]),
+    ]
+
+    def append_row(label: str, current: int, prior: int) -> None:
+        ordinal = len(lines)
+        top = 250 + (ordinal - 9) // 3 * 42
+        lines.extend(
+            [
+                _line(ordinal, label, "", [45, top, 540, top + 20]),
+                _line(ordinal + 1, str(current), str(current), [610, top, 700, top + 20]),
+                _line(ordinal + 2, str(prior), str(prior), [810, top, 900, top + 20]),
+            ]
+        )
+
+    append_row("Doanh nghiệp nhà nước", 10, 9)
+    append_row("Doanh nghiệp có vốn đầu tư nước ngoài", 20, 18)
+    append_row(
+        "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác",
+        30,
+        27,
+    )
+    append_row("Hợp tác xã", 4, 3)
+    append_row("Cá nhân", 50, 45)
+    append_row("Các đối tượng khác", 1, 2)
+    total_top = lines[-1]["bbox"][1] + 42
+    lines.extend(
+        [
+            _line(len(lines), "115", "115", [610, total_top, 700, total_top + 20]),
+            _line(len(lines) + 1, "104", "104", [810, total_top, 900, total_top + 20]),
+            _line(
+                len(lines) + 2,
+                "Theo chất lượng nợ cho vay",
+                "",
+                [45, total_top + 50, 540, total_top + 70],
+            ),
+            _line(
+                len(lines) + 3,
+                "Cho vay giao dịch ký quỹ",
+                "",
+                [45, total_top + 90, 540, total_top + 110],
+            ),
+            _line(
+                len(lines) + 4,
+                "777",
+                "777",
+                [610, total_top + 90, 700, total_top + 110],
+            ),
+            _line(
+                len(lines) + 5,
+                "666",
+                "666",
+                [810, total_top + 90, 900, total_top + 110],
+            ),
+        ]
+    )
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
 def _family12_flat_children_and_inline_parent_total_pages(
     *, parent_current: int = 131, parent_prior: int = 103
 ) -> list[dict[str, object]]:
@@ -1337,6 +1413,79 @@ def test_family12_flat_children_derive_virtual_groups_only_through_exact_grand_t
         )
         == closure
     )
+
+
+def test_family12_contextual_source_only_rows_close_only_inside_exact_sibling_fence() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_contextual_source_only_components_and_grand_total_pages()
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert [row["role"] for row in axis["row_axis"]["rows"]] == [
+        "STATE_ENTERPRISE_LOANS",
+        "FOREIGN_INVESTED_COMPANY_LOANS",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    ]
+    assert all(
+        occurrence["scope_owner_role"] == "ENTERPRISE_TYPE_BRANCH"
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role_kind"] == "ADDITIVE_CHILD"
+    )
+    assert {occurrence["role"] for occurrence in axis["role_occurrences"]}.isdisjoint(
+        {
+            "LOAN_TYPE_PRESENTATION_BRANCH",
+            "LOAN_QUALITY_PRESENTATION_BRANCH",
+            "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+        }
+    )
+    equations = {record["result_role"]: record for record in closure["equations"]["global"]}
+    assert equations["ECONOMIC_ORGANIZATION_LOANS_GROUP"]["component_roles_present"] == [
+        "STATE_ENTERPRISE_LOANS",
+        "FOREIGN_INVESTED_COMPANY_LOANS",
+    ]
+    assert equations["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["component_roles_present"] == [
+        "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    ]
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["status"] == (
+        "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    )
+    assert not any(
+        reason.startswith("SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure,
+            axis,
+            topology,
+            hierarchy,
+        )
+        == closure
+    )
+
+    attacked = copy.deepcopy(closure)
+    next(
+        record
+        for record in attacked["resolved_roles"]
+        if record["role"] == "SOURCE_ONLY_PERSON_LOANS"
+    )["values"][0]["number"]["coefficient"] += 1
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(subject.AccountingScopedHierarchicalTableClosureV2Error):
+        subject._validate_result(attacked)
 
 
 def test_family12_flat_children_reject_grand_total_outside_rounding_bound() -> None:

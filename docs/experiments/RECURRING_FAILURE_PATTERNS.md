@@ -79,7 +79,11 @@ Trạng thái:
   thì abstain. Nếu contextual subgroup nằm cùng hoặc đúng trang kế tiếp outer
   parent, chỉ header local giữa exact subgroup và valued row đầu tiên mới được
   project; continuation thường, owner không đồng nhất hoặc xa hơn một trang vẫn
-  unresolved. Header ngày tiếng Việt bị OCR tách dòng
+  unresolved. Khi một broad parent chứa nhiều bảng sibling, body chỉ được
+  project vào đúng một direct structural subgroup có ít nhất hai valued
+  additive role và có exact label-only `SOURCE_ONLY_GROUP_PARENT` fence trước
+  hoặc sau; thiếu/nhân đôi subgroup, valued fence hoặc không có sibling fence
+  thì giữ nguyên outer region thay vì đoán. Header ngày tiếng Việt bị OCR tách dòng
   chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
   có exact one-lane intersection anchor và hai nhóm typed leaf lặp lại tạo một
   partition đầy đủ; fragment rời/mơ hồ/low-confidence toàn bộ vẫn unresolved.

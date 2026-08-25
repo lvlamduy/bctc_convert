@@ -714,6 +714,121 @@ def test_source_only_numeric_fence_requires_one_exact_contextual_body_owner() ->
         )
 
 
+def test_unique_contextual_structural_body_projects_only_exact_sibling_interval() -> None:
+    lines = [
+        _line(0, "Outer family", "", [30, 10, 400, 30]),
+        _line(1, "Prior view", "", [45, 50, 430, 70]),
+        _line(2, "Prior role", "", [45, 90, 430, 110]),
+        _line(3, "10", "10", [610, 90, 700, 110]),
+        _line(4, "9", "9", [810, 90, 900, 110]),
+        _line(5, "Target view", "", [45, 140, 430, 160]),
+        _line(6, "Target A", "", [45, 190, 430, 210]),
+        _line(7, "60", "60", [610, 190, 700, 210]),
+        _line(8, "50", "50", [810, 190, 900, 210]),
+        _line(9, "Target B", "", [45, 230, 430, 250]),
+        _line(10, "40", "40", [610, 230, 700, 250]),
+        _line(11, "35", "35", [810, 230, 900, 250]),
+        _line(12, "Next view", "", [45, 290, 430, 310]),
+        _line(13, "Later role", "", [45, 340, 430, 360]),
+        _line(14, "20", "20", [610, 340, 700, 360]),
+        _line(15, "18", "18", [810, 340, 900, 360]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    def match(
+        role: str,
+        role_kind: str,
+        line: int,
+        *,
+        within_role: str | None = None,
+        ordinal: int = 0,
+    ) -> dict[str, object]:
+        return {
+            "document_line_ordinal": line,
+            "end_document_line_ordinal": line,
+            "end_source_line_index": line,
+            "match_kind": "EXACT_ACCENTLESS_ALIAS",
+            "matched_within_role": within_role,
+            "normalized_surface": role.lower(),
+            "page_sequence": 1,
+            "preferred_ordinal": line,
+            "presence": "OPTIONAL",
+            "role": role,
+            "role_kind": role_kind,
+            "role_occurrence_ordinal": ordinal,
+            "source_line_index": line,
+            "surface": role,
+        }
+
+    raw = [
+        match("PRIOR_VIEW", "SOURCE_ONLY_GROUP_PARENT", 1),
+        match("PRIOR_ROLE", "ADDITIVE_CHILD", 2),
+        match("TARGET_VIEW", "STRUCTURAL_GROUP", 5),
+        match("TARGET_A", "ADDITIVE_CHILD", 6, within_role="TARGET_VIEW"),
+        match("TARGET_B", "ADDITIVE_CHILD", 9, within_role="TARGET_VIEW"),
+        match("NEXT_VIEW", "SOURCE_ONLY_GROUP_PARENT", 12),
+        match("LATER_ROLE", "ADDITIVE_CHILD", 13),
+    ]
+    region = {
+        "cluster_end_document_line_ordinal_exclusive": 16,
+        "cluster_start_document_line_ordinal": 0,
+        "parent_match": {"role": "OUTER"},
+    }
+    decorated = subject._decorate_scopes(raw, region)
+    projected = subject._project_unique_contextual_structural_body_matches_v1(
+        pages,
+        decorated,
+        region,
+    )
+
+    assert [item["role"] for item in projected] == ["TARGET_VIEW", "TARGET_A", "TARGET_B"]
+
+    # One sibling-free contextual table is not a subview projection trigger.
+    no_siblings = [
+        item
+        for item in decorated
+        if item["role"] not in {"PRIOR_VIEW", "PRIOR_ROLE", "NEXT_VIEW", "LATER_ROLE"}
+    ]
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            pages,
+            no_siblings,
+            region,
+        )
+        == no_siblings
+    )
+
+    # A non-exact owner and a second equally evidenced owner both abstain.
+    nonexact = copy.deepcopy(decorated)
+    next(item for item in nonexact if item["role"] == "TARGET_VIEW")["match_kind"] = (
+        "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    )
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            pages,
+            nonexact,
+            region,
+        )
+        == nonexact
+    )
+
+    duplicate_raw = [
+        *raw,
+        match("SECOND_TARGET", "STRUCTURAL_GROUP", 12),
+        match("SECOND_A", "ADDITIVE_CHILD", 13, within_role="SECOND_TARGET"),
+        match("SECOND_B", "ADDITIVE_CHILD", 13, within_role="SECOND_TARGET"),
+    ]
+    duplicate = subject._decorate_scopes(duplicate_raw, region)
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            pages,
+            duplicate,
+            region,
+        )
+        == duplicate
+    )
+
+
 def test_prose_candidate_with_empty_v1_grid_is_typed_unresolved_without_margin_numeric() -> None:
     pages = [
         {

@@ -365,9 +365,15 @@ _SOURCE_ONLY_AMBIGUITIES = [
             "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
             "Công ty cổ phần, TNHH và doanh nghiệp khác",
             "Công ty CP, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác",
         ],
         "candidate_report_norm_ids": [768, 773, 774, 775],
         "reason": "MIXED_ACB_LEGAL_FORM_ROW_DOES_NOT_EQUAL_SCHEMA_775",
+    },
+    {
+        "aliases": ["Các đối tượng khác"],
+        "candidate_report_norm_ids": [782],
+        "reason": "OTHER_CUSTOMER_OBJECT_DOES_NOT_PROVE_OTHER_ENTERPRISE_SCOPE",
     },
 ]
 
@@ -480,6 +486,48 @@ _TOPOLOGY_SOURCE_GROUP_CHILDREN = [
 ]
 
 
+# These are exact sibling-table headings under one broad loan-note parent.
+# They carry no family presence or accounting role; shared occurrence logic
+# uses them only as source-bound structural fences around one contextual body.
+_TOPOLOGY_SIBLING_BRANCHES = [
+    {
+        "aliases": ["Theo loại hình cho vay"],
+        "role": "LOAN_TYPE_PRESENTATION_BRANCH",
+    },
+    {
+        "aliases": ["Theo chất lượng nợ cho vay", "Theo chất lượng nợ"],
+        "role": "LOAN_QUALITY_PRESENTATION_BRANCH",
+    },
+    {
+        "aliases": ["Theo kỳ hạn", "Theo thời hạn cho vay"],
+        "role": "LOAN_MATURITY_PRESENTATION_BRANCH",
+    },
+]
+
+
+# These visible rows are accounting components of the source presentation but
+# do not equal one existing schema leaf.  They remain typed and additive for
+# exhaustive closure while the schema binding explicitly ignores them.
+_TOPOLOGY_SOURCE_ONLY_PRESENTATION_COMPONENTS = [
+    {
+        "aliases": _SOURCE_ONLY_AMBIGUITIES[3]["aliases"],
+        "role": "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+    },
+    {
+        "aliases": _SOURCE_ONLY_AMBIGUITIES[1]["aliases"],
+        "role": "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+    },
+    {
+        "aliases": _SOURCE_ONLY_AMBIGUITIES[2]["aliases"],
+        "role": "SOURCE_ONLY_PERSON_LOANS",
+    },
+    {
+        "aliases": _SOURCE_ONLY_AMBIGUITIES[4]["aliases"],
+        "role": "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    },
+]
+
+
 _TOPOLOGY_NESTED_SOURCE_CHILDREN = [
     {
         "matchers": [
@@ -527,13 +575,45 @@ _TOPOLOGY_CHILDREN = [
         "role": "ENTERPRISE_TYPE_BRANCH",
         "role_kind": "STRUCTURAL_GROUP",
     },
+    *[
+        {
+            "matchers": [
+                {
+                    "aliases": _distinct_aliases(item["aliases"]),
+                    "within_role": None,
+                }
+            ],
+            "presence": "OPTIONAL",
+            "role": item["role"],
+            "role_kind": "SOURCE_ONLY_GROUP_PARENT",
+        }
+        for item in _TOPOLOGY_SIBLING_BRANCHES
+    ],
     *_TOPOLOGY_SOURCE_GROUP_CHILDREN,
     *[_topology_child(child) for child in _CHILDREN],
+    *[
+        {
+            "matchers": [
+                {
+                    "aliases": _distinct_aliases(item["aliases"]),
+                    "within_role": "ENTERPRISE_TYPE_BRANCH",
+                }
+            ],
+            "presence": "OPTIONAL",
+            "role": item["role"],
+            "role_kind": "ADDITIVE_CHILD",
+        }
+        for item in _TOPOLOGY_SOURCE_ONLY_PRESENTATION_COMPONENTS
+    ],
     *_TOPOLOGY_NESTED_SOURCE_CHILDREN,
 ]
 
 _TOPOLOGY_LEAF_ROLES = [
     _TOPOLOGY_ROLE_BY_REPORT_NORM_ID[child["report_norm_id"]] for child in _CHILDREN
+]
+_TOPOLOGY_ACCOUNTING_COMPONENT_ROLES = [
+    *_TOPOLOGY_LEAF_ROLES,
+    *[item["role"] for item in _TOPOLOGY_SOURCE_ONLY_PRESENTATION_COMPONENTS],
 ]
 
 _TOPOLOGY_SPEC: dict[str, Any] = {
@@ -560,12 +640,12 @@ _TOPOLOGY_SPEC: dict[str, Any] = {
     },
     "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
     "required_role_combinations": [
-        *[["ENTERPRISE_TYPE_BRANCH", role] for role in _TOPOLOGY_LEAF_ROLES],
+        *[["ENTERPRISE_TYPE_BRANCH", role] for role in _TOPOLOGY_ACCOUNTING_COMPONENT_ROLES],
     ],
     "required_role_pools": [
         {
             "minimum_count": 2,
-            "roles": _TOPOLOGY_LEAF_ROLES,
+            "roles": _TOPOLOGY_ACCOUNTING_COMPONENT_ROLES,
         }
     ],
     "structural_reset_aliases": _distinct_aliases(_STRUCTURAL_RESET_ALIASES),

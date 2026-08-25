@@ -3747,6 +3747,108 @@ def _decorate_scopes(
     return decorated
 
 
+def _project_unique_contextual_structural_body_matches_v1(
+    pages: Sequence[Mapping[str, Any]],
+    matches: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Fence one exact contextual body from sibling tables under a broad parent.
+
+    Some notes print several independent analysis tables beneath one explicit
+    accounting parent.  A target subgroup can therefore be preceded and
+    followed by exact sibling structural headings while a context-free alias
+    from either sibling still happens to match one family role.  Retain only
+    the visual interval of one uniquely evidenced direct structural subgroup
+    when it owns at least two distinct visible additive roles and at least one
+    exact sibling heading proves that the outer parent contains multiple
+    subviews.  No sibling heading means no projection, preserving ordinary
+    flat/contextual layouts byte-for-byte.
+
+    This is source-scope selection only.  It grants no row, numeric,
+    accounting, period/unit, schema, or mapping authority; downstream stages
+    still rebuild the rows and require exhaustive direct-frontier closure.
+    """
+
+    decorated = [canonical_clone_v1(match) for match in matches]
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+
+    def visual_key(match: Mapping[str, Any]) -> tuple[int, float, int]:
+        page = page_by_sequence.get(match.get("page_sequence"))
+        indices = row_v1._match_source_line_indices(match)
+        if type(page) is not dict:
+            raise _error("contextual structural body lost its source page")
+        boxes = [line["bbox"] for line in page["lines"] if line["line_ordinal"] in indices]
+        if len(boxes) != len(indices):
+            raise _error("contextual structural body lost exact source geometry")
+        return (
+            match["page_sequence"],
+            min((box[1] + box[3]) / 2 for box in boxes),
+            match["document_line_ordinal"],
+        )
+
+    exact_root_structural = [
+        match
+        for match in decorated
+        if match.get("role_kind") == "STRUCTURAL_GROUP"
+        and match.get("scope_owner_role") is None
+        and str(match.get("match_kind", "")).startswith("EXACT_")
+        and not _same_row_numeric_samples(pages, match)
+        and type(match.get("occurrence_id")) is str
+        and match["occurrence_id"]
+    ]
+    candidates: list[dict[str, Any]] = []
+    for owner in exact_root_structural:
+        direct_visible = [
+            match
+            for match in decorated
+            if match.get("role_kind") == "ADDITIVE_CHILD"
+            and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
+            and _same_row_numeric_samples(pages, match)
+        ]
+        if len({match["role"] for match in direct_visible}) >= 2:
+            candidates.append(owner)
+    if len(candidates) != 1:
+        return decorated
+
+    owner = candidates[0]
+    owner_key = visual_key(owner)
+    siblings = [
+        match
+        for match in decorated
+        if match.get("role_kind") == "SOURCE_ONLY_GROUP_PARENT"
+        and match.get("scope_owner_role") is None
+        and str(match.get("match_kind", "")).startswith("EXACT_")
+        and not _same_row_numeric_samples(pages, match)
+    ]
+    if not siblings:
+        return decorated
+    following = [match for match in siblings if visual_key(match) > owner_key]
+    stop_key: tuple[int, float, int] | None = None
+    if following:
+        first_key = min(visual_key(match) for match in following)
+        if sum(visual_key(match) == first_key for match in following) != 1:
+            return decorated
+        stop_key = first_key
+
+    projected = [
+        match
+        for match in decorated
+        if visual_key(match) >= owner_key and (stop_key is None or visual_key(match) < stop_key)
+    ]
+    if owner["occurrence_id"] not in {match.get("occurrence_id") for match in projected}:
+        raise _error("contextual structural body projection lost its exact owner")
+    projected_direct_roles = {
+        match["role"]
+        for match in projected
+        if match.get("role_kind") == "ADDITIVE_CHILD"
+        and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
+        and _same_row_numeric_samples(pages, match)
+    }
+    if len(projected_direct_roles) < 2:
+        raise _error("contextual structural body projection lost its direct evidence")
+    return projected
+
+
 def _validate_source_scope_binding(
     value: Any, *, label_match: Mapping[str, Any], role: str
 ) -> None:
@@ -12569,6 +12671,11 @@ def _build(
     expanded_matches = _project_reviewed_schema_source_scopes(
         parsed_pages,
         compiled_family,
+        expanded_matches,
+        selected_region,
+    )
+    expanded_matches = _project_unique_contextual_structural_body_matches_v1(
+        parsed_pages,
         expanded_matches,
         selected_region,
     )

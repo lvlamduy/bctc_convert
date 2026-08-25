@@ -80,6 +80,12 @@ def test_family12_hierarchy_declares_nested_direct_frontiers_without_mixed_level
     assert "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS" not in core_pool
     assert "FOREIGN_BRANCH_ENTERPRISE_LOANS" not in core_pool
     assert "FOREIGN_BRANCH_INDIVIDUAL_LOANS" not in core_pool
+    assert {
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    } <= set(core_pool)
     assert core["component_selection_policy"] == ("EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL")
     assert core["visible_source_policy"] == "REQUIRE_EXHAUSTIVE_COMPONENTS"
 
@@ -105,6 +111,15 @@ def test_family12_production_specs_are_declarative_and_partition_every_source_ro
 
     assert set([*bound_roles, *binding["ignored_roles"]]) == set(family_roles)
     assert len([*bound_roles, *binding["ignored_roles"]]) == len(family_roles)
+    assert {
+        "LOAN_TYPE_PRESENTATION_BRANCH",
+        "LOAN_QUALITY_PRESENTATION_BRANCH",
+        "LOAN_MATURITY_PRESENTATION_BRANCH",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    } <= set(binding["ignored_roles"])
     serialized = json.dumps(
         {
             "binding": binding,

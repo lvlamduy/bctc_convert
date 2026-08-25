@@ -80,11 +80,15 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     assert len(spec["required_role_pools"]) == 1
     assert spec["required_role_pools"][0]["minimum_count"] == 2
     pool_roles = spec["required_role_pools"][0]["roles"]
-    assert len(pool_roles) == 19
+    assert len(pool_roles) == 23
     assert {
         "STATE_ENTERPRISE_LOANS",
         "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
         "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
     } <= set(pool_roles)
     assert {
         "FOREIGN_BRANCH_ENTERPRISE_LOANS",
@@ -246,6 +250,62 @@ def test_family12_abbreviated_multiple_member_state_majority_label_resolves_exac
     )
     assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
     assert majority["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
+def test_family12_exact_sibling_headings_fence_contextual_customer_object_rows() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Theo loại hình cho vay",
+                    "Cho vay giao dịch ký quỹ",
+                    "Theo đối tượng khách hàng",
+                    "Doanh nghiệp nhà nước",
+                    "Doanh nghiệp có vốn đầu tư nước ngoài",
+                    "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác",
+                    "Hợp tác xã",
+                    "Cá nhân",
+                    "Các đối tượng khác",
+                    "Theo chất lượng nợ cho vay",
+                    "Cho vay giao dịch ký quỹ",
+                    "Theo kỳ hạn",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    by_role = {item["role"]: item for item in region["child_matches"]}
+    assert by_role["STATE_ENTERPRISE_LOANS"]["matched_within_role"] == ("ENTERPRISE_TYPE_BRANCH")
+    assert by_role["FOREIGN_INVESTED_COMPANY_LOANS"]["matched_within_role"] == (
+        "ENTERPRISE_TYPE_BRANCH"
+    )
+    assert by_role["SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS"]["matched_within_role"] == (
+        "ENTERPRISE_TYPE_BRANCH"
+    )
+    assert by_role["SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS"]["matched_within_role"] == (
+        "ENTERPRISE_TYPE_BRANCH"
+    )
+    assert by_role["SOURCE_ONLY_PERSON_LOANS"]["matched_within_role"] == ("ENTERPRISE_TYPE_BRANCH")
+    assert by_role["SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"]["matched_within_role"] == (
+        "ENTERPRISE_TYPE_BRANCH"
+    )
+    margin = [
+        item
+        for item in region["child_matches"]
+        if item["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    ]
+    assert len(margin) == 1
+    assert margin[0]["source_line_index"] == 2
+    assert margin[0]["matched_within_role"] is None
+    assert {
+        "LOAN_TYPE_PRESENTATION_BRANCH",
+        "LOAN_QUALITY_PRESENTATION_BRANCH",
+        "LOAN_MATURITY_PRESENTATION_BRANCH",
+    } <= set(region["observed_roles"])
 
 
 def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> None:

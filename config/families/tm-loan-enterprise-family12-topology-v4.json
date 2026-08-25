@@ -32,6 +32,47 @@
       "matchers": [
         {
           "aliases": [
+            "Theo loại hình cho vay"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_TYPE_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Theo chất lượng nợ cho vay",
+            "Theo chất lượng nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_QUALITY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Theo kỳ hạn",
+            "Theo thời hạn cho vay"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_MATURITY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Cho vay các TCKT",
             "Cho vay các tổ chức kinh tế",
             "Cho vay doanh nghiệp"
@@ -562,6 +603,62 @@
       "matchers": [
         {
           "aliases": [
+            "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, TNHH và doanh nghiệp khác",
+            "Công ty CP, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hợp tác xã",
+            "HTX"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cá nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_PERSON_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các đối tượng khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Cho vay Doanh nghiệp"
           ],
           "within_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
@@ -694,6 +791,22 @@
     [
       "ENTERPRISE_TYPE_BRANCH",
       "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_PERSON_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
     ]
   ],
   "required_role_pools": [
@@ -718,7 +831,11 @@
         "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
         "OTHER_ENTERPRISE_LOANS",
         "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
-        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
       ]
     }
   ],
