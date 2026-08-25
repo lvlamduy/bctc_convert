@@ -5188,8 +5188,6 @@ def project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
         return _validate_recursive_hierarchy_frontier_against_structural_evidence_v1(
             persisted,
             evidence,
-            family_spec=family_spec,
-            hierarchy_spec=hierarchy_spec,
         )
     source_reason = _parent_frontier_reason(proof["source_check"])
     reasons = [reason for reason in source["unresolved_reasons"] if reason != source_reason]
