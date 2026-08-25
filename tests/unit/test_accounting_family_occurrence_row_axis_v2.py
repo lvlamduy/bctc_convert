@@ -1311,9 +1311,7 @@ def _build_authenticated_clipped_right_edge_local_subtotal(
     spec = _f3_spec()
     topology_pages = row_v1._topology_pages(pages)
     scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
-    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(
-        topology_pages, spec
-    )
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(topology_pages, spec)
     region = candidates["regions"][0]
     binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
         topology_pages, spec, candidates, region
@@ -1453,8 +1451,7 @@ def test_clipped_right_edge_nonnumeric_decoration_rejects_unsealed_sources(
         axis, _f3_spec(), _f3_hierarchy()
     )
     assert not any(
-        equation["status"]
-        == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        equation["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
         for equation in closure["equations"]["local"]
     )
 

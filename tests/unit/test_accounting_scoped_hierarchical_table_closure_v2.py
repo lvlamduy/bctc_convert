@@ -1787,7 +1787,7 @@ def _acb98_shaped_demand_subtotal_projector_inputs() -> tuple[dict[str, object],
             project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
         ).read_text()
     )["hierarchical_closure_spec"]
-    _axis_value, closure = _closure(
+    axis_value, closure = _closure(
         _acb2_acb4_shaped_unlabeled_demand_pages(),
         topology=topology,
         hierarchy=hierarchy,
@@ -1872,10 +1872,12 @@ def _acb98_shaped_demand_subtotal_projector_inputs() -> tuple[dict[str, object],
         "equation_record": demand_equation,
         "equation_records": closure["equations"]["global"],
         "family_id": closure["family_id"],
+        "furniture_evidence": [furniture_evidence],
         "numeric_sample_universe": numeric_sample_universe,
         "reserved_source_keys": set(),
         "resolved_by_role": resolved_by_role,
         "role_occurrences": role_occurrences,
+        "row_axis": axis_value["row_axis"],
         "source_candidates": source_candidates,
     }
     return furniture_evidence, arguments
