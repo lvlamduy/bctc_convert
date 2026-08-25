@@ -260,6 +260,8 @@ def test_family12_exact_sibling_headings_fence_contextual_customer_object_rows()
                     "Cho vay khách hàng",
                     "Theo loại hình cho vay",
                     "Cho vay giao dịch ký quỹ",
+                    "Phân tích dư nợ theo thời gian cho vay gốc",
+                    "Phân tích dư nợ theo ngành nghề kinh doanh",
                     "Theo đối tượng khách hàng",
                     "Doanh nghiệp nhà nước",
                     "Doanh nghiệp có vốn đầu tư nước ngoài",
@@ -305,6 +307,8 @@ def test_family12_exact_sibling_headings_fence_contextual_customer_object_rows()
         "LOAN_TYPE_PRESENTATION_BRANCH",
         "LOAN_QUALITY_PRESENTATION_BRANCH",
         "LOAN_MATURITY_PRESENTATION_BRANCH",
+        "LOAN_ORIGINAL_TERM_PRESENTATION_BRANCH",
+        "LOAN_INDUSTRY_PRESENTATION_BRANCH",
     } <= set(region["observed_roles"])
 
 

@@ -53,6 +53,7 @@ _BRANCH_ALIASES = [
     "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
     "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
+    "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
 ]
 
 _BRANCH_COMPONENTS = [
@@ -501,6 +502,14 @@ _TOPOLOGY_SIBLING_BRANCHES = [
     {
         "aliases": ["Theo kỳ hạn", "Theo thời hạn cho vay"],
         "role": "LOAN_MATURITY_PRESENTATION_BRANCH",
+    },
+    {
+        "aliases": ["Phân tích dư nợ theo thời gian cho vay gốc"],
+        "role": "LOAN_ORIGINAL_TERM_PRESENTATION_BRANCH",
+    },
+    {
+        "aliases": ["Phân tích dư nợ theo ngành nghề kinh doanh"],
+        "role": "LOAN_INDUSTRY_PRESENTATION_BRANCH",
     },
 ]
 

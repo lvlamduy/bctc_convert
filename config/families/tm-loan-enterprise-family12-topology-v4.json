@@ -19,6 +19,7 @@
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
+            "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
             "Theo đối tượng khách hàng"
           ],
           "within_role": null
@@ -67,6 +68,32 @@
       ],
       "presence": "OPTIONAL",
       "role": "LOAN_MATURITY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân tích dư nợ theo thời gian cho vay gốc"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_ORIGINAL_TERM_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân tích dư nợ theo ngành nghề kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_INDUSTRY_PRESENTATION_BRANCH",
       "role_kind": "SOURCE_ONLY_GROUP_PARENT"
     },
     {
