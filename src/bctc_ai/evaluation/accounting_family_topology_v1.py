@@ -652,7 +652,8 @@ def _surface_candidates(
         upper = bisect_right(visual_centers, center + height * 2.5)
         candidates = []
         for _visual_center, other_position in visual_axis[lower:upper]:
-            if other_position <= position or not lines[other_position]["vietocr_text"].strip():
+            other_surface = lines[other_position]["vietocr_text"].strip()
+            if not other_surface or not any(character.isalpha() for character in other_surface):
                 continue
             other_box = lines[other_position]["bbox"]
             other_height = other_box[3] - other_box[1]
@@ -694,15 +695,18 @@ def _surface_candidates(
             next_axis = followers[positions[-1]]
             if not next_axis:
                 break
-            # A visual row has only one next wrapped fragment at the closest
-            # lower baseline.  Following every geometrically nearby line here
-            # creates an exponential path set on wide tables.  The closest
-            # candidate is deterministic; exact full-alias matching remains a
-            # separate gate, so selecting an unrelated next row cannot accept
-            # anything by itself.
+            # A visual row has only one next wrapped text fragment at the
+            # closest lower baseline.  Provider ordinals can disagree with
+            # visual order, while same-baseline numeric cells can precede the
+            # real continuation by a few pixels.  The follower graph therefore
+            # advances strictly by visual centre and excludes numeric-only
+            # observations.  Sequential source-order candidates above still
+            # preserve legitimate numeric headings; exact full-alias matching
+            # remains a separate gate.
             expanded = (*positions, next_axis[0])
             if expanded in seen_positions:
-                break
+                positions = expanded
+                continue
             seen_positions.add(expanded)
             if expanded != tuple(range(expanded[0], expanded[-1] + 1)):
                 axis.append(candidate(expanded))
@@ -819,8 +823,9 @@ def _role_hits(
             if kind is None:
                 continue
             selected_lines = [lines[position] for position in positions]
-            start_position = positions[0]
-            end_position = positions[-1]
+            source_positions = sorted(positions)
+            start_position = source_positions[0]
+            end_position = source_positions[-1]
             hit = {
                 "_bbox": [
                     min(line["bbox"][0] for line in selected_lines),
@@ -830,16 +835,17 @@ def _role_hits(
                 ],
                 "document_line_ordinal": document_offset + start_position,
                 "end_document_line_ordinal": document_offset + end_position,
-                "end_source_line_index": selected_lines[-1]["source_line_index"],
+                "end_source_line_index": max(line["source_line_index"] for line in selected_lines),
                 "match_kind": kind,
                 "normalized_surface": normalize_vietnamese_anchor_v1(matched_surface),
                 "page_sequence": page_sequence,
-                "source_line_index": selected_lines[0]["source_line_index"],
+                "source_line_index": min(line["source_line_index"] for line in selected_lines),
                 "surface": matched_surface,
             }
-            contiguous = positions == list(range(start_position, end_position + 1))
+            selected_source_indices = sorted(line["source_line_index"] for line in selected_lines)
+            contiguous = source_positions == list(range(start_position, end_position + 1))
             if not contiguous:
-                hit["source_line_indices"] = [line["source_line_index"] for line in selected_lines]
+                hit["source_line_indices"] = selected_source_indices
             if within_role is not None:
                 hit["_within_role"] = within_role
             hits.append(hit)

@@ -316,7 +316,7 @@ def test_query_id_and_content_refs_reject_tamper(tmp_path: Path) -> None:
     adapter_path = _PROJECT_ROOT / adapter_ref["path"]
 
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
-        "fffrrv2:query:30d0bd80cd8fad1b9d6e290dc1e399fd92476a825ec58848a6ecce1af862a606"
+        "fffrrv2:query:4c4154f721a62a8bac531b7baaa7002f350da9ed71c5c345a4171f10de1ca956"
     )
     assert adapter_ref["size_bytes"] == adapter_path.stat().st_size
     assert adapter_ref["sha256"] == hashlib.sha256(adapter_path.read_bytes()).hexdigest()

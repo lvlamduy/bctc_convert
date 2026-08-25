@@ -104,6 +104,57 @@ def test_geometry_joins_wrapped_label_around_interleaved_numeric_cells() -> None
     assert short["end_source_line_index"] == 4
 
 
+def test_geometry_joins_wrapped_label_in_visual_not_provider_order() -> None:
+    page = {
+        "lines": [
+            _line(0, "Phân tích dư nợ theo thời gian", y=20),
+            _line(1, "hạn", x=50, y=152),
+            _line(2, "Nợ ngắn", x=50, y=126),
+            _line(3, "100", x=600, y=152),
+            _line(4, "Nợ trung hạn", x=50, y=200),
+        ],
+        "page_sequence": 1,
+    }
+
+    result = build_accounting_family_topology_scan_v1([page], _generic_spec())
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    short = next(
+        match for match in result["regions"][0]["child_matches"] if match["role"] == "SHORT_TERM"
+    )
+    assert short["surface"] == "Nợ ngắn hạn"
+    assert "source_line_indices" not in short
+    assert short["source_line_index"] == 1
+    assert short["end_source_line_index"] == 2
+
+
+def test_geometry_prefers_text_continuation_over_same_baseline_numeric_cell() -> None:
+    spec = _generic_spec()
+    spec["children"][0]["aliases"] = ["Nợ rất dài nhiều dòng ngắn hạn"]
+    spec["limits"]["max_label_line_span"] = 6
+    page = {
+        "lines": [
+            _line(0, "Phân tích dư nợ theo thời gian", y=20),
+            _line(1, "Nợ rất", x=50, y=100),
+            _line(2, "dài nhiều", x=50, y=126),
+            _line(3, "dòng ngắn", x=50, y=152),
+            _line(4, "100", x=430, y=176),
+            _line(5, "hạn", x=50, y=178),
+            _line(6, "Nợ trung hạn", x=50, y=220),
+        ],
+        "page_sequence": 1,
+    }
+
+    result = build_accounting_family_topology_scan_v1([page], spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    short = next(
+        match for match in result["regions"][0]["child_matches"] if match["role"] == "SHORT_TERM"
+    )
+    assert short["surface"] == "Nợ rất dài nhiều dòng ngắn hạn"
+    assert short["source_line_indices"] == [1, 2, 3, 5]
+
+
 def test_role_occurrences_collapse_only_byte_identical_scan_candidates() -> None:
     spec = {
         "children": [

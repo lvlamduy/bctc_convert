@@ -56,8 +56,8 @@ INTERBANK_DEPOSITS_LOANS_FAMILY3_REGION_QUERY_TRUST_CLOSURE_V1 = {
     },
     "shared_topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
-        "size_bytes": 75_614,
+        "sha256": "f3e8becbeda665740110773921135da7516346184e47572e9ef04b098af894f1",
+        "size_bytes": 76_058,
     },
     "topology_spec_ref": {
         "path": "config/families/tm-interbank-deposits-loans-topology-v3.json",

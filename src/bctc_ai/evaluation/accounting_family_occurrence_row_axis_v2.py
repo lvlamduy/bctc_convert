@@ -1010,12 +1010,12 @@ _DEPENDENCIES = {
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "5ef1890af46826e6ac7cfd10b88e136878fbb4ad569abdb78452ad8fde60da7e",
-        "size_bytes": 75_614,
+        "sha256": "f3e8becbeda665740110773921135da7516346184e47572e9ef04b098af894f1",
+        "size_bytes": 76_058,
     },
     "topology_candidates_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_candidates_v2.py",
-        "sha256": "ed255fb6b136e46b230c5ba8cea229d37cd0fcd0ac248499e98310dc147116e7",
+        "sha256": "92af9aeb66676b5642b53e9898a0e6ac8ac99fd076ef20b81392c36924ffba08",
         "size_bytes": 32_335,
     },
 }
