@@ -4925,33 +4925,44 @@ def _build_from_canonical_expanded_occurrences_v1(
     selected_matches.extend(
         ("EXPANDED_OCCURRENCE", match) for match in effective_matches if _is_one_edit(match)
     )
-    exact_hits, _source_pages = _source_exact_axes(pages, compiled)
-    source_occurrences = _decorate_exact_source_occurrences_v1(
-        _context_bound_source_records(
-            exact_hits,
-            compiled,
-            selected_topology_region,
-        ),
-        pages,
-        selected_topology_region,
-    )
     checks = []
-    for match_scope, match in selected_matches:
-        role = compiled["parent"]["role"] if match_scope == "FAMILY_PARENT" else match.get("role")
-        within_role = None if match_scope == "FAMILY_PARENT" else match.get("matched_within_role")
-        checks.append(
-            _check(
-                match,
-                aliases=_alias_entries(compiled, role=role, within_role=within_role),
-                compiled=compiled,
-                effective_matches=effective_matches,
-                exact_hits=exact_hits,
-                pages=pages,
-                selected_region=selected_topology_region,
-                source_occurrences=source_occurrences,
-                match_scope=match_scope,
-            )
+    # Exact-source discovery is deliberately expensive because it scans the
+    # complete authenticated document axis.  With no selected one-edit
+    # retrieval there is no authority claim to prove, so scanning that axis
+    # cannot affect the canonical NOT_REQUIRED receipt.  Keeping the scan
+    # strictly inside this branch preserves full replay for every real claim
+    # while avoiding the same whole-document pass for exact-only candidates.
+    if selected_matches:
+        exact_hits, _source_pages = _source_exact_axes(pages, compiled)
+        source_occurrences = _decorate_exact_source_occurrences_v1(
+            _context_bound_source_records(
+                exact_hits,
+                compiled,
+                selected_topology_region,
+            ),
+            pages,
+            selected_topology_region,
         )
+        for match_scope, match in selected_matches:
+            role = (
+                compiled["parent"]["role"] if match_scope == "FAMILY_PARENT" else match.get("role")
+            )
+            within_role = (
+                None if match_scope == "FAMILY_PARENT" else match.get("matched_within_role")
+            )
+            checks.append(
+                _check(
+                    match,
+                    aliases=_alias_entries(compiled, role=role, within_role=within_role),
+                    compiled=compiled,
+                    effective_matches=effective_matches,
+                    exact_hits=exact_hits,
+                    pages=pages,
+                    selected_region=selected_topology_region,
+                    source_occurrences=source_occurrences,
+                    match_scope=match_scope,
+                )
+            )
     bound = sum(check["status"] in _BOUND_CHECK_STATUSES for check in checks)
     metrics = {
         "exact_bound_count": bound,

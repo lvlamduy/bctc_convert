@@ -884,6 +884,45 @@ def test_unselected_or_near_one_edit_match_cannot_veto_selected_exact_region() -
     assert receipt["checks"] == []
 
 
+def test_selected_exact_region_skips_source_scan_and_public_replays(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Next family", "Next family"),
+    )
+    selected = _selected(pages)
+    expanded = _expanded(pages, selected)
+
+    def unexpected_source_scan(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("an exact-only selected region must not scan the source alias axis")
+
+    monkeypatch.setattr(subject, "_source_exact_axes", unexpected_source_scan)
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), selected, expanded
+    )
+
+    assert receipt["status"] == "NOT_REQUIRED_NO_SELECTED_ONE_EDIT_RETRIEVAL"
+    assert receipt["checks"] == []
+    assert receipt["metrics"] == {
+        "exact_bound_count": 0,
+        "selected_one_edit_match_count": 0,
+        "unresolved_match_count": 0,
+    }
+    assert (
+        subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            receipt,
+            pages,
+            _spec(),
+            selected,
+            expanded,
+        )
+        == receipt
+    )
+
+
 def test_v4_integration_does_not_gate_a_discarded_complete_one_edit_candidate() -> None:
     pages = _pages(
         _line(0, "Family assets", "Family assets"),
