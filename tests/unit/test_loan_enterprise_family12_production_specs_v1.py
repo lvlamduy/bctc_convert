@@ -41,6 +41,13 @@ def test_family12_tracked_topology_evaluation_and_schema_specs_compile_together(
         ["MONEY", "MONEY"],
         ["MONEY", "PERCENT", "MONEY", "PERCENT"],
     ]
+    assert policy["hierarchical_closure_spec"]["format_version"] == (
+        "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4"
+    )
+    assert (
+        policy["hierarchical_closure_spec"]["rounding_lane_unit_kind_alternatives"]
+        == policy["expected_lane_unit_kind_alternatives"]
+    )
     assert parsed_binding["format_version"] == mapping_v1.SPEC_FORMAT_VERSION_V6
     assert parsed_binding["family_owner_report_norm_id"] == 716
     assert parent["schema_id"] == 766

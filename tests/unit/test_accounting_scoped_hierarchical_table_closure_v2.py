@@ -205,6 +205,54 @@ def _rounding_hierarchy(*, v2: bool = True) -> dict[str, object]:
     return hierarchy
 
 
+def _declared_precision_rounding_hierarchy() -> dict[str, object]:
+    hierarchy = _rounding_hierarchy(v2=True)
+    hierarchy["format_version"] = subject.SPEC_FORMAT_VERSION_V4
+    hierarchy["equations"][0]["component_selection_policy"] = "DECLARED_EXACT_ALTERNATIVE"
+    hierarchy["rounding_lane_unit_kind_alternatives"] = [
+        ["MONEY", "MONEY"],
+        ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+    ]
+    return hierarchy
+
+
+def _declared_precision_rounding_pages(
+    *, current_total_percent: str = "100", current_money_first: str = "100"
+) -> list[dict[str, object]]:
+    lines = [
+        _line(0, "Tiền gửi và cho vay TCTD khác", "", [25, 15, 460, 38]),
+        _line(1, "31/12/2025", "", [570, 45, 800, 65]),
+        _line(2, "31/12/2024", "", [850, 45, 1080, 65]),
+        _line(3, "Đơn vị: Triệu đồng", "", [570, 72, 1080, 94]),
+        _line(4, "Giá trị", "", [570, 95, 680, 110]),
+        _line(5, "%", "", [700, 95, 800, 110]),
+        _line(6, "Giá trị", "", [850, 95, 960, 110]),
+        _line(7, "%", "", [980, 95, 1080, 110]),
+    ]
+    lane_values = [
+        [current_money_first, "200", "300", "400", "500", "600"],
+        ["16.67", "16.67", "16.67", "16.67", "16.67", "16.66"],
+        ["90", "190", "290", "390", "490", "590"],
+        ["10", "20", "30", "15", "15", "10"],
+    ]
+    lane_lefts = [570, 710, 850, 990]
+    for row_index, label in enumerate(_ROUNDING_COMPONENT_LABELS):
+        top = 125 + row_index * 48
+        lines.append(_line(len(lines), label, "", [45, top, 430, top + 20]))
+        for values, left in zip(lane_values, lane_lefts, strict=True):
+            token = values[row_index]
+            lines.append(_line(len(lines), token, token, [left, top, left + 90, top + 20]))
+    total_top = 125 + len(_ROUNDING_COMPONENT_LABELS) * 48
+    current_money_total = "2100" if current_money_first == "100" else "2100.1"
+    for token, left in zip(
+        [current_money_total, current_total_percent, "2040", "100"],
+        lane_lefts,
+        strict=True,
+    ):
+        lines.append(_line(len(lines), token, token, [left, total_top, left + 90, total_top + 20]))
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1200}]
+
+
 def _flexible_optional_sibling_hierarchy() -> dict[str, object]:
     hierarchy = _rounding_hierarchy(v2=True)
     hierarchy["format_version"] = subject.SPEC_FORMAT_VERSION_V3
@@ -5266,6 +5314,156 @@ def test_v4_printed_residual_two_with_six_components_is_rounding_corroborated_wi
         72305188,
         72305186,
     ]
+
+
+def test_v4_declared_percentage_display_precision_closes_four_lane_total_without_backsolve() -> (
+    None
+):
+    topology = _rounding_topology()
+    hierarchy = _declared_precision_rounding_hierarchy()
+    axis, closure = _closure(
+        _declared_precision_rounding_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["rounding_lane_unit_kind_alternatives"] == [
+        ["MONEY", "MONEY"],
+        ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+    ]
+    equation = closure["equations"]["global"][0]
+    assert equation["status"] == (
+        "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    )
+    rounding = equation["rounding_evidence"][0]
+    assert rounding["policy"] == subject._DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY
+    assert [lane["lane_unit_kind"] for lane in rounding["lanes"]] == [
+        "MONEY",
+        "PERCENT",
+        "MONEY",
+        "PERCENT",
+    ]
+    current_percent = rounding["lanes"][1]
+    assert current_percent["residual_number"] == {
+        "coefficient": -1,
+        "percentage_mark_present": False,
+        "scale": 2,
+    }
+    assert current_percent["common_display_scale"] == 2
+    assert current_percent["twice_absolute_residual_in_common_scale"] == 2
+    assert current_percent["bound_twice_error_in_common_scale"] == 106
+    assert current_percent["status"] == ("WITHIN_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND")
+    resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+    assert resolved["values"][1]["number"] == {
+        "coefficient": 100,
+        "percentage_mark_present": False,
+        "scale": 0,
+    }
+    assert equation["residual_evidence"][0]["lanes"][1]["component_sum_number"] == {
+        "coefficient": 10001,
+        "percentage_mark_present": False,
+        "scale": 2,
+    }
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_v4_declared_percentage_display_precision_vetoes_over_bound_and_money_decimal() -> None:
+    hierarchy = _declared_precision_rounding_hierarchy()
+    _axis_value, over_bound = _closure(
+        _declared_precision_rounding_pages(current_total_percent="98"),
+        topology=_rounding_topology(),
+        hierarchy=hierarchy,
+    )
+    assert over_bound["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    percent_lane = over_bound["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    assert percent_lane["twice_absolute_residual_in_common_scale"] == 402
+    assert percent_lane["bound_twice_error_in_common_scale"] == 106
+    assert percent_lane["status"] == "OVER_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+
+    _axis_value, decimal_money = _closure(
+        _declared_precision_rounding_pages(current_money_first="100.1"),
+        topology=_rounding_topology(),
+        hierarchy=hierarchy,
+    )
+    assert decimal_money["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert decimal_money["equations"]["global"][0]["rounding_evidence"] == []
+
+
+def test_v4_declared_rounding_lane_axis_mismatch_and_duplicate_lengths_fail_closed() -> None:
+    hierarchy = _declared_precision_rounding_hierarchy()
+    hierarchy["rounding_lane_unit_kind_alternatives"] = [["MONEY", "PERCENT", "MONEY"]]
+    _axis_value, mismatch = _closure(
+        _declared_precision_rounding_pages(),
+        topology=_rounding_topology(),
+        hierarchy=hierarchy,
+    )
+    assert mismatch["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert mismatch["equations"]["global"][0]["rounding_evidence"] == []
+
+    duplicate_length = _declared_precision_rounding_hierarchy()
+    duplicate_length["rounding_lane_unit_kind_alternatives"].append(
+        ["MONEY", "MONEY", "MONEY", "MONEY"]
+    )
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="rounding lane-unit alternatives",
+    ):
+        subject._spec(duplicate_length, _rounding_topology())
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("lane_unit_kind", "MONEY"),
+        ("common_display_scale", 3),
+        ("bound_twice_error_in_common_scale", 107),
+    ],
+)
+def test_v4_declared_rounding_receipt_rejects_coherent_lane_policy_tamper(
+    field: str, replacement: object
+) -> None:
+    _axis_value, closure = _closure(
+        _declared_precision_rounding_pages(),
+        topology=_rounding_topology(),
+        hierarchy=_declared_precision_rounding_hierarchy(),
+    )
+    attacked = copy.deepcopy(closure)
+    attacked["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1][field] = replacement
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="declared display-precision rounding",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_v4_declared_rounding_public_replay_rejects_coherent_policy_rewrite() -> None:
+    topology = _rounding_topology()
+    hierarchy = _declared_precision_rounding_hierarchy()
+    axis, closure = _closure(
+        _declared_precision_rounding_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    attacked["rounding_lane_unit_kind_alternatives"][1][1] = "MONEY"
+    attacked["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]["lane_unit_kind"] = (
+        "MONEY"
+    )
+    _coherently_rehash_closure(attacked)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="declared display-precision rounding",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked, axis, topology, hierarchy
+        )
 
 
 def test_v4_mbb_shaped_authenticated_dash_zero_uses_five_cell_prior_rounding_bound() -> None:

@@ -180,7 +180,7 @@
       }
     ],
     "family_id": "LOAN_ENTERPRISE_FAMILY12",
-    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V3",
+    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4",
     "repeated_role_policy": {
       "aggregate_roles": [],
       "local_subtotal_roles": [
@@ -191,6 +191,18 @@
         "OTHER_CUSTOMER_LOANS_GROUP"
       ]
     },
+    "rounding_lane_unit_kind_alternatives": [
+      [
+        "MONEY",
+        "MONEY"
+      ],
+      [
+        "MONEY",
+        "PERCENT",
+        "MONEY",
+        "PERCENT"
+      ]
+    ],
     "source_role_policy": {
       "one_edit_role_or_scope_match_policy": "VETO",
       "source_only_veto_roles": []

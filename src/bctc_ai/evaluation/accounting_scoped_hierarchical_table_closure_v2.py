@@ -3,7 +3,7 @@
 The sealed hierarchical closure V1 intentionally requires one row per role.
 This opt-in primitive handles a different source structure: the same semantic
 child may repeat under the nearest repeated structural parent.  Local printed
-subtotals are checked exactly or by the V2 integer display-unit rounding
+subtotals are checked exactly or by a sealed display-precision rounding
 receipt only against children bound to that exact parent
 occurrence; declared repeatable roles are then aggregated once across disjoint
 scopes.  Every component alternative is exhaustive.  V3 may declare one
@@ -36,6 +36,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
     "SPEC_FORMAT_VERSION_V3",
+    "SPEC_FORMAT_VERSION_V4",
     "AccountingScopedHierarchicalTableClosureV2Error",
     "build_accounting_scoped_hierarchical_table_closure_v2",
     "validate_accounting_scoped_hierarchical_table_closure_replay_v2",
@@ -46,11 +47,19 @@ FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2"
 SPEC_FORMAT_VERSION = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V2"
 SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V3"
+SPEC_FORMAT_VERSION_V4 = "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4"
 CLAIM_BOUNDARY = (
     "VISIBLE_COMPLETE_ROLE_OCCURRENCES_NEAREST_PARENT_LOCAL_SUBTOTAL_AND_"
     "DECLARED_DISJOINT_SCOPE_AGGREGATION_WITH_EXHAUSTIVE_COMPONENT_ALTERNATIVES_"
     "EXACT_OR_INTEGER_DISPLAY_UNIT_ROUNDING_CORROBORATION_PRESERVING_PRINTED_VALUES_"
     "NO_DIGIT_REPAIR_BACKSOLVE_MISSING_CELL_PERIOD_UNIT_SCHEMA_OR_EXPORT_AUTHORITY"
+)
+CLAIM_BOUNDARY_V4 = (
+    "VISIBLE_COMPLETE_ROLE_OCCURRENCES_NEAREST_PARENT_LOCAL_SUBTOTAL_AND_"
+    "DECLARED_DISJOINT_SCOPE_AGGREGATION_WITH_EXHAUSTIVE_COMPONENT_ALTERNATIVES_"
+    "EXACT_OR_DECLARED_LANE_DISPLAY_PRECISION_ROUNDING_CORROBORATION_"
+    "PRESERVING_PRINTED_VALUES_NO_DIGIT_REPAIR_BACKSOLVE_MISSING_CELL_PERIOD_UNIT_"
+    "SCHEMA_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
     "accounting_equation_can_change_or_supply_source_digits": False,
@@ -75,6 +84,9 @@ _SPEC_FIELDS_V1 = {
 }
 _SPEC_FIELDS_V2 = {*_SPEC_FIELDS_V1, "source_role_policy"}
 _SPEC_FIELDS_V3 = _SPEC_FIELDS_V2
+_SPEC_FIELDS_V4 = {*_SPEC_FIELDS_V3, "rounding_lane_unit_kind_alternatives"}
+_ROUNDING_LANE_UNIT_KINDS = {"MONEY", "PERCENT"}
+_MAX_ROUNDING_LANE_COUNT = 16
 _REPEAT_POLICY_FIELDS = {"aggregate_roles", "local_subtotal_roles"}
 _SOURCE_ROLE_POLICY_FIELDS = {
     "one_edit_role_or_scope_match_policy",
@@ -136,6 +148,7 @@ _RESULT_FIELDS = {
     "status",
     "unresolved_reasons",
 }
+_RESULT_FIELDS_V4 = {*_RESULT_FIELDS, "rounding_lane_unit_kind_alternatives"}
 _COVERAGE_FIELDS = {
     "candidate_ordinal",
     "coverage_id",
@@ -650,6 +663,8 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         if version == SPEC_FORMAT_VERSION_V2
         else _SPEC_FIELDS_V3
         if version == SPEC_FORMAT_VERSION_V3
+        else _SPEC_FIELDS_V4
+        if version == SPEC_FORMAT_VERSION_V4
         else None
     )
     if (
@@ -668,7 +683,7 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     known_roles = {topology["parent"]["role"], *child_roles}
     source_role_policy = (
         canonical_clone_v1(value["source_role_policy"])
-        if version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3}
+        if version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
         else {
             "one_edit_role_or_scope_match_policy": "ALLOW",
             "source_only_veto_roles": [],
@@ -679,7 +694,7 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         or set(source_role_policy) != _SOURCE_ROLE_POLICY_FIELDS
         or source_role_policy["one_edit_role_or_scope_match_policy"] not in {"ALLOW", "VETO"}
         or (
-            version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3}
+            version in {SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
             and source_role_policy["one_edit_role_or_scope_match_policy"] != "VETO"
         )
         or type(source_role_policy["source_only_veto_roles"]) is not list
@@ -688,6 +703,28 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         or any(role not in child_roles for role in source_role_policy["source_only_veto_roles"])
     ):
         raise _error("scoped hierarchical source-role policy drifted")
+    rounding_lane_unit_kind_alternatives = (
+        canonical_clone_v1(value["rounding_lane_unit_kind_alternatives"])
+        if version == SPEC_FORMAT_VERSION_V4
+        else None
+    )
+    if version == SPEC_FORMAT_VERSION_V4 and (
+        type(rounding_lane_unit_kind_alternatives) is not list
+        or not rounding_lane_unit_kind_alternatives
+        or len(rounding_lane_unit_kind_alternatives) > _MAX_ROUNDING_LANE_COUNT
+        or any(
+            type(axis) is not list
+            or not axis
+            or len(axis) > _MAX_ROUNDING_LANE_COUNT
+            or any(kind not in _ROUNDING_LANE_UNIT_KINDS for kind in axis)
+            for axis in rounding_lane_unit_kind_alternatives
+        )
+        or len({tuple(axis) for axis in rounding_lane_unit_kind_alternatives})
+        != len(rounding_lane_unit_kind_alternatives)
+        or len({len(axis) for axis in rounding_lane_unit_kind_alternatives})
+        != len(rounding_lane_unit_kind_alternatives)
+    ):
+        raise _error("scoped hierarchical rounding lane-unit alternatives drifted")
     repeat = value["repeated_role_policy"]
     for field in sorted(_REPEAT_POLICY_FIELDS):
         roles = repeat[field]
@@ -704,13 +741,17 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     for raw in value["equations"]:
         component_selection_policy = (
             raw.get("component_selection_policy")
-            if version == SPEC_FORMAT_VERSION_V3 and type(raw) is dict
+            if version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4} and type(raw) is dict
             else "DECLARED_EXACT_ALTERNATIVE"
         )
         if (
             type(raw) is not dict
             or set(raw)
-            != (_EQUATION_FIELDS_V3 if version == SPEC_FORMAT_VERSION_V3 else _EQUATION_FIELDS)
+            != (
+                _EQUATION_FIELDS_V3
+                if version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
+                else _EQUATION_FIELDS
+            )
             or component_selection_policy not in _COMPONENT_SELECTION_POLICIES
             or raw["result_role"] not in known_roles
             or raw["result_role"] in result_roles
@@ -759,7 +800,7 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
                 "application_policy": raw["application_policy"],
                 **(
                     {"component_selection_policy": component_selection_policy}
-                    if version == SPEC_FORMAT_VERSION_V3
+                    if version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
                     else {}
                 ),
                 "result_role": raw["result_role"],
@@ -803,6 +844,11 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
         "family_id": topology["family_id"],
         "format_version": version,
         "repeated_role_policy": canonical_clone_v1(repeat),
+        **(
+            {"rounding_lane_unit_kind_alternatives": (rounding_lane_unit_kind_alternatives)}
+            if version == SPEC_FORMAT_VERSION_V4
+            else {}
+        ),
         "role_kind_by_role": {child["role"]: child["role_kind"] for child in topology["children"]},
         "source_role_policy": source_role_policy,
     }
@@ -1015,7 +1061,9 @@ def _project_provisional_one_edit_recursive_frontier_v1(
     allow_rounding = spec["format_version"] in {
         SPEC_FORMAT_VERSION_V2,
         SPEC_FORMAT_VERSION_V3,
+        SPEC_FORMAT_VERSION_V4,
     }
+    rounding_lane_unit_kind_alternatives = spec.get("rounding_lane_unit_kind_alternatives")
     local_roles = set(spec["repeated_role_policy"]["local_subtotal_roles"])
     local_records: list[dict[str, Any]] = []
     locally_valid_results: set[str] = set()
@@ -1029,6 +1077,7 @@ def _project_provisional_one_edit_recursive_frontier_v1(
             accounting_rows,
             role_occurrences,
             allow_rounding=allow_rounding,
+            rounding_lane_unit_kind_alternatives=rounding_lane_unit_kind_alternatives,
         )
         if local_reasons:
             return None
@@ -1085,6 +1134,7 @@ def _project_provisional_one_edit_recursive_frontier_v1(
             resolved,
             available_trailing,
             allow_rounding=allow_rounding,
+            rounding_lane_unit_kind_alternatives=rounding_lane_unit_kind_alternatives,
             descendant_result_roles_by_role=_descendant_result_roles_by_role(spec["equations"]),
             selected_component_owner_roles={
                 role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
@@ -1609,12 +1659,236 @@ def _typed_residual_evidence(
     }
 
 
+_DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY = (
+    "DECLARED_LANE_UNIT_KIND_MONEY_OR_PERCENT;"
+    "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_DISPLAYED_NUMBERS;"
+    "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_BOUND;"
+    "SAME_NONZERO_RESULT_SUM_SIGN;COMMON_SCALE_EXACT_RATIONAL_BOUND;"
+    "2*ABS(PRINTED_MINUS_COMPONENT_SUM)<=SUM_COMPONENT_DISPLAY_UNITS+RESULT_DISPLAY_UNIT"
+)
+_INTEGER_DISPLAY_UNIT_ROUNDING_POLICY = (
+    "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_INTEGER_DISPLAY_UNIT;"
+    "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_COUNT;"
+    "SAME_NONZERO_RESULT_SUM_SIGN;2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
+    "INDEPENDENTLY_PRINTED_NUMERIC_COMPONENT_COUNT+1"
+)
+
+
+def _selected_rounding_lane_unit_kinds(
+    alternatives: Sequence[Sequence[str]], lane_count: int
+) -> list[str] | None:
+    selected = [list(axis) for axis in alternatives if len(axis) == lane_count]
+    return selected[0] if len(selected) == 1 else None
+
+
+def _declared_display_precision_rounding_assessment(
+    *,
+    result_role: str,
+    printed: Mapping[str, Any],
+    component: Mapping[str, Any],
+    component_roles: Sequence[str],
+    rounding_lane_unit_kind_alternatives: Sequence[Sequence[str]],
+) -> dict[str, Any] | None:
+    """Check exact rational display precision under a declared lane-kind axis."""
+
+    residuals = _residuals(printed["values"], component["values"])
+    source = printed.get("source")
+    if residuals is None or source is None:
+        return None
+    lane_unit_kinds = _selected_rounding_lane_unit_kinds(
+        rounding_lane_unit_kind_alternatives, len(residuals)
+    )
+    if lane_unit_kinds is None:
+        return None
+    candidate_ordinal = (
+        source["record"]["candidate_ordinal"] if source["kind"] == "TRAILING_VALUE_ROW" else None
+    )
+    printed_result_owner = {
+        "candidate_ordinal": candidate_ordinal,
+        "occurrence_id": (
+            source["record"]["label_match"]["occurrence_id"]
+            if source["kind"] == "ROLE_ROW"
+            else None
+        ),
+        "role": source["record"]["role"] if source["kind"] == "ROLE_ROW" else None,
+        "source_kind": source["kind"],
+    }
+    component_precision_axis = component.get(_PRINTED_SOURCE_CELLS_KEY)
+    printed_precision_axis = printed.get(_PRINTED_SOURCE_CELLS_KEY)
+    if (
+        type(component_precision_axis) is not list
+        or len(component_precision_axis) != len(residuals)
+        or type(printed_precision_axis) is not list
+        or len(printed_precision_axis) != len(residuals)
+    ):
+        return None
+    lanes = []
+    for (
+        residual,
+        printed_value,
+        component_value,
+        printed_component_cells,
+        printed_result_cells,
+        lane_unit_kind,
+    ) in zip(
+        residuals,
+        printed["values"],
+        component["values"],
+        component_precision_axis,
+        printed_precision_axis,
+        lane_unit_kinds,
+        strict=True,
+    ):
+        printed_number = printed_value["number"]
+        component_number = component_value["number"]
+        residual_number = residual["number"]
+        printed_samples = printed_value["source_sample_ids"]
+        component_samples = component_value["source_sample_ids"]
+        if (
+            type(printed_component_cells) is not list
+            or not printed_component_cells
+            or type(printed_result_cells) is not list
+            or len(printed_result_cells) != 1
+            or len(printed_samples) != 1
+            or not component_samples
+            or len(component_samples) != len(set(component_samples))
+            or set(printed_samples) & set(component_samples)
+            or [cell.get("source_sample_id") for cell in printed_component_cells]
+            != component_samples
+            or any(
+                type(cell) is not dict
+                or set(cell) != {"classification", "number", "source_sample_id"}
+                or cell["classification"] not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                or type(cell["number"]) is not dict
+                or set(cell["number"]) != {"coefficient", "percentage_mark_present", "scale"}
+                or type(cell["number"]["coefficient"]) is not int
+                or type(cell["number"]["percentage_mark_present"]) is not bool
+                or type(cell["number"]["scale"]) is not int
+                or not 0 <= cell["number"]["scale"] <= 6
+                or (cell["classification"] == "DASH_ZERO" and cell["number"]["coefficient"] != 0)
+                for cell in printed_component_cells
+            )
+            or printed_result_cells[0].get("classification") != "SIGNED_NUMBER"
+            or not same_typed_json_v1(printed_result_cells[0].get("number"), printed_number)
+            or printed_result_cells[0].get("source_sample_id") != printed_samples[0]
+            or any(
+                type(number) is not dict
+                or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+                or type(number["coefficient"]) is not int
+                or type(number["percentage_mark_present"]) is not bool
+                or type(number["scale"]) is not int
+                or not 0 <= number["scale"] <= 6
+                for number in (printed_number, component_number, residual_number)
+            )
+            or any(
+                cell["number"]["percentage_mark_present"]
+                is not component_number["percentage_mark_present"]
+                for cell in printed_component_cells
+            )
+            or printed_number["percentage_mark_present"]
+            is not component_number["percentage_mark_present"]
+            or residual_number["percentage_mark_present"]
+            is not component_number["percentage_mark_present"]
+            or (
+                lane_unit_kind == "MONEY"
+                and (
+                    component_number["percentage_mark_present"]
+                    or any(cell["number"]["scale"] != 0 for cell in printed_component_cells)
+                    or printed_number["scale"] != 0
+                    or component_number["scale"] != 0
+                    or residual_number["scale"] != 0
+                )
+            )
+            or (
+                printed_number["coefficient"] != 0
+                and component_number["coefficient"] != 0
+                and (printed_number["coefficient"] > 0) is not (component_number["coefficient"] > 0)
+            )
+        ):
+            return None
+        signed_cells = [
+            cell for cell in printed_component_cells if cell["classification"] == "SIGNED_NUMBER"
+        ]
+        if not signed_cells:
+            return None
+        common_scale = max(
+            printed_number["scale"],
+            component_number["scale"],
+            residual_number["scale"],
+            *(cell["number"]["scale"] for cell in printed_component_cells),
+        )
+        component_sum_common = sum(
+            cell["number"]["coefficient"] * 10 ** (common_scale - cell["number"]["scale"])
+            for cell in printed_component_cells
+        )
+        printed_common = printed_number["coefficient"] * 10 ** (
+            common_scale - printed_number["scale"]
+        )
+        residual_common = residual_number["coefficient"] * 10 ** (
+            common_scale - residual_number["scale"]
+        )
+        if (
+            component_sum_common
+            != component_number["coefficient"] * 10 ** (common_scale - component_number["scale"])
+            or residual_common != printed_common - component_sum_common
+        ):
+            return None
+        bound_twice_error = sum(
+            10 ** (common_scale - cell["number"]["scale"]) for cell in signed_cells
+        ) + 10 ** (common_scale - printed_number["scale"])
+        twice_absolute_residual = 2 * abs(residual_common)
+        lanes.append(
+            {
+                "bound_twice_error_in_common_scale": bound_twice_error,
+                "column_ordinal": residual["column_ordinal"],
+                "common_display_scale": common_scale,
+                "independently_printed_component_count": len(signed_cells),
+                "lane_unit_kind": lane_unit_kind,
+                "printed_component_cells": [
+                    {
+                        "number": canonical_clone_v1(cell["number"]),
+                        "source_sample_id": cell["source_sample_id"],
+                    }
+                    for cell in printed_component_cells
+                ],
+                "printed_result_cell": {
+                    "number": canonical_clone_v1(printed_number),
+                    "source_sample_id": printed_samples[0],
+                },
+                "residual_number": canonical_clone_v1(residual_number),
+                "status": (
+                    "WITHIN_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+                    if twice_absolute_residual <= bound_twice_error
+                    else "OVER_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+                ),
+                "twice_absolute_residual_in_common_scale": twice_absolute_residual,
+            }
+        )
+    within = all(
+        lane["status"] == "WITHIN_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND" for lane in lanes
+    )
+    return {
+        "candidate_ordinal": candidate_ordinal,
+        "component_roles": list(component_roles),
+        "lanes": lanes,
+        "policy": _DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY,
+        "printed_result_owner": printed_result_owner,
+        "result_role": result_role,
+        "status": (
+            "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            if within
+            else "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
+        ),
+    }
+
+
 def _rounding_assessment(
     *,
     result_role: str,
     printed: Mapping[str, Any],
     component: Mapping[str, Any],
     component_roles: Sequence[str],
+    rounding_lane_unit_kind_alternatives: Sequence[Sequence[str]] | None = None,
 ) -> dict[str, Any] | None:
     """Test one exhaustive printed sum in integer display-unit space.
 
@@ -1625,6 +1899,15 @@ def _rounding_assessment(
     ``2 * abs(residual) <= numeric_component_count + 1``.  No value is replaced
     by the component sum and no floating-point tolerance enters.
     """
+
+    if rounding_lane_unit_kind_alternatives is not None:
+        return _declared_display_precision_rounding_assessment(
+            result_role=result_role,
+            printed=printed,
+            component=component,
+            component_roles=component_roles,
+            rounding_lane_unit_kind_alternatives=rounding_lane_unit_kind_alternatives,
+        )
 
     residuals = _residuals(printed["values"], component["values"])
     source = printed.get("source")
@@ -1753,12 +2036,7 @@ def _rounding_assessment(
         "candidate_ordinal": candidate_ordinal,
         "component_roles": list(component_roles),
         "lanes": lanes,
-        "policy": (
-            "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_INTEGER_DISPLAY_UNIT;"
-            "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_COUNT;"
-            "SAME_NONZERO_RESULT_SUM_SIGN;2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
-            "INDEPENDENTLY_PRINTED_NUMERIC_COMPONENT_COUNT+1"
-        ),
+        "policy": _INTEGER_DISPLAY_UNIT_ROUNDING_POLICY,
         "printed_result_owner": printed_result_owner,
         "result_role": result_role,
         "status": (
@@ -1929,6 +2207,7 @@ def _local_equations(
     role_occurrences: Sequence[Mapping[str, Any]],
     *,
     allow_rounding: bool,
+    rounding_lane_unit_kind_alternatives: Sequence[Sequence[str]] | None = None,
 ) -> tuple[list[dict[str, Any]], set[str], set[str], set[str], list[str]]:
     def equation_record(
         *,
@@ -2115,6 +2394,7 @@ def _local_equations(
                     printed=visible,
                     component=alternative,
                     component_roles=alternative["component_roles"],
+                    rounding_lane_unit_kind_alternatives=(rounding_lane_unit_kind_alternatives),
                 )
                 if assessment is not None:
                     rounding_evidence.append(assessment)
@@ -2212,6 +2492,7 @@ def _select_global_equation(
     trailing_rows: Sequence[Mapping[str, Any]],
     *,
     allow_rounding: bool,
+    rounding_lane_unit_kind_alternatives: Sequence[Sequence[str]] | None = None,
     descendant_result_roles_by_role: Mapping[str, frozenset[str]],
     selected_component_owner_roles: Mapping[str, frozenset[str]],
     source_bound_intermediate_roles: frozenset[str],
@@ -2310,6 +2591,7 @@ def _select_global_equation(
                         printed=visible,
                         component=alternative,
                         component_roles=alternative["component_roles"],
+                        rounding_lane_unit_kind_alternatives=(rounding_lane_unit_kind_alternatives),
                     )
                     if assessment is not None:
                         rounding_evidence.append(assessment)
@@ -2383,6 +2665,7 @@ def _select_global_equation(
                         printed=candidate,
                         component=alternative,
                         component_roles=alternative["component_roles"],
+                        rounding_lane_unit_kind_alternatives=(rounding_lane_unit_kind_alternatives),
                     )
                     if assessment is not None:
                         rounding_evidence.append(assessment)
@@ -5517,6 +5800,138 @@ def _validate_residual_evidence_axis(evidence_axis: Any, *, result_role: str) ->
         raise _error("scoped hierarchical residual evidence ownership repeats")
 
 
+def _validate_declared_display_precision_rounding_lane(
+    lane: Any,
+    *,
+    component_universe_samples: Sequence[Mapping[str, Any] | None],
+    expected_lane: int,
+    expected_lane_unit_kind: str,
+    residual_lane: Mapping[str, Any],
+) -> None:
+    number = lane.get("residual_number") if type(lane) is dict else None
+    printed_component_cells = lane.get("printed_component_cells") if type(lane) is dict else None
+    printed_result_cell = lane.get("printed_result_cell") if type(lane) is dict else None
+    component_samples = residual_lane["component_source_sample_ids"]
+    printed_samples = residual_lane["printed_result_source_sample_ids"]
+    component_classifications = [
+        sample.get("parsed_token", {}).get("classification") if type(sample) is dict else None
+        for sample in component_universe_samples
+    ]
+    numeric_component_count = sum(
+        classification == "SIGNED_NUMBER" for classification in component_classifications
+    )
+    if (
+        type(lane) is not dict
+        or set(lane)
+        != {
+            "bound_twice_error_in_common_scale",
+            "column_ordinal",
+            "common_display_scale",
+            "independently_printed_component_count",
+            "lane_unit_kind",
+            "printed_component_cells",
+            "printed_result_cell",
+            "residual_number",
+            "status",
+            "twice_absolute_residual_in_common_scale",
+        }
+        or lane["column_ordinal"] != expected_lane
+        or lane["lane_unit_kind"] != expected_lane_unit_kind
+        or type(lane["common_display_scale"]) is not int
+        or not 0 <= lane["common_display_scale"] <= 6
+        or type(number) is not dict
+        or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+        or type(number["coefficient"]) is not int
+        or type(number["percentage_mark_present"]) is not bool
+        or type(number["scale"]) is not int
+        or not 0 <= number["scale"] <= 6
+        or not same_typed_json_v1(number, residual_lane["residual_number"])
+        or type(printed_component_cells) is not list
+        or len(printed_component_cells) != len(component_samples)
+        or [cell.get("source_sample_id") for cell in printed_component_cells] != component_samples
+        or any(
+            type(cell) is not dict
+            or set(cell) != {"number", "source_sample_id"}
+            or type(cell["source_sample_id"]) is not str
+            or not cell["source_sample_id"]
+            or type(cell["number"]) is not dict
+            or set(cell["number"]) != {"coefficient", "percentage_mark_present", "scale"}
+            or type(cell["number"]["coefficient"]) is not int
+            or type(cell["number"]["percentage_mark_present"]) is not bool
+            or type(cell["number"]["scale"]) is not int
+            or not 0 <= cell["number"]["scale"] <= 6
+            for cell in printed_component_cells
+        )
+        or type(printed_result_cell) is not dict
+        or set(printed_result_cell) != {"number", "source_sample_id"}
+        or printed_result_cell["source_sample_id"] != printed_samples[0]
+        or not same_typed_json_v1(
+            printed_result_cell["number"], residual_lane["printed_result_number"]
+        )
+        or any(
+            classification not in {"DASH_ZERO", "SIGNED_NUMBER"}
+            for classification in component_classifications
+        )
+        or numeric_component_count < 1
+        or lane["independently_printed_component_count"] != numeric_component_count
+        or type(lane["independently_printed_component_count"]) is not int
+        or (
+            expected_lane_unit_kind == "MONEY"
+            and (
+                number["percentage_mark_present"]
+                or number["scale"] != 0
+                or residual_lane["component_sum_number"]["percentage_mark_present"]
+                or residual_lane["component_sum_number"]["scale"] != 0
+                or residual_lane["printed_result_number"]["percentage_mark_present"]
+                or residual_lane["printed_result_number"]["scale"] != 0
+                or any(cell["number"]["scale"] != 0 for cell in printed_component_cells)
+            )
+        )
+    ):
+        raise _error("scoped hierarchical declared display-precision rounding lane drifted")
+    common_scale = lane["common_display_scale"]
+    component_sum_common = sum(
+        cell["number"]["coefficient"] * 10 ** (common_scale - cell["number"]["scale"])
+        for cell in printed_component_cells
+    )
+    printed_common = residual_lane["printed_result_number"]["coefficient"] * 10 ** (
+        common_scale - residual_lane["printed_result_number"]["scale"]
+    )
+    residual_common = number["coefficient"] * 10 ** (common_scale - number["scale"])
+    expected_common_scale = max(
+        residual_lane["printed_result_number"]["scale"],
+        residual_lane["component_sum_number"]["scale"],
+        number["scale"],
+        *(cell["number"]["scale"] for cell in printed_component_cells),
+    )
+    bound = sum(
+        10 ** (common_scale - cell["number"]["scale"])
+        for cell, classification in zip(
+            printed_component_cells, component_classifications, strict=True
+        )
+        if classification == "SIGNED_NUMBER"
+    ) + 10 ** (common_scale - residual_lane["printed_result_number"]["scale"])
+    twice_absolute_residual = 2 * abs(residual_common)
+    if (
+        common_scale != expected_common_scale
+        or component_sum_common
+        != residual_lane["component_sum_number"]["coefficient"]
+        * 10 ** (common_scale - residual_lane["component_sum_number"]["scale"])
+        or residual_common != printed_common - component_sum_common
+        or type(lane["bound_twice_error_in_common_scale"]) is not int
+        or lane["bound_twice_error_in_common_scale"] != bound
+        or type(lane["twice_absolute_residual_in_common_scale"]) is not int
+        or lane["twice_absolute_residual_in_common_scale"] != twice_absolute_residual
+        or lane["status"]
+        != (
+            "WITHIN_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+            if twice_absolute_residual <= bound
+            else "OVER_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+        )
+    ):
+        raise _error("scoped hierarchical declared display-precision rounding math drifted")
+
+
 def _validate_rounding_evidence_axis(
     evidence_axis: Any,
     *,
@@ -5526,6 +5941,7 @@ def _validate_rounding_evidence_axis(
     residual_axis: Sequence[Mapping[str, Any]],
     role_occurrence_by_id: Mapping[str, Mapping[str, Any]],
     result_role: str,
+    rounding_lane_unit_kind_alternatives: Sequence[Sequence[str]] | None,
     visible_result_roles: set[str],
 ) -> None:
     if type(evidence_axis) is not list:
@@ -5553,11 +5969,17 @@ def _validate_rounding_evidence_axis(
             or set(evidence["printed_result_owner"])
             != {"candidate_ordinal", "occurrence_id", "role", "source_kind"}
             or evidence["policy"]
-            != (
-                "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_INTEGER_DISPLAY_UNIT;"
-                "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_COUNT;"
-                "SAME_NONZERO_RESULT_SUM_SIGN;2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
-                "INDEPENDENTLY_PRINTED_NUMERIC_COMPONENT_COUNT+1"
+            not in {
+                _INTEGER_DISPLAY_UNIT_ROUNDING_POLICY,
+                _DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY,
+            }
+            or (
+                rounding_lane_unit_kind_alternatives is None
+                and evidence["policy"] != _INTEGER_DISPLAY_UNIT_ROUNDING_POLICY
+            )
+            or (
+                rounding_lane_unit_kind_alternatives is not None
+                and evidence["policy"] != _DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY
             )
             or (
                 evidence["candidate_ordinal"] is not None
@@ -5584,6 +6006,15 @@ def _validate_rounding_evidence_axis(
         residual = residual_by_key.get(key)
         if type(residual) is not dict or len(residual["lanes"]) != len(evidence["lanes"]):
             raise _error("rounding assessment lost its exact typed residual evidence")
+        selected_lane_unit_kinds = (
+            _selected_rounding_lane_unit_kinds(
+                rounding_lane_unit_kind_alternatives, len(evidence["lanes"])
+            )
+            if rounding_lane_unit_kind_alternatives is not None
+            else None
+        )
+        if rounding_lane_unit_kind_alternatives is not None and (selected_lane_unit_kinds is None):
+            raise _error("rounding assessment lost its declared lane-unit axis")
         lane_statuses = []
         printed_owner = evidence["printed_result_owner"]
         if printed_owner["source_kind"] == "TRAILING_VALUE_ROW":
@@ -5633,7 +6064,7 @@ def _validate_rounding_evidence_axis(
             numeric_component_count = sum(
                 classification == "SIGNED_NUMBER" for classification in component_classifications
             )
-            if (
+            if evidence["policy"] == _INTEGER_DISPLAY_UNIT_ROUNDING_POLICY and (
                 type(lane) is not dict
                 or set(lane)
                 != {
@@ -5708,6 +6139,14 @@ def _validate_rounding_evidence_axis(
                 )
             ):
                 raise _error("scoped hierarchical integer rounding lane drifted")
+            if evidence["policy"] == _DECLARED_DISPLAY_PRECISION_ROUNDING_POLICY:
+                _validate_declared_display_precision_rounding_lane(
+                    lane,
+                    component_universe_samples=component_universe_samples,
+                    expected_lane=expected_lane,
+                    expected_lane_unit_kind=selected_lane_unit_kinds[expected_lane],
+                    residual_lane=residual_lane,
+                )
             component_ids = [cell["source_sample_id"] for cell in printed_component_cells]
             if local_result_occurrence_id is None:
                 expected_component_ids = []
@@ -5829,12 +6268,18 @@ def _validate_rounding_evidence_axis(
         expected_status = (
             "ROUNDING_BOUND_SATISFIED_ALL_LANES"
             if all(
-                status == "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND" for status in lane_statuses
+                status
+                == (
+                    "WITHIN_INTEGER_DISPLAY_UNIT_ROUNDING_BOUND"
+                    if evidence["policy"] == _INTEGER_DISPLAY_UNIT_ROUNDING_POLICY
+                    else "WITHIN_DECLARED_DISPLAY_PRECISION_ROUNDING_BOUND"
+                )
+                for status in lane_statuses
             )
             else "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
         )
         if evidence["status"] != expected_status:
-            raise _error("scoped hierarchical integer rounding assessment drifted")
+            raise _error("scoped hierarchical rounding assessment status drifted")
     if len(keys) != len(set(keys)):
         raise _error("scoped hierarchical rounding assessment ownership repeats")
 
@@ -6759,11 +7204,14 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
+    result_is_v4 = type(value) is dict and "rounding_lane_unit_kind_alternatives" in value
+    expected_result_fields = _RESULT_FIELDS_V4 if result_is_v4 else _RESULT_FIELDS
+    expected_claim_boundary = CLAIM_BOUNDARY_V4 if result_is_v4 else CLAIM_BOUNDARY
     if (
         type(value) is not dict
-        or set(value) != _RESULT_FIELDS
+        or set(value) != expected_result_fields
         or value["format_version"] != FORMAT_VERSION
-        or value["claim_boundary"] != CLAIM_BOUNDARY
+        or value["claim_boundary"] != expected_claim_boundary
         or not same_typed_json_v1(value["safety"], _SAFETY)
         or type(value["family_id"]) is not str
         or not value["family_id"]
@@ -6818,6 +7266,26 @@ def _validate_result(value: Any) -> dict[str, Any]:
         }
     ):
         raise _error("scoped hierarchical result contract drifted")
+    rounding_lane_unit_kind_alternatives = (
+        value["rounding_lane_unit_kind_alternatives"] if result_is_v4 else None
+    )
+    if result_is_v4 and (
+        type(rounding_lane_unit_kind_alternatives) is not list
+        or not rounding_lane_unit_kind_alternatives
+        or len(rounding_lane_unit_kind_alternatives) > _MAX_ROUNDING_LANE_COUNT
+        or any(
+            type(axis) is not list
+            or not axis
+            or len(axis) > _MAX_ROUNDING_LANE_COUNT
+            or any(kind not in _ROUNDING_LANE_UNIT_KINDS for kind in axis)
+            for axis in rounding_lane_unit_kind_alternatives
+        )
+        or len({tuple(axis) for axis in rounding_lane_unit_kind_alternatives})
+        != len(rounding_lane_unit_kind_alternatives)
+        or len({len(axis) for axis in rounding_lane_unit_kind_alternatives})
+        != len(rounding_lane_unit_kind_alternatives)
+    ):
+        raise _error("scoped hierarchical result rounding lane-unit alternatives drifted")
     from bctc_ai.evaluation import (  # noqa: PLC0415
         accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
     )
@@ -6980,6 +7448,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 residual_axis=equation["residual_evidence"],
                 role_occurrence_by_id=role_occurrence_by_id,
                 result_role=equation["result_role"],
+                rounding_lane_unit_kind_alternatives=(rounding_lane_unit_kind_alternatives),
                 visible_result_roles={equation["result_role"], *equation["visible_result_roles"]},
             )
             satisfied = [
@@ -7107,6 +7576,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 residual_axis=equation["residual_evidence"],
                 role_occurrence_by_id=role_occurrence_by_id,
                 result_role=equation["result_role"],
+                rounding_lane_unit_kind_alternatives=(rounding_lane_unit_kind_alternatives),
                 visible_result_roles={equation["result_role"]},
             )
             selected = [
@@ -7798,7 +8268,9 @@ def _build(
     allow_rounding = spec["format_version"] in {
         SPEC_FORMAT_VERSION_V2,
         SPEC_FORMAT_VERSION_V3,
+        SPEC_FORMAT_VERSION_V4,
     }
+    rounding_lane_unit_kind_alternatives = spec.get("rounding_lane_unit_kind_alternatives")
     local_records = []
     local_roles = set(spec["repeated_role_policy"]["local_subtotal_roles"])
     locally_valid_results: set[str] = set()
@@ -7823,6 +8295,7 @@ def _build(
                 accounting_rows,
                 axis["role_occurrences"],
                 allow_rounding=allow_rounding,
+                rounding_lane_unit_kind_alternatives=rounding_lane_unit_kind_alternatives,
             )
             local_records.extend(records)
             locally_valid_results.update(valid_results)
@@ -7943,6 +8416,7 @@ def _build(
             resolved,
             available_trailing_rows,
             allow_rounding=allow_rounding,
+            rounding_lane_unit_kind_alternatives=rounding_lane_unit_kind_alternatives,
             descendant_result_roles_by_role=descendant_result_roles_by_role,
             selected_component_owner_roles={
                 role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
@@ -8381,7 +8855,11 @@ def _build(
         "authenticated_existing_dash_evidence": canonical_clone_v1(
             axis["authenticated_existing_dash_evidence"]
         ),
-        "claim_boundary": CLAIM_BOUNDARY,
+        "claim_boundary": (
+            CLAIM_BOUNDARY_V4
+            if spec["format_version"] == SPEC_FORMAT_VERSION_V4
+            else CLAIM_BOUNDARY
+        ),
         "coextensive_structural_numeric_evidence": canonical_clone_v1(
             axis["coextensive_structural_numeric_evidence"]
         ),
@@ -8409,6 +8887,15 @@ def _build(
         ),
         "resolved_roles": resolved_axis,
         "role_occurrences": canonical_clone_v1(axis["role_occurrences"]),
+        **(
+            {
+                "rounding_lane_unit_kind_alternatives": canonical_clone_v1(
+                    rounding_lane_unit_kind_alternatives
+                )
+            }
+            if spec["format_version"] == SPEC_FORMAT_VERSION_V4
+            else {}
+        ),
         "row_axis_id": row_axis["row_axis_id"],
         "safety": canonical_clone_v1(_SAFETY),
         "status": (
