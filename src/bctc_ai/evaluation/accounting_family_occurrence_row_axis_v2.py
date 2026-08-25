@@ -2449,6 +2449,42 @@ def _one_edit_exact_source_structural_proofs_v2(
     return receipt, decorated
 
 
+def _exact_physical_source_span_signature_v1(item: Mapping[str, Any]) -> tuple[Any, ...]:
+    """Identify one occupied source span independently of its proposed role."""
+
+    explicit_indices = item.get("source_line_indices")
+    return (
+        item["page_sequence"],
+        item["document_line_ordinal"],
+        item["end_document_line_ordinal"],
+        item["source_line_index"],
+        item["end_source_line_index"],
+        tuple(explicit_indices) if type(explicit_indices) is list else None,
+    )
+
+
+def _unique_exact_bound_source_challengers_v1(
+    eligible: Sequence[tuple[dict[str, Any], Mapping[str, Any]]],
+) -> list[tuple[dict[str, Any], Mapping[str, Any]]]:
+    """Admit only one role and one challenger for each unoccupied source span."""
+
+    by_role: dict[str, list[tuple[dict[str, Any], Mapping[str, Any]]]] = {}
+    by_physical_signature: dict[
+        tuple[Any, ...], list[tuple[dict[str, Any], Mapping[str, Any]]]
+    ] = {}
+    for item in eligible:
+        by_role.setdefault(item[0]["role"], []).append(item)
+        by_physical_signature.setdefault(
+            _exact_physical_source_span_signature_v1(item[0]), []
+        ).append(item)
+    return [
+        item
+        for item in eligible
+        if len(by_role[item[0]["role"]]) == 1
+        and len(by_physical_signature[_exact_physical_source_span_signature_v1(item[0])]) == 1
+    ]
+
+
 def _project_exact_bound_source_context_challengers_v1(
     pages: Sequence[Mapping[str, Any]],
     compiled_family: Mapping[str, Any],
@@ -2528,19 +2564,9 @@ def _project_exact_bound_source_context_challengers_v1(
             cursor = parent
         return True
 
-    def physical_signature(item: Mapping[str, Any]) -> tuple[Any, ...]:
-        explicit_indices = item.get("source_line_indices")
-        return (
-            item["role"],
-            item["page_sequence"],
-            item["document_line_ordinal"],
-            item["end_document_line_ordinal"],
-            item["source_line_index"],
-            item["end_source_line_index"],
-            tuple(explicit_indices) if type(explicit_indices) is list else None,
-        )
-
-    original_physical_signatures = {physical_signature(match) for match in matches}
+    original_physical_signatures = {
+        _exact_physical_source_span_signature_v1(match) for match in matches
+    }
 
     def visual_position(hit: Mapping[str, Any]) -> tuple[int, float]:
         bbox = hit["_bbox"]
@@ -2562,7 +2588,7 @@ def _project_exact_bound_source_context_challengers_v1(
             or record["document_line_ordinal"] != record["end_document_line_ordinal"]
             or record["source_line_index"] != record["end_source_line_index"]
             or "source_line_indices" in record
-            or physical_signature(record) in original_physical_signatures
+            or _exact_physical_source_span_signature_v1(record) in original_physical_signatures
         ):
             continue
         page = page_by_sequence.get(record["page_sequence"])
@@ -2627,12 +2653,10 @@ def _project_exact_bound_source_context_challengers_v1(
             continue
         eligible.append((canonical_clone_v1(record), original_owners[0]))
 
-    # More than one source-only physical row for the same otherwise absent role
-    # is an ownership ambiguity, not an occurrence-expansion opportunity.
-    by_role: dict[str, list[tuple[dict[str, Any], Mapping[str, Any]]]] = {}
-    for item in eligible:
-        by_role.setdefault(item[0]["role"], []).append(item)
-    admitted = [items[0] for items in by_role.values() if len(items) == 1]
+    # More than one source-only row for one absent role, or more than one role
+    # proposed for one source span, is an occupancy ambiguity rather than an
+    # occurrence-expansion opportunity.
+    admitted = _unique_exact_bound_source_challengers_v1(eligible)
     if not admitted:
         return [canonical_clone_v1(match) for match in matches]
 
@@ -2651,7 +2675,7 @@ def _project_exact_bound_source_context_challengers_v1(
         challenger["retrieval_role_kind"] = challenger["role_kind"]
         challenger["retrieval_role_occurrence_ordinal"] = 0
         challenger["retrieval_within_role"] = challenger["matched_within_role"]
-        admitted_signatures[physical_signature(challenger)] = owner
+        admitted_signatures[_exact_physical_source_span_signature_v1(challenger)] = owner
         undecorated.append(challenger)
     undecorated.sort(
         key=lambda item: (
@@ -2663,7 +2687,7 @@ def _project_exact_bound_source_context_challengers_v1(
     )
     decorated = _decorate_scopes(undecorated, selected_region)
     for match in decorated:
-        owner = admitted_signatures.get(physical_signature(match))
+        owner = admitted_signatures.get(_exact_physical_source_span_signature_v1(match))
         if owner is None:
             continue
         if match["scope_owner_occurrence_id"] != owner["occurrence_id"]:

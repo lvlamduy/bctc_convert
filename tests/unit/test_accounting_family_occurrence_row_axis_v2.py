@@ -2543,6 +2543,51 @@ def test_f3_exact_bound_source_recovers_one_absent_contextual_additive_leaf() ->
     )
 
 
+def test_f3_bound_source_challenger_cannot_retype_one_occupied_vietocr_line() -> None:
+    pages = _exact_source_missing_term_foreign_fixture()
+    original_foreign = next(
+        line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng ngoại lộ"
+    )
+    original_foreign["numeric_recognition"]["raw_prediction"] = "Bằng ngoại lộ"
+    vnd_lines = [line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng VND"]
+    term_vnd = vnd_lines[1]
+    term_vnd["numeric_recognition"]["raw_prediction"] = "Bằng ngoại tệ"
+
+    _scan, axis = _build_f3(pages)
+
+    same_physical_line = [
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["label_match"]["page_sequence"] == 1
+        and occurrence["label_match"]["source_line_index"] == term_vnd["line_ordinal"]
+        and occurrence["label_match"]["end_source_line_index"] == term_vnd["line_ordinal"]
+    ]
+    assert [occurrence["role"] for occurrence in same_physical_line] == ["TERM_DEPOSIT_VND"]
+    assert not any(
+        occurrence["role"] == "TERM_DEPOSIT_FOREIGN_CURRENCY"
+        and occurrence["label_match"]["match_kind"]
+        == "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+        for occurrence in axis["role_occurrences"]
+    )
+
+
+def test_f3_bound_source_challenger_abstains_on_cross_role_same_unoccupied_span() -> None:
+    span = {
+        "document_line_ordinal": 23,
+        "end_document_line_ordinal": 23,
+        "end_source_line_index": 23,
+        "page_sequence": 1,
+        "source_line_index": 23,
+    }
+    first = ({**span, "role": "TERM_DEPOSIT_FOREIGN_CURRENCY"}, {"role": "TERM_DEPOSIT_GROUP"})
+    second = (
+        {**span, "role": "DEMAND_DEPOSIT_FOREIGN_CURRENCY"},
+        {"role": "DEMAND_DEPOSIT_GROUP"},
+    )
+
+    assert subject._unique_exact_bound_source_challengers_v1([first, second]) == []
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
