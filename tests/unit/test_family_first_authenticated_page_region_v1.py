@@ -9,6 +9,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
+from bctc_ai.evaluation import family_first_visible_dash_glyph_evidence_v1 as dash_v1
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
@@ -22,9 +23,11 @@ def _png() -> bytes:
 
 
 def _render_record(payload: bytes) -> dict[str, object]:
+    with Image.open(io.BytesIO(payload)) as image:
+        pixel_width, pixel_height = image.size
     reference = {
-        "pixel_height": 30,
-        "pixel_width": 40,
+        "pixel_height": pixel_height,
+        "pixel_width": pixel_width,
         "sha256": hashlib.sha256(payload).hexdigest(),
         "size_bytes": len(payload),
     }
@@ -396,6 +399,87 @@ def test_foreground_localization_discards_split_edge_table_rule_but_keeps_dash()
     assert recognition[1] <= 21
     assert recognition[3] < 42
     assert recognition[0] <= 124 < 132 <= recognition[2]
+
+
+def test_foreground_localization_discards_only_detached_bottom_rule_before_dash_replay() -> None:
+    image = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((180, 12, 188, 15), fill="black")
+    draw.rectangle((111, 46, 190, 47), fill="black")
+
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    render = stream.getvalue()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+
+    first = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+    replay = region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[0, 0, image.width, image.height]
+    )
+
+    assert first == replay
+    assert first["ink_localization_status"] == (
+        "DETACHED_BOTTOM_EDGE_RULE_DISCARDED_GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    )
+    assert first["recognition_raw_pixel_bbox"] == [176, 9, 193, 19]
+    evidence = dash_v1.build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=first["region_png_bytes"]
+    )
+    assert evidence["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert evidence["normalized_value"] == 0
+
+
+def test_detached_bottom_rule_localization_rejects_every_nearby_geometry() -> None:
+    cases = {}
+
+    not_bottom_touching = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(not_bottom_touching)
+    draw.rectangle((180, 12, 188, 15), fill="black")
+    draw.rectangle((111, 43, 190, 44), fill="black")
+    cases["underline_not_bottom_touching"] = not_bottom_touching
+
+    rule_under_eight_times_width = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(rule_under_eight_times_width)
+    draw.rectangle((180, 12, 188, 15), fill="black")
+    draw.rectangle((130, 46, 199, 47), fill="black")
+    cases["rule_under_eight_times_width"] = rule_under_eight_times_width
+
+    vertically_near = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(vertically_near)
+    draw.rectangle((180, 30, 188, 33), fill="black")
+    draw.rectangle((111, 46, 190, 47), fill="black")
+    cases["vertically_near"] = vertically_near
+
+    two_glyphs = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(two_glyphs)
+    draw.rectangle((180, 12, 188, 15), fill="black")
+    draw.rectangle((150, 24, 158, 27), fill="black")
+    draw.rectangle((111, 46, 190, 47), fill="black")
+    cases["two_glyphs"] = two_glyphs
+
+    equals_sign = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(equals_sign)
+    draw.rectangle((180, 30, 188, 33), fill="black")
+    draw.rectangle((180, 44, 188, 47), fill="black")
+    cases["equals_sign"] = equals_sign
+
+    negative_number = Image.new("RGB", (221, 48), "white")
+    draw = ImageDraw.Draw(negative_number)
+    draw.rectangle((180, 12, 188, 15), fill="black")
+    draw.rectangle((194, 8, 199, 24), fill="black")
+    draw.rectangle((111, 46, 190, 47), fill="black")
+    cases["digit_and_minus"] = negative_number
+
+    expected_status = (
+        "DETACHED_BOTTOM_EDGE_RULE_DISCARDED_GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    )
+    for label, candidate in cases.items():
+        _recognition, status = region_v1._foreground_recognition_bbox(
+            candidate, [0, 0, candidate.width, candidate.height]
+        )
+        assert status != expected_status, label
 
 
 def test_foreground_localization_discards_widely_fragmented_rule_and_scan_specks() -> None:

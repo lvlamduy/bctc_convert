@@ -160,6 +160,51 @@ def _foreground_recognition_bbox(
     if not components:
         return list(proposed_bbox), "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
 
+    # A wrapped/tall row label can place its right-aligned DASH in the upper
+    # part of the detector-free proposal while the printed subtotal underline
+    # touches the proposal's bottom edge.  The ordinary central-component
+    # filter must not be broadened for that case: doing so could turn an
+    # equals sign, a negative number, or two glyphs into a zero.  Instead,
+    # tighten only the exact two-component geometry observed here: one compact
+    # high-fill horizontal glyph and one much wider, vertically detached rule
+    # that touches the bottom boundary.  This step grants no dash authority;
+    # the resulting immutable crop still has to pass the shared centered-dash
+    # classifier.
+    detached_bottom_rule_glyph = None
+    if len(components) == 2:
+        candidates = []
+        for glyph in components:
+            rule = components[1] if glyph is components[0] else components[0]
+            glyph_left, glyph_top, glyph_right, glyph_bottom = glyph["bbox"]
+            rule_left, rule_top, rule_right, rule_bottom = rule["bbox"]
+            glyph_width = glyph_right - glyph_left
+            glyph_height = glyph_bottom - glyph_top
+            rule_width = rule_right - rule_left
+            rule_height = rule_bottom - rule_top
+            glyph_area = glyph_width * glyph_height
+            if (
+                glyph_width > 0
+                and glyph_height > 0
+                and rule_width > 0
+                and rule_height > 0
+                and glyph_width / glyph_height >= 1.8
+                and 0.04 <= glyph_width / width <= 0.25
+                and 0.02 <= glyph_height / height <= 0.25
+                and glyph["ink_pixel_count"] / glyph_area >= 0.65
+                and glyph_top > 0
+                and glyph_bottom < height
+                and rule_bottom == height
+                and rule_width / rule_height >= 8.0
+                and rule_width >= glyph_width * 8
+                and rule_width / width >= 0.30
+                and rule_height / height <= 0.16
+                and rule_top - glyph_bottom >= max(2, int(round(height * 0.35)))
+            ):
+                candidates.append(glyph)
+        if len(candidates) == 1:
+            detached_bottom_rule_glyph = candidates[0]
+            components = [detached_bottom_rule_glyph]
+
     # Printed table borders often enter the top or bottom edge of an otherwise
     # correct cell proposal.  PP-OCR may split one horizontal rule at column
     # junctions, so filtering only one full-width connected component is not
@@ -274,7 +319,11 @@ def _foreground_recognition_bbox(
     ]
     if recognition[2] <= recognition[0] or recognition[3] <= recognition[1]:
         raise _error("foreground-localized recognition region has no positive area")
-    return recognition, "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    return recognition, (
+        "DETACHED_BOTTOM_EDGE_RULE_DISCARDED_GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+        if detached_bottom_rule_glyph is not None
+        else "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    )
 
 
 def _document(plan: dict[str, Any], document_ordinal: int) -> dict[str, Any]:
