@@ -12216,8 +12216,8 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
     family_spec: Any,
     selected_topology_region: Any,
     *,
-    period_semantics: Any,
-    expected_lane_unit_kinds: Any,
+    period_semantics: Any = None,
+    expected_lane_unit_kinds: Any = None,
     visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Add one arithmetic family-parent proof without changing row evidence."""
@@ -12234,6 +12234,17 @@ def project_accounting_family_one_edit_parent_frontier_authority_v2(
         accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
     )
 
+    if period_semantics is None or expected_lane_unit_kinds is None:
+        try:
+            replay_context = one_edit_v1.column_context_v1._validate_result(  # noqa: SLF001
+                column_context
+            )
+        except one_edit_v1.column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+            raise _error("one-edit parent-frontier column policy input drifted") from exc
+        if period_semantics is None:
+            period_semantics = replay_context["period_semantics"]
+        if expected_lane_unit_kinds is None:
+            expected_lane_unit_kinds = [item["unit_kind"] for item in replay_context["unit_axis"]]
     projected_receipt = one_edit_v1.project_accounting_family_one_edit_parent_frontier_authority_v1(
         axis["one_edit_exact_source_structural_proofs"],
         {

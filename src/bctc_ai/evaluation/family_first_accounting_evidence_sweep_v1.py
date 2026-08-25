@@ -2687,7 +2687,7 @@ def _selected_v4_one_edit_authority_v1(
         else:
             rebuilt = rebuilt_source
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
-        raise _error("selected V4 one-edit exact authority replay failed") from exc
+        raise _error(f"selected V4 one-edit exact authority replay failed:{exc}") from exc
     if not same_typed_json_v1(receipt, rebuilt):
         raise _error("selected V4 one-edit exact authority differs from occurrence proof")
     return rebuilt, canonical_clone_v1(rebuilt["unresolved_reasons"])

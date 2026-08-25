@@ -4816,7 +4816,7 @@ def test_f3_parent_frontier_public_replay_rejects_coherent_period_or_unit_tamper
             expected_lane_unit_kinds=["MONEY", "MONEY"],
         )
     evaluation = json.loads(_F3_EVALUATION_PATH.read_text(encoding="utf-8"))
-    with pytest.raises(ValueError, match="one-edit exact authority replay failed"):
+    with pytest.raises(ValueError, match="column context does not replay exactly"):
         sweep_v1._selected_v4_one_edit_authority_v1(
             {
                 "additive_closure": attacked_closure,
