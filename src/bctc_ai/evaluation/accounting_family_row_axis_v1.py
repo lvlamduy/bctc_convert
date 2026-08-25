@@ -600,27 +600,30 @@ def _structural_group_cluster_assignments(
                 median((item["bbox"][1] + item["bbox"][3]) / 2 for item in cluster)
             )
             cluster_height = float(median(item["bbox"][3] - item["bbox"][1] for item in cluster))
-            cluster_top = min(item["bbox"][1] for item in cluster)
-            cluster_bottom = max(item["bbox"][3] for item in cluster)
             cluster_lanes = {item["column_ordinal"] for item in cluster}
             residual_lanes = {
                 item["column_ordinal"]
                 for item in child["values"]
                 if item["sample_id"] not in cluster_sample_ids
             }
-            group_direct_sample_ids = {item["sample_id"] for item in group["values"]}
-            child_top = child.get("_label_vertical_top")
-            child_bottom = child.get("_label_vertical_bottom")
-            valued_parent_only_touches_later_child = (
-                {item["sample_id"] for item in cluster} <= group_direct_sample_ids
-                and type(child_top) is float
-                and type(child_bottom) is float
-                and min(cluster_bottom, child_bottom) <= max(cluster_top, child_top)
+            group_direct_by_sample = {item["sample_id"]: item for item in group["values"]}
+            valued_parent_has_exact_direct_source_affinity = (
+                {item["sample_id"] for item in cluster} <= set(group_direct_by_sample)
+                # row_affinity_v1 reaches 2.0 only for a fully coextensive
+                # label/value interval with the same center.  Preserve that
+                # exact parent-direct source even when an adjacent child OCR
+                # box overlaps it by one positive pixel.  Lower-affinity
+                # staggered clusters still use the ordered child-axis rule.
+                and all(
+                    type(group_direct_by_sample[item["sample_id"]].get("row_affinity")) is float
+                    and group_direct_by_sample[item["sample_id"]]["row_affinity"] == 2.0
+                    for item in cluster
+                )
             )
             if (
                 abs(cluster_center - child["_label_vertical_center"]) > cluster_height
                 or cluster_lanes & residual_lanes
-                or valued_parent_only_touches_later_child
+                or valued_parent_has_exact_direct_source_affinity
             ):
                 coherent = False
                 break
@@ -731,8 +734,6 @@ def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str
                 row["missing_column_ordinals"].sort()
     for row in rows:
         row.pop("_label_vertical_center")
-        row.pop("_label_vertical_top", None)
-        row.pop("_label_vertical_bottom", None)
         row.pop("_lane_count")
         row["status"] = (
             "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
@@ -1160,8 +1161,6 @@ def _rows(
                 "_label_vertical_center": float(
                     median((box[1] + box[3]) / 2 for box in label_boxes)
                 ),
-                "_label_vertical_top": float(min(box[1] for box in label_boxes)),
-                "_label_vertical_bottom": float(max(box[3] for box in label_boxes)),
                 "_lane_count": len(centers),
                 "label_match": canonical_clone_v1(match),
                 "missing_column_ordinals": missing,

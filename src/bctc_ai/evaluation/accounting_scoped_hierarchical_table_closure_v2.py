@@ -432,11 +432,41 @@ _OPTIONAL_BLANK_ROW_STATUSES = {
     "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
     "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
 }
+
+
+def _optional_incomplete_row_is_exact_equation_identity(row: Mapping[str, Any]) -> bool:
+    """Admit an incomplete optional row only when it cannot change any lane.
+
+    An authenticated blank crop proves absence, not numeric zero.  A partial
+    row is therefore safe to omit from an all-lane equation only when every
+    value that is actually printed is itself an exact, non-percentage zero.
+    """
+
+    status = row.get("status")
+    values = row.get("values")
+    if status == "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS":
+        return values == []
+    return (
+        status == "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+        and type(values) is list
+        and bool(values)
+        and all(
+            type(value) is dict
+            and type(value.get("parsed_token")) is dict
+            and value["parsed_token"].get("classification") in {"DASH_ZERO", "SIGNED_NUMBER"}
+            and type(value["parsed_token"].get("coefficient")) is int
+            and value["parsed_token"].get("coefficient") == 0
+            and value["parsed_token"].get("percentage_mark_present") is False
+            for value in values
+        )
+    )
+
+
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "b098bbf37616a6a7428a687863f26a84091c7cfa483cf0768f2bdac4684a4348",
+        "sha256": "234e9d22e5cb22ae2d1452a9c3e5d161e27dca4fe99bc18bee9349d3bd067f08",
         "size_bytes": 346_844,
     },
     "topology_v1": {
@@ -6175,15 +6205,31 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if receipt["row_kind"] == "ROLE_ROW":
             occurrence = occurrence_by_id.get(receipt["occurrence_id"])
             source_status = receipt["source_record"].get("status")
+            optional_status = source_status in _OPTIONAL_BLANK_ROW_STATUSES
+            exact_optional_identity = _optional_incomplete_row_is_exact_equation_identity(
+                receipt["source_record"]
+            )
             optional_disposition = (
                 receipt["disposition"] == "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE"
             )
-            if optional_disposition != (source_status in _OPTIONAL_BLANK_ROW_STATUSES) or (
-                optional_disposition
-                and (
-                    type(occurrence) is not dict
-                    or occurrence.get("label_match", {}).get("presence") != "OPTIONAL"
-                    or not receipt["source_record"].get("missing_column_ordinals")
+            if (
+                optional_disposition != exact_optional_identity
+                or (
+                    optional_status
+                    and not exact_optional_identity
+                    and receipt["disposition"] != "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
+                )
+                or (
+                    optional_status
+                    and (
+                        type(occurrence) is not dict
+                        or occurrence.get("label_match", {}).get("presence") != "OPTIONAL"
+                        or not receipt["source_record"].get("missing_column_ordinals")
+                    )
+                )
+                or (
+                    optional_disposition
+                    and not optional_status
                 )
             ):
                 raise _error("optional blank role receipt lost its exact source disposition")
@@ -6378,7 +6424,9 @@ def _build(
     reasons = list(axis["unresolved_reasons"])
     numeric_rows = [row for row in row_axis["rows"] if row["values"]]
     numeric_accounting_rows = [
-        row for row in numeric_rows if row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
+        row
+        for row in numeric_rows
+        if not _optional_incomplete_row_is_exact_equation_identity(row)
     ]
     source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
         numeric_accounting_rows,
@@ -6443,7 +6491,7 @@ def _build(
     accounting_rows = [
         row
         for row in row_axis["rows"]
-        if row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
+        if not _optional_incomplete_row_is_exact_equation_identity(row)
         and row["label_match"].get("occurrence_id")
         not in source_only_occurrences | one_edit_occurrences
     ]
@@ -6642,7 +6690,7 @@ def _build(
         row
         for row in row_axis["rows"]
         if row["status"] != "VISIBLE_VALUE_LANES_BOUND"
-        and row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
+        and not _optional_incomplete_row_is_exact_equation_identity(row)
     ]
     if incomplete_rows and all(
         row["label_match"].get("occurrence_id") in corroborated_occurrence_ids and not row["values"]
@@ -6712,8 +6760,11 @@ def _build(
         coverage_occurrences.add(occurrence_id)
         role = row["role"]
         role_kind = spec["role_kind_by_role"].get(role)
-        if row["status"] in _OPTIONAL_BLANK_ROW_STATUSES:
+        if _optional_incomplete_row_is_exact_equation_identity(row):
             disposition = "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE"
+        elif row["status"] in _OPTIONAL_BLANK_ROW_STATUSES:
+            disposition = "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
+            reasons.append(f"PARTIAL_VISIBLE_ACCOUNTING_ROW:{role}:{occurrence_id}")
         elif occurrence_id in source_only_occurrences:
             disposition = "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
         elif occurrence_id in one_edit_occurrences:

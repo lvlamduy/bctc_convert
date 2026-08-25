@@ -2998,6 +2998,118 @@ def test_optional_partial_adjustment_with_authenticated_blank_lane_is_nonblockin
         subject._validate_result(tampered)
 
 
+@pytest.mark.parametrize("visible_value", ["7", "-4"], ids=["positive", "negative"])
+def test_optional_partial_nonzero_adjustment_with_blank_lane_remains_unresolved(
+    visible_value: str,
+) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Dự phòng cho vay TCTD khác", "", visible_value),
+            ("Tổng cộng", "130", "115"),
+        ]
+    )
+    topology = _topology()
+    hierarchy = _hierarchy()
+    base_axis = _axis(pages, topology)
+    rescues = _clear_detector_dash_rescue(
+        pages,
+        topology,
+        base_row_axis=base_axis["row_axis"],
+        blank=True,
+        role="LOAN_PROVISION",
+    )
+
+    axis, closure = _closure(
+        pages,
+        topology=topology,
+        hierarchy=hierarchy,
+        visible_dash_rescues=rescues,
+    )
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    optional = next(
+        receipt for receipt in closure["coverage_receipt"] if receipt["role"] == "LOAN_PROVISION"
+    )
+    assert optional["disposition"] == "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
+    assert any(
+        reason.startswith("PARTIAL_VISIBLE_ACCOUNTING_ROW:LOAN_PROVISION:")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    ["DISPOSITION", "STATUS", "PRESENCE", "MISSING_LANES", "VISIBLE_NONZERO"],
+)
+def test_optional_exact_zero_receipt_cannot_be_coherently_retyped(attack: str) -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Dự phòng cho vay TCTD khác", "", "0"),
+            ("Tổng cộng", "130", "115"),
+        ]
+    )
+    topology = _topology()
+    base_axis = _axis(pages, topology)
+    rescues = _clear_detector_dash_rescue(
+        pages,
+        topology,
+        base_row_axis=base_axis["row_axis"],
+        blank=True,
+        role="LOAN_PROVISION",
+    )
+    _axis_value, closure = _closure(
+        pages,
+        topology=topology,
+        visible_dash_rescues=rescues,
+    )
+    attacked = copy.deepcopy(closure)
+    receipt = next(
+        record for record in attacked["coverage_receipt"] if record["role"] == "LOAN_PROVISION"
+    )
+    occurrence = next(
+        record
+        for record in attacked["role_occurrences"]
+        if record["occurrence_id"] == receipt["occurrence_id"]
+    )
+    if attack == "DISPOSITION":
+        receipt["disposition"] = "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
+    elif attack == "STATUS":
+        receipt["source_record"]["status"] = (
+            "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+        )
+    elif attack == "PRESENCE":
+        occurrence["label_match"]["presence"] = "REQUIRED"
+    elif attack == "MISSING_LANES":
+        receipt["source_record"]["missing_column_ordinals"] = []
+    else:
+        value = receipt["source_record"]["values"][0]
+        value["raw_prediction"] = "7"
+        value["parsed_token"].update(
+            {
+                "classification": "SIGNED_NUMBER",
+                "coefficient": 7,
+                "normalized_token": "7",
+            }
+        )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="optional blank role receipt lost its exact source disposition",
+    ):
+        subject._validate_result(attacked)
+
+
 def test_missing_local_subtotals_cannot_authorize_cross_scope_leaf_aggregation() -> None:
     pages = _pages(
         [

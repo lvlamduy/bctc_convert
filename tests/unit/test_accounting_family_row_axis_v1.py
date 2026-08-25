@@ -664,7 +664,10 @@ def test_valued_parent_cluster_is_not_reassigned_to_distant_child() -> None:
     ]
 
 
-def test_valued_parent_cluster_is_not_reassigned_to_later_touching_blank_child() -> None:
+@pytest.mark.parametrize("child_top", [134, 135], ids=["one-pixel-overlap", "edge-touch"])
+def test_valued_parent_cluster_is_not_reassigned_to_later_touching_blank_child(
+    child_top: int,
+) -> None:
     pages = [
         _page(
             [
@@ -674,7 +677,7 @@ def test_valued_parent_cluster_is_not_reassigned_to_later_touching_blank_child()
                 _line(3, "Tiền gửi tại TCTD khác", "", [50, 100, 300, 135]),
                 _line(4, "100", "100", [600, 100, 700, 135]),
                 _line(5, "90", "90", [800, 100, 900, 135]),
-                _line(6, "Bằng VND", "", [80, 135, 300, 169]),
+                _line(6, "Bằng VND", "", [80, child_top, 300, child_top + 34]),
                 _line(7, "Cho vay TCTD khác", "", [50, 220, 300, 242]),
                 _line(8, "20", "20", [600, 220, 700, 242]),
                 _line(9, "10", "10", [800, 220, 900, 242]),
