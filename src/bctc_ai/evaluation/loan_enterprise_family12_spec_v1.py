@@ -234,6 +234,9 @@ _CHILDREN = [
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
             "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ "
             "hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối "
+            "đối với công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ "
+            "hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối "
             "đối với công ty trong Điều lệ của công ty",
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số "
             "cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ "

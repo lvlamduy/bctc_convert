@@ -278,7 +278,7 @@ def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> 
     assert majority["end_source_line_index"] == 6
 
 
-def test_family12_wrapped_state_majority_equity_wording_tolerates_one_ocr_character() -> None:
+def test_family12_wrapped_state_majority_equity_prefix_avoids_ocr_only_tail() -> None:
     result = build_accounting_family_topology_scan_v1(
         [
             _page(
@@ -302,9 +302,9 @@ def test_family12_wrapped_state_majority_equity_wording_tolerates_one_ocr_charac
         for match in result["regions"][0]["child_matches"]
         if match["role"] == "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
     )
-    assert majority["match_kind"] == "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
     assert majority["source_line_index"] == 1
-    assert majority["end_source_line_index"] == 5
+    assert majority["end_source_line_index"] == 4
 
 
 def test_family12_branchless_owner_requires_two_distinct_exact_leaf_roles() -> None:
