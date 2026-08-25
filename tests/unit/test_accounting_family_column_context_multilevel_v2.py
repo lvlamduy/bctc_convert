@@ -478,3 +478,36 @@ def test_v2_exact_replay_rejects_self_rehashed_period_mutation() -> None:
             period_semantics="BALANCE_COMPARATIVE",
             expected_lane_unit_kinds=_KINDS,
         )
+
+
+def test_v2_authenticated_row_axis_handoff_replays_exact_context() -> None:
+    pages = _complete_header_before_parent_pages()
+    axis = _axis(pages)
+    result = _build(pages)
+
+    assert (
+        v2._validate_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+            result,
+            axis,
+            pages,
+            _spec(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=_KINDS,
+        )
+        == result
+    )
+
+    forged = copy.deepcopy(result)
+    forged["unit_axis"][0]["currency"] = "USD"
+    material = copy.deepcopy(forged)
+    material.pop("column_context_id")
+    forged["column_context_id"] = "afccmlv2:context:" + canonical_json_sha256_v1(material)
+    with pytest.raises(AccountingFamilyColumnContextMultilevelV2Error, match="replay exactly"):
+        v2._validate_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+            forged,
+            axis,
+            pages,
+            _spec(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=_KINDS,
+        )

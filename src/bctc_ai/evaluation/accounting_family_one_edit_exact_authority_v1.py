@@ -21,7 +21,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
+from bctc_ai.evaluation import (
+    accounting_family_column_context_multilevel_v2 as column_context_multilevel_v2,
+)
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
@@ -2130,7 +2132,9 @@ def _validate_parent_frontier_column_context_replay_v1(
     """
 
     try:
-        context = column_context_v1._validate_result(value)  # noqa: SLF001
+        context = column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
+            value
+        )
         parsed_context_pages = row_v1._pages(document_pages)  # noqa: SLF001
         expected_authority_pages = occurrence_row_v2._one_edit_authority_pages_v2(  # noqa: SLF001
             parsed_context_pages
@@ -2148,7 +2152,7 @@ def _validate_parent_frontier_column_context_replay_v1(
     ):
         raise _error("one-edit parent-frontier column replay policy drifted")
     try:
-        replayed = column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(  # noqa: SLF001
+        replayed = column_context_multilevel_v2._build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(  # noqa: SLF001
             row_axis,
             parsed_context_pages,
             family_spec,
@@ -2156,7 +2160,7 @@ def _validate_parent_frontier_column_context_replay_v1(
             expected_lane_unit_kinds=expected_lane_unit_kinds,
             visible_dash_rescues=visible_dash_rescues,
         )
-    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+    except (ValueError, RuntimeError) as exc:
         raise _error("one-edit parent-frontier column context replay failed") from exc
     if not same_typed_json_v1(context, replayed):
         raise _error("one-edit parent-frontier column context does not replay exactly")
@@ -2236,10 +2240,10 @@ def _validate_parent_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
     ):
         raise _error("one-edit parent-frontier parent binding drifted")
     try:
-        context = column_context_v1._validate_result(  # noqa: SLF001
+        context = column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
             value["column_context_receipt"]
         )
-    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+    except (ValueError, RuntimeError) as exc:
         raise _error("one-edit parent-frontier column binding drifted") from exc
     lane_count = len(context["period_axis"])
     if (
@@ -3225,7 +3229,9 @@ def project_accounting_family_one_edit_parent_frontier_authority_v1(
     source = _validate_result(source_exact_authority_receipt)
     evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
     try:
-        context = column_context_v1._validate_result(column_context)  # noqa: SLF001
+        context = column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
+            column_context
+        )
         pages = _pages_with_occurrence_geometry_v1(document_pages)
         compiled = topology_v1._spec(family_spec)  # noqa: SLF001
     except (ValueError, RuntimeError) as exc:
@@ -3920,10 +3926,10 @@ def _validate_hierarchy_frontier_proof_shape_v1(value: Any) -> dict[str, Any]:
     ):
         raise _error("one-edit hierarchy-frontier target identity drifted")
     try:
-        context = column_context_v1._validate_result(  # noqa: SLF001
+        context = column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
             value["column_context_receipt"]
         )
-    except column_context_v1.AccountingFamilyColumnContextV1Error as exc:
+    except (ValueError, RuntimeError) as exc:
         raise _error("one-edit hierarchy-frontier column receipt drifted") from exc
     lane_count = len(context["period_axis"])
     equation = value.get("hierarchy_equation_binding")
@@ -4687,7 +4693,9 @@ def project_accounting_family_one_edit_hierarchy_frontier_authority_v1(
     source = _validate_result(source_exact_authority_receipt)
     evidence = _parent_frontier_structural_evidence_v1(structural_evidence)
     try:
-        context = column_context_v1._validate_result(column_context)  # noqa: SLF001
+        context = column_context_multilevel_v2._validate_context_receipt_v2(  # noqa: SLF001
+            column_context
+        )
         pages = _pages_with_occurrence_geometry_v1(document_pages)
         compiled = topology_v1._spec(family_spec)  # noqa: SLF001
     except (ValueError, RuntimeError) as exc:

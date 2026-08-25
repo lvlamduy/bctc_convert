@@ -578,6 +578,42 @@ def _build_accounting_family_column_context_multilevel_v2(
     )
 
 
+def _validate_context_receipt_v2(value: Any) -> dict[str, Any]:
+    if type(value) is not dict:
+        raise _error("multilevel column context must be one exact object")
+    if value.get("format_version") == column_v1.FORMAT_VERSION:
+        return column_v1._validate_result(value)
+    if value.get("format_version") == FORMAT_VERSION:
+        return _validate_v2_context(value)
+    raise _error("multilevel column-context format version drifted")
+
+
+def _validate_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+    value: Any,
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    period_semantics: str,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Replay V1/V2 context without revalidating an authenticated row-axis handoff."""
+
+    persisted = _validate_context_receipt_v2(value)
+    expected = _build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+        row_axis,
+        pages,
+        family_topology_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+    )
+    if not same_typed_json_v1(persisted, expected):
+        raise _error("multilevel authenticated column context does not replay exactly")
+    return persisted
+
+
 def validate_accounting_family_column_context_multilevel_replay_v2(
     value: Any,
     row_axis: Any,
@@ -590,14 +626,7 @@ def validate_accounting_family_column_context_multilevel_replay_v2(
 ) -> dict[str, Any]:
     """Reject V1 or projected-V2 mutation through complete reconstruction."""
 
-    if type(value) is not dict:
-        raise _error("multilevel column context must be one exact object")
-    if value.get("format_version") == column_v1.FORMAT_VERSION:
-        persisted = column_v1._validate_result(value)
-    elif value.get("format_version") == FORMAT_VERSION:
-        persisted = _validate_v2_context(value)
-    else:
-        raise _error("multilevel column-context format version drifted")
+    persisted = _validate_context_receipt_v2(value)
     expected = build_accounting_family_column_context_multilevel_v2(
         row_axis,
         pages,
