@@ -12,7 +12,9 @@ from __future__ import annotations
 import copy
 import re
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
+from multiprocessing import get_context
 from time import perf_counter
 from typing import Any
 
@@ -62,6 +64,8 @@ EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
 _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
+_MAX_DOCUMENT_STORE_V4_JOBS = 16
+_V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -4442,10 +4446,264 @@ def _document_store_trial_with_render_rescue_v1(
     return trial
 
 
+def _v4_document_store_trial_worker_v1(
+    request: tuple[
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        dict[str, Any],
+        tuple[dict[str, Any], ...],
+        dict[str, Any] | None,
+        str,
+    ],
+) -> dict[str, Any]:
+    """Build one source-bound V4 trial in an isolated worker process.
+
+    The authenticated store capability never crosses the process boundary.
+    The parent reads one exact packet/snapshot (and, on retry, exact renders),
+    while this worker revalidates the complete selected-snapshot contract and
+    rebuilds every topology/row/closure/public-replay receipt from those bytes.
+    """
+
+    if type(request) is not tuple or len(request) != 7:
+        raise _error("V4 document-store worker request shape drifted")
+    packet, snapshot, family_spec, policy, render_snapshots, topology_scan, missing_page_mode = (
+        request
+    )
+    if (
+        type(packet) is not dict
+        or type(snapshot) is not dict
+        or type(family_spec) is not dict
+        or type(policy) is not dict
+        or policy.get("format_version") != EVALUATION_SPEC_FORMAT_V4
+        or type(render_snapshots) is not tuple
+        or any(type(render) is not dict for render in render_snapshots)
+        or (topology_scan is not None and type(topology_scan) is not dict)
+        or missing_page_mode not in _V4_WORKER_MISSING_PAGE_MODES
+        or (missing_page_mode == "FULL" and (render_snapshots or topology_scan is not None))
+        or (
+            missing_page_mode == "CANDIDATE_SCOPED"
+            and (not render_snapshots or topology_scan is None)
+        )
+    ):
+        raise _error("V4 document-store worker request binding drifted")
+    runtime_context: dict[str, Any] = {}
+    trial = _trial_from_document_store_snapshot_v1(
+        snapshot,
+        family_spec,
+        policy,
+        render_snapshots=render_snapshots,
+        topology_scan=topology_scan,
+        expected_packet=packet,
+        _v4_runtime_context=runtime_context,
+    )
+    missing_pages: tuple[int, ...] = ()
+    if missing_page_mode != "NONE":
+        prepared_context = runtime_context.get("prepared_context")
+        if type(prepared_context) is not _PreparedV4DocumentStoreContextV1:
+            raise _error("V4 document-store worker lost its prepared context")
+        _selected, _scan, topology_candidates, _bindings = (
+            _open_prepared_v4_document_store_context_v1(
+                prepared_context,
+                snapshot,
+                family_spec,
+                policy,
+                expected_packet=packet,
+                expected_legacy_scan=trial["topology_scan"],
+            )
+        )
+        if missing_page_mode == "FULL":
+            missing_pages = _missing_render_pages_for_document_store_trial_v1(
+                trial,
+                trial["topology_scan"],
+                snapshot["joined_pages"],
+                evaluation_spec=policy,
+                topology_candidates=topology_candidates,
+            )
+        else:
+            rendered_pages = {render["physical_page"] for render in render_snapshots}
+            missing_pages = tuple(
+                page
+                for page in _v4_candidate_scoped_missing_dimension_render_pages(
+                    trial,
+                    snapshot["joined_pages"],
+                    topology_candidates,
+                )
+                if page not in rendered_pages
+            )
+    return {
+        "document_ordinal": packet["document_ordinal"],
+        "missing_render_pages": missing_pages,
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": trial,
+    }
+
+
+def _validated_v4_document_store_worker_result_v1(
+    value: Any,
+    *,
+    packet: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+) -> tuple[dict[str, Any], tuple[int, ...]]:
+    """Rebind one worker result to the exact parent-owned packet/snapshot."""
+
+    if (
+        type(value) is not dict
+        or set(value)
+        != {
+            "document_ordinal",
+            "missing_render_pages",
+            "packet_id",
+            "snapshot_id",
+            "trial",
+        }
+        or value["document_ordinal"] != packet.get("document_ordinal")
+        or value["packet_id"] != packet.get("packet_id")
+        or value["snapshot_id"] != snapshot.get("snapshot_id")
+        or type(value["trial"]) is not dict
+        or value["trial"].get("document_ordinal") != packet.get("document_ordinal")
+        or type(value["missing_render_pages"]) is not tuple
+        or any(type(page) is not int or page <= 0 for page in value["missing_render_pages"])
+        or len(value["missing_render_pages"]) != len(set(value["missing_render_pages"]))
+        or tuple(sorted(value["missing_render_pages"])) != value["missing_render_pages"]
+        or any(page > packet.get("page_count", 0) for page in value["missing_render_pages"])
+    ):
+        raise _error("V4 document-store worker result differs from its parent source")
+    return value["trial"], value["missing_render_pages"]
+
+
+def _parallel_v4_document_store_trials_v1(
+    document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    packets: tuple[dict[str, Any], ...],
+    selections: tuple[tuple[int, tuple[int, ...]], ...],
+    family_spec: dict[str, Any],
+    policy: dict[str, Any],
+    jobs: int,
+) -> list[dict[str, Any]]:
+    """Run bounded document trials in source order with parent-owned I/O."""
+
+    trials: list[dict[str, Any]] = []
+    try:
+        # Spawn is a security boundary, not a portability preference.  Fork
+        # would inherit the parent module's opaque authenticated-store handle
+        # registry even though the capability is intentionally absent from
+        # every worker request.
+        with ProcessPoolExecutor(
+            max_workers=jobs,
+            mp_context=get_context("spawn"),
+        ) as executor:
+            for start in range(0, len(packets), _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE):
+                requested = selections[start : start + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE]
+                snapshots = (
+                    document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
+                        document_store_capability,
+                        document_page_selections=requested,
+                    )
+                )
+                if type(snapshots) is not tuple or len(snapshots) != len(requested):
+                    raise _error("V4 document-store selected snapshot batch axis drifted")
+                batch_packets = packets[start : start + len(snapshots)]
+                base_requests = tuple(
+                    (packet, snapshot, family_spec, policy, (), None, "FULL")
+                    for packet, snapshot in zip(batch_packets, snapshots, strict=True)
+                )
+                base_results = tuple(
+                    executor.map(_v4_document_store_trial_worker_v1, base_requests, chunksize=1)
+                )
+                final_trials: list[dict[str, Any] | None] = [None] * len(snapshots)
+                current_trials: list[dict[str, Any] | None] = [None] * len(snapshots)
+                current_missing_pages: list[tuple[int, ...]] = [()] * len(snapshots)
+                accumulated_renders: list[tuple[dict[str, Any], ...]] = [()] * len(snapshots)
+                for index, (packet, snapshot, result) in enumerate(
+                    zip(batch_packets, snapshots, base_results, strict=True)
+                ):
+                    trial, missing_pages = _validated_v4_document_store_worker_result_v1(
+                        result,
+                        packet=packet,
+                        snapshot=snapshot,
+                    )
+                    if not missing_pages:
+                        final_trials[index] = trial
+                        continue
+                    current_trials[index] = trial
+                    current_missing_pages[index] = missing_pages
+                for retry_ordinal in range(2):
+                    render_requests = []
+                    render_indices = []
+                    for index, missing_pages in enumerate(current_missing_pages):
+                        if not missing_pages:
+                            continue
+                        already_rendered_pages = {
+                            render["physical_page"] for render in accumulated_renders[index]
+                        }
+                        if already_rendered_pages & set(missing_pages):
+                            raise _error("V4 rendered worker repeated an already opened page")
+                        packet = batch_packets[index]
+                        new_renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+                            document_store_capability,
+                            document_ordinal=packet["document_ordinal"],
+                            physical_pages=missing_pages,
+                        )
+                        accumulated_renders[index] = (
+                            _canonical_authenticated_render_snapshot_order_v1(
+                                accumulated_renders[index],
+                                new_renders,
+                            )
+                        )
+                        trial = current_trials[index]
+                        if trial is None:
+                            raise _error("V4 rendered worker lost its preceding source trial")
+                        render_indices.append(index)
+                        render_requests.append(
+                            (
+                                packet,
+                                snapshots[index],
+                                family_spec,
+                                policy,
+                                accumulated_renders[index],
+                                trial["topology_scan"],
+                                "CANDIDATE_SCOPED" if retry_ordinal == 0 else "NONE",
+                            )
+                        )
+                    if not render_requests:
+                        break
+                    rendered_results = tuple(
+                        executor.map(
+                            _v4_document_store_trial_worker_v1,
+                            tuple(render_requests),
+                            chunksize=1,
+                        )
+                    )
+                    for index, result in zip(render_indices, rendered_results, strict=True):
+                        trial, missing_pages = _validated_v4_document_store_worker_result_v1(
+                            result,
+                            packet=batch_packets[index],
+                            snapshot=snapshots[index],
+                        )
+                        current_trials[index] = trial
+                        current_missing_pages[index] = missing_pages
+                        if not missing_pages:
+                            final_trials[index] = trial
+                if any(current_missing_pages):
+                    raise _error("V4 rendered worker exceeded its bounded retry axis")
+                if any(trial is None for trial in final_trials):
+                    raise _error("V4 document-store worker batch lost a source trial")
+                trials.extend(trial for trial in final_trials if trial is not None)
+    except FamilyFirstAccountingEvidenceSweepV1Error:
+        raise
+    except Exception as exc:
+        raise _error("V4 document-store worker execution failed") from exc
+    return trials
+
+
 def build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
     document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
     family_spec: Any,
     evaluation_spec: Any,
+    *,
+    jobs: int = 1,
 ) -> dict[str, Any]:
     """Build one family from root-checked document packets without replaying OCR.
 
@@ -4465,6 +4723,10 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
         document_store_capability
     )
     document_count = projection["metrics"]["document_count"]
+    if type(jobs) is not int or not 1 <= jobs <= _MAX_DOCUMENT_STORE_V4_JOBS:
+        raise _error("document-store worker count must be an integer from 1 to 16")
+    if jobs != 1 and policy["format_version"] != EVALUATION_SPEC_FORMAT_V4:
+        raise _error("parallel document-store trials require evaluation V4")
     if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
         topology_scans = None
     else:
@@ -4494,28 +4756,38 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
             )
             for packet in packets
         )
-        for start in range(0, document_count, _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE):
-            requested = selections[start : start + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE]
-            snapshots = (
-                document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
-                    document_store_capability,
-                    document_page_selections=requested,
-                )
-            )
-            if type(snapshots) is not tuple or len(snapshots) != len(requested):
-                raise _error("V4 document-store selected snapshot batch axis drifted")
-            for offset, snapshot in enumerate(snapshots):
-                packet = packets[start + offset]
-                trials.append(
-                    _document_store_trial_with_render_rescue_v1(
+        if jobs == 1:
+            for start in range(0, document_count, _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE):
+                requested = selections[start : start + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE]
+                snapshots = (
+                    document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
                         document_store_capability,
-                        packet=packet,
-                        snapshot=snapshot,
-                        family_spec=family_spec,
-                        policy=policy,
-                        topology_scan=None,
+                        document_page_selections=requested,
                     )
                 )
+                if type(snapshots) is not tuple or len(snapshots) != len(requested):
+                    raise _error("V4 document-store selected snapshot batch axis drifted")
+                for offset, snapshot in enumerate(snapshots):
+                    packet = packets[start + offset]
+                    trials.append(
+                        _document_store_trial_with_render_rescue_v1(
+                            document_store_capability,
+                            packet=packet,
+                            snapshot=snapshot,
+                            family_spec=family_spec,
+                            policy=policy,
+                            topology_scan=None,
+                        )
+                    )
+        else:
+            trials = _parallel_v4_document_store_trials_v1(
+                document_store_capability,
+                packets=packets,
+                selections=selections,
+                family_spec=family_spec,
+                policy=policy,
+                jobs=jobs,
+            )
     else:
         for ordinal in range(1, document_count + 1):
             packet = document_store_v1.read_authenticated_family_first_document_packet_v1(

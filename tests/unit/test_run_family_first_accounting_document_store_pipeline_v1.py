@@ -44,14 +44,15 @@ def test_document_store_pipeline_builds_and_replays_without_ocr(
         "mapping_id": "ffasmv1:mapping:" + "2" * 64,
         "metrics": {"verified_document_count": 80},
     }
-    calls = {"authenticate": 0, "build": 0}
+    calls = {"authenticate": 0, "build": 0, "jobs": []}
 
     def authenticate(_root: Path):
         calls["authenticate"] += 1
         return object()
 
-    def build(_cap, _family, _evaluation):
+    def build(_cap, _family, _evaluation, *, jobs):
         calls["build"] += 1
+        calls["jobs"].append(jobs)
         return evidence
 
     monkeypatch.setattr(
@@ -84,6 +85,7 @@ def test_document_store_pipeline_builds_and_replays_without_ocr(
     )
     assert built["upstream_ocr_replay_count"] == 0
     assert built["per_document_packet_root_recomputation_count"] == 140
+    assert built["document_trial_worker_count"] == 1
     assert json.loads((tmp_path / "evidence.json").read_text()) == evidence
     assert json.loads((tmp_path / "mapping.json").read_text()) == mapping
 
@@ -91,7 +93,7 @@ def test_document_store_pipeline_builds_and_replays_without_ocr(
         tmp_path, command="verify", **kwargs
     )
     assert replayed == built
-    assert calls == {"authenticate": 2, "build": 2}
+    assert calls == {"authenticate": 2, "build": 2, "jobs": [1, 1]}
 
 
 def test_document_store_pipeline_refuses_existing_partial_destination(
@@ -137,7 +139,9 @@ def test_document_store_pipeline_suffixes_only_artifact_filenames(
     monkeypatch.setattr(
         subject.evidence_v1,
         "build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1",
-        lambda _cap, _family, _evaluation: evidence,
+        lambda _cap, _family, _evaluation, *, jobs: (
+            evidence if jobs == 4 else pytest.fail("worker count was not forwarded")
+        ),
     )
     monkeypatch.setattr(
         subject.mapping_v1,
@@ -152,15 +156,16 @@ def test_document_store_pipeline_suffixes_only_artifact_filenames(
     }
 
     built = subject.run_family_first_accounting_document_store_pipeline_v1(
-        tmp_path, command="build", **kwargs
+        tmp_path, command="build", jobs=4, **kwargs
     )
     replayed = subject.run_family_first_accounting_document_store_pipeline_v1(
-        tmp_path, command="verify", **kwargs
+        tmp_path, command="verify", jobs=4, **kwargs
     )
 
     assert built == replayed
     assert built["evidence_path"] == "evidence-v4.json"
     assert built["mapping_path"] == "mapping-v4.json"
+    assert built["document_trial_worker_count"] == 4
     assert json.loads((tmp_path / "evidence-v4.json").read_text()) == evidence
     assert json.loads((tmp_path / "mapping-v4.json").read_text()) == mapping
     assert legacy_evidence.read_bytes() == b"historical evidence\n"
@@ -201,4 +206,26 @@ def test_document_store_pipeline_suffix_keeps_exclusive_pair_publication(
             schema_binding_spec_path=Path("schema.json"),
             command="build",
             artifact_suffix="v4",
+        )
+
+
+@pytest.mark.parametrize("jobs", [False, 0, 17, "2"])
+def test_document_store_pipeline_rejects_invalid_worker_count(
+    jobs, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_specs(monkeypatch)
+    monkeypatch.setattr(
+        subject.store_v1,
+        "authenticate_family_first_document_evidence_store_v1",
+        lambda _root: pytest.fail("invalid worker count reached store authentication"),
+    )
+
+    with pytest.raises(ValueError, match="jobs must be an integer from 1 to 16"):
+        subject.run_family_first_accounting_document_store_pipeline_v1(
+            tmp_path,
+            family_spec_path=Path("family.json"),
+            evaluation_spec_path=Path("evaluation.json"),
+            schema_binding_spec_path=Path("schema.json"),
+            command="build",
+            jobs=jobs,
         )

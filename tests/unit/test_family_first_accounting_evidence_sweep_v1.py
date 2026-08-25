@@ -14,6 +14,12 @@ from bctc_ai.evaluation import family_first_semantic_index_v1 as semantic_v1
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
+def _document_store_registry_size_in_spawned_worker() -> int:
+    """Top-level probe used to prove the opaque store registry is not forked."""
+
+    return len(subject.document_store_v1._STORES)  # noqa: SLF001
+
+
 def _family_spec() -> dict[str, object]:
     return {
         "children": [
@@ -1245,6 +1251,370 @@ def test_document_store_v4_uses_exact_full_page_batch_snapshot_with_zero_line_pa
     assert [page["page_sequence"] for page in snapshot["joined_pages"]] == [1, 2, 3]
     assert snapshot["joined_pages"][1]["lines"] == []
     assert result["trials"][0]["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
+
+
+@pytest.mark.parametrize("jobs", [False, 0, 17, "2"])
+def test_document_store_parallel_worker_count_must_be_bounded_integer(
+    monkeypatch,
+    jobs,
+) -> None:
+    monkeypatch.setattr(subject.topology_v1, "_spec", lambda _value: {"family_id": "FAMILY"})
+    monkeypatch.setattr(
+        subject,
+        "_evaluation_spec",
+        lambda *_args, **_kwargs: {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "project_authenticated_family_first_document_evidence_store_v1",
+        lambda _cap: {
+            "input_indices": {
+                "numeric_receipt_id": "ffpniv3:receipt:" + "1" * 64,
+                "semantic_index_id": "ffsiv1:index:" + "2" * 64,
+            },
+            "metrics": {"document_count": 0},
+        },
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="worker count must be an integer from 1 to 16",
+    ):
+        subject.build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+            object(), {}, {}, jobs=jobs
+        )
+
+
+def test_document_store_parallel_workers_require_v4(monkeypatch) -> None:
+    monkeypatch.setattr(subject.topology_v1, "_spec", lambda _value: {"family_id": "FAMILY"})
+    monkeypatch.setattr(
+        subject,
+        "_evaluation_spec",
+        lambda *_args, **_kwargs: {"format_version": subject.EVALUATION_SPEC_FORMAT_V3},
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "project_authenticated_family_first_document_evidence_store_v1",
+        lambda _cap: {
+            "input_indices": {
+                "numeric_receipt_id": "ffpniv3:receipt:" + "1" * 64,
+                "semantic_index_id": "ffsiv1:index:" + "2" * 64,
+            },
+            "metrics": {"document_count": 0},
+        },
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="parallel document-store trials require evaluation V4",
+    ):
+        subject.build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+            object(), {}, {}, jobs=2
+        )
+
+
+def test_v4_document_store_worker_rebuilds_from_parent_bound_source(monkeypatch) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
+    packet = snapshot["document_packet"]
+    trial = {
+        "document_ordinal": packet["document_ordinal"],
+        "topology_scan": {"status": "NO_COMPLETE_TOPOLOGY_REGION"},
+    }
+    calls = []
+
+    def build(
+        selected,
+        family,
+        policy,
+        *,
+        render_snapshots,
+        topology_scan,
+        expected_packet,
+        _v4_runtime_context,
+    ):
+        calls.append(
+            (
+                selected,
+                family,
+                policy,
+                render_snapshots,
+                topology_scan,
+                expected_packet,
+                _v4_runtime_context,
+            )
+        )
+        return copy.deepcopy(trial)
+
+    monkeypatch.setattr(subject, "_trial_from_document_store_snapshot_v1", build)
+
+    result = subject._v4_document_store_trial_worker_v1(
+        (
+            packet,
+            snapshot,
+            _family_spec(),
+            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            (),
+            None,
+            "NONE",
+        )
+    )
+
+    assert result == {
+        "document_ordinal": packet["document_ordinal"],
+        "missing_render_pages": (),
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": trial,
+    }
+    assert calls[0][0] is snapshot
+    assert calls[0][3] == ()
+    assert calls[0][4] is None
+    assert calls[0][5] is packet
+    assert calls[0][6] == {}
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value.__setitem__("document_ordinal", 2),
+        lambda value: value.__setitem__("packet_id", "ffdesv1:document:" + "f" * 64),
+        lambda value: value.__setitem__("snapshot_id", "ffdesv1:selected:" + "f" * 64),
+        lambda value: value["trial"].__setitem__("document_ordinal", 2),
+        lambda value: value.__setitem__("missing_render_pages", [1]),
+        lambda value: value.__setitem__("missing_render_pages", (2, 1)),
+        lambda value: value.__setitem__("missing_render_pages", (1, 1)),
+        lambda value: value.__setitem__("missing_render_pages", (3,)),
+    ],
+)
+def test_v4_document_store_worker_result_is_rebound_to_parent_source(mutation) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[1])
+    packet = snapshot["document_packet"]
+    result = {
+        "document_ordinal": 1,
+        "missing_render_pages": (),
+        "packet_id": packet["packet_id"],
+        "snapshot_id": snapshot["snapshot_id"],
+        "trial": {"document_ordinal": 1},
+    }
+    mutation(result)
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="differs from its parent source",
+    ):
+        subject._validated_v4_document_store_worker_result_v1(
+            result,
+            packet=packet,
+            snapshot=snapshot,
+        )
+
+
+def test_parallel_v4_document_store_trials_preserve_order_and_render_only_requests(
+    monkeypatch,
+) -> None:
+    documents = _documents()
+    snapshots = tuple(
+        _authenticated_selected_document_store_snapshot(documents[ordinal]) for ordinal in (1, 2)
+    )
+    packets = tuple(snapshot["document_packet"] for snapshot in snapshots)
+    selections = tuple(
+        (
+            packet["document_ordinal"],
+            tuple(range(1, packet["page_count"] + 1)),
+        )
+        for packet in packets
+    )
+    calls = {"executor": [], "renders": [], "selected": []}
+
+    class SynchronousExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            calls["executor"].append((max_workers, mp_context.get_start_method()))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def map(self, function, requests, *, chunksize):
+            assert chunksize == 1
+            return tuple(function(request) for request in requests)
+
+    def selected(_cap, *, document_page_selections):
+        calls["selected"].append(document_page_selections)
+        return tuple(copy.deepcopy(snapshot) for snapshot in snapshots)
+
+    def renders(_cap, *, document_ordinal, physical_pages):
+        calls["renders"].append((document_ordinal, physical_pages))
+        return (_render(document_ordinal, physical_pages[0]),)
+
+    def worker(request):
+        packet, snapshot, _family, _policy, render_axis, topology_scan, missing_mode = request
+        ordinal = packet["document_ordinal"]
+        assert snapshot["snapshot_id"] == snapshots[ordinal - 1]["snapshot_id"]
+        is_rendered = bool(render_axis)
+        if ordinal == 1 and missing_mode == "FULL":
+            missing_pages = (1,)
+        elif ordinal == 1 and missing_mode == "CANDIDATE_SCOPED":
+            missing_pages = (2,)
+        else:
+            missing_pages = ()
+        return {
+            "document_ordinal": ordinal,
+            "missing_render_pages": missing_pages,
+            "packet_id": packet["packet_id"],
+            "snapshot_id": snapshot["snapshot_id"],
+            "trial": {
+                "document_ordinal": ordinal,
+                "rendered": is_rendered,
+                "rendered_pages": [render["physical_page"] for render in render_axis],
+                "topology_scan": topology_scan or {"scan_id": f"scan-{ordinal}"},
+            },
+        }
+
+    monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        selected,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        renders,
+    )
+
+    trials = subject._parallel_v4_document_store_trials_v1(
+        object(),
+        packets=packets,
+        selections=selections,
+        family_spec=_family_spec(),
+        policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        jobs=2,
+    )
+
+    assert calls == {
+        "executor": [(2, "spawn")],
+        "renders": [(1, (1,)), (1, (2,))],
+        "selected": [selections],
+    }
+    assert [trial["document_ordinal"] for trial in trials] == [1, 2]
+    assert trials[0]["rendered"] is True
+    assert trials[0]["rendered_pages"] == [1, 2]
+    assert trials[1]["rendered"] is False
+
+
+def test_parallel_v4_document_store_trials_execute_in_real_worker_processes(
+    monkeypatch,
+) -> None:
+    documents = {
+        ordinal: _document(
+            ordinal,
+            [[("Thuyết minh tài sản khác", [30, 20, 430, 42])]],
+            100 + ordinal,
+        )
+        for ordinal in (1, 2)
+    }
+    snapshots = tuple(
+        _authenticated_selected_document_store_snapshot(documents[ordinal]) for ordinal in (1, 2)
+    )
+    packets = tuple(snapshot["document_packet"] for snapshot in snapshots)
+    selections = tuple((packet["document_ordinal"], (1,)) for packet in packets)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        lambda _cap, *, document_page_selections: (
+            tuple(copy.deepcopy(snapshot) for snapshot in snapshots)
+            if document_page_selections == selections
+            else pytest.fail("parallel worker parent requested a different source axis")
+        ),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        lambda *_args, **_kwargs: pytest.fail("NOT_OBSERVED worker requested a render"),
+    )
+
+    trials = subject._parallel_v4_document_store_trials_v1(
+        object(),
+        packets=packets,
+        selections=selections,
+        family_spec=_family_spec(),
+        policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        jobs=2,
+    )
+    sequential = [
+        subject._document_store_trial_with_render_rescue_v1(
+            object(),
+            packet=packet,
+            snapshot=snapshot,
+            family_spec=_family_spec(),
+            policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            topology_scan=None,
+        )
+        for packet, snapshot in zip(packets, snapshots, strict=True)
+    ]
+
+    assert [trial["document_ordinal"] for trial in trials] == [1, 2]
+    assert [trial["evidence_status"] for trial in trials] == [
+        "NOT_OBSERVED_PROPOSAL_ONLY",
+        "NOT_OBSERVED_PROPOSAL_ONLY",
+    ]
+    assert trials == sequential
+
+
+def test_parallel_v4_document_store_workers_do_not_inherit_store_capabilities() -> None:
+    store = subject.document_store_v1
+    capability = store.AuthenticatedFamilyFirstDocumentEvidenceStoreV1(store._MINT)  # noqa: SLF001
+    store._STORES[capability] = object()  # type: ignore[assignment]  # noqa: SLF001
+    try:
+        with subject.ProcessPoolExecutor(
+            max_workers=1,
+            mp_context=subject.get_context("spawn"),
+        ) as executor:
+            assert executor.submit(_document_store_registry_size_in_spawned_worker).result() == 0
+    finally:
+        del store._STORES[capability]  # noqa: SLF001
+
+
+def test_parallel_v4_document_store_worker_exception_is_typed(monkeypatch) -> None:
+    snapshot = _authenticated_selected_document_store_snapshot(_documents()[2])
+    packet = snapshot["document_packet"]
+
+    class BrokenExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            assert max_workers == 2
+            assert mp_context.get_start_method() == "spawn"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def map(self, *_args, **_kwargs):
+            raise RuntimeError("worker died")
+
+    monkeypatch.setattr(subject, "ProcessPoolExecutor", BrokenExecutor)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        lambda *_args, **_kwargs: (snapshot,),
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="worker execution failed",
+    ):
+        subject._parallel_v4_document_store_trials_v1(
+            object(),
+            packets=(packet,),
+            selections=((packet["document_ordinal"], (1,)),),
+            family_spec=_family_spec(),
+            policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            jobs=2,
+        )
 
 
 def test_document_store_v4_rejects_legacy_five_field_snapshot_before_topology(
