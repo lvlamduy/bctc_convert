@@ -1530,13 +1530,110 @@ def test_clipped_right_edge_decoration_coherent_source_and_receipt_tamper_reject
         )
 
 
+def _printed_note_reference_fixture_pages() -> tuple[list[dict[str, object]], list[list[int]]]:
+    lines = [
+        _line(0, "Thuyết minh", "Thuyết minh", [480, 10, 570, 36]),
+        _line(1, "Khoản mục trước", "", [45, 48, 430, 68]),
+        _line(2, "5", "5", [520, 48, 550, 68]),
+        _line(3, "90", "90", [610, 48, 700, 68]),
+        _line(4, "80", "80", [810, 48, 900, 68]),
+        _line(5, "Tiền gửi và cho vay các TCTD khác", "", [45, 82, 430, 104]),
+        _line(6, "6", "6", [520, 82, 550, 104]),
+        _line(7, "150", "150", [610, 82, 700, 104]),
+        _line(8, "130", "130", [810, 82, 900, 104]),
+        _line(9, "Tiền gửi tại các TCTD khác", "", [45, 116, 430, 136]),
+        _line(10, "100", "100", [610, 116, 700, 136]),
+        _line(11, "90", "90", [810, 116, 900, 136]),
+        _line(12, "Cho vay các TCTD khác", "", [45, 148, 430, 168]),
+        _line(13, "50", "50", [610, 148, 700, 168]),
+        _line(14, "40", "40", [810, 148, 900, 168]),
+        _line(15, "Chứng khoán kinh doanh", "", [45, 180, 430, 200]),
+        _line(16, "Khoản mục sau", "", [45, 214, 430, 234]),
+        _line(17, "7", "7", [520, 214, 550, 234]),
+        _line(18, "70", "70", [610, 214, 700, 234]),
+        _line(19, "60", "60", [810, 214, 900, 234]),
+    ]
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}], [
+        lines[index]["bbox"] for index in (0, 2, 6, 17)
+    ]
+
+
+def _dotted_printed_note_reference_fixture_pages() -> tuple[
+    list[dict[str, object]], list[list[int]]
+]:
+    lines = [
+        _line(0, "Thuyết minh", "Thuyết minh", [480, 10, 570, 36]),
+        _line(1, "Khoản mục trước", "", [45, 48, 430, 68]),
+        _line(2, "4", "4", [520, 48, 550, 68]),
+        _line(3, "90", "90", [610, 48, 700, 68]),
+        _line(4, "80", "80", [810, 48, 900, 68]),
+        _line(5, "Tiền gửi và cho vay các TCTD khác", "", [45, 82, 430, 104]),
+        _line(6, "5", "5", [520, 82, 550, 104]),
+        _line(7, "150", "150", [610, 82, 700, 104]),
+        _line(8, "130", "130", [810, 82, 900, 104]),
+        _line(9, "Tiền gửi tại các TCTD khác", "", [45, 116, 430, 138]),
+        _line(10, "5.1", "5.1", [500, 116, 560, 138]),
+        _line(11, "100", "100", [610, 116, 700, 138]),
+        _line(12, "90", "90", [810, 116, 900, 138]),
+        _line(13, "Cho vay các TCTD khác", "", [45, 150, 430, 172]),
+        _line(14, "5.2", "5.2", [500, 150, 560, 172]),
+        _line(15, "50", "50", [610, 150, 700, 172]),
+        _line(16, "40", "40", [810, 150, 900, 172]),
+        _line(17, "Chứng khoán kinh doanh", "", [45, 184, 430, 206]),
+        _line(18, "Khoản mục sau", "", [45, 218, 430, 240]),
+        _line(19, "6", "6", [520, 218, 550, 240]),
+        _line(20, "70", "70", [610, 218, 700, 240]),
+        _line(21, "60", "60", [810, 218, 900, 240]),
+    ]
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}], [
+        lines[index]["bbox"] for index in (0, 2, 6, 10, 14, 19)
+    ]
+
+
+def _build_authenticated_printed_note_reference_fixture(
+    pages: list[dict[str, object]],
+    ink_bboxes: list[list[int]],
+    *,
+    with_render: bool = True,
+) -> tuple[dict, dict, dict, dict, dict]:
+    spec = _f3_spec()
+    topology_pages = row_v1._topology_pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(topology_pages, spec)
+    assert len(candidates["regions"]) == 1
+    region = candidates["regions"][0]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        topology_pages, spec, candidates, region
+    )
+    snapshot, render = _snapshot_and_render(pages, ink_bboxes)
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        spec,
+        scan,
+        region,
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=binding["effective_topology_region"],
+        topology_candidates=candidates,
+        selected_snapshot=snapshot,
+        render_snapshots=(render,) if with_render else (),
+    )
+    return scan, candidates, binding, snapshot, axis
+
+
 def _coherently_rehash_furniture_axis(axis: dict) -> None:
     evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
     evidence_material = copy.deepcopy(evidence)
     evidence_material.pop("evidence_id")
-    evidence["evidence_id"] = "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(
-        evidence_material
+    prefix = (
+        "aforav2:printed-note-reference-v4:"
+        if evidence["status"] == subject._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+        else "aforav2:extreme-margin-furniture:"
     )
+    evidence["evidence_id"] = prefix + canonical_json_sha256_v1(evidence_material)
     sample = next(
         item
         for item in axis["numeric_sample_universe"]
@@ -1544,6 +1641,348 @@ def _coherently_rehash_furniture_axis(axis: dict) -> None:
     )
     sample["owner_id"] = evidence["evidence_id"]
     _coherently_rehash_occurrence(axis)
+
+
+def test_persisted_v3_note_evidence_and_default_legacy_replay_remain_byte_stable() -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    scan, candidates, binding, snapshot, axis = _build_authenticated_printed_note_reference_fixture(
+        pages, ink_bboxes
+    )
+
+    assert axis["status"] == (
+        "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
+    )
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    furniture = axis["authenticated_extreme_margin_furniture_evidence"]
+    assert len(furniture) == 1
+    evidence = furniture[0]
+    assert evidence["status"] == subject._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS
+    assert evidence["geometry"]["candidate_note_value"] == 6
+    assert [row["note_value"] for row in evidence["note_reference_axis"]] == [5, 6, 7]
+    assert "binding_kind" not in evidence["semantic_row_binding"]
+    assert canonical_json_sha256_v1(evidence) == (
+        "ba4d44e61f80c2ef6089833ce1e1c40a9961f11acfa1f9fa8213165e4c1ebdac"
+    )
+    candidate = next(
+        sample
+        for sample in axis["numeric_sample_universe"]
+        if sample["sample_id"] == evidence["sample_id"]
+    )
+    assert candidate["owner_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    assert candidate["owner_id"] == evidence["evidence_id"]
+    assert (
+        sum(
+            sample["sample_id"] == evidence["sample_id"]
+            for sample in axis["numeric_sample_universe"]
+        )
+        == 1
+    )
+
+    render = _snapshot_and_render(pages, ink_bboxes)[1]
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    receipts = [
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    ]
+    assert len(receipts) == 1
+    assert receipts[0]["sample_ids"] == [evidence["sample_id"]]
+    assert receipts[0]["source_record"] == evidence
+    assert (
+        closure_v2.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, _f3_spec(), _f3_hierarchy()
+        )
+        == closure
+    )
+
+    for mode in ("DELETE", "DUPLICATE"):
+        attacked = copy.deepcopy(closure)
+        if mode == "DELETE":
+            attacked["coverage_receipt"] = [
+                receipt
+                for receipt in attacked["coverage_receipt"]
+                if receipt["row_kind"] != "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+            ]
+        else:
+            duplicate = copy.deepcopy(receipts[0])
+            duplicate["coverage_id"] += ":duplicate"
+            attacked["coverage_receipt"].append(duplicate)
+        _coherently_rehash_scoped_closure(attacked)
+        with pytest.raises(
+            closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+            match="exactly one owning coverage receipt",
+        ):
+            closure_v2._validate_result(attacked)
+
+
+def test_v4_dotted_note_column_projects_parent_and_role_rows_with_one_owner_each() -> None:
+    pages, ink_bboxes = _dotted_printed_note_reference_fixture_pages()
+    scan, candidates, binding, snapshot, axis = _build_authenticated_printed_note_reference_fixture(
+        pages, ink_bboxes
+    )
+
+    furniture = axis["authenticated_extreme_margin_furniture_evidence"]
+    assert all(
+        item["status"] == subject._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS for item in furniture
+    )
+    assert all(
+        item["evidence_id"].startswith("aforav2:printed-note-reference-v4:") for item in furniture
+    )
+    assert [item["geometry"]["candidate_note_reference"] for item in furniture] == [
+        "5",
+        "5.1",
+        "5.2",
+    ]
+    assert axis["row_axis"]["column_grids"][0]["column_centers"] == [655.0, 855.0]
+    assert all(len(row["values"]) == 2 for row in axis["row_axis"]["rows"])
+    for evidence in furniture:
+        owned = [
+            sample
+            for sample in axis["numeric_sample_universe"]
+            if sample["sample_id"] == evidence["sample_id"]
+        ]
+        assert len(owned) == 1
+        assert owned[0]["owner_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+        assert owned[0]["owner_id"] == evidence["evidence_id"]
+
+    render = _snapshot_and_render(pages, ink_bboxes)[1]
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    receipts = [
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    ]
+    assert len(receipts) == 3
+    assert {receipt["sample_ids"][0] for receipt in receipts} == {
+        evidence["sample_id"] for evidence in furniture
+    }
+
+
+def test_v4_dotted_note_evidence_coherent_rehash_still_fails_closed() -> None:
+    pages, ink_bboxes = _dotted_printed_note_reference_fixture_pages()
+    _scan, _candidates, _binding, _snapshot, axis = (
+        _build_authenticated_printed_note_reference_fixture(pages, ink_bboxes)
+    )
+    attacked = copy.deepcopy(axis)
+    attacked["authenticated_extreme_margin_furniture_evidence"][0]["geometry"][
+        "candidate_note_reference"
+    ] = "5.3"
+    _coherently_rehash_furniture_axis(attacked)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="candidate source or pixel binding drifted",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_printed_note_reference_never_reowns_decimal_financial_money() -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    decimal = pages[0]["lines"][7]
+    decimal["vietocr_text"] = "6.5"
+    decimal["numeric_recognition"]["raw_prediction"] = "6.5"
+    _scan, _candidates, _binding, _snapshot, axis = (
+        _build_authenticated_printed_note_reference_fixture(pages, ink_bboxes)
+    )
+
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"]
+    assert len(evidence) == 1
+    assert evidence[0]["geometry"]["candidate_note_value"] == 6
+    decimal_sample = next(
+        sample
+        for sample in axis["numeric_sample_universe"]
+        if sample["sample_id"] == decimal["sample_id"]
+    )
+    assert decimal_sample["parsed_token"]["scale"] == 1
+    assert decimal_sample["owner_kind"] == "ROLE_OCCURRENCE"
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "MISSING_HEADER",
+        "WRONG_HEADER_CHANNEL",
+        "DUPLICATE_HEADER",
+        "DUPLICATE_NOTE_REFERENCE",
+        "DUPLICATE_NOTE_COLUMN",
+        "INCOMPLETE_FINANCIAL_LANES",
+        "CONFLICTING_LABEL",
+        "CONFLICTING_FINANCIAL_LANE",
+        "NO_RENDER",
+    ],
+)
+def test_printed_note_reference_fails_closed_without_every_gate(attack: str) -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    lines = pages[0]["lines"]
+    with_render = attack != "NO_RENDER"
+    if attack == "MISSING_HEADER":
+        lines[0]["vietocr_text"] = "Ghi chú"
+        lines[0]["numeric_recognition"]["raw_prediction"] = "Ghi chú"
+    elif attack == "WRONG_HEADER_CHANNEL":
+        lines[0]["numeric_recognition"]["raw_prediction"] = "Thuyết min"
+    elif attack == "DUPLICATE_HEADER":
+        lines.append(_line(900, "Thuyết minh", "Thuyết minh", [480, 250, 570, 276]))
+    elif attack == "DUPLICATE_NOTE_REFERENCE":
+        lines[17]["vietocr_text"] = "5"
+        lines[17]["numeric_recognition"]["raw_prediction"] = "5"
+    elif attack == "DUPLICATE_NOTE_COLUMN":
+        lines.append(_line(900, "6", "6", [552, 82, 568, 104]))
+    elif attack == "INCOMPLETE_FINANCIAL_LANES":
+        lines[18]["vietocr_text"] = "missing"
+        lines[18]["numeric_recognition"]["raw_prediction"] = "missing"
+    elif attack == "CONFLICTING_LABEL":
+        lines.insert(6, _line(900, "khác", "khác", [440, 82, 472, 104]))
+    elif attack == "CONFLICTING_FINANCIAL_LANE":
+        lines.append(_line(900, "151", "151", [615, 82, 695, 104]))
+    _reindex_page_lines(lines)
+
+    _scan, _candidates, _binding, _snapshot, axis = (
+        _build_authenticated_printed_note_reference_fixture(
+            pages, ink_bboxes, with_render=with_render
+        )
+    )
+    assert axis["authenticated_extreme_margin_furniture_evidence"] == []
+    candidate_id = next(line["sample_id"] for line in lines if line["bbox"] == [520, 82, 550, 104])
+    assert any(
+        candidate_id in cluster["sample_ids"]
+        for cluster in axis["internal_unassigned_numeric_clusters"]
+    )
+    if attack == "NO_RENDER":
+        assert axis["unresolved_reasons"][-1] == (
+            "EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:1"
+        )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "SOURCE_SAMPLE",
+        "SOURCE_BBOX",
+        "HEADER_SOURCE",
+        "WRONG_ROW_PARENT",
+        "WRONG_PAGE",
+        "CROSS_CROP",
+    ],
+)
+def test_printed_note_reference_coherent_evidence_tamper_rejects(attack: str) -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    _scan, _candidates, _binding, _snapshot, axis = (
+        _build_authenticated_printed_note_reference_fixture(pages, ink_bboxes)
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    if attack == "SOURCE_SAMPLE":
+        evidence["source_record"]["sample_id"] = "forged-sample"
+    elif attack == "SOURCE_BBOX":
+        evidence["source_record"]["bbox"][0] += 1
+    elif attack == "HEADER_SOURCE":
+        header = evidence["header_proof"]
+        header["source_line_axis"][0]["vietocr_text"] = "Ghi chú"
+        header["crop_proofs"][0]["source_line_record"]["vietocr_text"] = "Ghi chú"
+        header["source_line_axis_sha256"] = canonical_json_sha256_v1(header["source_line_axis"])
+    elif attack == "WRONG_ROW_PARENT":
+        semantic = evidence["semantic_row_binding"]
+        other = next(
+            row
+            for row in attacked["row_axis"]["rows"]
+            if row["label_match"]["occurrence_id"] != semantic["occurrence_id"]
+        )
+        semantic["occurrence_id"] = other["label_match"]["occurrence_id"]
+        semantic["role"] = other["role"]
+        semantic["source_record"] = copy.deepcopy(other)
+    elif attack == "WRONG_PAGE":
+        evidence["page_sequence"] = 2
+    elif attack == "CROSS_CROP":
+        evidence["candidate_crop_proof"] = copy.deepcopy(
+            evidence["note_reference_axis"][0]["note_crop_proof"]
+        )
+    _coherently_rehash_furniture_axis(attacked)
+
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error):
+        subject._validate_result(attacked)
+
+
+def test_printed_note_reference_pixel_hash_tamper_only_fails_public_replay() -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    scan, candidates, binding, snapshot, axis = _build_authenticated_printed_note_reference_fixture(
+        pages, ink_bboxes
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    evidence["candidate_crop_proof"]["exact_bbox_rgb_sha256"] = "0" * 64
+    candidate_row = next(
+        row
+        for row in evidence["note_reference_axis"]
+        if row["source_line_record"]["sample_id"] == evidence["sample_id"]
+    )
+    candidate_row["note_crop_proof"]["exact_bbox_rgb_sha256"] = "0" * 64
+    _coherently_rehash_furniture_axis(attacked)
+    assert subject._validate_result(attacked) == attacked
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            attacked,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(_snapshot_and_render(pages, ink_bboxes)[1],),
+        )
 
 
 def _coherently_rehash_scoped_closure(closure: dict) -> None:

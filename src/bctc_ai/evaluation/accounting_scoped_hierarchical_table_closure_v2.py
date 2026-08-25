@@ -466,8 +466,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "234e9d22e5cb22ae2d1452a9c3e5d161e27dca4fe99bc18bee9349d3bd067f08",
-        "size_bytes": 346_844,
+        "sha256": "d378947868092c19e3eb7f49dc112fbcb0dbceedb7a6568352738188269c0415",
+        "size_bytes": 448_164,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -4868,6 +4868,10 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS
             else occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS
             if status == occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+            else occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_FIELDS
+            if status == occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS
+            else occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_FIELDS
+            if status == occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
             else None
         )
         if (
@@ -4879,10 +4883,14 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             raise _error("scoped hierarchical extreme-margin furniture evidence drifted")
         material = canonical_clone_v1(evidence)
         evidence_id = material.pop("evidence_id")
+        evidence_id_prefix = (
+            "aforav2:printed-note-reference-v4:"
+            if status == occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+            else "aforav2:extreme-margin-furniture:"
+        )
         if (
             evidence_id in furniture_by_id
-            or evidence_id
-            != "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material)
+            or evidence_id != evidence_id_prefix + canonical_json_sha256_v1(material)
         ):
             raise _error("scoped hierarchical extreme-margin furniture identity drifted")
         furniture_by_id[evidence_id] = evidence
@@ -4955,11 +4963,13 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
     numeric_furniture_ids = {
         evidence_id
         for evidence_id, evidence in furniture_by_id.items()
-        if evidence.get("status")
-        in {
-            occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
-            occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
-        }
+            if evidence.get("status")
+            in {
+                occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
+                occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
+                occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
+                occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
+            }
     }
     if (
         len(receipt_sample_ids) != len(set(receipt_sample_ids))
@@ -6227,10 +6237,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                         or not receipt["source_record"].get("missing_column_ordinals")
                     )
                 )
-                or (
-                    optional_disposition
-                    and not optional_status
-                )
+                or (optional_disposition and not optional_status)
             ):
                 raise _error("optional blank role receipt lost its exact source disposition")
         if receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE":
@@ -6424,9 +6431,7 @@ def _build(
     reasons = list(axis["unresolved_reasons"])
     numeric_rows = [row for row in row_axis["rows"] if row["values"]]
     numeric_accounting_rows = [
-        row
-        for row in numeric_rows
-        if not _optional_incomplete_row_is_exact_equation_identity(row)
+        row for row in numeric_rows if not _optional_incomplete_row_is_exact_equation_identity(row)
     ]
     source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
         numeric_accounting_rows,

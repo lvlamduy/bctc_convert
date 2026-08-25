@@ -34,6 +34,7 @@ from bctc_ai.evaluation import accounting_family_coextensive_parent_total_v1 as 
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import accounting_printed_note_reference_axis_v1 as note_axis_v1
 from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_authenticated_snapshot_cell_dash_v1 as dash_v1
@@ -68,6 +69,7 @@ CLAIM_BOUNDARY = (
     "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_AND_REVIEWED_EXACT_"
     "SOURCE_SUBSCOPE_INTERVAL_SCHEMA_ROLE_TYPING_"
     "AUTHENTICATED_EXTREME_MARGIN_CHROMATIC_FURNITURE_NUMERIC_DENOMINATOR_"
+    "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_NUMERIC_DENOMINATOR_"
     "PROPOSAL_ONLY_NO_ACCOUNTING_PERIOD_UNIT_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
@@ -83,6 +85,8 @@ _SAFETY = {
     "existing_dash_text_alone_means_zero": False,
     "extreme_margin_furniture_requires_authenticated_exact_page_pixels": True,
     "extreme_margin_numeric_may_be_silently_deleted": False,
+    "printed_note_reference_requires_exact_header_row_and_page_pixels": True,
+    "printed_note_reference_numeric_may_be_silently_deleted": False,
     "mapping_authority": False,
     "occurrences_may_cross_selected_topology_region": False,
     "preceding_numeric_source_ambiguous_ownership_can_resolve": False,
@@ -325,6 +329,8 @@ _EXTREME_MARGIN_FURNITURE_V2_STATUS = (
 _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS = (
     "AUTHENTICATED_CLIPPED_RIGHT_EDGE_NONNUMERIC_DECORATION_V3"
 )
+_PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V3"
+_PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V4"
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
 _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
     "DASH_ZERO",
@@ -369,6 +375,120 @@ _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS = {
     "structural_gap_anchor_occurrence_ids",
     "topology_candidates_id",
 }
+_PRINTED_NOTE_REFERENCE_FURNITURE_V3_FIELDS = {
+    "candidate_crop_proof",
+    "document_pages_sha256",
+    "evidence_id",
+    "geometry",
+    "header_proof",
+    "note_reference_axis",
+    "original_cluster",
+    "page_sequence",
+    "sample_id",
+    "semantic_row_binding",
+    "snapshot_id",
+    "source_record",
+    "status",
+    "topology_candidates_id",
+}
+_PRINTED_NOTE_REFERENCE_FURNITURE_V4_FIELDS = {
+    "candidate_crop_proof",
+    "document_pages_sha256",
+    "evidence_id",
+    "geometry",
+    "header_proof",
+    "note_reference_axis",
+    "original_cluster",
+    "page_sequence",
+    "sample_id",
+    "semantic_row_binding",
+    "snapshot_id",
+    "source_record",
+    "status",
+    "topology_candidates_id",
+}
+_PRINTED_NOTE_REFERENCE_GEOMETRY_V3_FIELDS = {
+    "body_text_scale",
+    "candidate_bbox",
+    "candidate_center_twice",
+    "candidate_note_value",
+    "first_financial_lane_left_boundary",
+    "header_bbox",
+    "lane_centers_quads",
+    "lane_tolerance",
+    "page_width",
+    "qualifying_note_reference_row_count",
+}
+_PRINTED_NOTE_REFERENCE_GEOMETRY_V4_FIELDS = {
+    "body_text_scale",
+    "candidate_bbox",
+    "candidate_center_twice",
+    "candidate_note_reference",
+    "first_financial_lane_left_boundary",
+    "header_bbox",
+    "lane_centers_quads",
+    "lane_tolerance",
+    "page_width",
+    "qualifying_note_reference_row_count",
+}
+_PRINTED_NOTE_REFERENCE_HEADER_FIELDS = {
+    "crop_proofs",
+    "header_bbox",
+    "normalized_surface",
+    "source_line_axis",
+    "source_line_axis_sha256",
+    "status",
+}
+_PRINTED_NOTE_REFERENCE_AXIS_V3_FIELDS = {
+    "financial_line_axis",
+    "label_line_axis",
+    "note_crop_proof",
+    "note_value",
+    "source_line_record",
+}
+_PRINTED_NOTE_REFERENCE_AXIS_V4_FIELDS = {
+    "financial_line_axis",
+    "label_line_axis",
+    "note_crop_proof",
+    "note_reference",
+    "source_line_record",
+}
+_PRINTED_NOTE_REFERENCE_FINANCIAL_LINE_FIELDS = {
+    "column_ordinal",
+    "source_line_record",
+}
+_PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_V3_FIELDS = {
+    "candidate_financial_line_axis_sha256",
+    "candidate_same_row_label_axis_sha256",
+    "label_source_line_axis",
+    "label_source_line_axis_sha256",
+    "occurrence_id",
+    "role",
+    "row_axis_id",
+    "source_record",
+    "status",
+}
+_PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_V4_FIELDS = {
+    "binding_kind",
+    "candidate_financial_line_axis_sha256",
+    "candidate_same_row_label_axis_sha256",
+    "label_source_line_axis",
+    "label_source_line_axis_sha256",
+    "occurrence_id",
+    "role",
+    "row_axis_id",
+    "source_record",
+    "status",
+}
+_PRINTED_NOTE_REFERENCE_HEADER_STATUS = "EXACT_PRINTED_THUYET_MINH_COLUMN_HEADER"
+_PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_STATUS = (
+    "UNIQUE_EXACT_SEMANTIC_ROW_WITH_COMPLETE_FINANCIAL_LANES"
+)
+_PRINTED_NOTE_REFERENCE_PARENT_STATUS = (
+    "UNIQUE_SELECTED_TOPOLOGY_PARENT_SPAN_WITH_COMPLETE_FINANCIAL_LANES"
+)
+_PRINTED_NOTE_REFERENCE_ROLE_BINDING_KIND = "EXACT_ROLE_OCCURRENCE_ROW"
+_PRINTED_NOTE_REFERENCE_PARENT_BINDING_KIND = "SELECTED_TOPOLOGY_PARENT_SPAN"
 _EXTREME_MARGIN_GEOMETRY_FIELDS = {
     "candidate_bbox",
     "candidate_center_quads",
@@ -491,6 +611,11 @@ _MAX_EXISTING_DASH_CELLS = 16_384
 _MAX_NUMERIC_SAMPLES = 65_536
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
+    "accounting_printed_note_reference_axis_v1": {
+        "path": "src/bctc_ai/evaluation/accounting_printed_note_reference_axis_v1.py",
+        "sha256": "e4afee7d204afb80fd61938fd4239678348d7d9e8a3eee73f9eac342953ac453",
+        "size_bytes": 23_170,
+    },
     "coextensive_parent_total_projector": {
         "path": "src/bctc_ai/evaluation/accounting_family_coextensive_parent_total_v1.py",
         "sha256": "31a7e42e85c6b16689a1148a1ccb3d02cee18f85139b6f800bed3aa309b48e68",
@@ -3814,10 +3939,16 @@ def _build_inspected_label_band(
     page: Mapping[str, Any],
     pages: Sequence[Mapping[str, Any]],
     local_lines: Sequence[Mapping[str, Any]],
+    permitted_label_sample_ids: frozenset[str] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     numeric_left = min(line["bbox"][0] for line in ordered_numeric_lines)
     source_line_axis = []
     for line in local_lines:
+        if (
+            permitted_label_sample_ids is not None
+            and line["sample_id"] not in permitted_label_sample_ids
+        ):
+            continue
         if line["bbox"][0] >= numeric_left:
             continue
         line_height = line["bbox"][3] - line["bbox"][1]
@@ -4778,6 +4909,1084 @@ def _build_authenticated_extreme_margin_nonnumeric_decoration_v3(
     }, False
 
 
+def _printed_note_reference_same_row_v3(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    left_bbox = left["bbox"]
+    right_bbox = right["bbox"]
+    return abs(left_bbox[1] + left_bbox[3] - right_bbox[1] - right_bbox[3]) <= max(
+        left_bbox[3] - left_bbox[1],
+        right_bbox[3] - right_bbox[1],
+    )
+
+
+def _printed_note_reference_exact_integer_v3(line: Mapping[str, Any]) -> int | None:
+    vietocr = line["vietocr_text"].strip()
+    numeric = line["numeric_recognition"]["raw_prediction"].strip()
+    if vietocr != numeric or re.fullmatch(r"[1-9][0-9]{0,2}", vietocr) is None:
+        return None
+    return int(vietocr)
+
+
+def _printed_note_reference_header_candidates_v3(
+    page: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    lines = [
+        line
+        for line in page["lines"]
+        if line["vietocr_text"].strip() and line["numeric_recognition"]["raw_prediction"].strip()
+    ]
+
+    def normalized_channels(line: Mapping[str, Any]) -> tuple[str, str]:
+        return (
+            normalize_vietnamese_anchor_v1(line["vietocr_text"]),
+            normalize_vietnamese_anchor_v1(line["numeric_recognition"]["raw_prediction"]),
+        )
+
+    candidates = []
+    for line in lines:
+        if normalized_channels(line) == ("thuyet minh", "thuyet minh"):
+            candidates.append({"bbox": canonical_clone_v1(line["bbox"]), "lines": [line]})
+    upper_lines = [line for line in lines if normalized_channels(line) == ("thuyet", "thuyet")]
+    lower_lines = [line for line in lines if normalized_channels(line) == ("minh", "minh")]
+    for upper in upper_lines:
+        for lower in lower_lines:
+            upper_bbox = upper["bbox"]
+            lower_bbox = lower["bbox"]
+            overlap = min(upper_bbox[2], lower_bbox[2]) - max(upper_bbox[0], lower_bbox[0])
+            vertical_gap = max(0, lower_bbox[1] - upper_bbox[3])
+            if (
+                lower_bbox[1] <= upper_bbox[1]
+                or 2 * overlap < min(upper_bbox[2] - upper_bbox[0], lower_bbox[2] - lower_bbox[0])
+                or vertical_gap > max(upper_bbox[3] - upper_bbox[1], lower_bbox[3] - lower_bbox[1])
+            ):
+                continue
+            candidates.append(
+                {
+                    "bbox": [
+                        min(upper_bbox[0], lower_bbox[0]),
+                        min(upper_bbox[1], lower_bbox[1]),
+                        max(upper_bbox[2], lower_bbox[2]),
+                        max(upper_bbox[3], lower_bbox[3]),
+                    ],
+                    "lines": [upper, lower],
+                }
+            )
+    deduplicated = {
+        tuple(line["sample_id"] for line in candidate["lines"]): candidate
+        for candidate in candidates
+    }
+    return [
+        deduplicated[key]
+        for key in sorted(
+            deduplicated,
+            key=lambda sample_ids: (
+                deduplicated[sample_ids]["bbox"],
+                sample_ids,
+            ),
+        )
+    ]
+
+
+def _printed_note_reference_row_candidates_v3(
+    *,
+    page: Mapping[str, Any],
+    header_bbox: Sequence[int],
+    centers: Sequence[float],
+    lane_tolerance: float,
+) -> list[dict[str, Any]]:
+    if len(centers) < 2:
+        return []
+    first_financial_lane_left_boundary = math.floor(centers[0] - lane_tolerance)
+    adjacent_lane_span = min(
+        right - left for left, right in zip(centers, centers[1:], strict=False)
+    )
+    table_right = centers[-1] + adjacent_lane_span * 0.75
+    admitted = _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+    rows = []
+    for note_line in page["lines"]:
+        note_value = _printed_note_reference_exact_integer_v3(note_line)
+        note_bbox = note_line["bbox"]
+        if (
+            note_value is None
+            or note_bbox[1] < header_bbox[3]
+            or note_bbox[0] < header_bbox[0]
+            or note_bbox[2] > header_bbox[2]
+            or note_bbox[2] > first_financial_lane_left_boundary
+            or 2 * (note_bbox[2] - note_bbox[0]) > header_bbox[2] - header_bbox[0]
+        ):
+            continue
+        financial_axis = []
+        selected_sample_ids = set()
+        for column_ordinal, center in enumerate(centers):
+            matches = []
+            for line in page["lines"]:
+                bbox = line["bbox"]
+                parsed = row_v1.parse_visible_financial_numeric_token_v1(
+                    line["numeric_recognition"]["raw_prediction"]
+                )
+                if (
+                    line["sample_id"] == note_line["sample_id"]
+                    or parsed["classification"] not in admitted
+                    or not _printed_note_reference_same_row_v3(line, note_line)
+                    or bbox[0] < first_financial_lane_left_boundary
+                    or bbox[0] <= note_bbox[2]
+                    or abs((bbox[0] + bbox[2]) / 2 - center) > lane_tolerance
+                ):
+                    continue
+                matches.append(line)
+            if len(matches) != 1:
+                financial_axis = []
+                break
+            financial_axis.append(
+                {
+                    "column_ordinal": column_ordinal,
+                    "source_line_record": _extreme_margin_line_record(matches[0]),
+                }
+            )
+            selected_sample_ids.add(matches[0]["sample_id"])
+        if not financial_axis:
+            continue
+        unassigned_financial = [
+            line
+            for line in page["lines"]
+            if line["sample_id"] not in selected_sample_ids
+            and line["sample_id"] != note_line["sample_id"]
+            and first_financial_lane_left_boundary
+            <= (line["bbox"][0] + line["bbox"][2]) / 2
+            <= table_right
+            and _printed_note_reference_same_row_v3(line, note_line)
+            and row_v1.parse_visible_financial_numeric_token_v1(
+                line["numeric_recognition"]["raw_prediction"]
+            )["classification"]
+            in admitted
+        ]
+        if unassigned_financial:
+            continue
+        label_axis = sorted(
+            (
+                _extreme_margin_line_record(line)
+                for line in page["lines"]
+                if line["bbox"][2] <= note_bbox[0]
+                and _printed_note_reference_same_row_v3(line, note_line)
+                and not row_v1._is_numeric(line)
+                and _extreme_margin_peer_surfaces_are_nonnumeric(_extreme_margin_line_record(line))
+                and (
+                    line["vietocr_text"].strip()
+                    or line["numeric_recognition"]["raw_prediction"].strip()
+                )
+            ),
+            key=lambda line: (line["line_ordinal"], line["bbox"]),
+        )
+        if not label_axis:
+            continue
+        rows.append(
+            {
+                "financial_line_axis": financial_axis,
+                "label_line_axis": label_axis,
+                "note_value": note_value,
+                "source_line_record": _extreme_margin_line_record(note_line),
+            }
+        )
+    rows.sort(key=lambda row: (row["source_line_record"]["line_ordinal"], row["note_value"]))
+    return rows
+
+
+def _printed_note_reference_semantic_row_binding_v3(
+    *,
+    page: Mapping[str, Any],
+    axis: Mapping[str, Any],
+    cluster: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    candidate_row: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    exact_match_kinds = {
+        "EXACT_ACCENTLESS_ALIAS",
+        "EXACT_ACCENTLESS_ALIAS_AFTER_ENUMERATION_PREFIX",
+    }
+    candidates = []
+    for row in axis["rows"]:
+        match = row["label_match"]
+        if (
+            match.get("page_sequence") != page["page_sequence"]
+            or match.get("match_kind") not in exact_match_kinds
+            or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or row.get("missing_column_ordinals") != []
+            or len(row.get("values", [])) != len(candidate_row["financial_line_axis"])
+        ):
+            continue
+        start = match.get("source_line_index")
+        stop = match.get("end_source_line_index")
+        if (
+            type(start) is not int
+            or type(stop) is not int
+            or not 0 <= start <= stop < len(page["lines"])
+        ):
+            continue
+        label_lines = page["lines"][start : stop + 1]
+        label_axis = [_extreme_margin_line_record(line) for line in label_lines]
+        normalized_surface = normalize_vietnamese_anchor_v1(
+            " ".join(line["vietocr_text"] for line in label_lines)
+        )
+        same_row_labels = [
+            _inspected_label_band_line(line)
+            for line in label_lines
+            if _printed_note_reference_same_row_v3(line, candidate)
+        ]
+        expected_financial = [
+            item["source_line_record"] for item in candidate_row["financial_line_axis"]
+        ]
+        row_financial = []
+        for value in sorted(row["values"], key=lambda value: value["column_ordinal"]):
+            source_lines = [
+                line
+                for line in page["lines"]
+                if line["sample_id"] == value["sample_id"]
+                and line["bbox"] == value["bbox"]
+                and line["line_ordinal"] == value["line_ordinal"]
+                and line["numeric_recognition"]["raw_prediction"] == value["raw_prediction"]
+                and line["numeric_recognition"]["reader_score"] == value["reader_score"]
+                and line["crop_ref"] == value["crop_ref"]
+            ]
+            if len(source_lines) != 1:
+                row_financial = []
+                break
+            row_financial.append(_extreme_margin_line_record(source_lines[0]))
+        if (
+            normalized_surface != match.get("normalized_surface")
+            or any(line["bbox"][2] >= candidate["bbox"][0] for line in label_lines)
+            or same_row_labels != cluster["same_row_label_evidence"]
+            or row_financial != expected_financial
+        ):
+            continue
+        candidates.append(
+            {
+                "candidate_financial_line_axis_sha256": canonical_json_sha256_v1(
+                    expected_financial
+                ),
+                "candidate_same_row_label_axis_sha256": canonical_json_sha256_v1(same_row_labels),
+                "label_source_line_axis": label_axis,
+                "label_source_line_axis_sha256": canonical_json_sha256_v1(label_axis),
+                "occurrence_id": match["occurrence_id"],
+                "role": row["role"],
+                "row_axis_id": axis["row_axis_id"],
+                "source_record": canonical_clone_v1(row),
+                "status": _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_STATUS,
+            }
+        )
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _printed_note_reference_crop_is_neutral_ink_v3(proof: Mapping[str, Any]) -> bool:
+    return (
+        proof["ink_pixel_count"] > 0
+        and proof["ink_pixel_count"] * 100 >= proof["pixel_count"]
+        and proof["chromatic_ink_pixel_count"] * 20 <= proof["ink_pixel_count"]
+    )
+
+
+def _build_authenticated_printed_note_reference_furniture_evidence_v3(
+    *,
+    topology_candidates_id: str | None,
+    pages: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    ordered_numeric_lines: Sequence[Mapping[str, Any]],
+    cluster: Mapping[str, Any],
+    source_record: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+    axis: Mapping[str, Any],
+    selected_snapshot: Mapping[str, Any] | None,
+    render_by_page: Mapping[int, Mapping[str, Any]],
+) -> tuple[dict[str, Any] | None, bool]:
+    if (
+        type(topology_candidates_id) is not str
+        or not topology_candidates_id.startswith("aftcv2:result:")
+        or len(ordered_numeric_lines) != 1
+        or len(centers) < 2
+        or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+        or cluster.get("label_lane_status") != _LABELED_LABEL_LANE_STATUS
+        or not cluster.get("same_row_label_evidence")
+        or source_record.get("parsed_token", {}).get("classification") != "SIGNED_NUMBER"
+        or type(page.get("page_width")) is not int
+        or page["page_width"] <= 0
+    ):
+        return None, False
+    candidate = ordered_numeric_lines[0]
+    candidate_value = _printed_note_reference_exact_integer_v3(candidate)
+    center_quads = [center * 4 for center in centers]
+    if candidate_value is None or any(not float(center).is_integer() for center in center_quads):
+        return None, False
+    headers = _printed_note_reference_header_candidates_v3(page)
+    if len(headers) != 1:
+        return None, False
+    header = headers[0]
+    header_bbox = header["bbox"]
+    first_financial_lane_left_boundary = math.floor(centers[0] - lane_tolerance)
+    bbox = candidate["bbox"]
+    if (
+        bbox[0] < header_bbox[0]
+        or bbox[2] > header_bbox[2]
+        or bbox[1] < header_bbox[3]
+        or header_bbox[2] > first_financial_lane_left_boundary
+        or bbox[2] > first_financial_lane_left_boundary
+    ):
+        return None, False
+    note_rows = _printed_note_reference_row_candidates_v3(
+        page=page,
+        header_bbox=header_bbox,
+        centers=centers,
+        lane_tolerance=lane_tolerance,
+    )
+    candidate_rows = [
+        row for row in note_rows if row["source_line_record"]["sample_id"] == candidate["sample_id"]
+    ]
+    note_values = [row["note_value"] for row in note_rows]
+    note_centers_twice = [
+        row["source_line_record"]["bbox"][0] + row["source_line_record"]["bbox"][2]
+        for row in note_rows
+    ]
+    horizontal_tolerance = max(scale, (header_bbox[2] - header_bbox[0]) / 4)
+    if (
+        len(candidate_rows) != 1
+        or len(note_rows) < 3
+        or len(note_values) != len(set(note_values))
+        or candidate_value - 1 not in note_values
+        or candidate_value + 1 not in note_values
+        or any(
+            abs(center_twice - bbox[0] - bbox[2]) > 2 * horizontal_tolerance
+            for center_twice in note_centers_twice
+        )
+        or not any(
+            row["source_line_record"]["line_ordinal"] < candidate["line_ordinal"]
+            for row in note_rows
+        )
+        or not any(
+            row["source_line_record"]["line_ordinal"] > candidate["line_ordinal"]
+            for row in note_rows
+        )
+    ):
+        return None, False
+    semantic_row_binding = _printed_note_reference_semantic_row_binding_v3(
+        page=page,
+        axis=axis,
+        cluster=cluster,
+        candidate=candidate,
+        candidate_row=candidate_rows[0],
+    )
+    if semantic_row_binding is None:
+        return None, False
+    page_sequence = page["page_sequence"]
+    if selected_snapshot is None or page_sequence not in render_by_page:
+        return None, selected_snapshot is not None
+    render = render_by_page[page_sequence]
+    try:
+        render_record, payload = render_v1._validated_render_snapshot(render)
+        image = render_v1._png_image(payload).convert("RGB")
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise _error("authenticated printed note-reference render replay failed") from exc
+    if image.width != page["page_width"]:
+        return None, False
+    header_crop_proofs = [
+        _authenticated_extreme_margin_crop_proof(
+            image=image,
+            render_record=render_record,
+            render_id=render["render_id"],
+            line=line,
+        )
+        for line in header["lines"]
+    ]
+    if not all(
+        _printed_note_reference_crop_is_neutral_ink_v3(proof) for proof in header_crop_proofs
+    ):
+        return None, False
+    note_axis = []
+    for row in note_rows:
+        line = next(
+            line
+            for line in page["lines"]
+            if line["sample_id"] == row["source_line_record"]["sample_id"]
+        )
+        crop_proof = _authenticated_extreme_margin_crop_proof(
+            image=image,
+            render_record=render_record,
+            render_id=render["render_id"],
+            line=line,
+        )
+        if not _printed_note_reference_crop_is_neutral_ink_v3(crop_proof):
+            return None, False
+        note_axis.append({**row, "note_crop_proof": crop_proof})
+    candidate_axis = [
+        row for row in note_axis if row["source_line_record"]["sample_id"] == candidate["sample_id"]
+    ]
+    if len(candidate_axis) != 1:
+        return None, False
+    candidate_crop_proof = candidate_axis[0]["note_crop_proof"]
+    document_pages_sha256 = canonical_json_sha256_v1(pages)
+    header_source_axis = [_extreme_margin_line_record(line) for line in header["lines"]]
+    material = {
+        "candidate_crop_proof": candidate_crop_proof,
+        "document_pages_sha256": document_pages_sha256,
+        "geometry": {
+            "body_text_scale": float(scale),
+            "candidate_bbox": canonical_clone_v1(bbox),
+            "candidate_center_twice": bbox[0] + bbox[2],
+            "candidate_note_value": candidate_value,
+            "first_financial_lane_left_boundary": first_financial_lane_left_boundary,
+            "header_bbox": canonical_clone_v1(header_bbox),
+            "lane_centers_quads": [int(center) for center in center_quads],
+            "lane_tolerance": float(lane_tolerance),
+            "page_width": page["page_width"],
+            "qualifying_note_reference_row_count": len(note_axis),
+        },
+        "header_proof": {
+            "crop_proofs": header_crop_proofs,
+            "header_bbox": canonical_clone_v1(header_bbox),
+            "normalized_surface": "thuyet minh",
+            "source_line_axis": header_source_axis,
+            "source_line_axis_sha256": canonical_json_sha256_v1(header_source_axis),
+            "status": _PRINTED_NOTE_REFERENCE_HEADER_STATUS,
+        },
+        "note_reference_axis": note_axis,
+        "original_cluster": canonical_clone_v1(cluster),
+        "page_sequence": page_sequence,
+        "sample_id": source_record["sample_id"],
+        "semantic_row_binding": semantic_row_binding,
+        "snapshot_id": selected_snapshot["snapshot_id"],
+        "source_record": canonical_clone_v1(source_record),
+        "status": _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
+        "topology_candidates_id": topology_candidates_id,
+    }
+    return {
+        **material,
+        "evidence_id": "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material),
+    }, False
+
+
+def _printed_note_reference_same_row(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any],
+    *,
+    body_text_scale: float,
+) -> bool:
+    return note_axis_v1.same_visual_row_v1(
+        left,
+        right,
+        body_text_scale=body_text_scale,
+    )
+
+
+def _printed_note_reference_exact_surface(line: Mapping[str, Any]) -> str | None:
+    return note_axis_v1.exact_note_reference_surface_v1(line)
+
+
+def _printed_note_reference_parts(surface: str) -> tuple[int, int | None]:
+    return note_axis_v1.note_reference_parts_v1(surface)
+
+
+def _printed_note_reference_has_local_peer(
+    candidate: str,
+    references: Sequence[str],
+) -> bool:
+    """Require a local printed-note series without treating it as accounting math."""
+
+    return note_axis_v1.note_reference_has_local_peer_v1(candidate, references)
+
+
+def _printed_note_reference_row_candidates(
+    *,
+    page: Mapping[str, Any],
+    header_bbox: Sequence[int],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    body_text_scale: float,
+) -> list[dict[str, Any]]:
+    try:
+        shared_axis = note_axis_v1.build_accounting_printed_note_reference_axis_v1(
+            page,
+            detected_column_centers=centers,
+            lane_tolerance=lane_tolerance,
+            body_text_scale=body_text_scale,
+        )
+    except note_axis_v1.AccountingPrintedNoteReferenceAxisV1Error:
+        return []
+    if (
+        shared_axis["status"] != note_axis_v1.READY_STATUS
+        or shared_axis["header"]["bbox"] != list(header_bbox)
+        or shared_axis["financial_column_centers"] != list(centers)
+    ):
+        return []
+    by_sample: dict[str, list[Mapping[str, Any]]] = {}
+    for line in page["lines"]:
+        by_sample.setdefault(line["sample_id"], []).append(line)
+    rows = []
+    for shared_row in shared_axis["rows"]:
+        sample_axes = [
+            shared_row["note_sample_id"],
+            *shared_row["financial_sample_ids"],
+            *shared_row["label_sample_ids"],
+        ]
+        if any(len(by_sample.get(sample_id, [])) != 1 for sample_id in sample_axes):
+            return []
+        note_line = by_sample[shared_row["note_sample_id"]][0]
+        financial_axis = [
+            {
+                "column_ordinal": column_ordinal,
+                "source_line_record": _extreme_margin_line_record(by_sample[sample_id][0]),
+            }
+            for column_ordinal, sample_id in enumerate(shared_row["financial_sample_ids"])
+        ]
+        label_axis = [
+            _extreme_margin_line_record(by_sample[sample_id][0])
+            for sample_id in shared_row["label_sample_ids"]
+        ]
+        rows.append(
+            {
+                "financial_line_axis": financial_axis,
+                "label_line_axis": label_axis,
+                "note_reference": shared_row["note_reference"],
+                "source_line_record": _extreme_margin_line_record(note_line),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            row["source_line_record"]["line_ordinal"],
+            _printed_note_reference_parts(row["note_reference"]),
+        )
+    )
+    return rows
+
+
+def _printed_note_reference_semantic_row_binding(
+    *,
+    page: Mapping[str, Any],
+    axis: Mapping[str, Any],
+    cluster: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    candidate_row: Mapping[str, Any],
+    body_text_scale: float,
+) -> dict[str, Any] | None:
+    exact_match_kinds = {
+        "EXACT_ACCENTLESS_ALIAS",
+        "EXACT_ACCENTLESS_ALIAS_AFTER_ENUMERATION_PREFIX",
+    }
+    candidates = []
+    for row in axis["rows"]:
+        match = row["label_match"]
+        if (
+            match.get("page_sequence") != page["page_sequence"]
+            or match.get("match_kind") not in exact_match_kinds
+            or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or row.get("missing_column_ordinals") != []
+            or len(row.get("values", [])) != len(candidate_row["financial_line_axis"])
+        ):
+            continue
+        start = match.get("source_line_index")
+        stop = match.get("end_source_line_index")
+        if (
+            type(start) is not int
+            or type(stop) is not int
+            or not 0 <= start <= stop < len(page["lines"])
+        ):
+            continue
+        label_lines = page["lines"][start : stop + 1]
+        label_axis = [_extreme_margin_line_record(line) for line in label_lines]
+        normalized_surface = normalize_vietnamese_anchor_v1(
+            " ".join(line["vietocr_text"] for line in label_lines)
+        )
+        selected_label_ids = {line["sample_id"] for line in candidate_row["label_line_axis"]}
+        same_row_labels = [
+            _inspected_label_band_line(line)
+            for line in label_lines
+            if line["sample_id"] in selected_label_ids
+            and _printed_note_reference_same_row(
+                line,
+                candidate,
+                body_text_scale=body_text_scale,
+            )
+        ]
+        expected_financial = [
+            item["source_line_record"] for item in candidate_row["financial_line_axis"]
+        ]
+        row_financial = []
+        for value in sorted(row["values"], key=lambda value: value["column_ordinal"]):
+            source_lines = [
+                line
+                for line in page["lines"]
+                if line["sample_id"] == value["sample_id"]
+                and line["bbox"] == value["bbox"]
+                and line["line_ordinal"] == value["line_ordinal"]
+                and line["numeric_recognition"]["raw_prediction"] == value["raw_prediction"]
+                and line["numeric_recognition"]["reader_score"] == value["reader_score"]
+                and line["crop_ref"] == value["crop_ref"]
+            ]
+            if len(source_lines) != 1:
+                row_financial = []
+                break
+            row_financial.append(_extreme_margin_line_record(source_lines[0]))
+        if (
+            normalized_surface != match.get("normalized_surface")
+            or any(line["bbox"][2] >= candidate["bbox"][0] for line in label_lines)
+            or same_row_labels != cluster["same_row_label_evidence"]
+            or row_financial != expected_financial
+        ):
+            continue
+        candidates.append(
+            {
+                "binding_kind": _PRINTED_NOTE_REFERENCE_ROLE_BINDING_KIND,
+                "candidate_financial_line_axis_sha256": canonical_json_sha256_v1(
+                    expected_financial
+                ),
+                "candidate_same_row_label_axis_sha256": canonical_json_sha256_v1(same_row_labels),
+                "label_source_line_axis": label_axis,
+                "label_source_line_axis_sha256": canonical_json_sha256_v1(label_axis),
+                "occurrence_id": match["occurrence_id"],
+                "role": row["role"],
+                "row_axis_id": axis["row_axis_id"],
+                "source_record": canonical_clone_v1(row),
+                "status": _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_STATUS,
+            }
+        )
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def _printed_note_reference_parent_row_binding(
+    *,
+    page: Mapping[str, Any],
+    axis: Mapping[str, Any],
+    cluster: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    candidate_row: Mapping[str, Any],
+    body_text_scale: float,
+) -> dict[str, Any] | None:
+    """Bind furniture to the one selected parent span, without semantic promotion."""
+
+    parent = axis.get("topology_region", {}).get("parent_match")
+    if (
+        type(parent) is not dict
+        or parent.get("page_sequence") != page["page_sequence"]
+        or parent.get("parent_resolution") is not None
+    ):
+        # ``parent_resolution`` belongs to the region, never the match.  Its
+        # presence here is therefore an injected/replayed shape.
+        return None
+    start = parent.get("source_line_index")
+    stop = parent.get("end_source_line_index")
+    if (
+        type(start) is not int
+        or type(stop) is not int
+        or not 0 <= start <= stop < len(page["lines"])
+    ):
+        return None
+    label_lines = page["lines"][start : stop + 1]
+    label_axis = [_extreme_margin_line_record(line) for line in label_lines]
+    selected_label_ids = {line["sample_id"] for line in candidate_row["label_line_axis"]}
+    same_row_labels = [
+        _inspected_label_band_line(line)
+        for line in label_lines
+        if line["sample_id"] in selected_label_ids
+        and _printed_note_reference_same_row(
+            line,
+            candidate,
+            body_text_scale=body_text_scale,
+        )
+    ]
+    financial_records = [
+        item["source_line_record"] for item in candidate_row["financial_line_axis"]
+    ]
+    if (
+        not same_row_labels
+        or same_row_labels != cluster["same_row_label_evidence"]
+        or any(line["bbox"][2] >= candidate["bbox"][0] for line in label_lines)
+        or normalize_vietnamese_anchor_v1(" ".join(line["vietocr_text"] for line in label_lines))
+        != parent.get("normalized_surface")
+    ):
+        return None
+    binding_id = "aforav2:parent-note-row:" + canonical_json_sha256_v1(parent)
+    return {
+        "binding_kind": _PRINTED_NOTE_REFERENCE_PARENT_BINDING_KIND,
+        "candidate_financial_line_axis_sha256": canonical_json_sha256_v1(financial_records),
+        "candidate_same_row_label_axis_sha256": canonical_json_sha256_v1(same_row_labels),
+        "label_source_line_axis": label_axis,
+        "label_source_line_axis_sha256": canonical_json_sha256_v1(label_axis),
+        "occurrence_id": binding_id,
+        "role": "FAMILY_PARENT",
+        "row_axis_id": axis["row_axis_id"],
+        "source_record": canonical_clone_v1(parent),
+        "status": _PRINTED_NOTE_REFERENCE_PARENT_STATUS,
+    }
+
+
+def _printed_note_reference_crop_is_neutral_ink(proof: Mapping[str, Any]) -> bool:
+    return (
+        proof["ink_pixel_count"] > 0
+        and proof["ink_pixel_count"] * 100 >= proof["pixel_count"]
+        and proof["chromatic_ink_pixel_count"] * 20 <= proof["ink_pixel_count"]
+    )
+
+
+def _build_authenticated_printed_note_reference_furniture_evidence_v4(
+    *,
+    topology_candidates_id: str | None,
+    pages: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    ordered_numeric_lines: Sequence[Mapping[str, Any]],
+    cluster: Mapping[str, Any],
+    source_record: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+    axis: Mapping[str, Any],
+    selected_snapshot: Mapping[str, Any] | None,
+    render_by_page: Mapping[int, Mapping[str, Any]],
+) -> tuple[dict[str, Any] | None, bool]:
+    if (
+        type(topology_candidates_id) is not str
+        or not topology_candidates_id.startswith("aftcv2:result:")
+        or len(ordered_numeric_lines) != 1
+        or len(centers) < 2
+        or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+        or cluster.get("label_lane_status") != _LABELED_LABEL_LANE_STATUS
+        or not cluster.get("same_row_label_evidence")
+        or source_record.get("parsed_token", {}).get("classification") != "SIGNED_NUMBER"
+        or type(page.get("page_width")) is not int
+        or page["page_width"] <= 0
+    ):
+        return None, False
+    candidate = ordered_numeric_lines[0]
+    candidate_reference = _printed_note_reference_exact_surface(candidate)
+    center_quads = [center * 4 for center in centers]
+    if candidate_reference is None or any(
+        not float(center).is_integer() for center in center_quads
+    ):
+        return None, False
+    try:
+        shared_axis = note_axis_v1.build_accounting_printed_note_reference_axis_v1(
+            page,
+            detected_column_centers=centers,
+            lane_tolerance=float(lane_tolerance),
+            body_text_scale=float(scale),
+        )
+    except note_axis_v1.AccountingPrintedNoteReferenceAxisV1Error:
+        return None, False
+    if shared_axis["status"] != note_axis_v1.READY_STATUS or shared_axis[
+        "financial_column_centers"
+    ] != list(centers):
+        return None, False
+    sample_axes: dict[str, list[Mapping[str, Any]]] = {}
+    for line in page["lines"]:
+        sample_axes.setdefault(line["sample_id"], []).append(line)
+    by_sample = {sample_id: lines[0] for sample_id, lines in sample_axes.items() if len(lines) == 1}
+    header_lines = [by_sample.get(sample_id) for sample_id in shared_axis["header"]["sample_ids"]]
+    if any(line is None for line in header_lines):
+        return None, False
+    header = {"bbox": shared_axis["header"]["bbox"], "lines": header_lines}
+    header_bbox = header["bbox"]
+    first_financial_lane_left_boundary = math.floor(centers[0] - lane_tolerance)
+    bbox = candidate["bbox"]
+    if (
+        bbox[0] < header_bbox[0]
+        or bbox[2] > header_bbox[2]
+        or bbox[1] < header_bbox[3]
+        or header_bbox[2] > first_financial_lane_left_boundary
+        or bbox[2] > first_financial_lane_left_boundary
+    ):
+        return None, False
+    note_rows = _printed_note_reference_row_candidates(
+        page=page,
+        header_bbox=header_bbox,
+        centers=centers,
+        lane_tolerance=float(lane_tolerance),
+        body_text_scale=float(scale),
+    )
+    candidate_rows = [
+        row for row in note_rows if row["source_line_record"]["sample_id"] == candidate["sample_id"]
+    ]
+    note_references = [row["note_reference"] for row in note_rows]
+    note_centers_twice = [
+        row["source_line_record"]["bbox"][0] + row["source_line_record"]["bbox"][2]
+        for row in note_rows
+    ]
+    horizontal_tolerance = max(scale, (header_bbox[2] - header_bbox[0]) / 4)
+    if (
+        len(candidate_rows) != 1
+        or len(note_rows) < 3
+        or len(note_references) != len(set(note_references))
+        or not _printed_note_reference_has_local_peer(candidate_reference, note_references)
+        or any(
+            abs(center_twice - bbox[0] - bbox[2]) > 2 * horizontal_tolerance
+            for center_twice in note_centers_twice
+        )
+        or not any(
+            row["source_line_record"]["line_ordinal"] < candidate["line_ordinal"]
+            for row in note_rows
+        )
+        or not any(
+            row["source_line_record"]["line_ordinal"] > candidate["line_ordinal"]
+            for row in note_rows
+        )
+    ):
+        return None, False
+    semantic_row_binding = _printed_note_reference_semantic_row_binding(
+        page=page,
+        axis=axis,
+        cluster=cluster,
+        candidate=candidate,
+        candidate_row=candidate_rows[0],
+        body_text_scale=float(scale),
+    )
+    if semantic_row_binding is None:
+        semantic_row_binding = _printed_note_reference_parent_row_binding(
+            page=page,
+            axis=axis,
+            cluster=cluster,
+            candidate=candidate,
+            candidate_row=candidate_rows[0],
+            body_text_scale=float(scale),
+        )
+    if semantic_row_binding is None:
+        return None, False
+    page_sequence = page["page_sequence"]
+    if selected_snapshot is None or page_sequence not in render_by_page:
+        return None, selected_snapshot is not None
+    render = render_by_page[page_sequence]
+    try:
+        render_record, payload = render_v1._validated_render_snapshot(render)
+        image = render_v1._png_image(payload).convert("RGB")
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise _error("authenticated printed note-reference render replay failed") from exc
+    if image.width != page["page_width"]:
+        return None, False
+    header_crop_proofs = [
+        _authenticated_extreme_margin_crop_proof(
+            image=image,
+            render_record=render_record,
+            render_id=render["render_id"],
+            line=line,
+        )
+        for line in header["lines"]
+    ]
+    if not all(_printed_note_reference_crop_is_neutral_ink(proof) for proof in header_crop_proofs):
+        return None, False
+    note_axis = []
+    for row in note_rows:
+        line = next(
+            line
+            for line in page["lines"]
+            if line["sample_id"] == row["source_line_record"]["sample_id"]
+        )
+        crop_proof = _authenticated_extreme_margin_crop_proof(
+            image=image,
+            render_record=render_record,
+            render_id=render["render_id"],
+            line=line,
+        )
+        if not _printed_note_reference_crop_is_neutral_ink(crop_proof):
+            return None, False
+        note_axis.append({**row, "note_crop_proof": crop_proof})
+    candidate_axis = [
+        row for row in note_axis if row["source_line_record"]["sample_id"] == candidate["sample_id"]
+    ]
+    if len(candidate_axis) != 1:
+        return None, False
+    candidate_crop_proof = candidate_axis[0]["note_crop_proof"]
+    document_pages_sha256 = canonical_json_sha256_v1(pages)
+    header_source_axis = [_extreme_margin_line_record(line) for line in header["lines"]]
+    material = {
+        "candidate_crop_proof": candidate_crop_proof,
+        "document_pages_sha256": document_pages_sha256,
+        "geometry": {
+            "body_text_scale": float(scale),
+            "candidate_bbox": canonical_clone_v1(bbox),
+            "candidate_center_twice": bbox[0] + bbox[2],
+            "candidate_note_reference": candidate_reference,
+            "first_financial_lane_left_boundary": first_financial_lane_left_boundary,
+            "header_bbox": canonical_clone_v1(header_bbox),
+            "lane_centers_quads": [int(center) for center in center_quads],
+            "lane_tolerance": float(lane_tolerance),
+            "page_width": page["page_width"],
+            "qualifying_note_reference_row_count": len(note_axis),
+        },
+        "header_proof": {
+            "crop_proofs": header_crop_proofs,
+            "header_bbox": canonical_clone_v1(header_bbox),
+            "normalized_surface": "thuyet minh",
+            "source_line_axis": header_source_axis,
+            "source_line_axis_sha256": canonical_json_sha256_v1(header_source_axis),
+            "status": _PRINTED_NOTE_REFERENCE_HEADER_STATUS,
+        },
+        "note_reference_axis": note_axis,
+        "original_cluster": canonical_clone_v1(cluster),
+        "page_sequence": page_sequence,
+        "sample_id": source_record["sample_id"],
+        "semantic_row_binding": semantic_row_binding,
+        "snapshot_id": selected_snapshot["snapshot_id"],
+        "source_record": canonical_clone_v1(source_record),
+        "status": _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
+        "topology_candidates_id": topology_candidates_id,
+    }
+    return {
+        **material,
+        "evidence_id": "aforav2:printed-note-reference-v4:" + canonical_json_sha256_v1(material),
+    }, False
+
+
+def _printed_note_reference_line_is_inside_region(
+    *,
+    expanded_region: Mapping[str, Any],
+    page_sequence: int,
+    line_ordinal: int,
+) -> bool:
+    start_page = expanded_region["page_sequence"]
+    stop_page = expanded_region.get("cluster_end_page_sequence_inclusive", start_page)
+    if not start_page <= page_sequence <= stop_page:
+        return False
+    start = expanded_region.get("cluster_start_source_line_index")
+    stop = expanded_region.get("cluster_end_source_line_index_exclusive")
+    return not (
+        (page_sequence == start_page and type(start) is int and line_ordinal < start)
+        or (page_sequence == stop_page and type(stop) is int and line_ordinal >= stop)
+    )
+
+
+def _project_authenticated_printed_note_reference_columns_v3(
+    *,
+    pages: Sequence[Mapping[str, Any]],
+    expanded_region: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    axis: Mapping[str, Any],
+) -> tuple[dict[str, Any], frozenset[str]]:
+    """Propose a financial-only grid; pixels must later authorize every removal."""
+
+    projected = canonical_clone_v1(axis)
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
+    candidate_sample_ids: set[str] = set()
+    changed = False
+    for grid in projected["column_grids"]:
+        page_sequence = grid["page_sequence"]
+        page = page_by_sequence[page_sequence]
+        local_lines = body_by_page.get(page_sequence, [])
+        centers = grid["column_centers"]
+        if len(centers) < 2 or not local_lines:
+            continue
+        scale = row_v1.median_text_height_v1(local_lines)
+        lane_tolerance = max(
+            scale * 1.6,
+            min(right - left for left, right in zip(centers, centers[1:], strict=False)) * 0.42,
+        )
+        try:
+            shared_axis = note_axis_v1.build_accounting_printed_note_reference_axis_v1(
+                page,
+                detected_column_centers=centers,
+                lane_tolerance=float(lane_tolerance),
+                body_text_scale=float(scale),
+            )
+        except note_axis_v1.AccountingPrintedNoteReferenceAxisV1Error:
+            continue
+        if shared_axis["status"] != note_axis_v1.READY_STATUS:
+            continue
+        header_bbox = shared_axis["header"]["bbox"]
+        financial_centers = shared_axis["financial_column_centers"]
+        note_rows = _printed_note_reference_row_candidates(
+            page=page,
+            header_bbox=header_bbox,
+            centers=financial_centers,
+            lane_tolerance=float(lane_tolerance),
+            body_text_scale=float(scale),
+        )
+        references = [row["note_reference"] for row in note_rows]
+        local_note_rows = [
+            row
+            for row in note_rows
+            if _printed_note_reference_line_is_inside_region(
+                expanded_region=expanded_region,
+                page_sequence=page_sequence,
+                line_ordinal=row["source_line_record"]["line_ordinal"],
+            )
+            and _printed_note_reference_has_local_peer(row["note_reference"], references)
+        ]
+        if not local_note_rows:
+            continue
+        page_candidate_ids = {row["source_line_record"]["sample_id"] for row in local_note_rows}
+        removed_centers = [center for center in centers if center not in financial_centers]
+        rows_on_page = [
+            row for row in projected["rows"] if row["label_match"]["page_sequence"] == page_sequence
+        ]
+        if (
+            any(
+                value["column_center"] in removed_centers
+                and value["sample_id"] not in page_candidate_ids
+                for row in rows_on_page
+                for value in row["values"]
+            )
+            or any(
+                value["column_center"] in removed_centers
+                and value["sample_id"] not in page_candidate_ids
+                for trailing in projected["trailing_value_rows"]
+                if trailing["page_sequence"] == page_sequence
+                for value in trailing["values"]
+            )
+            or any(
+                rescue["column_center"] in removed_centers
+                for rescue in projected["visible_dash_rescues"]
+                if rescue["page_sequence"] == page_sequence
+            )
+        ):
+            # A decimal/money cell occupies the would-be removed column.  The
+            # header alone cannot turn that financial lane into furniture.
+            continue
+        if removed_centers:
+            for row in rows_on_page:
+                retained = [
+                    value for value in row["values"] if value["sample_id"] not in page_candidate_ids
+                ]
+                if any(value["column_center"] not in financial_centers for value in retained):
+                    return canonical_clone_v1(axis), frozenset()
+                for value in retained:
+                    value["column_ordinal"] = financial_centers.index(value["column_center"])
+                row["values"] = sorted(retained, key=lambda value: value["column_ordinal"])
+                visible = {value["column_ordinal"] for value in retained}
+                row["missing_column_ordinals"] = [
+                    ordinal for ordinal in range(len(financial_centers)) if ordinal not in visible
+                ]
+                row["status"] = (
+                    "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+                    if not retained
+                    else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+                    if row["missing_column_ordinals"]
+                    else "VISIBLE_VALUE_LANES_BOUND"
+                )
+            for trailing in projected["trailing_value_rows"]:
+                if trailing["page_sequence"] != page_sequence:
+                    continue
+                retained = [
+                    value
+                    for value in trailing["values"]
+                    if value["sample_id"] not in page_candidate_ids
+                ]
+                for value in retained:
+                    value["column_ordinal"] = financial_centers.index(value["column_center"])
+                trailing["values"] = sorted(retained, key=lambda value: value["column_ordinal"])
+                visible = {value["column_ordinal"] for value in retained}
+                trailing["missing_column_ordinals"] = [
+                    ordinal for ordinal in range(len(financial_centers)) if ordinal not in visible
+                ]
+                trailing["status"] = (
+                    "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+                    if retained and not trailing["missing_column_ordinals"]
+                    else "PARTIAL_TRAILING_VALUE_ROW_REQUIRES_PIXEL_RESCUE"
+                )
+            grid["column_centers"] = canonical_clone_v1(financial_centers)
+            changed = True
+        candidate_sample_ids.update(page_candidate_ids)
+    if not candidate_sample_ids:
+        return canonical_clone_v1(axis), frozenset()
+    return (
+        _regenerate_v1_axis(projected) if changed else canonical_clone_v1(axis),
+        frozenset(candidate_sample_ids),
+    )
+
+
 def _build_numeric_sample_universe(
     pages: Sequence[Mapping[str, Any]],
     expanded_region: Mapping[str, Any],
@@ -4788,6 +5997,7 @@ def _build_numeric_sample_universe(
     topology_candidates_id: str | None,
     selected_snapshot: Mapping[str, Any] | None,
     render_snapshots: Sequence[Mapping[str, Any]],
+    printed_note_candidate_sample_ids: frozenset[str] = frozenset(),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Own every typed body-lane sample or expose it as source-only.
 
@@ -4872,6 +6082,30 @@ def _build_numeric_sample_universe(
             if len(centers) > 1
             else scale * 2.5
         )
+        printed_note_label_ids: dict[str, frozenset[str]] = {}
+        printed_note_furniture_version = 3
+        if any(line["sample_id"] in printed_note_candidate_sample_ids for line in local_lines):
+            try:
+                shared_note_axis = note_axis_v1.build_accounting_printed_note_reference_axis_v1(
+                    page,
+                    detected_column_centers=centers,
+                    lane_tolerance=float(lane_tolerance),
+                    body_text_scale=float(scale),
+                )
+            except note_axis_v1.AccountingPrintedNoteReferenceAxisV1Error:
+                shared_note_axis = None
+            if (
+                type(shared_note_axis) is dict
+                and shared_note_axis["status"] == note_axis_v1.READY_STATUS
+                and shared_note_axis["financial_column_centers"] == centers
+            ):
+                if any("." in row["note_reference"] for row in shared_note_axis["rows"]):
+                    printed_note_furniture_version = 4
+                    printed_note_label_ids = {
+                        row["note_sample_id"]: frozenset(row["label_sample_ids"])
+                        for row in shared_note_axis["rows"]
+                        if row["note_sample_id"] in printed_note_candidate_sample_ids
+                    }
         header_indices = set(grid["header_evidence_source_line_indices"])
         candidates: list[dict[str, Any]] = []
         lanes_by_sample: dict[str, int] = {}
@@ -4891,7 +6125,10 @@ def _build_numeric_sample_universe(
             ):
                 continue
             center = (line["bbox"][0] + line["bbox"][2]) / 2
-            if not table_left <= center <= table_right:
+            if (
+                line["sample_id"] not in printed_note_candidate_sample_ids
+                and not table_left <= center <= table_right
+            ):
                 continue
             lane = min(range(len(centers)), key=lambda index: abs(center - centers[index]))
             projected = {**canonical_clone_v1(line), "source_line_index": line["line_ordinal"]}
@@ -4899,18 +6136,32 @@ def _build_numeric_sample_universe(
             lanes_by_sample[line["sample_id"]] = lane
             if abs(center - centers[lane]) > lane_tolerance:
                 off_lane_sample_ids.add(line["sample_id"])
-        physical_clusters = (
-            row_v1.cluster_numeric_rows_v1(
-                candidates,
-                is_numeric=row_v1._is_numeric,
-                start_index=min(line["source_line_index"] for line in candidates) - 1,
-                stop_index=max(line["source_line_index"] for line in candidates) + 1,
-                page_width=page["page_width"],
-                minimum_x_ratio=0.0,
-                maximum_x_ratio=1.0,
+        forced_note_lines = [
+            line for line in candidates if line["sample_id"] in printed_note_candidate_sample_ids
+        ]
+        ordinary_lines = [
+            line
+            for line in candidates
+            if line["sample_id"] not in printed_note_candidate_sample_ids
+        ]
+        physical_clusters = [[line] for line in forced_note_lines]
+        if ordinary_lines:
+            physical_clusters.extend(
+                row_v1.cluster_numeric_rows_v1(
+                    ordinary_lines,
+                    is_numeric=row_v1._is_numeric,
+                    start_index=min(line["source_line_index"] for line in ordinary_lines) - 1,
+                    stop_index=max(line["source_line_index"] for line in ordinary_lines) + 1,
+                    page_width=page["page_width"],
+                    minimum_x_ratio=0.0,
+                    maximum_x_ratio=1.0,
+                )
             )
-            if candidates
-            else []
+        physical_clusters.sort(
+            key=lambda cluster: (
+                min(line["line_ordinal"] for line in cluster),
+                min(line["sample_id"] for line in cluster),
+            )
         )
         for physical_cluster in physical_clusters:
             ordered = sorted(
@@ -4921,11 +6172,22 @@ def _build_numeric_sample_universe(
                     line["sample_id"],
                 ),
             )
+            forced_note_sample_id = (
+                ordered[0]["sample_id"]
+                if len(ordered) == 1
+                and ordered[0]["sample_id"] in printed_note_candidate_sample_ids
+                else None
+            )
             inspected_label_band, same_row_label_evidence = _build_inspected_label_band(
                 ordered_numeric_lines=ordered,
                 page=page,
                 pages=pages,
                 local_lines=local_lines,
+                permitted_label_sample_ids=(
+                    printed_note_label_ids[forced_note_sample_id]
+                    if forced_note_sample_id in printed_note_label_ids
+                    else None
+                ),
             )
             cluster_material = {
                 "column_ordinals": [lanes_by_sample[line["sample_id"]] for line in ordered],
@@ -4997,6 +6259,28 @@ def _build_numeric_sample_universe(
                     )
                     evidence = evidence_v2
                     render_required = render_required or render_required_v2
+                if evidence is None:
+                    printed_note_builder = (
+                        _build_authenticated_printed_note_reference_furniture_evidence_v4
+                        if printed_note_furniture_version == 4
+                        else _build_authenticated_printed_note_reference_furniture_evidence_v3
+                    )
+                    note_evidence, note_render_required = printed_note_builder(
+                        pages=pages,
+                        topology_candidates_id=topology_candidates_id,
+                        page=page,
+                        ordered_numeric_lines=ordered,
+                        cluster=cluster,
+                        source_record=source_records[0],
+                        centers=centers,
+                        lane_tolerance=lane_tolerance,
+                        scale=scale,
+                        axis=axis,
+                        selected_snapshot=selected_snapshot,
+                        render_by_page=render_by_page,
+                    )
+                    evidence = note_evidence
+                    render_required = render_required or note_render_required
             if evidence is not None:
                 furniture_evidence.append(evidence)
                 source = source_records[0]
@@ -5509,6 +6793,13 @@ def _validate_extreme_margin_v2_exact_crop_proof(value: Any) -> dict[str, Any]:
         raise _error("extreme-margin V2 exact crop pixel denominator drifted")
     _validate_extreme_margin_render_binding(value["render_binding"], source_line)
     return canonical_clone_v1(value)
+
+
+def _validate_printed_note_reference_crop_proof(value: Any) -> dict[str, Any]:
+    proof = _validate_extreme_margin_v2_exact_crop_proof(value)
+    if not _printed_note_reference_crop_is_neutral_ink(proof):
+        raise _error("printed note-reference neutral-ink crop proof drifted")
+    return proof
 
 
 def _validate_extreme_margin_v2_component_proof(
@@ -6096,6 +7387,893 @@ def _validate_extreme_margin_nonnumeric_decoration_axis_v3(
         raise _error("nonnumeric margin-decoration evidence repeats one source line")
 
 
+def _validate_printed_note_reference_furniture_evidence_axis_v3(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    topology_candidates_id: str | None,
+) -> set[str]:
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
+    evidence_ids = []
+    sample_ids = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _PRINTED_NOTE_REFERENCE_FURNITURE_V3_FIELDS
+            or evidence.get("status") != _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS
+            or type(evidence.get("evidence_id")) is not str
+            or type(evidence.get("snapshot_id")) is not str
+            or not evidence["snapshot_id"].startswith("ffdesv1:selected:")
+            or type(evidence.get("document_pages_sha256")) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", evidence["document_pages_sha256"])
+            or type(evidence.get("page_sequence")) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence.get("sample_id")) is not str
+            or not evidence["sample_id"]
+            or evidence.get("topology_candidates_id") != topology_candidates_id
+        ):
+            raise _error("authenticated printed note-reference furniture evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material):
+            raise _error("authenticated printed note-reference furniture identity drifted")
+        cluster = evidence["original_cluster"]
+        source = evidence["source_record"]
+        if (
+            type(cluster) is not dict
+            or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+            or cluster.get("page_sequence") != evidence["page_sequence"]
+            or cluster.get("sample_ids") != [evidence["sample_id"]]
+            or cluster.get("label_lane_status") != _LABELED_LABEL_LANE_STATUS
+            or not cluster.get("same_row_label_evidence")
+            or type(source) is not dict
+        ):
+            raise _error("printed note-reference original labeled singleton cluster drifted")
+        _validate_numeric_sample_record(source)
+        if (
+            source["sample_id"] != evidence["sample_id"]
+            or source["page_sequence"] != evidence["page_sequence"]
+            or source["parsed_token"]["classification"] != "SIGNED_NUMBER"
+            or source["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or source["owner_id"] != cluster["cluster_id"]
+        ):
+            raise _error("printed note-reference original numeric owner drifted")
+        cluster_material = canonical_clone_v1(cluster)
+        cluster_id = cluster_material.pop("cluster_id", None)
+        if cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material):
+            raise _error("printed note-reference original cluster identity drifted")
+        _validate_inspected_label_band(cluster, {evidence["sample_id"]: source})
+        if (
+            cluster["inspected_label_band"]["document_pages_sha256"]
+            != evidence["document_pages_sha256"]
+            or cluster["inspected_label_band"]["page_sequence"] != evidence["page_sequence"]
+        ):
+            raise _error("printed note-reference cluster document binding drifted")
+
+        geometry = evidence["geometry"]
+        grid = grid_by_page.get(evidence["page_sequence"])
+        bbox = source["bbox"]
+        if (
+            type(geometry) is not dict
+            or set(geometry) != _PRINTED_NOTE_REFERENCE_GEOMETRY_V3_FIELDS
+            or type(grid) is not dict
+            or len(grid["column_centers"]) < 2
+            or type(geometry["body_text_scale"]) is not float
+            or not math.isfinite(geometry["body_text_scale"])
+            or geometry["body_text_scale"] <= 0
+            or geometry["candidate_bbox"] != bbox
+            or geometry["candidate_center_twice"] != bbox[0] + bbox[2]
+            or type(geometry["candidate_note_value"]) is not int
+            or not 1 <= geometry["candidate_note_value"] <= 999
+            or type(geometry["page_width"]) is not int
+            or geometry["page_width"] <= 0
+            or bbox[2] > geometry["page_width"]
+            or type(geometry["lane_tolerance"]) is not float
+            or not math.isfinite(geometry["lane_tolerance"])
+            or geometry["lane_tolerance"] <= 0
+            or type(geometry["lane_centers_quads"]) is not list
+            or any(not float(center * 4).is_integer() for center in grid["column_centers"])
+            or geometry["lane_centers_quads"]
+            != [int(center * 4) for center in grid["column_centers"]]
+            or geometry["first_financial_lane_left_boundary"]
+            != math.floor(grid["column_centers"][0] - geometry["lane_tolerance"])
+            or bbox[2] > geometry["first_financial_lane_left_boundary"]
+            or source["column_ordinal"]
+            != min(
+                range(len(grid["column_centers"])),
+                key=lambda index: abs(
+                    geometry["candidate_center_twice"] - geometry["lane_centers_quads"][index] // 2
+                ),
+            )
+            or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
+            or abs(
+                geometry["candidate_center_twice"] / 2
+                - grid["column_centers"][source["column_ordinal"]]
+            )
+            <= geometry["lane_tolerance"]
+            or type(geometry["qualifying_note_reference_row_count"]) is not int
+            or geometry["qualifying_note_reference_row_count"] < 3
+        ):
+            raise _error("printed note-reference geometry or column exclusion drifted")
+
+        candidate_crop = _validate_printed_note_reference_crop_proof(
+            evidence["candidate_crop_proof"]
+        )
+        candidate_line = candidate_crop["source_line_record"]
+        candidate_value = _printed_note_reference_exact_integer_v3(
+            {
+                "numeric_recognition": {"raw_prediction": candidate_line["numeric_raw_prediction"]},
+                "vietocr_text": candidate_line["vietocr_text"],
+            }
+        )
+        if (
+            candidate_value != geometry["candidate_note_value"]
+            or candidate_line["sample_id"] != source["sample_id"]
+            or candidate_line["bbox"] != source["bbox"]
+            or candidate_line["line_ordinal"] != source["line_ordinal"]
+            or candidate_line["crop_ref"] != source["crop_ref"]
+            or candidate_line["numeric_raw_prediction"] != source["raw_prediction"]
+            or candidate_line["numeric_reader_score"] != source["reader_score"]
+            or candidate_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or candidate_crop["render_binding"]["render_ref"]["pixel_width"]
+            != geometry["page_width"]
+        ):
+            raise _error("printed note-reference candidate source or pixel binding drifted")
+
+        header = evidence["header_proof"]
+        header_axis = header.get("source_line_axis") if type(header) is dict else None
+        header_crops = header.get("crop_proofs") if type(header) is dict else None
+        if (
+            type(header) is not dict
+            or set(header) != _PRINTED_NOTE_REFERENCE_HEADER_FIELDS
+            or header["status"] != _PRINTED_NOTE_REFERENCE_HEADER_STATUS
+            or header["normalized_surface"] != "thuyet minh"
+            or type(header_axis) is not list
+            or len(header_axis) not in {1, 2}
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                for line in header_axis
+            )
+            or header["source_line_axis_sha256"] != canonical_json_sha256_v1(header_axis)
+            or type(header_crops) is not list
+            or len(header_crops) != len(header_axis)
+            or header["header_bbox"] != geometry["header_bbox"]
+            or header["header_bbox"]
+            != [
+                min(line["bbox"][0] for line in header_axis),
+                min(line["bbox"][1] for line in header_axis),
+                max(line["bbox"][2] for line in header_axis),
+                max(line["bbox"][3] for line in header_axis),
+            ]
+            or bbox[0] < header["header_bbox"][0]
+            or bbox[2] > header["header_bbox"][2]
+            or bbox[1] < header["header_bbox"][3]
+            or header["header_bbox"][2] > geometry["first_financial_lane_left_boundary"]
+        ):
+            raise _error("printed note-reference exact header proof drifted")
+        normalized_header_channels = [
+            (
+                normalize_vietnamese_anchor_v1(line["vietocr_text"]),
+                normalize_vietnamese_anchor_v1(line["numeric_raw_prediction"]),
+            )
+            for line in header_axis
+        ]
+        if normalized_header_channels not in [
+            [("thuyet minh", "thuyet minh")],
+            [("thuyet", "thuyet"), ("minh", "minh")],
+        ]:
+            raise _error("printed note-reference header text is not exact")
+        validated_header_crops = [
+            _validate_printed_note_reference_crop_proof(proof) for proof in header_crops
+        ]
+        if any(
+            not same_typed_json_v1(proof["source_line_record"], line)
+            or proof["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or proof["render_binding"]["render_id"] != candidate_crop["render_binding"]["render_id"]
+            or proof["render_binding"]["document_ordinal"]
+            != candidate_crop["render_binding"]["document_ordinal"]
+            or not same_typed_json_v1(
+                proof["render_binding"]["render_ref"],
+                candidate_crop["render_binding"]["render_ref"],
+            )
+            for proof, line in zip(validated_header_crops, header_axis, strict=True)
+        ):
+            raise _error("printed note-reference header pixels or render binding drifted")
+
+        note_axis = evidence["note_reference_axis"]
+        if (
+            type(note_axis) is not list
+            or len(note_axis) != geometry["qualifying_note_reference_row_count"]
+            or note_axis
+            != sorted(
+                note_axis,
+                key=lambda row: (
+                    row.get("source_line_record", {}).get("line_ordinal", -1),
+                    row.get("note_value", -1),
+                ),
+            )
+        ):
+            raise _error("printed note-reference complete row axis drifted")
+        note_values = []
+        note_sample_ids = []
+        candidate_rows = []
+        all_financial_sample_ids = []
+        horizontal_tolerance = max(
+            geometry["body_text_scale"],
+            (header["header_bbox"][2] - header["header_bbox"][0]) / 4,
+        )
+        for note_row in note_axis:
+            note_line = note_row.get("source_line_record") if type(note_row) is dict else None
+            financial_axis = note_row.get("financial_line_axis") if type(note_row) is dict else None
+            label_axis = note_row.get("label_line_axis") if type(note_row) is dict else None
+            if (
+                type(note_row) is not dict
+                or set(note_row) != _PRINTED_NOTE_REFERENCE_AXIS_V3_FIELDS
+                or type(note_line) is not dict
+                or type(note_row["note_value"]) is not int
+                or not same_typed_json_v1(
+                    _validate_extreme_margin_line_record(note_line), note_line
+                )
+                or _printed_note_reference_exact_integer_v3(
+                    {
+                        "numeric_recognition": {
+                            "raw_prediction": note_line["numeric_raw_prediction"]
+                        },
+                        "vietocr_text": note_line["vietocr_text"],
+                    }
+                )
+                != note_row["note_value"]
+                or note_line["bbox"][0] < header["header_bbox"][0]
+                or note_line["bbox"][2] > header["header_bbox"][2]
+                or note_line["bbox"][1] < header["header_bbox"][3]
+                or note_line["bbox"][2] > geometry["first_financial_lane_left_boundary"]
+                or 2 * (note_line["bbox"][2] - note_line["bbox"][0])
+                > header["header_bbox"][2] - header["header_bbox"][0]
+                or abs(
+                    note_line["bbox"][0] + note_line["bbox"][2] - geometry["candidate_center_twice"]
+                )
+                > 2 * horizontal_tolerance
+                or type(financial_axis) is not list
+                or len(financial_axis) != len(grid["column_centers"])
+                or type(label_axis) is not list
+                or not label_axis
+            ):
+                raise _error("printed note-reference row geometry or source drifted")
+            note_crop = _validate_printed_note_reference_crop_proof(note_row["note_crop_proof"])
+            if (
+                not same_typed_json_v1(note_crop["source_line_record"], note_line)
+                or note_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+                or note_crop["render_binding"]["render_id"]
+                != candidate_crop["render_binding"]["render_id"]
+                or note_crop["render_binding"]["document_ordinal"]
+                != candidate_crop["render_binding"]["document_ordinal"]
+                or not same_typed_json_v1(
+                    note_crop["render_binding"]["render_ref"],
+                    candidate_crop["render_binding"]["render_ref"],
+                )
+            ):
+                raise _error("printed note-reference peer pixel binding drifted")
+            for column_ordinal, item in enumerate(financial_axis):
+                line = item.get("source_line_record") if type(item) is dict else None
+                parsed = (
+                    row_v1.parse_visible_financial_numeric_token_v1(
+                        line.get("numeric_raw_prediction", "")
+                    )
+                    if type(line) is dict
+                    else {"classification": None}
+                )
+                if (
+                    type(item) is not dict
+                    or set(item) != _PRINTED_NOTE_REFERENCE_FINANCIAL_LINE_FIELDS
+                    or item["column_ordinal"] != column_ordinal
+                    or type(line) is not dict
+                    or not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                    or parsed["classification"]
+                    not in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+                    or not _printed_note_reference_same_row_v3(line, note_line)
+                    or line["bbox"][0] < geometry["first_financial_lane_left_boundary"]
+                    or line["bbox"][0] <= note_line["bbox"][2]
+                    or abs(
+                        (line["bbox"][0] + line["bbox"][2]) / 2
+                        - grid["column_centers"][column_ordinal]
+                    )
+                    > geometry["lane_tolerance"]
+                ):
+                    raise _error("printed note-reference complete financial lane axis drifted")
+                all_financial_sample_ids.append(line["sample_id"])
+            for line in label_axis:
+                if (
+                    not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                    or not _extreme_margin_peer_surfaces_are_nonnumeric(line)
+                    or not _printed_note_reference_same_row_v3(line, note_line)
+                    or line["bbox"][2] > note_line["bbox"][0]
+                ):
+                    raise _error("printed note-reference same-row label axis drifted")
+            note_values.append(note_row["note_value"])
+            note_sample_ids.append(note_line["sample_id"])
+            if note_line["sample_id"] == evidence["sample_id"]:
+                candidate_rows.append(note_row)
+        if (
+            len(note_values) != len(set(note_values))
+            or len(note_sample_ids) != len(set(note_sample_ids))
+            or len(all_financial_sample_ids) != len(set(all_financial_sample_ids))
+            or len(candidate_rows) != 1
+            or geometry["candidate_note_value"] - 1 not in note_values
+            or geometry["candidate_note_value"] + 1 not in note_values
+            or not any(
+                row["source_line_record"]["line_ordinal"] < source["line_ordinal"]
+                for row in note_axis
+            )
+            or not any(
+                row["source_line_record"]["line_ordinal"] > source["line_ordinal"]
+                for row in note_axis
+            )
+            or not same_typed_json_v1(
+                candidate_rows[0]["note_crop_proof"], evidence["candidate_crop_proof"]
+            )
+        ):
+            raise _error("printed note-reference peer uniqueness or candidate binding drifted")
+
+        semantic = evidence["semantic_row_binding"]
+        semantic_source = semantic.get("source_record") if type(semantic) is dict else None
+        label_source_axis = (
+            semantic.get("label_source_line_axis") if type(semantic) is dict else None
+        )
+        matching_axis_row = (
+            row_by_occurrence.get(semantic.get("occurrence_id")) if type(semantic) is dict else None
+        )
+        if (
+            type(semantic) is not dict
+            or set(semantic) != _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_V3_FIELDS
+            or semantic["status"] != _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_STATUS
+            or semantic["row_axis_id"] != axis["row_axis_id"]
+            or type(semantic["occurrence_id"]) is not str
+            or type(semantic["role"]) is not str
+            or type(semantic_source) is not dict
+            or type(matching_axis_row) is not dict
+            or not same_typed_json_v1(semantic_source, matching_axis_row)
+            or semantic_source.get("role") != semantic["role"]
+            or semantic_source.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or semantic_source.get("missing_column_ordinals") != []
+            or semantic_source.get("label_match", {}).get("match_kind")
+            not in {
+                "EXACT_ACCENTLESS_ALIAS",
+                "EXACT_ACCENTLESS_ALIAS_AFTER_ENUMERATION_PREFIX",
+            }
+            or type(label_source_axis) is not list
+            or not label_source_axis
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                for line in label_source_axis
+            )
+            or semantic["label_source_line_axis_sha256"]
+            != canonical_json_sha256_v1(label_source_axis)
+            or normalize_vietnamese_anchor_v1(
+                " ".join(line["vietocr_text"] for line in label_source_axis)
+            )
+            != semantic_source["label_match"].get("normalized_surface")
+            or any(line["bbox"][2] >= bbox[0] for line in label_source_axis)
+        ):
+            raise _error("printed note-reference exact semantic row binding drifted")
+        same_row_semantic_labels = [
+            {
+                "bbox": canonical_clone_v1(line["bbox"]),
+                "line_ordinal": line["line_ordinal"],
+                "numeric_raw_prediction": line["numeric_raw_prediction"],
+                "vietocr_text": line["vietocr_text"],
+            }
+            for line in label_source_axis
+            if _printed_note_reference_same_row_v3(line, candidate_line)
+        ]
+        candidate_financial_records = [
+            item["source_line_record"] for item in candidate_rows[0]["financial_line_axis"]
+        ]
+        semantic_value_records = []
+        for value in sorted(semantic_source["values"], key=lambda item: item["column_ordinal"]):
+            matching = [
+                line
+                for line in candidate_financial_records
+                if line["sample_id"] == value["sample_id"]
+                and line["bbox"] == value["bbox"]
+                and line["line_ordinal"] == value["line_ordinal"]
+                and line["crop_ref"] == value["crop_ref"]
+                and line["numeric_raw_prediction"] == value["raw_prediction"]
+                and line["numeric_reader_score"] == value["reader_score"]
+            ]
+            if len(matching) != 1:
+                semantic_value_records = []
+                break
+            semantic_value_records.append(matching[0])
+        if (
+            same_row_semantic_labels != cluster["same_row_label_evidence"]
+            or semantic["candidate_same_row_label_axis_sha256"]
+            != canonical_json_sha256_v1(same_row_semantic_labels)
+            or semantic_value_records != candidate_financial_records
+            or semantic["candidate_financial_line_axis_sha256"]
+            != canonical_json_sha256_v1(candidate_financial_records)
+        ):
+            raise _error("printed note-reference label fragment or financial row binding drifted")
+
+        expected_final = canonical_clone_v1(source)
+        expected_final["owner_kind"] = _EXTREME_MARGIN_FURNITURE_OWNER_KIND
+        expected_final["owner_id"] = evidence_id
+        if not same_typed_json_v1(universe_by_sample.get(evidence["sample_id"]), expected_final):
+            raise _error("printed note-reference furniture universe owner drifted")
+        evidence_ids.append(evidence_id)
+        sample_ids.append(evidence["sample_id"])
+    if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
+        raise _error("authenticated printed note-reference furniture ownership repeats")
+    return set(sample_ids)
+
+
+def _validate_printed_note_reference_furniture_evidence_axis_v4(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    topology_candidates_id: str | None,
+) -> set[str]:
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
+    evidence_ids = []
+    sample_ids = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _PRINTED_NOTE_REFERENCE_FURNITURE_V4_FIELDS
+            or evidence.get("status") != _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+            or type(evidence.get("evidence_id")) is not str
+            or type(evidence.get("snapshot_id")) is not str
+            or not evidence["snapshot_id"].startswith("ffdesv1:selected:")
+            or type(evidence.get("document_pages_sha256")) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", evidence["document_pages_sha256"])
+            or type(evidence.get("page_sequence")) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence.get("sample_id")) is not str
+            or not evidence["sample_id"]
+            or evidence.get("topology_candidates_id") != topology_candidates_id
+        ):
+            raise _error("authenticated printed note-reference furniture evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != "aforav2:printed-note-reference-v4:" + canonical_json_sha256_v1(material):
+            raise _error("authenticated printed note-reference furniture identity drifted")
+        cluster = evidence["original_cluster"]
+        source = evidence["source_record"]
+        if (
+            type(cluster) is not dict
+            or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+            or cluster.get("page_sequence") != evidence["page_sequence"]
+            or cluster.get("sample_ids") != [evidence["sample_id"]]
+            or cluster.get("label_lane_status") != _LABELED_LABEL_LANE_STATUS
+            or not cluster.get("same_row_label_evidence")
+            or type(source) is not dict
+        ):
+            raise _error("printed note-reference original labeled singleton cluster drifted")
+        _validate_numeric_sample_record(source)
+        if (
+            source["sample_id"] != evidence["sample_id"]
+            or source["page_sequence"] != evidence["page_sequence"]
+            or source["parsed_token"]["classification"] != "SIGNED_NUMBER"
+            or source["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or source["owner_id"] != cluster["cluster_id"]
+        ):
+            raise _error("printed note-reference original numeric owner drifted")
+        cluster_material = canonical_clone_v1(cluster)
+        cluster_id = cluster_material.pop("cluster_id", None)
+        if cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material):
+            raise _error("printed note-reference original cluster identity drifted")
+        _validate_inspected_label_band(cluster, {evidence["sample_id"]: source})
+        if (
+            cluster["inspected_label_band"]["document_pages_sha256"]
+            != evidence["document_pages_sha256"]
+            or cluster["inspected_label_band"]["page_sequence"] != evidence["page_sequence"]
+        ):
+            raise _error("printed note-reference cluster document binding drifted")
+
+        geometry = evidence["geometry"]
+        grid = grid_by_page.get(evidence["page_sequence"])
+        bbox = source["bbox"]
+        if (
+            type(geometry) is not dict
+            or set(geometry) != _PRINTED_NOTE_REFERENCE_GEOMETRY_V4_FIELDS
+            or type(grid) is not dict
+            or len(grid["column_centers"]) < 2
+            or type(geometry["body_text_scale"]) is not float
+            or not math.isfinite(geometry["body_text_scale"])
+            or geometry["body_text_scale"] <= 0
+            or geometry["candidate_bbox"] != bbox
+            or geometry["candidate_center_twice"] != bbox[0] + bbox[2]
+            or type(geometry["candidate_note_reference"]) is not str
+            or _printed_note_reference_exact_surface(
+                {
+                    "numeric_recognition": {"raw_prediction": geometry["candidate_note_reference"]},
+                    "vietocr_text": geometry["candidate_note_reference"],
+                }
+            )
+            != geometry["candidate_note_reference"]
+            or type(geometry["page_width"]) is not int
+            or geometry["page_width"] <= 0
+            or bbox[2] > geometry["page_width"]
+            or type(geometry["lane_tolerance"]) is not float
+            or not math.isfinite(geometry["lane_tolerance"])
+            or geometry["lane_tolerance"] <= 0
+            or type(geometry["lane_centers_quads"]) is not list
+            or any(not float(center * 4).is_integer() for center in grid["column_centers"])
+            or geometry["lane_centers_quads"]
+            != [int(center * 4) for center in grid["column_centers"]]
+            or geometry["first_financial_lane_left_boundary"]
+            != math.floor(grid["column_centers"][0] - geometry["lane_tolerance"])
+            or bbox[2] > geometry["first_financial_lane_left_boundary"]
+            or source["column_ordinal"]
+            != min(
+                range(len(grid["column_centers"])),
+                key=lambda index: abs(
+                    geometry["candidate_center_twice"] - geometry["lane_centers_quads"][index] // 2
+                ),
+            )
+            or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
+            or abs(
+                geometry["candidate_center_twice"] / 2
+                - grid["column_centers"][source["column_ordinal"]]
+            )
+            <= geometry["lane_tolerance"]
+            or type(geometry["qualifying_note_reference_row_count"]) is not int
+            or geometry["qualifying_note_reference_row_count"] < 3
+        ):
+            raise _error("printed note-reference geometry or column exclusion drifted")
+
+        candidate_crop = _validate_printed_note_reference_crop_proof(
+            evidence["candidate_crop_proof"]
+        )
+        candidate_line = candidate_crop["source_line_record"]
+        candidate_reference = _printed_note_reference_exact_surface(
+            {
+                "numeric_recognition": {"raw_prediction": candidate_line["numeric_raw_prediction"]},
+                "vietocr_text": candidate_line["vietocr_text"],
+            }
+        )
+        if (
+            candidate_reference != geometry["candidate_note_reference"]
+            or candidate_line["sample_id"] != source["sample_id"]
+            or candidate_line["bbox"] != source["bbox"]
+            or candidate_line["line_ordinal"] != source["line_ordinal"]
+            or candidate_line["crop_ref"] != source["crop_ref"]
+            or candidate_line["numeric_raw_prediction"] != source["raw_prediction"]
+            or candidate_line["numeric_reader_score"] != source["reader_score"]
+            or candidate_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or candidate_crop["render_binding"]["render_ref"]["pixel_width"]
+            != geometry["page_width"]
+        ):
+            raise _error("printed note-reference candidate source or pixel binding drifted")
+
+        header = evidence["header_proof"]
+        header_axis = header.get("source_line_axis") if type(header) is dict else None
+        header_crops = header.get("crop_proofs") if type(header) is dict else None
+        if (
+            type(header) is not dict
+            or set(header) != _PRINTED_NOTE_REFERENCE_HEADER_FIELDS
+            or header["status"] != _PRINTED_NOTE_REFERENCE_HEADER_STATUS
+            or header["normalized_surface"] != "thuyet minh"
+            or type(header_axis) is not list
+            or len(header_axis) not in {1, 2}
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                for line in header_axis
+            )
+            or header["source_line_axis_sha256"] != canonical_json_sha256_v1(header_axis)
+            or type(header_crops) is not list
+            or len(header_crops) != len(header_axis)
+            or header["header_bbox"] != geometry["header_bbox"]
+            or header["header_bbox"]
+            != [
+                min(line["bbox"][0] for line in header_axis),
+                min(line["bbox"][1] for line in header_axis),
+                max(line["bbox"][2] for line in header_axis),
+                max(line["bbox"][3] for line in header_axis),
+            ]
+            or bbox[0] < header["header_bbox"][0]
+            or bbox[2] > header["header_bbox"][2]
+            or bbox[1] < header["header_bbox"][3]
+            or header["header_bbox"][2] > geometry["first_financial_lane_left_boundary"]
+        ):
+            raise _error("printed note-reference exact header proof drifted")
+        normalized_header_channels = [
+            (
+                normalize_vietnamese_anchor_v1(line["vietocr_text"]),
+                normalize_vietnamese_anchor_v1(line["numeric_raw_prediction"]),
+            )
+            for line in header_axis
+        ]
+        if normalized_header_channels not in [
+            [("thuyet minh", "thuyet minh")],
+            [("thuyet", "thuyet"), ("minh", "minh")],
+        ]:
+            raise _error("printed note-reference header text is not exact")
+        validated_header_crops = [
+            _validate_printed_note_reference_crop_proof(proof) for proof in header_crops
+        ]
+        if any(
+            not same_typed_json_v1(proof["source_line_record"], line)
+            or proof["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or proof["render_binding"]["render_id"] != candidate_crop["render_binding"]["render_id"]
+            or proof["render_binding"]["document_ordinal"]
+            != candidate_crop["render_binding"]["document_ordinal"]
+            or not same_typed_json_v1(
+                proof["render_binding"]["render_ref"],
+                candidate_crop["render_binding"]["render_ref"],
+            )
+            for proof, line in zip(validated_header_crops, header_axis, strict=True)
+        ):
+            raise _error("printed note-reference header pixels or render binding drifted")
+
+        note_axis = evidence["note_reference_axis"]
+        if (
+            type(note_axis) is not list
+            or len(note_axis) != geometry["qualifying_note_reference_row_count"]
+            or note_axis
+            != sorted(
+                note_axis,
+                key=lambda row: (
+                    row.get("source_line_record", {}).get("line_ordinal", -1),
+                    row.get("note_reference", ""),
+                ),
+            )
+        ):
+            raise _error("printed note-reference complete row axis drifted")
+        note_references = []
+        note_sample_ids = []
+        candidate_rows = []
+        all_financial_sample_ids = []
+        horizontal_tolerance = max(
+            geometry["body_text_scale"],
+            (header["header_bbox"][2] - header["header_bbox"][0]) / 4,
+        )
+        for note_row in note_axis:
+            note_line = note_row.get("source_line_record") if type(note_row) is dict else None
+            financial_axis = note_row.get("financial_line_axis") if type(note_row) is dict else None
+            label_axis = note_row.get("label_line_axis") if type(note_row) is dict else None
+            if (
+                type(note_row) is not dict
+                or set(note_row) != _PRINTED_NOTE_REFERENCE_AXIS_V4_FIELDS
+                or type(note_line) is not dict
+                or type(note_row["note_reference"]) is not str
+                or not same_typed_json_v1(
+                    _validate_extreme_margin_line_record(note_line), note_line
+                )
+                or _printed_note_reference_exact_surface(
+                    {
+                        "numeric_recognition": {
+                            "raw_prediction": note_line["numeric_raw_prediction"]
+                        },
+                        "vietocr_text": note_line["vietocr_text"],
+                    }
+                )
+                != note_row["note_reference"]
+                or note_line["bbox"][0] < header["header_bbox"][0]
+                or note_line["bbox"][2] > header["header_bbox"][2]
+                or note_line["bbox"][1] < header["header_bbox"][3]
+                or note_line["bbox"][2] > geometry["first_financial_lane_left_boundary"]
+                or note_line["bbox"][2] - note_line["bbox"][0]
+                > header["header_bbox"][2] - header["header_bbox"][0]
+                or abs(
+                    note_line["bbox"][0] + note_line["bbox"][2] - geometry["candidate_center_twice"]
+                )
+                > 2 * horizontal_tolerance
+                or type(financial_axis) is not list
+                or len(financial_axis) != len(grid["column_centers"])
+                or type(label_axis) is not list
+                or not label_axis
+            ):
+                raise _error("printed note-reference row geometry or source drifted")
+            note_crop = _validate_printed_note_reference_crop_proof(note_row["note_crop_proof"])
+            if (
+                not same_typed_json_v1(note_crop["source_line_record"], note_line)
+                or note_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+                or note_crop["render_binding"]["render_id"]
+                != candidate_crop["render_binding"]["render_id"]
+                or note_crop["render_binding"]["document_ordinal"]
+                != candidate_crop["render_binding"]["document_ordinal"]
+                or not same_typed_json_v1(
+                    note_crop["render_binding"]["render_ref"],
+                    candidate_crop["render_binding"]["render_ref"],
+                )
+            ):
+                raise _error("printed note-reference peer pixel binding drifted")
+            for column_ordinal, item in enumerate(financial_axis):
+                line = item.get("source_line_record") if type(item) is dict else None
+                parsed = (
+                    row_v1.parse_visible_financial_numeric_token_v1(
+                        line.get("numeric_raw_prediction", "")
+                    )
+                    if type(line) is dict
+                    else {"classification": None}
+                )
+                if (
+                    type(item) is not dict
+                    or set(item) != _PRINTED_NOTE_REFERENCE_FINANCIAL_LINE_FIELDS
+                    or item["column_ordinal"] != column_ordinal
+                    or type(line) is not dict
+                    or not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                    or parsed["classification"]
+                    not in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+                    or not _printed_note_reference_same_row(
+                        line,
+                        note_line,
+                        body_text_scale=geometry["body_text_scale"],
+                    )
+                    or (line["bbox"][0] + line["bbox"][2]) / 2
+                    < geometry["first_financial_lane_left_boundary"]
+                    or line["bbox"][0] <= note_line["bbox"][2]
+                    or abs(
+                        (line["bbox"][0] + line["bbox"][2]) / 2
+                        - grid["column_centers"][column_ordinal]
+                    )
+                    > geometry["lane_tolerance"]
+                ):
+                    raise _error("printed note-reference complete financial lane axis drifted")
+                all_financial_sample_ids.append(line["sample_id"])
+            for line in label_axis:
+                if (
+                    not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                    or not _extreme_margin_peer_surfaces_are_nonnumeric(line)
+                    or not _printed_note_reference_same_row(
+                        line,
+                        note_line,
+                        body_text_scale=geometry["body_text_scale"],
+                    )
+                    or line["bbox"][2] > note_line["bbox"][0]
+                ):
+                    raise _error("printed note-reference same-row label axis drifted")
+            note_references.append(note_row["note_reference"])
+            note_sample_ids.append(note_line["sample_id"])
+            if note_line["sample_id"] == evidence["sample_id"]:
+                candidate_rows.append(note_row)
+        if (
+            len(note_references) != len(set(note_references))
+            or len(note_sample_ids) != len(set(note_sample_ids))
+            or len(all_financial_sample_ids) != len(set(all_financial_sample_ids))
+            or len(candidate_rows) != 1
+            or not _printed_note_reference_has_local_peer(
+                geometry["candidate_note_reference"], note_references
+            )
+            or not any(
+                row["source_line_record"]["line_ordinal"] < source["line_ordinal"]
+                for row in note_axis
+            )
+            or not any(
+                row["source_line_record"]["line_ordinal"] > source["line_ordinal"]
+                for row in note_axis
+            )
+            or not same_typed_json_v1(
+                candidate_rows[0]["note_crop_proof"], evidence["candidate_crop_proof"]
+            )
+        ):
+            raise _error("printed note-reference peer uniqueness or candidate binding drifted")
+
+        semantic = evidence["semantic_row_binding"]
+        semantic_source = semantic.get("source_record") if type(semantic) is dict else None
+        label_source_axis = (
+            semantic.get("label_source_line_axis") if type(semantic) is dict else None
+        )
+        matching_axis_row = (
+            row_by_occurrence.get(semantic.get("occurrence_id")) if type(semantic) is dict else None
+        )
+        binding_kind = semantic.get("binding_kind") if type(semantic) is dict else None
+        selected_parent = axis.get("topology_region", {}).get("parent_match")
+        role_binding_valid = (
+            binding_kind == _PRINTED_NOTE_REFERENCE_ROLE_BINDING_KIND
+            and semantic.get("status") == _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_STATUS
+            and type(matching_axis_row) is dict
+            and same_typed_json_v1(semantic_source, matching_axis_row)
+            and semantic_source.get("role") == semantic.get("role")
+            and semantic_source.get("status") == "VISIBLE_VALUE_LANES_BOUND"
+            and semantic_source.get("missing_column_ordinals") == []
+            and semantic_source.get("label_match", {}).get("match_kind")
+            in {
+                "EXACT_ACCENTLESS_ALIAS",
+                "EXACT_ACCENTLESS_ALIAS_AFTER_ENUMERATION_PREFIX",
+            }
+        )
+        parent_binding_valid = (
+            binding_kind == _PRINTED_NOTE_REFERENCE_PARENT_BINDING_KIND
+            and semantic.get("status") == _PRINTED_NOTE_REFERENCE_PARENT_STATUS
+            and semantic.get("role") == "FAMILY_PARENT"
+            and type(selected_parent) is dict
+            and same_typed_json_v1(semantic_source, selected_parent)
+            and semantic.get("occurrence_id")
+            == "aforav2:parent-note-row:" + canonical_json_sha256_v1(selected_parent)
+            and axis.get("topology_region", {}).get("parent_resolution") == "EXPLICIT_PARENT"
+        )
+        if (
+            type(semantic) is not dict
+            or set(semantic) != _PRINTED_NOTE_REFERENCE_SEMANTIC_ROW_V4_FIELDS
+            or semantic["row_axis_id"] != axis["row_axis_id"]
+            or type(semantic["occurrence_id"]) is not str
+            or type(semantic["role"]) is not str
+            or type(semantic_source) is not dict
+            or not (role_binding_valid or parent_binding_valid)
+            or type(label_source_axis) is not list
+            or not label_source_axis
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                for line in label_source_axis
+            )
+            or semantic["label_source_line_axis_sha256"]
+            != canonical_json_sha256_v1(label_source_axis)
+            or normalize_vietnamese_anchor_v1(
+                " ".join(line["vietocr_text"] for line in label_source_axis)
+            )
+            != (
+                semantic_source["label_match"].get("normalized_surface")
+                if role_binding_valid
+                else semantic_source.get("normalized_surface")
+            )
+            or any(line["bbox"][2] >= bbox[0] for line in label_source_axis)
+        ):
+            raise _error("printed note-reference exact semantic row binding drifted")
+        candidate_label_ids = {line["sample_id"] for line in candidate_rows[0]["label_line_axis"]}
+        same_row_semantic_labels = [
+            {
+                "bbox": canonical_clone_v1(line["bbox"]),
+                "line_ordinal": line["line_ordinal"],
+                "numeric_raw_prediction": line["numeric_raw_prediction"],
+                "vietocr_text": line["vietocr_text"],
+            }
+            for line in label_source_axis
+            if line["sample_id"] in candidate_label_ids
+            and _printed_note_reference_same_row(
+                line,
+                candidate_line,
+                body_text_scale=geometry["body_text_scale"],
+            )
+        ]
+        candidate_financial_records = [
+            item["source_line_record"] for item in candidate_rows[0]["financial_line_axis"]
+        ]
+        semantic_value_records = candidate_financial_records if parent_binding_valid else []
+        if role_binding_valid:
+            for value in sorted(semantic_source["values"], key=lambda item: item["column_ordinal"]):
+                matching = [
+                    line
+                    for line in candidate_financial_records
+                    if line["sample_id"] == value["sample_id"]
+                    and line["bbox"] == value["bbox"]
+                    and line["line_ordinal"] == value["line_ordinal"]
+                    and line["crop_ref"] == value["crop_ref"]
+                    and line["numeric_raw_prediction"] == value["raw_prediction"]
+                    and line["numeric_reader_score"] == value["reader_score"]
+                ]
+                if len(matching) != 1:
+                    semantic_value_records = []
+                    break
+                semantic_value_records.append(matching[0])
+        if (
+            same_row_semantic_labels != cluster["same_row_label_evidence"]
+            or semantic["candidate_same_row_label_axis_sha256"]
+            != canonical_json_sha256_v1(same_row_semantic_labels)
+            or semantic_value_records != candidate_financial_records
+            or semantic["candidate_financial_line_axis_sha256"]
+            != canonical_json_sha256_v1(candidate_financial_records)
+        ):
+            raise _error("printed note-reference label fragment or financial row binding drifted")
+
+        expected_final = canonical_clone_v1(source)
+        expected_final["owner_kind"] = _EXTREME_MARGIN_FURNITURE_OWNER_KIND
+        expected_final["owner_id"] = evidence_id
+        if not same_typed_json_v1(universe_by_sample.get(evidence["sample_id"]), expected_final):
+            raise _error("printed note-reference furniture universe owner drifted")
+        evidence_ids.append(evidence_id)
+        sample_ids.append(evidence["sample_id"])
+    if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
+        raise _error("authenticated printed note-reference furniture ownership repeats")
+    return set(sample_ids)
+
+
 def _validate_extreme_margin_furniture_evidence_axis(
     evidence_axis: Any,
     *,
@@ -6116,13 +8294,25 @@ def _validate_extreme_margin_furniture_evidence_axis(
         for evidence in evidence_axis
         if type(evidence) is dict and evidence.get("status") == _EXTREME_MARGIN_FURNITURE_V2_STATUS
     ]
-    v3 = [
+    decoration_v3 = [
         evidence
         for evidence in evidence_axis
         if type(evidence) is dict
         and evidence.get("status") == _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
     ]
-    if len(v1) + len(v2) + len(v3) != len(evidence_axis):
+    note_v3 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict
+        and evidence.get("status") == _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS
+    ]
+    note_v4 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict
+        and evidence.get("status") == _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+    ]
+    if len(v1) + len(v2) + len(decoration_v3) + len(note_v3) + len(note_v4) != len(evidence_axis):
         raise _error("authenticated extreme-margin furniture evidence version drifted")
     v1_samples = _validate_extreme_margin_furniture_evidence_axis_v1(
         v1,
@@ -6137,17 +8327,35 @@ def _validate_extreme_margin_furniture_evidence_axis(
         topology_candidates_id=topology_candidates_id,
     )
     _validate_extreme_margin_nonnumeric_decoration_axis_v3(
-        v3,
+        decoration_v3,
         universe_by_sample=universe_by_sample,
         axis=axis,
         occurrence_by_id=occurrence_by_id,
         topology_candidates_id=topology_candidates_id,
     )
-    if v1_samples & v2_samples or len({item["evidence_id"] for item in evidence_axis}) != len(
-        evidence_axis
+    note_v3_samples = _validate_printed_note_reference_furniture_evidence_axis_v3(
+        note_v3,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    note_v4_samples = _validate_printed_note_reference_furniture_evidence_axis_v4(
+        note_v4,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    if (
+        v1_samples & v2_samples
+        or v1_samples & note_v3_samples
+        or v1_samples & note_v4_samples
+        or v2_samples & note_v3_samples
+        or v2_samples & note_v4_samples
+        or note_v3_samples & note_v4_samples
+        or len({item["evidence_id"] for item in evidence_axis}) != len(evidence_axis)
     ):
         raise _error("authenticated extreme-margin furniture cross-version ownership repeats")
-    return v1_samples | v2_samples
+    return v1_samples | v2_samples | note_v3_samples | note_v4_samples
 
 
 def _validate_numeric_sample_universe(
@@ -7557,21 +9765,75 @@ def _build(
             axis = _regenerate_v1_axis(axis)
     except total_v1.AccountingFamilyCoextensiveParentTotalV1Error as exc:
         raise _error("coextensive structural numeric source projection failed") from exc
-    (
-        numeric_sample_universe,
-        internal_unassigned_numeric_clusters,
-        authenticated_extreme_margin_furniture_evidence,
-        extreme_margin_render_reasons,
-    ) = _build_numeric_sample_universe(
+    original_axis = axis
+    projected_axis, printed_note_candidate_sample_ids = (
+        _project_authenticated_printed_note_reference_columns_v3(
+            pages=parsed_pages,
+            expanded_region=expanded,
+            matches=row_matches,
+            axis=original_axis,
+        )
+    )
+    projected_numeric_result = _build_numeric_sample_universe(
         parsed_pages,
         expanded,
         row_matches,
-        axis,
+        projected_axis,
         coextensive_evidence,
         topology_candidates_id=topology_candidates_id,
         selected_snapshot=selected_snapshot,
         render_snapshots=render_snapshots,
+        printed_note_candidate_sample_ids=printed_note_candidate_sample_ids,
     )
+    projected_furniture = projected_numeric_result[2]
+    authenticated_printed_note_sample_ids = {
+        evidence["sample_id"]
+        for evidence in projected_furniture
+        if evidence["status"]
+        in {
+            _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
+            _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
+        }
+    }
+    if (
+        printed_note_candidate_sample_ids
+        and authenticated_printed_note_sample_ids == printed_note_candidate_sample_ids
+    ):
+        axis = projected_axis
+        (
+            numeric_sample_universe,
+            internal_unassigned_numeric_clusters,
+            authenticated_extreme_margin_furniture_evidence,
+            extreme_margin_render_reasons,
+        ) = projected_numeric_result
+    elif printed_note_candidate_sample_ids:
+        axis = original_axis
+        (
+            numeric_sample_universe,
+            internal_unassigned_numeric_clusters,
+            authenticated_extreme_margin_furniture_evidence,
+            fallback_render_reasons,
+        ) = _build_numeric_sample_universe(
+            parsed_pages,
+            expanded,
+            row_matches,
+            original_axis,
+            coextensive_evidence,
+            topology_candidates_id=topology_candidates_id,
+            selected_snapshot=selected_snapshot,
+            render_snapshots=render_snapshots,
+        )
+        extreme_margin_render_reasons = list(
+            dict.fromkeys([*projected_numeric_result[3], *fallback_render_reasons])
+        )
+    else:
+        axis = original_axis
+        (
+            numeric_sample_universe,
+            internal_unassigned_numeric_clusters,
+            authenticated_extreme_margin_furniture_evidence,
+            extreme_margin_render_reasons,
+        ) = projected_numeric_result
     rows_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
     role_occurrences = [
         {
