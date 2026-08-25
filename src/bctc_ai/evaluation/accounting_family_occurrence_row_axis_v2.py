@@ -4078,6 +4078,33 @@ def _extreme_margin_v2_candidate_surface_is_nonnumeric(line: Mapping[str, Any]) 
     )
 
 
+def _extreme_margin_v2_candidate_surface_mode(line: Mapping[str, Any]) -> str | None:
+    if _extreme_margin_v2_candidate_surface_is_nonnumeric(line):
+        return "NONNUMERIC_COMPACT"
+    surface = line["vietocr_text"].strip()
+    compact = "".join(surface.split())
+    numeric_raw = line.get("numeric_raw_prediction")
+    if type(numeric_raw) is not str:
+        recognition = line.get("numeric_recognition")
+        numeric_raw = recognition.get("raw_prediction") if type(recognition) is dict else None
+    if type(numeric_raw) is not str:
+        return None
+    raw = numeric_raw.strip()
+    surface_token = row_v1.parse_visible_financial_numeric_token_v1(surface)
+    raw_token = row_v1.parse_visible_financial_numeric_token_v1(raw)
+    if (
+        re.fullmatch(r"[0-9]{2,4}", compact)
+        and surface_token["classification"] == "SIGNED_NUMBER"
+        and raw_token["classification"] == "SIGNED_NUMBER"
+        and raw_token["sign"] == 1
+        and raw_token["scale"] == 0
+        and 1 <= raw_token["coefficient"] <= 9
+        and surface_token["coefficient"] != raw_token["coefficient"]
+    ):
+        return "NUMERIC_SINGLE_DIGIT_ROTATED_STAMP"
+    return None
+
+
 def _extreme_margin_v2_band_axis(
     page: Mapping[str, Any], *, margin_boundary: int
 ) -> list[dict[str, Any]]:
@@ -4151,6 +4178,39 @@ def _extreme_margin_v2_component_qualifies(
     )
 
 
+def _extreme_margin_v2_numeric_stamp_component_qualifies(
+    component: Mapping[str, Any],
+    *,
+    margin_boundary: int,
+    target_bbox: Sequence[int],
+    body_text_scale: float,
+    candidate_ink_pixel_count: int,
+) -> bool:
+    bbox = component["bbox"]
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
+    target_height = target_bbox[3] - target_bbox[1]
+    return (
+        candidate_ink_pixel_count > 0
+        and bbox[0] >= margin_boundary
+        and min(bbox[2], target_bbox[2]) > max(bbox[0], target_bbox[0])
+        and min(bbox[3], target_bbox[3]) > max(bbox[1], target_bbox[1])
+        and bbox[1] <= target_bbox[1]
+        and bbox[3] >= target_bbox[3]
+        and height >= target_height
+        and height >= width
+        and target_height * 5 >= 7 * body_text_scale
+        and component["original_ink_pixel_count"] >= max(64, 2 * target_height)
+        and component["chromatic_original_ink_pixel_count"] * 4
+        >= component["original_ink_pixel_count"] * 3
+        and component["target_overlap_ink_pixel_count"] * 4 >= candidate_ink_pixel_count * 3
+        and component["clear_extent_above_center"] >= max(4, (target_height + 7) // 8)
+        and component["clear_extent_below_center"] >= max(4, (target_height + 7) // 8)
+        and component["above_center_original_ink_pixel_count"] >= max(8, target_height // 2)
+        and component["below_center_original_ink_pixel_count"] >= max(8, target_height // 2)
+    )
+
+
 def _authenticated_extreme_margin_v2_component_proof(
     *,
     image: Any,
@@ -4159,6 +4219,8 @@ def _authenticated_extreme_margin_v2_component_proof(
     candidate: Mapping[str, Any],
     margin_boundary: int,
     scale: float,
+    numeric_stamp_mode: bool = False,
+    candidate_ink_pixel_count: int = 0,
 ) -> dict[str, Any] | None:
     target_bbox = candidate["bbox"]
     target_height = target_bbox[3] - target_bbox[1]
@@ -4265,21 +4327,34 @@ def _authenticated_extreme_margin_v2_component_proof(
     minimum_side_ink_pixels = max(8, target_height // 2)
     minimum_target_overlap_ink_pixels = max(16, target_height // 4)
     minimum_vertical_extension_pixels = max(4, (target_height + 1) // 2)
-    qualifying = [
-        ordinal
-        for ordinal, component in enumerate(component_axis)
-        if _extreme_margin_v2_component_qualifies(
-            component,
-            margin_boundary=margin_boundary,
-            target_bbox=target_bbox,
-            minimum_component_height=minimum_component_height,
-            minimum_original_ink_pixels=minimum_original_ink_pixels,
-            minimum_side_extent_pixels=minimum_side_extent_pixels,
-            minimum_side_ink_pixels=minimum_side_ink_pixels,
-            minimum_target_overlap_ink_pixels=minimum_target_overlap_ink_pixels,
-            minimum_vertical_extension_pixels=minimum_vertical_extension_pixels,
-        )
-    ]
+    if numeric_stamp_mode:
+        qualifying = [
+            ordinal
+            for ordinal, component in enumerate(component_axis)
+            if _extreme_margin_v2_numeric_stamp_component_qualifies(
+                component,
+                margin_boundary=margin_boundary,
+                target_bbox=target_bbox,
+                body_text_scale=scale,
+                candidate_ink_pixel_count=candidate_ink_pixel_count,
+            )
+        ]
+    else:
+        qualifying = [
+            ordinal
+            for ordinal, component in enumerate(component_axis)
+            if _extreme_margin_v2_component_qualifies(
+                component,
+                margin_boundary=margin_boundary,
+                target_bbox=target_bbox,
+                minimum_component_height=minimum_component_height,
+                minimum_original_ink_pixels=minimum_original_ink_pixels,
+                minimum_side_extent_pixels=minimum_side_extent_pixels,
+                minimum_side_ink_pixels=minimum_side_ink_pixels,
+                minimum_target_overlap_ink_pixels=minimum_target_overlap_ink_pixels,
+                minimum_vertical_extension_pixels=minimum_vertical_extension_pixels,
+            )
+        ]
     if len(qualifying) != 1:
         return None
     return {
@@ -4339,15 +4414,21 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     ):
         return None, False
     candidate = ordered_numeric_lines[0]
-    if not _extreme_margin_v2_candidate_surface_is_nonnumeric(candidate):
+    candidate_surface_mode = _extreme_margin_v2_candidate_surface_mode(candidate)
+    if candidate_surface_mode is None:
         return None, False
+    numeric_stamp_mode = candidate_surface_mode == "NUMERIC_SINGLE_DIGIT_ROTATED_STAMP"
     center_quads = [center * 4 for center in centers]
     if any(not float(center).is_integer() for center in center_quads):
         return None, False
     margin_boundary = math.ceil(centers[-1] + lane_tolerance)
     bbox = candidate["bbox"]
     page_width = page["page_width"]
-    if bbox[0] < margin_boundary or bbox[2] > page_width:
+    if (
+        bbox[0] < margin_boundary
+        or bbox[2] > page_width
+        or (numeric_stamp_mode and bbox[0] < (page_width * 19) // 20)
+    ):
         return None, False
     full_page_label_band, full_page_label_evidence = _build_inspected_label_band(
         ordered_numeric_lines=ordered_numeric_lines,
@@ -4372,7 +4453,8 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
         line for line in margin_axis if line["sample_id"] == candidate["sample_id"]
     ]
     peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(margin_axis, candidate)
-    if len(candidate_records) != 1 or len(peer_ordinals) < 2:
+    minimum_peer_count = 3 if numeric_stamp_mode else 2
+    if len(candidate_records) != 1 or len(peer_ordinals) < minimum_peer_count:
         return None, False
     page_sequence = page["page_sequence"]
     if selected_snapshot is None or page_sequence not in render_by_page:
@@ -4391,6 +4473,11 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
         render_id=render["render_id"],
         line=candidate,
     )
+    if numeric_stamp_mode and (
+        candidate_crop["ink_pixel_count"] <= 0
+        or candidate_crop["chromatic_ink_pixel_count"] * 4 < candidate_crop["ink_pixel_count"] * 3
+    ):
+        return None, False
     component_proof = _authenticated_extreme_margin_v2_component_proof(
         image=image,
         render_record=render_record,
@@ -4398,6 +4485,8 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
         candidate=candidate,
         margin_boundary=margin_boundary,
         scale=scale,
+        numeric_stamp_mode=numeric_stamp_mode,
+        candidate_ink_pixel_count=candidate_crop["ink_pixel_count"],
     )
     if component_proof is None:
         return None, False
@@ -4418,7 +4507,7 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     qualifying_peer_ordinals = sorted(
         proof["source_line_record"]["line_ordinal"] for proof in peer_crops
     )
-    if len(qualifying_peer_ordinals) < 2:
+    if len(qualifying_peer_ordinals) < minimum_peer_count:
         return None, False
     document_pages_sha256 = canonical_json_sha256_v1(pages)
     maximum_label_right = (
@@ -5164,6 +5253,7 @@ def _validate_extreme_margin_v2_component_proof(
     *,
     geometry: Mapping[str, Any],
     candidate_crop: Mapping[str, Any],
+    numeric_stamp_mode: bool,
 ) -> None:
     component_axis = value.get("component_axis") if type(value) is dict else None
     render_binding = value.get("render_binding") if type(value) is dict else None
@@ -5273,21 +5363,34 @@ def _validate_extreme_margin_v2_component_proof(
             != max(0, target_bbox[1] - bbox[1]) + max(0, bbox[3] - target_bbox[3])
         ):
             raise _error("extreme-margin V2 connected component axis drifted")
-    qualifying = [
-        ordinal
-        for ordinal, component in enumerate(component_axis)
-        if _extreme_margin_v2_component_qualifies(
-            component,
-            margin_boundary=geometry["margin_boundary"],
-            target_bbox=target_bbox,
-            minimum_component_height=value["minimum_component_height"],
-            minimum_original_ink_pixels=value["minimum_original_ink_pixels"],
-            minimum_side_extent_pixels=value["minimum_side_extent_pixels"],
-            minimum_side_ink_pixels=value["minimum_side_ink_pixels"],
-            minimum_target_overlap_ink_pixels=value["minimum_target_overlap_ink_pixels"],
-            minimum_vertical_extension_pixels=value["minimum_vertical_extension_pixels"],
-        )
-    ]
+    if numeric_stamp_mode:
+        qualifying = [
+            ordinal
+            for ordinal, component in enumerate(component_axis)
+            if _extreme_margin_v2_numeric_stamp_component_qualifies(
+                component,
+                margin_boundary=geometry["margin_boundary"],
+                target_bbox=target_bbox,
+                body_text_scale=value["body_text_scale"],
+                candidate_ink_pixel_count=candidate_crop["ink_pixel_count"],
+            )
+        ]
+    else:
+        qualifying = [
+            ordinal
+            for ordinal, component in enumerate(component_axis)
+            if _extreme_margin_v2_component_qualifies(
+                component,
+                margin_boundary=geometry["margin_boundary"],
+                target_bbox=target_bbox,
+                minimum_component_height=value["minimum_component_height"],
+                minimum_original_ink_pixels=value["minimum_original_ink_pixels"],
+                minimum_side_extent_pixels=value["minimum_side_extent_pixels"],
+                minimum_side_ink_pixels=value["minimum_side_ink_pixels"],
+                minimum_target_overlap_ink_pixels=value["minimum_target_overlap_ink_pixels"],
+                minimum_vertical_extension_pixels=value["minimum_vertical_extension_pixels"],
+            )
+        ]
     if (
         value["qualifying_component_count"] != 1
         or type(value["qualifying_component_ordinal"]) is not int
@@ -5481,6 +5584,8 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
         candidate_crop = _validate_extreme_margin_v2_exact_crop_proof(
             evidence["candidate_crop_proof"]
         )
+        candidate_surface_mode = _extreme_margin_v2_candidate_surface_mode(candidate_lines[0])
+        numeric_stamp_mode = candidate_surface_mode == "NUMERIC_SINGLE_DIGIT_ROTATED_STAMP"
         if (
             len(candidate_lines) != 1
             or not same_typed_json_v1(candidate_lines[0], candidate_crop["source_line_record"])
@@ -5489,7 +5594,19 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
             or candidate_lines[0]["crop_ref"] != source["crop_ref"]
             or candidate_lines[0]["numeric_raw_prediction"] != source["raw_prediction"]
             or candidate_lines[0]["numeric_reader_score"] != source["reader_score"]
-            or not _extreme_margin_v2_candidate_surface_is_nonnumeric(candidate_lines[0])
+            or candidate_surface_mode is None
+            or (
+                numeric_stamp_mode
+                and geometry["candidate_bbox"][0] < (geometry["page_width"] * 19) // 20
+            )
+            or (
+                numeric_stamp_mode
+                and (
+                    candidate_crop["ink_pixel_count"] <= 0
+                    or candidate_crop["chromatic_ink_pixel_count"] * 4
+                    < candidate_crop["ink_pixel_count"] * 3
+                )
+            )
             or not set(peer_ordinals).issubset(
                 _extreme_margin_v2_geometric_peer_ordinals(source_axis, candidate_lines[0])
             )
@@ -5502,6 +5619,7 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
             or candidate_crop["render_binding"]["render_ref"]["pixel_width"]
             != geometry["page_width"]
             or type(peer_crops) is not list
+            or len(peer_ordinals) < (3 if numeric_stamp_mode else 2)
             or [proof["source_line_record"]["line_ordinal"] for proof in peer_crops]
             != peer_ordinals
             or any(
@@ -5527,6 +5645,7 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
             evidence["expanded_component_proof"],
             geometry=geometry,
             candidate_crop=candidate_crop,
+            numeric_stamp_mode=numeric_stamp_mode,
         )
         expected_final = canonical_clone_v1(source)
         expected_final["owner_kind"] = _EXTREME_MARGIN_FURNITURE_OWNER_KIND

@@ -371,8 +371,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "11d7c4b164b19b588e70ead3cbb11016f5dbeb76c7794acec8945230ae65efc7",
-        "size_bytes": 320_393,
+        "sha256": "6529650a9565c3a37516604e6e1c2d2921fa068d0f46c0e13dbadc1334c52da5",
+        "size_bytes": 325_584,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",

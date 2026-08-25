@@ -1141,6 +1141,7 @@ def _build_authenticated_extreme_margin_fixture(
     color: str,
     with_render: bool,
     with_topology_candidates: bool = True,
+    render_colored_bboxes: list[tuple[list[int], str]] | None = None,
 ) -> tuple[dict, dict, dict, dict]:
     spec = _f3_spec()
     topology_pages = row_v1._topology_pages(pages)
@@ -1153,7 +1154,11 @@ def _build_authenticated_extreme_margin_fixture(
     snapshot, render = _snapshot_and_render(
         pages,
         [],
-        colored_bboxes=[(line["bbox"], color) for line in stamp_lines],
+        colored_bboxes=(
+            render_colored_bboxes
+            if render_colored_bboxes is not None
+            else [(line["bbox"], color) for line in stamp_lines]
+        ),
     )
     axis = subject.build_accounting_family_occurrence_row_axis_v2(
         pages,
@@ -1171,6 +1176,51 @@ def _build_authenticated_extreme_margin_fixture(
         render_snapshots=(render,) if with_render else (),
     )
     return scan, candidates, snapshot, axis
+
+
+def _numeric_extreme_margin_stamp_fixture(
+    *,
+    candidate_vietocr: str = "1001",
+    candidate_numeric: str = "6",
+    candidate_bbox: list[int] | None = None,
+    peer_count: int = 3,
+    component_attack: str | None = None,
+    color: str = "red",
+) -> tuple[list[dict[str, object]], list[dict[str, object]], list[tuple[list[int], str]]]:
+    pages, stamp_lines = _extreme_margin_fixture_pages(
+        include_peers=False,
+        candidate_bbox=candidate_bbox or [950, 290, 995, 330],
+        candidate_vietocr=candidate_vietocr,
+    )
+    candidate = stamp_lines[0]
+    candidate["numeric_recognition"]["raw_prediction"] = candidate_numeric
+    peers = [
+        _line(910, "NHÁN", "", [952, 205, 997, 225]),
+        _line(911, "TYIN", "", [951, 235, 996, 255]),
+        _line(912, "MG", "", [952, 265, 997, 285]),
+    ][:peer_count]
+    pages[0]["lines"].extend(peers)
+    stamp_lines = [*peers, candidate]
+    _reindex_page_lines(pages[0]["lines"])
+    colored = [
+        ([956, 210, 990, 220], color),
+        ([956, 240, 990, 250], color),
+        ([956, 270, 990, 280], color),
+    ][:peer_count]
+    target = candidate["bbox"]
+    center = (target[0] + target[2]) // 2
+    if component_attack == "PARTIAL":
+        colored.append(([center - 6, target[1] + 8, center + 6, target[3] - 8], color))
+    elif component_attack == "DUPLICATE":
+        colored.extend(
+            [
+                ([target[0] + 8, target[1], target[0] + 16, target[3] - 1], color),
+                ([target[0] + 30, target[1], target[0] + 38, target[3] - 1], color),
+            ]
+        )
+    else:
+        colored.append(([center - 6, target[1], center + 6, target[3] - 1], color))
+    return pages, stamp_lines, colored
 
 
 def _coherently_rehash_furniture_axis(axis: dict) -> None:
@@ -1390,6 +1440,150 @@ def test_extreme_margin_v2_connected_stamp_accepts_separated_label_and_replays()
         )
         == axis
     )
+
+
+def test_extreme_margin_v2_numeric_rotated_stamp_requires_exact_pixels_and_replays() -> None:
+    pages, stamp_lines, colored = _numeric_extreme_margin_stamp_fixture()
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="red",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
+    assert evidence["status"] == subject._EXTREME_MARGIN_FURNITURE_V2_STATUS
+    assert len(evidence["peer_crop_proofs"]) == 3
+    assert evidence["candidate_crop_proof"]["chromatic_ink_pixel_count"] * 4 >= (
+        evidence["candidate_crop_proof"]["ink_pixel_count"] * 3
+    )
+    proof = evidence["expanded_component_proof"]
+    component = proof["component_axis"][proof["qualifying_component_ordinal"]]
+    assert proof["qualifying_component_count"] == 1
+    assert component["bbox"][1] <= evidence["geometry"]["candidate_bbox"][1]
+    assert component["bbox"][3] >= evidence["geometry"]["candidate_bbox"][3]
+    assert component["target_overlap_ink_pixel_count"] * 4 >= (
+        evidence["candidate_crop_proof"]["ink_pixel_count"] * 3
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    render = _snapshot_and_render(pages, [], colored_bboxes=colored)[1]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "REAL_NUMERIC_COLUMN",
+        "BLACK",
+        "PARTIAL_COMPONENT",
+        "DUPLICATE_COMPONENT",
+        "PARTIAL_PEERS",
+        "NUMERIC_PEER",
+        "NOT_EXTREME_RIGHT",
+        "SAME_ROW_LABEL_AT_MARGIN",
+        "UNKNOWN_LABEL_SURFACE",
+    ],
+)
+def test_extreme_margin_v2_numeric_rotated_stamp_fails_closed(attack: str) -> None:
+    kwargs: dict[str, object] = {}
+    if attack == "REAL_NUMERIC_COLUMN":
+        kwargs["candidate_numeric"] = "1001"
+    elif attack == "BLACK":
+        kwargs["color"] = "black"
+    elif attack == "PARTIAL_COMPONENT":
+        kwargs["component_attack"] = "PARTIAL"
+    elif attack == "DUPLICATE_COMPONENT":
+        kwargs["component_attack"] = "DUPLICATE"
+    elif attack == "PARTIAL_PEERS":
+        kwargs["peer_count"] = 2
+    elif attack == "NOT_EXTREME_RIGHT":
+        kwargs["candidate_bbox"] = [940, 290, 985, 330]
+    elif attack == "UNKNOWN_LABEL_SURFACE":
+        kwargs["candidate_vietocr"] = "UNKNOWN LABEL"
+    pages, stamp_lines, colored = _numeric_extreme_margin_stamp_fixture(**kwargs)
+    if attack == "NUMERIC_PEER":
+        stamp_lines[0]["numeric_recognition"]["raw_prediction"] = "7"
+    elif attack == "SAME_ROW_LABEL_AT_MARGIN":
+        pages[0]["lines"].append(_line(920, "Tham chiếu", "", [930, 292, 955, 328]))
+        _reindex_page_lines(pages[0]["lines"])
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color=str(kwargs.get("color", "red")),
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+
+    assert axis["authenticated_extreme_margin_furniture_evidence"] == []
+    assert axis["internal_unassigned_numeric_clusters"]
+
+
+@pytest.mark.parametrize(
+    ("attack", "error"),
+    [
+        ("CROSS_PAGE", "V2 authenticated chromatic peer axis"),
+        ("CROSS_PARENT", "authenticated extreme-margin V2 furniture evidence drifted"),
+        ("BBOX", "geometry or label separation|authenticated render binding"),
+        ("COMPONENT", "component uniqueness"),
+    ],
+)
+def test_extreme_margin_v2_numeric_rotated_stamp_coherent_tamper_rejects(
+    attack: str, error: str
+) -> None:
+    pages, stamp_lines, colored = _numeric_extreme_margin_stamp_fixture()
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="red",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    if attack == "CROSS_PAGE":
+        evidence["candidate_crop_proof"]["render_binding"]["physical_page"] += 1
+    elif attack == "CROSS_PARENT":
+        evidence["topology_candidates_id"] = "aftcv2:result:" + "0" * 64
+    elif attack == "BBOX":
+        evidence["candidate_crop_proof"]["render_binding"]["raw_pixel_bbox"][0] += 1
+    else:
+        proof = evidence["expanded_component_proof"]
+        component = proof["component_axis"][proof["qualifying_component_ordinal"]]
+        component["target_overlap_ink_pixel_count"] = 0
+        proof["component_axis_sha256"] = canonical_json_sha256_v1(proof["component_axis"])
+    _coherently_rehash_furniture_axis(attacked)
+
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error, match=error):
+        subject._validate_result(attacked)
 
 
 @pytest.mark.parametrize(
