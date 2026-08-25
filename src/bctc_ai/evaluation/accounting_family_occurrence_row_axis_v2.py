@@ -626,6 +626,18 @@ _EXTREME_MARGIN_FURNITURE_V2_STATUS = (
 _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS = (
     "AUTHENTICATED_CLIPPED_RIGHT_EDGE_NONNUMERIC_DECORATION_V3"
 )
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS = (
+    "AUTHENTICATED_EXTREME_RIGHT_VERTICAL_STAMP_FURNITURE_V4"
+)
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS = (
+    "EXACT_CANDIDATE_CROP_CONNECTED_COMPONENT_PEER_CHAIN"
+)
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE = (
+    "TALL_CHROMATIC_INTERNAL_COMPONENT_CHAIN"
+)
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE = (
+    "CLIPPED_NEUTRAL_EXTERNAL_PEER_CHAIN"
+)
 _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V3"
 _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V4"
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
@@ -670,6 +682,24 @@ _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS = {
     "source_record",
     "status",
     "structural_gap_anchor_occurrence_ids",
+    "topology_candidates_id",
+}
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_FIELDS = {
+    "candidate_crop_proof",
+    "component_peer_proof",
+    "document_pages_sha256",
+    "evidence_id",
+    "full_page_inspected_label_band",
+    "geometry",
+    "label_collision_proof",
+    "margin_band",
+    "original_cluster",
+    "page_sequence",
+    "peer_crop_proofs",
+    "sample_id",
+    "snapshot_id",
+    "source_record",
+    "status",
     "topology_candidates_id",
 }
 _PRINTED_NOTE_REFERENCE_FURNITURE_V3_FIELDS = {
@@ -859,6 +889,39 @@ _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_BAND_FIELDS = {
     "page_sequence",
     "source_line_axis",
     "source_line_axis_sha256",
+}
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_GEOMETRY_FIELDS = {
+    "body_text_scale",
+    "candidate_bbox",
+    "candidate_center_quads",
+    "candidate_height",
+    "candidate_width",
+    "lane_centers_quads",
+    "lane_tolerance",
+    "margin_boundary",
+    "page_edge_denominator",
+    "page_edge_numerator",
+    "page_width",
+    "right_edge_gap",
+    "stamp_mode",
+}
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_FIELDS = {
+    "bbox",
+    "chromatic_ink_pixel_count",
+    "ink_pixel_count",
+}
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_PROOF_FIELDS = {
+    "candidate_center_twice",
+    "chroma_spread_threshold",
+    "component_axis",
+    "component_axis_sha256",
+    "ink_threshold",
+    "minimum_component_ink_pixel_count",
+    "qualifying_component_count",
+    "qualifying_component_ordinals",
+    "qualifying_vertical_span",
+    "render_binding",
+    "status",
 }
 _EXTREME_MARGIN_V2_LABEL_COLLISION_FIELDS = {
     "candidate_line_ordinal",
@@ -5934,6 +5997,384 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     }, False
 
 
+def _extreme_margin_vertical_stamp_surface_v4(line: Mapping[str, Any]) -> bool:
+    vietocr = line.get("vietocr_text")
+    numeric = line.get("numeric_raw_prediction")
+    if type(numeric) is not str:
+        recognition = line.get("numeric_recognition")
+        numeric = recognition.get("raw_prediction") if type(recognition) is dict else None
+    if type(vietocr) is not str or type(numeric) is not str:
+        return False
+    surfaces = (vietocr.strip(), numeric.strip())
+    if (
+        any(re.fullmatch(r"[1-9][0-9]?", surface) is None for surface in surfaces)
+        or min(len(surface) for surface in surfaces) != 1
+    ):
+        return False
+    tokens = [row_v1.parse_visible_financial_numeric_token_v1(surface) for surface in surfaces]
+    return all(
+        token["classification"] == "SIGNED_NUMBER"
+        and token["sign"] == 1
+        and token["scale"] == 0
+        and not token["percentage_mark_present"]
+        for token in tokens
+    )
+
+
+def _authenticated_extreme_margin_vertical_stamp_component_proof_v4(
+    *,
+    image: Any,
+    render_record: Mapping[str, Any],
+    render_id: str,
+    candidate: Mapping[str, Any],
+    scale: float,
+) -> dict[str, Any] | None:
+    bbox = candidate["bbox"]
+    if (
+        render_record["render_ref"]["pixel_width"] != image.width
+        or render_record["render_ref"]["pixel_height"] != image.height
+        or not (0 <= bbox[0] < bbox[2] <= image.width)
+        or not (0 <= bbox[1] < bbox[3] <= image.height)
+    ):
+        return None
+    crop = image.crop(tuple(bbox))
+    rgb = crop.tobytes()
+    pixels = list(zip(rgb[0::3], rgb[1::3], rgb[2::3], strict=True))
+    width, height = crop.size
+    ink_threshold = 220
+    chroma_spread_threshold = 30
+    ink_mask = bytearray(1 if min(pixel) < ink_threshold else 0 for pixel in pixels)
+    visited = bytearray(len(ink_mask))
+    component_axis = []
+    for origin, is_ink in enumerate(ink_mask):
+        if not is_ink or visited[origin]:
+            continue
+        visited[origin] = 1
+        stack = [origin]
+        indices = []
+        while stack:
+            index = stack.pop()
+            indices.append(index)
+            x = index % width
+            y = index // width
+            for next_y in range(max(0, y - 1), min(height, y + 2)):
+                row_offset = next_y * width
+                for next_x in range(max(0, x - 1), min(width, x + 2)):
+                    neighbor = row_offset + next_x
+                    if ink_mask[neighbor] and not visited[neighbor]:
+                        visited[neighbor] = 1
+                        stack.append(neighbor)
+        xs = [index % width for index in indices]
+        ys = [index // width for index in indices]
+        component_axis.append(
+            {
+                "bbox": [
+                    bbox[0] + min(xs),
+                    bbox[1] + min(ys),
+                    bbox[0] + max(xs) + 1,
+                    bbox[1] + max(ys) + 1,
+                ],
+                "chromatic_ink_pixel_count": sum(
+                    max(pixels[index]) - min(pixels[index]) >= chroma_spread_threshold
+                    for index in indices
+                ),
+                "ink_pixel_count": len(indices),
+            }
+        )
+    component_axis.sort(
+        key=lambda component: (
+            component["bbox"],
+            component["ink_pixel_count"],
+            component["chromatic_ink_pixel_count"],
+        )
+    )
+    if not component_axis or len(component_axis) > _MAX_ROLE_OCCURRENCES:
+        return None
+    minimum_component_ink = max(8, math.ceil(scale / 4))
+    qualifying = [
+        ordinal
+        for ordinal, component in enumerate(component_axis)
+        if component["ink_pixel_count"] >= minimum_component_ink
+    ]
+    if len(qualifying) < 3:
+        return None
+    qualifying_components = [component_axis[ordinal] for ordinal in qualifying]
+    vertical_span = max(component["bbox"][3] for component in qualifying_components) - min(
+        component["bbox"][1] for component in qualifying_components
+    )
+    if (
+        vertical_span * 4 < height * 3
+        or not any((component["bbox"][1] - bbox[1]) * 3 <= height for component in qualifying_components)
+        or not any((bbox[3] - component["bbox"][3]) * 3 <= height for component in qualifying_components)
+    ):
+        return None
+    return {
+        "candidate_center_twice": bbox[1] + bbox[3],
+        "chroma_spread_threshold": chroma_spread_threshold,
+        "component_axis": component_axis,
+        "component_axis_sha256": canonical_json_sha256_v1(component_axis),
+        "ink_threshold": ink_threshold,
+        "minimum_component_ink_pixel_count": minimum_component_ink,
+        "qualifying_component_count": len(qualifying),
+        "qualifying_component_ordinals": qualifying,
+        "qualifying_vertical_span": vertical_span,
+        "render_binding": {
+            "document_ordinal": render_record["document_ordinal"],
+            "physical_page": render_record["physical_page"],
+            "raw_pixel_bbox": canonical_clone_v1(bbox),
+            "render_id": render_id,
+            "render_ref": canonical_clone_v1(render_record["render_ref"]),
+        },
+        "status": _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS,
+    }
+
+
+def _extreme_margin_vertical_stamp_collides_with_note_axis_v4(
+    page: Mapping[str, Any],
+    *,
+    candidate: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+) -> bool:
+    try:
+        note_axis = note_axis_v1.build_accounting_printed_note_reference_axis_v1(
+            page,
+            detected_column_centers=centers,
+            lane_tolerance=float(lane_tolerance),
+            body_text_scale=float(scale),
+        )
+    except note_axis_v1.AccountingPrintedNoteReferenceAxisV1Error:
+        return True
+    header = note_axis.get("header")
+    if type(header) is not dict:
+        return False
+    candidate_id = candidate["sample_id"]
+    if candidate_id in header["sample_ids"] or any(
+        row["note_sample_id"] == candidate_id for row in note_axis["rows"]
+    ):
+        return True
+    reference = note_axis_v1.exact_note_reference_surface_v1(candidate)
+    bbox = candidate["bbox"]
+    header_bbox = header["bbox"]
+    return (
+        reference is not None
+        and bbox[1] >= header_bbox[3]
+        and bbox[0] >= header_bbox[0]
+        and bbox[2] <= header_bbox[2]
+    )
+
+
+def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
+    *,
+    topology_candidates_id: str | None,
+    pages: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    ordered_numeric_lines: Sequence[Mapping[str, Any]],
+    cluster: Mapping[str, Any],
+    source_record: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+    matches: Sequence[Mapping[str, Any]],
+    selected_snapshot: Mapping[str, Any] | None,
+    render_by_page: Mapping[int, Mapping[str, Any]],
+) -> tuple[dict[str, Any] | None, bool]:
+    """Authenticate one tall/clipped page-edge stamp OCR'd as a small integer."""
+
+    page_width = page.get("page_width")
+    if (
+        type(topology_candidates_id) is not str
+        or not topology_candidates_id.startswith("aftcv2:result:")
+        or len(ordered_numeric_lines) != 1
+        or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+        or source_record.get("parsed_token", {}).get("classification") != "SIGNED_NUMBER"
+        or type(page_width) is not int
+        or page_width <= 0
+        or not centers
+        or not _extreme_margin_vertical_stamp_surface_v4(ordered_numeric_lines[0])
+    ):
+        return None, False
+    center_quads = [center * 4 for center in centers]
+    if any(not float(center).is_integer() for center in center_quads):
+        return None, False
+    candidate = ordered_numeric_lines[0]
+    bbox = candidate["bbox"]
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
+    margin_boundary = math.ceil(centers[-1] + lane_tolerance)
+    right_edge_gap = page_width - bbox[2]
+    if (
+        bbox[0] < margin_boundary
+        or bbox[0] * 20 < page_width * 19
+        or bbox[2] > page_width
+        or right_edge_gap < 0
+        or right_edge_gap > math.ceil(scale / 4)
+        or height < math.ceil(3 * scale / 2)
+        or height < width
+    ):
+        return None, False
+    full_page_label_band, full_page_label_evidence = _build_inspected_label_band(
+        ordered_numeric_lines=ordered_numeric_lines,
+        page=page,
+        pages=pages,
+        local_lines=page["lines"],
+    )
+    if any(label["bbox"][2] >= margin_boundary for label in full_page_label_evidence):
+        return None, False
+    semantic_label_line_ordinals = sorted(
+        {
+            page["lines"][index]["line_ordinal"]
+            for match in matches
+            if match["page_sequence"] == page["page_sequence"]
+            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
+        }
+    )
+    if candidate["line_ordinal"] in semantic_label_line_ordinals or (
+        _extreme_margin_vertical_stamp_collides_with_note_axis_v4(
+            page,
+            candidate=candidate,
+            centers=centers,
+            lane_tolerance=lane_tolerance,
+            scale=scale,
+        )
+    ):
+        return None, False
+    margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
+    candidate_records = [line for line in margin_axis if line["sample_id"] == candidate["sample_id"]]
+    external_peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(
+        margin_axis, candidate
+    )
+    if len(candidate_records) != 1:
+        return None, False
+    page_sequence = page["page_sequence"]
+    if selected_snapshot is None or page_sequence not in render_by_page:
+        return None, selected_snapshot is not None
+    render = render_by_page[page_sequence]
+    try:
+        render_record, payload = render_v1._validated_render_snapshot(render)
+        image = render_v1._png_image(payload).convert("RGB")
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise _error("authenticated extreme-right vertical-stamp V4 render replay failed") from exc
+    if image.width != page_width:
+        return None, False
+    candidate_crop = _authenticated_extreme_margin_crop_proof(
+        image=image,
+        render_record=render_record,
+        render_id=render["render_id"],
+        line=candidate,
+    )
+    if candidate_crop["ink_pixel_count"] <= 0:
+        return None, False
+    component_proof = _authenticated_extreme_margin_vertical_stamp_component_proof_v4(
+        image=image,
+        render_record=render_record,
+        render_id=render["render_id"],
+        candidate=candidate,
+        scale=scale,
+    )
+    if component_proof is None:
+        return None, False
+    chromatic_mode = (
+        height >= math.ceil(3 * scale)
+        and candidate_crop["chromatic_ink_pixel_count"] * 2
+        >= candidate_crop["ink_pixel_count"]
+    )
+    clipped_mode = (
+        right_edge_gap <= 1
+        and candidate_crop["chromatic_ink_pixel_count"] * 4
+        <= candidate_crop["ink_pixel_count"]
+        and len(external_peer_ordinals) >= 3
+    )
+    if chromatic_mode == clipped_mode:
+        return None, False
+    page_line_by_ordinal = {line["line_ordinal"]: line for line in page["lines"]}
+    peer_crops = []
+    if clipped_mode:
+        for ordinal in external_peer_ordinals:
+            proof = _authenticated_extreme_margin_crop_proof(
+                image=image,
+                render_record=render_record,
+                render_id=render["render_id"],
+                line=page_line_by_ordinal[ordinal],
+            )
+            if proof["ink_pixel_count"] > 0:
+                peer_crops.append(proof)
+        if len(peer_crops) < 3:
+            return None, False
+    qualifying_peer_ordinals = [
+        proof["source_line_record"]["line_ordinal"] for proof in peer_crops
+    ]
+    document_pages_sha256 = canonical_json_sha256_v1(pages)
+    maximum_label_right = (
+        max(label["bbox"][2] for label in full_page_label_evidence)
+        if full_page_label_evidence
+        else None
+    )
+    stamp_mode = (
+        _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE
+        if chromatic_mode
+        else _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE
+    )
+    material = {
+        "candidate_crop_proof": candidate_crop,
+        "component_peer_proof": component_proof,
+        "document_pages_sha256": document_pages_sha256,
+        "full_page_inspected_label_band": full_page_label_band,
+        "geometry": {
+            "body_text_scale": float(scale),
+            "candidate_bbox": canonical_clone_v1(bbox),
+            "candidate_center_quads": 2 * (bbox[0] + bbox[2]),
+            "candidate_height": height,
+            "candidate_width": width,
+            "lane_centers_quads": [int(center) for center in center_quads],
+            "lane_tolerance": float(lane_tolerance),
+            "margin_boundary": margin_boundary,
+            "page_edge_denominator": 20,
+            "page_edge_numerator": 19,
+            "page_width": page_width,
+            "right_edge_gap": right_edge_gap,
+            "stamp_mode": stamp_mode,
+        },
+        "label_collision_proof": {
+            "candidate_line_ordinal": candidate["line_ordinal"],
+            "margin_boundary": margin_boundary,
+            "maximum_label_right": maximum_label_right,
+            "same_row_label_evidence": full_page_label_evidence,
+            "same_row_label_evidence_sha256": canonical_json_sha256_v1(
+                full_page_label_evidence
+            ),
+            "semantic_label_line_ordinals": semantic_label_line_ordinals,
+            "status": (
+                "EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS"
+                if full_page_label_evidence
+                else "NO_SAME_ROW_LABEL_COLLISION"
+            ),
+        },
+        "margin_band": {
+            "document_pages_sha256": document_pages_sha256,
+            "input_page_line_count": len(page["lines"]),
+            "page_sequence": page_sequence,
+            "qualifying_peer_line_ordinals": qualifying_peer_ordinals,
+            "source_line_axis": margin_axis,
+            "source_line_axis_sha256": canonical_json_sha256_v1(margin_axis),
+        },
+        "original_cluster": canonical_clone_v1(cluster),
+        "page_sequence": page_sequence,
+        "peer_crop_proofs": peer_crops,
+        "sample_id": source_record["sample_id"],
+        "snapshot_id": selected_snapshot["snapshot_id"],
+        "source_record": canonical_clone_v1(source_record),
+        "status": _EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS,
+        "topology_candidates_id": topology_candidates_id,
+    }
+    return {
+        **material,
+        "evidence_id": "aforav2:extreme-right-vertical-stamp-v4:"
+        + canonical_json_sha256_v1(material),
+    }, False
+
+
 def _extreme_margin_nonnumeric_decoration_surface(line: Mapping[str, Any]) -> bool:
     numeric_surface = line.get("numeric_raw_prediction")
     if type(numeric_surface) is not str:
@@ -7440,6 +7881,25 @@ def _build_numeric_sample_universe(
                     evidence = evidence_v2
                     render_required = render_required or render_required_v2
                 if evidence is None:
+                    vertical_stamp_evidence, vertical_stamp_render_required = (
+                        _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
+                            pages=pages,
+                            topology_candidates_id=topology_candidates_id,
+                            page=page,
+                            ordered_numeric_lines=ordered,
+                            cluster=cluster,
+                            source_record=source_records[0],
+                            centers=centers,
+                            lane_tolerance=lane_tolerance,
+                            scale=scale,
+                            matches=matches,
+                            selected_snapshot=selected_snapshot,
+                            render_by_page=render_by_page,
+                        )
+                    )
+                    evidence = vertical_stamp_evidence
+                    render_required = render_required or vertical_stamp_render_required
+                if evidence is None:
                     printed_note_builder = (
                         _build_authenticated_printed_note_reference_furniture_evidence_v4
                         if printed_note_furniture_version == 4
@@ -8390,6 +8850,381 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
         sample_ids.append(evidence["sample_id"])
     if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
         raise _error("authenticated extreme-margin V2 furniture ownership repeats")
+    return set(sample_ids)
+
+
+def _validate_extreme_margin_vertical_stamp_component_proof_v4(
+    value: Any,
+    *,
+    geometry: Mapping[str, Any],
+    candidate_crop: Mapping[str, Any],
+) -> None:
+    component_axis = value.get("component_axis") if type(value) is dict else None
+    bbox = geometry["candidate_bbox"]
+    height = geometry["candidate_height"]
+    if (
+        type(value) is not dict
+        or set(value) != _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_PROOF_FIELDS
+        or value.get("status") != _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS
+        or value.get("candidate_center_twice") != bbox[1] + bbox[3]
+        or value.get("ink_threshold") != 220
+        or value.get("chroma_spread_threshold") != 30
+        or value.get("minimum_component_ink_pixel_count")
+        != max(8, math.ceil(geometry["body_text_scale"] / 4))
+        or type(component_axis) is not list
+        or not component_axis
+        or len(component_axis) > _MAX_ROLE_OCCURRENCES
+        or component_axis
+        != sorted(
+            component_axis,
+            key=lambda component: (
+                component.get("bbox"),
+                component.get("ink_pixel_count"),
+                component.get("chromatic_ink_pixel_count"),
+            ),
+        )
+        or value.get("component_axis_sha256") != canonical_json_sha256_v1(component_axis)
+        or not same_typed_json_v1(value.get("render_binding"), candidate_crop["render_binding"])
+    ):
+        raise _error("extreme-right vertical-stamp V4 component proof drifted")
+    for component in component_axis:
+        component_bbox = component.get("bbox") if type(component) is dict else None
+        if (
+            type(component) is not dict
+            or set(component) != _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_FIELDS
+            or type(component_bbox) is not list
+            or len(component_bbox) != 4
+            or any(type(coordinate) is not int for coordinate in component_bbox)
+            or not (
+                bbox[0] <= component_bbox[0] < component_bbox[2] <= bbox[2]
+                and bbox[1] <= component_bbox[1] < component_bbox[3] <= bbox[3]
+            )
+            or type(component["ink_pixel_count"]) is not int
+            or not 0
+            < component["ink_pixel_count"]
+            <= (component_bbox[2] - component_bbox[0])
+            * (component_bbox[3] - component_bbox[1])
+            or type(component["chromatic_ink_pixel_count"]) is not int
+            or not 0
+            <= component["chromatic_ink_pixel_count"]
+            <= component["ink_pixel_count"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 component axis drifted")
+    minimum_ink = value["minimum_component_ink_pixel_count"]
+    qualifying = [
+        ordinal
+        for ordinal, component in enumerate(component_axis)
+        if component["ink_pixel_count"] >= minimum_ink
+    ]
+    qualifying_components = [component_axis[ordinal] for ordinal in qualifying]
+    vertical_span = (
+        max(component["bbox"][3] for component in qualifying_components)
+        - min(component["bbox"][1] for component in qualifying_components)
+        if qualifying_components
+        else 0
+    )
+    if (
+        len(qualifying) < 3
+        or value["qualifying_component_count"] != len(qualifying)
+        or value["qualifying_component_ordinals"] != qualifying
+        or value["qualifying_vertical_span"] != vertical_span
+        or vertical_span * 4 < height * 3
+        or not any(
+            (component["bbox"][1] - bbox[1]) * 3 <= height
+            for component in qualifying_components
+        )
+        or not any(
+            (bbox[3] - component["bbox"][3]) * 3 <= height
+            for component in qualifying_components
+        )
+    ):
+        raise _error("extreme-right vertical-stamp V4 component peer chain drifted")
+
+
+def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    topology_candidates_id: str | None,
+) -> set[str]:
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    evidence_ids = []
+    sample_ids = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _EXTREME_MARGIN_VERTICAL_STAMP_V4_FIELDS
+            or evidence.get("status") != _EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+            or type(evidence.get("evidence_id")) is not str
+            or type(evidence.get("snapshot_id")) is not str
+            or not evidence["snapshot_id"].startswith("ffdesv1:selected:")
+            or type(evidence.get("document_pages_sha256")) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", evidence["document_pages_sha256"])
+            or type(evidence.get("page_sequence")) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence.get("sample_id")) is not str
+            or not evidence["sample_id"]
+            or evidence.get("topology_candidates_id") != topology_candidates_id
+        ):
+            raise _error("authenticated extreme-right vertical-stamp V4 evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != (
+            "aforav2:extreme-right-vertical-stamp-v4:" + canonical_json_sha256_v1(material)
+        ):
+            raise _error("authenticated extreme-right vertical-stamp V4 identity drifted")
+        cluster = evidence["original_cluster"]
+        source = evidence["source_record"]
+        if (
+            type(cluster) is not dict
+            or set(cluster) != _INTERNAL_UNASSIGNED_CLUSTER_FIELDS
+            or cluster.get("status") != _OFF_LANE_NUMERIC_CLUSTER_STATUS
+            or cluster.get("page_sequence") != evidence["page_sequence"]
+            or cluster.get("sample_ids") != [evidence["sample_id"]]
+            or type(source) is not dict
+        ):
+            raise _error("extreme-right vertical-stamp V4 singleton cluster drifted")
+        _validate_numeric_sample_record(source)
+        if (
+            source["sample_id"] != evidence["sample_id"]
+            or source["page_sequence"] != evidence["page_sequence"]
+            or source["parsed_token"]["classification"] != "SIGNED_NUMBER"
+            or source["owner_kind"] != "SOURCE_ONLY_INTERNAL_CLUSTER"
+            or source["owner_id"] != cluster["cluster_id"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 original numeric owner drifted")
+        cluster_material = canonical_clone_v1(cluster)
+        cluster_id = cluster_material.pop("cluster_id", None)
+        if cluster_id != "aforav2:unassigned:" + canonical_json_sha256_v1(cluster_material):
+            raise _error("extreme-right vertical-stamp V4 cluster identity drifted")
+        _validate_inspected_label_band(cluster, {evidence["sample_id"]: source})
+
+        full_page_band = evidence["full_page_inspected_label_band"]
+        full_page_evidence = _same_row_label_evidence_from_inspected_band(
+            full_page_band.get("source_line_axis", []) if type(full_page_band) is dict else []
+        )
+        full_page_cluster = canonical_clone_v1(cluster)
+        full_page_cluster["inspected_label_band"] = full_page_band
+        full_page_cluster["same_row_label_evidence"] = canonical_clone_v1(full_page_evidence)
+        full_page_cluster["label_lane_status"] = (
+            _LABELED_LABEL_LANE_STATUS if full_page_evidence else _UNLABELED_LABEL_LANE_STATUS
+        )
+        _validate_inspected_label_band(full_page_cluster, {evidence["sample_id"]: source})
+        if (
+            full_page_band["document_pages_sha256"] != evidence["document_pages_sha256"]
+            or full_page_band["page_sequence"] != evidence["page_sequence"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 label denominator drifted")
+
+        geometry = evidence["geometry"]
+        grid = grid_by_page.get(evidence["page_sequence"])
+        bbox = source["bbox"]
+        if (
+            type(geometry) is not dict
+            or set(geometry) != _EXTREME_MARGIN_VERTICAL_STAMP_V4_GEOMETRY_FIELDS
+            or type(grid) is not dict
+            or type(geometry["body_text_scale"]) is not float
+            or not math.isfinite(geometry["body_text_scale"])
+            or geometry["body_text_scale"] <= 0
+            or type(geometry["lane_tolerance"]) is not float
+            or not math.isfinite(geometry["lane_tolerance"])
+            or geometry["lane_tolerance"] <= 0
+            or geometry["candidate_bbox"] != bbox
+            or geometry["candidate_center_quads"] != 2 * (bbox[0] + bbox[2])
+            or geometry["candidate_width"] != bbox[2] - bbox[0]
+            or geometry["candidate_height"] != bbox[3] - bbox[1]
+            or geometry["lane_centers_quads"]
+            != [int(center * 4) for center in grid["column_centers"]]
+            or any(not float(center * 4).is_integer() for center in grid["column_centers"])
+            or geometry["margin_boundary"]
+            != math.ceil(grid["column_centers"][-1] + geometry["lane_tolerance"])
+            or geometry["page_edge_numerator"] != 19
+            or geometry["page_edge_denominator"] != 20
+            or geometry["right_edge_gap"] != geometry["page_width"] - bbox[2]
+            or bbox[0] < geometry["margin_boundary"]
+            or bbox[0] * geometry["page_edge_denominator"]
+            < geometry["page_width"] * geometry["page_edge_numerator"]
+            or bbox[2] > geometry["page_width"]
+            or not 0 <= geometry["right_edge_gap"] <= math.ceil(
+                geometry["body_text_scale"] / 4
+            )
+            or geometry["candidate_height"]
+            < math.ceil(3 * geometry["body_text_scale"] / 2)
+            or geometry["candidate_height"] < geometry["candidate_width"]
+            or source["column_ordinal"] >= len(grid["column_centers"])
+            or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
+            or source["column_ordinal"]
+            != min(
+                range(len(grid["column_centers"])),
+                key=lambda index: abs(
+                    geometry["candidate_center_quads"] - geometry["lane_centers_quads"][index]
+                ),
+            )
+            or abs(
+                geometry["candidate_center_quads"]
+                - geometry["lane_centers_quads"][source["column_ordinal"]]
+            )
+            <= 4 * geometry["lane_tolerance"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 geometry drifted")
+
+        label_proof = evidence["label_collision_proof"]
+        if (
+            type(label_proof) is not dict
+            or set(label_proof) != _EXTREME_MARGIN_V2_LABEL_COLLISION_FIELDS
+            or label_proof["candidate_line_ordinal"] != source["line_ordinal"]
+            or label_proof["margin_boundary"] != geometry["margin_boundary"]
+            or label_proof["same_row_label_evidence"] != full_page_evidence
+            or label_proof["same_row_label_evidence_sha256"]
+            != canonical_json_sha256_v1(full_page_evidence)
+            or label_proof["maximum_label_right"]
+            != (
+                max(label["bbox"][2] for label in full_page_evidence)
+                if full_page_evidence
+                else None
+            )
+            or any(label["bbox"][2] >= geometry["margin_boundary"] for label in full_page_evidence)
+            or label_proof["status"]
+            != (
+                "EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS"
+                if full_page_evidence
+                else "NO_SAME_ROW_LABEL_COLLISION"
+            )
+            or type(label_proof["semantic_label_line_ordinals"]) is not list
+            or label_proof["semantic_label_line_ordinals"]
+            != sorted(set(label_proof["semantic_label_line_ordinals"]))
+            or source["line_ordinal"] in label_proof["semantic_label_line_ordinals"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 label collision proof drifted")
+
+        margin_band = evidence["margin_band"]
+        source_axis = margin_band.get("source_line_axis") if type(margin_band) is dict else None
+        peer_ordinals = (
+            margin_band.get("qualifying_peer_line_ordinals")
+            if type(margin_band) is dict
+            else None
+        )
+        if (
+            type(margin_band) is not dict
+            or set(margin_band) != _EXTREME_MARGIN_BAND_FIELDS
+            or margin_band["document_pages_sha256"] != evidence["document_pages_sha256"]
+            or margin_band["page_sequence"] != evidence["page_sequence"]
+            or margin_band["input_page_line_count"] != full_page_band["input_page_line_count"]
+            or type(source_axis) is not list
+            or len(source_axis) > margin_band["input_page_line_count"]
+            or source_axis
+            != sorted(source_axis, key=lambda line: (line["line_ordinal"], line["bbox"]))
+            or len({line["line_ordinal"] for line in source_axis}) != len(source_axis)
+            or len({line["sample_id"] for line in source_axis}) != len(source_axis)
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                or line["bbox"][0] < geometry["margin_boundary"]
+                or line["bbox"][2] > geometry["page_width"]
+                for line in source_axis
+            )
+            or margin_band["source_line_axis_sha256"] != canonical_json_sha256_v1(source_axis)
+            or type(peer_ordinals) is not list
+            or peer_ordinals != sorted(set(peer_ordinals))
+        ):
+            raise _error("extreme-right vertical-stamp V4 complete margin band drifted")
+        candidate_lines = [
+            line for line in source_axis if line["sample_id"] == evidence["sample_id"]
+        ]
+        candidate_crop = _validate_extreme_margin_v2_exact_crop_proof(
+            evidence["candidate_crop_proof"]
+        )
+        if (
+            len(candidate_lines) != 1
+            or not same_typed_json_v1(candidate_lines[0], candidate_crop["source_line_record"])
+            or candidate_lines[0]["bbox"] != source["bbox"]
+            or candidate_lines[0]["line_ordinal"] != source["line_ordinal"]
+            or candidate_lines[0]["crop_ref"] != source["crop_ref"]
+            or candidate_lines[0]["numeric_raw_prediction"] != source["raw_prediction"]
+            or candidate_lines[0]["numeric_reader_score"] != source["reader_score"]
+            or not _extreme_margin_vertical_stamp_surface_v4(candidate_lines[0])
+            or candidate_crop["render_binding"]["physical_page"] != evidence["page_sequence"]
+            or candidate_crop["render_binding"]["render_ref"]["pixel_width"]
+            != geometry["page_width"]
+        ):
+            raise _error("extreme-right vertical-stamp V4 candidate binding drifted")
+        _validate_extreme_margin_vertical_stamp_component_proof_v4(
+            evidence["component_peer_proof"],
+            geometry=geometry,
+            candidate_crop=candidate_crop,
+        )
+
+        chromatic_mode = (
+            geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"])
+            and candidate_crop["chromatic_ink_pixel_count"] * 2
+            >= candidate_crop["ink_pixel_count"]
+        )
+        clipped_mode = (
+            geometry["right_edge_gap"] <= 1
+            and candidate_crop["chromatic_ink_pixel_count"] * 4
+            <= candidate_crop["ink_pixel_count"]
+            and len(peer_ordinals) >= 3
+        )
+        expected_mode = (
+            _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE
+            if chromatic_mode and not clipped_mode
+            else _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE
+            if clipped_mode and not chromatic_mode
+            else None
+        )
+        source_by_ordinal = {line["line_ordinal"]: line for line in source_axis}
+        peer_crops = evidence["peer_crop_proofs"]
+        if (
+            geometry["stamp_mode"] != expected_mode
+            or type(peer_crops) is not list
+            or [proof.get("source_line_record", {}).get("line_ordinal") for proof in peer_crops]
+            != peer_ordinals
+            or (
+                expected_mode == _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE
+                and (peer_ordinals or peer_crops)
+            )
+            or (
+                expected_mode == _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE
+                and (
+                    len(peer_crops) < 3
+                    or not set(peer_ordinals).issubset(
+                        _extreme_margin_v2_geometric_peer_ordinals(
+                            source_axis, candidate_lines[0]
+                        )
+                    )
+                )
+            )
+            or any(
+                not same_typed_json_v1(
+                    _validate_extreme_margin_v2_exact_crop_proof(proof)["source_line_record"],
+                    source_by_ordinal.get(proof["source_line_record"]["line_ordinal"]),
+                )
+                or proof["ink_pixel_count"] <= 0
+                or not _extreme_margin_peer_surfaces_are_nonnumeric(
+                    proof["source_line_record"]
+                )
+                or proof["render_binding"]["render_id"]
+                != candidate_crop["render_binding"]["render_id"]
+                or proof["render_binding"]["document_ordinal"]
+                != candidate_crop["render_binding"]["document_ordinal"]
+                or not same_typed_json_v1(
+                    proof["render_binding"]["render_ref"],
+                    candidate_crop["render_binding"]["render_ref"],
+                )
+                for proof in peer_crops
+            )
+        ):
+            raise _error("extreme-right vertical-stamp V4 peer-mode proof drifted")
+
+        expected_final = canonical_clone_v1(source)
+        expected_final["owner_kind"] = _EXTREME_MARGIN_FURNITURE_OWNER_KIND
+        expected_final["owner_id"] = evidence_id
+        if not same_typed_json_v1(universe_by_sample.get(evidence["sample_id"]), expected_final):
+            raise _error("extreme-right vertical-stamp V4 universe owner drifted")
+        evidence_ids.append(evidence_id)
+        sample_ids.append(evidence["sample_id"])
+    if len(evidence_ids) != len(set(evidence_ids)) or len(sample_ids) != len(set(sample_ids)):
+        raise _error("authenticated extreme-right vertical-stamp V4 ownership repeats")
     return set(sample_ids)
 
 
@@ -9474,6 +10309,12 @@ def _validate_extreme_margin_furniture_evidence_axis(
         for evidence in evidence_axis
         if type(evidence) is dict and evidence.get("status") == _EXTREME_MARGIN_FURNITURE_V2_STATUS
     ]
+    vertical_stamp_v4 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict
+        and evidence.get("status") == _EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+    ]
     decoration_v3 = [
         evidence
         for evidence in evidence_axis
@@ -9492,7 +10333,15 @@ def _validate_extreme_margin_furniture_evidence_axis(
         if type(evidence) is dict
         and evidence.get("status") == _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
     ]
-    if len(v1) + len(v2) + len(decoration_v3) + len(note_v3) + len(note_v4) != len(evidence_axis):
+    if (
+        len(v1)
+        + len(v2)
+        + len(vertical_stamp_v4)
+        + len(decoration_v3)
+        + len(note_v3)
+        + len(note_v4)
+        != len(evidence_axis)
+    ):
         raise _error("authenticated extreme-margin furniture evidence version drifted")
     v1_samples = _validate_extreme_margin_furniture_evidence_axis_v1(
         v1,
@@ -9502,6 +10351,12 @@ def _validate_extreme_margin_furniture_evidence_axis(
     )
     v2_samples = _validate_extreme_margin_furniture_evidence_axis_v2(
         v2,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    vertical_stamp_v4_samples = _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
+        vertical_stamp_v4,
         universe_by_sample=universe_by_sample,
         axis=axis,
         topology_candidates_id=topology_candidates_id,
@@ -9525,17 +10380,20 @@ def _validate_extreme_margin_furniture_evidence_axis(
         axis=axis,
         topology_candidates_id=topology_candidates_id,
     )
-    if (
-        v1_samples & v2_samples
-        or v1_samples & note_v3_samples
-        or v1_samples & note_v4_samples
-        or v2_samples & note_v3_samples
-        or v2_samples & note_v4_samples
-        or note_v3_samples & note_v4_samples
-        or len({item["evidence_id"] for item in evidence_axis}) != len(evidence_axis)
-    ):
+    owned_sample_axes = [
+        v1_samples,
+        v2_samples,
+        vertical_stamp_v4_samples,
+        note_v3_samples,
+        note_v4_samples,
+    ]
+    if any(
+        left & right
+        for index, left in enumerate(owned_sample_axes)
+        for right in owned_sample_axes[index + 1 :]
+    ) or len({item["evidence_id"] for item in evidence_axis}) != len(evidence_axis):
         raise _error("authenticated extreme-margin furniture cross-version ownership repeats")
-    return v1_samples | v2_samples | note_v3_samples | note_v4_samples
+    return set().union(*owned_sample_axes)
 
 
 def _validate_numeric_sample_universe(

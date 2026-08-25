@@ -1253,6 +1253,133 @@ def _numeric_extreme_margin_stamp_fixture(
     return pages, stamp_lines, colored
 
 
+def _extreme_right_vertical_stamp_v4_fixture(
+    *,
+    mode: str,
+    include_peers: bool = True,
+    candidate_bbox: list[int] | None = None,
+    candidate_vietocr: str | None = None,
+    candidate_numeric: str | None = None,
+    peer_numeric: bool = False,
+    margin_label: bool = False,
+) -> tuple[list[dict[str, object]], list[dict[str, object]], list[tuple[list[int], str]]]:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    if mode == "CHROMATIC":
+        bbox = candidate_bbox or [950, 180, 999, 380]
+        candidate = _line(
+            930,
+            candidate_vietocr or "2",
+            candidate_numeric or "20",
+            bbox,
+        )
+        peers: list[dict[str, object]] = []
+        component_left = bbox[0] + max(3, (bbox[2] - bbox[0]) // 5)
+        component_right = bbox[2] - max(3, (bbox[2] - bbox[0]) // 5)
+        component_height = max(8, (bbox[3] - bbox[1]) // 8)
+        colored = [
+            (
+                [
+                    component_left,
+                    bbox[1] + 5,
+                    component_right,
+                    bbox[1] + 5 + component_height,
+                ],
+                "red",
+            ),
+            (
+                [
+                    component_left,
+                    (bbox[1] + bbox[3] - component_height) // 2,
+                    component_right,
+                    (bbox[1] + bbox[3] + component_height) // 2,
+                ],
+                "red",
+            ),
+            (
+                [
+                    component_left,
+                    bbox[3] - 5 - component_height,
+                    component_right,
+                    bbox[3] - 5,
+                ],
+                "red",
+            ),
+        ]
+    elif mode == "CLIPPED":
+        bbox = candidate_bbox or [970, 280, 1000, 340]
+        candidate = _line(
+            930,
+            candidate_vietocr or "1",
+            candidate_numeric or "1",
+            bbox,
+        )
+        peers = (
+            [
+                _line(931, "N", "7" if peer_numeric else "N", [972, 350, 1000, 372]),
+                _line(932, "di", "H", [972, 390, 1000, 412]),
+                _line(933, "%", "F", [970, 430, 1000, 454]),
+            ]
+            if include_peers
+            else []
+        )
+        component_left = bbox[0] + max(3, (bbox[2] - bbox[0]) // 4)
+        component_right = bbox[2] - max(3, (bbox[2] - bbox[0]) // 5)
+        component_height = max(6, (bbox[3] - bbox[1]) // 8)
+        colored = [
+            (
+                [
+                    component_left,
+                    bbox[1] + 4,
+                    component_right,
+                    bbox[1] + 4 + component_height,
+                ],
+                "black",
+            ),
+            (
+                [
+                    component_left,
+                    (bbox[1] + bbox[3] - component_height) // 2,
+                    component_right,
+                    (bbox[1] + bbox[3] + component_height) // 2,
+                ],
+                "black",
+            ),
+            (
+                [
+                    component_left,
+                    bbox[3] - 4 - component_height,
+                    component_right,
+                    bbox[3] - 4,
+                ],
+                "black",
+            ),
+            *(
+                [
+                    ([978, 354, 994, 366], "black"),
+                    ([978, 394, 994, 406], "black"),
+                    ([978, 434, 994, 448], "black"),
+                ]
+                if include_peers
+                else []
+            ),
+        ]
+    else:
+        raise AssertionError("unsupported vertical-stamp fixture mode")
+    stamp_lines = [candidate, *peers]
+    pages[0]["lines"].extend(stamp_lines)
+    if margin_label:
+        pages[0]["lines"].append(
+            _line(934, "Nhãn tài chính", "", [925, bbox[1] + 10, 970, bbox[1] + 35])
+        )
+    _reindex_page_lines(pages[0]["lines"])
+    return pages, stamp_lines, colored
+
+
 def _clipped_right_edge_local_subtotal_pages(
     *,
     decoration_bbox: list[int] | None = None,
@@ -1631,6 +1758,8 @@ def _coherently_rehash_furniture_axis(axis: dict) -> None:
     prefix = (
         "aforav2:printed-note-reference-v4:"
         if evidence["status"] == subject._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+        else "aforav2:extreme-right-vertical-stamp-v4:"
+        if evidence["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
         else "aforav2:extreme-margin-furniture:"
     )
     evidence["evidence_id"] = prefix + canonical_json_sha256_v1(evidence_material)
@@ -2243,6 +2372,282 @@ def test_extreme_margin_v2_numeric_rotated_stamp_requires_exact_pixels_and_repla
         )
         == axis
     )
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_mode", "expected_peer_count"),
+    [
+        (
+            "CHROMATIC",
+            subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE,
+            0,
+        ),
+        (
+            "CLIPPED",
+            subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE,
+            3,
+        ),
+    ],
+)
+def test_extreme_right_vertical_stamp_v4_owns_one_sample_and_publicly_replays(
+    mode: str,
+    expected_mode: str,
+    expected_peer_count: int,
+) -> None:
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode=mode)
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="black",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"]
+    assert len(evidence) == 1
+    stamp = evidence[0]
+    assert stamp["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+    assert stamp["geometry"]["stamp_mode"] == expected_mode
+    assert len(stamp["peer_crop_proofs"]) == expected_peer_count
+    component_proof = stamp["component_peer_proof"]
+    assert component_proof["qualifying_component_count"] >= 3
+    assert component_proof["qualifying_vertical_span"] * 4 >= (
+        stamp["geometry"]["candidate_height"] * 3
+    )
+    owned = [
+        sample
+        for sample in axis["numeric_sample_universe"]
+        if sample["owner_kind"] == subject._EXTREME_MARGIN_FURNITURE_OWNER_KIND
+    ]
+    assert len(owned) == 1
+    assert owned[0]["sample_id"] == stamp["sample_id"]
+    assert owned[0]["owner_id"] == stamp["evidence_id"]
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        len(
+            [
+                receipt
+                for receipt in closure["coverage_receipt"]
+                if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+                and receipt["sample_ids"] == [stamp["sample_id"]]
+            ]
+        )
+        == 1
+    )
+    duplicated_closure = copy.deepcopy(closure)
+    furniture_receipt = next(
+        receipt
+        for receipt in duplicated_closure["coverage_receipt"]
+        if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    )
+    duplicate_receipt = copy.deepcopy(furniture_receipt)
+    duplicate_receipt["coverage_id"] += ":duplicate"
+    duplicated_closure["coverage_receipt"].append(duplicate_receipt)
+    _coherently_rehash_scoped_closure(duplicated_closure)
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="exactly one owning coverage receipt",
+    ):
+        closure_v2._validate_result(duplicated_closure)
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    render = _snapshot_and_render(pages, [], colored_bboxes=colored)[1]
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "REAL_THIRD_FINANCIAL_LANE",
+        "UNIT_HEADER_SURFACE",
+        "SINGLE_BLACK_DIGIT_IN_NORMAL_LANE",
+        "NO_EXTERNAL_PEERS",
+        "NUMERIC_EXTERNAL_PEER",
+        "CONFLICTING_MARGIN_LABEL",
+        "NO_RENDER_AUTHORITY",
+    ],
+)
+def test_extreme_right_vertical_stamp_v4_fails_closed_without_every_gate(attack: str) -> None:
+    mode = "CHROMATIC" if attack == "REAL_THIRD_FINANCIAL_LANE" else "CLIPPED"
+    kwargs: dict[str, object] = {"mode": mode}
+    if attack == "UNIT_HEADER_SURFACE":
+        kwargs["candidate_vietocr"] = "Triệu đồng"
+    elif attack == "SINGLE_BLACK_DIGIT_IN_NORMAL_LANE":
+        kwargs["candidate_bbox"] = [820, 280, 850, 340]
+    elif attack == "NO_EXTERNAL_PEERS":
+        kwargs["include_peers"] = False
+    elif attack == "NUMERIC_EXTERNAL_PEER":
+        kwargs["peer_numeric"] = True
+    elif attack == "CONFLICTING_MARGIN_LABEL":
+        kwargs["margin_label"] = True
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(**kwargs)
+    if attack == "REAL_THIRD_FINANCIAL_LANE":
+        pages[0]["lines"].extend(
+            [
+                _line(940, "31.12.2023", "31.12.2023", [930, 45, 990, 65]),
+                _line(941, "120", "120", [930, 15, 990, 38]),
+                _line(942, "80", "80", [930, 180, 990, 200]),
+                _line(943, "30", "30", [930, 246, 990, 266]),
+            ]
+        )
+        _reindex_page_lines(pages[0]["lines"])
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="black",
+        with_render=attack != "NO_RENDER_AUTHORITY",
+        render_colored_bboxes=colored,
+    )
+
+    assert not any(
+        evidence["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+        for evidence in axis["authenticated_extreme_margin_furniture_evidence"]
+    )
+    stamp_sample_ids = {line["sample_id"] for line in stamp_lines}
+    assert not any(
+        sample["sample_id"] in stamp_sample_ids
+        and sample["owner_kind"] == subject._EXTREME_MARGIN_FURNITURE_OWNER_KIND
+        for sample in axis["numeric_sample_universe"]
+    )
+    if attack == "REAL_THIRD_FINANCIAL_LANE":
+        assert any(len(grid["column_centers"]) == 3 for grid in axis["row_axis"]["column_grids"])
+
+
+def test_extreme_right_vertical_stamp_v4_never_reowns_printed_note_reference_axis() -> None:
+    pages, ink_bboxes = _printed_note_reference_fixture_pages()
+    _scan, _candidates, _binding, _snapshot, axis = (
+        _build_authenticated_printed_note_reference_fixture(pages, ink_bboxes)
+    )
+
+    assert axis["authenticated_extreme_margin_furniture_evidence"]
+    assert all(
+        evidence["status"]
+        in {
+            subject._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
+            subject._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
+        }
+        for evidence in axis["authenticated_extreme_margin_furniture_evidence"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("attack", "error"),
+    [
+        ("CROSS_PAGE", "candidate binding|component proof"),
+        ("BBOX", "authenticated render binding"),
+        ("COMPONENT", "component peer chain"),
+        ("OWNER", "universe owner"),
+    ],
+)
+def test_extreme_right_vertical_stamp_v4_coherent_tamper_rejects(
+    attack: str, error: str
+) -> None:
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode="CHROMATIC")
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="red",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    if attack == "CROSS_PAGE":
+        evidence["candidate_crop_proof"]["render_binding"]["physical_page"] += 1
+        _coherently_rehash_furniture_axis(attacked)
+    elif attack == "BBOX":
+        evidence["candidate_crop_proof"]["render_binding"]["raw_pixel_bbox"][0] += 1
+        _coherently_rehash_furniture_axis(attacked)
+    elif attack == "COMPONENT":
+        evidence["component_peer_proof"]["qualifying_component_count"] -= 1
+        _coherently_rehash_furniture_axis(attacked)
+    else:
+        sample = next(
+            item
+            for item in attacked["numeric_sample_universe"]
+            if item["sample_id"] == evidence["sample_id"]
+        )
+        sample["owner_id"] = attacked["role_occurrences"][0]["occurrence_id"]
+        _coherently_rehash_occurrence(attacked)
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error, match=error):
+        subject._validate_result(attacked)
+
+
+@pytest.mark.parametrize("proof_kind", ["CANDIDATE", "PEER"])
+def test_extreme_right_vertical_stamp_v4_exact_pixel_hash_requires_public_replay(
+    proof_kind: str,
+) -> None:
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode="CLIPPED")
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="black",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    proof = (
+        evidence["candidate_crop_proof"]
+        if proof_kind == "CANDIDATE"
+        else evidence["peer_crop_proofs"][0]
+    )
+    proof["exact_bbox_rgb_sha256"] = "0" * 64
+    _coherently_rehash_furniture_axis(attacked)
+    assert subject._validate_result(attacked) == attacked
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    render = _snapshot_and_render(pages, [], colored_bboxes=colored)[1]
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            attacked,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
 
 
 @pytest.mark.parametrize(

@@ -466,8 +466,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "fbfa10764f8aa9452af469e99f7f449885c63180ba4ac7b6e4c650afcbfa88c3",
-        "size_bytes": 511_800,
+        "sha256": "615101df9dea909bddb6021729b88cf3c86e8524f718951fc88cd5f5fb8539a8",
+        "size_bytes": 548_421,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -2065,6 +2065,7 @@ def _authenticated_intervening_furniture_binding(
         if status not in {
             occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,  # noqa: SLF001
             occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,  # noqa: SLF001
+            occurrence_v2._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS,  # noqa: SLF001
             occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS,  # noqa: SLF001
         }:
             continue
@@ -4865,6 +4866,8 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
             else occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_FIELDS
             if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS
+            else occurrence_v2._EXTREME_MARGIN_VERTICAL_STAMP_V4_FIELDS
+            if status == occurrence_v2._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
             else occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS
             if status == occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
             else occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_FIELDS
@@ -4885,6 +4888,8 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         evidence_id_prefix = (
             "aforav2:printed-note-reference-v4:"
             if status == occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
+            else "aforav2:extreme-right-vertical-stamp-v4:"
+            if status == occurrence_v2._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
             else "aforav2:extreme-margin-furniture:"
         )
         if (
@@ -4966,6 +4971,7 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         in {
             occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
             occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
+            occurrence_v2._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS,
             occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
             occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
         }
