@@ -223,6 +223,31 @@ def test_family12_wrapped_state_majority_source_variants_resolve_exact_roles() -
     )
 
 
+def test_family12_abbreviated_multiple_member_state_majority_label_resolves_exact_role() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Theo đối tượng khách hàng",
+                    "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
+                    "Công ty Nhà nước",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    majority = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "STATE_MAJORITY_LLC_LOANS"
+    )
+    assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+    assert majority["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
 def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> None:
     result = build_accounting_family_topology_scan_v1(
         [

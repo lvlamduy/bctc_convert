@@ -210,6 +210,7 @@ _CHILDREN = [
             "Công ty TNHH MTV vốn nhà nước trên 50%",
             "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
+            "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
             "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% "
