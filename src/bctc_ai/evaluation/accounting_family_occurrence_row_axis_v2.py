@@ -357,6 +357,158 @@ _RECURSIVE_PARENT_PROVISION_BINDING_SPECS = (
         "target_role": "TOTAL_INTERBANK_PROVISION",
     },
 )
+_RECURSIVE_PARENT_DIRECT_COMPONENT_SUPPORT_SPECS = (
+    {
+        "component_role_alternatives": (
+            ("DEMAND_DEPOSIT_VND", "DEMAND_DEPOSIT_FOREIGN_CURRENCY"),
+            ("DEMAND_DEPOSIT_VND",),
+            ("DEMAND_DEPOSIT_FOREIGN_CURRENCY",),
+        ),
+        "direct_component_descendant_roles": (
+            ("DEMAND_DEPOSIT_VND", ("DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",)),
+            (
+                "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+                ("DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",),
+            ),
+        ),
+        "result_role": "DEMAND_DEPOSIT_GROUP",
+    },
+    {
+        "component_role_alternatives": (
+            ("TERM_DEPOSIT_VND", "TERM_DEPOSIT_FOREIGN_CURRENCY"),
+            ("TERM_DEPOSIT_VND",),
+            ("TERM_DEPOSIT_FOREIGN_CURRENCY",),
+        ),
+        "direct_component_descendant_roles": (
+            ("TERM_DEPOSIT_VND", ("TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",)),
+            (
+                "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                ("TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",),
+            ),
+        ),
+        "result_role": "TERM_DEPOSIT_GROUP",
+    },
+    {
+        "component_role_alternatives": (
+            ("DEMAND_DEPOSIT_GROUP", "TERM_DEPOSIT_GROUP"),
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_PROVISION",
+            ),
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_OTHER",
+            ),
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_PROVISION",
+                "INTERBANK_DEPOSIT_OTHER",
+            ),
+            ("DEMAND_DEPOSIT_GROUP",),
+            ("TERM_DEPOSIT_GROUP",),
+            ("DEMAND_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_PROVISION"),
+            ("TERM_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_PROVISION"),
+            ("INTERBANK_DEPOSIT_OTHER",),
+            ("INTERBANK_DEPOSIT_OTHER", "INTERBANK_DEPOSIT_PROVISION"),
+            ("DEMAND_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_OTHER"),
+            ("TERM_DEPOSIT_GROUP", "INTERBANK_DEPOSIT_OTHER"),
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_PROVISION",
+                "INTERBANK_DEPOSIT_OTHER",
+            ),
+            (
+                "TERM_DEPOSIT_GROUP",
+                "INTERBANK_DEPOSIT_PROVISION",
+                "INTERBANK_DEPOSIT_OTHER",
+            ),
+        ),
+        "direct_component_descendant_roles": (
+            (
+                "DEMAND_DEPOSIT_GROUP",
+                (
+                    "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "DEMAND_DEPOSIT_VND",
+                ),
+            ),
+            (
+                "TERM_DEPOSIT_GROUP",
+                (
+                    "TERM_DEPOSIT_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+                    "TERM_DEPOSIT_VND",
+                ),
+            ),
+            ("INTERBANK_DEPOSIT_PROVISION", ()),
+            ("INTERBANK_DEPOSIT_OTHER", ()),
+        ),
+        "result_role": "INTERBANK_DEPOSIT_GROUP",
+    },
+    {
+        "component_role_alternatives": (
+            ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_FOREIGN_CURRENCY"),
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+            ),
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_OTHER",
+            ),
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+                "INTERBANK_LOAN_OTHER",
+            ),
+            ("INTERBANK_LOAN_VND",),
+            ("INTERBANK_LOAN_FOREIGN_CURRENCY",),
+            ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_PROVISION"),
+            ("INTERBANK_LOAN_FOREIGN_CURRENCY", "INTERBANK_LOAN_PROVISION"),
+            ("INTERBANK_LOAN_OTHER",),
+            ("INTERBANK_LOAN_OTHER", "INTERBANK_LOAN_PROVISION"),
+            ("INTERBANK_LOAN_VND", "INTERBANK_LOAN_OTHER"),
+            ("INTERBANK_LOAN_FOREIGN_CURRENCY", "INTERBANK_LOAN_OTHER"),
+            (
+                "INTERBANK_LOAN_VND",
+                "INTERBANK_LOAN_PROVISION",
+                "INTERBANK_LOAN_OTHER",
+            ),
+            (
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                "INTERBANK_LOAN_PROVISION",
+                "INTERBANK_LOAN_OTHER",
+            ),
+        ),
+        "direct_component_descendant_roles": (
+            (
+                "INTERBANK_LOAN_VND",
+                (
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
+                    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+                ),
+            ),
+            (
+                "INTERBANK_LOAN_FOREIGN_CURRENCY",
+                (
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+                    "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY",
+                    "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+                ),
+            ),
+            ("INTERBANK_LOAN_PROVISION", ()),
+            ("INTERBANK_LOAN_OTHER", ()),
+        ),
+        "result_role": "INTERBANK_LOAN_GROUP",
+    },
+)
 _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS = {
     "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS": (
         "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
@@ -1628,6 +1780,95 @@ def _recursive_frontier_item_match(item: Mapping[str, Any]) -> Mapping[str, Any]
     return label_match if type(label_match) is dict else item
 
 
+def _recursive_direct_component_support_is_exact(
+    interval_occurrences: Sequence[Mapping[str, Any]],
+    rows_by_occurrence_id: Mapping[str, Sequence[Mapping[str, Any]]],
+    effective_roles: Mapping[int, str],
+    *,
+    result_role: str,
+    result_row: Mapping[str, Any],
+) -> bool:
+    """Recursively corroborate every visible structural component subtree."""
+
+    matching_specs = [
+        spec
+        for spec in _RECURSIVE_PARENT_DIRECT_COMPONENT_SUPPORT_SPECS
+        if spec["result_role"] == result_role
+    ]
+    if not matching_specs:
+        return True
+    if len(matching_specs) != 1:
+        raise _error("recursive direct-component support spec repeats")
+    spec = matching_specs[0]
+    descendant_pairs = spec["direct_component_descendant_roles"]
+    direct_roles = {
+        role
+        for alternative in spec["component_role_alternatives"]
+        for role in alternative
+    }
+    if {pair[0] for pair in descendant_pairs} != direct_roles:
+        raise _error("recursive direct-component support descendants drifted")
+    direct_by_descendant: dict[str, set[str]] = {
+        role: {role} for role in direct_roles
+    }
+    for direct_role, descendants in descendant_pairs:
+        for descendant in descendants:
+            direct_by_descendant.setdefault(descendant, set()).add(direct_role)
+
+    required_direct_roles = set()
+    for occurrence in interval_occurrences:
+        owners = direct_by_descendant.get(effective_roles.get(id(occurrence)), set())
+        if len(owners) > 1:
+            return False
+        required_direct_roles.update(owners)
+    if not required_direct_roles:
+        return True
+
+    frontier = []
+    for direct_role in required_direct_roles:
+        candidates = [
+            occurrence
+            for occurrence in interval_occurrences
+            if effective_roles.get(id(occurrence)) == direct_role
+        ]
+        if len(candidates) != 1:
+            return False
+        occurrence = candidates[0]
+        match = _recursive_frontier_item_match(occurrence)
+        occurrence_id = occurrence.get("occurrence_id", match.get("occurrence_id"))
+        direct_rows = rows_by_occurrence_id.get(occurrence_id, ())
+        if len(direct_rows) != 1 or _direct_frontier_row_receipt(direct_rows[0]) is None:
+            return False
+        frontier.append((direct_role, direct_rows[0]))
+    frontier.sort(key=lambda item: _visual_match_key(item[1]["label_match"]))
+    frontier_roles = tuple(role for role, _row in frontier)
+    if frontier_roles not in spec["component_role_alternatives"]:
+        return False
+    result_receipt = _direct_frontier_row_receipt(result_row)
+    component_receipts = [
+        _direct_frontier_row_receipt(row) for _role, row in frontier
+    ]
+    if result_receipt is None or not _direct_frontier_sum_is_exact(
+        result_receipt, component_receipts
+    ):
+        return False
+    sample_ids = [
+        sample_id for receipt in component_receipts for sample_id in receipt["sample_ids"]
+    ]
+    if len(sample_ids) != len(set(sample_ids)):
+        return False
+    return all(
+        _recursive_direct_component_support_is_exact(
+            interval_occurrences,
+            rows_by_occurrence_id,
+            effective_roles,
+            result_role=role,
+            result_row=row,
+        )
+        for role, row in frontier
+    )
+
+
 def _complete_recursive_parent_direct_frontier(
     occurrences: Sequence[Mapping[str, Any]],
     rows: Sequence[Mapping[str, Any]],
@@ -1745,6 +1986,17 @@ def _complete_recursive_parent_direct_frontier(
     receipts = [_direct_frontier_row_receipt(row) for _role, row in frontier]
     sample_ids = [sample_id for receipt in receipts for sample_id in receipt["sample_ids"]]
     if len(sample_ids) != len(set(sample_ids)):
+        return None
+    if not all(
+        _recursive_direct_component_support_is_exact(
+            interval_occurrences,
+            rows_by_occurrence_id,
+            effective_roles,
+            result_role=role,
+            result_row=row,
+        )
+        for role, row in frontier
+    ):
         return None
     return frontier
 

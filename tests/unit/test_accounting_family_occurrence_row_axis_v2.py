@@ -3921,10 +3921,35 @@ def test_f3_recursive_provision_validator_rejects_coherent_zero_frontier_removal
 def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> None:
     _scan, axis = _build_f3(
         _f3_pages(
+                [
+                    ("Tiền gửi tại các TCTD khác", "100", "90"),
+                    ("Cho vay các TCTD khác", "52", "41"),
+                    ("Bằng VND", "52", "41"),
+                    ("Dự phòng rủi ro", "-2", "-1"),
+                ]
+        )
+    )
+
+    equation = next(
+        occurrence["source_scope_binding"]["geometry"]["equation"]
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "TOTAL_INTERBANK_PROVISION"
+    )
+    assert [component["role"] for component in equation["component_frontier"]] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    ]
+
+
+def test_f3_root_provision_excludes_known_nonadditive_discount_from_loan_sum() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
             [
                 ("Tiền gửi tại các TCTD khác", "100", "90"),
                 ("Cho vay các TCTD khác", "52", "41"),
-                ("Bằng VND", "52", "40"),
+                ("Bằng VND", "52", "41"),
+                ("Chiết khấu, tái chiết khấu bằng VND", "5", "4"),
                 ("Dự phòng rủi ro", "-2", "-1"),
             ]
         )
@@ -3940,6 +3965,56 @@ def test_f3_root_provision_never_double_counts_a_loan_result_and_its_leaf() -> N
         "INTERBANK_LOAN_GROUP",
         "TOTAL_INTERBANK_PROVISION",
     ]
+
+
+def test_f3_root_provision_rejects_exact_root_with_contradictory_deposit_frontier() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "60", "50"),
+                ("Tiền gửi có kỳ hạn", "50", "40"),
+                ("Bằng VND", "50", "40"),
+                ("Cho vay các TCTD khác", "54", "42"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert provision["source_scope_binding"] is None
+
+
+@pytest.mark.parametrize("partial_leaf", [False, True])
+def test_f3_root_provision_recursively_rejects_invalid_demand_leaf_frontier(
+    partial_leaf: bool,
+) -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "98", "89"),
+                ("Tiền gửi không kỳ hạn", "60", "50"),
+                ("Bằng VND", "40", "30"),
+                ("Bằng ngoại tệ", "10", "" if partial_leaf else "10"),
+                ("Tiền gửi có kỳ hạn", "38", "39"),
+                ("Bằng VND", "38", "39"),
+                ("Cho vay các TCTD khác", "54", "42"),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    provision = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert provision["source_scope_binding"] is None
 
 
 def test_f3_root_provision_accepts_one_coextensive_roman_section_ordinal() -> None:
