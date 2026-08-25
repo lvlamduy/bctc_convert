@@ -206,31 +206,63 @@ def _fenced_header_lines(
         first_body["document_line_ordinal"],
         region["cluster_end_document_line_ordinal_exclusive"],
     )
-    if start >= stop:
-        return None
     offset = 0
     selected = []
-    for page in parsed_pages:
-        for line in page["lines"]:
-            document_ordinal = offset + line["line_ordinal"]
-            if (
-                page["page_sequence"] == header_page
-                and start <= document_ordinal < stop
-                and line["vietocr_text"].strip()
-            ):
-                selected.append(
-                    {
-                        "bbox": canonical_clone_v1(line["bbox"]),
-                        "numeric_score": line["numeric_recognition"]["reader_score"],
-                        "numeric_text": line["numeric_recognition"]["raw_prediction"],
-                        "source_line_index": line["line_ordinal"],
-                        "vietocr_text": line["vietocr_text"],
-                    }
-                )
-        offset += len(page["lines"])
+    if start < stop:
+        for page in parsed_pages:
+            for line in page["lines"]:
+                document_ordinal = offset + line["line_ordinal"]
+                if (
+                    page["page_sequence"] == header_page
+                    and start <= document_ordinal < stop
+                    and line["vietocr_text"].strip()
+                ):
+                    selected.append(_header_line_record(line))
+            offset += len(page["lines"])
+        if selected and not _contains_parent_or_reset_fence(selected, family_topology_spec):
+            return selected, header_page
+
+    # Some tables print the complete period/unit leaf header immediately above
+    # the explicit owner, followed directly by the first body row.  Admit only
+    # the body-column band in a DPI-relative visual lookback.  The downstream
+    # leaf projector must still prove the complete mixed lane axis from this
+    # band alone; a prior table that exposes only dates/global unit remains U.
+    page = next(item for item in parsed_pages if item["page_sequence"] == header_page)
+    parent_lines = column_v1._match_geometry(parsed_pages, parent)
+    if not parent_lines:
+        return None
+    parent_top = min(line["bbox"][1] for line in parent_lines)
+    scale = row_axis_v1.median_text_height_v1(page["lines"])
+    lane_gap = (
+        min(right - left for left, right in zip(centers, centers[1:], strict=False))
+        if len(centers) > 1
+        else scale * 8.0
+    )
+    band_left = centers[0] - lane_gap * 0.5
+    band_right = centers[-1] + lane_gap * 0.5
+    lookback_top = parent_top - scale * 10.0
+    selected = [
+        _header_line_record(line)
+        for line in page["lines"]
+        if line["vietocr_text"].strip()
+        and line["bbox"][1] < parent_top
+        and line["bbox"][3] >= lookback_top
+        and line["bbox"][2] >= band_left
+        and line["bbox"][0] <= band_right
+    ]
     if not selected or _contains_parent_or_reset_fence(selected, family_topology_spec):
         return None
     return selected, header_page
+
+
+def _header_line_record(line: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "bbox": canonical_clone_v1(line["bbox"]),
+        "numeric_score": line["numeric_recognition"]["reader_score"],
+        "numeric_text": line["numeric_recognition"]["raw_prediction"],
+        "source_line_index": line["line_ordinal"],
+        "vietocr_text": line["vietocr_text"],
+    }
 
 
 def _shared_unit_axis(

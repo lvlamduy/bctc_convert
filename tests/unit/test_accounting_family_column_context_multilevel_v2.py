@@ -137,6 +137,30 @@ def _pages(*, prior_header: bool = False) -> list[dict[str, object]]:
     ]
 
 
+def _complete_header_before_parent_pages() -> list[dict[str, object]]:
+    pages = _pages()
+    lines = pages[0]["lines"]
+    reordered = [*lines[1:8], lines[0], *lines[8:]]
+    bands = {
+        0: (10, 30),
+        1: (38, 58),
+        2: (38, 58),
+        3: (66, 86),
+        4: (66, 86),
+        5: (66, 86),
+        6: (66, 86),
+        7: (100, 122),
+    }
+    for ordinal, line in enumerate(reordered):
+        line["line_ordinal"] = ordinal
+        if ordinal in bands:
+            top, bottom = bands[ordinal]
+            line["bbox"][1] = top
+            line["bbox"][3] = bottom
+    pages[0]["lines"] = reordered
+    return pages
+
+
 def _conflicting_continuation_pages() -> list[dict[str, object]]:
     pages = _pages()
     pages[0]["lines"] = pages[0]["lines"][:13]
@@ -266,6 +290,20 @@ def test_mixed_balance_fallback_returns_v1_compatible_closed_v2_context() -> Non
     assert [item["unit_kind"] for item in result["unit_axis"]] == _KINDS
     assert [item["magnitude_power10"] for item in result["unit_axis"]] == [6, None, 6, None]
     assert result["column_context_id"].startswith("afccmlv2:context:")
+
+
+def test_complete_multilevel_header_immediately_before_explicit_parent_resolves() -> None:
+    result = _build(_complete_header_before_parent_pages())
+
+    assert result["format_version"] == v2.FORMAT_VERSION
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2025",
+        "31/12/2024",
+        "31/12/2024",
+    ]
+    assert [item["unit_kind"] for item in result["unit_axis"]] == _KINDS
 
 
 def test_prior_table_header_cannot_cross_the_active_parent_fence() -> None:
