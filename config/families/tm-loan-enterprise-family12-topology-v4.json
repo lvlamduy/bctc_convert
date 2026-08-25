@@ -507,7 +507,8 @@
             "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay giao dịch ký quỹ",
-            "Ứng trước tiền bán chứng khoán"
+            "Ứng trước tiền bán chứng khoán",
+            "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
@@ -516,7 +517,8 @@
             "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
             "Cho vay giao dịch ký quỹ",
-            "Ứng trước tiền bán chứng khoán"
+            "Ứng trước tiền bán chứng khoán",
+            "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS"
           ],
           "within_role": null
         }

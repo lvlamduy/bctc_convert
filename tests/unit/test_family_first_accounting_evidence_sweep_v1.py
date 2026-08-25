@@ -5902,7 +5902,7 @@ def test_v5_column_context_selects_one_layout_and_rejects_zero_or_multiple(
 
     monkeypatch.setattr(
         subject.column_context_multilevel_v2,
-        "build_accounting_family_column_context_multilevel_v2",
+        "_build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2",
         build,
     )
     context, selected = subject._build_column_context_for_evaluation_v1(
@@ -5937,7 +5937,7 @@ def test_v5_column_context_selects_one_layout_and_rejects_zero_or_multiple(
 
         monkeypatch.setattr(
             subject.column_context_multilevel_v2,
-            "build_accounting_family_column_context_multilevel_v2",
+            "_build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2",
             ambiguous,
         )
         with pytest.raises(

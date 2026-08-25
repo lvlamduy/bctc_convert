@@ -222,6 +222,29 @@ def _build(pages: list[dict[str, object]]) -> dict[str, object]:
     )
 
 
+def test_authenticated_row_axis_handoff_uses_same_multilevel_projection_without_public_replay(
+    monkeypatch,
+) -> None:
+    pages = _pages()
+    axis = _axis(pages)
+    expected = _build(pages)
+    monkeypatch.setattr(
+        v2.column_v1,
+        "build_accounting_family_column_context_v1",
+        lambda *_args, **_kwargs: pytest.fail("trusted handoff replayed the public row axis"),
+    )
+
+    observed = v2._build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=_KINDS,
+    )
+
+    assert observed == expected
+
+
 def test_pinned_v1_and_leaf_implementation_refs_match_disk() -> None:
     for reference in v2.PINNED_IMPLEMENTATION_REFS.values():
         payload = (_ROOT / reference["path"]).read_bytes()

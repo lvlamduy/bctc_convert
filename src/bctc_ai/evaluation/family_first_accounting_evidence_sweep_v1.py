@@ -3595,15 +3595,13 @@ def _build_column_context_for_evaluation_v1(
 
     resolved_contexts = []
     for lane_unit_kinds in _lane_unit_kind_alternatives(evaluation_spec):
-        proposed_context = (
-            column_context_multilevel_v2.build_accounting_family_column_context_multilevel_v2(
-                row_axis,
-                joined_pages,
-                family_spec,
-                period_semantics=evaluation_spec["period_semantics"],
-                expected_lane_unit_kinds=lane_unit_kinds,
-                visible_dash_rescues=visible_dash_rescues,
-            )
+        proposed_context = column_context_multilevel_v2._build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+            row_axis,
+            joined_pages,
+            family_spec,
+            period_semantics=evaluation_spec["period_semantics"],
+            expected_lane_unit_kinds=lane_unit_kinds,
+            visible_dash_rescues=visible_dash_rescues,
         )
         if proposed_context["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY":
             resolved_contexts.append((proposed_context, lane_unit_kinds))

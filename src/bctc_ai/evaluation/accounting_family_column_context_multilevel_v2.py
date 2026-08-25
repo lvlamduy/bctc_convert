@@ -407,7 +407,57 @@ def build_accounting_family_column_context_multilevel_v2(
 ) -> dict[str, Any]:
     """Build sealed V1 first, then attempt one mixed balance-header fallback."""
 
-    baseline = column_v1.build_accounting_family_column_context_v1(
+    return _build_accounting_family_column_context_multilevel_v2(
+        row_axis,
+        pages,
+        family_topology_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=True,
+    )
+
+
+def _build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    period_semantics: str,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Build V2 from one already authenticated occurrence/row-axis handoff."""
+
+    return _build_accounting_family_column_context_multilevel_v2(
+        row_axis,
+        pages,
+        family_topology_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=False,
+    )
+
+
+def _build_accounting_family_column_context_multilevel_v2(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    period_semantics: str,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any,
+    replay_row_axis: bool,
+) -> dict[str, Any]:
+    """Share one fallback implementation across public and trusted handoffs."""
+
+    baseline_builder = (
+        column_v1.build_accounting_family_column_context_v1
+        if replay_row_axis
+        else column_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1
+    )
+    baseline = baseline_builder(
         row_axis,
         pages,
         family_topology_spec,
