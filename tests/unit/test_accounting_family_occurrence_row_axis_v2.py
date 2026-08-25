@@ -1253,6 +1253,286 @@ def _numeric_extreme_margin_stamp_fixture(
     return pages, stamp_lines, colored
 
 
+def _clipped_right_edge_local_subtotal_pages(
+    *,
+    decoration_bbox: list[int] | None = None,
+    decoration_numeric: str = "x",
+    decoration_text: str = "x",
+    extra_gap_lines: int = 0,
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "80"),
+            ("Cấp tín dụng cho các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Trong đó: Chiết khấu, tái chiết khấu bằng VND", "30", "20"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    next_ordinal = len(lines)
+    for offset in range(extra_gap_lines):
+        lines.append(
+            _line(
+                next_ordinal + offset,
+                "ghi chú",
+                "",
+                [500, 410 + offset * 2, 575, 429 + offset * 2],
+            )
+        )
+    decoration = _line(
+        next_ordinal + extra_gap_lines,
+        decoration_text,
+        decoration_numeric,
+        decoration_bbox or [985, 414, 999, 434],
+    )
+    lines.extend(
+        [
+            decoration,
+            _line(next_ordinal + extra_gap_lines + 1, "50", "50", [610, 438, 700, 458]),
+            _line(next_ordinal + extra_gap_lines + 2, "40", "40", [810, 438, 900, 458]),
+            _line(
+                next_ordinal + extra_gap_lines + 3,
+                "Mức lãi suất",
+                "",
+                [45, 490, 430, 510],
+            ),
+        ]
+    )
+    _reindex_page_lines(lines)
+    return pages, decoration
+
+
+def _build_authenticated_clipped_right_edge_local_subtotal(
+    pages: list[dict[str, object]],
+    decoration: dict[str, object],
+    *,
+    with_render: bool = True,
+) -> tuple[dict, dict, dict, dict, dict, dict]:
+    spec = _f3_spec()
+    topology_pages = row_v1._topology_pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(
+        topology_pages, spec
+    )
+    region = candidates["regions"][0]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        topology_pages, spec, candidates, region
+    )
+    snapshot, render = _snapshot_and_render(
+        pages,
+        [],
+        colored_bboxes=[(decoration["bbox"], "black")],
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        spec,
+        scan,
+        region,
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=binding["effective_topology_region"],
+        topology_candidates=candidates,
+        selected_snapshot=snapshot,
+        render_snapshots=(render,) if with_render else (),
+    )
+    return scan, candidates, binding, snapshot, render, axis
+
+
+def _coherently_rehash_nonnumeric_decoration_axis(axis: dict) -> None:
+    evidence = next(
+        item
+        for item in axis["authenticated_extreme_margin_furniture_evidence"]
+        if item["status"] == subject._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+    )
+    evidence_material = copy.deepcopy(evidence)
+    evidence_material.pop("evidence_id")
+    evidence["evidence_id"] = "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(
+        evidence_material
+    )
+    _coherently_rehash_occurrence(axis)
+
+
+def test_clipped_right_edge_nonnumeric_decoration_binds_exact_local_subtotal_seam() -> None:
+    pages, decoration = _clipped_right_edge_local_subtotal_pages()
+    scan, candidates, binding, snapshot, render, axis = (
+        _build_authenticated_clipped_right_edge_local_subtotal(pages, decoration)
+    )
+
+    decorations = [
+        evidence
+        for evidence in axis["authenticated_extreme_margin_furniture_evidence"]
+        if evidence["status"] == subject._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+    ]
+    assert len(decorations) == 1
+    evidence = decorations[0]
+    assert evidence["source_record"]["line_ordinal"] == decoration["line_ordinal"]
+    assert evidence["sample_id"] not in {
+        sample["sample_id"] for sample in axis["numeric_sample_universe"]
+    }
+    assert any(
+        occurrence["occurrence_id"] in evidence["structural_gap_anchor_occurrence_ids"]
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "INTERBANK_LOAN_GROUP"
+        and occurrence["has_bound_value_row"] is False
+    )
+
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    local = next(
+        equation
+        for equation in closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert local["status"] == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    assert receipt["intervening_source_line_indices"] == [decoration["line_ordinal"]]
+    assert receipt["intervening_furniture_evidence_ids"] == [evidence["evidence_id"]]
+    assert receipt["extreme_margin_furniture_evidence_sha256"] == canonical_json_sha256_v1(
+        axis["authenticated_extreme_margin_furniture_evidence"]
+    )
+    assert not any(
+        record["source_record"].get("evidence_id") == evidence["evidence_id"]
+        for record in closure["coverage_receipt"]
+    )
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+        == axis
+    )
+    assert (
+        closure_v2.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, _f3_spec(), _f3_hierarchy()
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    ("fixture_kwargs", "with_render"),
+    [
+        ({"decoration_bbox": [900, 414, 914, 434]}, True),
+        ({"decoration_text": "Khác", "decoration_numeric": "Khác"}, True),
+        ({"decoration_text": "1", "decoration_numeric": "1"}, True),
+        ({"decoration_text": "unknown", "decoration_numeric": ""}, True),
+        ({"extra_gap_lines": 4}, True),
+        ({}, False),
+    ],
+    ids=["not-edge", "semantic-role", "numeric", "long-label", "too-far", "no-render"],
+)
+def test_clipped_right_edge_nonnumeric_decoration_rejects_unsealed_sources(
+    fixture_kwargs: dict[str, object], with_render: bool
+) -> None:
+    pages, decoration = _clipped_right_edge_local_subtotal_pages(**fixture_kwargs)
+    *_authority, axis = _build_authenticated_clipped_right_edge_local_subtotal(
+        pages, decoration, with_render=with_render
+    )
+
+    assert not any(
+        evidence["status"] == subject._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+        for evidence in axis["authenticated_extreme_margin_furniture_evidence"]
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert not any(
+        equation["status"]
+        == "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+        for equation in closure["equations"]["local"]
+    )
+
+
+def test_clipped_right_edge_decoration_coherent_source_and_receipt_tamper_rejects() -> None:
+    pages, decoration = _clipped_right_edge_local_subtotal_pages()
+    scan, candidates, binding, snapshot, render, axis = (
+        _build_authenticated_clipped_right_edge_local_subtotal(pages, decoration)
+    )
+    attacked_axis = copy.deepcopy(axis)
+    evidence = next(
+        item
+        for item in attacked_axis["authenticated_extreme_margin_furniture_evidence"]
+        if item["status"] == subject._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+    )
+    for source in (
+        evidence["source_record"],
+        evidence["candidate_crop_proof"]["source_line_record"],
+        next(
+            line
+            for line in evidence["margin_band"]["source_line_axis"]
+            if line["sample_id"] == evidence["sample_id"]
+        ),
+    ):
+        source["vietocr_text"] = "q"
+        source["numeric_raw_prediction"] = "q"
+    evidence["margin_band"]["source_line_axis_sha256"] = canonical_json_sha256_v1(
+        evidence["margin_band"]["source_line_axis"]
+    )
+    _coherently_rehash_nonnumeric_decoration_axis(attacked_axis)
+    assert subject._validate_result(attacked_axis) == attacked_axis
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            attacked_axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    attacked_closure = copy.deepcopy(closure)
+    local = next(
+        equation
+        for equation in attacked_closure["equations"]["local"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    receipt = local["local_trailing_subgroup_subtotal_receipt"]
+    receipt["intervening_source_line_indices"] = [decoration["line_ordinal"] + 1]
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:local-trailing-subgroup-subtotal:" + (
+        canonical_json_sha256_v1(receipt_material)
+    )
+    _coherently_rehash_scoped_closure(attacked_closure)
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="local trailing subgroup",
+    ):
+        closure_v2.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked_closure, axis, _f3_spec(), _f3_hierarchy()
+        )
+
+
 def _coherently_rehash_furniture_axis(axis: dict) -> None:
     evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
     evidence_material = copy.deepcopy(evidence)

@@ -213,6 +213,12 @@ _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_FIELDS = {
     "target_parent_occurrence_id",
     "target_role",
 }
+_OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS = {
+    *_OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_FIELDS,
+    "extreme_margin_furniture_evidence_sha256",
+    "intervening_furniture_evidence_ids",
+    "intervening_source_line_indices",
+}
 _OCCURRENCE_BOUND_SUBTOTAL_FRONTIER_FIELDS = {
     "anchor_occurrence_ids",
     "component_ordinal",
@@ -321,6 +327,12 @@ _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS = {
     "target_occurrence_id",
     "target_role",
 }
+_LOCAL_TRAILING_SUBGROUP_RECEIPT_WITH_DECORATION_FIELDS = {
+    *_LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS,
+    "extreme_margin_furniture_evidence_sha256",
+    "intervening_furniture_evidence_ids",
+    "intervening_source_line_indices",
+}
 _LOCAL_TRAILING_SUBGROUP_INTERVAL_FIELDS = {
     "candidate_first_document_line_ordinal",
     "candidate_first_source_line_index",
@@ -424,8 +436,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "7f79aeafcd9ccb861692e2243ea2ecb76ff67e622bab2f2a2a4916d69295c152",
-        "size_bytes": 326_371,
+        "sha256": "b098bbf37616a6a7428a687863f26a84091c7cfa483cf0768f2bdac4684a4348",
+        "size_bytes": 346_844,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -1992,12 +2004,56 @@ def _occurrence_descends_from(
     return False
 
 
+def _authenticated_intervening_furniture_binding(
+    *,
+    after_source_line_index: int,
+    before_source_line_index_exclusive: int,
+    candidate_source_line_indices: Sequence[int],
+    furniture_evidence: Sequence[Mapping[str, Any]],
+    page_sequence: int,
+) -> tuple[list[int], list[str]] | None:
+    """Bind every non-candidate source line in one subtotal seam to furniture."""
+
+    candidate_lines = sorted(set(candidate_source_line_indices))
+    if (
+        not candidate_lines
+        or candidate_lines != list(candidate_source_line_indices)
+        or candidate_lines[0] <= after_source_line_index
+        or candidate_lines[-1] >= before_source_line_index_exclusive
+    ):
+        return None
+    intervening = [
+        ordinal
+        for ordinal in range(after_source_line_index + 1, before_source_line_index_exclusive)
+        if ordinal not in set(candidate_lines)
+    ]
+    evidence_by_line: dict[int, list[str]] = {}
+    for evidence in furniture_evidence:
+        if type(evidence) is not dict or evidence.get("page_sequence") != page_sequence:
+            continue
+        status = evidence.get("status")
+        if status not in {
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,  # noqa: SLF001
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,  # noqa: SLF001
+            occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS,  # noqa: SLF001
+        }:
+            continue
+        line_ordinal = evidence.get("source_record", {}).get("line_ordinal")
+        evidence_id = evidence.get("evidence_id")
+        if type(line_ordinal) is int and type(evidence_id) is str:
+            evidence_by_line.setdefault(line_ordinal, []).append(evidence_id)
+    if any(len(evidence_by_line.get(ordinal, [])) != 1 for ordinal in intervening):
+        return None
+    return intervening, [evidence_by_line[ordinal][0] for ordinal in intervening]
+
+
 def _local_trailing_subgroup_subtotal_receipt(
     *,
     accounting_rows: Sequence[Mapping[str, Any]],
     equation: Mapping[str, Any],
     family_id: str,
     hierarchy_spec_sha256: str,
+    furniture_evidence: Sequence[Mapping[str, Any]],
     local_records: Sequence[Mapping[str, Any]],
     numeric_sample_universe: Sequence[Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
@@ -2258,6 +2314,16 @@ def _local_trailing_subgroup_subtotal_receipt(
     selected_lines = [sample["line_ordinal"] for sample in selected_samples]
     candidate_first_source = min(selected_lines)
     candidate_last_source = max(selected_lines)
+    furniture_binding = _authenticated_intervening_furniture_binding(
+        after_source_line_index=last_descendant_source,
+        before_source_line_index_exclusive=subgroup_stop_source,
+        candidate_source_line_indices=selected_lines,
+        furniture_evidence=furniture_evidence,
+        page_sequence=page_sequence,
+    )
+    if furniture_binding is None:
+        return None
+    intervening_source_line_indices, intervening_furniture_evidence_ids = furniture_binding
     candidate_ordinal = (
         selected["source_record"].get("candidate_ordinal")
         if selected["row_kind"] == "TRAILING_VALUE_ROW"
@@ -2335,9 +2401,6 @@ def _local_trailing_subgroup_subtotal_receipt(
         )
         or selected.get("row_kind")
         not in {"TRAILING_VALUE_ROW", "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"}
-        or candidate_first_source != last_descendant_source + 1
-        or candidate_last_source != subgroup_stop_source - 1
-        or page_document_offset + candidate_last_source != subgroup_stop_document - 1
         or max(sample["bbox"][1] for sample in selected_samples)
         >= min(sample["bbox"][3] for sample in selected_samples)
         # Integer crop boxes use a half-open bottom edge: equality is exact
@@ -2412,6 +2475,17 @@ def _local_trailing_subgroup_subtotal_receipt(
         "status": _LOCAL_TRAILING_SUBGROUP_RECEIPT_STATUS,
         "target_occurrence_id": target_id,
         "target_role": target_role,
+        **(
+            {
+                "extreme_margin_furniture_evidence_sha256": canonical_json_sha256_v1(
+                    furniture_evidence
+                ),
+                "intervening_furniture_evidence_ids": intervening_furniture_evidence_ids,
+                "intervening_source_line_indices": intervening_source_line_indices,
+            }
+            if intervening_source_line_indices
+            else {}
+        ),
     }
     receipt = {
         **receipt_material,
@@ -2523,11 +2597,13 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     equation_record: Mapping[str, Any],
     equation_spec: Mapping[str, Any] | None,
     family_id: str,
+    furniture_evidence: Sequence[Mapping[str, Any]],
     hierarchy_spec_sha256: str | None,
     numeric_sample_universe: Sequence[Mapping[str, Any]],
     reserved_source_keys: set[tuple[str, str | int]],
     resolved_by_role: Mapping[str, Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
+    row_axis: Mapping[str, Any],
     source_candidates: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any] | None:
     """Bind one exact subtotal to one V4 equation frontier occurrence interval.
@@ -2817,6 +2893,11 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     if nearest_target_source >= component_first_source:
         return None
 
+    boundary_owner_id = (
+        target_parent_occurrence_id
+        if binding_kind == "DIRECT_PARENT_FRONTIER"
+        else inferred_owner_id
+    )
     boundary_candidates = sorted(
         (
             occurrence
@@ -2826,7 +2907,7 @@ def _occurrence_bound_unlabeled_exact_subtotal(
             and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
             and occurrence.get("label_match", {}).get("source_line_index", -1)
             > component_last_source
-            and occurrence.get("scope_owner_occurrence_id") == inferred_owner_id
+            and occurrence.get("scope_owner_occurrence_id") == boundary_owner_id
             and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
                 occurrence.get("label_match", {})
             )
@@ -2837,9 +2918,17 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         ),
     )
     boundary = boundary_candidates[0] if boundary_candidates else None
-    boundary_source = (
-        boundary["label_match"]["source_line_index"] if boundary is not None else 2**31
+    region = row_axis.get("topology_region") if type(row_axis) is dict else None
+    region_stop_source = (
+        region.get("cluster_end_source_line_index_exclusive")
+        if type(region) is dict and region.get("page_sequence") == page_sequence
+        else None
     )
+    boundary_source = (
+        boundary["label_match"]["source_line_index"] if boundary is not None else region_stop_source
+    )
+    if type(boundary_source) is not int or boundary_source <= component_last_source:
+        return None
     exact_matching_sources = []
     for source in source_candidates:
         if source["key"] in reserved_source_keys or source.get("page_sequence") != page_sequence:
@@ -2860,6 +2949,16 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         return None
     selected, selected_samples = exact_matching_sources[0]
     selected_lines = [sample["line_ordinal"] for sample in selected_samples]
+    furniture_binding = _authenticated_intervening_furniture_binding(
+        after_source_line_index=component_last_source,
+        before_source_line_index_exclusive=boundary_source,
+        candidate_source_line_indices=selected_lines,
+        furniture_evidence=furniture_evidence,
+        page_sequence=page_sequence,
+    )
+    if furniture_binding is None:
+        return None
+    intervening_source_line_indices, intervening_furniture_evidence_ids = furniture_binding
     observed_columns = [value["column_ordinal"] for value in selected["values"]]
     source_cluster_id = (
         selected["source_record"].get("cluster_id")
@@ -2872,8 +2971,7 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         else None
     )
     if (
-        min(selected_lines) != component_last_source + 1
-        or observed_columns != list(range(len(target["values"])))
+        observed_columns != list(range(len(target["values"])))
         or selected_lines != list(range(min(selected_lines), max(selected_lines) + 1))
         or (
             selected["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
@@ -2945,6 +3043,17 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         "target_occurrence_id": target_occurrence_id,
         "target_parent_occurrence_id": target_parent_occurrence_id,
         "target_role": target_role,
+        **(
+            {
+                "extreme_margin_furniture_evidence_sha256": canonical_json_sha256_v1(
+                    furniture_evidence
+                ),
+                "intervening_furniture_evidence_ids": intervening_furniture_evidence_ids,
+                "intervening_source_line_indices": intervening_source_line_indices,
+            }
+            if intervening_source_line_indices
+            else {}
+        ),
     }
     receipt = {
         **receipt_material,
@@ -3161,11 +3270,13 @@ def _legacy_unlabeled_exact_subtotal_for_equation(
 def _unlabeled_exact_subtotal_for_equation(
     *,
     family_id: str,
+    furniture_evidence: Sequence[Mapping[str, Any]],
     equation_record: Mapping[str, Any],
     numeric_sample_universe: Sequence[Mapping[str, Any]],
     reserved_source_keys: set[tuple[str, str | int]],
     resolved_by_role: Mapping[str, Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
+    row_axis: Mapping[str, Any],
     source_candidates: Sequence[Mapping[str, Any]],
     authenticated_extreme_margin_furniture_evidence: Sequence[Mapping[str, Any]] = (),
     equation_records: Sequence[Mapping[str, Any]] | None = None,
@@ -3200,11 +3311,13 @@ def _unlabeled_exact_subtotal_for_equation(
         equation_record=equation_record,
         equation_spec=equation_spec,
         family_id=family_id,
+        furniture_evidence=furniture_evidence,
         hierarchy_spec_sha256=hierarchy_spec_sha256,
         numeric_sample_universe=numeric_sample_universe,
         reserved_source_keys=reserved_source_keys,
         resolved_by_role=resolved_by_role,
         role_occurrences=role_occurrences,
+        row_axis=row_axis,
         source_candidates=source_candidates,
     )
     if occurrence_bound is not None:
@@ -3691,7 +3804,11 @@ def _validate_occurrence_bound_subtotal_receipt(
     frontier = receipt.get("ordered_component_frontier") if type(receipt) is dict else None
     if (
         type(receipt) is not dict
-        or set(receipt) != _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_FIELDS
+        or set(receipt)
+        not in (
+            _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_FIELDS,
+            _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS,
+        )
         or receipt.get("status") != _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
         or type(interval) is not dict
         or set(interval) != _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS
@@ -3724,6 +3841,24 @@ def _validate_occurrence_bound_subtotal_receipt(
             "DIRECT_PARENT_FRONTIER",
             "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER",
         }
+        or (
+            set(receipt) == _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS
+            and (
+                receipt["extreme_margin_furniture_evidence_sha256"]
+                != canonical_json_sha256_v1(
+                    value["authenticated_extreme_margin_furniture_evidence"]
+                )
+                or type(receipt["intervening_source_line_indices"]) is not list
+                or not receipt["intervening_source_line_indices"]
+                or receipt["intervening_source_line_indices"]
+                != sorted(set(receipt["intervening_source_line_indices"]))
+                or type(receipt["intervening_furniture_evidence_ids"]) is not list
+                or len(receipt["intervening_furniture_evidence_ids"])
+                != len(receipt["intervening_source_line_indices"])
+                or len(receipt["intervening_furniture_evidence_ids"])
+                != len(set(receipt["intervening_furniture_evidence_ids"]))
+            )
+        )
     ):
         raise _error("occurrence-bound subtotal receipt shape or source binding drifted")
     material = canonical_clone_v1(receipt)
@@ -3851,6 +3986,49 @@ def _validate_occurrence_bound_subtotal_receipt(
     )
     source = source_candidates[0] if len(source_candidates) == 1 else None
     source_samples = [sample_by_id.get(item) for item in receipt["source_sample_ids"]]
+    boundary = occurrence_by_id.get(interval["boundary_occurrence_id"])
+    if (
+        (interval["boundary_occurrence_id"] is None) is not (interval["boundary_role"] is None)
+        or (interval["boundary_occurrence_id"] is not None and boundary is None)
+        or (
+            boundary is not None
+            and (
+                boundary.get("role") != interval["boundary_role"]
+                or boundary.get("label_match", {}).get("page_sequence") != interval["page_sequence"]
+                or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                    boundary.get("label_match", {})
+                )
+            )
+        )
+    ):
+        raise _error("occurrence-bound subtotal boundary occurrence drifted")
+    has_decoration_fields = (
+        set(receipt) == _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS
+    )
+    candidate_line_indices = (
+        [sample["line_ordinal"] for sample in source_samples]
+        if all(type(sample) is dict for sample in source_samples)
+        else []
+    )
+    stop_source_line_index = (
+        boundary["label_match"]["source_line_index"]
+        if boundary is not None
+        else max(
+            [*candidate_line_indices, *receipt.get("intervening_source_line_indices", [])],
+            default=-1,
+        )
+        + 1
+    )
+    furniture_binding = _authenticated_intervening_furniture_binding(
+        after_source_line_index=interval["component_last_source_line_index"],
+        before_source_line_index_exclusive=stop_source_line_index,
+        candidate_source_line_indices=candidate_line_indices,
+        furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
+        page_sequence=interval["page_sequence"],
+    )
+    expected_intervening_lines, expected_furniture_ids = (
+        furniture_binding if furniture_binding is not None else (None, None)
+    )
     if (
         type(source) is not dict
         or source.get("sample_ids") != receipt["source_sample_ids"]
@@ -3860,8 +4038,15 @@ def _validate_occurrence_bound_subtotal_receipt(
         != interval["candidate_first_source_line_index"]
         or max(sample["line_ordinal"] for sample in source_samples)
         != interval["candidate_last_source_line_index"]
-        or interval["candidate_first_source_line_index"]
-        != interval["component_last_source_line_index"] + 1
+        or furniture_binding is None
+        or has_decoration_fields is not bool(expected_intervening_lines)
+        or (
+            has_decoration_fields
+            and (
+                receipt["intervening_source_line_indices"] != expected_intervening_lines
+                or receipt["intervening_furniture_evidence_ids"] != expected_furniture_ids
+            )
+        )
         or interval["target_source_line_index"] != target["label_match"].get("source_line_index")
         or interval["page_sequence"] != target["label_match"].get("page_sequence")
     ):
@@ -3915,10 +4100,12 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
         evidence = _unlabeled_exact_subtotal_for_equation(
             equation_record=equation,
             family_id=value["family_id"],
+            furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
             numeric_sample_universe=value["numeric_sample_universe"],
             reserved_source_keys=reserved,
             resolved_by_role=resolved_by_role,
             role_occurrences=value["role_occurrences"],
+            row_axis={},
             source_candidates=source_candidates,
             authenticated_extreme_margin_furniture_evidence=value[
                 "authenticated_extreme_margin_furniture_evidence"
@@ -3939,10 +4126,12 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
         subgroup_evidence = _unlabeled_exact_subtotal_for_equation(
             equation_record=subgroup_equations[0],
             family_id=value["family_id"],
+            furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
             numeric_sample_universe=value["numeric_sample_universe"],
             reserved_source_keys=set(),
             resolved_by_role=resolved_by_role,
             role_occurrences=value["role_occurrences"],
+            row_axis={},
             source_candidates=source_candidates,
             authenticated_extreme_margin_furniture_evidence=value[
                 "authenticated_extreme_margin_furniture_evidence"
@@ -4647,6 +4836,8 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
             else occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_FIELDS
             if status == occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS
+            else occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS
+            if status == occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
             else None
         )
         if (
@@ -4731,11 +4922,20 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         for receipt in value["coverage_receipt"]
         if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
     }
+    numeric_furniture_ids = {
+        evidence_id
+        for evidence_id, evidence in furniture_by_id.items()
+        if evidence.get("status")
+        in {
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
+        }
+    }
     if (
         len(receipt_sample_ids) != len(set(receipt_sample_ids))
         or set(receipt_sample_ids) != set(by_sample)
         or source_only_receipts != set(cluster_by_id)
-        or set(furniture_receipts) != set(furniture_by_id)
+        or set(furniture_receipts) != numeric_furniture_ids
         or any(
             receipt["coverage_id"] != "ashtcv2:coverage:extreme-margin-furniture:" + evidence_id
             or receipt["disposition"] != _EXTREME_MARGIN_FURNITURE_DISPOSITION
@@ -4915,7 +5115,11 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
         raise _error("local trailing subgroup trusted equation declaration drifted")
     if (
         type(receipt) is not dict
-        or set(receipt) != _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS
+        or set(receipt)
+        not in (
+            _LOCAL_TRAILING_SUBGROUP_RECEIPT_FIELDS,
+            _LOCAL_TRAILING_SUBGROUP_RECEIPT_WITH_DECORATION_FIELDS,
+        )
         or type(interval) is not dict
         or set(interval) != _LOCAL_TRAILING_SUBGROUP_INTERVAL_FIELDS
         or receipt["status"] != _LOCAL_TRAILING_SUBGROUP_RECEIPT_STATUS
@@ -5000,6 +5204,32 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
             )
         )
         or any(type(item) is not int for item in interval.values())
+        or (
+            set(receipt) == _LOCAL_TRAILING_SUBGROUP_RECEIPT_WITH_DECORATION_FIELDS
+            and (
+                receipt["extreme_margin_furniture_evidence_sha256"]
+                != canonical_json_sha256_v1(
+                    value["authenticated_extreme_margin_furniture_evidence"]
+                )
+                or type(receipt["intervening_source_line_indices"]) is not list
+                or not receipt["intervening_source_line_indices"]
+                or receipt["intervening_source_line_indices"]
+                != sorted(set(receipt["intervening_source_line_indices"]))
+                or any(
+                    type(item) is not int or item < 0
+                    for item in receipt["intervening_source_line_indices"]
+                )
+                or type(receipt["intervening_furniture_evidence_ids"]) is not list
+                or len(receipt["intervening_furniture_evidence_ids"])
+                != len(receipt["intervening_source_line_indices"])
+                or len(receipt["intervening_furniture_evidence_ids"])
+                != len(set(receipt["intervening_furniture_evidence_ids"]))
+                or any(
+                    type(item) is not str or not item
+                    for item in receipt["intervening_furniture_evidence_ids"]
+                )
+            )
+        )
     ):
         raise _error("local trailing subgroup subtotal receipt shape or axis drifted")
     material = canonical_clone_v1(receipt)
@@ -5206,19 +5436,47 @@ def _validate_local_trailing_subgroup_subtotal_receipt(
     page_document_offset = (
         interval["target_document_line_ordinal"] - interval["target_source_line_index"]
     )
+    receipt_source_samples = [
+        numeric_sample_by_id.get(sample_id) for sample_id in receipt["source_sample_ids"]
+    ]
+    furniture_binding = (
+        None
+        if any(type(sample) is not dict for sample in receipt_source_samples)
+        else _authenticated_intervening_furniture_binding(
+            after_source_line_index=last_descendant_source,
+            before_source_line_index_exclusive=interval[
+                "subgroup_stop_source_line_index_exclusive"
+            ],
+            candidate_source_line_indices=[
+                sample["line_ordinal"] for sample in receipt_source_samples
+            ],
+            furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
+            page_sequence=interval["page_sequence"],
+        )
+    )
+    expected_intervening_lines, expected_furniture_ids = (
+        furniture_binding if furniture_binding is not None else (None, None)
+    )
+    has_decoration_fields = set(receipt) == _LOCAL_TRAILING_SUBGROUP_RECEIPT_WITH_DECORATION_FIELDS
     if (
-        interval["last_descendant_source_line_index"] != last_descendant_source
+        furniture_binding is None
+        or has_decoration_fields is not bool(expected_intervening_lines)
+        or (
+            has_decoration_fields
+            and (
+                receipt["intervening_source_line_indices"] != expected_intervening_lines
+                or receipt["intervening_furniture_evidence_ids"] != expected_furniture_ids
+            )
+        )
+        or interval["last_descendant_source_line_index"] != last_descendant_source
         or interval["last_descendant_document_line_ordinal"]
         != page_document_offset + last_descendant_source
-        or interval["candidate_first_source_line_index"] != last_descendant_source + 1
         or interval["candidate_first_document_line_ordinal"]
         != page_document_offset + interval["candidate_first_source_line_index"]
         or interval["candidate_last_document_line_ordinal"]
         != page_document_offset + interval["candidate_last_source_line_index"]
-        or interval["subgroup_stop_source_line_index_exclusive"]
-        != interval["candidate_last_source_line_index"] + 1
         or interval["subgroup_stop_document_line_ordinal_exclusive"]
-        != interval["candidate_last_document_line_ordinal"] + 1
+        != page_document_offset + interval["subgroup_stop_source_line_index_exclusive"]
         or interval["topology_region_stop_source_line_index_exclusive"]
         < interval["subgroup_stop_source_line_index_exclusive"]
         or interval["topology_region_stop_document_line_ordinal_exclusive"]
@@ -6226,6 +6484,7 @@ def _build(
                 accounting_rows=accounting_rows,
                 equation=equation,
                 family_id=spec["family_id"],
+                furniture_evidence=axis["authenticated_extreme_margin_furniture_evidence"],
                 hierarchy_spec_sha256=hierarchy_spec_sha256,
                 local_records=records,
                 numeric_sample_universe=axis["numeric_sample_universe"],
@@ -6307,10 +6566,12 @@ def _build(
             else _unlabeled_exact_subtotal_for_equation(
                 equation_record=record,
                 family_id=spec["family_id"],
+                furniture_evidence=axis["authenticated_extreme_margin_furniture_evidence"],
                 numeric_sample_universe=axis["numeric_sample_universe"],
                 reserved_source_keys=reserved_unlabeled_source_keys,
                 resolved_by_role=resolved,
                 role_occurrences=axis["role_occurrences"],
+                row_axis=row_axis,
                 source_candidates=source_candidates,
                 authenticated_extreme_margin_furniture_evidence=axis[
                     "authenticated_extreme_margin_furniture_evidence"
@@ -6340,10 +6601,12 @@ def _build(
             subgroup_subtotal = _unlabeled_exact_subtotal_for_equation(
                 equation_record=subgroup_records[0],
                 family_id=spec["family_id"],
+                furniture_evidence=axis["authenticated_extreme_margin_furniture_evidence"],
                 numeric_sample_universe=axis["numeric_sample_universe"],
                 reserved_source_keys=set(),
                 resolved_by_role=resolved,
                 role_occurrences=axis["role_occurrences"],
+                row_axis=row_axis,
                 source_candidates=source_candidates,
                 authenticated_extreme_margin_furniture_evidence=axis[
                     "authenticated_extreme_margin_furniture_evidence"
@@ -6616,6 +6879,8 @@ def _build(
             }
         )
     for evidence in axis["authenticated_extreme_margin_furniture_evidence"]:
+        if evidence["status"] == occurrence_v2._EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS:
+            continue
         evidence_id = evidence["evidence_id"]
         coverage_receipt.append(
             {

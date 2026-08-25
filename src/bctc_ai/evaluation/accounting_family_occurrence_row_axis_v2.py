@@ -322,6 +322,9 @@ _EXTREME_MARGIN_FURNITURE_STATUS = "AUTHENTICATED_EXTREME_MARGIN_CHROMATIC_ANNOT
 _EXTREME_MARGIN_FURNITURE_V2_STATUS = (
     "AUTHENTICATED_EXTREME_MARGIN_CONNECTED_CHROMATIC_ANNOTATION_FURNITURE_V2"
 )
+_EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS = (
+    "AUTHENTICATED_CLIPPED_RIGHT_EDGE_NONNUMERIC_DECORATION_V3"
+)
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
 _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
     "DASH_ZERO",
@@ -350,6 +353,21 @@ _EXTREME_MARGIN_FURNITURE_V2_FIELDS = {
     *_EXTREME_MARGIN_FURNITURE_FIELDS,
     "expanded_component_proof",
     "label_collision_proof",
+}
+_EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS = {
+    "candidate_crop_proof",
+    "document_pages_sha256",
+    "evidence_id",
+    "geometry",
+    "margin_band",
+    "page_sequence",
+    "sample_id",
+    "semantic_label_line_ordinals",
+    "snapshot_id",
+    "source_record",
+    "status",
+    "structural_gap_anchor_occurrence_ids",
+    "topology_candidates_id",
 }
 _EXTREME_MARGIN_GEOMETRY_FIELDS = {
     "candidate_bbox",
@@ -403,6 +421,27 @@ _EXTREME_MARGIN_V2_GEOMETRY_FIELDS = {
     "nearest_lane_ordinal",
     "page_width",
     "right_edge_gap",
+}
+_EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_GEOMETRY_FIELDS = {
+    "body_source_line_start",
+    "body_source_line_stop_exclusive",
+    "body_text_scale",
+    "candidate_bbox",
+    "candidate_center_quads",
+    "following_numeric_line_ordinal",
+    "lane_centers_quads",
+    "lane_tolerance",
+    "margin_boundary",
+    "page_width",
+    "preceding_numeric_line_ordinal",
+    "right_edge_gap",
+}
+_EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_BAND_FIELDS = {
+    "document_pages_sha256",
+    "input_page_line_count",
+    "page_sequence",
+    "source_line_axis",
+    "source_line_axis_sha256",
 }
 _EXTREME_MARGIN_V2_LABEL_COLLISION_FIELDS = {
     "candidate_line_ordinal",
@@ -4584,6 +4623,161 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     }, False
 
 
+def _extreme_margin_nonnumeric_decoration_surface(line: Mapping[str, Any]) -> bool:
+    numeric_surface = line.get("numeric_raw_prediction")
+    if type(numeric_surface) is not str:
+        recognition = line.get("numeric_recognition")
+        numeric_surface = recognition.get("raw_prediction") if type(recognition) is dict else None
+    if type(line.get("vietocr_text")) is not str or type(numeric_surface) is not str:
+        return False
+    surfaces = (line["vietocr_text"].strip(), numeric_surface.strip())
+    compact = ["".join(normalize_vietnamese_anchor_v1(surface).split()) for surface in surfaces]
+    return (
+        any(compact)
+        and all(len(surface) <= 4 for surface in compact)
+        and all(not any(character.isdigit() for character in surface) for surface in surfaces)
+        and all(
+            row_v1.parse_visible_financial_numeric_token_v1(surface)["classification"]
+            not in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+            for surface in surfaces
+        )
+    )
+
+
+def _build_authenticated_extreme_margin_nonnumeric_decoration_v3(
+    *,
+    topology_candidates_id: str | None,
+    pages: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    local_lines: Sequence[Mapping[str, Any]],
+    candidate: Mapping[str, Any],
+    centers: Sequence[float],
+    lane_tolerance: float,
+    scale: float,
+    matches: Sequence[Mapping[str, Any]],
+    structural_gap_anchor_occurrence_ids: Sequence[str],
+    numeric_line_ordinals: Sequence[int],
+    selected_snapshot: Mapping[str, Any] | None,
+    render_by_page: Mapping[int, Mapping[str, Any]],
+) -> tuple[dict[str, Any] | None, bool]:
+    """Seal one clipped page-edge glyph as nonnumeric table decoration.
+
+    This evidence owns no numeric sample.  It only authorizes an exact source
+    line ordinal to sit between an already declared additive frontier and its
+    physical subtotal.  The closure must still cite the line and this evidence
+    explicitly; an arbitrary label or numeric row never reaches this builder.
+    """
+
+    page_width = page.get("page_width")
+    if (
+        type(topology_candidates_id) is not str
+        or not topology_candidates_id.startswith("aftcv2:result:")
+        or type(page_width) is not int
+        or page_width <= 0
+        or not centers
+        or not structural_gap_anchor_occurrence_ids
+        or not _extreme_margin_nonnumeric_decoration_surface(candidate)
+    ):
+        return None, False
+    center_quads = [center * 4 for center in centers]
+    if any(not float(center).is_integer() for center in center_quads):
+        return None, False
+    bbox = candidate["bbox"]
+    candidate_ordinal = candidate["line_ordinal"]
+    body_ordinals = sorted(line["line_ordinal"] for line in local_lines)
+    numeric_ordinals = sorted(set(numeric_line_ordinals))
+    preceding = [ordinal for ordinal in numeric_ordinals if ordinal < candidate_ordinal]
+    following = [ordinal for ordinal in numeric_ordinals if ordinal > candidate_ordinal]
+    preceding_ordinal = preceding[-1] if preceding else None
+    following_ordinal = following[0] if following else None
+    margin_boundary = math.ceil(centers[-1] + lane_tolerance)
+    body_start = body_ordinals[0] if body_ordinals else None
+    body_stop = body_ordinals[-1] + 1 if body_ordinals else None
+    if (
+        type(preceding_ordinal) is not int
+        or type(body_start) is not int
+        or type(body_stop) is not int
+        or candidate_ordinal not in set(body_ordinals)
+        or candidate_ordinal - preceding_ordinal > 4
+        or (following_ordinal is None and body_stop - candidate_ordinal > 2)
+        or (following_ordinal is not None and following_ordinal - candidate_ordinal > 4)
+        or bbox[0] < margin_boundary
+        or bbox[0] * 50 < page_width * 49
+        or bbox[2] > page_width
+        or page_width - bbox[2] > math.ceil(scale / 2)
+        or bbox[2] - bbox[0] > math.ceil(scale * 1.25)
+    ):
+        return None, False
+    semantic_label_line_ordinals = sorted(
+        {
+            page["lines"][index]["line_ordinal"]
+            for match in matches
+            if match["page_sequence"] == page["page_sequence"]
+            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
+        }
+    )
+    if candidate_ordinal in semantic_label_line_ordinals:
+        return None, False
+    page_sequence = page["page_sequence"]
+    if selected_snapshot is None or page_sequence not in render_by_page:
+        return None, selected_snapshot is not None
+    render = render_by_page[page_sequence]
+    try:
+        render_record, payload = render_v1._validated_render_snapshot(render)
+        image = render_v1._png_image(payload).convert("RGB")
+    except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        raise _error("authenticated nonnumeric margin-decoration render replay failed") from exc
+    if image.width != page_width:
+        return None, False
+    candidate_crop = _authenticated_extreme_margin_crop_proof(
+        image=image,
+        render_record=render_record,
+        render_id=render["render_id"],
+        line=candidate,
+    )
+    if candidate_crop["ink_pixel_count"] <= 0:
+        return None, False
+    document_pages_sha256 = canonical_json_sha256_v1(pages)
+    margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
+    material = {
+        "candidate_crop_proof": candidate_crop,
+        "document_pages_sha256": document_pages_sha256,
+        "geometry": {
+            "body_source_line_start": body_start,
+            "body_source_line_stop_exclusive": body_stop,
+            "body_text_scale": float(scale),
+            "candidate_bbox": canonical_clone_v1(bbox),
+            "candidate_center_quads": 2 * (bbox[0] + bbox[2]),
+            "following_numeric_line_ordinal": following_ordinal,
+            "lane_centers_quads": [int(center) for center in center_quads],
+            "lane_tolerance": float(lane_tolerance),
+            "margin_boundary": margin_boundary,
+            "page_width": page_width,
+            "preceding_numeric_line_ordinal": preceding_ordinal,
+            "right_edge_gap": page_width - bbox[2],
+        },
+        "margin_band": {
+            "document_pages_sha256": document_pages_sha256,
+            "input_page_line_count": len(page["lines"]),
+            "page_sequence": page_sequence,
+            "source_line_axis": margin_axis,
+            "source_line_axis_sha256": canonical_json_sha256_v1(margin_axis),
+        },
+        "page_sequence": page_sequence,
+        "sample_id": candidate["sample_id"],
+        "semantic_label_line_ordinals": semantic_label_line_ordinals,
+        "snapshot_id": selected_snapshot["snapshot_id"],
+        "source_record": _extreme_margin_line_record(candidate),
+        "status": _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS,
+        "structural_gap_anchor_occurrence_ids": list(structural_gap_anchor_occurrence_ids),
+        "topology_candidates_id": topology_candidates_id,
+    }
+    return {
+        **material,
+        "evidence_id": "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material),
+    }, False
+
+
 def _build_numeric_sample_universe(
     pages: Sequence[Mapping[str, Any]],
     expanded_region: Mapping[str, Any],
@@ -4649,6 +4843,11 @@ def _build_numeric_sample_universe(
     render_required_reasons: list[str] = []
     body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
     grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    bound_occurrence_ids = {
+        row["label_match"].get("occurrence_id")
+        for row in axis["rows"]
+        if type(row.get("label_match", {}).get("occurrence_id")) is str
+    }
     clusters: list[dict[str, Any]] = []
     for page_sequence in sorted(grid_by_page):
         grid = grid_by_page[page_sequence]
@@ -4700,16 +4899,18 @@ def _build_numeric_sample_universe(
             lanes_by_sample[line["sample_id"]] = lane
             if abs(center - centers[lane]) > lane_tolerance:
                 off_lane_sample_ids.add(line["sample_id"])
-        if not candidates:
-            continue
-        physical_clusters = row_v1.cluster_numeric_rows_v1(
-            candidates,
-            is_numeric=row_v1._is_numeric,
-            start_index=min(line["source_line_index"] for line in candidates) - 1,
-            stop_index=max(line["source_line_index"] for line in candidates) + 1,
-            page_width=page["page_width"],
-            minimum_x_ratio=0.0,
-            maximum_x_ratio=1.0,
+        physical_clusters = (
+            row_v1.cluster_numeric_rows_v1(
+                candidates,
+                is_numeric=row_v1._is_numeric,
+                start_index=min(line["source_line_index"] for line in candidates) - 1,
+                stop_index=max(line["source_line_index"] for line in candidates) + 1,
+                page_width=page["page_width"],
+                minimum_x_ratio=0.0,
+                maximum_x_ratio=1.0,
+            )
+            if candidates
+            else []
         )
         for physical_cluster in physical_clusters:
             ordered = sorted(
@@ -4816,6 +5017,53 @@ def _build_numeric_sample_universe(
                     owner_kind="SOURCE_ONLY_INTERNAL_CLUSTER",
                     owner_id=cluster_id,
                 )
+        structural_gap_anchor_occurrence_ids = [
+            match["occurrence_id"]
+            for match in sorted(
+                matches,
+                key=lambda item: (item["source_line_index"], item["occurrence_id"]),
+            )
+            if match.get("page_sequence") == page_sequence
+            and match.get("role_kind") == "STRUCTURAL_GROUP"
+            and match.get("occurrence_id") not in bound_occurrence_ids
+            and _match_has_effective_exact_source_authority(match)
+        ]
+        numeric_line_ordinals = [
+            source["line_ordinal"]
+            for source in universe_by_sample.values()
+            if source["page_sequence"] == page_sequence
+        ]
+        if structural_gap_anchor_occurrence_ids and numeric_line_ordinals:
+            for line in local_lines:
+                if (
+                    line["sample_id"] in universe_by_sample
+                    or row_v1._is_numeric(line)
+                    or not _extreme_margin_nonnumeric_decoration_surface(line)
+                ):
+                    continue
+                evidence, render_required = (
+                    _build_authenticated_extreme_margin_nonnumeric_decoration_v3(
+                        pages=pages,
+                        topology_candidates_id=topology_candidates_id,
+                        page=page,
+                        local_lines=local_lines,
+                        candidate=line,
+                        centers=centers,
+                        lane_tolerance=lane_tolerance,
+                        scale=scale,
+                        matches=matches,
+                        structural_gap_anchor_occurrence_ids=(structural_gap_anchor_occurrence_ids),
+                        numeric_line_ordinals=numeric_line_ordinals,
+                        selected_snapshot=selected_snapshot,
+                        render_by_page=render_by_page,
+                    )
+                )
+                if evidence is not None:
+                    furniture_evidence.append(evidence)
+                elif render_required:
+                    render_required_reasons.append(
+                        _EXTREME_MARGIN_RENDER_REASON_PREFIX + str(page_sequence)
+                    )
     universe = sorted(
         universe_by_sample.values(),
         key=lambda record: (
@@ -5674,11 +5922,186 @@ def _validate_extreme_margin_furniture_evidence_axis_v2(
     return set(sample_ids)
 
 
+def _validate_extreme_margin_nonnumeric_decoration_axis_v3(
+    evidence_axis: Any,
+    *,
+    universe_by_sample: Mapping[str, Mapping[str, Any]],
+    axis: Mapping[str, Any],
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
+    topology_candidates_id: str | None,
+) -> None:
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    evidence_ids: list[str] = []
+    line_keys: list[tuple[int, int]] = []
+    for evidence in evidence_axis:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_FIELDS
+            or evidence.get("status") != _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+            or type(evidence.get("evidence_id")) is not str
+            or type(evidence.get("snapshot_id")) is not str
+            or not evidence["snapshot_id"].startswith("ffdesv1:selected:")
+            or type(evidence.get("document_pages_sha256")) is not str
+            or not re.fullmatch(r"[0-9a-f]{64}", evidence["document_pages_sha256"])
+            or type(evidence.get("page_sequence")) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence.get("sample_id")) is not str
+            or not evidence["sample_id"]
+            or evidence.get("topology_candidates_id") != topology_candidates_id
+        ):
+            raise _error("authenticated nonnumeric margin-decoration evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material):
+            raise _error("authenticated nonnumeric margin-decoration identity drifted")
+        source = _validate_extreme_margin_line_record(evidence["source_record"])
+        candidate_crop = _validate_extreme_margin_v2_exact_crop_proof(
+            evidence["candidate_crop_proof"]
+        )
+        if (
+            evidence["sample_id"] != source["sample_id"]
+            or evidence["sample_id"] in universe_by_sample
+            or evidence["page_sequence"] != candidate_crop["render_binding"]["physical_page"]
+            or not same_typed_json_v1(candidate_crop["source_line_record"], source)
+            or not _extreme_margin_nonnumeric_decoration_surface(source)
+        ):
+            raise _error("nonnumeric margin-decoration exact source binding drifted")
+
+        geometry = evidence["geometry"]
+        grid = grid_by_page.get(evidence["page_sequence"])
+        bbox = source["bbox"]
+        if (
+            type(geometry) is not dict
+            or set(geometry) != _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_GEOMETRY_FIELDS
+            or type(grid) is not dict
+            or type(geometry["body_text_scale"]) is not float
+            or not math.isfinite(geometry["body_text_scale"])
+            or geometry["body_text_scale"] <= 0
+            or type(geometry["lane_tolerance"]) is not float
+            or not math.isfinite(geometry["lane_tolerance"])
+            or geometry["lane_tolerance"] <= 0
+            or geometry["candidate_bbox"] != bbox
+            or geometry["candidate_center_quads"] != 2 * (bbox[0] + bbox[2])
+            or geometry["lane_centers_quads"]
+            != [int(center * 4) for center in grid["column_centers"]]
+            or any(not float(center * 4).is_integer() for center in grid["column_centers"])
+            or geometry["margin_boundary"]
+            != math.ceil(grid["column_centers"][-1] + geometry["lane_tolerance"])
+            or geometry["page_width"]
+            != candidate_crop["render_binding"]["render_ref"]["pixel_width"]
+            or geometry["right_edge_gap"] != geometry["page_width"] - bbox[2]
+            or bbox[0] < geometry["margin_boundary"]
+            or bbox[0] * 50 < geometry["page_width"] * 49
+            or bbox[2] > geometry["page_width"]
+            or geometry["right_edge_gap"] > math.ceil(geometry["body_text_scale"] / 2)
+            or bbox[2] - bbox[0] > math.ceil(geometry["body_text_scale"] * 1.25)
+            or type(geometry["body_source_line_start"]) is not int
+            or type(geometry["body_source_line_stop_exclusive"]) is not int
+            or not geometry["body_source_line_start"]
+            <= source["line_ordinal"]
+            < geometry["body_source_line_stop_exclusive"]
+            or type(geometry["preceding_numeric_line_ordinal"]) is not int
+            or geometry["following_numeric_line_ordinal"] is not None
+            and type(geometry["following_numeric_line_ordinal"]) is not int
+        ):
+            raise _error("nonnumeric margin-decoration geometry drifted")
+        numeric_ordinals = sorted(
+            {
+                sample["line_ordinal"]
+                for sample in universe_by_sample.values()
+                if sample["page_sequence"] == evidence["page_sequence"]
+                and geometry["body_source_line_start"]
+                <= sample["line_ordinal"]
+                < geometry["body_source_line_stop_exclusive"]
+            }
+        )
+        preceding = [ordinal for ordinal in numeric_ordinals if ordinal < source["line_ordinal"]]
+        following = [ordinal for ordinal in numeric_ordinals if ordinal > source["line_ordinal"]]
+        expected_following = following[0] if following else None
+        if (
+            not preceding
+            or geometry["preceding_numeric_line_ordinal"] != preceding[-1]
+            or geometry["following_numeric_line_ordinal"] != expected_following
+            or source["line_ordinal"] - preceding[-1] > 4
+            or (
+                expected_following is None
+                and geometry["body_source_line_stop_exclusive"] - source["line_ordinal"] > 2
+            )
+            or (expected_following is not None and expected_following - source["line_ordinal"] > 4)
+        ):
+            raise _error("nonnumeric margin-decoration numeric neighbor binding drifted")
+
+        expected_anchors = [
+            occurrence["occurrence_id"]
+            for occurrence in sorted(
+                occurrence_by_id.values(),
+                key=lambda item: (
+                    item.get("label_match", {}).get("source_line_index", 2**31),
+                    item["occurrence_id"],
+                ),
+            )
+            if occurrence.get("role_kind") == "STRUCTURAL_GROUP"
+            and occurrence.get("has_bound_value_row") is False
+            and occurrence.get("label_match", {}).get("page_sequence") == evidence["page_sequence"]
+            and _match_has_effective_exact_source_authority(occurrence.get("label_match", {}))
+        ]
+        expected_semantic_ordinals = sorted(
+            {
+                ordinal
+                for occurrence in occurrence_by_id.values()
+                if occurrence.get("label_match", {}).get("page_sequence")
+                == evidence["page_sequence"]
+                for ordinal in range(
+                    occurrence["label_match"]["source_line_index"],
+                    occurrence["label_match"]["end_source_line_index"] + 1,
+                )
+            }
+        )
+        if (
+            not expected_anchors
+            or evidence["structural_gap_anchor_occurrence_ids"] != expected_anchors
+            or evidence["semantic_label_line_ordinals"] != expected_semantic_ordinals
+            or source["line_ordinal"] in expected_semantic_ordinals
+        ):
+            raise _error("nonnumeric margin-decoration structural anchor drifted")
+
+        margin_band = evidence["margin_band"]
+        source_axis = margin_band.get("source_line_axis") if type(margin_band) is dict else None
+        if (
+            type(margin_band) is not dict
+            or set(margin_band) != _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_BAND_FIELDS
+            or margin_band["document_pages_sha256"] != evidence["document_pages_sha256"]
+            or margin_band["page_sequence"] != evidence["page_sequence"]
+            or type(margin_band["input_page_line_count"]) is not int
+            or type(source_axis) is not list
+            or len(source_axis) > margin_band["input_page_line_count"]
+            or source_axis
+            != sorted(source_axis, key=lambda item: (item["line_ordinal"], item["bbox"]))
+            or len({item["line_ordinal"] for item in source_axis}) != len(source_axis)
+            or len({item["sample_id"] for item in source_axis}) != len(source_axis)
+            or any(
+                not same_typed_json_v1(_validate_extreme_margin_line_record(line), line)
+                or line["bbox"][0] < geometry["margin_boundary"]
+                or line["bbox"][2] > geometry["page_width"]
+                for line in source_axis
+            )
+            or margin_band["source_line_axis_sha256"] != canonical_json_sha256_v1(source_axis)
+            or [line for line in source_axis if line["sample_id"] == evidence["sample_id"]]
+            != [source]
+        ):
+            raise _error("nonnumeric margin-decoration complete source band drifted")
+        evidence_ids.append(evidence_id)
+        line_keys.append((evidence["page_sequence"], source["line_ordinal"]))
+    if len(evidence_ids) != len(set(evidence_ids)) or len(line_keys) != len(set(line_keys)):
+        raise _error("nonnumeric margin-decoration evidence repeats one source line")
+
+
 def _validate_extreme_margin_furniture_evidence_axis(
     evidence_axis: Any,
     *,
     universe_by_sample: Mapping[str, Mapping[str, Any]],
     axis: Mapping[str, Any],
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
     topology_candidates_id: str | None,
 ) -> set[str]:
     if type(evidence_axis) is not list or len(evidence_axis) > _MAX_ROLE_OCCURRENCES:
@@ -5693,7 +6116,13 @@ def _validate_extreme_margin_furniture_evidence_axis(
         for evidence in evidence_axis
         if type(evidence) is dict and evidence.get("status") == _EXTREME_MARGIN_FURNITURE_V2_STATUS
     ]
-    if len(v1) + len(v2) != len(evidence_axis):
+    v3 = [
+        evidence
+        for evidence in evidence_axis
+        if type(evidence) is dict
+        and evidence.get("status") == _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS
+    ]
+    if len(v1) + len(v2) + len(v3) != len(evidence_axis):
         raise _error("authenticated extreme-margin furniture evidence version drifted")
     v1_samples = _validate_extreme_margin_furniture_evidence_axis_v1(
         v1,
@@ -5705,6 +6134,13 @@ def _validate_extreme_margin_furniture_evidence_axis(
         v2,
         universe_by_sample=universe_by_sample,
         axis=axis,
+        topology_candidates_id=topology_candidates_id,
+    )
+    _validate_extreme_margin_nonnumeric_decoration_axis_v3(
+        v3,
+        universe_by_sample=universe_by_sample,
+        axis=axis,
+        occurrence_by_id=occurrence_by_id,
         topology_candidates_id=topology_candidates_id,
     )
     if v1_samples & v2_samples or len({item["evidence_id"] for item in evidence_axis}) != len(
@@ -5748,6 +6184,7 @@ def _validate_numeric_sample_universe(
         value["authenticated_extreme_margin_furniture_evidence"],
         universe_by_sample=by_sample,
         axis=axis,
+        occurrence_by_id=occurrence_by_id,
         topology_candidates_id=value["topology_candidates_id"],
     )
 
