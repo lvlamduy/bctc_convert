@@ -257,14 +257,27 @@ _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS = {
     "page_sequence",
     "target_source_line_index",
 }
+_OCCURRENCE_BOUND_SUBTOTAL_VISUAL_INTERVAL_FIELDS = {
+    *_OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS,
+    "candidate_visual_bottom",
+    "candidate_visual_top",
+    "component_visual_bottom",
+    "ordering_kind",
+}
 _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS = (
     "EXACT_ALL_LANES_DECLARED_EQUATION_FRONTIER_BOUND_TO_UNIQUE_TARGET_OCCURRENCE"
 )
 _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND = (
     "DECLARED_UNLABELED_INTERMEDIATE_DIRECT_FRONTIER"
 )
+_DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND = (
+    "DECLARED_UNLABELED_INTERMEDIATE_VISUAL_DIRECT_FRONTIER"
+)
 _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS = (
     "EXACT_ALL_LANES_DECLARED_EQUATION_FRONTIER_BOUND_TO_UNLABELED_INTERMEDIATE_RESULT"
+)
+_SOURCE_BOUND_IDENTITY_COMPONENT_STATUS = (
+    "SOURCE_BOUND_IDENTITY_COMPONENT_CORROBORATES_VISIBLE_PARENT"
 )
 _SEALED_DEPOSIT_SUBGROUP_COMPONENT_ROLES = {
     "DEMAND_DEPOSIT_GROUP": [
@@ -431,6 +444,7 @@ _GLOBAL_EQUATION_STATUSES = {
     "EXHAUSTIVE_COMPONENT_ALTERNATIVES_DISAGREE_VETO",
     "NOT_APPLICABLE_NO_SOURCE_OR_EXHAUSTIVE_COMPONENT_SET",
     "REQUIRED_EQUATION_INCOMPLETE_COMPONENT_SET_VETO",
+    _SOURCE_BOUND_IDENTITY_COMPONENT_STATUS,
     "TRAILING_NUMERIC_CHALLENGER_VETO",
     "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
     "VISIBLE_RESULT_INCOMPLETE_COMPONENT_SET_VETO",
@@ -1057,6 +1071,7 @@ def _project_provisional_one_edit_recursive_frontier_v1(
     }
     reserved_source_keys: set[tuple[str, str | int]] = set()
     subtotal_by_key: dict[tuple[str, str | int], dict[str, Any]] = {}
+    source_bound_intermediate_roles: set[str] = set()
     selected_component_owner_roles: dict[str, set[str]] = {}
     global_records: list[dict[str, Any]] = []
     for equation in spec["equations"]:
@@ -1074,6 +1089,7 @@ def _project_provisional_one_edit_recursive_frontier_v1(
             selected_component_owner_roles={
                 role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
             },
+            source_bound_intermediate_roles=frozenset(source_bound_intermediate_roles),
         )
         if equation_reasons:
             return None
@@ -1102,12 +1118,20 @@ def _project_provisional_one_edit_recursive_frontier_v1(
                 return None
             reserved_source_keys.add(subtotal["source_key"])
             subtotal_by_key[subtotal["source_key"]] = subtotal
+            if subtotal.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind") in {
+                _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+                _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+            }:
+                source_bound_intermediate_roles.add(subtotal["role"])
 
     synthetic_receipt_roles = {
         evidence["role"]
         for evidence in subtotal_by_key.values()
         if evidence.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
-        == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+        in {
+            _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+            _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+        }
     }
     if any(
         record["result_role"] in synthetic_intermediate_roles
@@ -2190,6 +2214,7 @@ def _select_global_equation(
     allow_rounding: bool,
     descendant_result_roles_by_role: Mapping[str, frozenset[str]],
     selected_component_owner_roles: Mapping[str, frozenset[str]],
+    source_bound_intermediate_roles: frozenset[str],
 ) -> tuple[dict[str, Any], list[str]]:
     result_role = equation["result_role"]
     component_universe = {
@@ -2407,6 +2432,25 @@ def _select_global_equation(
                 f"TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:{result_role}:"
                 f"{len(exact_candidate_ordinals)}"
             )
+        elif (
+            claimed_trailing
+            and not trailing_rows
+            and equation["trailing_result_policy"] == "CORROBORATE_UNIQUE_MATCH_IF_PRESENT"
+            and equation["visible_source_policy"] == "REQUIRE_EXHAUSTIVE_COMPONENTS"
+            and len(alternatives) == 1
+            and len(alternatives[0]["component_roles"]) == 1
+            and alternatives[0]["component_roles"][0] in source_bound_intermediate_roles
+        ):
+            # One printed subtotal can be both the terminal child subtotal and
+            # the largest parent result when the parent has no other direct
+            # component.  The physical row remains owned once by the child's
+            # authenticated subtotal receipt; this exact one-component identity
+            # only carries that source authority to the declared parent.  It is
+            # never available when another direct component or a trailing
+            # challenger is present.
+            selected = alternatives[0]
+            source = None
+            status = _SOURCE_BOUND_IDENTITY_COMPONENT_STATUS
         elif alternatives and equation["trailing_result_policy"] != (
             "CORROBORATE_UNIQUE_MATCH_IF_PRESENT"
         ):
@@ -3616,38 +3660,144 @@ def _occurrence_bound_unlabeled_exact_subtotal(
     boundary_source = (
         boundary["label_match"]["source_line_index"] if boundary is not None else region_stop_source
     )
-    if type(boundary_source) is not int or boundary_source <= component_last_source:
-        return None
     exact_matching_sources = []
-    for source in source_candidates:
-        if source["key"] in reserved_source_keys or source.get("page_sequence") != page_sequence:
-            continue
-        samples = [sample_by_id.get(item) for item in source["sample_ids"]]
-        if not samples or any(type(sample) is not dict for sample in samples):
-            continue
-        first_source = min(sample["line_ordinal"] for sample in samples)
-        last_source = max(sample["line_ordinal"] for sample in samples)
+    if type(boundary_source) is int and boundary_source > component_last_source:
+        for source in source_candidates:
+            if (
+                source["key"] in reserved_source_keys
+                or source.get("page_sequence") != page_sequence
+            ):
+                continue
+            samples = [sample_by_id.get(item) for item in source["sample_ids"]]
+            if not samples or any(type(sample) is not dict for sample in samples):
+                continue
+            first_source = min(sample["line_ordinal"] for sample in samples)
+            last_source = max(sample["line_ordinal"] for sample in samples)
+            if (
+                first_source > component_last_source
+                and last_source < boundary_source
+                and source.get("complete") is True
+                and _same_values(source["values"], target["values"])
+            ):
+                exact_matching_sources.append((source, samples))
+    visual_interleaved = False
+    component_visual_bottom: int | None = None
+    if len(exact_matching_sources) == 1:
+        selected, selected_samples = exact_matching_sources[0]
+    elif exact_matching_sources:
+        return None
+    else:
+        label_bboxes = [
+            occurrence.get("label_match", {}).get("source_label_bbox")
+            for occurrence in recursive_support
+        ]
         if (
-            first_source > component_last_source
-            and last_source < boundary_source
-            and source.get("complete") is True
-            and _same_values(source["values"], target["values"])
+            binding_kind != _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+            or any(
+                bbox is not None
+                and (
+                    type(bbox) is not list
+                    or len(bbox) != 4
+                    or any(type(coordinate) is not int for coordinate in bbox)
+                )
+                for bbox in label_bboxes
+            )
+            or any(
+                type(sample.get("bbox")) is not list
+                or len(sample["bbox"]) != 4
+                or any(type(coordinate) is not int for coordinate in sample["bbox"])
+                for sample in recursive_samples
+            )
         ):
-            exact_matching_sources.append((source, samples))
-    if len(exact_matching_sources) != 1:
-        return None
-    selected, selected_samples = exact_matching_sources[0]
+            return None
+        component_visual_bottom = max(
+            [sample["bbox"][3] for sample in recursive_samples]
+            + [bbox[3] for bbox in label_bboxes if bbox is not None]
+        )
+        visual_sources = [
+            source
+            for source in source_candidates
+            if source["key"] not in reserved_source_keys
+            and source.get("page_sequence") == page_sequence
+            and source.get("top", -1) >= component_visual_bottom
+        ]
+        if not visual_sources:
+            return None
+        first_visual_top = min(source["top"] for source in visual_sources)
+        first_visual_sources = [
+            source for source in visual_sources if source["top"] == first_visual_top
+        ]
+        visual_exact_sources = [
+            source
+            for source in visual_sources
+            if source.get("complete") is True and _same_values(source["values"], target["values"])
+        ]
+        if (
+            len(first_visual_sources) != 1
+            or len(visual_exact_sources) != 1
+            or first_visual_sources[0]["key"] != visual_exact_sources[0]["key"]
+            or visual_exact_sources[0]["row_kind"] != "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+        ):
+            return None
+        selected = visual_exact_sources[0]
+        selected_samples = [sample_by_id.get(item) for item in selected["sample_ids"]]
+        if any(type(sample) is not dict for sample in selected_samples):
+            return None
+        intervening_visual_occurrences = [
+            occurrence
+            for occurrence in role_occurrences
+            if occurrence.get("occurrence_id") not in recursive_support_ids
+            and occurrence.get("occurrence_id") != target_occurrence_id
+            and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+            and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence.get("label_match", {})
+            )
+            and type(occurrence.get("label_match", {}).get("source_label_bbox")) is list
+            and len(occurrence["label_match"]["source_label_bbox"]) == 4
+            and all(
+                type(coordinate) is int
+                for coordinate in occurrence["label_match"]["source_label_bbox"]
+            )
+            and component_visual_bottom
+            <= occurrence["label_match"]["source_label_bbox"][1]
+            < selected["top"]
+        ]
+        selected_line_set = {sample["line_ordinal"] for sample in selected_samples}
+        recursive_line_set = {sample["line_ordinal"] for sample in recursive_samples} | {
+            line
+            for occurrence in recursive_support
+            for line in (
+                occurrence["label_match"].get("source_line_indices")
+                or [occurrence["label_match"]["source_line_index"]]
+            )
+        }
+        if (
+            not selected_line_set
+            or selected_line_set & recursive_line_set
+            or min(selected_line_set) <= component_first_source
+            or max(selected_line_set) > component_last_source
+            or intervening_visual_occurrences
+            or selected["top"] < component_visual_bottom
+            or selected["bottom"] <= selected["top"]
+        ):
+            return None
+        visual_interleaved = True
+        binding_kind = _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND
     selected_lines = [sample["line_ordinal"] for sample in selected_samples]
-    furniture_binding = _authenticated_intervening_furniture_binding(
-        after_source_line_index=component_last_source,
-        before_source_line_index_exclusive=boundary_source,
-        candidate_source_line_indices=selected_lines,
-        furniture_evidence=furniture_evidence,
-        page_sequence=page_sequence,
-    )
-    if furniture_binding is None:
-        return None
-    intervening_source_line_indices, intervening_furniture_evidence_ids = furniture_binding
+    if visual_interleaved:
+        intervening_source_line_indices: list[int] = []
+        intervening_furniture_evidence_ids: list[str] = []
+    else:
+        furniture_binding = _authenticated_intervening_furniture_binding(
+            after_source_line_index=component_last_source,
+            before_source_line_index_exclusive=boundary_source,
+            candidate_source_line_indices=selected_lines,
+            furniture_evidence=furniture_evidence,
+            page_sequence=page_sequence,
+        )
+        if furniture_binding is None:
+            return None
+        intervening_source_line_indices, intervening_furniture_evidence_ids = furniture_binding
     observed_columns = [value["column_ordinal"] for value in selected["values"]]
     source_cluster_id = (
         selected["source_record"].get("cluster_id")
@@ -3706,6 +3856,16 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         "component_last_source_line_index": component_last_source,
         "page_sequence": page_sequence,
         "target_source_line_index": nearest_target_source,
+        **(
+            {
+                "candidate_visual_bottom": selected["bottom"],
+                "candidate_visual_top": selected["top"],
+                "component_visual_bottom": component_visual_bottom,
+                "ordering_kind": "VISUAL_AFTER_DIRECT_FRONTIER_WITH_PROVIDER_INTERLEAVING",
+            }
+            if visual_interleaved
+            else {}
+        ),
     }
     receipt_material = {
         "binding_kind": binding_kind,
@@ -3730,7 +3890,11 @@ def _occurrence_bound_unlabeled_exact_subtotal(
         "source_sample_ids": canonical_clone_v1(selected["sample_ids"]),
         "status": (
             _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS
-            if binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+            if binding_kind
+            in {
+                _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+                _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+            }
             else _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
         ),
         "target_occurrence_id": target_occurrence_id,
@@ -4502,9 +4666,14 @@ def _validate_occurrence_bound_subtotal_receipt(
     binding_kind = receipt.get("binding_kind") if type(receipt) is dict else None
     expected_status = (
         _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_RECEIPT_STATUS
-        if binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+        if binding_kind
+        in {
+            _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+            _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+        }
         else _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_STATUS
     )
+    visual_interleaved = binding_kind == _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND
     if (
         type(receipt) is not dict
         or set(receipt)
@@ -4514,7 +4683,12 @@ def _validate_occurrence_bound_subtotal_receipt(
         )
         or receipt.get("status") != expected_status
         or type(interval) is not dict
-        or set(interval) != _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS
+        or set(interval)
+        != (
+            _OCCURRENCE_BOUND_SUBTOTAL_VISUAL_INTERVAL_FIELDS
+            if visual_interleaved
+            else _OCCURRENCE_BOUND_SUBTOTAL_INTERVAL_FIELDS
+        )
         or type(frontier) is not list
         or not frontier
         or type(receipt.get("ordered_component_occurrence_ids")) is not list
@@ -4544,6 +4718,7 @@ def _validate_occurrence_bound_subtotal_receipt(
             "DIRECT_PARENT_FRONTIER",
             "DECLARED_EQUATION_SHARED_OWNER_SIBLING_FRONTIER",
             _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+            _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
         }
         or (
             set(receipt) == _OCCURRENCE_BOUND_SUBTOTAL_RECEIPT_WITH_DECORATION_FIELDS
@@ -4621,9 +4796,10 @@ def _validate_occurrence_bound_subtotal_receipt(
         occurrence_by_id.get(occurrence_id)
         for occurrence_id in receipt["ordered_component_occurrence_ids"]
     ]
-    synthetic_intermediate = (
-        receipt["binding_kind"] == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
-    )
+    synthetic_intermediate = receipt["binding_kind"] in {
+        _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+        _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+    }
     target_binding_valid = (
         receipt["target_occurrence_id"] is None
         and receipt["target_parent_occurrence_id"] == receipt["inferred_owner_occurrence_id"]
@@ -4740,13 +4916,146 @@ def _validate_occurrence_bound_subtotal_receipt(
         )
         + 1
     )
-    furniture_binding = _authenticated_intervening_furniture_binding(
-        after_source_line_index=interval["component_last_source_line_index"],
-        before_source_line_index_exclusive=stop_source_line_index,
-        candidate_source_line_indices=candidate_line_indices,
-        furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
-        page_sequence=interval["page_sequence"],
-    )
+    visual_binding_valid = True
+    if visual_interleaved:
+        recursive_support_ids = {
+            occurrence_id
+            for item in frontier
+            for occurrence_id in [
+                *item["anchor_occurrence_ids"],
+                *item["support_occurrence_ids"],
+            ]
+        }
+        for anchor_id in [
+            occurrence_id for item in frontier for occurrence_id in item["anchor_occurrence_ids"]
+        ]:
+            recursive_support_ids.update(
+                occurrence["occurrence_id"]
+                for occurrence in value["role_occurrences"]
+                if _occurrence_descends_from(occurrence, anchor_id, occurrence_by_id)
+            )
+        recursive_support = [occurrence_by_id.get(item) for item in recursive_support_ids]
+        recursive_samples = [
+            sample
+            for sample in value["numeric_sample_universe"]
+            if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+            and sample.get("owner_id") in recursive_support_ids
+        ]
+        label_bboxes = [
+            occurrence.get("label_match", {}).get("source_label_bbox")
+            if type(occurrence) is dict
+            else None
+            for occurrence in recursive_support
+        ]
+        recomputed_component_visual_bottom = (
+            max(
+                [sample["bbox"][3] for sample in recursive_samples]
+                + [bbox[3] for bbox in label_bboxes if bbox is not None]
+            )
+            if recursive_samples
+            and all(
+                bbox is None
+                or (
+                    type(bbox) is list
+                    and len(bbox) == 4
+                    and all(type(coordinate) is int for coordinate in bbox)
+                )
+                for bbox in label_bboxes
+            )
+            else None
+        )
+        all_trailing_records = [
+            item["source_record"]
+            for item in value["coverage_receipt"]
+            if item.get("row_kind") == "TRAILING_VALUE_ROW"
+        ]
+        all_source_candidates = _numeric_source_candidate_axis(
+            value["numeric_sample_universe"],
+            value["internal_unassigned_numeric_clusters"],
+            all_trailing_records,
+        )
+        visual_sources = [
+            item
+            for item in all_source_candidates
+            if item.get("page_sequence") == interval["page_sequence"]
+            and type(recomputed_component_visual_bottom) is int
+            and item.get("top", -1) >= recomputed_component_visual_bottom
+        ]
+        first_visual_sources = (
+            [
+                item
+                for item in visual_sources
+                if item["top"] == min(x["top"] for x in visual_sources)
+            ]
+            if visual_sources
+            else []
+        )
+        recursive_line_set = {sample["line_ordinal"] for sample in recursive_samples} | {
+            line
+            for occurrence in recursive_support
+            if type(occurrence) is dict
+            for line in (
+                occurrence["label_match"].get("source_line_indices")
+                or [occurrence["label_match"]["source_line_index"]]
+            )
+        }
+        intervening_visual_occurrences = [
+            occurrence
+            for occurrence in value["role_occurrences"]
+            if occurrence.get("occurrence_id") not in recursive_support_ids
+            and occurrence.get("occurrence_id") != receipt["target_occurrence_id"]
+            and occurrence.get("label_match", {}).get("page_sequence") == interval["page_sequence"]
+            and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+                occurrence.get("label_match", {})
+            )
+            and type(occurrence.get("label_match", {}).get("source_label_bbox")) is list
+            and len(occurrence["label_match"]["source_label_bbox"]) == 4
+            and all(
+                type(coordinate) is int
+                for coordinate in occurrence["label_match"]["source_label_bbox"]
+            )
+            and type(recomputed_component_visual_bottom) is int
+            and recomputed_component_visual_bottom
+            <= occurrence["label_match"]["source_label_bbox"][1]
+            < source.get("top", -1)
+        ]
+        visual_binding_valid = (
+            interval.get("ordering_kind")
+            == "VISUAL_AFTER_DIRECT_FRONTIER_WITH_PROVIDER_INTERLEAVING"
+            and type(source) is dict
+            and source.get("row_kind") == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+            and len(first_visual_sources) == 1
+            and first_visual_sources[0]["key"] == source["key"]
+            and len(
+                [
+                    item
+                    for item in visual_sources
+                    if item.get("complete") is True
+                    and _same_values(item["values"], target_resolution["values"])
+                ]
+            )
+            == 1
+            and recomputed_component_visual_bottom == interval.get("component_visual_bottom")
+            and source.get("top") == interval.get("candidate_visual_top")
+            and source.get("bottom") == interval.get("candidate_visual_bottom")
+            and source.get("top", -1) >= recomputed_component_visual_bottom
+            and source.get("bottom", -1) > source.get("top", -1)
+            and not (set(candidate_line_indices) & recursive_line_set)
+            and not intervening_visual_occurrences
+            and min(candidate_line_indices, default=-1)
+            > interval["component_first_source_line_index"]
+            and max(candidate_line_indices, default=2**31)
+            <= interval["component_last_source_line_index"]
+        )
+        furniture_binding = ([], [])
+    else:
+        furniture_binding = _authenticated_intervening_furniture_binding(
+            after_source_line_index=interval["component_last_source_line_index"],
+            before_source_line_index_exclusive=stop_source_line_index,
+            candidate_source_line_indices=candidate_line_indices,
+            furniture_evidence=value["authenticated_extreme_margin_furniture_evidence"],
+            page_sequence=interval["page_sequence"],
+        )
     expected_intervening_lines, expected_furniture_ids = (
         furniture_binding if furniture_binding is not None else (None, None)
     )
@@ -4759,6 +5068,7 @@ def _validate_occurrence_bound_subtotal_receipt(
         != interval["candidate_first_source_line_index"]
         or max(sample["line_ordinal"] for sample in source_samples)
         != interval["candidate_last_source_line_index"]
+        or not visual_binding_valid
         or furniture_binding is None
         or has_decoration_fields is not bool(expected_intervening_lines)
         or (
@@ -6632,6 +6942,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 raise _error("scoped hierarchical rounding selection drifted")
         successful_global_kinds = {
             "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM": {"DERIVED_EXACT_COMPONENT_SUM"},
+            _SOURCE_BOUND_IDENTITY_COMPONENT_STATUS: {"DERIVED_EXACT_COMPONENT_SUM"},
             "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS": {
                 "DERIVED_EXACT_DISJOINT_OCCURRENCE_SUM_CORROBORATED_BY_COMPONENTS",
                 "VISIBLE_FAMILY_PARENT_CLUSTER_CORROBORATED_BY_COMPONENTS",
@@ -6684,6 +6995,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 or (not rounding_selected and equation.get("rounding_evidence", []))
             ):
                 raise _error("global equation status and resolved arithmetic authority drifted")
+            if equation["status"] == _SOURCE_BOUND_IDENTITY_COMPONENT_STATUS and (
+                len(equation["component_roles_present"]) != 1
+                or not any(
+                    receipt.get("role") == equation["component_roles_present"][0]
+                    and receipt.get("disposition") == _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+                    and receipt.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
+                    in {
+                        _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+                        _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+                    }
+                    for receipt in value["coverage_receipt"]
+                )
+            ):
+                raise _error("source-bound identity parent lost its exact subtotal authority")
         else:
             result_record = resolved_by_role.get(equation["result_role"])
             selected_resolution_kinds = {
@@ -7547,6 +7872,7 @@ def _build(
         and role not in occurrence_roles
     }
     selected_component_owner_roles: dict[str, set[str]] = {}
+    source_bound_intermediate_roles: set[str] = set()
     global_records = []
     for equation in spec["equations"]:
         available_trailing_rows = [
@@ -7563,6 +7889,7 @@ def _build(
             selected_component_owner_roles={
                 role: frozenset(owners) for role, owners in selected_component_owner_roles.items()
             },
+            source_bound_intermediate_roles=frozenset(source_bound_intermediate_roles),
         )
         global_records.append(record)
         reasons.extend(equation_reasons)
@@ -7597,6 +7924,13 @@ def _build(
             source_key = unlabeled_subtotal["source_key"]
             reserved_unlabeled_source_keys.add(source_key)
             unlabeled_subtotal_by_source_key[source_key] = unlabeled_subtotal
+            if unlabeled_subtotal.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get(
+                "binding_kind"
+            ) in {
+                _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+                _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+            }:
+                source_bound_intermediate_roles.add(unlabeled_subtotal["role"])
             if unlabeled_subtotal["disposition"] == _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION:
                 reasons.append(
                     "AMBIGUOUS_UNLABELED_SUBTOTAL_SOURCE:"
@@ -7627,7 +7961,10 @@ def _build(
         evidence["role"]
         for evidence in unlabeled_subtotal_by_source_key.values()
         if evidence.get(_OCCURRENCE_BOUND_SUBTOTAL_BINDING_KEY, {}).get("binding_kind")
-        == _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND
+        in {
+            _DECLARED_UNLABELED_INTERMEDIATE_SUBTOTAL_BINDING_KIND,
+            _DECLARED_UNLABELED_INTERMEDIATE_VISUAL_BINDING_KIND,
+        }
     }
     source_visible_intermediate_roles = {
         record["result_role"]

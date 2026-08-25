@@ -1109,6 +1109,57 @@ def _family12_nested_group_core_and_grand_total_pages() -> list[dict[str, object
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
 
 
+def _family12_provider_interleaved_terminal_core_pages(
+    *,
+    core_current: str = "137",
+    duplicate_core: bool = False,
+    semantic_boundary: bool = False,
+) -> list[dict[str, object]]:
+    """Keep visual order while reproducing a provider-interleaved final subtotal."""
+
+    pages = _family12_nested_group_core_and_grand_total_pages()
+    lines = pages[0]["lines"]
+    margin_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Cho vay giao dịch ký quỹ"
+    )
+    core = lines[margin_index - 2 : margin_index]
+    boundary = copy.deepcopy(lines[margin_index])
+    assert [line["vietocr_text"] for line in core] == ["137", "107"]
+    core[0]["vietocr_text"] = core_current
+    core[0]["numeric_recognition"]["raw_prediction"] = core_current
+    # No margin or separate grand-total row: the one printed core subtotal is
+    # also the largest family parent through the declared [CORE] identity.
+    del lines[margin_index - 2 :]
+    foreign_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Cho vay tại Chi nhánh và ngân hàng con nước ngoài"
+    )
+    for item in reversed(core):
+        lines.insert(foreign_index, item)
+    if semantic_boundary:
+        boundary["bbox"][1] = core[0]["bbox"][1] - 5
+        boundary["bbox"][3] = core[0]["bbox"][1]
+        lines.append(boundary)
+    if duplicate_core:
+        duplicate = copy.deepcopy(core)
+        for item in duplicate:
+            item["bbox"][1] += 30
+            item["bbox"][3] += 30
+        lines.extend(duplicate)
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
 def _family12_flat_children_and_grand_total_pages(
     *, grand_current: int = 131, grand_prior: int = 103
 ) -> list[dict[str, object]]:
@@ -1571,6 +1622,136 @@ def test_family12_nested_groups_feed_one_core_then_one_grand_total_direct_fronti
         )
         == closure
     )
+
+
+def test_family12_provider_interleaved_terminal_core_binds_largest_parent_once() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _family12_provider_interleaved_terminal_core_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equations = {record["result_role"]: record for record in closure["equations"]["global"]}
+    assert equations["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["status"] == (
+        "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+    )
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["status"] == (
+        "SOURCE_BOUND_IDENTITY_COMPONENT_CORROBORATES_VISIBLE_PARENT"
+    )
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["component_roles_present"] == [
+        "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    ]
+    core = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )
+    receipt = core["occurrence_binding_receipt"]
+    assert receipt["binding_kind"] == ("DECLARED_UNLABELED_INTERMEDIATE_VISUAL_DIRECT_FRONTIER")
+    assert receipt["interval"]["ordering_kind"] == (
+        "VISUAL_AFTER_DIRECT_FRONTIER_WITH_PROVIDER_INTERLEAVING"
+    )
+    assert (
+        sum(core["sample_ids"] == record["sample_ids"] for record in closure["coverage_receipt"])
+        == 1
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    ["MISMATCHED_CORE", "DUPLICATE_CORE", "VISUAL_OVERLAP", "SEMANTIC_BOUNDARY"],
+)
+def test_family12_provider_interleaved_terminal_core_attacks_fail_closed(attack: str) -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    pages = _family12_provider_interleaved_terminal_core_pages(
+        core_current="138" if attack == "MISMATCHED_CORE" else "137",
+        duplicate_core=attack == "DUPLICATE_CORE",
+        semantic_boundary=attack == "SEMANTIC_BOUNDARY",
+    )
+    if attack == "VISUAL_OVERLAP":
+        lines = pages[0]["lines"]
+        foreign = next(
+            line
+            for line in lines
+            if line["vietocr_text"] == "Cho vay tại Chi nhánh và ngân hàng con nước ngoài"
+        )
+        for line in lines:
+            if line["vietocr_text"] in {"137", "107"}:
+                line["bbox"][1] = foreign["bbox"][1]
+                line["bbox"][3] = foreign["bbox"][3]
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+        and record.get("occurrence_binding_receipt", {}).get("binding_kind")
+        == "DECLARED_UNLABELED_INTERMEDIATE_VISUAL_DIRECT_FRONTIER"
+        for record in closure["coverage_receipt"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_family12_provider_interleaved_visual_receipt_rejects_coherent_tamper() -> None:
+    root = Path(__file__).resolve().parents[2] / "config" / "families"
+    topology = json.loads(
+        (root / "tm-loan-enterprise-family12-topology-v4.json").read_text(encoding="utf-8")
+    )
+    hierarchy = json.loads(
+        (root / "tm-loan-enterprise-family12-evaluation-v5.json").read_text(encoding="utf-8")
+    )["hierarchical_closure_spec"]
+    axis, closure = _closure(
+        _family12_provider_interleaved_terminal_core_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    receipt = next(
+        record
+        for record in attacked["coverage_receipt"]
+        if record["role"] == "CORE_LOAN_ENTERPRISE_SUBTOTAL"
+    )["occurrence_binding_receipt"]
+    receipt["interval"]["candidate_visual_top"] += 1
+    material = copy.deepcopy(receipt)
+    material.pop("receipt_id")
+    receipt["receipt_id"] = "ashtcv2:occurrence-bound-subtotal:" + canonical_json_sha256_v1(
+        material
+    )
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="visual|interval",
+    ):
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            attacked, axis, topology, hierarchy
+        )
 
 
 def test_family12_unlabeled_core_uses_unbound_semantic_challenger_only_as_stop() -> None:
