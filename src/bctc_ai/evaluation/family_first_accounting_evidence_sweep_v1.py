@@ -51,6 +51,7 @@ from bctc_ai.evaluation.family_first_numeric_cell_evidence_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -218,6 +219,35 @@ class _PreparedV4RenderTopologyHandoffV1:
 
 
 _PREPARED_V4_RENDER_TOPOLOGY_HANDOFF_SEAL = object()
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedV4CandidateOccurrenceAxisV1:
+    """One exact candidate occurrence axis reusable for identical pixels."""
+
+    input_sha256: str
+    occurrence_axis_id: str
+    occurrence_axis_sha256: str
+    payload: bytes = field(repr=False, compare=False)
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_V4_CANDIDATE_OCCURRENCE_AXIS_SEAL = object()
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _PreparedV4CandidateRenderScheduleV1:
+    """Candidate-local render pages derived before downstream selection."""
+
+    candidate_axis_sha256: str
+    render_pages: tuple[int, ...]
+    schedule_sha256: str
+    topology_candidates_id: str
+    topology_scan_id: str
+    seal: object = field(repr=False, compare=False)
+
+
+_PREPARED_V4_CANDIDATE_RENDER_SCHEDULE_SEAL = object()
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -3701,6 +3731,166 @@ def _build_column_context_for_evaluation_v1(
     return context, canonical_clone_v1(lane_unit_kinds)
 
 
+def _candidate_local_render_snapshots_v1(
+    joined_pages: list[dict[str, Any]],
+    topology_region: Mapping[str, Any],
+    render_snapshots: tuple[dict[str, Any], ...],
+) -> tuple[dict[str, Any], ...]:
+    candidate_pages = _selected_topology_pages_v1(
+        joined_pages,
+        {"regions": [topology_region]},
+    )
+    return tuple(
+        render for render in render_snapshots if render.get("physical_page") in candidate_pages
+    )
+
+
+def _candidate_occurrence_axis_cache_input_v1(
+    *,
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    topology_scan: dict[str, Any],
+    topology_region: Mapping[str, Any],
+    occurrence_row_axis_policy: Mapping[str, Any],
+    topology_candidates: Mapping[str, Any],
+    prepared_topology_binding: Any,
+    selected_snapshot: Mapping[str, Any] | None,
+    prepared_snapshot: Any,
+    render_snapshots: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    render_axis = []
+    for render in render_snapshots:
+        if (
+            type(render) is not dict
+            or type(render.get("physical_page")) is not int
+            or type(render.get("render_id")) is not str
+            or type(render.get("render_ref")) is not dict
+        ):
+            raise _error("candidate occurrence cache render binding drifted")
+        render_axis.append(
+            {
+                "physical_page": render["physical_page"],
+                "render_id": render["render_id"],
+                "render_ref": render["render_ref"],
+            }
+        )
+    return {
+        "document_pages_sha256": canonical_json_sha256_v1(joined_pages),
+        "family_spec_sha256": canonical_json_sha256_v1(family_spec),
+        "occurrence_row_axis_policy_sha256": canonical_json_sha256_v1(occurrence_row_axis_policy),
+        "prepared_snapshot_context_sha256": getattr(
+            prepared_snapshot,
+            "prepared_context_sha256",
+            None,
+        ),
+        "prepared_topology_binding_sha256": getattr(
+            prepared_topology_binding,
+            "prepared_context_sha256",
+            None,
+        ),
+        "render_axis": render_axis,
+        "selected_snapshot_id": (
+            selected_snapshot.get("snapshot_id") if type(selected_snapshot) is dict else None
+        ),
+        "topology_candidates_id": topology_candidates.get("result_id"),
+        "topology_region_sha256": canonical_json_sha256_v1(topology_region),
+        "topology_scan_id": topology_scan.get("scan_id"),
+    }
+
+
+def _build_or_reopen_candidate_occurrence_axis_v1(
+    *,
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    topology_scan: dict[str, Any],
+    topology_region: dict[str, Any],
+    occurrence_row_axis_policy: dict[str, Any],
+    topology_candidates: dict[str, Any],
+    prepared_topology_binding: Any,
+    selected_snapshot: dict[str, Any] | None,
+    prepared_snapshot: Any,
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None,
+    render_snapshots: tuple[dict[str, Any], ...],
+    prepared_candidate_occurrence_axis_cache: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if prepared_candidate_occurrence_axis_cache is None:
+        return occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+            joined_pages,
+            family_spec,
+            topology_scan,
+            topology_region,
+            occurrence_row_axis_policy,
+            topology_candidates=topology_candidates,
+            prepared_topology_binding=prepared_topology_binding,
+            selected_snapshot=selected_snapshot,
+            prepared_snapshot=prepared_snapshot,
+            prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
+            render_snapshots=render_snapshots,
+        )
+    if type(prepared_candidate_occurrence_axis_cache) is not dict:
+        raise _error("candidate occurrence-axis cache shape drifted")
+    input_sha256 = canonical_json_sha256_v1(
+        _candidate_occurrence_axis_cache_input_v1(
+            joined_pages=joined_pages,
+            family_spec=family_spec,
+            topology_scan=topology_scan,
+            topology_region=topology_region,
+            occurrence_row_axis_policy=occurrence_row_axis_policy,
+            topology_candidates=topology_candidates,
+            prepared_topology_binding=prepared_topology_binding,
+            selected_snapshot=selected_snapshot,
+            prepared_snapshot=prepared_snapshot,
+            render_snapshots=render_snapshots,
+        )
+    )
+    prepared_axis = prepared_candidate_occurrence_axis_cache.get(input_sha256)
+    if prepared_axis is not None:
+        if (
+            type(prepared_axis) is not _PreparedV4CandidateOccurrenceAxisV1
+            or prepared_axis.seal is not _PREPARED_V4_CANDIDATE_OCCURRENCE_AXIS_SEAL
+            or prepared_axis.input_sha256 != input_sha256
+            or type(prepared_axis.payload) is not bytes
+        ):
+            raise _error("candidate occurrence-axis cache identity drifted")
+        try:
+            parsed_axis = json.loads(prepared_axis.payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("candidate occurrence-axis cache payload drifted") from exc
+        if (
+            type(parsed_axis) is not dict
+            or canonical_json_bytes_v1(parsed_axis) != prepared_axis.payload
+            or canonical_json_sha256_v1(parsed_axis) != prepared_axis.occurrence_axis_sha256
+            or parsed_axis.get("occurrence_axis_id") != prepared_axis.occurrence_axis_id
+        ):
+            raise _error("candidate occurrence-axis cache content drifted")
+        try:
+            return occurrence_row_v2._validate_result(parsed_axis)  # noqa: SLF001
+        except ValueError as exc:
+            raise _error("candidate occurrence-axis cache replay drifted") from exc
+    occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+        joined_pages,
+        family_spec,
+        topology_scan,
+        topology_region,
+        occurrence_row_axis_policy,
+        topology_candidates=topology_candidates,
+        prepared_topology_binding=prepared_topology_binding,
+        selected_snapshot=selected_snapshot,
+        prepared_snapshot=prepared_snapshot,
+        prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
+        render_snapshots=render_snapshots,
+    )
+    payload = canonical_json_bytes_v1(occurrence_axis)
+    prepared_candidate_occurrence_axis_cache[input_sha256] = _PreparedV4CandidateOccurrenceAxisV1(
+        input_sha256=input_sha256,
+        occurrence_axis_id=occurrence_axis["occurrence_axis_id"],
+        occurrence_axis_sha256=canonical_json_sha256_v1(occurrence_axis),
+        payload=payload,
+        seal=_PREPARED_V4_CANDIDATE_OCCURRENCE_AXIS_SEAL,
+    )
+    return occurrence_axis
+
+
 def _candidate_evidence_from_joined_pages(
     *,
     joined_pages: list[dict[str, Any]],
@@ -3713,6 +3903,7 @@ def _candidate_evidence_from_joined_pages(
     prepared_topology_bindings: tuple[Any, ...] = (),
     prepared_snapshot: Any = None,
     prepared_source_exact_axis_cache: dict[tuple[str, str], Any] | None = None,
+    prepared_candidate_occurrence_axis_cache: dict[str, Any] | None = None,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> list[dict[str, Any]]:
     is_v4 = _is_scoped_evaluation_policy(evaluation_spec)
@@ -3751,23 +3942,31 @@ def _candidate_evidence_from_joined_pages(
     candidate_evidence = []
     _telemetry_add(runtime_telemetry, "candidate_count", len(topology_regions))
     for candidate_ordinal, topology_region in enumerate(topology_regions):
+        candidate_render_snapshots = _candidate_local_render_snapshots_v1(
+            joined_pages,
+            topology_region,
+            render_snapshots,
+        )
         prepared_binding = (
             prepared_topology_bindings[candidate_ordinal] if prepared_topology_bindings else None
         )
         try:
             if is_v4:
-                base_occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
-                    joined_pages,
-                    family_spec,
-                    topology_scan,
-                    topology_region,
-                    evaluation_spec["occurrence_row_axis_policy"],
+                base_occurrence_axis = _build_or_reopen_candidate_occurrence_axis_v1(
+                    joined_pages=joined_pages,
+                    family_spec=family_spec,
+                    topology_scan=topology_scan,
+                    topology_region=topology_region,
+                    occurrence_row_axis_policy=evaluation_spec["occurrence_row_axis_policy"],
                     topology_candidates=topology_candidates,
                     prepared_topology_binding=prepared_binding,
                     selected_snapshot=selected_snapshot,
                     prepared_snapshot=prepared_snapshot,
                     prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
-                    render_snapshots=render_snapshots,
+                    render_snapshots=candidate_render_snapshots,
+                    prepared_candidate_occurrence_axis_cache=(
+                        prepared_candidate_occurrence_axis_cache
+                    ),
                 )
                 _telemetry_add(runtime_telemetry, "occurrence_axis_build_count", 1)
                 base_row_axis = base_occurrence_axis["row_axis"]
@@ -3781,7 +3980,7 @@ def _candidate_evidence_from_joined_pages(
             dash_rescues = _visible_dash_rescue_inputs(
                 joined_pages=joined_pages,
                 row_axis=base_row_axis,
-                render_snapshots=render_snapshots,
+                render_snapshots=candidate_render_snapshots,
                 require_unique_role_page_owner=is_v4,
             )
             if is_v4:
@@ -3797,7 +3996,7 @@ def _candidate_evidence_from_joined_pages(
                         selected_snapshot=selected_snapshot,
                         prepared_snapshot=prepared_snapshot,
                         prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
-                        render_snapshots=render_snapshots,
+                        render_snapshots=candidate_render_snapshots,
                         visible_dash_rescues=dash_rescues,
                     )
                     _telemetry_add(runtime_telemetry, "occurrence_axis_build_count", 1)
@@ -4554,6 +4753,116 @@ def _missing_render_pages_for_document_store_trial_v1(
     return tuple(sorted(margin_render_pages))
 
 
+def _prepare_v4_candidate_render_schedule_v1(
+    candidates: list[dict[str, Any]],
+    *,
+    topology_scan: dict[str, Any],
+    topology_candidates: dict[str, Any],
+    joined_pages: list[dict[str, Any]],
+    evaluation_spec: dict[str, Any],
+) -> _PreparedV4CandidateRenderScheduleV1:
+    regions = topology_candidates.get("regions")
+    if type(regions) is not list or len(regions) != len(candidates):
+        raise _error("candidate render schedule lost its pre-pruning region axis")
+    exact_missing_dimension_reason = (
+        "ROW_AXIS_ERROR:FamilyFirstAccountingEvidenceSweepV1Error:"
+        "missing-lane page lacks authenticated render dimensions"
+    )
+    render_pages: set[int] = set()
+    candidate_axis = []
+    for candidate_ordinal, (candidate, region) in enumerate(zip(candidates, regions, strict=True)):
+        if (
+            type(candidate) is not dict
+            or candidate.get("candidate_ordinal") != candidate_ordinal
+            or type(candidate.get("reasons")) is not list
+            or type(region) is not dict
+        ):
+            raise _error("candidate render schedule evidence axis drifted")
+        reasons = [
+            f"CANDIDATE_1:{reason}" if reason == exact_missing_dimension_reason else reason
+            for reason in candidate["reasons"]
+        ]
+        candidate_topology = {
+            "regions": [region],
+            "status": topology_candidates["status"],
+        }
+        candidate_trial = {
+            "row_axis": candidate.get("row_axis"),
+            "unresolved_reasons": reasons,
+        }
+        candidate_pages = _missing_render_pages_for_document_store_trial_v1(
+            candidate_trial,
+            topology_scan,
+            joined_pages,
+            evaluation_spec=evaluation_spec,
+            topology_candidates=candidate_topology,
+        )
+        admitted_pages = _selected_topology_pages_v1(
+            joined_pages,
+            candidate_topology,
+        )
+        if not set(candidate_pages) <= admitted_pages:
+            raise _error("candidate render schedule escaped its topology region")
+        render_pages.update(candidate_pages)
+        row_axis = candidate.get("row_axis")
+        candidate_axis.append(
+            {
+                "candidate_ordinal": candidate_ordinal,
+                "reasons_sha256": canonical_json_sha256_v1(candidate["reasons"]),
+                "row_axis_id": (row_axis.get("row_axis_id") if type(row_axis) is dict else None),
+                "topology_region_sha256": canonical_json_sha256_v1(region),
+            }
+        )
+    candidate_axis_sha256 = canonical_json_sha256_v1(candidate_axis)
+    pages = tuple(sorted(render_pages))
+    material = {
+        "candidate_axis_sha256": candidate_axis_sha256,
+        "render_pages": list(pages),
+        "topology_candidates_id": topology_candidates["result_id"],
+        "topology_scan_id": topology_scan["scan_id"],
+    }
+    return _PreparedV4CandidateRenderScheduleV1(
+        candidate_axis_sha256=candidate_axis_sha256,
+        render_pages=pages,
+        schedule_sha256=canonical_json_sha256_v1(material),
+        topology_candidates_id=topology_candidates["result_id"],
+        topology_scan_id=topology_scan["scan_id"],
+        seal=_PREPARED_V4_CANDIDATE_RENDER_SCHEDULE_SEAL,
+    )
+
+
+def _open_prepared_v4_candidate_render_schedule_v1(
+    value: Any,
+    *,
+    topology_scan: Mapping[str, Any],
+    topology_candidates: Mapping[str, Any],
+    joined_pages: list[dict[str, Any]],
+) -> tuple[int, ...]:
+    if (
+        type(value) is not _PreparedV4CandidateRenderScheduleV1
+        or value.seal is not _PREPARED_V4_CANDIDATE_RENDER_SCHEDULE_SEAL
+        or value.topology_scan_id != topology_scan.get("scan_id")
+        or value.topology_candidates_id != topology_candidates.get("result_id")
+        or type(value.render_pages) is not tuple
+        or any(type(page) is not int or page <= 0 for page in value.render_pages)
+        or tuple(sorted(set(value.render_pages))) != value.render_pages
+    ):
+        raise _error("prepared candidate render schedule identity drifted")
+    material = {
+        "candidate_axis_sha256": value.candidate_axis_sha256,
+        "render_pages": list(value.render_pages),
+        "topology_candidates_id": value.topology_candidates_id,
+        "topology_scan_id": value.topology_scan_id,
+    }
+    admitted_pages = _selected_topology_pages_v1(joined_pages, topology_candidates)
+    if (
+        value.schedule_sha256 != canonical_json_sha256_v1(material)
+        or not set(value.render_pages) <= admitted_pages
+    ):
+        raise _error("prepared candidate render schedule binding drifted")
+    return value.render_pages
+
+
 def _document_store_axis_binding_v1(
     packet: dict[str, Any], selected_pages: set[int]
 ) -> dict[str, Any]:
@@ -4787,46 +5096,20 @@ def _open_prepared_v4_render_topology_handoff_v1(
 
 def _selected_v4_one_edit_authority_or_defer_for_render_v1(
     selected: dict[str, Any] | None,
-    reasons: list[str],
     *,
     joined_pages: list[dict[str, Any]],
     family_spec: dict[str, Any],
-    topology_scan: dict[str, Any],
     topology_candidates: dict[str, Any],
     evaluation_spec: dict[str, Any],
     prepared_source_exact_axis_cache: dict[tuple[str, str], Any],
     prepared_public_replay_cache: dict[str, Any],
-    render_snapshots: tuple[dict[str, Any], ...],
+    pending_render_pages: tuple[int, ...],
     defer_for_render: bool,
 ) -> tuple[dict[str, Any] | None, list[str], bool]:
     """Skip a public replay only while another exact render pass is mandatory."""
 
-    if defer_for_render:
-        transient_trial = {
-            "row_axis": selected["row_axis"] if selected is not None else None,
-            "unresolved_reasons": reasons,
-        }
-        if render_snapshots:
-            rendered_pages = {render["physical_page"] for render in render_snapshots}
-            pending_render_pages = tuple(
-                page
-                for page in _v4_candidate_scoped_missing_dimension_render_pages(
-                    transient_trial,
-                    joined_pages,
-                    topology_candidates,
-                )
-                if page not in rendered_pages
-            )
-        else:
-            pending_render_pages = _missing_render_pages_for_document_store_trial_v1(
-                transient_trial,
-                topology_scan,
-                joined_pages,
-                evaluation_spec=evaluation_spec,
-                topology_candidates=topology_candidates,
-            )
-        if pending_render_pages:
-            return None, [_SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON], True
+    if defer_for_render and pending_render_pages:
+        return None, [_SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON], True
     receipt, replay_reasons = _selected_v4_one_edit_authority_v1(
         selected,
         joined_pages=joined_pages,
@@ -4958,6 +5241,7 @@ def _trial_from_document_store_snapshot_v1(
     if _v4_runtime_context is None:
         source_exact_axis_cache: dict[tuple[str, str], Any] = {}
         selected_public_replay_cache: dict[str, Any] = {}
+        candidate_occurrence_axis_cache: dict[str, Any] = {}
     else:
         source_exact_axis_cache = _v4_runtime_context.setdefault(
             "source_exact_axis_cache",
@@ -4971,6 +5255,12 @@ def _trial_from_document_store_snapshot_v1(
         )
         if type(selected_public_replay_cache) is not dict:
             raise _error("V4 runtime selected public-replay cache shape drifted")
+        candidate_occurrence_axis_cache = _v4_runtime_context.setdefault(
+            "candidate_occurrence_axis_cache",
+            {},
+        )
+        if type(candidate_occurrence_axis_cache) is not dict:
+            raise _error("V4 runtime candidate occurrence-axis cache shape drifted")
     candidates = _candidate_evidence_from_joined_pages(
         joined_pages=projected_pages,
         topology_scan=topology_scan,
@@ -4984,23 +5274,51 @@ def _trial_from_document_store_snapshot_v1(
             prepared_context.prepared_snapshot if prepared_context is not None else None
         ),
         prepared_source_exact_axis_cache=source_exact_axis_cache,
+        prepared_candidate_occurrence_axis_cache=candidate_occurrence_axis_cache,
         runtime_telemetry=runtime_telemetry,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
+    if _is_scoped_evaluation_policy(evaluation_spec):
+        prepared_render_schedule = _prepare_v4_candidate_render_schedule_v1(
+            candidates,
+            topology_scan=topology_scan,
+            topology_candidates=topology_candidates,
+            joined_pages=projected_pages,
+            evaluation_spec=evaluation_spec,
+        )
+        if _v4_runtime_context is not None:
+            _v4_runtime_context["candidate_render_schedule"] = prepared_render_schedule
+        if render_snapshots:
+            rendered_pages = {render["physical_page"] for render in render_snapshots}
+            transient_trial = {
+                "row_axis": selected["row_axis"] if selected is not None else None,
+                "unresolved_reasons": reasons,
+            }
+            pending_render_pages = tuple(
+                page
+                for page in _v4_candidate_scoped_missing_dimension_render_pages(
+                    transient_trial,
+                    projected_pages,
+                    topology_candidates,
+                )
+                if page not in rendered_pages
+            )
+        else:
+            pending_render_pages = prepared_render_schedule.render_pages
+    else:
+        pending_render_pages = ()
     one_edit_receipt = None
     if _is_scoped_evaluation_policy(evaluation_spec):
         one_edit_receipt, one_edit_reasons, _deferred_for_render = (
             _selected_v4_one_edit_authority_or_defer_for_render_v1(
                 selected,
-                reasons,
                 joined_pages=projected_pages,
                 family_spec=family_spec,
-                topology_scan=topology_scan,
                 topology_candidates=topology_candidates,
                 evaluation_spec=evaluation_spec,
                 prepared_source_exact_axis_cache=source_exact_axis_cache,
                 prepared_public_replay_cache=selected_public_replay_cache,
-                render_snapshots=render_snapshots,
+                pending_render_pages=pending_render_pages,
                 defer_for_render=_defer_selected_public_replay_for_render,
             )
         )
@@ -5064,13 +5382,21 @@ def _document_store_trial_with_render_rescue_v1(
             )
     else:
         render_topology_candidates = None
-    missing_pages = _missing_render_pages_for_document_store_trial_v1(
-        trial,
-        trial["topology_scan"],
-        snapshot["joined_pages"],
-        evaluation_spec=policy,
-        topology_candidates=render_topology_candidates,
-    )
+    if is_v4 and (render_schedule := runtime_context.get("candidate_render_schedule")) is not None:
+        missing_pages = _open_prepared_v4_candidate_render_schedule_v1(
+            render_schedule,
+            topology_scan=trial["topology_scan"],
+            topology_candidates=render_topology_candidates,
+            joined_pages=snapshot["joined_pages"],
+        )
+    else:
+        missing_pages = _missing_render_pages_for_document_store_trial_v1(
+            trial,
+            trial["topology_scan"],
+            snapshot["joined_pages"],
+            evaluation_spec=policy,
+            topology_candidates=render_topology_candidates,
+        )
     if missing_pages:
         _telemetry_add(runtime_telemetry, "render_retry_count", 1)
         _telemetry_add(runtime_telemetry, "render_page_count", len(missing_pages))
@@ -5180,6 +5506,7 @@ def _v4_document_store_render_preflight_worker_v1(
         raise _error("V4 render preflight pages escape their private reservoir")
     completed_result: dict[str, Any] | None = None
     if not render_pages:
+        runtime_context = {"prepared_context": prepared_context}
         trial = _trial_from_document_store_snapshot_v1(
             snapshot,
             family_spec,
@@ -5187,16 +5514,25 @@ def _v4_document_store_render_preflight_worker_v1(
             render_snapshots=(),
             topology_scan=topology_scan,
             expected_packet=packet,
-            _v4_runtime_context={"prepared_context": prepared_context},
+            _v4_runtime_context=runtime_context,
             _defer_selected_public_replay_for_render=True,
         )
-        render_pages = _missing_render_pages_for_document_store_trial_v1(
-            trial,
-            trial["topology_scan"],
-            selected_snapshot["joined_pages"],
-            evaluation_spec=policy,
-            topology_candidates=topology_candidates,
-        )
+        render_schedule = runtime_context.get("candidate_render_schedule")
+        if render_schedule is not None:
+            render_pages = _open_prepared_v4_candidate_render_schedule_v1(
+                render_schedule,
+                topology_scan=trial["topology_scan"],
+                topology_candidates=topology_candidates,
+                joined_pages=selected_snapshot["joined_pages"],
+            )
+        else:
+            render_pages = _missing_render_pages_for_document_store_trial_v1(
+                trial,
+                trial["topology_scan"],
+                selected_snapshot["joined_pages"],
+                evaluation_spec=policy,
+                topology_candidates=topology_candidates,
+            )
         if not set(render_pages) <= set(reservoir_pages):
             raise _error("V4 render preflight base trial escaped its private reservoir")
         if not render_pages:
@@ -5528,13 +5864,22 @@ def _v4_document_store_trial_worker_v1(
             )
         )
         if missing_page_mode == "FULL":
-            missing_pages = _missing_render_pages_for_document_store_trial_v1(
-                trial,
-                trial["topology_scan"],
-                snapshot["joined_pages"],
-                evaluation_spec=policy,
-                topology_candidates=topology_candidates,
-            )
+            render_schedule = runtime_context.get("candidate_render_schedule")
+            if render_schedule is not None:
+                missing_pages = _open_prepared_v4_candidate_render_schedule_v1(
+                    render_schedule,
+                    topology_scan=trial["topology_scan"],
+                    topology_candidates=topology_candidates,
+                    joined_pages=snapshot["joined_pages"],
+                )
+            else:
+                missing_pages = _missing_render_pages_for_document_store_trial_v1(
+                    trial,
+                    trial["topology_scan"],
+                    snapshot["joined_pages"],
+                    evaluation_spec=policy,
+                    topology_candidates=topology_candidates,
+                )
         else:
             rendered_pages = {render["physical_page"] for render in render_snapshots}
             missing_pages = tuple(

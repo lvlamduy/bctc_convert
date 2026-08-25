@@ -2377,16 +2377,6 @@ def test_selected_public_replay_defers_only_until_exact_render_is_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     replay_calls = []
-    monkeypatch.setattr(
-        subject,
-        "_missing_render_pages_for_document_store_trial_v1",
-        lambda *_args, **_kwargs: (1,),
-    )
-    monkeypatch.setattr(
-        subject,
-        "_v4_candidate_scoped_missing_dimension_render_pages",
-        lambda *_args, **_kwargs: (1,),
-    )
 
     def replay(*args: object, **kwargs: object):
         replay_calls.append((args, kwargs))
@@ -2395,10 +2385,8 @@ def test_selected_public_replay_defers_only_until_exact_render_is_present(
     monkeypatch.setattr(subject, "_selected_v4_one_edit_authority_v1", replay)
     call = {
         "selected": {"row_axis": {"row_axis_id": "axis"}},
-        "reasons": [],
         "joined_pages": [{"lines": [], "page_sequence": 1, "page_width": 1000}],
         "family_spec": {},
-        "topology_scan": {},
         "topology_candidates": {},
         "evaluation_spec": {},
         "prepared_source_exact_axis_cache": {},
@@ -2408,7 +2396,7 @@ def test_selected_public_replay_defers_only_until_exact_render_is_present(
 
     assert subject._selected_v4_one_edit_authority_or_defer_for_render_v1(
         **call,
-        render_snapshots=(),
+        pending_render_pages=(1,),
     ) == (
         None,
         [subject._SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON],
@@ -2418,12 +2406,163 @@ def test_selected_public_replay_defers_only_until_exact_render_is_present(
 
     receipt, reasons, deferred = subject._selected_v4_one_edit_authority_or_defer_for_render_v1(
         **call,
-        render_snapshots=({"physical_page": 1},),
+        pending_render_pages=(),
     )
     assert receipt == {"receipt": "exact-public-replay"}
     assert reasons == []
     assert deferred is False
     assert len(replay_calls) == 1
+
+
+def test_v4_candidate_render_schedule_selects_only_candidate_with_missing_lane() -> None:
+    joined_pages = [
+        {"lines": [{} for _ in range(10)], "page_sequence": page, "page_width": 1000}
+        for page in (1, 2)
+    ]
+    regions = [
+        {
+            "cluster_start_document_line_ordinal": 2,
+            "cluster_end_document_line_ordinal_exclusive": 8,
+        },
+        {
+            "cluster_start_document_line_ordinal": 12,
+            "cluster_end_document_line_ordinal_exclusive": 18,
+        },
+    ]
+    complete_row_axis = {
+        "row_axis_id": "afrav1:axis:" + "1" * 64,
+        "rows": [
+            {
+                "label_match": {"page_sequence": 1},
+                "missing_column_ordinals": [],
+            }
+        ],
+        "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+        "trailing_value_rows": [],
+    }
+    missing_row_axis = copy.deepcopy(complete_row_axis)
+    missing_row_axis["row_axis_id"] = "afrav1:axis:" + "2" * 64
+    missing_row_axis["rows"][0]["label_match"]["page_sequence"] = 2
+    missing_row_axis["trailing_value_rows"] = [{"missing_column_ordinals": [0], "page_sequence": 2}]
+    candidates = [
+        {
+            "candidate_ordinal": 0,
+            "reasons": [],
+            "row_axis": complete_row_axis,
+        },
+        {
+            "candidate_ordinal": 1,
+            "reasons": ["COLUMN_CONTEXT_ERROR:unresolved lane kind"],
+            "row_axis": missing_row_axis,
+        },
+    ]
+    topology_scan = {"scan_id": "aftv1:scan:" + "3" * 64, "regions": regions[1:]}
+    topology_candidates = {
+        "regions": regions,
+        "result_id": "aftcv2:result:" + "4" * 64,
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+
+    prepared = subject._prepare_v4_candidate_render_schedule_v1(
+        candidates,
+        topology_scan=topology_scan,
+        topology_candidates=topology_candidates,
+        joined_pages=joined_pages,
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    )
+    assert prepared.render_pages == (2,)
+    assert subject._open_prepared_v4_candidate_render_schedule_v1(
+        prepared,
+        topology_scan=topology_scan,
+        topology_candidates=topology_candidates,
+        joined_pages=joined_pages,
+    ) == (2,)
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="render schedule binding drifted",
+    ):
+        subject._open_prepared_v4_candidate_render_schedule_v1(
+            replace(prepared, render_pages=(1, 2)),
+            topology_scan=topology_scan,
+            topology_candidates=topology_candidates,
+            joined_pages=joined_pages,
+        )
+
+
+def test_v4_candidate_occurrence_cache_reuses_only_identical_local_render_axis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built = []
+
+    def build(*args: object, **kwargs: object):
+        built.append((args, kwargs))
+        return {
+            "occurrence_axis_id": f"aforav2:axis:{len(built):064x}",
+            "value": len(built),
+        }
+
+    monkeypatch.setattr(
+        subject.occurrence_row_v2,
+        "_build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2",
+        build,
+    )
+    monkeypatch.setattr(
+        subject.occurrence_row_v2,
+        "_validate_result",
+        lambda value: value,
+    )
+    cache: dict[str, object] = {}
+    call = {
+        "joined_pages": [{"lines": [], "page_sequence": 1, "page_width": 1000}],
+        "family_spec": {"family_id": "FAMILY"},
+        "topology_scan": {"scan_id": "aftv1:scan:" + "1" * 64},
+        "topology_region": {
+            "cluster_start_document_line_ordinal": 0,
+            "cluster_end_document_line_ordinal_exclusive": 1,
+        },
+        "occurrence_row_axis_policy": {"format_version": "POLICY"},
+        "topology_candidates": {"result_id": "aftcv2:result:" + "2" * 64},
+        "prepared_topology_binding": SimpleNamespace(prepared_context_sha256="3" * 64),
+        "selected_snapshot": {"snapshot_id": "ffdesv1:selected:" + "4" * 64},
+        "prepared_snapshot": SimpleNamespace(prepared_context_sha256="5" * 64),
+        "prepared_source_exact_axis_cache": {},
+        "prepared_candidate_occurrence_axis_cache": cache,
+    }
+
+    first = subject._build_or_reopen_candidate_occurrence_axis_v1(
+        **call,
+        render_snapshots=(),
+    )
+    second = subject._build_or_reopen_candidate_occurrence_axis_v1(
+        **call,
+        render_snapshots=(),
+    )
+    assert second == first
+    assert len(built) == 1
+
+    render = {
+        "physical_page": 1,
+        "render_id": "ffaprv1:render:" + "6" * 64,
+        "render_ref": {"sha256": "7" * 64, "size_bytes": 10},
+    }
+    changed = subject._build_or_reopen_candidate_occurrence_axis_v1(
+        **call,
+        render_snapshots=(render,),
+    )
+    assert changed["value"] == 2
+    assert len(built) == 2
+
+    first_key = next(iter(cache))
+    cache[first_key] = replace(cache[first_key], occurrence_axis_sha256="0" * 64)
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="occurrence-axis cache content drifted",
+    ):
+        subject._build_or_reopen_candidate_occurrence_axis_v1(
+            **call,
+            render_snapshots=(),
+        )
 
 
 def test_document_store_v4_rejects_forged_outer_prepared_context() -> None:
