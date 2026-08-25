@@ -231,6 +231,10 @@ class _PreparedSelectedOneEditPublicReplayV1:
 
 _PREPARED_SELECTED_ONE_EDIT_PUBLIC_REPLAY_SEAL = object()
 
+_SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON = (
+    "SELECTED_ONE_EDIT_PUBLIC_REPLAY_DEFERRED_FOR_AUTHENTICATED_RENDER"
+)
+
 
 def _prepared_v4_document_context_material_v1(
     *,
@@ -4781,6 +4785,60 @@ def _open_prepared_v4_render_topology_handoff_v1(
     return topology_candidates
 
 
+def _selected_v4_one_edit_authority_or_defer_for_render_v1(
+    selected: dict[str, Any] | None,
+    reasons: list[str],
+    *,
+    joined_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    topology_scan: dict[str, Any],
+    topology_candidates: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    prepared_source_exact_axis_cache: dict[tuple[str, str], Any],
+    prepared_public_replay_cache: dict[str, Any],
+    render_snapshots: tuple[dict[str, Any], ...],
+    defer_for_render: bool,
+) -> tuple[dict[str, Any] | None, list[str], bool]:
+    """Skip a public replay only while another exact render pass is mandatory."""
+
+    if defer_for_render:
+        transient_trial = {
+            "row_axis": selected["row_axis"] if selected is not None else None,
+            "unresolved_reasons": reasons,
+        }
+        if render_snapshots:
+            rendered_pages = {render["physical_page"] for render in render_snapshots}
+            pending_render_pages = tuple(
+                page
+                for page in _v4_candidate_scoped_missing_dimension_render_pages(
+                    transient_trial,
+                    joined_pages,
+                    topology_candidates,
+                )
+                if page not in rendered_pages
+            )
+        else:
+            pending_render_pages = _missing_render_pages_for_document_store_trial_v1(
+                transient_trial,
+                topology_scan,
+                joined_pages,
+                evaluation_spec=evaluation_spec,
+                topology_candidates=topology_candidates,
+            )
+        if pending_render_pages:
+            return None, [_SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON], True
+    receipt, replay_reasons = _selected_v4_one_edit_authority_v1(
+        selected,
+        joined_pages=joined_pages,
+        family_spec=family_spec,
+        topology_candidates=topology_candidates,
+        evaluation_spec=evaluation_spec,
+        prepared_source_exact_axis_cache=prepared_source_exact_axis_cache,
+        prepared_public_replay_cache=prepared_public_replay_cache,
+    )
+    return receipt, replay_reasons, False
+
+
 def _trial_from_document_store_snapshot_v1(
     snapshot: dict[str, Any],
     family_spec: dict[str, Any],
@@ -4790,8 +4848,14 @@ def _trial_from_document_store_snapshot_v1(
     topology_scan: dict[str, Any] | None = None,
     expected_packet: dict[str, Any] | None = None,
     _v4_runtime_context: dict[str, Any] | None = None,
+    _defer_selected_public_replay_for_render: bool = False,
     runtime_telemetry: dict[str, int | float] | None = None,
 ) -> dict[str, Any]:
+    if type(_defer_selected_public_replay_for_render) is not bool or (
+        _defer_selected_public_replay_for_render
+        and (not _is_scoped_evaluation_policy(evaluation_spec) or _v4_runtime_context is None)
+    ):
+        raise _error("selected public-replay render deferral contract drifted")
     if _is_scoped_evaluation_policy(evaluation_spec):
         prepared_context = (
             _v4_runtime_context.get("prepared_context") if _v4_runtime_context is not None else None
@@ -4925,14 +4989,20 @@ def _trial_from_document_store_snapshot_v1(
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
     one_edit_receipt = None
     if _is_scoped_evaluation_policy(evaluation_spec):
-        one_edit_receipt, one_edit_reasons = _selected_v4_one_edit_authority_v1(
-            selected,
-            joined_pages=projected_pages,
-            family_spec=family_spec,
-            topology_candidates=topology_candidates,
-            evaluation_spec=evaluation_spec,
-            prepared_source_exact_axis_cache=source_exact_axis_cache,
-            prepared_public_replay_cache=selected_public_replay_cache,
+        one_edit_receipt, one_edit_reasons, _deferred_for_render = (
+            _selected_v4_one_edit_authority_or_defer_for_render_v1(
+                selected,
+                reasons,
+                joined_pages=projected_pages,
+                family_spec=family_spec,
+                topology_scan=topology_scan,
+                topology_candidates=topology_candidates,
+                evaluation_spec=evaluation_spec,
+                prepared_source_exact_axis_cache=source_exact_axis_cache,
+                prepared_public_replay_cache=selected_public_replay_cache,
+                render_snapshots=render_snapshots,
+                defer_for_render=_defer_selected_public_replay_for_render,
+            )
         )
         reasons = list(dict.fromkeys([*reasons, *one_edit_reasons]))
     return {
@@ -4974,6 +5044,7 @@ def _document_store_trial_with_render_rescue_v1(
         topology_scan=topology_scan,
         expected_packet=packet if is_v4 else None,
         _v4_runtime_context=runtime_context if is_v4 else None,
+        _defer_selected_public_replay_for_render=is_v4,
         runtime_telemetry=runtime_telemetry,
     )
     if is_v4:
@@ -5016,6 +5087,7 @@ def _document_store_trial_with_render_rescue_v1(
             topology_scan=trial["topology_scan"] if is_v4 else topology_scan,
             expected_packet=packet if is_v4 else None,
             _v4_runtime_context=runtime_context if is_v4 else None,
+            _defer_selected_public_replay_for_render=is_v4,
             runtime_telemetry=runtime_telemetry,
         )
         if is_v4:
@@ -5053,6 +5125,7 @@ def _document_store_trial_with_render_rescue_v1(
                     topology_scan=trial["topology_scan"],
                     expected_packet=packet,
                     _v4_runtime_context=runtime_context,
+                    _defer_selected_public_replay_for_render=True,
                     runtime_telemetry=runtime_telemetry,
                 )
     return trial
@@ -5115,6 +5188,7 @@ def _v4_document_store_render_preflight_worker_v1(
             topology_scan=topology_scan,
             expected_packet=packet,
             _v4_runtime_context={"prepared_context": prepared_context},
+            _defer_selected_public_replay_for_render=True,
         )
         render_pages = _missing_render_pages_for_document_store_trial_v1(
             trial,
@@ -5332,6 +5406,7 @@ def _v4_document_store_preflight_bound_trial_worker_v1(
             topology_scan=topology_scan,
             expected_packet=packet,
             _v4_runtime_context=runtime_context,
+            _defer_selected_public_replay_for_render=True,
         )
 
     trial = build_trial()
@@ -5435,6 +5510,7 @@ def _v4_document_store_trial_worker_v1(
         topology_scan=topology_scan,
         expected_packet=packet,
         _v4_runtime_context=runtime_context,
+        _defer_selected_public_replay_for_render=True,
     )
     missing_pages: tuple[int, ...] = ()
     if missing_page_mode != "NONE":

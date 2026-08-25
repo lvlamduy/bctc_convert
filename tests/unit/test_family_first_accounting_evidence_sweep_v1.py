@@ -1334,6 +1334,7 @@ def test_v4_document_store_worker_rebuilds_from_parent_bound_source(monkeypatch)
         topology_scan,
         expected_packet,
         _v4_runtime_context,
+        _defer_selected_public_replay_for_render,
     ):
         calls.append(
             (
@@ -1344,6 +1345,7 @@ def test_v4_document_store_worker_rebuilds_from_parent_bound_source(monkeypatch)
                 topology_scan,
                 expected_packet,
                 _v4_runtime_context,
+                _defer_selected_public_replay_for_render,
             )
         )
         return copy.deepcopy(trial)
@@ -1373,6 +1375,7 @@ def test_v4_document_store_worker_rebuilds_from_parent_bound_source(monkeypatch)
     assert calls[0][3] == ()
     assert calls[0][4] is None
     assert calls[0][5] is packet
+    assert calls[0][7] is True
     assert calls[0][6] == {}
 
 
@@ -2368,6 +2371,59 @@ def test_document_store_v4_render_topology_handoff_avoids_second_snapshot_open(
             runtime_context["render_topology_handoff"],
             expected_legacy_scan=trial["topology_scan"],
         )
+
+
+def test_selected_public_replay_defers_only_until_exact_render_is_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    replay_calls = []
+    monkeypatch.setattr(
+        subject,
+        "_missing_render_pages_for_document_store_trial_v1",
+        lambda *_args, **_kwargs: (1,),
+    )
+    monkeypatch.setattr(
+        subject,
+        "_v4_candidate_scoped_missing_dimension_render_pages",
+        lambda *_args, **_kwargs: (1,),
+    )
+
+    def replay(*args: object, **kwargs: object):
+        replay_calls.append((args, kwargs))
+        return {"receipt": "exact-public-replay"}, []
+
+    monkeypatch.setattr(subject, "_selected_v4_one_edit_authority_v1", replay)
+    call = {
+        "selected": {"row_axis": {"row_axis_id": "axis"}},
+        "reasons": [],
+        "joined_pages": [{"lines": [], "page_sequence": 1, "page_width": 1000}],
+        "family_spec": {},
+        "topology_scan": {},
+        "topology_candidates": {},
+        "evaluation_spec": {},
+        "prepared_source_exact_axis_cache": {},
+        "prepared_public_replay_cache": {},
+        "defer_for_render": True,
+    }
+
+    assert subject._selected_v4_one_edit_authority_or_defer_for_render_v1(
+        **call,
+        render_snapshots=(),
+    ) == (
+        None,
+        [subject._SELECTED_PUBLIC_REPLAY_DEFERRED_FOR_RENDER_REASON],
+        True,
+    )
+    assert replay_calls == []
+
+    receipt, reasons, deferred = subject._selected_v4_one_edit_authority_or_defer_for_render_v1(
+        **call,
+        render_snapshots=({"physical_page": 1},),
+    )
+    assert receipt == {"receipt": "exact-public-replay"}
+    assert reasons == []
+    assert deferred is False
+    assert len(replay_calls) == 1
 
 
 def test_document_store_v4_rejects_forged_outer_prepared_context() -> None:
