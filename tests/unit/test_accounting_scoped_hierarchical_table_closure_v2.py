@@ -419,6 +419,75 @@ def _acb_explicit_totals_unlabeled_term_pages(
     return pages
 
 
+def _acb2_acb4_shaped_unlabeled_demand_pages(
+    *,
+    demand_vnd_current: str = "21.011.264",
+    demand_vnd_prior: str = "33.705",
+    demand_fx_current: str = "7.824.462",
+    demand_fx_prior: str = "21.087.663",
+    demand_subtotal_current: str = "28.835.726",
+    demand_subtotal_prior: str = "21.121.368",
+    term_vnd_current: str = "97.040.000",
+    term_vnd_prior: str = "80.935.000",
+    term_fx_current: str = "12.045.996",
+    term_fx_prior: str = "4.780.088",
+    term_subtotal_current: str = "109.085.996",
+    term_subtotal_prior: str = "85.715.088",
+    deposit_total_current: str = "137.921.722",
+    deposit_total_prior: str = "106.836.456",
+    family_total_current: str = "137.921.772",
+    family_total_prior: str = "106.836.496",
+) -> list[dict[str, object]]:
+    """Reproduce the sealed ACB2/4 demand and term subtotal intervals."""
+
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", demand_vnd_current, demand_vnd_prior),
+            ("Bằng ngoại tệ", demand_fx_current, demand_fx_prior),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", term_vnd_current, term_vnd_prior),
+            ("Bằng ngoại tệ", term_fx_current, term_fx_prior),
+            ("Tổng tiền gửi tại các TCTD khác", deposit_total_current, deposit_total_prior),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Tổng cho vay các TCTD khác", "50", "40"),
+            (
+                "Tổng tiền gửi và cho vay các TCTD khác",
+                family_total_current,
+                family_total_prior,
+            ),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    lines = pages[0]["lines"]
+
+    def insert_unlabeled_pair(boundary_label: str, current: str, prior: str) -> None:
+        boundary_index = next(
+            index for index, line in enumerate(lines) if line["vietocr_text"] == boundary_label
+        )
+        boundary_top = lines[boundary_index]["bbox"][1]
+        lines[boundary_index:boundary_index] = [
+            _line(20_001, current, current, [610, boundary_top - 25, 700, boundary_top - 5]),
+            _line(20_002, prior, prior, [810, boundary_top - 25, 900, boundary_top - 5]),
+        ]
+
+    insert_unlabeled_pair("Tiền gửi có kỳ hạn", demand_subtotal_current, demand_subtotal_prior)
+    insert_unlabeled_pair(
+        "Tổng tiền gửi tại các TCTD khác", term_subtotal_current, term_subtotal_prior
+    )
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
 def _acb5_partial_local_loan_selector_pages(
     *,
     selector_prior: str = "100979",
@@ -1393,6 +1462,278 @@ def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> 
         )
         == closure
     )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {},
+        {
+            "demand_vnd_current": "16.467.347",
+            "demand_fx_current": "21.690.018",
+            "demand_subtotal_current": "38.157.365",
+            "term_vnd_current": "58.520.000",
+            "term_fx_current": "13.814.835",
+            "term_subtotal_current": "72.334.835",
+            "deposit_total_current": "110.492.200",
+            "family_total_current": "110.492.250",
+        },
+    ],
+    ids=["acb2", "acb4"],
+)
+def test_v4_acb2_acb4_exact_unlabeled_demand_subtotal_is_coverage_only(
+    overrides: dict[str, str],
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    schema_binding = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-schema-binding-v4.json"
+        ).read_text()
+    )
+
+    axis, closure = _closure(
+        _acb2_acb4_shaped_unlabeled_demand_pages(**overrides),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    receipts = {
+        receipt["role"]: receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and receipt["role"] in {"DEMAND_DEPOSIT_GROUP", "TERM_DEPOSIT_GROUP"}
+    }
+    assert set(receipts) == {"DEMAND_DEPOSIT_GROUP", "TERM_DEPOSIT_GROUP"}
+    demand_occurrence = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    assert receipts["DEMAND_DEPOSIT_GROUP"]["occurrence_id"] == (demand_occurrence["occurrence_id"])
+    assert receipts["DEMAND_DEPOSIT_GROUP"]["row_kind"] == ("INTERNAL_UNASSIGNED_NUMERIC_CLUSTER")
+    resolved = {record["role"]: record for record in closure["resolved_roles"]}
+    demand = resolved["DEMAND_DEPOSIT_GROUP"]
+    assert demand["source"] is None
+    assert demand["component_roles"] == [
+        "DEMAND_DEPOSIT_VND",
+        "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+    ]
+    assert not set(receipts["DEMAND_DEPOSIT_GROUP"]["sample_ids"]) & {
+        sample_id for value in demand["values"] for sample_id in value["source_sample_ids"]
+    }
+    assert (
+        next(
+            binding
+            for binding in schema_binding["role_bindings"]
+            if binding["role"] == "DEMAND_DEPOSIT_GROUP"
+        )["report_norm_id"]
+        == 577
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "UNKNOWN_LABEL",
+        "PARTIAL",
+        "MISMATCH",
+        "DUPLICATE",
+        "REORDERED",
+        "CROSS_PARENT",
+        "EQUAL_TERM_COLLISION",
+    ],
+)
+def test_v4_unlabeled_demand_subtotal_adversarial_sources_remain_unresolved(
+    attack: str,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb2_acb4_shaped_unlabeled_demand_pages()
+    lines = pages[0]["lines"]
+
+    def numeric_line(token: str, *, occurrence: int = 0) -> dict[str, object]:
+        return [line for line in lines if line["numeric_recognition"]["raw_prediction"] == token][
+            occurrence
+        ]
+
+    demand_current = numeric_line("28.835.726")
+    demand_prior = numeric_line("21.121.368")
+    term_index = next(
+        index for index, line in enumerate(lines) if line["vietocr_text"] == "Tiền gửi có kỳ hạn"
+    )
+    if attack == "UNKNOWN_LABEL":
+        lines.insert(
+            lines.index(demand_current),
+            _line(
+                30_001,
+                "Không xác định",
+                "",
+                [45, demand_current["bbox"][1], 430, demand_current["bbox"][3]],
+            ),
+        )
+    elif attack == "PARTIAL":
+        demand_prior["vietocr_text"] = ""
+        demand_prior["numeric_recognition"]["raw_prediction"] = ""
+    elif attack == "MISMATCH":
+        demand_current["vietocr_text"] = "28.835.727"
+        demand_current["numeric_recognition"]["raw_prediction"] = "28.835.727"
+    elif attack == "DUPLICATE":
+        duplicate = copy.deepcopy([demand_current, demand_prior])
+        for line in duplicate:
+            line["bbox"][1] += 1
+            line["bbox"][3] += 1
+        lines[term_index:term_index] = duplicate
+    elif attack == "REORDERED":
+        selected = [demand_current, demand_prior]
+        lines[:] = [line for line in lines if line not in selected]
+        term_index = next(
+            index
+            for index, line in enumerate(lines)
+            if line["vietocr_text"] == "Tiền gửi có kỳ hạn"
+        )
+        for line in selected:
+            line["bbox"][1] += 50
+            line["bbox"][3] += 50
+        lines[term_index + 3 : term_index + 3] = selected
+    elif attack == "CROSS_PARENT":
+        lines.insert(
+            term_index,
+            _line(
+                30_002,
+                "Tiền gửi tại các TCTD khác",
+                "",
+                [45, demand_current["bbox"][3] + 1, 430, demand_current["bbox"][3] + 20],
+            ),
+        )
+    else:
+
+        def replace_row_values(label: str, current: str, prior: str) -> None:
+            label_index = next(
+                index for index, line in enumerate(lines) if line["vietocr_text"] == label
+            )
+            for offset, replacement in ((1, current), (2, prior)):
+                lines[label_index + offset]["vietocr_text"] = replacement
+                lines[label_index + offset]["numeric_recognition"]["raw_prediction"] = replacement
+
+        term_index = next(
+            index
+            for index, line in enumerate(lines)
+            if line["vietocr_text"] == "Tiền gửi có kỳ hạn"
+        )
+        term_vnd_index = next(
+            index
+            for index in range(term_index + 1, len(lines))
+            if lines[index]["vietocr_text"] == "Bằng VND"
+        )
+        term_fx_index = next(
+            index
+            for index in range(term_vnd_index + 1, len(lines))
+            if lines[index]["vietocr_text"] == "Bằng ngoại tệ"
+        )
+        for label_index, current, prior in (
+            (term_vnd_index, "28.835.726", "21.121.368"),
+            (term_fx_index, "0", "0"),
+        ):
+            for offset, replacement in ((1, current), (2, prior)):
+                lines[label_index + offset]["vietocr_text"] = replacement
+                lines[label_index + offset]["numeric_recognition"]["raw_prediction"] = replacement
+        term_subtotal_current = numeric_line("109.085.996")
+        term_subtotal_prior = numeric_line("85.715.088")
+        for line, replacement in (
+            (term_subtotal_current, "28.835.726"),
+            (term_subtotal_prior, "21.121.368"),
+        ):
+            line["vietocr_text"] = replacement
+            line["numeric_recognition"]["raw_prediction"] = replacement
+        replace_row_values("Tổng tiền gửi tại các TCTD khác", "57.671.452", "42.242.736")
+        replace_row_values("Tổng tiền gửi và cho vay các TCTD khác", "57.671.502", "42.242.776")
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        receipt["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and receipt["role"] == "DEMAND_DEPOSIT_GROUP"
+        for receipt in closure["coverage_receipt"]
+    )
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize("attack", ["ROLE", "OCCURRENCE", "SOURCE_RECORD"])
+def test_v4_unlabeled_demand_subtotal_receipt_rejects_coherent_tamper(attack: str) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _acb2_acb4_shaped_unlabeled_demand_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    receipt = next(
+        item
+        for item in attacked["coverage_receipt"]
+        if item["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and item["role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    if attack == "ROLE":
+        receipt["role"] = "TERM_DEPOSIT_GROUP"
+    elif attack == "OCCURRENCE":
+        receipt["occurrence_id"] = next(
+            occurrence["occurrence_id"]
+            for occurrence in attacked["role_occurrences"]
+            if occurrence["role"] == "TERM_DEPOSIT_GROUP"
+        )
+    else:
+        receipt["source_record"]["label_lane_status"] = "EXPLICIT_SAME_ROW_LABEL_PRESENT"
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="unlabeled exact subtotal|coverage receipt",
+    ):
+        subject._validate_result(attacked)
 
 
 def test_v4_acb_explicit_loan_total_owns_authenticated_current_dash_and_closes() -> None:
