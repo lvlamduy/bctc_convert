@@ -1652,19 +1652,31 @@ def _direct_visible_provision_record(
         }
         for ordinal, coefficient in enumerate(coefficients)
     ]
-    source_values = [
-        {
-            "column_ordinal": value["column_ordinal"],
-            "parsed_token": {
-                "classification": (
-                    "DASH_ZERO" if value["number"]["coefficient"] == 0 else "SIGNED_NUMBER"
-                ),
-                **value["number"],
-            },
-            "sample_id": f"sample:{role}:{value['column_ordinal']}",
-        }
-        for value in values
-    ]
+    source_values = []
+    for value in values:
+        ordinal = value["column_ordinal"]
+        coefficient = value["number"]["coefficient"]
+        raw_prediction = "-" if coefficient == 0 else f"({abs(coefficient)})"
+        source_values.append(
+            {
+                "bbox": [
+                    600 + ordinal * 200,
+                    line_ordinal * 10,
+                    680 + ordinal * 200,
+                    line_ordinal * 10 + 20,
+                ],
+                "column_center": float(640 + ordinal * 200),
+                "column_ordinal": ordinal,
+                "crop_ref": _ref(1_000 + line_ordinal * 10 + ordinal),
+                "line_ordinal": line_ordinal + ordinal,
+                "page_sequence": 1,
+                "parsed_token": subject.parse_visible_financial_numeric_token_v1(raw_prediction),
+                "raw_prediction": raw_prediction,
+                "reader_score": 1.0,
+                "row_affinity": 1.0,
+                "sample_id": f"sample:{role}:{ordinal}",
+            }
+        )
     return {
         "component_roles": [],
         "resolution_kind": "VISIBLE_SOURCE_ROLE",
@@ -1702,6 +1714,171 @@ def _direct_visible_provision_record(
         },
         "values": values,
     }
+
+
+def _v4_occurrence_label(
+    role: str,
+    *,
+    line_ordinal: int,
+    root_occurrence_id: str,
+) -> dict:
+    material = {
+        "document_line_ordinal": line_ordinal,
+        "end_document_line_ordinal": line_ordinal,
+        "page_sequence": 1,
+        "role": role,
+        "role_occurrence_ordinal": 0,
+    }
+    return {
+        **material,
+        "match_kind": "EXACT_ACCENTLESS_ALIAS",
+        "occurrence_id": "aforav2:occurrence:" + canonical_json_sha256_v1(material),
+        "role_kind": "STRUCTURAL_GROUP",
+        "scope_owner_occurrence_id": root_occurrence_id,
+        "scope_owner_role": None,
+    }
+
+
+def _v4_role_occurrence(label: dict, *, has_bound_value_row: bool) -> dict:
+    return {
+        "has_bound_value_row": has_bound_value_row,
+        "label_match": copy.deepcopy(label),
+        "occurrence_id": label["occurrence_id"],
+        "role": label["role"],
+        "role_kind": label["role_kind"],
+        "scope_owner_occurrence_id": label["scope_owner_occurrence_id"],
+        "scope_owner_role": label["scope_owner_role"],
+        "source_scope_binding": copy.deepcopy(label.get("source_scope_binding")),
+    }
+
+
+def _v4_reseal_candidate_envelopes(candidate: dict) -> None:
+    row_axis = candidate["row_axis"]
+    row_material = copy.deepcopy(row_axis)
+    row_material.pop("row_axis_id", None)
+    row_axis["row_axis_id"] = "afrav1:axis:" + canonical_json_sha256_v1(row_material)
+    closure = candidate["additive_closure"]
+    closure["row_axis_id"] = row_axis["row_axis_id"]
+    closure_material = copy.deepcopy(closure)
+    closure_material.pop("closure_id", None)
+    closure["closure_id"] = "ashtcv2:closure:" + canonical_json_sha256_v1(closure_material)
+
+
+def _v4_seal_candidate_axes(candidate: dict) -> None:
+    closure = candidate["additive_closure"]
+    provision_records = [
+        record
+        for record in closure["resolved_roles"]
+        if record["role"]
+        in {
+            "TOTAL_INTERBANK_PROVISION",
+            "INTERBANK_DEPOSIT_PROVISION",
+            "INTERBANK_LOAN_PROVISION",
+        }
+    ]
+    root_material = {
+        "candidate_ordinal": candidate["candidate_ordinal"],
+        "provision_roles": [record["role"] for record in provision_records],
+    }
+    root_occurrence_id = "aforav2:root:" + canonical_json_sha256_v1(root_material)
+    split = any(record["role"] != "TOTAL_INTERBANK_PROVISION" for record in provision_records)
+    parent_lines = (
+        {"INTERBANK_DEPOSIT_GROUP": 10, "INTERBANK_LOAN_GROUP": 25}
+        if split
+        else {"INTERBANK_DEPOSIT_GROUP": 2, "INTERBANK_LOAN_GROUP": 5}
+    )
+    parent_labels = {
+        role: _v4_occurrence_label(
+            role,
+            line_ordinal=line_ordinal,
+            root_occurrence_id=root_occurrence_id,
+        )
+        for role, line_ordinal in parent_lines.items()
+    }
+    for record in provision_records:
+        label = record["source"]["record"]["label_match"]
+        parent_role = (
+            "FAMILY"
+            if record["role"] == "TOTAL_INTERBANK_PROVISION"
+            else {
+                "INTERBANK_DEPOSIT_PROVISION": "INTERBANK_DEPOSIT_GROUP",
+                "INTERBANK_LOAN_PROVISION": "INTERBANK_LOAN_GROUP",
+            }[record["role"]]
+        )
+        label["scope_owner_occurrence_id"] = (
+            root_occurrence_id
+            if parent_role == "FAMILY"
+            else parent_labels[parent_role]["occurrence_id"]
+        )
+
+    candidate["row_axis"] = {
+        "family_id": closure["family_id"],
+        "rows": [copy.deepcopy(record["source"]["record"]) for record in provision_records],
+        "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+    }
+    role_occurrences = [
+        _v4_role_occurrence(label, has_bound_value_row=False) for label in parent_labels.values()
+    ]
+    role_occurrences.extend(
+        _v4_role_occurrence(record["source"]["record"]["label_match"], has_bound_value_row=True)
+        for record in provision_records
+    )
+    numeric_sample_universe = sorted(
+        (
+            subject.occurrence_row_v2._numeric_universe_record(
+                value,
+                owner_kind="ROLE_OCCURRENCE",
+                owner_id=record["source"]["record"]["label_match"]["occurrence_id"],
+            )
+            for record in provision_records
+            for value in record["source"]["record"]["values"]
+        ),
+        key=lambda sample: (
+            sample["page_sequence"],
+            sample["line_ordinal"],
+            sample["column_ordinal"],
+            sample["sample_id"],
+        ),
+    )
+    coverage_receipt = []
+    for record in provision_records:
+        source_record = record["source"]["record"]
+        occurrence_id = source_record["label_match"]["occurrence_id"]
+        coverage_receipt.append(
+            {
+                "candidate_ordinal": None,
+                "coverage_id": f"ashtcv2:coverage:role:{occurrence_id}",
+                "disposition": "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+                "occurrence_id": occurrence_id,
+                "role": record["role"],
+                "row_kind": "ROLE_ROW",
+                "sample_ids": [value["sample_id"] for value in source_record["values"]],
+                "source_record": copy.deepcopy(source_record),
+            }
+        )
+    occurrence_axis_material = {
+        "family_id": closure["family_id"],
+        "numeric_sample_universe": numeric_sample_universe,
+        "role_occurrences": role_occurrences,
+    }
+    occurrence_axis_id = "aforav2:axis:" + canonical_json_sha256_v1(occurrence_axis_material)
+    closure.update(
+        {
+            "coverage_receipt": coverage_receipt,
+            "dependency_content_refs": subject.scoped_v2._dependency_refs(),
+            "numeric_sample_universe": numeric_sample_universe,
+            "occurrence_axis_binding": {
+                "dependency_content_refs": subject.occurrence_row_v2._dependency_refs(),
+                "occurrence_axis_id": occurrence_axis_id,
+                "topology_candidates_id": "aftcv2:result:" + "1" * 64,
+                "topology_scan_id": "aftv1:scan:" + "2" * 64,
+            },
+            "occurrence_axis_id": occurrence_axis_id,
+            "role_occurrences": role_occurrences,
+            "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+        }
+    )
+    _v4_reseal_candidate_envelopes(candidate)
 
 
 def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple[dict, dict]:
@@ -1861,6 +2038,8 @@ def _v4_coarse_and_split_provision_candidates(*, root: tuple[int, int]) -> tuple
             },
         ]
     }
+    _v4_seal_candidate_axes(summary)
+    _v4_seal_candidate_axes(detail)
     return summary, detail
 
 
@@ -2030,6 +2209,73 @@ def test_v4_provision_projection_requires_one_exact_authenticated_row_binding(
     else:
         row["missing_column_ordinals"] = [1]
         row["status"] = "PARTIAL_VISIBLE_VALUE_ROW"
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "COHERENT_WRONG_PARENT_OCCURRENCE",
+        "COHERENT_REHASHED_PHYSICAL_OCCURRENCE",
+        "COHERENT_FORGED_SAMPLE_IDS",
+        "REHASHED_DUPLICATE_SEALED_OCCURRENCE",
+        "REHASHED_WRONG_ROW_BBOX",
+    ],
+)
+def test_v4_provision_projection_binds_dual_copies_to_authenticated_candidate_axes(
+    mutation: str,
+) -> None:
+    summary, detail = _v4_coarse_and_split_provision_candidates(root=(110_986_765, 108_003_288))
+    deposit = next(
+        record
+        for record in detail["additive_closure"]["resolved_roles"]
+        if record["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    source_row = deposit["source"]["record"]
+    axis_row = next(
+        row for row in detail["row_axis"]["rows"] if row["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    )
+    if mutation == "COHERENT_WRONG_PARENT_OCCURRENCE":
+        for row in (source_row, axis_row):
+            row["label_match"]["scope_owner_occurrence_id"] = (
+                "aforav2:occurrence:nonexistent-same-role-parent"
+            )
+    elif mutation == "COHERENT_REHASHED_PHYSICAL_OCCURRENCE":
+        for row in (source_row, axis_row):
+            label = row["label_match"]
+            label["document_line_ordinal"] += 7
+            label["end_document_line_ordinal"] += 7
+            label["page_sequence"] += 1
+            label["occurrence_id"] = "aforav2:occurrence:" + canonical_json_sha256_v1(
+                {
+                    "document_line_ordinal": label["document_line_ordinal"],
+                    "end_document_line_ordinal": label["end_document_line_ordinal"],
+                    "page_sequence": label["page_sequence"],
+                    "role": label["role"],
+                    "role_occurrence_ordinal": label["role_occurrence_ordinal"],
+                }
+            )
+    elif mutation == "COHERENT_FORGED_SAMPLE_IDS":
+        for row in (source_row, axis_row):
+            for value in row["values"]:
+                value["sample_id"] = f"sample:forged:{value['column_ordinal']}"
+    elif mutation == "REHASHED_DUPLICATE_SEALED_OCCURRENCE":
+        detail["additive_closure"]["role_occurrences"].append(
+            copy.deepcopy(detail["additive_closure"]["role_occurrences"][-1])
+        )
+    else:
+        axis_row["values"][0]["bbox"][0] += 1
+    _v4_reseal_candidate_envelopes(detail)
 
     selected, reasons = subject._select_candidate_evidence(
         [summary, detail],

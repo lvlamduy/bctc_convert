@@ -965,20 +965,194 @@ def _v4_resolved_number_axis(record: Mapping[str, Any]) -> list[dict[str, Any]] 
     return axis if [item["column_ordinal"] for item in axis] == list(range(len(axis))) else None
 
 
+def _v4_self_authenticated_mapping(
+    value: Any,
+    *,
+    identity_field: str,
+    identity_prefix: str,
+) -> bool:
+    """Verify one canonical envelope identity without weakening its exact payload."""
+
+    if type(value) is not dict:
+        return False
+    try:
+        material = canonical_clone_v1(value)
+        identity = material.pop(identity_field, None)
+        return type(identity) is str and identity == identity_prefix + canonical_json_sha256_v1(
+            material
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _v4_authenticated_candidate_axes(
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Bind selector inputs to their sealed closure, row, occurrence, and sample axes.
+
+    The public sweep replay remains the source-authority boundary.  This private
+    projection nevertheless must not compare two mutually consistent copies that
+    are both detached from the candidate's authenticated axes.
+    """
+
+    closure = candidate.get("additive_closure")
+    row_axis = candidate.get("row_axis")
+    if (
+        type(closure) is not dict
+        or type(row_axis) is not dict
+        or not _v4_self_authenticated_mapping(
+            closure,
+            identity_field="closure_id",
+            identity_prefix="ashtcv2:closure:",
+        )
+        or not _v4_self_authenticated_mapping(
+            row_axis,
+            identity_field="row_axis_id",
+            identity_prefix="afrav1:axis:",
+        )
+        or closure.get("row_axis_id") != row_axis.get("row_axis_id")
+        or closure.get("family_id") != row_axis.get("family_id")
+        or closure.get("status") != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+        or row_axis.get("status") != "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    ):
+        return None
+
+    occurrence_axis_id = closure.get("occurrence_axis_id")
+    occurrence_binding = closure.get("occurrence_axis_binding")
+    try:
+        closure_dependency_refs = scoped_v2._dependency_refs()  # noqa: SLF001
+        occurrence_dependency_refs = occurrence_row_v2._dependency_refs()  # noqa: SLF001
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return None
+    if (
+        type(occurrence_axis_id) is not str
+        or not occurrence_axis_id.startswith("aforav2:axis:")
+        or type(occurrence_binding) is not dict
+        or set(occurrence_binding)
+        != {
+            "dependency_content_refs",
+            "occurrence_axis_id",
+            "topology_candidates_id",
+            "topology_scan_id",
+        }
+        or occurrence_binding.get("occurrence_axis_id") != occurrence_axis_id
+        or not same_typed_json_v1(closure.get("dependency_content_refs"), closure_dependency_refs)
+        or not same_typed_json_v1(
+            occurrence_binding.get("dependency_content_refs"),
+            occurrence_dependency_refs,
+        )
+    ):
+        return None
+
+    occurrences = closure.get("role_occurrences")
+    samples = closure.get("numeric_sample_universe")
+    coverage = closure.get("coverage_receipt")
+    if type(occurrences) is not list or type(samples) is not list or type(coverage) is not list:
+        return None
+
+    occurrence_by_id: dict[str, Mapping[str, Any]] = {}
+    for occurrence in occurrences:
+        label = occurrence.get("label_match") if type(occurrence) is dict else None
+        occurrence_id = occurrence.get("occurrence_id") if type(occurrence) is dict else None
+        role = occurrence.get("role") if type(occurrence) is dict else None
+        if (
+            type(occurrence) is not dict
+            or type(label) is not dict
+            or type(occurrence_id) is not str
+            or not occurrence_id
+            or occurrence_id in occurrence_by_id
+            or type(role) is not str
+            or not role
+            or label.get("occurrence_id") != occurrence_id
+            or label.get("role") != role
+            or label.get("role_kind") != occurrence.get("role_kind")
+            or label.get("scope_owner_occurrence_id") != occurrence.get("scope_owner_occurrence_id")
+            or label.get("scope_owner_role") != occurrence.get("scope_owner_role")
+            or not same_typed_json_v1(
+                label.get("source_scope_binding"), occurrence.get("source_scope_binding")
+            )
+            or type(label.get("document_line_ordinal")) is not int
+            or type(label.get("end_document_line_ordinal")) is not int
+            or type(label.get("page_sequence")) is not int
+            or type(label.get("role_occurrence_ordinal")) is not int
+            or label["role_occurrence_ordinal"] < 0
+            or occurrence_id
+            != "aforav2:occurrence:"
+            + canonical_json_sha256_v1(
+                {
+                    "document_line_ordinal": label["document_line_ordinal"],
+                    "end_document_line_ordinal": label["end_document_line_ordinal"],
+                    "page_sequence": label["page_sequence"],
+                    "role": role,
+                    "role_occurrence_ordinal": label["role_occurrence_ordinal"],
+                }
+            )
+        ):
+            return None
+        occurrence_by_id[occurrence_id] = occurrence
+
+    sample_by_id: dict[str, Mapping[str, Any]] = {}
+    try:
+        for sample in samples:
+            validated = occurrence_row_v2._validate_numeric_sample_record(sample)  # noqa: SLF001
+            sample_id = validated["sample_id"]
+            if sample_id in sample_by_id:
+                return None
+            sample_by_id[sample_id] = validated
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    coverage_by_occurrence: dict[str, Mapping[str, Any]] = {}
+    coverage_ids: set[str] = set()
+    for receipt in coverage:
+        coverage_id = receipt.get("coverage_id") if type(receipt) is dict else None
+        if type(coverage_id) is not str or not coverage_id or coverage_id in coverage_ids:
+            return None
+        coverage_ids.add(coverage_id)
+        if receipt.get("row_kind") != "ROLE_ROW":
+            continue
+        occurrence_id = receipt.get("occurrence_id")
+        if (
+            type(occurrence_id) is not str
+            or occurrence_id not in occurrence_by_id
+            or occurrence_id in coverage_by_occurrence
+        ):
+            return None
+        coverage_by_occurrence[occurrence_id] = receipt
+
+    return {
+        "closure": closure,
+        "coverage_by_occurrence": coverage_by_occurrence,
+        "occurrence_by_id": occurrence_by_id,
+        "row_axis": row_axis,
+        "sample_by_id": sample_by_id,
+    }
+
+
 def _v4_exact_visible_role_axis(
     record: Mapping[str, Any],
-    row_axis: Mapping[str, Any],
+    authenticated_axes: Mapping[str, Any],
     *,
     expected_parent_role: str,
 ) -> tuple[list[dict[str, Any]], str] | None:
     """Return one exact visible leaf bound to one authenticated row projection."""
 
+    closure = authenticated_axes.get("closure")
+    row_axis = authenticated_axes.get("row_axis")
+    occurrence_by_id = authenticated_axes.get("occurrence_by_id")
+    sample_by_id = authenticated_axes.get("sample_by_id")
+    coverage_by_occurrence = authenticated_axes.get("coverage_by_occurrence")
     role = record.get("role")
     source = record.get("source")
     source_record = source.get("record") if type(source) is dict else None
     label_match = source_record.get("label_match") if type(source_record) is dict else None
     if (
-        type(role) is not str
+        type(closure) is not dict
+        or type(row_axis) is not dict
+        or type(occurrence_by_id) is not dict
+        or type(sample_by_id) is not dict
+        or type(coverage_by_occurrence) is not dict
+        or type(role) is not str
         or record.get("resolution_kind") != "VISIBLE_SOURCE_ROLE"
         or type(source) is not dict
         or source.get("kind") != "ROLE_ROW"
@@ -1102,7 +1276,98 @@ def _v4_exact_visible_role_axis(
     ):
         return None
 
+    occurrence_id = label_match["occurrence_id"]
+    occurrence = occurrence_by_id.get(occurrence_id)
+    receipt = coverage_by_occurrence.get(occurrence_id)
+    if (
+        type(occurrence) is not dict
+        or occurrence.get("role") != role
+        or occurrence.get("role_kind") != "ADDITIVE_CHILD"
+        or occurrence.get("has_bound_value_row") is not True
+        or not same_typed_json_v1(occurrence.get("label_match"), label_match)
+        or occurrence.get("scope_owner_occurrence_id") != label_match["scope_owner_occurrence_id"]
+        or occurrence.get("scope_owner_role") != label_match.get("scope_owner_role")
+        or type(receipt) is not dict
+        or receipt.get("role") != role
+        or receipt.get("occurrence_id") != occurrence_id
+        or receipt.get("candidate_ordinal") is not None
+        or receipt.get("row_kind") != "ROLE_ROW"
+        or not same_typed_json_v1(receipt.get("source_record"), source_record)
+        or not same_typed_json_v1(matching_rows[0], source_record)
+    ):
+        return None
+
+    parent_occurrence_id = label_match["scope_owner_occurrence_id"]
     parent_role = label_match.get("scope_owner_role")
+    family_id = closure.get("family_id")
+    if expected_parent_role == family_id:
+        root_owner_ids = {
+            occurrence.get("scope_owner_occurrence_id")
+            for occurrence in occurrence_by_id.values()
+            if occurrence.get("scope_owner_role") is None
+        }
+        if (
+            parent_role is not None
+            or not parent_occurrence_id.startswith("aforav2:root:")
+            or root_owner_ids != {parent_occurrence_id}
+        ):
+            return None
+    else:
+        parent = occurrence_by_id.get(parent_occurrence_id)
+        child_line = label_match["document_line_ordinal"]
+        preceding_parents = [
+            occurrence
+            for occurrence in occurrence_by_id.values()
+            if occurrence.get("role") == expected_parent_role
+            and occurrence.get("role_kind") == "STRUCTURAL_GROUP"
+            and type(occurrence.get("label_match")) is dict
+            and occurrence["label_match"].get("end_document_line_ordinal", child_line + 1)
+            <= child_line
+        ]
+        nearest_start = max(
+            (
+                occurrence["label_match"]["document_line_ordinal"]
+                for occurrence in preceding_parents
+            ),
+            default=None,
+        )
+        nearest = [
+            occurrence
+            for occurrence in preceding_parents
+            if occurrence["label_match"]["document_line_ordinal"] == nearest_start
+        ]
+        if (
+            parent_role != expected_parent_role
+            or type(parent) is not dict
+            or parent.get("role") != expected_parent_role
+            or parent.get("role_kind") != "STRUCTURAL_GROUP"
+            or len(nearest) != 1
+            or nearest[0].get("occurrence_id") != parent_occurrence_id
+            or parent.get("scope_owner_role") is not None
+            or type(parent.get("scope_owner_occurrence_id")) is not str
+            or not parent["scope_owner_occurrence_id"].startswith("aforav2:root:")
+        ):
+            return None
+
+    source_values = source_record.get("values")
+    if type(source_values) is not list or receipt.get("sample_ids") != [
+        value.get("sample_id") for value in source_values if type(value) is dict
+    ]:
+        return None
+    try:
+        for value in source_values:
+            expected_sample = occurrence_row_v2._numeric_universe_record(  # noqa: SLF001
+                value,
+                owner_kind="ROLE_OCCURRENCE",
+                owner_id=occurrence_id,
+            )
+            if not same_typed_json_v1(
+                sample_by_id.get(expected_sample["sample_id"]), expected_sample
+            ):
+                return None
+    except (KeyError, TypeError, ValueError):
+        return None
+
     scope_binding = label_match.get("source_scope_binding")
     if type(scope_binding) is dict:
         binding_material = canonical_clone_v1(scope_binding)
@@ -1164,7 +1429,7 @@ def _v4_exact_visible_role_axis(
         or not same_typed_json_v1(visible_axis, direct_source_axis)
     ):
         return None
-    return visible_axis, label_match["occurrence_id"]
+    return visible_axis, occurrence_id
 
 
 def _v4_canonical_exact_sum_axis(
@@ -1268,15 +1533,15 @@ def _v4_interbank_provision_projection(
 ):
     """Project either the one coarse provision or both exact parented leaves."""
 
-    closure = candidate.get("additive_closure")
+    authenticated_axes = _v4_authenticated_candidate_axes(candidate)
+    closure = authenticated_axes.get("closure") if authenticated_axes is not None else None
     resolved = closure.get("resolved_roles") if type(closure) is dict else None
     family_id = closure.get("family_id") if type(closure) is dict else None
-    row_axis = candidate.get("row_axis")
     if (
-        type(resolved) is not list
+        authenticated_axes is None
+        or type(resolved) is not list
         or type(family_id) is not str
         or not family_id
-        or type(row_axis) is not dict
     ):
         return None
     role_records: dict[str, Mapping[str, Any]] = {}
@@ -1339,7 +1604,7 @@ def _v4_interbank_provision_projection(
     if observed == {_V4_COARSE_INTERBANK_PROVISION_ROLE}:
         exact = _v4_exact_visible_role_axis(
             role_records[_V4_COARSE_INTERBANK_PROVISION_ROLE],
-            row_axis,
+            authenticated_axes,
             expected_parent_role=family_id,
         )
         if (
@@ -1383,7 +1648,7 @@ def _v4_interbank_provision_projection(
     exact_split = {
         role: _v4_exact_visible_role_axis(
             record,
-            row_axis,
+            authenticated_axes,
             expected_parent_role=parent,
         )
         for role, parent in _V4_SPLIT_INTERBANK_PROVISION_PARENT_ROLES.items()
