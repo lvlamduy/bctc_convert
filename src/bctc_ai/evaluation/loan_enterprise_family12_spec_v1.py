@@ -321,6 +321,7 @@ _CHILDREN = [
         [
             "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh nước ngoài",
             "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
             "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
             "Chi nhánh và ngân hàng con tại nước ngoài",

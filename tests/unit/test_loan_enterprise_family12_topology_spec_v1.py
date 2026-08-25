@@ -74,6 +74,7 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     assert foreign["matchers"][1]["within_role"] is None
     assert foreign["matchers"][1]["aliases"] == foreign["matchers"][0]["aliases"]
     assert "Cho vay tại chi nhánh và ngân hàng con nước ngoài" in foreign["matchers"][0]["aliases"]
+    assert "Dư nợ tại chi nhánh nước ngoài" in foreign["matchers"][0]["aliases"]
     assert ["ENTERPRISE_TYPE_BRANCH", "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"] in spec[
         "required_role_combinations"
     ]
