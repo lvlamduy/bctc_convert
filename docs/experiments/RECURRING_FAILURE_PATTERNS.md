@@ -225,7 +225,10 @@ Trạng thái:
   replay. Graph→overlay→numeric giữ cùng graph/cell IDs; request/control bind
   document root, full snapshot, period/unit, render/crop/source locator và được
   rebuild/replay trước khi dùng. Hardlink/extra-LF transport không được xem là
-  semantically neutral.
+  semantically neutral. Với contextual topology V3/V4, one-edit receipt phải
+  bind đúng matcher ordinal + alias ordinal + `within_role` đã chọn; matcher
+  đầu tiên trong role không đại diện cho một matcher context-free/contextual
+  khác.
 - **Status:** `RESOLVED` cho các public contracts hiện tại; format mới phải copy
   cùng cheap-gate + authenticated-replay split.
 

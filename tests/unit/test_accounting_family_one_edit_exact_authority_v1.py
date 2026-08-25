@@ -102,6 +102,23 @@ def _nested_spec() -> dict[str, object]:
     }
 
 
+def _v4_context_free_spec() -> dict[str, object]:
+    spec = _spec()
+    spec["format_version"] = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4"
+    spec["required_role_combinations"] = [["VND_BALANCE", "OTHER_BALANCE"]]
+    spec["required_role_pools"] = [{"minimum_count": 2, "roles": ["VND_BALANCE", "OTHER_BALANCE"]}]
+    spec["children"][2]["matchers"].append(_matcher("Vietnam dong balance"))
+    spec["children"].append(
+        {
+            "matchers": [_matcher("Other balance")],
+            "presence": "OPTIONAL",
+            "role": "OTHER_BALANCE",
+            "role_kind": "ADDITIVE_CHILD",
+        }
+    )
+    return spec
+
+
 def _line(index: int, vietocr: str, source: str | None, *, left: int = 100) -> dict:
     return {
         "bbox": [left, 100 + index * 30, left + 420, 122 + index * 30],
@@ -206,6 +223,33 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
         item["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for item in receipt["checks"]
     )
     assert all(item["exact_channel"]["alias_pointer"] for item in receipt["checks"])
+
+
+def test_v4_context_free_one_edit_uses_its_exact_matcher_alias_pointer() -> None:
+    spec = _v4_context_free_spec()
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Vietnam dong balancx", "Vietnam dong balance"),
+        _line(2, "Other balance", "Other balance"),
+        _line(3, "Next family", "Next family"),
+    )
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    check = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
+    assert check["within_role"] is None
+    assert check["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+    assert check["exact_channel"]["alias_pointer"] == "/children/2/matchers/2/aliases/0"
+    assert (
+        subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+            receipt, pages, spec, region, expanded
+        )
+        == receipt
+    )
 
 
 def test_same_turn_exact_source_axis_is_reused_only_for_identical_pages_and_spec(

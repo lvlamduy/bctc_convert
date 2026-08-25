@@ -1009,7 +1009,10 @@ def _alias_entries(
     if len(children) != 1:
         return []
     child_ordinal, child = children[0]
-    if compiled["spec_format_version"] != topology_v1.SPEC_FORMAT_VERSION_V3:
+    if compiled["spec_format_version"] not in {
+        topology_v1.SPEC_FORMAT_VERSION_V3,
+        topology_v1.SPEC_FORMAT_VERSION_V4,
+    }:
         matcher = child["matchers"][0]
         if matcher["within_role"] != within_role:
             return []
