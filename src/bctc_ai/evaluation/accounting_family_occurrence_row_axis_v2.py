@@ -2714,7 +2714,12 @@ def _retarget_recursive_parent_provision_dash_rescues(
         targets_by_page.setdefault(source["page_sequence"], []).append(target["role"])
     result = []
     for raw in visible_dash_rescues:
-        item = canonical_clone_v1(raw)
+        if type(raw) is not dict:
+            raise _error("recursive parent provision dash item must remain one mapping")
+        # Detector regions intentionally carry opaque PNG bytes.  Copy only
+        # the outer routing envelope so those authenticated payloads retain
+        # their exact object/value identity and never enter the JSON cloner.
+        item = dict(raw)
         targets = targets_by_page.get(item.get("page_sequence"), [])
         if item.get("role") == _PROVISION_GENERIC_ROLE and len(targets) == 1:
             item["role"] = targets[0]

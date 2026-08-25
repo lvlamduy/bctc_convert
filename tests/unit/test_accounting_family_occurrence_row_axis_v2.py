@@ -3725,13 +3725,30 @@ def test_f3_touching_wrapped_explicit_vnd_discount_overrides_prior_fx_scope() ->
 def test_f3_provision_schema_role_is_bound_by_exact_parent_interval(
     rows: list[tuple[str, str, str]], expected_role: str, expected_kind: str | None
 ) -> None:
-    _scan, axis = _build_f3(_f3_pages(rows))
+    pages = _f3_pages(rows)
+    scan, axis = _build_f3(pages)
 
     occurrence = next(item for item in axis["role_occurrences"] if item["role"] == expected_role)
     if expected_kind is None:
         assert occurrence["source_scope_binding"] is None
     else:
         assert occurrence["source_scope_binding"]["binding_kind"] == expected_kind
+    effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
+        _f3_spec(), scan, scan["regions"][0]
+    )
+    subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+        axis,
+        pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+    )
 
 
 @pytest.mark.parametrize(
@@ -3894,6 +3911,47 @@ def test_f3_same_generic_label_binds_distinct_exact_deposit_and_loan_parents() -
         == occurrence["scope_owner_occurrence_id"]
         for occurrence in provisions
     )
+
+
+def test_f3_recursive_provision_retarget_preserves_opaque_dash_region_bytes() -> None:
+    png_bytes = b"\x89PNG\r\n\x1a\nopaque-authenticated-region"
+    region = {"region_png_bytes": png_bytes, "sealed": object()}
+    raw = {
+        "column_ordinal": 0,
+        "page_sequence": 1,
+        "region": region,
+        "role": "INTERBANK_PROVISION_AMBIGUOUS",
+    }
+
+    projected = subject._retarget_recursive_parent_provision_dash_rescues(
+        (raw,),
+        [
+            {
+                "page_sequence": 1,
+                "retrieval_occurrence_id": "retrieval-provision",
+                "role": "INTERBANK_PROVISION_AMBIGUOUS",
+            }
+        ],
+        [
+            {
+                "retrieval_occurrence_id": "retrieval-provision",
+                "role": "INTERBANK_DEPOSIT_PROVISION",
+            }
+        ],
+    )
+
+    assert raw["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    assert projected[0] is not raw
+    assert projected[0]["role"] == "INTERBANK_DEPOSIT_PROVISION"
+    assert projected[0]["region"] is region
+    assert projected[0]["region"]["region_png_bytes"] is png_bytes
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="dash item must remain one mapping",
+    ):
+        subject._retarget_recursive_parent_provision_dash_rescues(
+            (b"opaque",), [], []
+        )
 
 
 def test_f3_bare_provision_before_loan_leaf_remains_source_only_ambiguous() -> None:
