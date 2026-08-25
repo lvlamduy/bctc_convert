@@ -2652,6 +2652,7 @@ def _unlabeled_exact_subtotal_for_equation(
     resolved_by_role: Mapping[str, Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
     source_candidates: Sequence[Mapping[str, Any]],
+    authenticated_extreme_margin_furniture_evidence: Sequence[Mapping[str, Any]] = (),
     equation_records: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Recognize one exact printed subtotal as coverage/corroboration only.
@@ -3038,6 +3039,7 @@ def _unlabeled_exact_subtotal_for_equation(
         source_record = selected["source_record"]
         source_cluster_id = source_record.get("cluster_id")
         boundary_source_line = selection_boundary_match.get("source_line_index")
+        component_last_line = max(component_lines)
         if (
             selected["row_kind"] != "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
             or type(source_cluster_id) is not str
@@ -3052,10 +3054,33 @@ def _unlabeled_exact_subtotal_for_equation(
             )
             or type(boundary_source_line) is not int
             or selected_lines != list(range(min(selected_lines), max(selected_lines) + 1))
-            or min(selected_lines) != max(component_lines) + 1
-            or max(selected_lines) != boundary_source_line - 1
+            or min(selected_lines) <= component_last_line
+            or max(selected_lines) >= boundary_source_line
         ):
             return None
+        intervening_line_ordinals = {
+            *range(component_last_line + 1, min(selected_lines)),
+            *range(max(selected_lines) + 1, boundary_source_line),
+        }
+        if intervening_line_ordinals:
+            qualifying_furniture = [
+                evidence
+                for evidence in authenticated_extreme_margin_furniture_evidence
+                if evidence.get("status") == occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS
+                and evidence.get("page_sequence") == page_sequence
+                and set(evidence.get("margin_band", {}).get("qualifying_peer_line_ordinals", []))
+                == intervening_line_ordinals
+                and evidence.get("candidate_crop_proof", {})
+                .get("source_line_record", {})
+                .get("line_ordinal")
+                == boundary_source_line + 1
+                and (furniture_sample := sample_by_id.get(evidence.get("sample_id"))) is not None
+                and furniture_sample.get("owner_kind")
+                == occurrence_v2._EXTREME_MARGIN_FURNITURE_OWNER_KIND
+                and furniture_sample.get("owner_id") == evidence.get("evidence_id")
+            ]
+            if len(qualifying_furniture) != 1:
+                return None
 
     disposition = _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
     if target_role == "INTERBANK_LOAN_GROUP":
@@ -3148,6 +3173,9 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
             resolved_by_role=resolved_by_role,
             role_occurrences=value["role_occurrences"],
             source_candidates=source_candidates,
+            authenticated_extreme_margin_furniture_evidence=value[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
             equation_records=value["equations"]["global"],
         )
         if evidence is not None:
@@ -3169,6 +3197,9 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
             resolved_by_role=resolved_by_role,
             role_occurrences=value["role_occurrences"],
             source_candidates=source_candidates,
+            authenticated_extreme_margin_furniture_evidence=value[
+                "authenticated_extreme_margin_furniture_evidence"
+            ],
             equation_records=value["equations"]["global"],
         )
         if subgroup_evidence is not None:
@@ -5513,6 +5544,9 @@ def _build(
                 resolved_by_role=resolved,
                 role_occurrences=axis["role_occurrences"],
                 source_candidates=source_candidates,
+                authenticated_extreme_margin_furniture_evidence=axis[
+                    "authenticated_extreme_margin_furniture_evidence"
+                ],
             )
         )
         if unlabeled_subtotal is not None:
@@ -5541,6 +5575,9 @@ def _build(
                 resolved_by_role=resolved,
                 role_occurrences=axis["role_occurrences"],
                 source_candidates=source_candidates,
+                authenticated_extreme_margin_furniture_evidence=axis[
+                    "authenticated_extreme_margin_furniture_evidence"
+                ],
                 equation_records=global_records,
             )
         else:

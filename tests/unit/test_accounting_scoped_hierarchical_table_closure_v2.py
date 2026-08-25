@@ -1558,6 +1558,162 @@ def test_v4_acb2_acb4_exact_unlabeled_demand_subtotal_is_coverage_only(
     )
 
 
+def _acb98_shaped_demand_subtotal_projector_inputs() -> tuple[dict[str, object], dict]:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _acb2_acb4_shaped_unlabeled_demand_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    numeric_sample_universe = copy.deepcopy(closure["numeric_sample_universe"])
+    role_occurrences = copy.deepcopy(closure["role_occurrences"])
+    resolved_by_role = {
+        record["role"]: copy.deepcopy(record) for record in closure["resolved_roles"]
+    }
+    demand_equation = next(
+        copy.deepcopy(equation)
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    demand_receipt = next(
+        receipt
+        for receipt in closure["coverage_receipt"]
+        if receipt["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and receipt["role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    selected_samples = [
+        sample
+        for sample in numeric_sample_universe
+        if sample["sample_id"] in demand_receipt["sample_ids"]
+    ]
+    component_sample_ids = {
+        sample_id
+        for value in resolved_by_role["DEMAND_DEPOSIT_GROUP"]["values"]
+        for sample_id in value["source_sample_ids"]
+    }
+    component_last_line = max(
+        sample["line_ordinal"]
+        for sample in numeric_sample_universe
+        if sample["sample_id"] in component_sample_ids
+    )
+    for offset, sample in enumerate(
+        sorted(selected_samples, key=lambda item: item["column_ordinal"]), start=3
+    ):
+        sample["line_ordinal"] = component_last_line + offset
+    term_occurrence = next(
+        occurrence for occurrence in role_occurrences if occurrence["role"] == "TERM_DEPOSIT_GROUP"
+    )
+    boundary_source_line = component_last_line + 6
+    term_occurrence["label_match"]["source_line_index"] = boundary_source_line
+    furniture_evidence_id = "aforav2:extreme-margin-furniture:" + "9" * 64
+    furniture_sample = copy.deepcopy(numeric_sample_universe[0])
+    furniture_sample.update(
+        {
+            "line_ordinal": boundary_source_line + 1,
+            "owner_id": furniture_evidence_id,
+            "owner_kind": occurrence_v2._EXTREME_MARGIN_FURNITURE_OWNER_KIND,
+            "page_sequence": selected_samples[0]["page_sequence"],
+            "sample_id": "sample-acb98-rotated-stamp",
+        }
+    )
+    numeric_sample_universe.append(furniture_sample)
+    trailing_rows = [
+        receipt["source_record"]
+        for receipt in closure["coverage_receipt"]
+        if receipt["row_kind"] == "TRAILING_VALUE_ROW"
+    ]
+    source_candidates = subject._numeric_source_candidate_axis(
+        numeric_sample_universe,
+        closure["internal_unassigned_numeric_clusters"],
+        trailing_rows,
+    )
+    intervening = {
+        component_last_line + 1,
+        component_last_line + 2,
+        boundary_source_line - 1,
+    }
+    furniture_evidence = {
+        "candidate_crop_proof": {"source_line_record": {"line_ordinal": boundary_source_line + 1}},
+        "evidence_id": furniture_evidence_id,
+        "margin_band": {"qualifying_peer_line_ordinals": sorted(intervening)},
+        "page_sequence": selected_samples[0]["page_sequence"],
+        "sample_id": furniture_sample["sample_id"],
+        "status": occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
+    }
+    arguments = {
+        "authenticated_extreme_margin_furniture_evidence": [furniture_evidence],
+        "equation_record": demand_equation,
+        "equation_records": closure["equations"]["global"],
+        "family_id": closure["family_id"],
+        "numeric_sample_universe": numeric_sample_universe,
+        "reserved_source_keys": set(),
+        "resolved_by_role": resolved_by_role,
+        "role_occurrences": role_occurrences,
+        "source_candidates": source_candidates,
+    }
+    return furniture_evidence, arguments
+
+
+def test_v4_acb98_demand_subtotal_allows_exact_authenticated_margin_peer_gaps() -> None:
+    _evidence, arguments = _acb98_shaped_demand_subtotal_projector_inputs()
+
+    projected = subject._unlabeled_exact_subtotal_for_equation(**arguments)
+
+    assert projected is not None
+    assert projected["role"] == "DEMAND_DEPOSIT_GROUP"
+    assert projected["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "NO_EVIDENCE",
+        "PARTIAL_PEERS",
+        "EXTRA_PEER",
+        "DUPLICATE_EVIDENCE",
+        "CROSS_PAGE",
+        "WRONG_CANDIDATE_LINE",
+        "LEGACY_FURNITURE",
+        "UNOWNED_SAMPLE",
+    ],
+)
+def test_v4_acb98_demand_subtotal_margin_peer_gap_authority_fails_closed(
+    attack: str,
+) -> None:
+    evidence, arguments = _acb98_shaped_demand_subtotal_projector_inputs()
+    if attack == "NO_EVIDENCE":
+        arguments["authenticated_extreme_margin_furniture_evidence"] = []
+    elif attack == "PARTIAL_PEERS":
+        evidence["margin_band"]["qualifying_peer_line_ordinals"].pop()
+    elif attack == "EXTRA_PEER":
+        evidence["margin_band"]["qualifying_peer_line_ordinals"].append(999)
+    elif attack == "DUPLICATE_EVIDENCE":
+        arguments["authenticated_extreme_margin_furniture_evidence"].append(copy.deepcopy(evidence))
+    elif attack == "CROSS_PAGE":
+        evidence["page_sequence"] += 1
+    elif attack == "WRONG_CANDIDATE_LINE":
+        evidence["candidate_crop_proof"]["source_line_record"]["line_ordinal"] += 1
+    elif attack == "LEGACY_FURNITURE":
+        evidence["status"] = occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
+    else:
+        furniture_sample = next(
+            sample
+            for sample in arguments["numeric_sample_universe"]
+            if sample["sample_id"] == evidence["sample_id"]
+        )
+        furniture_sample["owner_id"] = "aforav2:extreme-margin-furniture:" + "0" * 64
+
+    assert subject._unlabeled_exact_subtotal_for_equation(**arguments) is None
+
+
 @pytest.mark.parametrize(
     "attack",
     [
