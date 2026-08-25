@@ -4962,13 +4962,13 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
     numeric_furniture_ids = {
         evidence_id
         for evidence_id, evidence in furniture_by_id.items()
-            if evidence.get("status")
-            in {
-                occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
-                occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
-                occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
-                occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
-            }
+        if evidence.get("status")
+        in {
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS,
+            occurrence_v2._EXTREME_MARGIN_FURNITURE_V2_STATUS,
+            occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
+            occurrence_v2._PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
+        }
     }
     if (
         len(receipt_sample_ids) != len(set(receipt_sample_ids))

@@ -1069,8 +1069,8 @@ def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch)
     wrong_period["document_packet"]["period"] = "Q2"
     wrong_period_material = copy.deepcopy(wrong_period)
     wrong_period_material.pop("snapshot_id")
-    wrong_period["snapshot_id"] = (
-        "ffdesv1:snapshot:" + canonical_json_sha256_v1(wrong_period_material)
+    wrong_period["snapshot_id"] = "ffdesv1:snapshot:" + canonical_json_sha256_v1(
+        wrong_period_material
     )
     with pytest.raises(
         subject.FamilyFirstAccountingEvidenceSweepV1Error,
