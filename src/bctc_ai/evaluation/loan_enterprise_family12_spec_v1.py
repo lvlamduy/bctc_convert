@@ -211,6 +211,7 @@ _CHILDREN = [
         [
             "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
             "Công ty TNHH MTV vốn nhà nước trên 50%",
+            "Công ty TNHH MTV với vốn Nhà nước trên 50%",
             "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
             "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
@@ -243,6 +244,9 @@ _CHILDREN = [
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số "
             "cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ "
             "của công ty",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số "
+            "cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty "
+            "trong Điều lệ của công ty",
         ],
     ),
     _child(773, "Công ty cổ phần khác", ["Công ty cổ phần khác", "Công ty CP khác"]),

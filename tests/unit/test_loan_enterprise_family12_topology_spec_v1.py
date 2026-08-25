@@ -253,6 +253,34 @@ def test_family12_abbreviated_multiple_member_state_majority_label_resolves_exac
     assert majority["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
 
 
+def test_family12_wrapped_mtv_with_state_capital_label_resolves_exact_role() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+                    "Công ty TNHH MTV với vốn Nhà nước",
+                    "trên 50%",
+                    "Công ty Nhà nước",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    majority = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "STATE_MAJORITY_LLC_LOANS"
+    )
+    assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+    assert majority["source_line_index"] == 2
+    assert majority["end_source_line_index"] == 3
+    assert majority["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
 def test_family12_exact_sibling_headings_fence_contextual_customer_object_rows() -> None:
     result = build_accounting_family_topology_scan_v1(
         [
@@ -341,6 +369,62 @@ def test_family12_six_line_state_majority_source_label_resolves_exact_role() -> 
     assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
     assert majority["source_line_index"] == 1
     assert majority["end_source_line_index"] == 6
+
+
+def test_family12_six_line_state_majority_control_clause_resolves_exact_role() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+                    "Công ty cổ phần có vốn góp của",
+                    "Nhà nước trên 50% vốn điều lệ",
+                    "hoặc tổng số cổ phần có quyền",
+                    "biểu quyết, hoặc Nhà nước giữ",
+                    "quyền chi phối đối với công ty trong",
+                    "Điều lệ của công ty",
+                    "Công ty cổ phần khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    majority = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
+    )
+    assert majority["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+    assert majority["source_line_index"] == 2
+    assert majority["end_source_line_index"] == 7
+    assert majority["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+
+
+def test_family12_state_control_clause_under_deposit_parent_is_not_observed() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi của khách hàng",
+                    "Phân tích tiền gửi khách hàng theo loại hình doanh nghiệp",
+                    "Công ty cổ phần có vốn góp của",
+                    "Nhà nước trên 50% vốn điều lệ",
+                    "hoặc tổng số cổ phần có quyền",
+                    "biểu quyết, hoặc Nhà nước giữ",
+                    "quyền chi phối đối với công ty trong",
+                    "Điều lệ của công ty",
+                    "Công ty cổ phần khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert result["metrics"]["complete_region_count"] == 0
 
 
 def test_family12_wrapped_state_majority_equity_prefix_avoids_ocr_only_tail() -> None:
