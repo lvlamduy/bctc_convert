@@ -2565,9 +2565,7 @@ def test_extreme_right_vertical_stamp_v4_never_reowns_printed_note_reference_axi
         ("OWNER", "universe owner"),
     ],
 )
-def test_extreme_right_vertical_stamp_v4_coherent_tamper_rejects(
-    attack: str, error: str
-) -> None:
+def test_extreme_right_vertical_stamp_v4_coherent_tamper_rejects(attack: str, error: str) -> None:
     pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode="CHROMATIC")
     _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
         pages,

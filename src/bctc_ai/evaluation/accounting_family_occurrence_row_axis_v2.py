@@ -626,18 +626,12 @@ _EXTREME_MARGIN_FURNITURE_V2_STATUS = (
 _EXTREME_MARGIN_NONNUMERIC_DECORATION_V3_STATUS = (
     "AUTHENTICATED_CLIPPED_RIGHT_EDGE_NONNUMERIC_DECORATION_V3"
 )
-_EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS = (
-    "AUTHENTICATED_EXTREME_RIGHT_VERTICAL_STAMP_FURNITURE_V4"
-)
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS = "AUTHENTICATED_EXTREME_RIGHT_VERTICAL_STAMP_FURNITURE_V4"
 _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS = (
     "EXACT_CANDIDATE_CROP_CONNECTED_COMPONENT_PEER_CHAIN"
 )
-_EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE = (
-    "TALL_CHROMATIC_INTERNAL_COMPONENT_CHAIN"
-)
-_EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE = (
-    "CLIPPED_NEUTRAL_EXTERNAL_PEER_CHAIN"
-)
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE = "TALL_CHROMATIC_INTERNAL_COMPONENT_CHAIN"
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE = "CLIPPED_NEUTRAL_EXTERNAL_PEER_CHAIN"
 _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V3"
 _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V4"
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
@@ -6104,8 +6098,12 @@ def _authenticated_extreme_margin_vertical_stamp_component_proof_v4(
     )
     if (
         vertical_span * 4 < height * 3
-        or not any((component["bbox"][1] - bbox[1]) * 3 <= height for component in qualifying_components)
-        or not any((bbox[3] - component["bbox"][3]) * 3 <= height for component in qualifying_components)
+        or not any(
+            (component["bbox"][1] - bbox[1]) * 3 <= height for component in qualifying_components
+        )
+        or not any(
+            (bbox[3] - component["bbox"][3]) * 3 <= height for component in qualifying_components
+        )
     ):
         return None
     return {
@@ -6241,10 +6239,10 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
     ):
         return None, False
     margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
-    candidate_records = [line for line in margin_axis if line["sample_id"] == candidate["sample_id"]]
-    external_peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(
-        margin_axis, candidate
-    )
+    candidate_records = [
+        line for line in margin_axis if line["sample_id"] == candidate["sample_id"]
+    ]
+    external_peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(margin_axis, candidate)
     if len(candidate_records) != 1:
         return None, False
     page_sequence = page["page_sequence"]
@@ -6277,13 +6275,11 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
         return None, False
     chromatic_mode = (
         height >= math.ceil(3 * scale)
-        and candidate_crop["chromatic_ink_pixel_count"] * 2
-        >= candidate_crop["ink_pixel_count"]
+        and candidate_crop["chromatic_ink_pixel_count"] * 2 >= candidate_crop["ink_pixel_count"]
     )
     clipped_mode = (
         right_edge_gap <= 1
-        and candidate_crop["chromatic_ink_pixel_count"] * 4
-        <= candidate_crop["ink_pixel_count"]
+        and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
         and len(external_peer_ordinals) >= 3
     )
     if chromatic_mode == clipped_mode:
@@ -6302,9 +6298,7 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
                 peer_crops.append(proof)
         if len(peer_crops) < 3:
             return None, False
-    qualifying_peer_ordinals = [
-        proof["source_line_record"]["line_ordinal"] for proof in peer_crops
-    ]
+    qualifying_peer_ordinals = [proof["source_line_record"]["line_ordinal"] for proof in peer_crops]
     document_pages_sha256 = canonical_json_sha256_v1(pages)
     maximum_label_right = (
         max(label["bbox"][2] for label in full_page_label_evidence)
@@ -6341,9 +6335,7 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
             "margin_boundary": margin_boundary,
             "maximum_label_right": maximum_label_right,
             "same_row_label_evidence": full_page_label_evidence,
-            "same_row_label_evidence_sha256": canonical_json_sha256_v1(
-                full_page_label_evidence
-            ),
+            "same_row_label_evidence_sha256": canonical_json_sha256_v1(full_page_label_evidence),
             "semantic_label_line_ordinals": semantic_label_line_ordinals,
             "status": (
                 "EXACT_MARGIN_SEPARATED_SAME_ROW_LABELS"
@@ -8902,12 +8894,9 @@ def _validate_extreme_margin_vertical_stamp_component_proof_v4(
             or type(component["ink_pixel_count"]) is not int
             or not 0
             < component["ink_pixel_count"]
-            <= (component_bbox[2] - component_bbox[0])
-            * (component_bbox[3] - component_bbox[1])
+            <= (component_bbox[2] - component_bbox[0]) * (component_bbox[3] - component_bbox[1])
             or type(component["chromatic_ink_pixel_count"]) is not int
-            or not 0
-            <= component["chromatic_ink_pixel_count"]
-            <= component["ink_pixel_count"]
+            or not 0 <= component["chromatic_ink_pixel_count"] <= component["ink_pixel_count"]
         ):
             raise _error("extreme-right vertical-stamp V4 component axis drifted")
     minimum_ink = value["minimum_component_ink_pixel_count"]
@@ -8930,12 +8919,10 @@ def _validate_extreme_margin_vertical_stamp_component_proof_v4(
         or value["qualifying_vertical_span"] != vertical_span
         or vertical_span * 4 < height * 3
         or not any(
-            (component["bbox"][1] - bbox[1]) * 3 <= height
-            for component in qualifying_components
+            (component["bbox"][1] - bbox[1]) * 3 <= height for component in qualifying_components
         )
         or not any(
-            (bbox[3] - component["bbox"][3]) * 3 <= height
-            for component in qualifying_components
+            (bbox[3] - component["bbox"][3]) * 3 <= height for component in qualifying_components
         )
     ):
         raise _error("extreme-right vertical-stamp V4 component peer chain drifted")
@@ -9046,11 +9033,8 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
             or bbox[0] * geometry["page_edge_denominator"]
             < geometry["page_width"] * geometry["page_edge_numerator"]
             or bbox[2] > geometry["page_width"]
-            or not 0 <= geometry["right_edge_gap"] <= math.ceil(
-                geometry["body_text_scale"] / 4
-            )
-            or geometry["candidate_height"]
-            < math.ceil(3 * geometry["body_text_scale"] / 2)
+            or not 0 <= geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 4)
+            or geometry["candidate_height"] < math.ceil(3 * geometry["body_text_scale"] / 2)
             or geometry["candidate_height"] < geometry["candidate_width"]
             or source["column_ordinal"] >= len(grid["column_centers"])
             or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
@@ -9101,9 +9085,7 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
         margin_band = evidence["margin_band"]
         source_axis = margin_band.get("source_line_axis") if type(margin_band) is dict else None
         peer_ordinals = (
-            margin_band.get("qualifying_peer_line_ordinals")
-            if type(margin_band) is dict
-            else None
+            margin_band.get("qualifying_peer_line_ordinals") if type(margin_band) is dict else None
         )
         if (
             type(margin_band) is not dict
@@ -9156,13 +9138,11 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
 
         chromatic_mode = (
             geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"])
-            and candidate_crop["chromatic_ink_pixel_count"] * 2
-            >= candidate_crop["ink_pixel_count"]
+            and candidate_crop["chromatic_ink_pixel_count"] * 2 >= candidate_crop["ink_pixel_count"]
         )
         clipped_mode = (
             geometry["right_edge_gap"] <= 1
-            and candidate_crop["chromatic_ink_pixel_count"] * 4
-            <= candidate_crop["ink_pixel_count"]
+            and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
             and len(peer_ordinals) >= 3
         )
         expected_mode = (
@@ -9188,9 +9168,7 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
                 and (
                     len(peer_crops) < 3
                     or not set(peer_ordinals).issubset(
-                        _extreme_margin_v2_geometric_peer_ordinals(
-                            source_axis, candidate_lines[0]
-                        )
+                        _extreme_margin_v2_geometric_peer_ordinals(source_axis, candidate_lines[0])
                     )
                 )
             )
@@ -9200,9 +9178,7 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
                     source_by_ordinal.get(proof["source_line_record"]["line_ordinal"]),
                 )
                 or proof["ink_pixel_count"] <= 0
-                or not _extreme_margin_peer_surfaces_are_nonnumeric(
-                    proof["source_line_record"]
-                )
+                or not _extreme_margin_peer_surfaces_are_nonnumeric(proof["source_line_record"])
                 or proof["render_binding"]["render_id"]
                 != candidate_crop["render_binding"]["render_id"]
                 or proof["render_binding"]["document_ordinal"]
@@ -10333,15 +10309,9 @@ def _validate_extreme_margin_furniture_evidence_axis(
         if type(evidence) is dict
         and evidence.get("status") == _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS
     ]
-    if (
-        len(v1)
-        + len(v2)
-        + len(vertical_stamp_v4)
-        + len(decoration_v3)
-        + len(note_v3)
-        + len(note_v4)
-        != len(evidence_axis)
-    ):
+    if len(v1) + len(v2) + len(vertical_stamp_v4) + len(decoration_v3) + len(note_v3) + len(
+        note_v4
+    ) != len(evidence_axis):
         raise _error("authenticated extreme-margin furniture evidence version drifted")
     v1_samples = _validate_extreme_margin_furniture_evidence_axis_v1(
         v1,
