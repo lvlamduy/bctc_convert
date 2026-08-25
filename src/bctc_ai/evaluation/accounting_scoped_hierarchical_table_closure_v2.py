@@ -5177,6 +5177,21 @@ def _validate_result(value: Any) -> dict[str, Any]:
         if type(record) is dict and type(record.get("occurrence_id")) is str
     }
     for receipt in value["coverage_receipt"]:
+        if receipt["row_kind"] == "ROLE_ROW":
+            occurrence = occurrence_by_id.get(receipt["occurrence_id"])
+            source_status = receipt["source_record"].get("status")
+            optional_disposition = (
+                receipt["disposition"] == "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE"
+            )
+            if optional_disposition != (source_status in _OPTIONAL_BLANK_ROW_STATUSES) or (
+                optional_disposition
+                and (
+                    type(occurrence) is not dict
+                    or occurrence.get("label_match", {}).get("presence") != "OPTIONAL"
+                    or not receipt["source_record"].get("missing_column_ordinals")
+                )
+            ):
+                raise _error("optional blank role receipt lost its exact source disposition")
         if receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE":
             occurrence = occurrence_by_id.get(receipt["occurrence_id"])
             scope_binding = (

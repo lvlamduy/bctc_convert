@@ -2764,6 +2764,20 @@ def test_optional_partial_adjustment_with_authenticated_blank_lane_is_nonblockin
     )
     assert "LOAN_PROVISION" not in {record["role"] for record in closure["resolved_roles"]}
 
+    tampered = copy.deepcopy(closure)
+    tampered_optional = next(
+        receipt for receipt in tampered["coverage_receipt"] if receipt["role"] == "LOAN_PROVISION"
+    )
+    tampered_optional["source_record"]["status"] = (
+        "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    )
+    _coherently_rehash_closure(tampered)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="optional blank role receipt lost its exact source disposition",
+    ):
+        subject._validate_result(tampered)
+
 
 def test_missing_local_subtotals_cannot_authorize_cross_scope_leaf_aggregation() -> None:
     pages = _pages(
