@@ -627,6 +627,7 @@ def _clear_detector_dash_rescue(
     topology: dict[str, object],
     *,
     base_row_axis: dict[str, object] | None = None,
+    blank: bool = False,
     role: str,
 ) -> tuple[dict[str, object], ...]:
     parsed_pages = row_v1._pages(pages)
@@ -658,8 +659,9 @@ def _clear_detector_dash_rescue(
     assert len(proposals) == 1
     proposal = proposals[0]
     image = Image.new("RGB", (40, 32), "white")
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((16, 14, 24, 17), fill="black")
+    if not blank:
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((16, 14, 24, 17), fill="black")
     stream = io.BytesIO()
     image.save(stream, format="PNG", optimize=False, compress_level=9)
     payload = stream.getvalue()
@@ -2724,6 +2726,43 @@ def test_shared_local_component_not_selected_by_ancestor_remains_unresolved() ->
         if equation["result_role"] == "INTERBANK"
     )
     assert family_equation["component_roles_present"] == ["DEPOSIT_GROUP", "LOAN_GROUP"]
+
+
+def test_optional_partial_adjustment_with_authenticated_blank_lane_is_nonblocking() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "30", "25"),
+            ("Dự phòng cho vay TCTD khác", "", "0"),
+            ("Tổng cộng", "130", "115"),
+        ]
+    )
+    topology = _topology()
+    base_axis = _axis(pages, topology)
+    rescues = _clear_detector_dash_rescue(
+        pages,
+        topology,
+        base_row_axis=base_axis["row_axis"],
+        blank=True,
+        role="LOAN_PROVISION",
+    )
+
+    _axis_value, closure = _closure(
+        pages,
+        topology=topology,
+        visible_dash_rescues=rescues,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == []
+    optional = next(
+        receipt for receipt in closure["coverage_receipt"] if receipt["role"] == "LOAN_PROVISION"
+    )
+    assert optional["disposition"] == "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE"
+    assert optional["source_record"]["status"] == (
+        "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+    )
+    assert "LOAN_PROVISION" not in {record["role"] for record in closure["resolved_roles"]}
 
 
 def test_missing_local_subtotals_cannot_authorize_cross_scope_leaf_aggregation() -> None:

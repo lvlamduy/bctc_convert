@@ -367,6 +367,10 @@ _LOCAL_EQUATION_STATUSES = {
     "LOCAL_VISIBLE_SUBTOTAL_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_SCOPED_COMPONENTS",
     "LOCAL_TRAILING_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
 }
+_OPTIONAL_BLANK_ROW_STATUSES = {
+    "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+    "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+}
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
@@ -4985,6 +4989,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
         "LOCAL_SUBTOTAL_RESULT_OCCURRENCE",
         "NONADDITIVE_VISIBLE_SOURCE_ROLE",
+        "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE",
         "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED",
         "UNBOUND_VISIBLE_ACCOUNTING_OCCURRENCE",
         "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE",
@@ -5362,8 +5367,11 @@ def _build(
     row_axis = axis["row_axis"]
     reasons = list(axis["unresolved_reasons"])
     numeric_rows = [row for row in row_axis["rows"] if row["values"]]
+    numeric_accounting_rows = [
+        row for row in numeric_rows if row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
+    ]
     source_only_occurrences, one_edit_occurrences, source_role_reasons = _source_role_vetoes(
-        numeric_rows,
+        numeric_accounting_rows,
         axis["role_occurrences"],
         spec["source_role_policy"],
         axis["one_edit_exact_source_structural_proofs"],
@@ -5425,7 +5433,8 @@ def _build(
     accounting_rows = [
         row
         for row in row_axis["rows"]
-        if row["label_match"].get("occurrence_id")
+        if row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
+        and row["label_match"].get("occurrence_id")
         not in source_only_occurrences | one_edit_occurrences
     ]
     valued_rows = [row for row in accounting_rows if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
@@ -5613,7 +5622,10 @@ def _build(
         }
     }
     incomplete_rows = [
-        row for row in row_axis["rows"] if row["status"] != "VISIBLE_VALUE_LANES_BOUND"
+        row
+        for row in row_axis["rows"]
+        if row["status"] != "VISIBLE_VALUE_LANES_BOUND"
+        and row["status"] not in _OPTIONAL_BLANK_ROW_STATUSES
     ]
     if incomplete_rows and all(
         row["label_match"].get("occurrence_id") in corroborated_occurrence_ids and not row["values"]
@@ -5653,7 +5665,8 @@ def _build(
             selected_component_use_count[role] = selected_component_use_count.get(role, 0) + 1
     accounting_component_roles = {
         role
-        for role in equation_component_roles & ({*resolved, *(row["role"] for row in numeric_rows)})
+        for role in equation_component_roles
+        & ({*resolved, *(row["role"] for row in numeric_accounting_rows)})
         if spec["role_kind_by_role"].get(role) != "NONADDITIVE_CHILD"
     }
     invalid_component_use_roles = {
@@ -5682,7 +5695,9 @@ def _build(
         coverage_occurrences.add(occurrence_id)
         role = row["role"]
         role_kind = spec["role_kind_by_role"].get(role)
-        if occurrence_id in source_only_occurrences:
+        if row["status"] in _OPTIONAL_BLANK_ROW_STATUSES:
+            disposition = "OPTIONAL_INCOMPLETE_VISIBLE_SOURCE_ROLE"
+        elif occurrence_id in source_only_occurrences:
             disposition = "UNRESOLVED_SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE"
         elif occurrence_id in one_edit_occurrences:
             disposition = "UNRESOLVED_ONE_EDIT_ROLE_OR_SCOPE_MATCH"
