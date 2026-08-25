@@ -3935,77 +3935,6 @@ def _v4_document_store_render_preflight_material_v1(
     }
 
 
-def _v4_prepruning_occurrence_render_pages_v1(
-    *,
-    selected_snapshot: dict[str, Any],
-    topology_scan: dict[str, Any],
-    topology_candidates: dict[str, Any],
-    candidate_bindings: tuple[Any, ...],
-    family_spec: dict[str, Any],
-    evaluation_spec: dict[str, Any],
-    prepared_snapshot: Any,
-) -> tuple[int, ...]:
-    """Find page-local pixel needs before closure or candidate selection.
-
-    Every inspected row axis is rooted in one authenticated complete
-    pre-pruning candidate.  The projection admits only (a) pages owning an
-    unresolved visible value lane and (b) exact pages named by the occurrence
-    authority's extreme-margin render gate.  It does not build column context,
-    accounting closure, one-edit projection, or downstream candidate choice.
-    """
-
-    regions = topology_candidates["regions"]
-    if len(candidate_bindings) != len(regions):
-        raise _error("V4 render preflight candidate binding axis drifted")
-    joined_pages = selected_snapshot["joined_pages"]
-    selected: set[int] = set()
-    margin_prefix = occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX
-    for topology_region, prepared_binding in zip(regions, candidate_bindings, strict=True):
-        admitted_pages = _selected_topology_pages_v1(
-            joined_pages,
-            {"regions": [topology_region]},
-        )
-        try:
-            occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
-                joined_pages,
-                family_spec,
-                topology_scan,
-                topology_region,
-                evaluation_spec["occurrence_row_axis_policy"],
-                topology_candidates=topology_candidates,
-                prepared_topology_binding=prepared_binding,
-                selected_snapshot=selected_snapshot,
-                prepared_snapshot=prepared_snapshot,
-                render_snapshots=(),
-            )
-        except ValueError:
-            # A non-render row-axis failure is final-trial evidence, never
-            # authority to broaden which source pixels the parent may open.
-            continue
-        row_axis = occurrence_axis["row_axis"]
-        candidate_pages = {
-            row["label_match"]["page_sequence"]
-            for row in row_axis["rows"]
-            if row["missing_column_ordinals"]
-        }
-        candidate_pages.update(
-            row["page_sequence"]
-            for row in row_axis["trailing_value_rows"]
-            if row["missing_column_ordinals"]
-        )
-        for reason in occurrence_axis["unresolved_reasons"]:
-            if type(reason) is not str or not reason.startswith(margin_prefix):
-                continue
-            page_surface = reason.removeprefix(margin_prefix)
-            if not page_surface.isascii() or not page_surface.isdigit():
-                raise _error("V4 render preflight margin page reason drifted")
-            candidate_pages.add(int(page_surface))
-        if not candidate_pages <= admitted_pages:
-            raise _error("V4 render preflight escaped its candidate page authority")
-        selected.update(candidate_pages)
-    return tuple(sorted(selected))
-
-
 def _missing_render_pages_for_document_store_trial_v1(
     trial: dict[str, Any],
     topology_scan: dict[str, Any],
@@ -4603,7 +4532,7 @@ def _v4_document_store_render_preflight_worker_v1(
         expected_packet=packet,
         runtime_telemetry=None,
     )
-    selected_snapshot, topology_scan, topology_candidates, candidate_bindings = (
+    selected_snapshot, topology_scan, topology_candidates, _candidate_bindings = (
         _open_prepared_v4_document_store_context_v1(
             prepared_context,
             snapshot,
@@ -4613,15 +4542,12 @@ def _v4_document_store_render_preflight_worker_v1(
             expected_legacy_scan=None,
         )
     )
-    render_pages = _v4_prepruning_occurrence_render_pages_v1(
-        selected_snapshot=selected_snapshot,
-        topology_scan=topology_scan,
-        topology_candidates=topology_candidates,
-        candidate_bindings=candidate_bindings,
-        family_spec=family_spec,
-        evaluation_spec=policy,
-        prepared_snapshot=prepared_context.prepared_snapshot,
-    )
+    # Candidate pages remain a private reservoir.  The only authority to
+    # reveal an ordinary first-pass render is the unchanged no-render trial's
+    # exact missing-page receipt below; projecting pages directly from every
+    # pre-pruning occurrence would complete threat regions that the sequential
+    # scheduler never opened.
+    render_pages: tuple[int, ...] = ()
     reservoir_pages = _v4_prepruning_candidate_render_pages_v1(
         selected_snapshot["joined_pages"],
         topology_candidates,

@@ -1662,7 +1662,6 @@ def test_v4_render_preflight_completes_no_render_trial_without_retaining_context
         "_open_prepared_v4_document_store_context_v1",
         lambda *_a, **_k: (snapshot, topology_scan, topology_candidates, (object(),)),
     )
-    monkeypatch.setattr(subject, "_v4_prepruning_occurrence_render_pages_v1", lambda **_kwargs: ())
     monkeypatch.setattr(subject, "_v4_prepruning_candidate_render_pages_v1", lambda *_a, **_k: (1,))
     monkeypatch.setattr(subject, "_trial_from_document_store_snapshot_v1", lambda *_a, **_k: trial)
     monkeypatch.setattr(
@@ -1678,6 +1677,52 @@ def test_v4_render_preflight_completes_no_render_trial_without_retaining_context
     assert result["render_pages"] == ()
     assert result["completed_result"]["trial"] is trial
     assert subject._V4_RENDER_PREFLIGHT_CONTEXT_CACHE == {}
+
+
+def test_v4_render_preflight_reveals_only_base_trial_missing_page(monkeypatch) -> None:
+    packet, snapshot, _preflight = _render_preflight_fixture()
+    snapshot = {
+        **snapshot,
+        "document_packet": packet,
+        "joined_pages": [{"physical_page": page} for page in (1, 2, 3)],
+    }
+    prepared = SimpleNamespace(prepared_snapshot=object())
+    topology_scan = {"scan_id": "aftv1:scan:" + "d" * 64}
+    topology_candidates = {
+        "result_id": "aftcv2:result:" + "c" * 64,
+        "regions": [{"candidate_id": "candidate-1"}],
+    }
+    monkeypatch.setattr(subject, "_V4_RENDER_PREFLIGHT_CONTEXT_CACHE", {})
+    monkeypatch.setattr(
+        subject, "_prepare_v4_document_store_context_v1", lambda *_a, **_k: prepared
+    )
+    monkeypatch.setattr(
+        subject,
+        "_open_prepared_v4_document_store_context_v1",
+        lambda *_a, **_k: (snapshot, topology_scan, topology_candidates, (object(),)),
+    )
+    monkeypatch.setattr(
+        subject, "_v4_prepruning_candidate_render_pages_v1", lambda *_a, **_k: (1, 2, 3)
+    )
+    monkeypatch.setattr(
+        subject,
+        "_trial_from_document_store_snapshot_v1",
+        lambda *_a, **_k: {"document_ordinal": 1, "topology_scan": topology_scan},
+    )
+    monkeypatch.setattr(
+        subject,
+        "_missing_render_pages_for_document_store_trial_v1",
+        lambda *_a, **_k: (2,),
+    )
+
+    result = subject._v4_document_store_render_preflight_worker_v1(
+        (packet, snapshot, _family_spec(), {"format_version": subject.EVALUATION_SPEC_FORMAT_V4})
+    )
+
+    assert result["render_pages"] == (2,)
+    assert result["reservoir_pages"] == (1, 2, 3)
+    assert result["completed_result"] is None
+    assert set(subject._V4_RENDER_PREFLIGHT_CONTEXT_CACHE) == {result["preflight_id"]}
 
 
 def test_parallel_v4_document_store_trials_preserve_order_and_render_only_requests(
