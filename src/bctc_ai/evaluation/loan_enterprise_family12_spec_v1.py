@@ -147,6 +147,7 @@ _STRUCTURAL_RESET_ALIASES = [
     "Chứng khoán đầu tư",
     "Tài sản cố định",
     "Các khoản đầu tư dài hạn khác",
+    "Dự phòng rủi ro cho vay khách hàng",
     "Biến động số dư dự phòng rủi ro cho vay khách hàng",
     "Phân tích theo loại hình cho vay",
     "Phân tích theo ngành nghề kinh doanh",

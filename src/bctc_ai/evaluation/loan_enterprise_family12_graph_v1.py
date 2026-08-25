@@ -137,8 +137,8 @@ LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2 = {
     },
     "family_spec_ref": {
         "path": "src/bctc_ai/evaluation/loan_enterprise_family12_spec_v1.py",
-        "sha256": "88b93e2d8b7a0ba36558c852500498033b26c91a7008c63bee4503fa680fb968",
-        "size_bytes": 22_226,
+        "sha256": "c8a62e689be92fccdfe3a9b36622a527f63170f946db14af03393801ca14cd86",
+        "size_bytes": 22_275,
     },
 }
 

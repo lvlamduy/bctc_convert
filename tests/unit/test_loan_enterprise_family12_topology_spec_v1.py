@@ -416,6 +416,30 @@ def test_family12_reset_budget_and_partial_topologies_fail_closed() -> None:
         )
 
 
+def test_family12_next_note_heading_fences_unrelated_totals_after_visible_table_total() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng (tiếp theo)",
+                    "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
+                    "Công ty nhà nước",
+                    "Công ty TNHH khác",
+                    "381.972.016 100,00 324.009.713 100,00",
+                    "10. DỰ PHÒNG RÙI RO CHO VAY KHÁCH HÀNG",
+                    "Tổng cộng",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["cluster_end_document_line_ordinal_exclusive"] == 5
+    assert "EXPLICIT_LOAN_ENTERPRISE_TOTAL" not in region["observed_roles"]
+
+
 def test_family12_two_independent_equal_targets_remain_unresolved() -> None:
     result = build_accounting_family_topology_scan_v1(
         [
