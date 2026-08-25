@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+from concurrent.futures import Future
 from dataclasses import replace
 
 import pytest
@@ -1436,9 +1437,13 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
         def __exit__(self, *_args):
             return False
 
-        def map(self, function, requests, *, chunksize):
-            assert chunksize == 1
-            return tuple(function(request) for request in requests)
+        def submit(self, function, request):
+            future = Future()
+            try:
+                future.set_result(function(request))
+            except Exception as exc:  # pragma: no cover - production future parity
+                future.set_exception(exc)
+            return future
 
     def selected(_cap, *, document_page_selections):
         calls["selected"].append(document_page_selections)
@@ -1505,8 +1510,14 @@ def test_parallel_v4_document_store_trials_preserve_order_and_render_only_reques
     assert trials[1]["rendered"] is False
 
 
-def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches(
+@pytest.mark.parametrize(
+    ("document_count", "expected_batch_sizes"),
+    [(32, [16, 16]), (140, [16] * 8 + [12])],
+)
+def test_parallel_v4_document_store_trials_use_sliding_snapshot_window_and_source_order(
     monkeypatch,
+    document_count,
+    expected_batch_sizes,
 ) -> None:
     packets = tuple(
         {
@@ -1514,7 +1525,7 @@ def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches
             "packet_id": f"ffdesv1:document:{ordinal:064x}",
             "page_count": 1,
         }
-        for ordinal in range(1, 66)
+        for ordinal in range(1, document_count + 1)
     )
     snapshots = {
         ordinal: {
@@ -1523,8 +1534,9 @@ def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches
         }
         for ordinal, packet in enumerate(packets, 1)
     }
-    selections = tuple((ordinal, (1,)) for ordinal in range(1, 66))
+    selections = tuple((ordinal, (1,)) for ordinal in range(1, document_count + 1))
     batches = []
+    pending_sizes = []
 
     class SynchronousExecutor:
         def __init__(self, *, max_workers, mp_context):
@@ -1537,9 +1549,20 @@ def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches
         def __exit__(self, *_args):
             return False
 
-        def map(self, function, requests, *, chunksize):
-            assert chunksize == 1
-            return tuple(function(request) for request in requests)
+        def submit(self, function, request):
+            future = Future()
+            future.document_ordinal = request[0]["document_ordinal"]
+            try:
+                future.set_result(function(request))
+            except Exception as exc:  # pragma: no cover - production future parity
+                future.set_exception(exc)
+            return future
+
+    def reverse_wait(futures, *, return_when):
+        assert return_when is subject.FIRST_COMPLETED
+        pending_sizes.append(len(futures))
+        completed = max(futures, key=lambda future: future.document_ordinal)
+        return {completed}, set(futures) - {completed}
 
     def selected(_cap, *, document_page_selections):
         batches.append(document_page_selections)
@@ -1562,6 +1585,7 @@ def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches
         }
 
     monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr(subject, "wait", reverse_wait)
     monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
     monkeypatch.setattr(
         subject.document_store_v1,
@@ -1578,8 +1602,111 @@ def test_parallel_v4_document_store_trials_keep_workers_fed_with_bounded_batches
         jobs=16,
     )
 
-    assert [len(batch) for batch in batches] == [64, 1]
-    assert [trial["document_ordinal"] for trial in trials] == list(range(1, 66))
+    assert [len(batch) for batch in batches] == expected_batch_sizes
+    assert max(pending_sizes) <= 32
+    assert [trial["document_ordinal"] for trial in trials] == list(range(1, document_count + 1))
+
+
+def test_parallel_v4_document_store_trials_submit_retry_before_refilling_source_tail(
+    monkeypatch,
+) -> None:
+    packets = tuple(
+        {
+            "document_ordinal": ordinal,
+            "packet_id": f"ffdesv1:document:{ordinal:064x}",
+            "page_count": 1,
+        }
+        for ordinal in range(1, 34)
+    )
+    snapshots = {
+        ordinal: {
+            "document_packet": packet,
+            "snapshot_id": f"ffdesv1:selected:{ordinal:064x}",
+        }
+        for ordinal, packet in enumerate(packets, 1)
+    }
+    selections = tuple((ordinal, (1,)) for ordinal in range(1, 34))
+    selected_batch_sizes = []
+    submission_events = []
+    sequence = 0
+
+    class SynchronousExecutor:
+        def __init__(self, *, max_workers, mp_context):
+            assert max_workers == 16
+            assert mp_context.get_start_method() == "spawn"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def submit(self, function, request):
+            nonlocal sequence
+            sequence += 1
+            packet, _snapshot, _family, _policy, _renders, _scan, mode = request
+            submission_events.append((packet["document_ordinal"], mode))
+            future = Future()
+            future.sequence = sequence
+            try:
+                future.set_result(function(request))
+            except Exception as exc:  # pragma: no cover - production future parity
+                future.set_exception(exc)
+            return future
+
+    def fifo_wait(futures, *, return_when):
+        assert return_when is subject.FIRST_COMPLETED
+        completed = min(futures, key=lambda future: future.sequence)
+        return {completed}, set(futures) - {completed}
+
+    def selected(_cap, *, document_page_selections):
+        selected_batch_sizes.append(len(document_page_selections))
+        return tuple(
+            copy.deepcopy(snapshots[ordinal]) for ordinal, _pages in document_page_selections
+        )
+
+    def worker(request):
+        packet, snapshot, _family, _policy, _renders, _scan, mode = request
+        ordinal = packet["document_ordinal"]
+        return {
+            "document_ordinal": ordinal,
+            "missing_render_pages": (1,) if ordinal == 1 and mode == "FULL" else (),
+            "packet_id": packet["packet_id"],
+            "snapshot_id": snapshot["snapshot_id"],
+            "trial": {
+                "document_ordinal": ordinal,
+                "topology_scan": {"scan_id": f"scan-{ordinal}"},
+            },
+        }
+
+    monkeypatch.setattr(subject, "ProcessPoolExecutor", SynchronousExecutor)
+    monkeypatch.setattr(subject, "wait", fifo_wait)
+    monkeypatch.setattr(subject, "_v4_document_store_trial_worker_v1", worker)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        selected,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        lambda _cap, *, document_ordinal, physical_pages: (
+            _render(document_ordinal, physical_pages[0]),
+        ),
+    )
+
+    trials = subject._parallel_v4_document_store_trials_v1(
+        object(),
+        packets=packets,
+        selections=selections,
+        family_spec=_family_spec(),
+        policy={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        jobs=16,
+    )
+
+    assert selected_batch_sizes == [16, 16, 1]
+    assert submission_events.index((1, "CANDIDATE_SCOPED")) < submission_events.index((33, "FULL"))
+    assert [trial["document_ordinal"] for trial in trials] == list(range(1, 34))
 
 
 def test_parallel_v4_document_store_trials_execute_in_real_worker_processes(
@@ -1670,7 +1797,7 @@ def test_parallel_v4_document_store_worker_exception_is_typed(monkeypatch) -> No
         def __exit__(self, *_args):
             return False
 
-        def map(self, *_args, **_kwargs):
+        def submit(self, *_args, **_kwargs):
             raise RuntimeError("worker died")
 
     monkeypatch.setattr(subject, "ProcessPoolExecutor", BrokenExecutor)

@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import re
 from collections.abc import Mapping, Sequence
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import dataclass, field
 from multiprocessing import get_context
 from time import perf_counter
@@ -64,7 +64,7 @@ EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
 _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
-_MAX_DOCUMENT_STORE_PARALLEL_BATCH_SIZE = 64
+_DOCUMENT_STORE_PARALLEL_IN_FLIGHT_PER_WORKER = 2
 _MAX_DOCUMENT_STORE_V4_JOBS = 16
 _V4_WORKER_MISSING_PAGE_MODES = frozenset({"CANDIDATE_SCOPED", "FULL", "NONE"})
 CLAIM_BOUNDARY = (
@@ -4585,7 +4585,7 @@ def _parallel_v4_document_store_trials_v1(
 ) -> list[dict[str, Any]]:
     """Run bounded document trials in source order with parent-owned I/O."""
 
-    trials: list[dict[str, Any]] = []
+    final_trials: list[dict[str, Any] | None] = [None] * len(packets)
     try:
         # Spawn is a security boundary, not a portability preference.  Fork
         # would inherit the parent module's opaque authenticated-store handle
@@ -4595,12 +4595,27 @@ def _parallel_v4_document_store_trials_v1(
             max_workers=jobs,
             mp_context=get_context("spawn"),
         ) as executor:
-            parallel_batch_size = min(
-                _MAX_DOCUMENT_STORE_PARALLEL_BATCH_SIZE,
-                max(_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE, jobs * 4),
+            max_active_documents = min(
+                len(packets),
+                jobs * _DOCUMENT_STORE_PARALLEL_IN_FLIGHT_PER_WORKER,
             )
-            for start in range(0, len(packets), parallel_batch_size):
-                requested = selections[start : start + parallel_batch_size]
+            refill_batch_size = min(_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE, jobs)
+            active_snapshots: dict[int, dict[str, Any]] = {}
+            accumulated_renders: dict[int, tuple[dict[str, Any], ...]] = {}
+            pending: dict[Any, tuple[int, int]] = {}
+            next_source_index = 0
+
+            def submit_base(index: int, snapshot: dict[str, Any]) -> None:
+                packet = packets[index]
+                future = executor.submit(
+                    _v4_document_store_trial_worker_v1,
+                    (packet, snapshot, family_spec, policy, (), None, "FULL"),
+                )
+                pending[future] = (index, 0)
+
+            def hydrate_next(count: int) -> None:
+                nonlocal next_source_index
+                requested = selections[next_source_index : next_source_index + count]
                 snapshots = (
                     document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
                         document_store_capability,
@@ -4609,43 +4624,47 @@ def _parallel_v4_document_store_trials_v1(
                 )
                 if type(snapshots) is not tuple or len(snapshots) != len(requested):
                     raise _error("V4 document-store selected snapshot batch axis drifted")
-                batch_packets = packets[start : start + len(snapshots)]
-                base_requests = tuple(
-                    (packet, snapshot, family_spec, policy, (), None, "FULL")
-                    for packet, snapshot in zip(batch_packets, snapshots, strict=True)
+                for offset, snapshot in enumerate(snapshots):
+                    index = next_source_index + offset
+                    active_snapshots[index] = snapshot
+                    accumulated_renders[index] = ()
+                    submit_base(index, snapshot)
+                next_source_index += len(snapshots)
+
+            def refill_window() -> None:
+                while next_source_index < len(packets):
+                    available_slots = max_active_documents - len(active_snapshots)
+                    remaining_source_count = len(packets) - next_source_index
+                    next_batch_size = min(refill_batch_size, remaining_source_count)
+                    if available_slots < next_batch_size:
+                        return
+                    # Submit each selected-page chunk before hydrating the next
+                    # one so worker spawn/compute overlaps the parent store read.
+                    hydrate_next(next_batch_size)
+
+            refill_window()
+            while pending:
+                completed, _remaining = wait(
+                    tuple(pending),
+                    return_when=FIRST_COMPLETED,
                 )
-                base_results = tuple(
-                    executor.map(_v4_document_store_trial_worker_v1, base_requests, chunksize=1)
-                )
-                final_trials: list[dict[str, Any] | None] = [None] * len(snapshots)
-                current_trials: list[dict[str, Any] | None] = [None] * len(snapshots)
-                current_missing_pages: list[tuple[int, ...]] = [()] * len(snapshots)
-                accumulated_renders: list[tuple[dict[str, Any], ...]] = [()] * len(snapshots)
-                for index, (packet, snapshot, result) in enumerate(
-                    zip(batch_packets, snapshots, base_results, strict=True)
-                ):
+                for future in sorted(completed, key=lambda item: pending[item]):
+                    index, retry_ordinal = pending.pop(future)
+                    packet = packets[index]
+                    snapshot = active_snapshots[index]
                     trial, missing_pages = _validated_v4_document_store_worker_result_v1(
-                        result,
+                        future.result(),
                         packet=packet,
                         snapshot=snapshot,
                     )
-                    if not missing_pages:
-                        final_trials[index] = trial
-                        continue
-                    current_trials[index] = trial
-                    current_missing_pages[index] = missing_pages
-                for retry_ordinal in range(2):
-                    render_requests = []
-                    render_indices = []
-                    for index, missing_pages in enumerate(current_missing_pages):
-                        if not missing_pages:
-                            continue
+                    if missing_pages:
+                        if retry_ordinal >= 2:
+                            raise _error("V4 rendered worker exceeded its bounded retry axis")
                         already_rendered_pages = {
                             render["physical_page"] for render in accumulated_renders[index]
                         }
                         if already_rendered_pages & set(missing_pages):
                             raise _error("V4 rendered worker repeated an already opened page")
-                        packet = batch_packets[index]
                         new_renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
                             document_store_capability,
                             document_ordinal=packet["document_ordinal"],
@@ -4657,50 +4676,33 @@ def _parallel_v4_document_store_trials_v1(
                                 new_renders,
                             )
                         )
-                        trial = current_trials[index]
-                        if trial is None:
-                            raise _error("V4 rendered worker lost its preceding source trial")
-                        render_indices.append(index)
-                        render_requests.append(
+                        rendered_future = executor.submit(
+                            _v4_document_store_trial_worker_v1,
                             (
                                 packet,
-                                snapshots[index],
+                                snapshot,
                                 family_spec,
                                 policy,
                                 accumulated_renders[index],
                                 trial["topology_scan"],
                                 "CANDIDATE_SCOPED" if retry_ordinal == 0 else "NONE",
-                            )
+                            ),
                         )
-                    if not render_requests:
-                        break
-                    rendered_results = tuple(
-                        executor.map(
-                            _v4_document_store_trial_worker_v1,
-                            tuple(render_requests),
-                            chunksize=1,
-                        )
-                    )
-                    for index, result in zip(render_indices, rendered_results, strict=True):
-                        trial, missing_pages = _validated_v4_document_store_worker_result_v1(
-                            result,
-                            packet=batch_packets[index],
-                            snapshot=snapshots[index],
-                        )
-                        current_trials[index] = trial
-                        current_missing_pages[index] = missing_pages
-                        if not missing_pages:
-                            final_trials[index] = trial
-                if any(current_missing_pages):
-                    raise _error("V4 rendered worker exceeded its bounded retry axis")
-                if any(trial is None for trial in final_trials):
-                    raise _error("V4 document-store worker batch lost a source trial")
-                trials.extend(trial for trial in final_trials if trial is not None)
+                        pending[rendered_future] = (index, retry_ordinal + 1)
+                        continue
+                    final_trials[index] = trial
+                    del active_snapshots[index]
+                    del accumulated_renders[index]
+                refill_window()
+            if next_source_index != len(packets) or active_snapshots:
+                raise _error("V4 document-store worker window lost its source axis")
+            if any(trial is None for trial in final_trials):
+                raise _error("V4 document-store worker batch lost a source trial")
     except FamilyFirstAccountingEvidenceSweepV1Error:
         raise
     except Exception as exc:
         raise _error("V4 document-store worker execution failed") from exc
-    return trials
+    return [trial for trial in final_trials if trial is not None]
 
 
 def build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
