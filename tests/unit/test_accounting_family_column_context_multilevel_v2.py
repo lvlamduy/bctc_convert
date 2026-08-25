@@ -769,6 +769,52 @@ def test_exact_same_page_contextual_owner_projects_two_money_lanes() -> None:
     )
 
 
+def test_exact_same_page_contextual_owner_ignores_outer_sibling_continuation() -> None:
+    pages = _nested_owner_pages()
+    spec = _nested_spec()
+    spec["limits"]["max_continuation_pages"] = 1
+    axis = row_axis_v1.build_accounting_family_row_axis_v1(pages, spec)
+    # The outer note can continue to another sibling table even though this
+    # contextual body, its header, and every valued row are on page one.  This
+    # is the exact authenticated-row-axis shape handed to the column builder.
+    axis["topology_region"]["continuation_page_count"] = 1
+    material = copy.deepcopy(axis)
+    material.pop("row_axis_id")
+    axis["row_axis_id"] = "afrav1:axis:" + canonical_json_sha256_v1(material)
+
+    baseline = v2.column_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=_KINDS,
+    )
+    assert baseline["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert "CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN" in baseline["unresolved_reasons"]
+
+    result = v2._build_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=_KINDS,
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert {item["evidence_locations"][0]["page_sequence"] for item in result["unit_axis"]} == {1}
+    assert (
+        v2._validate_accounting_family_column_context_multilevel_from_authenticated_row_axis_v2(
+            result,
+            axis,
+            pages,
+            spec,
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_unit_kinds=_KINDS,
+        )
+        == result
+    )
+
+
 @pytest.mark.parametrize(
     "mutation",
     ["duplicate", "nonexact", "mixed_owner", "not_next_page"],

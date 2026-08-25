@@ -75,6 +75,13 @@ _CONTEXTUAL_NEXT_PAGE_ELIGIBLE_V1_REASONS = {
 }
 _CONTEXTUAL_SAME_PAGE_ELIGIBLE_V1_REASONS = {
     *_FALLBACK_ELIGIBLE_V1_REASONS,
+    # The sealed V1 receipt conservatively treats the outer topology region as
+    # cross-page even when one exact contextual owner and every valued row are
+    # confined to the local header page.  The V2 projector independently
+    # proves that exact owner and all-row ownership before consulting this
+    # allow-set, so the outer sibling-table continuation cannot supply period
+    # or unit evidence to the local table.
+    "CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN",
     "LOCAL_HEADER_REGION_UNRESOLVED",
 }
 PINNED_IMPLEMENTATION_REFS = {
