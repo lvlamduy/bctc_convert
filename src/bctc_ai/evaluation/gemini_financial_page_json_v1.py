@@ -59,6 +59,15 @@ _MODEL_DASH_ANNOTATION = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _DASH_PACK = re.compile(r"\A\s*[-–—_](?:\s+[-–—_])+\s*\Z")
+_ROW_LABEL_HEADER_ANCHORS = frozenset(
+    {
+        "ben lien quan",
+        "chi tieu",
+        "dien giai",
+        "khoan muc",
+        "noi dung",
+    }
+)
 
 
 class GeminiFinancialPageJsonV1Error(ValueError):
@@ -549,6 +558,60 @@ def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
     return True
 
 
+def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
+    """Remove one explicit label column already represented by ``label_exact``.
+
+    Primary statements often retain STT and note-reference columns while the
+    visible ``Chỉ tiêu`` column is serialized only as ``label_exact``.  A debt
+    classification table similarly uses its numeric ``Nhóm`` cell as the row
+    label.  Only one exact label-header candidate is admitted.  Short rows can
+    be padded solely when every provided cell is null, so no visible value is
+    repositioned or invented.
+    """
+
+    columns = table["columns"]
+    candidates = []
+    for index, column in enumerate(columns):
+        header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
+        if header in _ROW_LABEL_HEADER_ANCHORS:
+            candidates.append(index)
+            continue
+        if (
+            header == "nhom"
+            and index == 0
+            and all(
+                _signed_integer_cell_v1(row["label_exact"]) is not None for row in table["rows"]
+            )
+        ):
+            candidates.append(index)
+    if len(candidates) != 1:
+        return False
+    label_index = candidates[0]
+    old_width = len(columns)
+    new_width = old_width - 1
+    if new_width <= 0:
+        return False
+
+    normalized_rows: list[list[Any]] = []
+    for row in table["rows"]:
+        values = row["values_exact"]
+        if len(values) == new_width:
+            normalized_rows.append(list(values))
+            continue
+        if len(values) == old_width and values[label_index] == row["label_exact"]:
+            normalized_rows.append([*values[:label_index], *values[label_index + 1 :]])
+            continue
+        if len(values) < new_width and all(value is None for value in values):
+            normalized_rows.append([*values, *([None] * (new_width - len(values)))])
+            continue
+        return False
+
+    table["columns"] = [*columns[:label_index], *columns[label_index + 1 :]]
+    for row, normalized in zip(table["rows"], normalized_rows, strict=True):
+        row["values_exact"] = normalized
+    return True
+
+
 def _move_unique_arithmetic_total_v1(
     values: list[Any], columns: list[dict[str, Any]], *, model_annotation_present: bool
 ) -> list[Any]:
@@ -683,9 +746,11 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 if type(row["values_exact"]) is not list:
                     raise _error("row values must be an array")
                 row_widths.append(len(row["values_exact"]))
-            if _normalize_leading_text_header_proxies_v1(
-                table
-            ) or _normalize_four_column_movement_table_v1(table):
+            if (
+                _normalize_explicit_row_label_column_v1(table)
+                or _normalize_leading_text_header_proxies_v1(table)
+                or _normalize_four_column_movement_table_v1(table)
+            ):
                 width = len(table["columns"])
                 row_widths = [len(row["values_exact"]) for row in table["rows"]]
             if all(row_width == width for row_width in row_widths):

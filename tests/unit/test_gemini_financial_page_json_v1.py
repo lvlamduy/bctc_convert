@@ -197,6 +197,76 @@ def test_empty_label_and_merged_header_proxies_preserve_numeric_header_path() ->
     ]
 
 
+def test_primary_statement_label_column_is_removed_without_dropping_stt_or_note() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["STT"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Chỉ tiêu"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thuyết minh"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Kỳ này"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Kỳ trước"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Lưu chuyển tiền từ hoạt động kinh doanh",
+            "hierarchy_path_exact": ["Lưu chuyển tiền từ hoạt động kinh doanh"],
+            "row_kind": "GROUP",
+            "values_exact": [None, None, None],
+        },
+        {
+            "label_exact": "Tiền thuế TNDN thực nộp trong kỳ",
+            "hierarchy_path_exact": [
+                "Lưu chuyển tiền từ hoạt động kinh doanh",
+                "Tiền thuế TNDN thực nộp trong kỳ",
+            ],
+            "row_kind": "ITEM",
+            "values_exact": ["8", "12", "(4,243,631)", "(4,753,960)"],
+        },
+    ]
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked_table["columns"]] == [
+        ["STT"],
+        ["Thuyết minh"],
+        ["Kỳ này"],
+        ["Kỳ trước"],
+    ]
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        [None, None, None, None],
+        ["8", "12", "(4,243,631)", "(4,753,960)"],
+    ]
+
+
+def test_numeric_group_column_already_carried_by_label_is_removed() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Nhóm"], "value_kind": "COUNT"},
+        {"header_path_exact": ["Loại"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Tỷ lệ dự phòng cụ thể"], "value_kind": "PERCENT"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "1",
+            "hierarchy_path_exact": ["1"],
+            "row_kind": "ITEM",
+            "values_exact": ["Nợ đủ tiêu chuẩn", "0%"],
+        },
+        {
+            "label_exact": "2",
+            "hierarchy_path_exact": ["2"],
+            "row_kind": "ITEM",
+            "values_exact": ["Nợ cần chú ý", "5%"],
+        },
+    ]
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked_table["columns"]] == [
+        ["Loại"],
+        ["Tỷ lệ dự phòng cụ thể"],
+    ]
+    assert checked_table["rows"] == table["rows"]
+
+
 def test_leading_text_header_proxy_with_visible_cell_or_short_row_rejects() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
