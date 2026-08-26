@@ -690,6 +690,24 @@ def test_google_upload_start_429_is_deferred_without_advancing_the_ledger(
     assert not target._retryable_google_upload_start_failure_v1(nonretryable)
 
 
+def test_google_submit_throttle_is_global_and_has_no_hidden_queue() -> None:
+    assert target._google_submit_capacity_v1(active_count=0, future_count=0, max_active=12) == 1
+    assert target._google_submit_capacity_v1(active_count=0, future_count=1, max_active=12) == 0
+    assert target._google_submit_capacity_v1(active_count=12, future_count=0, max_active=12) == 0
+    assert not target._google_submit_ready_v1(
+        task_id="other-task",
+        now=10.0,
+        global_not_before=20.0,
+        task_not_before={},
+    )
+    assert target._google_submit_ready_v1(
+        task_id="other-task",
+        now=20.0,
+        global_not_before=20.0,
+        task_not_before={},
+    )
+
+
 def test_google_fallback_selects_scope_and_items_from_typed_batch_failures(
     monkeypatch, tmp_path
 ) -> None:

@@ -68,6 +68,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
 BATCH_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_batch_v1.py"
 OPENROUTER_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_openrouter_document_v1.py"
 GOOGLE_SUBMIT_RETRY_DELAY_SECONDS = 30.0
+GOOGLE_SUBMIT_WORKERS = 1
 RETRYABLE_GOOGLE_UPLOAD_DISPOSITION = "RETRYABLE_GOOGLE_UPLOAD_START"
 
 
@@ -292,6 +293,22 @@ def _retryable_google_upload_start_failure_v1(error: _ProviderSubprocessError) -
             return False
         return status in {429, 500, 502, 503, 504}
     return "Google file upload start failed or timed out" in error.stderr
+
+
+def _google_submit_capacity_v1(*, active_count: int, future_count: int, max_active: int) -> int:
+    provider_capacity = max(0, max_active - active_count - future_count)
+    uploader_capacity = max(0, GOOGLE_SUBMIT_WORKERS - future_count)
+    return min(provider_capacity, uploader_capacity)
+
+
+def _google_submit_ready_v1(
+    *,
+    task_id: str,
+    now: float,
+    global_not_before: float,
+    task_not_before: dict[str, float],
+) -> bool:
+    return now >= global_not_before and now >= task_not_before.get(task_id, 0.0)
 
 
 def _defer_retryable_google_upload_v1(
@@ -2118,11 +2135,12 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     )
     openrouter_future: Future[dict[str, Any]] | None = None
     google_submit_executor = ThreadPoolExecutor(
-        max_workers=min(args.max_active_google, 4),
+        max_workers=GOOGLE_SUBMIT_WORKERS,
         thread_name_prefix="google-batch-submit",
     )
     google_submit_futures: dict[Future[dict[str, Any]], str] = {}
     google_submit_not_before: dict[str, float] = {}
+    google_submit_global_not_before = 0.0
     next_google_poll_at = 0.0
     while True:
         if openrouter_future is not None and openrouter_future.done():
@@ -2142,9 +2160,9 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 raise
             task_id = google_submit_futures[future]
             if submission_result.get("disposition") == RETRYABLE_GOOGLE_UPLOAD_DISPOSITION:
-                google_submit_not_before[task_id] = (
-                    time.monotonic() + GOOGLE_SUBMIT_RETRY_DELAY_SECONDS
-                )
+                retry_at = time.monotonic() + GOOGLE_SUBMIT_RETRY_DELAY_SECONDS
+                google_submit_not_before[task_id] = retry_at
+                google_submit_global_not_before = max(google_submit_global_not_before, retry_at)
             else:
                 google_submit_not_before.pop(task_id, None)
             del google_submit_futures[future]
@@ -2193,15 +2211,25 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
-        available = args.max_active_google - len(active_google) - len(google_submit_futures)
+        available = _google_submit_capacity_v1(
+            active_count=len(active_google),
+            future_count=len(google_submit_futures),
+            max_active=args.max_active_google,
+        )
         inflight_google_task_ids = set(google_submit_futures.values())
+        submit_now = time.monotonic()
         for task in [
             item
             for item in unfinished
             if item["route"] == GOOGLE_ROUTE
             and item["state"] in {"PENDING", "NEEDS_RETRY"}
             and item["task_id"] not in inflight_google_task_ids
-            and time.monotonic() >= google_submit_not_before.get(item["task_id"], 0.0)
+            and _google_submit_ready_v1(
+                task_id=item["task_id"],
+                now=submit_now,
+                global_not_before=google_submit_global_not_before,
+                task_not_before=google_submit_not_before,
+            )
         ][:available]:
             future = google_submit_executor.submit(
                 _recover_or_submit_google,
@@ -2272,6 +2300,11 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if deadline > time.monotonic()
             and any(task["task_id"] == task_id for task in unfinished)
         ]
+        if google_submit_global_not_before > time.monotonic() and any(
+            task["route"] == GOOGLE_ROUTE and task["state"] in {"PENDING", "NEEDS_RETRY"}
+            for task in unfinished
+        ):
+            cooling_google.append(google_submit_global_not_before)
         if cooling_google:
             time.sleep(min(max(0.0, min(cooling_google) - time.monotonic()), 1.0))
             continue
