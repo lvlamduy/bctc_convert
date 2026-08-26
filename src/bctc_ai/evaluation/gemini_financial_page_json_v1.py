@@ -15,7 +15,7 @@ from typing import Any
 
 from bctc_ai.source_structure.contracts_v1 import canonical_clone_v1
 
-FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_JSON_V6"
+FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_JSON_V7"
 MODEL_OUTPUT_FORMAT_VERSION = "FINANCIAL_PAGE_JSON_V6"
 SEARCH_NORMALIZATION_VERSION = "VIETNAMESE_FINANCIAL_SEARCH_V1"
 
@@ -325,9 +325,19 @@ def _path(value: Any, label: str, *, final: str | None | object = ...) -> list[s
 
 
 def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
-    """Validate one model response without normalizing or repairing content."""
+    """Validate one model response and canonicalize one harmless table convention.
 
-    root = _exact_dict(value, {"status", "sections", "completion"}, "financial page JSON")
+    The model sometimes emits the printed row-label column in ``columns`` while
+    keeping its cells solely in ``label_exact``.  When every row follows that
+    convention and the leading column is textual, the redundant column is
+    removed from the canonical projection.  The immutable raw response remains
+    untouched in storage.  Semantic proposals such as hierarchy and row kind
+    are deliberately not treated as transcription authority here.
+    """
+
+    root = canonical_clone_v1(
+        _exact_dict(value, {"status", "sections", "completion"}, "financial page JSON")
+    )
     if type(root["status"]) is not str or root["status"] not in _STATUSES:
         raise _error("page status drifted")
     if type(root["sections"]) is not list:
@@ -397,6 +407,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 if column["value_kind"] not in _VALUE_KINDS:
                     raise _error("column value_kind drifted")
             width = len(table["columns"])
+            row_widths: list[int] = []
             for row in table["rows"]:
                 _exact_dict(
                     row,
@@ -408,14 +419,25 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     },
                     "row",
                 )
-                row_label = _raw(row["label_exact"], "row label", nullable=True)
-                _path(row["hierarchy_path_exact"], "row hierarchy path", final=row_label)
+                _raw(row["label_exact"], "row label", nullable=True)
+                _path(row["hierarchy_path_exact"], "row hierarchy path")
                 if row["row_kind"] not in _ROW_KINDS:
                     raise _error("row_kind drifted")
-                if type(row["values_exact"]) is not list or len(row["values_exact"]) != width:
-                    raise _error("row values do not align with table columns")
+                if type(row["values_exact"]) is not list:
+                    raise _error("row values must be an array")
+                row_widths.append(len(row["values_exact"]))
                 for cell in row["values_exact"]:
                     _cell_raw(cell)
+            if all(row_width == width for row_width in row_widths):
+                pass
+            elif (
+                width > 1
+                and table["columns"][0]["value_kind"] == "TEXT"
+                and all(row_width == width - 1 for row_width in row_widths)
+            ):
+                del table["columns"][0]
+            else:
+                raise _error("row values do not align with table value columns")
 
     completion = _exact_dict(
         root["completion"],
@@ -437,7 +459,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             raise _error("UNRESOLVED_PAGE requires an incomplete receipt and uncertainty")
     elif not completed or completion["uncertainty_exact"]:
         raise _error("complete page status requires an exact complete receipt")
-    return canonical_clone_v1(root)
+    return root
 
 
 def _content_counts_from_checked_v1(checked: dict[str, Any]) -> dict[str, int]:

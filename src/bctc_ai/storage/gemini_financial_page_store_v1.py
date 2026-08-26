@@ -30,7 +30,7 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1,
 )
 
-FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V8"
+FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V9"
 DEFAULT_DATABASE_PATH = Path("data/local/gemini_financial_page_store_v1.sqlite3")
 
 

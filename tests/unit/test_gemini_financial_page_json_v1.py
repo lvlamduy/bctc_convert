@@ -143,6 +143,29 @@ def test_unlabeled_column_and_titled_parent_section_are_preserved() -> None:
     assert validate_financial_page_json_v1(page) == page
 
 
+def test_redundant_printed_label_column_is_canonicalized_without_losing_cells() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"].insert(
+        0,
+        {
+            "header_path_exact": ["Khoản mục"],
+            "value_kind": "TEXT",
+        },
+    )
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["columns"] == table["columns"][1:]
+    assert checked["sections"][0]["tables"][0]["rows"] == table["rows"]
+    assert len(page["sections"][0]["tables"][0]["columns"]) == 3
+
+
+def test_hierarchy_path_is_a_soft_model_proposal() -> None:
+    page = _page()
+    row = page["sections"][0]["tables"][0]["rows"][1]
+    row["hierarchy_path_exact"] = ["Cho vay các TCKT", "Công ty nha nước"]
+    assert validate_financial_page_json_v1(page) == page
+
+
 def test_anonymous_empty_relevant_section_rejects() -> None:
     page = _page()
     page["sections"].append(
@@ -165,9 +188,6 @@ def test_anonymous_empty_relevant_section_rejects() -> None:
         lambda value: value["sections"][0].update(source_order=0),
         lambda value: value["sections"][0]["tables"][0].update(table_id="t2"),
         lambda value: value["sections"][0]["tables"][0]["columns"][0].update(column_id="c2"),
-        lambda value: value["sections"][0]["tables"][0]["rows"][1].update(
-            hierarchy_path_exact=["Sai"]
-        ),
         lambda value: value["sections"][0]["tables"][0]["rows"][1].update(values_exact=["1"]),
     ],
 )
