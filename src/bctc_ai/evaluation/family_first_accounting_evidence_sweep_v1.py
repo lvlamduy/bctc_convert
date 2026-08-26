@@ -2221,6 +2221,175 @@ def _candidate_role_richness_set(
     return roles - presentation_aliases
 
 
+def _v4_ready_explicit_continuation_duplicate_signature(
+    candidate: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Return the exact semantic axis shared by duplicate continuation regions.
+
+    A parent printed at the bottom of one page may absorb its explicit
+    ``(tiếp theo)`` parent on the next page.  Topology then conservatively
+    exposes both the carried region and the nested continuation region.  They
+    are duplicates only when the continuation contributes every semantic
+    child/value/sample and the carried region contributes no distinct child.
+    Root occurrence IDs are intentionally excluded only for top-level
+    structural children because those IDs encode which of the two duplicate
+    parent headers opened the otherwise identical source axis.
+    """
+
+    row_axis = candidate.get("row_axis")
+    context = candidate.get("column_context")
+    closure = candidate.get("additive_closure")
+    if type(row_axis) is not dict or type(context) is not dict or type(closure) is not dict:
+        return None
+    region = row_axis.get("topology_region")
+    rows = row_axis.get("rows")
+    trailing = row_axis.get("trailing_value_rows")
+    child_matches = region.get("child_matches") if type(region) is dict else None
+    resolved = closure.get("resolved_roles")
+    equations = closure.get("equations")
+    universe = closure.get("numeric_sample_universe")
+    coverage = closure.get("coverage_receipt")
+    if (
+        type(child_matches) is not list
+        or not child_matches
+        or type(rows) is not list
+        or type(trailing) is not list
+        or type(resolved) is not list
+        or type(equations) is not dict
+        or type(universe) is not list
+        or type(coverage) is not list
+        or row_axis.get("internal_unassigned_numeric_clusters", []) != []
+        or closure.get("internal_unassigned_numeric_clusters", []) != []
+    ):
+        return None
+
+    normalized_children = []
+    for match in child_matches:
+        if type(match) is not dict:
+            return None
+        projected = canonical_clone_v1(match)
+        if projected.get("scope_owner_role") is None and projected.get("role_kind") == (
+            "STRUCTURAL_GROUP"
+        ):
+            projected.pop("scope_owner_occurrence_id", None)
+            projected.pop("retrieval_scope_owner_occurrence_id", None)
+        normalized_children.append(projected)
+
+    context_projection = canonical_clone_v1(context)
+    context_projection.pop("column_context_id", None)
+    context_projection.pop("row_axis_id", None)
+    sample_projection = []
+    for sample in universe:
+        if type(sample) is not dict:
+            return None
+        projected = canonical_clone_v1(sample)
+        projected.pop("owner_id", None)
+        sample_projection.append(projected)
+    coverage_projection = []
+    for receipt in coverage:
+        if type(receipt) is not dict:
+            return None
+        coverage_projection.append(
+            {
+                key: canonical_clone_v1(receipt[key])
+                for key in (
+                    "candidate_ordinal",
+                    "disposition",
+                    "occurrence_id",
+                    "role",
+                    "row_kind",
+                    "sample_ids",
+                )
+                if key in receipt
+            }
+        )
+    population = _candidate_population_signature(dict(candidate))
+    if population is None:
+        return None
+    return {
+        "authenticated_extreme_margin_furniture_evidence": canonical_clone_v1(
+            closure.get("authenticated_extreme_margin_furniture_evidence", [])
+        ),
+        "child_matches": normalized_children,
+        "column_context": context_projection,
+        "coverage": coverage_projection,
+        "equations": canonical_clone_v1(equations),
+        "numeric_sample_universe": sample_projection,
+        "observed_roles": canonical_clone_v1(region.get("observed_roles")),
+        "population": population,
+        "resolved_roles": canonical_clone_v1(resolved),
+        "rows": canonical_clone_v1(rows),
+        "trailing_value_rows": canonical_clone_v1(trailing),
+        "visible_dash_rescues": canonical_clone_v1(row_axis.get("visible_dash_rescues", [])),
+    }
+
+
+def _v4_ready_explicit_continuation_supersedes_carried_duplicate(
+    carried: Mapping[str, Any],
+    continuation: Mapping[str, Any],
+) -> bool:
+    """Prefer the nearest explicit continuation parent for one identical axis."""
+
+    carried_axis = carried.get("row_axis")
+    continuation_axis = continuation.get("row_axis")
+    carried_region = carried_axis.get("topology_region") if type(carried_axis) is dict else None
+    continuation_region = (
+        continuation_axis.get("topology_region") if type(continuation_axis) is dict else None
+    )
+    if type(carried_region) is not dict or type(continuation_region) is not dict:
+        return False
+    carried_parent = carried_region.get("parent_match")
+    continuation_parent = continuation_region.get("parent_match")
+    if type(carried_parent) is not dict or type(continuation_parent) is not dict:
+        return False
+    carried_surface = carried_parent.get("normalized_surface")
+    continuation_surface = continuation_parent.get("normalized_surface")
+    if (
+        carried_region.get("parent_resolution") != "EXPLICIT_PARENT"
+        or continuation_region.get("parent_resolution") != "EXPLICIT_PARENT"
+        or carried_region.get("continuation_page_count") != 1
+        or continuation_region.get("continuation_page_count") != 0
+        or type(carried_surface) is not str
+        or type(continuation_surface) is not str
+        or not continuation_surface.endswith(" tiep theo")
+        or continuation_surface.removesuffix(" tiep theo") != carried_surface
+    ):
+        return False
+    carried_start = carried_region.get("cluster_start_document_line_ordinal")
+    carried_stop = carried_region.get("cluster_end_document_line_ordinal_exclusive")
+    continuation_start = continuation_region.get("cluster_start_document_line_ordinal")
+    continuation_stop = continuation_region.get("cluster_end_document_line_ordinal_exclusive")
+    carried_page = carried_region.get("page_sequence")
+    continuation_page = continuation_region.get("page_sequence")
+    if (
+        type(carried_start) is not int
+        or type(carried_stop) is not int
+        or type(continuation_start) is not int
+        or type(continuation_stop) is not int
+        or type(carried_page) is not int
+        or type(continuation_page) is not int
+        or not carried_start < continuation_start < continuation_stop
+        or carried_stop != continuation_stop
+        or continuation_page != carried_page + 1
+        or continuation_parent.get("page_sequence") != continuation_page
+        or carried_parent.get("page_sequence") != carried_page
+    ):
+        return False
+    child_matches = continuation_region.get("child_matches")
+    if type(child_matches) is not list or any(
+        type(match) is not dict
+        or type(match.get("document_line_ordinal")) is not int
+        or not continuation_start <= match["document_line_ordinal"] < continuation_stop
+        for match in child_matches
+    ):
+        return False
+    carried_signature = _v4_ready_explicit_continuation_duplicate_signature(carried)
+    continuation_signature = _v4_ready_explicit_continuation_duplicate_signature(continuation)
+    return carried_signature is not None and same_typed_json_v1(
+        carried_signature, continuation_signature
+    )
+
+
 def _v4_ready_exact_component_detail_supersedes_visible_summary(
     summary: Mapping[str, Any],
     detail: Mapping[str, Any],
@@ -3448,7 +3617,11 @@ def _select_candidate_evidence(
                     and role_sets[index] is not None
                     and other is not None
                     and (
-                        (
+                        _v4_ready_explicit_continuation_supersedes_carried_duplicate(
+                            candidate,
+                            ready[other_index],
+                        )
+                        or (
                             canonicalize_all_presentations
                             and _v4_ready_visible_correlated_detail_supersedes_visible_summary(
                                 candidate,

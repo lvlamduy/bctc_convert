@@ -3761,6 +3761,122 @@ def test_v4_duplicate_exact_detail_candidates_preserve_ambiguity() -> None:
     assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
 
 
+def _v4_duplicate_explicit_continuation_candidates() -> tuple[dict, dict]:
+    _summary, carried = _v4_visible_summary_and_correlated_detail_candidates()
+    continuation = copy.deepcopy(carried)
+    continuation["candidate_ordinal"] = 2
+    child = {
+        "document_line_ordinal": 110,
+        "end_document_line_ordinal": 110,
+        "end_source_line_index": 10,
+        "match_kind": "EXACT_ACCENTLESS_ALIAS",
+        "normalized_surface": "chi nhanh doanh nghiep",
+        "occurrence_id": "aforav2:occurrence:" + "1" * 64,
+        "page_sequence": 2,
+        "role": "ENTERPRISE_BRANCH",
+        "role_kind": "STRUCTURAL_GROUP",
+        "scope_owner_occurrence_id": "aforav2:root:" + "2" * 64,
+        "scope_owner_role": None,
+        "source_line_index": 10,
+        "surface": "Chi nhánh doanh nghiệp",
+    }
+    carried["row_axis"]["topology_region"] = {
+        "child_matches": [copy.deepcopy(child)],
+        "cluster_end_document_line_ordinal_exclusive": 200,
+        "cluster_start_document_line_ordinal": 10,
+        "continuation_page_count": 1,
+        "observed_roles": ["ENTERPRISE_BRANCH"],
+        "page_sequence": 1,
+        "parent_match": {
+            "normalized_surface": "cho vay khach hang",
+            "page_sequence": 1,
+        },
+        "parent_resolution": "EXPLICIT_PARENT",
+    }
+    child["scope_owner_occurrence_id"] = "aforav2:root:" + "3" * 64
+    continuation["row_axis"]["topology_region"] = {
+        "child_matches": [child],
+        "cluster_end_document_line_ordinal_exclusive": 200,
+        "cluster_start_document_line_ordinal": 100,
+        "continuation_page_count": 0,
+        "observed_roles": ["ENTERPRISE_BRANCH"],
+        "page_sequence": 2,
+        "parent_match": {
+            "normalized_surface": "cho vay khach hang tiep theo",
+            "page_sequence": 2,
+        },
+        "parent_resolution": "EXPLICIT_PARENT",
+    }
+    return carried, continuation
+
+
+def test_v4_nearest_explicit_continuation_supersedes_exact_carried_duplicate() -> None:
+    carried, continuation = _v4_duplicate_explicit_continuation_candidates()
+
+    selected, reasons = subject._select_candidate_evidence(
+        [carried, continuation],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is continuation
+    assert reasons == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["DIFFERENT_PARENT", "DIFFERENT_CHILD", "DIFFERENT_BOUNDARY", "DIFFERENT_AXIS"],
+)
+def test_v4_continuation_duplicate_requires_one_exact_nested_source_axis(
+    mutation: str,
+) -> None:
+    carried, continuation = _v4_duplicate_explicit_continuation_candidates()
+    if mutation == "DIFFERENT_PARENT":
+        continuation["row_axis"]["topology_region"]["parent_match"]["normalized_surface"] = (
+            "cho vay khac tiep theo"
+        )
+    elif mutation == "DIFFERENT_CHILD":
+        continuation["row_axis"]["topology_region"]["child_matches"][0]["occurrence_id"] = (
+            "aforav2:occurrence:" + "4" * 64
+        )
+    elif mutation == "DIFFERENT_BOUNDARY":
+        continuation["row_axis"]["topology_region"][
+            "cluster_end_document_line_ordinal_exclusive"
+        ] = 199
+    else:
+        continuation["column_context"]["unit_axis"][0]["magnitude_power10"] = 3
+
+    selected, reasons = subject._select_candidate_evidence(
+        [carried, continuation],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_v4_two_exact_nearest_continuations_preserve_ambiguity() -> None:
+    carried, continuation = _v4_duplicate_explicit_continuation_candidates()
+    competing = copy.deepcopy(continuation)
+    competing["candidate_ordinal"] = 3
+
+    selected, reasons = subject._select_candidate_evidence(
+        [carried, continuation, competing],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
 def _v4_visible_summary_and_correlated_detail_candidates(
     *,
     adjustment_axis: tuple[int, int] = (0, 0),
