@@ -159,6 +159,63 @@ def test_redundant_printed_label_column_is_canonicalized_without_losing_cells() 
     assert len(page["sections"][0]["tables"][0]["columns"]) == 3
 
 
+def test_empty_label_and_merged_header_proxies_preserve_numeric_header_path() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Bên liên quan"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Số dư"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Phải thu"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Phải trả"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Các công ty con",
+            "hierarchy_path_exact": ["Các công ty con"],
+            "row_kind": "GROUP",
+            "values_exact": [None, None, None],
+        },
+        {
+            "label_exact": "- Tiền vay từ BIDV của các công ty con",
+            "hierarchy_path_exact": [
+                "Các công ty con",
+                "- Tiền vay từ BIDV của các công ty con",
+            ],
+            "row_kind": "ITEM",
+            "values_exact": ["1.741.711", None],
+        },
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked_table["columns"] == [
+        {"header_path_exact": ["Số dư", "Phải thu"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số dư", "Phải trả"], "value_kind": "MONEY"},
+    ]
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        [None, None],
+        ["1.741.711", None],
+    ]
+
+
+def test_leading_text_header_proxy_with_visible_cell_or_short_row_rejects() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Bên liên quan"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Số dư"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Phải thu"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Phải trả"], "value_kind": "MONEY"},
+    ]
+    table["rows"][0]["values_exact"] = ["visible", None, None]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+    short = copy.deepcopy(page)
+    short["sections"][0]["tables"][0]["rows"][0]["values_exact"] = [None]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(short)
+
+
 def test_hierarchy_path_is_a_soft_model_proposal() -> None:
     page = _page()
     row = page["sections"][0]["tables"][0]["rows"][1]

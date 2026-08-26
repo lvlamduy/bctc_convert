@@ -504,6 +504,51 @@ def _normalize_four_column_movement_table_v1(table: dict[str, Any]) -> bool:
     return True
 
 
+def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
+    """Remove empty label/header proxies while preserving their merged header text.
+
+    A constrained model can serialize a visible row-label column and a merged
+    numeric parent header as flat TEXT value columns.  The convention is
+    harmless only when the remaining suffix is entirely non-TEXT, every row
+    already carries that suffix width, and every surplus leading cell is null.
+    Intermediate header text is retained as a prefix on each real value
+    column; the first leading header is the row-label header represented by
+    ``label_exact``.
+    """
+
+    columns = table["columns"]
+    leading_count = 0
+    for column in columns:
+        if column["value_kind"] != "TEXT":
+            break
+        leading_count += 1
+    if leading_count == 0 or leading_count == len(columns):
+        return False
+    value_columns = columns[leading_count:]
+    value_width = len(value_columns)
+    row_values = [row["values_exact"] for row in table["rows"]]
+    if not all(value_width <= len(values) <= len(columns) for values in row_values):
+        return False
+    if not any(len(values) < len(columns) for values in row_values):
+        return False
+    for values in row_values:
+        excess = len(values) - value_width
+        if any(value is not None for value in values[:excess]):
+            return False
+
+    parent_path: list[Any] = []
+    for column in columns[1:leading_count]:
+        parent_path.extend(column["header_path_exact"])
+    if parent_path:
+        for column in value_columns:
+            column["header_path_exact"] = [*parent_path, *column["header_path_exact"]]
+    table["columns"] = value_columns
+    for row in table["rows"]:
+        excess = len(row["values_exact"]) - value_width
+        row["values_exact"] = row["values_exact"][excess:]
+    return True
+
+
 def _move_unique_arithmetic_total_v1(
     values: list[Any], columns: list[dict[str, Any]], *, model_annotation_present: bool
 ) -> list[Any]:
@@ -638,7 +683,9 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 if type(row["values_exact"]) is not list:
                     raise _error("row values must be an array")
                 row_widths.append(len(row["values_exact"]))
-            if _normalize_four_column_movement_table_v1(table):
+            if _normalize_leading_text_header_proxies_v1(
+                table
+            ) or _normalize_four_column_movement_table_v1(table):
                 width = len(table["columns"])
                 row_widths = [len(row["values_exact"]) for row in table["rows"]]
             if all(row_width == width for row_width in row_widths):
