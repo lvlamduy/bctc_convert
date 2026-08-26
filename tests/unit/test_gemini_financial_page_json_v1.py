@@ -790,6 +790,109 @@ def test_complete_group_heading_without_value_cells_gets_exact_null_width() -> N
         validate_financial_page_json_v1(attack)
 
 
+def test_exact_empty_model_cell_replays_as_blank_without_relaxing_whitespace() -> None:
+    page = _page()
+    page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = ""
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][1]["values_exact"] == [
+        None,
+        "30.754.076",
+    ]
+
+    attack = _page()
+    attack["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "   "
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="nonempty exact NFC"):
+        validate_financial_page_json_v1(attack)
+
+
+def test_immediately_merged_hierarchy_cell_replays_from_same_visible_owner() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"] = [
+        {
+            "label_exact": "Giảm tiền gửi",
+            "hierarchy_path_exact": ["NHNN Việt Nam", "Chủ sở hữu", "Giảm tiền gửi"],
+            "row_kind": "ITEM",
+            "values_exact": ["10", "8"],
+        },
+        {
+            "label_exact": "Tăng tiền vay",
+            "hierarchy_path_exact": ["NHNN Việt Nam", None, "Tăng tiền vay"],
+            "row_kind": "ITEM",
+            "values_exact": ["12", "9"],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][1]["hierarchy_path_exact"] == [
+        "NHNN Việt Nam",
+        "Chủ sở hữu",
+        "Tăng tiền vay",
+    ]
+
+    attack = copy.deepcopy(page)
+    attack["sections"][0]["tables"][0]["rows"][1]["hierarchy_path_exact"] = [
+        "Ngân hàng khác",
+        None,
+        "Tăng tiền vay",
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="null only at the end"):
+        validate_financial_page_json_v1(attack)
+
+
+def test_two_detail_total_equation_replays_one_omitted_accounting_zero() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [name], "value_kind": "MONEY"}
+        for name in ["Dư nợ", "Tiền gửi", "Cam kết", "Phái sinh", "Chứng khoán"]
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Trong nước",
+            "hierarchy_path_exact": ["Trong nước"],
+            "row_kind": "ITEM",
+            "values_exact": [
+                "555.822.273",
+                "691.687.371",
+                "44.197.532",
+                "88.979.176",
+                "77.435.184",
+            ],
+        },
+        {
+            "label_exact": "Nước ngoài",
+            "hierarchy_path_exact": ["Nước ngoài"],
+            "row_kind": "ITEM",
+            "values_exact": ["-", "--", "21.381", "--"],
+        },
+        {
+            "label_exact": None,
+            "hierarchy_path_exact": [None],
+            "row_kind": "TOTAL",
+            "values_exact": [
+                "555.822.273",
+                "691.687.371",
+                "44.197.532",
+                "89.000.557",
+                "77.435.184",
+            ],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][1]["values_exact"] == [
+        "0",
+        "0",
+        "0",
+        "21.381",
+        "0",
+    ]
+
+    attack = copy.deepcopy(page)
+    attack["sections"][0]["tables"][0]["rows"][2]["values_exact"][3] = "89.000.558"
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(attack)
+
+
 @pytest.mark.parametrize(
     "headers,values",
     [

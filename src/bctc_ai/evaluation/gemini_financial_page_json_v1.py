@@ -348,6 +348,48 @@ def _cell_raw(value: Any) -> str | None:
     return value
 
 
+def _fill_merged_hierarchy_path_v1(row: dict[str, Any], prior_row: dict[str, Any] | None) -> None:
+    """Replay only vertically merged hierarchy cells from the preceding row.
+
+    Gemini can preserve a visibly merged table cell as ``null`` in a later
+    hierarchy level while retaining both the outer owner and the current row
+    label.  Fill such internal nulls only from the immediately preceding row,
+    only under an identical already-visible prefix, and never fill the leaf.
+    This keeps the projection source ordered and prevents a distant row from
+    manufacturing ancestry.
+    """
+
+    path = row.get("hierarchy_path_exact")
+    label = row.get("label_exact")
+    if (
+        type(path) is not list
+        or len(path) < 3
+        or type(label) is not str
+        or path[-1] != label
+        or prior_row is None
+    ):
+        return
+    prior_path = prior_row.get("hierarchy_path_exact")
+    if type(prior_path) is not list or len(prior_path) != len(path):
+        return
+
+    rebuilt = list(path)
+    visible_prefix_matches = True
+    changed = False
+    for index, item in enumerate(path[:-1]):
+        prior_item = prior_path[index]
+        if item is None:
+            if not visible_prefix_matches or type(prior_item) is not str:
+                return
+            rebuilt[index] = prior_item
+            changed = True
+            continue
+        if type(item) is not str or item != prior_item:
+            visible_prefix_matches = False
+    if changed:
+        row["hierarchy_path_exact"] = rebuilt
+
+
 def _path(
     value: Any,
     label: str,
@@ -479,9 +521,68 @@ def _signed_integer_cell_v1(value: Any) -> int | None:
 def _accounting_integer_cell_v1(value: Any) -> int | None:
     """Parse one printed integer while treating an accounting dash as exact zero."""
 
-    if type(value) is str and re.fullmatch(r"\s*[-–—_]\s*", value):
+    if type(value) is str and re.fullmatch(r"\s*[-–—_](?:\s*[-–—_])*\s*", value):
         return 0
     return _signed_integer_cell_v1(value)
+
+
+def _normalize_two_detail_total_omitted_zero_v1(table: dict[str, Any]) -> bool:
+    """Restore one omitted blank/dash from an exact two-row subtotal equation.
+
+    The raw provider response remains retained separately.  Here all printed
+    dash variants are intentionally projected to the accounting value ``0``;
+    this removes an otherwise meaningless ambiguity about which dash in one
+    consecutive zero run was omitted.  No nonzero value is synthesized: the
+    complete total and the other complete detail row must determine the exact
+    deficient-row vector in every declared numeric column.
+    """
+
+    columns = table["columns"]
+    rows = table["rows"]
+    width = len(columns)
+    if (
+        width < 2
+        or len(rows) != 3
+        or any(column["value_kind"] not in {"MONEY", "COUNT"} for column in columns)
+    ):
+        return False
+    totals = [row for row in rows if row["row_kind"] == "TOTAL"]
+    details = [row for row in rows if row["row_kind"] != "TOTAL"]
+    short = [row for row in details if len(row["values_exact"]) == width - 1]
+    complete = [row for row in details if len(row["values_exact"]) == width]
+    if len(totals) != 1 or len(short) != 1 or len(complete) != 1:
+        return False
+    total_values = totals[0]["values_exact"]
+    complete_values = complete[0]["values_exact"]
+    if len(total_values) != width:
+        return False
+    total_numbers = [_accounting_integer_cell_v1(value) for value in total_values]
+    complete_numbers = [_accounting_integer_cell_v1(value) for value in complete_values]
+    short_numbers = [_accounting_integer_cell_v1(value) for value in short[0]["values_exact"]]
+    if any(number is None for number in [*total_numbers, *complete_numbers, *short_numbers]):
+        return False
+    expected = [
+        total - detail for total, detail in zip(total_numbers, complete_numbers, strict=True)
+    ]
+    if not any(
+        [*short_numbers[:index], 0, *short_numbers[index:]] == expected for index in range(width)
+    ):
+        return False
+
+    nonzero_source = iter(
+        value
+        for value, number in zip(short[0]["values_exact"], short_numbers, strict=True)
+        if number != 0
+    )
+    rebuilt: list[Any] = []
+    for number in expected:
+        rebuilt.append("0" if number == 0 else next(nonzero_source))
+    try:
+        next(nonzero_source)
+    except StopIteration:
+        short[0]["values_exact"] = rebuilt
+        return True
+    return False
 
 
 def _row_label_matches_hierarchy_leaf_v1(row: dict[str, Any]) -> bool:
@@ -948,6 +1049,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     raise _error("column value_kind drifted")
             width = len(table["columns"])
             row_widths: list[int] = []
+            prior_row: dict[str, Any] | None = None
             for row in table["rows"]:
                 _exact_dict(
                     row,
@@ -960,18 +1062,24 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     "row",
                 )
                 _raw(row["label_exact"], "row label", nullable=True)
+                _fill_merged_hierarchy_path_v1(row, prior_row)
                 _path(row["hierarchy_path_exact"], "row hierarchy path")
                 if row["row_kind"] not in _ROW_KINDS:
                     raise _error("row_kind drifted")
                 if type(row["values_exact"]) is not list:
                     raise _error("row values must be an array")
+                row["values_exact"] = [
+                    None if value == "" else value for value in row["values_exact"]
+                ]
                 row_widths.append(len(row["values_exact"]))
+                prior_row = row
             if (
                 _normalize_explicit_row_label_column_v1(table)
                 or _normalize_omitted_leading_structural_columns_v1(table)
                 or _normalize_leading_text_header_proxies_v1(table)
                 or _normalize_four_column_movement_table_v1(table)
                 or _normalize_dual_period_preferred_share_blanks_v1(table)
+                or _normalize_two_detail_total_omitted_zero_v1(table)
             ):
                 width = len(table["columns"])
                 row_widths = [len(row["values_exact"]) for row in table["rows"]]
