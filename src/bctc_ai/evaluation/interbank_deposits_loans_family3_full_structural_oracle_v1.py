@@ -29,8 +29,8 @@ CLAIM_BOUNDARY = (
 TRUST_CLOSURE = {
     "accounting_topology_engine": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "65e88f2a28a214a71ba47ce2d237dbbc021d5be5d1cf34794aa9776908b2ed66",
-        "size_bytes": 77_499,
+        "sha256": "409cd254f7a43f641f3f3728b05e45ba79d9fe607bcd0837984575b09642b5c0",
+        "size_bytes": 79_501,
     },
     "evaluation_config": {
         "path": "config/families/tm-interbank-deposits-loans-evaluation-v3.json",

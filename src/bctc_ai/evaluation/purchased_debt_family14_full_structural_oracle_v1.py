@@ -39,7 +39,7 @@ CLAIM_BOUNDARY = (
 DEPENDENCY_REFS_V1 = {
     "family14_topology_adapter_ref": {
         "path": "src/bctc_ai/evaluation/purchased_debt_family14_region_query_v1.py",
-        "sha256": "2b59f08e07370c0befb8c258430dd05def0a8a28ae3a57914c4dc216debc77cc",
+        "sha256": "ad7ef7802841d6b773533b5366c68475faaeeb71663e63e668059105cf136268",
         "size_bytes": 15_368,
     },
     "owner_local_oracle_ref": {
@@ -49,8 +49,8 @@ DEPENDENCY_REFS_V1 = {
     },
     "shared_topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "65e88f2a28a214a71ba47ce2d237dbbc021d5be5d1cf34794aa9776908b2ed66",
-        "size_bytes": 77_499,
+        "sha256": "409cd254f7a43f641f3f3728b05e45ba79d9fe607bcd0837984575b09642b5c0",
+        "size_bytes": 79_501,
     },
 }
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]

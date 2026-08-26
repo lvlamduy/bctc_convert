@@ -171,6 +171,7 @@ def _child(
     historical_disposition: str = "OBSERVED_OR_SCHEMA_DECLARED",
     bounded_edit: bool = True,
     binding_class: str = "STANDARD_SCHEMA_ROW",
+    allow_contextual_trailing_organization_qualifier: bool = False,
     weak_context_free_aliases: list[str] | None = None,
     schema_parent_report_norm_id: int = REPORT_NORM_ID,
 ) -> dict[str, Any]:
@@ -183,6 +184,8 @@ def _child(
         "report_norm_id": report_norm_id,
         "schema_parent_report_norm_id": schema_parent_report_norm_id,
     }
+    if allow_contextual_trailing_organization_qualifier:
+        child["allow_contextual_trailing_organization_qualifier"] = True
     if weak_context_free_aliases:
         child["weak_context_free_aliases"] = weak_context_free_aliases
     return child
@@ -351,8 +354,11 @@ _CHILDREN = [
             "Ứng trước tiền bán chứng khoán",
             "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
             "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+            "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch "
+            "đầu tư chứng khoán",
             "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
         ],
+        allow_contextual_trailing_organization_qualifier=True,
     ),
 ]
 
@@ -427,12 +433,13 @@ def _topology_child(child: dict[str, Any]) -> dict[str, Any]:
     aliases = _distinct_aliases(child["aliases"])
     weak_context_free = set(child.get("weak_context_free_aliases", []))
     strong_context_free_aliases = [alias for alias in aliases if alias not in weak_context_free]
-    matchers = [
-        {
-            "aliases": aliases,
-            "within_role": "ENTERPRISE_TYPE_BRANCH",
-        }
-    ]
+    contextual_matcher = {
+        "aliases": aliases,
+        "within_role": "ENTERPRISE_TYPE_BRANCH",
+    }
+    if child.get("allow_contextual_trailing_organization_qualifier") is True:
+        contextual_matcher["allow_trailing_organization_qualifier"] = True
+    matchers = [contextual_matcher]
     if strong_context_free_aliases:
         matchers.append(
             {
@@ -663,7 +670,7 @@ _TOPOLOGY_SPEC: dict[str, Any] = {
         ]
     ),
     "limits": {
-        "max_cluster_span_lines": 192,
+        "max_cluster_span_lines": 256,
         "max_continuation_pages": 1,
         "max_label_line_span": 6,
     },

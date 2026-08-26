@@ -232,15 +232,19 @@ def _spec(value: Any) -> dict[str, Any]:
             if type(raw_matchers) is not list or not raw_matchers:
                 raise _error("contextual accounting family role needs at least one matcher")
             matchers = []
-            seen_matchers: set[tuple[tuple[str, ...], str | None, bool]] = set()
+            seen_matchers: set[tuple[tuple[str, ...], str | None, bool, bool]] = set()
             for raw_matcher in raw_matchers:
+                matcher_fields = set(raw_matcher) if type(raw_matcher) is dict else set()
                 if (
                     type(raw_matcher) is not dict
-                    or set(raw_matcher)
-                    not in (
-                        {"aliases", "within_role"},
-                        {"aliases", "presence_anchor", "within_role"},
-                    )
+                    or not {"aliases", "within_role"} <= matcher_fields
+                    or not matcher_fields
+                    <= {
+                        "aliases",
+                        "allow_trailing_organization_qualifier",
+                        "presence_anchor",
+                        "within_role",
+                    }
                     or (
                         raw_matcher["within_role"] is not None
                         and (
@@ -249,27 +253,38 @@ def _spec(value: Any) -> dict[str, Any]:
                         )
                     )
                     or type(raw_matcher.get("presence_anchor", True)) is not bool
+                    or type(raw_matcher.get("allow_trailing_organization_qualifier", False))
+                    is not bool
+                    or (
+                        raw_matcher.get("allow_trailing_organization_qualifier", False)
+                        and raw_matcher["within_role"] is None
+                    )
                 ):
                     raise _error("contextual accounting family matcher fields drifted")
                 matcher_aliases = _aliases(
                     raw_matcher["aliases"], f"{role} contextual matcher aliases"
                 )
                 presence_anchor = raw_matcher.get("presence_anchor", True)
+                allow_trailing_organization_qualifier = raw_matcher.get(
+                    "allow_trailing_organization_qualifier", False
+                )
                 signature = (
                     tuple(matcher_aliases),
                     raw_matcher["within_role"],
                     presence_anchor,
+                    allow_trailing_organization_qualifier,
                 )
                 if signature in seen_matchers:
                     raise _error("contextual accounting family matchers must be unique")
                 seen_matchers.add(signature)
-                matchers.append(
-                    {
-                        "aliases": matcher_aliases,
-                        "presence_anchor": presence_anchor,
-                        "within_role": raw_matcher["within_role"],
-                    }
-                )
+                matcher = {
+                    "aliases": matcher_aliases,
+                    "presence_anchor": presence_anchor,
+                    "within_role": raw_matcher["within_role"],
+                }
+                if allow_trailing_organization_qualifier:
+                    matcher["allow_trailing_organization_qualifier"] = True
+                matchers.append(matcher)
         else:
             matchers = [
                 {
@@ -738,6 +753,7 @@ def _cached_alias_kind(
     allow_decorative_parenthetical_removal: bool,
     allow_bare_numeric_heading_prefix: bool = False,
     allow_leading_alias: bool = False,
+    allow_trailing_organization_qualifier: bool = False,
 ) -> str | None:
     axes = [(candidate["normalized"], "")]
     if candidate["stripped_normalized"] is not None:
@@ -768,6 +784,20 @@ def _cached_alias_kind(
     for normalized, suffix in axes:
         if normalized in aliases:
             return "EXACT_ACCENTLESS_ALIAS" + suffix
+    if allow_trailing_organization_qualifier:
+        forbidden = {"bao", "gom", "khong", "loai", "ngoai", "sau", "tru", "truoc"}
+        for normalized, suffix in axes:
+            for alias in aliases:
+                prefix = alias + " tai "
+                if not normalized.startswith(prefix):
+                    continue
+                qualifier_tokens = normalized[len(prefix) :].split()
+                if (
+                    1 <= len(qualifier_tokens) <= 6
+                    and not forbidden.intersection(qualifier_tokens)
+                    and all(re.fullmatch(r"[0-9a-z]+", token) for token in qualifier_tokens)
+                ):
+                    return "EXACT_ACCENTLESS_ALIAS_WITH_TRAILING_ORGANIZATION_QUALIFIER" + suffix
     if allow_leading_alias:
         for normalized, suffix in axes:
             if any(
@@ -797,6 +827,7 @@ def _role_hits(
     allow_bare_numeric_heading_prefix: bool = False,
     allow_decorative_parenthetical_removal: bool = False,
     allow_leading_alias: bool = False,
+    allow_trailing_organization_qualifier: bool = False,
 ) -> list[dict[str, Any]]:
     hits: list[dict[str, Any]] = []
     for start in range(len(lines)):
@@ -814,6 +845,7 @@ def _role_hits(
                 allow_bare_numeric_heading_prefix=allow_bare_numeric_heading_prefix,
                 allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
                 allow_leading_alias=allow_leading_alias,
+                allow_trailing_organization_qualifier=(allow_trailing_organization_qualifier),
             )
             matched_surface = surface
             if kind is None and candidate["source_surface"] is not None:
@@ -903,6 +935,9 @@ def _page_hits(
                     surface_candidates=surfaces,
                     within_role=matcher["within_role"],
                     presence_anchor=matcher["presence_anchor"],
+                    allow_trailing_organization_qualifier=matcher.get(
+                        "allow_trailing_organization_qualifier", False
+                    ),
                     allow_decorative_parenthetical_removal=(allow_decorative_parenthetical_removal),
                 )
             )

@@ -59,7 +59,7 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
         "role": FAMILY_ID,
     }
     assert spec["limits"] == {
-        "max_cluster_span_lines": 192,
+        "max_cluster_span_lines": 256,
         "max_continuation_pages": 1,
         "max_label_line_span": 6,
     }
@@ -75,6 +75,12 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
     assert foreign["matchers"][1]["aliases"] == foreign["matchers"][0]["aliases"]
     assert "Cho vay tại chi nhánh và ngân hàng con nước ngoài" in foreign["matchers"][0]["aliases"]
     assert "Dư nợ tại chi nhánh nước ngoài" in foreign["matchers"][0]["aliases"]
+    margin = leaf_roles["MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"]
+    assert (
+        "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư "
+        "chứng khoán" in margin["matchers"][0]["aliases"]
+    )
+    assert margin["matchers"][0]["allow_trailing_organization_qualifier"] is True
     other = leaf_roles["OTHER_ENTERPRISE_LOANS"]
     assert other["matchers"] == [
         {
@@ -609,7 +615,7 @@ def test_family12_reset_fenced_span_retains_a_known_long_same_table_child() -> N
     surfaces = [
         "Cho vay khách hàng",
         "Phân tích theo loại hình doanh nghiệp",
-        *[f"Dòng nội dung trong cùng bảng {ordinal}" for ordinal in range(105)],
+        *[f"Dòng nội dung trong cùng bảng {ordinal}" for ordinal in range(220)],
         "Công ty TNHH",
     ]
 
@@ -624,8 +630,62 @@ def test_family12_reset_fenced_span_retains_a_known_long_same_table_child() -> N
         for item in result["regions"][0]["child_matches"]
         if item["role"] == "LIMITED_LIABILITY_COMPANY_LOANS"
     )
-    assert company["source_line_index"] == 107
-    assert company["source_line_index"] > 96
+    assert company["source_line_index"] == 222
+    assert company["source_line_index"] > 192
+
+
+def test_family12_wrapped_margin_vpbanks_variant_is_one_exact_contextual_child() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Phân tích theo loại hình doanh nghiệp",
+                    "Công ty TNHH",
+                    "Các khoản cho vay giao dịch ký quỹ và ứng",
+                    "trước cho khách hàng giao dịch đầu tư chứng",
+                    "khoán tại VPBankS",
+                    "Khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    margin = [
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    ]
+    assert len(margin) == 1
+    assert margin[0]["match_kind"] == (
+        "EXACT_ACCENTLESS_ALIAS_WITH_TRAILING_ORGANIZATION_QUALIFIER"
+    )
+    assert margin[0]["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
+    assert margin[0]["source_line_index"] == 3
+    assert margin[0]["end_source_line_index"] == 5
+
+
+def test_family12_margin_organization_qualifier_does_not_admit_semantic_suffix() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Phân tích theo loại hình doanh nghiệp",
+                    "Công ty TNHH",
+                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch "
+                    "đầu tư chứng khoán tại không bao gồm khách hàng",
+                    "Khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS" not in result["regions"][0]["observed_roles"]
 
 
 def test_family12_reset_budget_and_partial_topologies_fail_closed() -> None:

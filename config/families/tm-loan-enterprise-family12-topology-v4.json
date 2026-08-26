@@ -618,8 +618,10 @@
             "Ứng trước tiền bán chứng khoán",
           "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
           "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
           ],
+          "allow_trailing_organization_qualifier": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
         {
@@ -630,6 +632,7 @@
             "Ứng trước tiền bán chứng khoán",
           "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
           "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
           ],
           "within_role": null
@@ -739,7 +742,7 @@
     "Giao dịch tiền gửi với MB"
   ],
   "limits": {
-    "max_cluster_span_lines": 192,
+    "max_cluster_span_lines": 256,
     "max_continuation_pages": 1,
     "max_label_line_span": 6
   },

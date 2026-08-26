@@ -477,6 +477,32 @@ def test_v4_weak_context_free_matcher_needs_one_independent_presence_anchor() ->
         build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], invalid)
 
 
+def test_v4_contextual_matcher_binds_one_bounded_trailing_organization_qualifier() -> None:
+    spec = _flexible_role_pool_spec()
+    alpha = next(child for child in spec["children"] if child["role"] == "ALPHA")
+    alpha["matchers"][0]["allow_trailing_organization_qualifier"] = True
+
+    accepted = build_accounting_family_topology_scan_v1(
+        [_page(["Bảng cho vay", "Theo loại hình", "Loại A tại Công ty Chứng khoán X"])],
+        spec,
+    )
+    alpha_match = next(
+        item for item in accepted["regions"][0]["child_matches"] if item["role"] == "ALPHA"
+    )
+
+    assert accepted["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert alpha_match["match_kind"] == (
+        "EXACT_ACCENTLESS_ALIAS_WITH_TRAILING_ORGANIZATION_QUALIFIER"
+    )
+    assert alpha_match["matched_within_role"] == "BRANCH"
+
+    context_free = copy.deepcopy(spec)
+    beta = next(child for child in context_free["children"] if child["role"] == "BETA")
+    beta["matchers"][0]["allow_trailing_organization_qualifier"] = True
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="matcher fields drifted"):
+        build_accounting_family_topology_scan_v1([_page(["Bảng cho vay"])], context_free)
+
+
 def test_v4_flexible_role_pool_counts_distinct_roles_and_fills_continuation_deficit() -> None:
     spec = _flexible_role_pool_spec()
     repeated_one_role = build_accounting_family_topology_scan_v1(
