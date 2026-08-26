@@ -1281,7 +1281,12 @@ def test_current_document_manifest_binds_image_and_prompt_frontiers(monkeypatch,
         "task_id": "task-1",
     }
     planned = {
-        "document": {"page_count": 3},
+        "document": {
+            "page_count": 3,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 3,
+        },
         "document_plan_id": "gjfpdocv1:" + "b" * 64,
         "route": target.OPENROUTER_ROUTE,
         "tasks": [{"task_id": "task-1"}],
@@ -1686,7 +1691,12 @@ def _acceleration_fixture(monkeypatch, tmp_path):
         },
     ]
     planned = {
-        "document": {"page_count": 3},
+        "document": {
+            "page_count": 3,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 3,
+        },
         "document_plan_id": "gjfpdocv1:" + "c" * 64,
         "route": target.GOOGLE_ROUTE,
         "tasks": [{"task_id": "task-1"}, {"task_id": "task-2"}],
@@ -1724,6 +1734,106 @@ def _acceleration_fixture(monkeypatch, tmp_path):
         task_id="task-1",
     )
     return args, tasks, images
+
+
+def _selected_acceleration_manifest_fixture(tmp_path, *, image_frontier):
+    planned = {
+        "document": {
+            "page_count": 3,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 3,
+        },
+        "document_plan_id": "gjfpdocv1:" + "c" * 64,
+    }
+    material = {
+        "document": {
+            "source_logical_name": "ACB/report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 3,
+        },
+        "extraction_contract": {"page_image_sha256s": image_frontier},
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+        "page_count": 3,
+        "pages": [
+            {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+        ],
+    }
+    manifest = {
+        **material,
+        "document_manifest_id": "gfdmv1:manifest:" + target.canonical_json_sha256_v1(material),
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_bytes(canonical_json_bytes_v1(manifest) + b"\n")
+    selection = {
+        "document_manifest_id": manifest["document_manifest_id"],
+        "page_image_frontier_sha256": target.canonical_json_sha256_v1(image_frontier),
+        "selection_id": "gjfcdmsv1:selection:" + "d" * 64,
+    }
+    return planned, manifest_path, selection
+
+
+def test_acceleration_resumes_selected_current_manifest_without_provider_call(
+    monkeypatch, tmp_path
+) -> None:
+    _args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    frontier = [{"image_sha256": images[page], "physical_page": page} for page in (1, 2, 3)]
+    planned, manifest_path, selection = _selected_acceleration_manifest_fixture(
+        tmp_path, image_frontier=frontier
+    )
+    monkeypatch.setattr(
+        target,
+        "load_current_document_manifest_selection_v1",
+        lambda *_args, **_kwargs: (selection, manifest_path),
+    )
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {"task_id": kwargs["task_id"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    result = target._resume_acceleration_from_current_manifest_v1(
+        ledger=tmp_path / "ledger.sqlite3",
+        planned=planned,
+        tasks=tasks,
+        document_root=tmp_path / "document",
+        current_images=images,
+    )
+    assert result is not None
+    assert result["completed_task_ids"] == ["task-1", "task-2"]
+    assert [transition["next_state"] for transition in transitions] == [
+        "SUCCEEDED",
+        "SUCCEEDED",
+    ]
+    assert len(list((tmp_path / "document").rglob("run-receipts/*.json"))) == 1
+
+
+def test_acceleration_resume_rejects_stale_whole_page_image_frontier(monkeypatch, tmp_path) -> None:
+    _args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    stale = [
+        {"image_sha256": ("f" * 64 if page == 2 else images[page]), "physical_page": page}
+        for page in (1, 2, 3)
+    ]
+    planned, manifest_path, selection = _selected_acceleration_manifest_fixture(
+        tmp_path, image_frontier=stale
+    )
+    monkeypatch.setattr(
+        target,
+        "load_current_document_manifest_selection_v1",
+        lambda *_args, **_kwargs: (selection, manifest_path),
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="does not replay exactly",
+    ):
+        target._resume_acceleration_from_current_manifest_v1(
+            ledger=tmp_path / "ledger.sqlite3",
+            planned=planned,
+            tasks=tasks,
+            document_root=tmp_path / "document",
+            current_images=images,
+        )
 
 
 def test_google_document_acceleration_seals_full_manifest_without_duplicate_submission(

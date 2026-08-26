@@ -1038,6 +1038,100 @@ def _write_current_document_manifest_selection_v1(
     return output, selection
 
 
+def _resume_acceleration_from_current_manifest_v1(
+    *,
+    ledger: Path,
+    planned: dict[str, Any],
+    tasks: list[dict[str, Any]],
+    document_root: Path,
+    current_images: dict[int, str],
+) -> dict[str, Any] | None:
+    """Seal a claimed document from an already authenticated current head.
+
+    This is the crash/recovery boundary after a page-specific repair or after
+    manifest publication but before ledger transition.  It never submits a
+    provider request and accepts only the selected, content-addressed manifest
+    whose complete image frontier is the freshly rendered whole-page frontier.
+    """
+
+    selected = load_current_document_manifest_selection_v1(
+        document_root,
+        document_plan_id=planned["document_plan_id"],
+        source_sha256=planned["document"]["source_sha256"],
+    )
+    if selected is None:
+        return None
+    selection, manifest_path = selected
+    manifest = _json_file(manifest_path)
+    claimed_manifest_id = manifest.get("document_manifest_id")
+    material = {key: value for key, value in manifest.items() if key != "document_manifest_id"}
+    expected_manifest_id = "gfdmv1:manifest:" + canonical_json_sha256_v1(material)
+    document = manifest.get("document")
+    pages = manifest.get("pages")
+    contract = manifest.get("extraction_contract")
+    image_frontier = contract.get("page_image_sha256s") if type(contract) is dict else None
+    expected_pages = list(range(1, planned["document"]["page_count"] + 1))
+    expected_frontier = [
+        {"image_sha256": current_images[page], "physical_page": page} for page in expected_pages
+    ]
+    if (
+        claimed_manifest_id != expected_manifest_id
+        or claimed_manifest_id != selection["document_manifest_id"]
+        or manifest.get("format_version") != "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+        or manifest.get("page_count") != planned["document"]["page_count"]
+        or type(document) is not dict
+        or document.get("source_logical_name") != planned["document"]["relative_path"]
+        or document.get("source_sha256") != planned["document"]["source_sha256"]
+        or document.get("source_size_bytes") != planned["document"]["source_size_bytes"]
+        or type(pages) is not list
+        or [page.get("physical_page") for page in pages if type(page) is dict] != expected_pages
+        or any(page.get("status") == "UNRESOLVED_PAGE" for page in pages)
+        or image_frontier != expected_frontier
+        or selection["page_image_frontier_sha256"] != canonical_json_sha256_v1(expected_frontier)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected acceleration document manifest does not replay exactly"
+        )
+    claims = {task.get("provider_job_ref") for task in tasks if task["state"] == "RUNNING"}
+    if len(claims) != 1 or any(
+        task["state"] not in {"RUNNING", "SUCCEEDED"}
+        or (task["state"] == "RUNNING" and not _is_openrouter_acceleration_task_v1(task))
+        for task in tasks
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "current manifest acceleration claim does not replay exactly"
+        )
+    receipt = {
+        "claim_id": next(iter(claims)),
+        "disposition": "SUCCEEDED",
+        "document_manifest_id": claimed_manifest_id,
+        "format_version": "GEMINI_JSON_FIRST_CURRENT_ACCELERATION_RESUME_V1",
+        "selection_id": selection["selection_id"],
+        "task_ids": [task["task_id"] for task in tasks],
+    }
+    completed = []
+    for task in tasks:
+        if task["state"] != "RUNNING":
+            continue
+        updated = transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="RUNNING",
+            next_state="SUCCEEDED",
+            receipt=receipt,
+        )
+        completed.append(updated["task_id"])
+    payload = canonical_json_bytes_v1(receipt)
+    _write_or_verify(
+        document_root
+        / "openrouter-acceleration"
+        / "run-receipts"
+        / (sha256(payload).hexdigest() + ".json"),
+        payload,
+    )
+    return {**receipt, "completed_task_ids": completed}
+
+
 def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
     """Seal one document only from current whole-page images and explicit prompts."""
 
@@ -1208,13 +1302,20 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
         source_root=args.source_root,
         dpi=plan["policy"]["dpi"],
     )
-    source = _source(task, args.source_root)
-    document_root = (
-        args.artifact_root
-        / "documents"
-        / planned["document_plan_id"].split(":", 1)[1]
-        / "openrouter-acceleration"
+    current_document_root = (
+        args.artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
     )
+    resumed = _resume_acceleration_from_current_manifest_v1(
+        ledger=args.ledger,
+        planned=planned,
+        tasks=tasks,
+        document_root=current_document_root,
+        current_images=current_images,
+    )
+    if resumed is not None:
+        return {**resumed, "ledger": corpus_ledger_summary_v1(args.ledger)}
+    source = _source(task, args.source_root)
+    document_root = current_document_root / "openrouter-acceleration"
     receipt_root = document_root / "run-receipts"
     attempt_number = len(list(receipt_root.glob("*.json"))) + 1
     if attempt_number > args.max_acceleration_attempts:
