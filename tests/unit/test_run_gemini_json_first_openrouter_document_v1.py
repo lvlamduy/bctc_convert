@@ -80,6 +80,29 @@ def _result() -> ProviderResultV1:
     )
 
 
+def _google_result() -> ProviderResultV1:
+    original = _result()
+    attempt = {
+        **original.attempts[0],
+        "credential_slot": "GOOGLE_SLOT_2",
+        "provider": "GOOGLE_GEMINI_API",
+    }
+    return ProviderResultV1(
+        output_text=original.output_text,
+        raw_response_bytes=b'{"google":"standard"}',
+        provider_name="GOOGLE_GEMINI_API",
+        provider_model="gemini-3.7-flash",
+        service_tier="standard",
+        attempts=(attempt,),
+        usage={
+            **original.usage,
+            "actual_cost_usd": "0.000200000000",
+            "billing_disposition": "ESTIMATED_LIST_PRICE",
+        },
+        response_id_sha256="2" * 64,
+    )
+
+
 def test_parallel_document_run_persists_in_parent_and_resumes_from_cache(tmp_path) -> None:
     pdf = tmp_path / "document.pdf"
     database = tmp_path / "store.sqlite3"
@@ -183,6 +206,60 @@ def test_one_failed_page_does_not_abort_siblings_and_only_failure_retries(tmp_pa
     assert second["ingested_pages"] == [2]
     assert len(retried) == 1
     assert (artifacts / "document-manifest.json").is_file()
+
+
+def test_provider_failure_falls_back_one_page_to_google_and_builds_mixed_manifest(
+    tmp_path,
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 2)
+    policies = []
+
+    def provider(**kwargs):
+        policies.append(kwargs["execution_policy"])
+        if kwargs["execution_policy"] == "OPENROUTER_PILOT" and len(policies) == 1:
+            error = GeminiJsonFirstProviderV1Error("upstream rate limited")
+            error.attempts = (
+                {
+                    "attempt_ordinal": 1,
+                    "credential_slot": "OPENROUTER_SLOT_1",
+                    "elapsed_seconds": "0.010",
+                    "http_status": 200,
+                    "outcome": "ZERO_USAGE_PROVIDER_ERROR",
+                    "provider": "OPENROUTER",
+                    "usage": None,
+                },
+            )
+            error.raw_response_bytes = b'{"error":"rate-limit"}'
+            raise error
+        if kwargs["execution_policy"] == "GOOGLE_DIRECT_STANDARD":
+            return _google_result()
+        return _result()
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+        google_api_keys=["g" * 32],
+        google_credential_slots=["GOOGLE_SLOT_2"],
+        google_standard_mode="on-provider-error",
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["failed_pages"] == []
+    assert policies == ["OPENROUTER_PILOT", "GOOGLE_DIRECT_STANDARD", "OPENROUTER_PILOT"]
+    manifest = json.loads((artifacts / "document-manifest.json").read_bytes())
+    assert manifest["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
+    assert {page["provider_route"]["gateway"] for page in manifest["pages"]} == {
+        "GOOGLE_GEMINI_API",
+        "OPENROUTER",
+    }
+    fallback = artifacts / "page-00001" / "attempt-0001" / "provider-fallback.json"
+    assert json.loads(fallback.read_bytes())["fallback_gateway"] == "GOOGLE_GEMINI_API"
 
 
 def test_bounded_page_frontier_runs_in_parallel_without_claiming_whole_document(tmp_path) -> None:

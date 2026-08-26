@@ -404,3 +404,69 @@ def seal_offline_revalidated_corpus_task_v1(
         connection.commit()
         updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
     return dict(updated)
+
+
+def seal_google_fallback_corpus_task_v1(
+    path: Path,
+    *,
+    task_id: str,
+    receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal FAILED→SUCCEEDED after bounded missing pages complete through Google."""
+
+    checked = canonical_clone_v1(dict(receipt))
+    if set(checked) != {
+        "document_manifest_id",
+        "fallback_gateway",
+        "fallback_pages",
+        "result",
+    }:
+        raise _error("Google fallback receipt fields drifted")
+    if checked["fallback_gateway"] != "GOOGLE_GEMINI_API":
+        raise _error("Google fallback gateway is invalid")
+    if type(checked["document_manifest_id"]) is not str or not checked[
+        "document_manifest_id"
+    ].startswith("gfdmv1:manifest:"):
+        raise _error("Google fallback document manifest is invalid")
+    pages = checked["fallback_pages"]
+    if (
+        type(pages) is not list
+        or not pages
+        or pages != sorted(set(pages))
+        or any(type(page) is not int or page <= 0 for page in pages)
+    ):
+        raise _error("Google fallback page frontier is invalid")
+    result = checked["result"]
+    if (
+        type(result) is not dict
+        or result.get("disposition") != "SUCCEEDED"
+        or result.get("manifest_id") != checked["document_manifest_id"]
+        or result.get("failed_pages") != []
+        or result.get("offline_missing_pages") != []
+        or result.get("semantic_failed_pages") != []
+    ):
+        raise _error("Google fallback result is not terminally complete")
+    receipt_bytes = canonical_json_bytes_v1(checked)
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if row is None or row["state"] != "FAILED" or row["route"] != OPENROUTER_ROUTE:
+            raise _error("Google fallback requires one failed OpenRouter task")
+        if any(
+            page < row["first_physical_page"] or page > row["last_physical_page"] for page in pages
+        ):
+            raise _error("Google fallback page lies outside the task frontier")
+        event_ordinal = connection.execute(
+            "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (task_id,)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO task_event VALUES (?,?,?,?,?)",
+            (task_id, event_ordinal, "FAILED", "SUCCEEDED", receipt_bytes),
+        )
+        connection.execute(
+            "UPDATE task SET state='SUCCEEDED', last_receipt_json=? WHERE task_id=?",
+            (receipt_bytes, task_id),
+        )
+        connection.commit()
+        updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+    return dict(updated)

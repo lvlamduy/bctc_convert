@@ -21,6 +21,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
     transition_corpus_task_v1,
     validate_gemini_json_first_corpus_plan_v1,
@@ -67,6 +68,23 @@ def _parser() -> argparse.ArgumentParser:
     repair.add_argument("--source-root", type=Path, required=True)
     repair.add_argument("--database", type=Path, required=True)
     repair.add_argument("--artifact-root", type=Path, required=True)
+
+    repair_google = commands.add_parser("repair-openrouter-google")
+    repair_google.add_argument("--plan", type=Path, required=True)
+    repair_google.add_argument("--ledger", type=Path, required=True)
+    repair_google.add_argument("--task-id", required=True)
+    repair_google.add_argument("--source-root", type=Path, required=True)
+    repair_google.add_argument("--database", type=Path, required=True)
+    repair_google.add_argument("--artifact-root", type=Path, required=True)
+    repair_google.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    repair_google.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    repair_google.add_argument("--google-key-slot", type=int, default=2)
+    repair_google.add_argument("--openrouter-workers", type=int, default=20)
+    repair_google.add_argument("--provider-timeout-seconds", type=int, default=900)
 
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
@@ -454,6 +472,8 @@ def _run_openrouter(
     artifact_root: Path,
     openrouter_key_file: Path,
     openrouter_workers: int,
+    google_key_file: Path,
+    google_key_slot: int,
     provider_timeout_seconds: int,
     max_attempts: int,
 ) -> dict[str, Any]:
@@ -488,6 +508,12 @@ def _run_openrouter(
             "json-schema",
             "--openrouter-key-file",
             str(openrouter_key_file),
+            "--google-key-file",
+            str(google_key_file),
+            "--google-key-slot",
+            str(google_key_slot),
+            "--google-standard-mode",
+            "on-provider-error",
             "--timeout-seconds",
             str(provider_timeout_seconds),
         ],
@@ -673,6 +699,8 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 artifact_root=args.artifact_root,
                 openrouter_key_file=args.openrouter_key_file,
                 openrouter_workers=args.openrouter_workers,
+                google_key_file=args.google_key_file,
+                google_key_slot=args.google_key_slot,
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
@@ -766,6 +794,103 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Complete provider-failed OpenRouter pages through direct Google standard."""
+
+    plan = _plan(args.plan)
+    tasks = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    selected = [task for task in tasks if task["task_id"] == args.task_id]
+    if len(selected) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google repair requires one exact failed OpenRouter task"
+        )
+    task = selected[0]
+    try:
+        prior = json.loads(task["last_receipt_json"])
+    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task receipt is invalid"
+        ) from exc
+    pages = prior.get("failed_pages") if type(prior) is dict else None
+    if (
+        type(pages) is not list
+        or not pages
+        or pages != sorted(set(pages))
+        or any(
+            type(page) is not int
+            or page < task["first_physical_page"]
+            or page > task["last_physical_page"]
+            for page in pages
+        )
+        or prior.get("semantic_failed_pages") not in (None, [])
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter provider page frontier is invalid"
+        )
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter worker bound lies outside 1..30"
+        )
+    source = _source(task, args.source_root)
+    repair_root = _task_root(task, args.artifact_root) / "google-standard-repair"
+    _, result = _command(
+        [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(args.database),
+            "--artifact-dir",
+            str(repair_root),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(args.openrouter_workers),
+            "--prompt-variant",
+            corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
+            "--output-contract-mode",
+            "json-schema",
+            "--openrouter-key-file",
+            str(args.openrouter_key_file),
+            "--google-key-file",
+            str(args.google_key_file),
+            "--google-key-slot",
+            str(args.google_key_slot),
+            "--google-standard-mode",
+            "for-missing",
+            "--timeout-seconds",
+            str(args.provider_timeout_seconds),
+        ],
+        expected={0},
+    )
+    completed_pages = sorted(set(result["cached_pages"] + result["ingested_pages"]))
+    if result.get("disposition") != "SUCCEEDED" or any(
+        page not in completed_pages for page in pages
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google repair did not complete the failed page frontier"
+        )
+    sealed = seal_google_fallback_corpus_task_v1(
+        args.ledger,
+        task_id=task["task_id"],
+        receipt={
+            "document_manifest_id": result["manifest_id"],
+            "fallback_gateway": "GOOGLE_GEMINI_API",
+            "fallback_pages": pages,
+            "result": result,
+        },
+    )
+    return {
+        "disposition": "SUCCEEDED",
+        "fallback_pages": pages,
+        "manifest_id": result["manifest_id"],
+        "task_id": sealed["task_id"],
+    }
+
+
 def main() -> int:
     args = _parser().parse_args()
     if args.command == "init":
@@ -779,6 +904,8 @@ def main() -> int:
         result = corpus_ledger_summary_v1(args.ledger)
     elif args.command == "repair-openrouter":
         result = repair_openrouter_task(args)
+    elif args.command == "repair-openrouter-google":
+        result = repair_openrouter_google_task(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

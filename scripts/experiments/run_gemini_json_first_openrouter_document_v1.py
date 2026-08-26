@@ -33,10 +33,12 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
+    GOOGLE_STANDARD_SERVICE_TIER,
     OPENROUTER_SERVICE_TIER,
     GeminiJsonFirstProviderV1Error,
     ProviderResultV1,
     call_gemini_json_first_v1,
+    load_google_api_key_slots_v1,
     load_openrouter_api_key_v1,
     replay_openrouter_provider_result_v1,
 )
@@ -73,6 +75,7 @@ class _PageOutcome:
     cached_json: dict[str, Any] | None = None
     provider_result: ProviderResultV1 | None = None
     provider_error: GeminiJsonFirstProviderV1Error | None = None
+    fallback_source_error: GeminiJsonFirstProviderV1Error | None = None
     semantic_failure_present: bool = False
     semantic_replay_source: str | None = None
     offline_missing: bool = False
@@ -109,6 +112,18 @@ def _parser() -> argparse.ArgumentParser:
         "--openrouter-key-file",
         type=Path,
         default=ROOT / "docs/experiments/openrouter",
+    )
+    parser.add_argument(
+        "--google-key-file",
+        type=Path,
+        default=ROOT / "docs/experiments/gemma.txt",
+    )
+    parser.add_argument("--google-key-slot", type=int)
+    parser.add_argument(
+        "--google-standard-mode",
+        choices=("disabled", "on-provider-error", "for-missing"),
+        default="disabled",
+        help="Use direct Google standard only after Flex fails, or for every cache miss.",
     )
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--retries", type=int, default=2)
@@ -252,6 +267,9 @@ def _extract_page(
     response_schema_sha256: str,
     output_contract_mode: str,
     api_key: str,
+    google_api_keys: list[str] | None,
+    google_credential_slots: list[str] | None,
+    google_standard_mode: str,
     timeout_seconds: int,
     retries: int,
     retry_delay_seconds: float,
@@ -275,6 +293,26 @@ def _extract_page(
     cached = lookup_cached_page_json_v1(database, cache_key)
     if cached is not None:
         return _PageOutcome(physical_page=physical_page, page=rendered.page, cached_json=cached)
+    if google_api_keys is not None:
+        google_cache_key = extraction_cache_key_v1(
+            source_sha256=source_sha256,
+            source_logical_name=source_logical_name,
+            image_sha256=rendered.page["image_sha256"],
+            prompt_sha256=prompt_sha256,
+            response_schema_sha256=response_schema_sha256,
+            requested_model=GOOGLE_MODEL,
+            requested_service_tier=GOOGLE_STANDARD_SERVICE_TIER,
+            thinking_level="low",
+            prompt_variant=prompt_variant,
+            output_contract_mode=output_contract_mode,
+        )
+        cached = lookup_cached_page_json_v1(database, google_cache_key)
+        if cached is not None:
+            return _PageOutcome(
+                physical_page=physical_page,
+                page=rendered.page,
+                cached_json=cached,
+            )
     replayed, replay_source, semantic_failure_present = _replay_prior_semantic_result_v1(
         artifact_dir=artifact_dir,
         physical_page=physical_page,
@@ -300,30 +338,63 @@ def _extract_page(
             page=rendered.page,
             offline_missing=True,
         )
+    fallback_source_error = None
     try:
         result = provider_call(
-            google_api_keys=None,
-            openrouter_api_key=api_key,
+            google_api_keys=(google_api_keys if google_standard_mode == "for-missing" else None),
+            google_credential_slots=(
+                google_credential_slots if google_standard_mode == "for-missing" else None
+            ),
+            openrouter_api_key=(None if google_standard_mode == "for-missing" else api_key),
             image=rendered.image,
             media_type="image/png",
             prompt=prompt,
             response_schema=schema,
             output_contract_mode=output_contract_mode,
-            execution_policy="OPENROUTER_PILOT",
+            execution_policy=(
+                "GOOGLE_DIRECT_STANDARD"
+                if google_standard_mode == "for-missing"
+                else "OPENROUTER_PILOT"
+            ),
             timeout_seconds=timeout_seconds,
             openrouter_retries=retries,
             retry_delay_seconds=retry_delay_seconds,
         )
     except GeminiJsonFirstProviderV1Error as exc:
-        return _PageOutcome(
-            physical_page=physical_page,
-            page=rendered.page,
-            provider_error=exc,
-        )
+        if google_standard_mode != "on-provider-error" or google_api_keys is None:
+            return _PageOutcome(
+                physical_page=physical_page,
+                page=rendered.page,
+                provider_error=exc,
+            )
+        fallback_source_error = exc
+        try:
+            result = provider_call(
+                google_api_keys=google_api_keys,
+                google_credential_slots=google_credential_slots,
+                openrouter_api_key=None,
+                image=rendered.image,
+                media_type="image/png",
+                prompt=prompt,
+                response_schema=schema,
+                output_contract_mode=output_contract_mode,
+                execution_policy="GOOGLE_DIRECT_STANDARD",
+                timeout_seconds=timeout_seconds,
+                flex_retries_per_slot=retries,
+                retry_delay_seconds=retry_delay_seconds,
+            )
+        except GeminiJsonFirstProviderV1Error as fallback_exc:
+            return _PageOutcome(
+                physical_page=physical_page,
+                page=rendered.page,
+                provider_error=fallback_exc,
+                fallback_source_error=fallback_source_error,
+            )
     return _PageOutcome(
         physical_page=physical_page,
         page=rendered.page,
         provider_result=result,
+        fallback_source_error=fallback_source_error,
     )
 
 
@@ -344,6 +415,9 @@ def run_openrouter_document_v1(
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
     physical_pages: Sequence[int] | None = None,
     offline_replay_only: bool = False,
+    google_api_keys: list[str] | None = None,
+    google_credential_slots: list[str] | None = None,
+    google_standard_mode: str = "disabled",
 ) -> dict[str, Any]:
     """Run or resume a whole document or one explicit bounded page frontier."""
 
@@ -351,6 +425,20 @@ def run_openrouter_document_v1(
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("DPI or worker count is invalid")
     if output_contract_mode not in {"JSON_SCHEMA", "PROMPT_JSON"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
+    if google_standard_mode not in {"disabled", "on-provider-error", "for-missing"}:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("Google fallback mode is invalid")
+    if (google_standard_mode == "disabled") != (google_api_keys is None):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "Google fallback credentials and mode disagree"
+        )
+    if google_api_keys is not None and (
+        not google_api_keys
+        or google_credential_slots is None
+        or len(google_api_keys) != len(google_credential_slots)
+    ):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "Google fallback credential slots are invalid"
+        )
     document, page_count = _document(pdf, source_logical_name)
     selected_pages = (
         list(range(1, page_count + 1)) if physical_pages is None else sorted(set(physical_pages))
@@ -388,6 +476,8 @@ def run_openrouter_document_v1(
         "response_schema_sha256": schema_sha,
         "selected_provider": OPENROUTER_SELECTED_PROVIDER,
     }
+    if google_standard_mode != "disabled":
+        contract["google_standard_mode"] = google_standard_mode
     if physical_pages is not None:
         contract["format_version"] = "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
         contract["selected_physical_pages"] = selected_pages
@@ -414,6 +504,9 @@ def run_openrouter_document_v1(
                 response_schema_sha256=schema_sha,
                 output_contract_mode=output_contract_mode,
                 api_key=api_key,
+                google_api_keys=google_api_keys,
+                google_credential_slots=google_credential_slots,
+                google_standard_mode=google_standard_mode,
                 timeout_seconds=timeout_seconds,
                 retries=retries,
                 retry_delay_seconds=retry_delay_seconds,
@@ -472,6 +565,24 @@ def run_openrouter_document_v1(
         raw = result.raw_response_bytes
         raw_bytes = raw if raw.endswith(b"\n") else raw + b"\n"
         _write_new(attempt_dir / "raw-response.json", raw_bytes)
+        if outcome.fallback_source_error is not None:
+            source_error = outcome.fallback_source_error
+            if source_error.raw_response_bytes is not None:
+                source_raw = source_error.raw_response_bytes
+                _write_new(
+                    attempt_dir / "source-raw-response-before-fallback.json",
+                    source_raw if source_raw.endswith(b"\n") else source_raw + b"\n",
+                )
+            _write_new(
+                attempt_dir / "provider-fallback.json",
+                canonical_json_bytes_v1(
+                    {
+                        "fallback_gateway": "GOOGLE_GEMINI_API",
+                        "source_attempts": list(source_error.attempts),
+                        "source_error_type": type(source_error).__name__,
+                    }
+                ),
+            )
         if outcome.semantic_replay_source is not None:
             _write_new(
                 attempt_dir / "semantic-replay.json",
@@ -501,10 +612,13 @@ def run_openrouter_document_v1(
             failed_pages.append(physical_page)
             semantic_failed_pages.append(physical_page)
             continue
-        if result.provider_name != OPENROUTER_SELECTED_PROVIDER:
-            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
-                "OpenRouter selected provider identity drifted"
-            )
+        if result.provider_name not in {OPENROUTER_SELECTED_PROVIDER, "GOOGLE_GEMINI_API"}:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
+        requested_service_tier = (
+            GOOGLE_STANDARD_SERVICE_TIER
+            if result.provider_name == "GOOGLE_GEMINI_API"
+            else OPENROUTER_SERVICE_TIER
+        )
         identities = ingest_financial_page_extraction_v1(
             database,
             document=document,
@@ -514,7 +628,7 @@ def run_openrouter_document_v1(
             prompt_sha256=prompt_sha,
             response_schema_sha256=schema_sha,
             requested_model=GOOGLE_MODEL,
-            requested_service_tier=OPENROUTER_SERVICE_TIER,
+            requested_service_tier=requested_service_tier,
             thinking_level="low",
             provider_result=result,
             page_json=page_json,
@@ -542,6 +656,25 @@ def run_openrouter_document_v1(
 
     manifest = None
     if not failed_pages and physical_pages is None:
+        manifest_kwargs = (
+            {
+                "allowed_gateway_service_tiers": [
+                    {
+                        "gateway": "GOOGLE_GEMINI_API",
+                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+                    },
+                    {
+                        "gateway": "OPENROUTER",
+                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                    },
+                ]
+            }
+            if google_standard_mode != "disabled"
+            else {
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                "selected_provider": OPENROUTER_SELECTED_PROVIDER,
+            }
+        )
         manifest = build_financial_document_manifest_v1(
             database,
             source_sha256=document["source_sha256"],
@@ -550,8 +683,7 @@ def run_openrouter_document_v1(
             prompt_sha256=prompt_sha,
             response_schema_sha256=schema_sha,
             requested_model=GOOGLE_MODEL,
-            requested_service_tier=OPENROUTER_SERVICE_TIER,
-            selected_provider=OPENROUTER_SELECTED_PROVIDER,
+            **manifest_kwargs,
         )
         _write_or_verify(
             artifact_dir / "document-manifest.json",
@@ -582,6 +714,18 @@ def run_openrouter_document_v1(
 
 def main() -> int:
     args = _parser().parse_args()
+    google_keys = None
+    google_slots = None
+    if args.google_standard_mode != "disabled":
+        google_keys = load_google_api_key_slots_v1(args.google_key_file)
+        google_slots = [f"GOOGLE_SLOT_{index}" for index in range(1, len(google_keys) + 1)]
+        if args.google_key_slot is not None:
+            if not 1 <= args.google_key_slot <= len(google_keys):
+                raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                    "Google fallback key slot lies outside the credential file"
+                )
+            google_keys = [google_keys[args.google_key_slot - 1]]
+            google_slots = [f"GOOGLE_SLOT_{args.google_key_slot}"]
     result = run_openrouter_document_v1(
         pdf=args.pdf,
         database=args.database,
@@ -599,6 +743,9 @@ def main() -> int:
         retry_delay_seconds=args.retry_delay_seconds,
         physical_pages=args.physical_page,
         offline_replay_only=args.offline_replay_only,
+        google_api_keys=google_keys,
+        google_credential_slots=google_slots,
+        google_standard_mode=args.google_standard_mode,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["disposition"] == "SUCCEEDED" else 2
