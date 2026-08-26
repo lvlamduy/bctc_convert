@@ -75,7 +75,7 @@ def _result() -> ProviderResultV1:
     )
 
 
-def _ingest(path: Path) -> dict[str, str]:
+def _ingest(path: Path, *, physical_page: int = 7, image_sha256: str = "c" * 64) -> dict[str, str]:
     return ingest_financial_page_extraction_v1(
         path,
         document={
@@ -84,8 +84,8 @@ def _ingest(path: Path) -> dict[str, str]:
             "source_size_bytes": 123,
         },
         page={
-            "physical_page": 7,
-            "image_sha256": "c" * 64,
+            "physical_page": physical_page,
+            "image_sha256": image_sha256,
             "image_size_bytes": 456,
             "pixel_width": 1654,
             "pixel_height": 2339,
@@ -136,6 +136,23 @@ def test_store_is_append_only_indexed_and_cache_addressed(tmp_path) -> None:
             connection.execute("SELECT parent_row_id FROM row_node WHERE row_id='r2'").fetchone()[0]
             == "r1"
         )
+
+
+def test_identical_page_json_on_distinct_pages_has_distinct_bound_version_ids(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    first = _ingest(path)
+    second = _ingest(path, physical_page=8, image_sha256="f" * 64)
+    assert first["page_json_version_id"] != second["page_json_version_id"]
+    with sqlite3.connect(path) as connection:
+        records = connection.execute(
+            "SELECT page_id, page_json_version_id, canonical_json_sha256 "
+            "FROM page_json_version ORDER BY page_id"
+        ).fetchall()
+    assert len(records) == 2
+    assert records[0][0] != records[1][0]
+    assert records[0][1] != records[1][1]
+    assert records[0][2] == records[1][2]
 
 
 def test_two_and_three_anchor_sql_shortlist_and_usage_stats(tmp_path) -> None:

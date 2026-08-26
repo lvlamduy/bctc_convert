@@ -30,7 +30,7 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1,
 )
 
-FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V6"
+FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V7"
 DEFAULT_DATABASE_PATH = Path("data/local/gemini_financial_page_store_v1.sqlite3")
 
 
@@ -481,7 +481,13 @@ def ingest_financial_page_extraction_v1(
         "usage": usage,
     }
     extraction_run_id = "gfpstorev1:run:" + canonical_json_sha256_v1(run_material)
-    page_json_version_id = "gfpstorev1:json:" + sha256(canonical_bytes).hexdigest()
+    page_json_version_id = "gfpstorev1:json:" + canonical_json_sha256_v1(
+        {
+            "canonical_json_sha256": sha256(canonical_bytes).hexdigest(),
+            "extraction_run_id": extraction_run_id,
+            "page_id": page_id,
+        }
+    )
     with _connect(path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         if connection.execute(
