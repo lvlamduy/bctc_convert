@@ -905,21 +905,29 @@ def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "failed OpenRouter task receipt is invalid"
         ) from exc
-    pages = prior.get("failed_pages") if type(prior) is dict else None
+    failed_pages = prior.get("failed_pages") if type(prior) is dict else None
+    semantic_pages = prior.get("semantic_failed_pages", []) if type(prior) is dict else None
     if (
-        type(pages) is not list
-        or not pages
-        or pages != sorted(set(pages))
+        type(failed_pages) is not list
+        or not failed_pages
+        or failed_pages != sorted(set(failed_pages))
+        or type(semantic_pages) is not list
+        or semantic_pages != sorted(set(semantic_pages))
+        or not set(semantic_pages) <= set(failed_pages)
         or any(
             type(page) is not int
             or page < task["first_physical_page"]
             or page > task["last_physical_page"]
-            for page in pages
+            for page in failed_pages
         )
-        or prior.get("semantic_failed_pages") not in (None, [])
     ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "failed OpenRouter provider page frontier is invalid"
+        )
+    pages = sorted(set(failed_pages) - set(semantic_pages))
+    if not pages:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task has no provider page to repair"
         )
     if not 1 <= args.openrouter_workers <= 30:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
@@ -960,7 +968,20 @@ def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
         ],
         expected={0},
     )
-    completed_pages = sorted(set(result["cached_pages"] + result["ingested_pages"]))
+    cached_pages = result.get("cached_pages")
+    ingested_pages = result.get("ingested_pages")
+    if (
+        type(cached_pages) is not list
+        or cached_pages != sorted(set(cached_pages))
+        or type(ingested_pages) is not list
+        or ingested_pages != sorted(set(ingested_pages))
+        or any(page in ingested_pages for page in semantic_pages)
+        or any(page not in cached_pages for page in semantic_pages)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google repair did not preserve replayed semantic pages as cache hits"
+        )
+    completed_pages = sorted(set(cached_pages + ingested_pages))
     if result.get("disposition") != "SUCCEEDED" or any(
         page not in completed_pages for page in pages
     ):

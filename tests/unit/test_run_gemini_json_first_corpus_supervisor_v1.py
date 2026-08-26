@@ -397,3 +397,95 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         "FALLBACK_RUNNING",
         "SUCCEEDED",
     ]
+
+
+def test_google_repair_excludes_semantic_pages_replayed_into_cache(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "BID" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "first_physical_page": 1,
+        "last_physical_page": 66,
+        "last_receipt_json": json.dumps(
+            {
+                "failed_pages": [27, 53, 62],
+                "semantic_failed_pages": [53],
+            }
+        ),
+        "relative_path": "BID/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    sealed = []
+
+    monkeypatch.setattr(target, "_plan", lambda _path: {"policy": {"dpi": 300}})
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: [task])
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+
+    def command(argv, *, expected):
+        assert expected == {0}
+        assert "for-missing" in argv
+        return 0, {
+            "cached_pages": [1, 53],
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "ingested_pages": [27, 62],
+            "manifest_id": "gfdmv1:manifest:" + "a" * 64,
+            "offline_missing_pages": [],
+            "semantic_failed_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "seal_google_fallback_corpus_task_v1",
+        lambda _ledger, **kwargs: sealed.append(kwargs) or task,
+    )
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        database=tmp_path / "store.sqlite3",
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        ledger=tmp_path / "ledger.sqlite3",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        plan=tmp_path / "plan.json",
+        provider_timeout_seconds=900,
+        source_root=source_root,
+        task_id="task-1",
+    )
+    result = target.repair_openrouter_google_task(args)
+    assert result["fallback_pages"] == [27, 62]
+    assert sealed[0]["receipt"]["fallback_pages"] == [27, 62]
+
+    monkeypatch.setattr(
+        target,
+        "_command",
+        lambda *_args, **_kwargs: (
+            0,
+            {
+                "cached_pages": [1],
+                "disposition": "SUCCEEDED",
+                "failed_pages": [],
+                "ingested_pages": [27, 53, 62],
+                "manifest_id": "gfdmv1:manifest:" + "b" * 64,
+                "offline_missing_pages": [],
+                "semantic_failed_pages": [],
+            },
+        ),
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="preserve replayed semantic pages",
+    ):
+        target.repair_openrouter_google_task(args)
