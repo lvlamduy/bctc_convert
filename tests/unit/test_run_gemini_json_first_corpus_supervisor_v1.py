@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -196,6 +197,83 @@ def test_google_poll_transitions_only_after_terminal_ingestion(monkeypatch, tmp_
     assert result["state"] == "SUCCEEDED"
     assert transitions[0]["expected_state"] == "RUNNING"
     assert transitions[0]["next_state"] == "SUCCEEDED"
+
+
+@pytest.mark.parametrize(
+    ("poll_state", "expected_calls"),
+    [
+        ("RUNNING", ["poll-google", "run-openrouter"]),
+        ("SUCCEEDED", ["poll-google"]),
+    ],
+)
+def test_scheduler_polls_google_before_openrouter_and_refills_terminal_slot(
+    monkeypatch, tmp_path, poll_state, expected_calls
+) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.touch()
+    phase = {"complete": False}
+    calls = []
+    google_task = {"route": target.GOOGLE_ROUTE, "state": "RUNNING", "task_id": "g"}
+    openrouter_task = {
+        "route": target.OPENROUTER_ROUTE,
+        "state": "PENDING",
+        "task_id": "o",
+    }
+
+    def tasks(_ledger):
+        if phase["complete"]:
+            return [
+                {**google_task, "state": "SUCCEEDED"},
+                {**openrouter_task, "state": "SUCCEEDED"},
+            ]
+        return [google_task, openrouter_task]
+
+    def poll_google(**_kwargs):
+        calls.append("poll-google")
+        if poll_state == "SUCCEEDED":
+            phase["complete"] = True
+        return {**google_task, "state": poll_state}
+
+    def run_openrouter(**_kwargs):
+        calls.append("run-openrouter")
+        phase["complete"] = True
+        return {**openrouter_task, "state": "SUCCEEDED"}
+
+    monkeypatch.setattr(
+        target,
+        "_plan",
+        lambda _path: {"corpus_plan_id": "plan-1", "policy": {}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "max_task_attempts": 3},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", tasks)
+    monkeypatch.setattr(target, "_poll_google", poll_google)
+    monkeypatch.setattr(target, "_run_openrouter", run_openrouter)
+    monkeypatch.setattr(target, "_finalize_google_manifests", lambda **_kwargs: [])
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {})
+
+    result = target.run_corpus(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "google-keys",
+            google_key_slot=1,
+            google_poll_interval_seconds=0,
+            google_watch_max_seconds=60,
+            ledger=ledger,
+            max_active_google=1,
+            max_fallback_attempts=2,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=60,
+            source_root=tmp_path / "source",
+        )
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == expected_calls
 
 
 def test_google_retry_exhaustion_moves_to_typed_fallback(monkeypatch, tmp_path) -> None:

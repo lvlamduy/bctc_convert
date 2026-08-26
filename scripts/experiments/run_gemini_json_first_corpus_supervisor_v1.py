@@ -634,6 +634,22 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if task["route"] == OPENROUTER_ROUTE
             and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
         ]
+        if active_google:
+            polled = _poll_google(
+                task=active_google[0],
+                ledger=args.ledger,
+                database=args.database,
+                artifact_root=args.artifact_root,
+                google_key_file=args.google_key_file,
+                provider_timeout_seconds=args.provider_timeout_seconds,
+                max_attempts=summary["max_task_attempts"],
+            )
+            if polled["state"] != "RUNNING":
+                # Refill the newly free Google slot before starting a document call.
+                continue
+            if not openrouter:
+                time.sleep(args.google_poll_interval_seconds)
+                continue
         if openrouter:
             _run_openrouter(
                 task=openrouter[0],
@@ -646,19 +662,6 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
-            continue
-        if active_google:
-            polled = _poll_google(
-                task=active_google[0],
-                ledger=args.ledger,
-                database=args.database,
-                artifact_root=args.artifact_root,
-                google_key_file=args.google_key_file,
-                provider_timeout_seconds=args.provider_timeout_seconds,
-                max_attempts=summary["max_task_attempts"],
-            )
-            if polled["state"] == "RUNNING":
-                time.sleep(args.google_poll_interval_seconds)
             continue
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("scheduler has no runnable task")
 
