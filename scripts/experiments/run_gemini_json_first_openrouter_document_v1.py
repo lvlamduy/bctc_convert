@@ -1,0 +1,464 @@
+#!/usr/bin/env python3
+"""Extract one complete PDF through bounded parallel OpenRouter Vertex Flex calls.
+
+The provider requests run concurrently, but every immutable result is validated
+and appended to the shared SQLite store by the parent thread.  A rerun consults
+the exact image/prompt/model cache and calls the provider only for missing pages.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from hashlib import sha256
+from pathlib import Path
+from typing import Any
+
+import fitz
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
+    build_financial_page_json_prompt_v1,
+    count_financial_page_content_v1,
+    decode_financial_page_json_text_v1,
+    financial_page_json_response_schema_v1,
+)
+from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    GOOGLE_MODEL,
+    OPENROUTER_SERVICE_TIER,
+    GeminiJsonFirstProviderV1Error,
+    ProviderResultV1,
+    call_gemini_json_first_v1,
+    load_openrouter_api_key_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
+from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    build_financial_document_manifest_v1,
+    extraction_cache_key_v1,
+    ingest_financial_page_extraction_v1,
+    initialize_gemini_financial_page_store_v1,
+    lookup_cached_page_json_v1,
+    usage_summary_v1,
+)
+
+OPENROUTER_SELECTED_PROVIDER = "Google"
+
+
+class RunGeminiJsonFirstOpenRouterDocumentV1Error(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class _RenderedPage:
+    image: bytes
+    page: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class _PageOutcome:
+    physical_page: int
+    page: dict[str, Any]
+    cached_json: dict[str, Any] | None = None
+    provider_result: ProviderResultV1 | None = None
+    provider_error: GeminiJsonFirstProviderV1Error | None = None
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pdf", type=Path, required=True)
+    parser.add_argument("--database", type=Path, required=True)
+    parser.add_argument("--artifact-dir", type=Path, required=True)
+    parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
+    parser.add_argument("--workers", type=int, default=5)
+    parser.add_argument(
+        "--prompt-variant",
+        choices=("simple", "compact", "balanced"),
+        default="simple",
+    )
+    parser.add_argument(
+        "--output-contract-mode",
+        choices=("json-schema", "prompt-json"),
+        default="json-schema",
+    )
+    parser.add_argument(
+        "--openrouter-key-file",
+        type=Path,
+        default=ROOT / "docs/experiments/openrouter",
+    )
+    parser.add_argument("--timeout-seconds", type=int, default=900)
+    parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--retry-delay-seconds", type=float, default=5.0)
+    return parser
+
+
+def _write_new(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o444)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+
+def _write_or_verify(path: Path, payload: bytes) -> None:
+    if path.exists():
+        if path.is_symlink() or not path.is_file() or path.read_bytes() != payload:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                f"resume artifact differs from its immutable content: {path.name}"
+            )
+        return
+    _write_new(path, payload)
+
+
+def _next_attempt_dir(root: Path, physical_page: int) -> Path:
+    page_root = root / f"page-{physical_page:05d}"
+    page_root.mkdir(parents=True, exist_ok=True)
+    for ordinal in range(1, 10_000):
+        candidate = page_root / f"attempt-{ordinal:04d}"
+        try:
+            candidate.mkdir(mode=0o700)
+        except FileExistsError:
+            continue
+        return candidate
+    raise RunGeminiJsonFirstOpenRouterDocumentV1Error("page attempt frontier is exhausted")
+
+
+def _document(pdf: Path) -> tuple[dict[str, Any], int]:
+    if pdf.is_symlink() or not pdf.is_file():
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("PDF must be one regular file")
+    source = pdf.read_bytes()
+    if not source:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("PDF is empty")
+    with fitz.open(stream=source, filetype="pdf") as document:
+        page_count = document.page_count
+    if page_count <= 0:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("PDF has no pages")
+    return (
+        {
+            "source_logical_name": pdf.name,
+            "source_sha256": sha256(source).hexdigest(),
+            "source_size_bytes": len(source),
+        },
+        page_count,
+    )
+
+
+def _render_page(pdf: Path, physical_page: int, dpi: int) -> _RenderedPage:
+    with fitz.open(pdf) as document:
+        pixmap = document.load_page(physical_page - 1).get_pixmap(dpi=dpi, alpha=False)
+        image = pixmap.tobytes("png")
+        width = pixmap.width
+        height = pixmap.height
+    return _RenderedPage(
+        image=image,
+        page={
+            "physical_page": physical_page,
+            "image_sha256": sha256(image).hexdigest(),
+            "image_size_bytes": len(image),
+            "pixel_width": width,
+            "pixel_height": height,
+            "render_dpi": dpi,
+            "media_type": "image/png",
+        },
+    )
+
+
+def _extract_page(
+    *,
+    pdf: Path,
+    physical_page: int,
+    dpi: int,
+    database: Path,
+    prompt: str,
+    prompt_variant: str,
+    prompt_sha256: str,
+    schema: dict[str, Any],
+    response_schema_sha256: str,
+    output_contract_mode: str,
+    api_key: str,
+    timeout_seconds: int,
+    retries: int,
+    retry_delay_seconds: float,
+    provider_call: Callable[..., ProviderResultV1],
+) -> _PageOutcome:
+    rendered = _render_page(pdf, physical_page, dpi)
+    cache_key = extraction_cache_key_v1(
+        image_sha256=rendered.page["image_sha256"],
+        prompt_sha256=prompt_sha256,
+        response_schema_sha256=response_schema_sha256,
+        requested_model=GOOGLE_MODEL,
+        requested_service_tier=OPENROUTER_SERVICE_TIER,
+        thinking_level="low",
+        prompt_variant=prompt_variant,
+        output_contract_mode=output_contract_mode,
+    )
+    cached = lookup_cached_page_json_v1(database, cache_key)
+    if cached is not None:
+        return _PageOutcome(physical_page=physical_page, page=rendered.page, cached_json=cached)
+    try:
+        result = provider_call(
+            google_api_keys=None,
+            openrouter_api_key=api_key,
+            image=rendered.image,
+            media_type="image/png",
+            prompt=prompt,
+            response_schema=schema,
+            output_contract_mode=output_contract_mode,
+            execution_policy="OPENROUTER_PILOT",
+            timeout_seconds=timeout_seconds,
+            openrouter_retries=retries,
+            retry_delay_seconds=retry_delay_seconds,
+        )
+    except GeminiJsonFirstProviderV1Error as exc:
+        return _PageOutcome(
+            physical_page=physical_page,
+            page=rendered.page,
+            provider_error=exc,
+        )
+    return _PageOutcome(
+        physical_page=physical_page,
+        page=rendered.page,
+        provider_result=result,
+    )
+
+
+def run_openrouter_document_v1(
+    *,
+    pdf: Path,
+    database: Path,
+    artifact_dir: Path,
+    api_key: str,
+    dpi: int = 300,
+    workers: int = 5,
+    prompt_variant: str = "simple",
+    output_contract_mode: str = "JSON_SCHEMA",
+    timeout_seconds: int = 900,
+    retries: int = 2,
+    retry_delay_seconds: float = 5.0,
+    provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
+) -> dict[str, Any]:
+    """Run or resume one complete document without concurrent SQLite writers."""
+
+    if dpi not in {200, 300} or type(workers) is not int or not 1 <= workers <= 32:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("DPI or worker count is invalid")
+    if output_contract_mode not in {"JSON_SCHEMA", "PROMPT_JSON"}:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
+    document, page_count = _document(pdf)
+    prompt = build_financial_page_json_prompt_v1(
+        variant=prompt_variant,
+        include_contract_template=output_contract_mode == "PROMPT_JSON",
+    )
+    schema = financial_page_json_response_schema_v1()
+    prompt_bytes = prompt.encode("utf-8")
+    schema_bytes = canonical_json_bytes_v1(schema)
+    prompt_sha = sha256(prompt_bytes).hexdigest()
+    schema_sha = canonical_json_sha256_v1(schema)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    _write_or_verify(artifact_dir / "prompt.txt", prompt_bytes)
+    _write_or_verify(artifact_dir / "response-schema.json", schema_bytes)
+    contract = {
+        "document": document,
+        "dpi": dpi,
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_DOCUMENT_V1",
+        "output_contract_mode": output_contract_mode,
+        "page_count": page_count,
+        "prompt_sha256": prompt_sha,
+        "prompt_variant": prompt_variant,
+        "requested_model": GOOGLE_MODEL,
+        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        "response_schema_sha256": schema_sha,
+        "selected_provider": OPENROUTER_SELECTED_PROVIDER,
+    }
+    contract["document_run_id"] = "gjfporv1:document:" + canonical_json_sha256_v1(contract)
+    _write_or_verify(artifact_dir / "document-contract.json", canonical_json_bytes_v1(contract))
+    if not database.exists():
+        initialize_gemini_financial_page_store_v1(database)
+
+    outcomes: dict[int, _PageOutcome] = {}
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gemini-page") as executor:
+        futures = {
+            executor.submit(
+                _extract_page,
+                pdf=pdf,
+                physical_page=physical_page,
+                dpi=dpi,
+                database=database,
+                prompt=prompt,
+                prompt_variant=prompt_variant,
+                prompt_sha256=prompt_sha,
+                schema=schema,
+                response_schema_sha256=schema_sha,
+                output_contract_mode=output_contract_mode,
+                api_key=api_key,
+                timeout_seconds=timeout_seconds,
+                retries=retries,
+                retry_delay_seconds=retry_delay_seconds,
+                provider_call=provider_call,
+            ): physical_page
+            for physical_page in range(1, page_count + 1)
+        }
+        for future in as_completed(futures):
+            outcome = future.result()
+            outcomes[outcome.physical_page] = outcome
+
+    failed_pages: list[int] = []
+    cached_pages: list[int] = []
+    ingested_pages: list[int] = []
+    for physical_page in range(1, page_count + 1):
+        outcome = outcomes[physical_page]
+        if outcome.cached_json is not None:
+            cached_pages.append(physical_page)
+            continue
+        attempt_dir = _next_attempt_dir(artifact_dir, physical_page)
+        if outcome.provider_error is not None:
+            error = outcome.provider_error
+            if error.raw_response_bytes is not None:
+                raw = error.raw_response_bytes
+                _write_new(
+                    attempt_dir / "raw-response-before-validation.json",
+                    raw if raw.endswith(b"\n") else raw + b"\n",
+                )
+            _write_new(
+                attempt_dir / "failure.json",
+                canonical_json_bytes_v1(
+                    {
+                        "attempts": list(error.attempts),
+                        "error_type": type(error).__name__,
+                        "page": outcome.page,
+                    }
+                ),
+            )
+            failed_pages.append(physical_page)
+            continue
+        result = outcome.provider_result
+        if result is None:
+            raise AssertionError("page outcome has no terminal disposition")
+        raw = result.raw_response_bytes
+        raw_bytes = raw if raw.endswith(b"\n") else raw + b"\n"
+        _write_new(attempt_dir / "raw-response.json", raw_bytes)
+        try:
+            page_json = decode_financial_page_json_text_v1(result.output_text)
+        except Exception as exc:
+            _write_new(
+                attempt_dir / "semantic-validation-failure.json",
+                canonical_json_bytes_v1(
+                    {
+                        "attempts": list(result.attempts),
+                        "error_type": type(exc).__name__,
+                        "page": outcome.page,
+                        "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                        "usage": result.usage,
+                    }
+                ),
+            )
+            failed_pages.append(physical_page)
+            continue
+        if result.provider_name != OPENROUTER_SELECTED_PROVIDER:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "OpenRouter selected provider identity drifted"
+            )
+        identities = ingest_financial_page_extraction_v1(
+            database,
+            document=document,
+            page=outcome.page,
+            prompt_variant=prompt_variant,
+            output_contract_mode=output_contract_mode,
+            prompt_sha256=prompt_sha,
+            response_schema_sha256=schema_sha,
+            requested_model=GOOGLE_MODEL,
+            requested_service_tier=OPENROUTER_SERVICE_TIER,
+            thinking_level="low",
+            provider_result=result,
+            page_json=page_json,
+        )
+        page_bytes = canonical_json_bytes_v1(page_json)
+        _write_new(attempt_dir / "page.json", page_bytes)
+        _write_new(
+            attempt_dir / "observation.json",
+            canonical_json_bytes_v1(
+                {
+                    "attempts": list(result.attempts),
+                    "content_counts": count_financial_page_content_v1(page_json),
+                    "database_identities": identities,
+                    "page": outcome.page,
+                    "page_json_sha256": sha256(page_bytes).hexdigest(),
+                    "provider_model": result.provider_model,
+                    "provider_name": result.provider_name,
+                    "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                    "service_tier": result.service_tier,
+                    "usage": result.usage,
+                }
+            ),
+        )
+        ingested_pages.append(physical_page)
+
+    manifest = None
+    if not failed_pages:
+        manifest = build_financial_document_manifest_v1(
+            database,
+            source_sha256=document["source_sha256"],
+            expected_physical_pages=range(1, page_count + 1),
+            prompt_sha256=prompt_sha,
+            response_schema_sha256=schema_sha,
+            requested_model=GOOGLE_MODEL,
+            requested_service_tier=OPENROUTER_SERVICE_TIER,
+            selected_provider=OPENROUTER_SELECTED_PROVIDER,
+        )
+        _write_or_verify(
+            artifact_dir / "document-manifest.json",
+            canonical_json_bytes_v1(manifest),
+        )
+    summary = {
+        "cached_pages": cached_pages,
+        "disposition": "SUCCEEDED" if not failed_pages else "NEEDS_RETRY",
+        "document_run_id": contract["document_run_id"],
+        "failed_pages": failed_pages,
+        "ingested_pages": ingested_pages,
+        "manifest_id": manifest["document_manifest_id"] if manifest is not None else None,
+        "page_count": page_count,
+        "usage": usage_summary_v1(database),
+    }
+    summary_bytes = canonical_json_bytes_v1(summary)
+    _write_or_verify(
+        artifact_dir / "run-receipts" / (sha256(summary_bytes).hexdigest() + ".json"),
+        summary_bytes,
+    )
+    return summary
+
+
+def main() -> int:
+    args = _parser().parse_args()
+    result = run_openrouter_document_v1(
+        pdf=args.pdf,
+        database=args.database,
+        artifact_dir=args.artifact_dir,
+        api_key=load_openrouter_api_key_v1(args.openrouter_key_file),
+        dpi=args.dpi,
+        workers=args.workers,
+        prompt_variant=args.prompt_variant,
+        output_contract_mode=args.output_contract_mode.replace("-", "_").upper(),
+        timeout_seconds=args.timeout_seconds,
+        retries=args.retries,
+        retry_delay_seconds=args.retry_delay_seconds,
+    )
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0 if result["disposition"] == "SUCCEEDED" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
