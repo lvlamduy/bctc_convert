@@ -62,6 +62,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timeout-seconds", type=int, default=240)
     parser.add_argument("--max-output-tokens", type=int, default=8192)
+    parser.add_argument(
+        "--response-mode",
+        choices=("json_schema", "json_object"),
+        default="json_schema",
+    )
+    parser.add_argument("--omit-reasoning", action="store_true")
+    parser.add_argument("--reasoning-effort", choices=("low", "medium", "high"))
+    parser.add_argument("--omit-temperature", action="store_true")
+    parser.add_argument("--seed", type=int)
+    parser.add_argument(
+        "--data-collection",
+        choices=("allow", "deny"),
+        default="deny",
+    )
     return parser
 
 
@@ -129,9 +143,27 @@ def _call(
     response_schema: dict[str, Any],
     provider: str,
     quantization: str | None,
+    response_mode: str,
+    omit_reasoning: bool,
+    reasoning_effort: str | None,
+    omit_temperature: bool,
+    seed: int | None,
+    data_collection: str,
     max_output_tokens: int,
     timeout_seconds: int,
 ) -> tuple[bytes, float]:
+    response_format: dict[str, Any]
+    if response_mode == "json_schema":
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "hierarchical_note_tables",
+                "strict": True,
+                "schema": response_schema,
+            },
+        }
+    else:
+        response_format = {"type": "json_object"}
     body = {
         "model": model,
         "messages": [
@@ -152,24 +184,23 @@ def _call(
             }
         ],
         "max_tokens": max_output_tokens,
-        "temperature": 0,
-        "reasoning": {"enabled": False},
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "hierarchical_note_tables",
-                "strict": True,
-                "schema": response_schema,
-            },
-        },
+        "response_format": response_format,
         "provider": {
             "allow_fallbacks": False,
-            "data_collection": "deny",
+            "data_collection": data_collection,
             "only": [provider],
             "require_parameters": True,
             **({"quantizations": [quantization]} if quantization is not None else {}),
         },
     }
+    if not omit_temperature:
+        body["temperature"] = 0
+    if seed is not None:
+        body["seed"] = seed
+    if reasoning_effort is not None:
+        body["reasoning"] = {"effort": reasoning_effort}
+    elif not omit_reasoning:
+        body["reasoning"] = {"enabled": False}
     request = urllib.request.Request(
         "https://openrouter.ai/api/v1/chat/completions",
         data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
@@ -249,6 +280,10 @@ def _write(path: Path, payload: bytes) -> None:
 
 def main() -> int:
     args = _parser().parse_args()
+    if args.omit_reasoning and args.reasoning_effort is not None:
+        raise OpenRouterHierarchicalNoteJsonExperimentError(
+            "--omit-reasoning and --reasoning-effort are mutually exclusive"
+        )
     image, media_type, source = _image(args)
     prompt = build_hierarchical_note_json_prompt_v1()
     prompt_bytes = prompt.encode("utf-8")
@@ -265,6 +300,12 @@ def main() -> int:
         response_schema=response_schema,
         provider=args.provider,
         quantization=args.quantization,
+        response_mode=args.response_mode,
+        omit_reasoning=args.omit_reasoning,
+        reasoning_effort=args.reasoning_effort,
+        omit_temperature=args.omit_temperature,
+        seed=args.seed,
+        data_collection=args.data_collection,
         max_output_tokens=args.max_output_tokens,
         timeout_seconds=args.timeout_seconds,
     )
@@ -288,16 +329,31 @@ def main() -> int:
                 "sha256": sha256(image).hexdigest(),
                 "size_bytes": len(image),
             },
+            "generation_policy": {
+                "max_output_tokens": args.max_output_tokens,
+                "reasoning": (
+                    "OMITTED"
+                    if args.omit_reasoning
+                    else (
+                        "DISABLED"
+                        if args.reasoning_effort is None
+                        else "EFFORT_" + args.reasoning_effort.upper()
+                    )
+                ),
+                "temperature": None if args.omit_temperature else 0,
+                "seed": args.seed,
+            },
             "model": args.model,
             "prompt_sha256": sha256(prompt_bytes).hexdigest(),
             "provider_policy": {
                 "allow_fallbacks": False,
-                "data_collection": "deny",
+                "data_collection": args.data_collection,
                 "only": [args.provider],
                 "quantizations": ([args.quantization] if args.quantization is not None else None),
                 "require_parameters": True,
             },
             "response_schema_sha256": canonical_json_sha256_v1(response_schema),
+            "response_mode": args.response_mode,
             "source": source,
         },
         "model_output": output,
