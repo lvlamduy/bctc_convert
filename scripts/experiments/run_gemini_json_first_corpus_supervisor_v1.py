@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
+    build_financial_page_json_prompt_v1,
+    financial_page_json_response_schema_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
@@ -31,11 +35,20 @@ from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (  # noqa: E402
     GOOGLE_ROUTE,
     OPENROUTER_ROUTE,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
+from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    GOOGLE_MODEL,
+    GOOGLE_STANDARD_SERVICE_TIER,
+    OPENROUTER_SERVICE_TIER,
+)
+from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     batch_failed_page_requests_v1,
     batch_finalized_requests_v1,
     batch_progress_v1,
+    build_financial_document_manifest_v1,
     usage_summary_v1,
 )
 
@@ -71,6 +84,15 @@ def _parser() -> argparse.ArgumentParser:
     repair.add_argument("--artifact-root", type=Path, required=True)
     repair.add_argument("--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt")
     repair.add_argument("--google-key-slot", type=int, default=2)
+
+    repair_items = commands.add_parser("repair-openrouter-items")
+    repair_items.add_argument("--plan", type=Path, required=True)
+    repair_items.add_argument("--ledger", type=Path, required=True)
+    repair_items.add_argument("--task-id", required=True)
+    repair_items.add_argument("--source-root", type=Path, required=True)
+    repair_items.add_argument("--database", type=Path, required=True)
+    repair_items.add_argument("--artifact-root", type=Path, required=True)
+    repair_items.add_argument("--physical-page", type=int, action="append", required=True)
 
     repair_google = commands.add_parser("repair-openrouter-google")
     repair_google.add_argument("--plan", type=Path, required=True)
@@ -904,6 +926,110 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def repair_openrouter_items_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Seal one failed document from explicit cached item-only page versions.
+
+    No provider call is made here.  The V3 manifest binds the default prompt
+    hash on every unaffected page and the distinct ``items`` prompt hash only
+    on the caller-declared recitation frontier.
+    """
+
+    _plan(args.plan)
+    tasks = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    matches = [task for task in tasks if task["task_id"] == args.task_id]
+    if len(matches) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair requires one exact failed OpenRouter task"
+        )
+    task = matches[0]
+    _source(task, args.source_root)
+    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    repair_pages = sorted(set(args.physical_page))
+    if (
+        len(repair_pages) != len(args.physical_page)
+        or any(page not in expected_pages for page in repair_pages)
+        or expected_pages != list(range(1, task["document_page_count"] + 1))
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair page frontier is duplicate, out of range, or not a full document"
+        )
+
+    summary = corpus_ledger_summary_v1(args.ledger)
+    default_variant = summary["prompt_variant"]
+    if default_variant == "items":
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair must differ from the corpus default prompt"
+        )
+    default_prompt_sha = sha256(
+        build_financial_page_json_prompt_v1(variant=default_variant).encode("utf-8")
+    ).hexdigest()
+    items_prompt_sha = sha256(
+        build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+    ).hexdigest()
+    page_prompt_sha256s = {
+        page: items_prompt_sha if page in repair_pages else default_prompt_sha
+        for page in expected_pages
+    }
+    schema_sha = canonical_json_sha256_v1(financial_page_json_response_schema_v1())
+    manifest = build_financial_document_manifest_v1(
+        args.database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=expected_pages,
+        prompt_sha256=page_prompt_sha256s,
+        response_schema_sha256=schema_sha,
+        requested_model=GOOGLE_MODEL,
+        allowed_gateway_service_tiers=[
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+            },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+    )
+    task_root = _task_root(task, args.artifact_root)
+    _write_or_verify(
+        task_root / "mixed-prompt-document-manifest.json",
+        canonical_json_bytes_v1(manifest),
+    )
+    result = {
+        "alternate_prompt_pages": repair_pages,
+        "alternate_prompt_variant": "items",
+        "cached_pages": expected_pages,
+        "disposition": "SUCCEEDED",
+        "failed_pages": [],
+        "ingested_pages": [],
+        "manifest_id": manifest["document_manifest_id"],
+        "offline_missing_pages": [],
+        "page_count": len(expected_pages),
+        "semantic_failed_pages": [],
+        "usage": usage_summary_v1(args.database),
+    }
+    sealed = seal_google_fallback_corpus_task_v1(
+        args.ledger,
+        task_id=task["task_id"],
+        receipt={
+            "document_manifest_id": manifest["document_manifest_id"],
+            "fallback_gateway": "GOOGLE_GEMINI_API",
+            "fallback_pages": repair_pages,
+            "result": result,
+        },
+    )
+    return {
+        "disposition": "SUCCEEDED",
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "repaired_task": {
+            "attempt_count": sealed["attempt_count"],
+            "state": sealed["state"],
+            "task_id": sealed["task_id"],
+        },
+        "result": result,
+    }
+
+
 def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
     """Complete provider-failed OpenRouter pages through direct Google standard."""
 
@@ -1035,6 +1161,8 @@ def main() -> int:
         result = corpus_ledger_summary_v1(args.ledger)
     elif args.command == "repair-openrouter":
         result = repair_openrouter_task(args)
+    elif args.command == "repair-openrouter-items":
+        result = repair_openrouter_items_task(args)
     elif args.command == "repair-openrouter-google":
         result = repair_openrouter_google_task(args)
     else:

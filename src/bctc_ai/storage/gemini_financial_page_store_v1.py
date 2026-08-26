@@ -1129,7 +1129,7 @@ def build_financial_document_manifest_v1(
     source_sha256: str,
     source_logical_name: str | None = None,
     expected_physical_pages: Sequence[int],
-    prompt_sha256: str,
+    prompt_sha256: str | Mapping[int, str],
     response_schema_sha256: str,
     requested_model: str,
     requested_service_tier: str | None = None,
@@ -1161,12 +1161,37 @@ def build_financial_document_manifest_v1(
         or pages != sorted(set(pages))
     ):
         raise _error("document manifest page frontier is invalid")
+    page_prompt_sha256s: dict[int, str] | None = None
+    if type(prompt_sha256) is str:
+        if not prompt_sha256:
+            raise _error("document manifest extraction contract is invalid")
+        prompt_contract: dict[str, Any] = {"prompt_sha256": prompt_sha256}
+    elif type(prompt_sha256) is dict:
+        if (
+            set(prompt_sha256) != set(pages)
+            or any(type(key) is not int for key in prompt_sha256)
+            or any(type(value) is not str or not value for value in prompt_sha256.values())
+        ):
+            raise _error("document manifest page prompt frontier is invalid")
+        page_prompt_sha256s = dict(sorted(prompt_sha256.items()))
+        prompt_contract = {
+            "page_prompt_sha256s": [
+                {"physical_page": page, "prompt_sha256": prompt}
+                for page, prompt in page_prompt_sha256s.items()
+            ]
+        }
+    else:
+        raise _error("document manifest extraction contract is invalid")
     common_contract = {
-        "prompt_sha256": prompt_sha256,
+        **prompt_contract,
         "response_schema_sha256": response_schema_sha256,
         "requested_model": requested_model,
     }
-    if any(type(value) is not str or not value for value in common_contract.values()):
+    if any(
+        type(value) is not str or not value
+        for key, value in common_contract.items()
+        if key != "page_prompt_sha256s"
+    ):
         raise _error("document manifest extraction contract is invalid")
     if allowed_gateway_service_tiers is None:
         if (
@@ -1221,12 +1246,15 @@ def build_financial_document_manifest_v1(
         if len(document_rows) != 1:
             raise _error("document manifest source is not unique in the store")
         document = document_rows[0]
+        prompt_clause = "AND r.prompt_sha256=?" if page_prompt_sha256s is None else ""
+        prompt_parameters = (prompt_sha256,) if page_prompt_sha256s is None else ()
         records = connection.execute(
             f"""
             SELECT p.physical_page, p.page_id, p.image_sha256,
                    p.image_size_bytes, p.pixel_width, p.pixel_height,
                    p.render_dpi, p.media_type,
                    r.extraction_run_id, r.selected_model,
+                   r.prompt_sha256,
                    r.requested_service_tier, r.selected_provider,
                    r.selected_service_tier, r.response_id_sha256,
                    r.input_tokens, r.output_tokens, r.thought_tokens,
@@ -1251,7 +1279,7 @@ def build_financial_document_manifest_v1(
             JOIN page_json_version AS j USING (extraction_run_id)
             WHERE p.document_id=?
               AND p.physical_page IN ({placeholders})
-              AND r.prompt_sha256=?
+              {prompt_clause}
               AND r.response_schema_sha256=?
               AND r.requested_model=?
             ORDER BY p.physical_page
@@ -1259,11 +1287,17 @@ def build_financial_document_manifest_v1(
             (
                 document["document_id"],
                 *pages,
-                prompt_sha256,
+                *prompt_parameters,
                 response_schema_sha256,
                 requested_model,
             ),
         ).fetchall()
+    if page_prompt_sha256s is not None:
+        records = [
+            record
+            for record in records
+            if record["prompt_sha256"] == page_prompt_sha256s[record["physical_page"]]
+        ]
     if allowed_routes is None:
         records = [
             record
@@ -1341,6 +1375,8 @@ def build_financial_document_manifest_v1(
                 "requested_service_tier": record["requested_service_tier"],
                 "selected_provider": record["selected_provider"],
             }
+        if page_prompt_sha256s is not None:
+            page_record["prompt_sha256"] = record["prompt_sha256"]
         page_records.append(page_record)
     material = {
         "document": {
@@ -1351,7 +1387,9 @@ def build_financial_document_manifest_v1(
         },
         "extraction_contract": extraction_contract,
         "format_version": (
-            "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1"
+            "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3"
+            if page_prompt_sha256s is not None
+            else "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1"
             if allowed_routes is None
             else "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
         ),

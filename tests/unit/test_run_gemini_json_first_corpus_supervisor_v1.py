@@ -695,3 +695,70 @@ def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -
         match="complete page frontier",
     ):
         target.repair_openrouter_task(args)
+
+
+def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "BID" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "relative_path": "BID/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    captured = []
+    sealed = []
+    monkeypatch.setattr(target, "_plan", lambda _path: {"policy": {}})
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: [task])
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple", "documents": 1},
+    )
+
+    def manifest(_database, **kwargs):
+        captured.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
+            "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+        }
+
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {"run_count": 3})
+    monkeypatch.setattr(
+        target,
+        "seal_google_fallback_corpus_task_v1",
+        lambda _ledger, **kwargs: sealed.append(kwargs) or {**task, "state": "SUCCEEDED"},
+    )
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        physical_page=[2],
+        plan=tmp_path / "plan.json",
+        source_root=source_root,
+        task_id="task-1",
+    )
+    result = target.repair_openrouter_items_task(args)
+    prompts = captured[0]["prompt_sha256"]
+    assert list(prompts) == [1, 2, 3]
+    assert prompts[1] == prompts[3]
+    assert prompts[2] != prompts[1]
+    assert result["result"]["alternate_prompt_pages"] == [2]
+    assert sealed[0]["receipt"]["fallback_pages"] == [2]
+    assert (tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json").is_file()
+
+    args.physical_page = [2, 2]
+    with pytest.raises(target.RunGeminiJsonFirstCorpusSupervisorV1Error, match="duplicate"):
+        target.repair_openrouter_items_task(args)

@@ -83,6 +83,8 @@ def _ingest(
     image_sha256: str = "c" * 64,
     source_logical_name: str = "report.pdf",
     source_sha256: str = "b" * 64,
+    prompt_sha256: str = "d" * 64,
+    prompt_variant: str = "compact",
     provider_result: ProviderResultV1 | None = None,
 ) -> dict[str, str]:
     return ingest_financial_page_extraction_v1(
@@ -101,9 +103,9 @@ def _ingest(
             "render_dpi": 200,
             "media_type": "image/png",
         },
-        prompt_variant="compact",
+        prompt_variant=prompt_variant,
         output_contract_mode="JSON_SCHEMA",
-        prompt_sha256="d" * 64,
+        prompt_sha256=prompt_sha256,
         response_schema_sha256="e" * 64,
         requested_model="gemini-3.7-flash",
         requested_service_tier="flex",
@@ -419,4 +421,67 @@ def test_document_manifest_can_bind_one_unique_route_per_page_for_typed_fallback
             response_schema_sha256="e" * 64,
             requested_model="gemini-3.7-flash",
             allowed_gateway_service_tiers=routes,
+        )
+
+
+def test_document_manifest_v3_binds_one_explicit_prompt_hash_per_page(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    simple = _ingest(path, physical_page=7, image_sha256="c" * 64)
+    items = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="f" * 64,
+        prompt_sha256="9" * 64,
+        prompt_variant="items",
+    )
+    prompt_frontier = {7: "d" * 64, 8: "9" * 64}
+    manifest = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        expected_physical_pages=[7, 8],
+        prompt_sha256=prompt_frontier,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        selected_provider="GOOGLE_GEMINI_API",
+    )
+    assert manifest["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3"
+    assert manifest["extraction_contract"]["page_prompt_sha256s"] == [
+        {"physical_page": 7, "prompt_sha256": "d" * 64},
+        {"physical_page": 8, "prompt_sha256": "9" * 64},
+    ]
+    assert [page["page_json_version_id"] for page in manifest["pages"]] == [
+        simple["page_json_version_id"],
+        items["page_json_version_id"],
+    ]
+    assert [page["prompt_sha256"] for page in manifest["pages"]] == [
+        "d" * 64,
+        "9" * 64,
+    ]
+
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="page prompt frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            prompt_sha256={7: "d" * 64},
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            prompt_sha256={7: "9" * 64, 8: "d" * 64},
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
         )
