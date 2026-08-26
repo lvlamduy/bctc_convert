@@ -560,6 +560,7 @@ def seal_current_document_revalidated_corpus_tasks_v1(
     status_counts = checked["status_counts"]
     allowed_statuses = {
         "FINANCIAL_NOTE_CONTENT",
+        "MIXED_FINANCIAL_CONTENT",
         "NO_RELEVANT_FINANCIAL_CONTENT",
         "PRIMARY_FINANCIAL_STATEMENT",
     }

@@ -328,7 +328,10 @@ def test_failed_chunks_can_be_sealed_by_complete_current_document_revalidation(t
         ],
         "repaired_task_ids": [failed["task_id"]],
         "revalidated_pages": pages,
-        "status_counts": {"FINANCIAL_NOTE_CONTENT": len(pages)},
+        "status_counts": {
+            "FINANCIAL_NOTE_CONTENT": len(pages) - 1,
+            "MIXED_FINANCIAL_CONTENT": 1,
+        },
     }
     repaired = seal_current_document_revalidated_corpus_tasks_v1(
         ledger, task_id=failed["task_id"], receipt=receipt
