@@ -40,6 +40,7 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     call_gemini_json_first_v1,
     load_google_api_key_slots_v1,
     load_openrouter_api_key_v1,
+    replay_google_standard_provider_result_v1,
     replay_openrouter_provider_result_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
@@ -243,7 +244,24 @@ def _replay_prior_semantic_result_v1(
         raw = raw_path.read_bytes()
         if sha256(raw).hexdigest() != failure.get("raw_response_sha256"):
             raise RunGeminiJsonFirstOpenRouterDocumentV1Error("semantic replay source hash drifted")
-        result = replay_openrouter_provider_result_v1(raw, attempts=tuple(attempts))
+        try:
+            envelope = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay source is not JSON"
+            ) from exc
+        if type(envelope) is not dict:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay source is not one JSON object"
+            )
+        if "choices" in envelope:
+            result = replay_openrouter_provider_result_v1(raw, attempts=tuple(attempts))
+        elif "candidates" in envelope:
+            result = replay_google_standard_provider_result_v1(raw, attempts=tuple(attempts))
+        else:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay provider envelope is unknown"
+            )
         try:
             decode_financial_page_json_text_v1(result.output_text)
         except Exception:

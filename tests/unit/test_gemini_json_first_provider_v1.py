@@ -9,6 +9,7 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     GeminiJsonFirstProviderV1Error,
     call_gemini_json_first_v1,
     load_google_api_key_slots_v1,
+    replay_google_standard_provider_result_v1,
 )
 
 
@@ -112,6 +113,36 @@ def _openrouter_zero_usage_error() -> bytes:
 
 def _openrouter_error_envelope() -> bytes:
     return b'{"error":{"message":"Provider returned error","code":429}}'
+
+
+def test_google_standard_result_replays_without_a_provider_call() -> None:
+    attempts = (
+        {
+            "attempt_ordinal": 1,
+            "credential_slot": "GOOGLE_SLOT_2",
+            "elapsed_seconds": "1.000",
+            "http_status": 200,
+            "outcome": "COMPLETED",
+            "provider": "GOOGLE_GEMINI_API",
+            "usage": {},
+        },
+    )
+    result = replay_google_standard_provider_result_v1(
+        _google_generate_content_response(),
+        attempts=attempts,
+    )
+    assert result.provider_name == "GOOGLE_GEMINI_API"
+    assert result.service_tier == provider.GOOGLE_STANDARD_SERVICE_TIER
+    assert result.output_text == '{"status":"NO_RELEVANT_FINANCIAL_CONTENT","sections":[]}'
+    assert result.usage["input_tokens"] == 5000
+    assert result.attempts == attempts
+
+    bad = ({**attempts[0], "provider": "OPENROUTER"},)
+    with pytest.raises(GeminiJsonFirstProviderV1Error, match="attempts are invalid"):
+        replay_google_standard_provider_result_v1(
+            _google_generate_content_response(),
+            attempts=bad,
+        )
 
 
 def test_google_keys_require_protected_file_and_preserve_file_order(tmp_path) -> None:

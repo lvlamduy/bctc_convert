@@ -112,6 +112,39 @@ def replay_openrouter_provider_result_v1(
     )
 
 
+def replay_google_standard_provider_result_v1(
+    raw_response_bytes: bytes,
+    *,
+    attempts: tuple[dict[str, Any], ...],
+) -> ProviderResultV1:
+    """Rebuild one already billed direct-Google standard result without a call."""
+
+    if type(raw_response_bytes) is not bytes or not raw_response_bytes:
+        raise GeminiJsonFirstProviderV1Error("Google replay response bytes are absent")
+    if (
+        type(attempts) is not tuple
+        or not attempts
+        or any(type(attempt) is not dict for attempt in attempts)
+        or any(attempt.get("provider") != "GOOGLE_GEMINI_API" for attempt in attempts)
+        or attempts[-1].get("outcome") != "COMPLETED"
+    ):
+        raise GeminiJsonFirstProviderV1Error("Google replay attempts are invalid")
+    text, response_id, model, usage = _google_generate_content_response_v1(
+        raw_response_bytes,
+        service_tier=GOOGLE_STANDARD_SERVICE_TIER,
+    )
+    return ProviderResultV1(
+        output_text=text,
+        raw_response_bytes=raw_response_bytes,
+        provider_name="GOOGLE_GEMINI_API",
+        provider_model=model,
+        service_tier=GOOGLE_STANDARD_SERVICE_TIER,
+        attempts=tuple(canonical_clone_v1(list(attempts))),
+        usage=usage,
+        response_id_sha256=sha256(response_id.encode("utf-8")).hexdigest(),
+    )
+
+
 def _load_unique_keys(path: Path, pattern: re.Pattern[str], label: str) -> list[str]:
     if not path.is_file():
         raise GeminiJsonFirstProviderV1Error(f"{label} credential file is absent")
