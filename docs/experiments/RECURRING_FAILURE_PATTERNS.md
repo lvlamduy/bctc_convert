@@ -91,7 +91,14 @@ Trạng thái:
   còn nhìn thấy giữ nguyên và kết quả bằng đúng một năm balance-period đã
   authenticated; receipt giữ raw VietOCR, reader surface/score, bbox/source-line
   và public replay. Fragment rời, năm không thuộc context, digit xung đột,
-  undamaged disagreement hoặc low-confidence toàn bộ vẫn unresolved.
+  undamaged disagreement hoặc low-confidence toàn bộ vẫn unresolved. Một cột
+  giả ở extreme margin chỉ được project bỏ khi toàn bộ cột là đúng một chuỗi
+  fragment dọc ngoài financial lanes, mọi sample bị bỏ có pixel/component/crop
+  và peer-chain receipt authenticated, và projection làm kín lại đúng một grid
+  chung. Semantic fence phải replay đúng `source_line_indices` rời rạc của match,
+  không được biến khoảng từ dòng đầu đến dòng cuối thành label rồi nuốt các mảnh
+  dấu xen giữa; thiếu/mixed/duplicate peer hoặc rescue chưa xác thực thì rollback
+  nguyên axis.
 - **Status:** `MITIGATED`.
 
 ## RFP-003 — Continuation or repeated period blocks are joined by adjacency
@@ -117,7 +124,13 @@ Trạng thái:
   snapshot `1..N`; không được lấy topology cache dựng chỉ từ các line có OCR vì
   cache đó có thể biến trục `1,2,3` thành `1,3`. Regression bắt buộc gồm một
   zero-line page ở giữa và topology phải được rebuild/replay từ chính snapshot
-  đầy đủ đó.
+  đầy đủ đó. Khi outer parent một trang và explicit `(tiếp theo)` parent ở trang
+  kế tạo hai READY candidate, selector chỉ chọn nearest continuation nếu hai
+  region có cùng exact end boundary và khớp tuyệt đối toàn bộ child occurrence,
+  source row/sample, period/unit, equation, coverage và population; root-owner ID
+  khác nhau do hai header được canonicalize duy nhất ở top-level structural
+  child. Bất kỳ lệch parent/child/boundary/axis hoặc có hai nearest candidate
+  ngang nhau đều giữ ambiguity.
 - **Status:** `MITIGATED`.
 
 ## RFP-004 — Parent, child, alternative view, or similar wording changes population
