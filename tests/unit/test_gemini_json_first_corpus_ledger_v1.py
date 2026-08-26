@@ -200,8 +200,10 @@ def test_failed_openrouter_task_can_only_be_sealed_by_complete_offline_revalidat
         receipt={"semantic_failed_pages": [1]},
     )
     result = {
+        "cached_pages": list(range(2, task["last_physical_page"] + 1)),
         "disposition": "SUCCEEDED",
         "failed_pages": [],
+        "ingested_pages": [1],
         "manifest_id": "gfdmv1:manifest:" + "3" * 64,
         "offline_missing_pages": [],
         "semantic_failed_pages": [],
@@ -213,6 +215,9 @@ def test_failed_openrouter_task_can_only_be_sealed_by_complete_offline_revalidat
             "document_manifest_id": result["manifest_id"],
             "offline_revalidated": True,
             "replayed_pages": [1],
+            "revalidated_pages": list(
+                range(task["first_physical_page"], task["last_physical_page"] + 1)
+            ),
             "result": result,
         },
     )
@@ -229,6 +234,9 @@ def test_failed_openrouter_task_can_only_be_sealed_by_complete_offline_revalidat
                 "document_manifest_id": result["manifest_id"],
                 "offline_revalidated": True,
                 "replayed_pages": [1],
+                "revalidated_pages": list(
+                    range(task["first_physical_page"], task["last_physical_page"] + 1)
+                ),
                 "result": tampered,
             },
         )

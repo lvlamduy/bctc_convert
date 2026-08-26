@@ -353,6 +353,7 @@ def seal_offline_revalidated_corpus_task_v1(
         "document_manifest_id",
         "offline_revalidated",
         "replayed_pages",
+        "revalidated_pages",
         "result",
     }:
         raise _error("offline revalidation receipt fields drifted")
@@ -362,14 +363,22 @@ def seal_offline_revalidated_corpus_task_v1(
         "document_manifest_id"
     ].startswith("gfdmv1:manifest:"):
         raise _error("offline revalidation document manifest is invalid")
-    pages = checked["replayed_pages"]
+    replayed_pages = checked["replayed_pages"]
     if (
-        type(pages) is not list
-        or not pages
-        or pages != sorted(set(pages))
-        or any(type(page) is not int or page <= 0 for page in pages)
+        type(replayed_pages) is not list
+        or replayed_pages != sorted(set(replayed_pages))
+        or any(type(page) is not int or page <= 0 for page in replayed_pages)
     ):
-        raise _error("offline revalidation page frontier is invalid")
+        raise _error("offline replayed page frontier is invalid")
+    revalidated_pages = checked["revalidated_pages"]
+    if (
+        type(revalidated_pages) is not list
+        or not revalidated_pages
+        or revalidated_pages != sorted(set(revalidated_pages))
+        or any(type(page) is not int or page <= 0 for page in revalidated_pages)
+        or not set(replayed_pages) <= set(revalidated_pages)
+    ):
+        raise _error("offline revalidated page frontier is invalid")
     result = checked["result"]
     if (
         type(result) is not dict
@@ -378,6 +387,10 @@ def seal_offline_revalidated_corpus_task_v1(
         or result.get("failed_pages") != []
         or result.get("offline_missing_pages") != []
         or result.get("semantic_failed_pages") != []
+        or result.get("ingested_pages") != replayed_pages
+        or type(result.get("cached_pages")) is not list
+        or result["cached_pages"] != sorted(set(result["cached_pages"]))
+        or sorted(set(result["cached_pages"]) | set(replayed_pages)) != revalidated_pages
     ):
         raise _error("offline revalidation result is not terminally complete")
     receipt_bytes = canonical_json_bytes_v1(checked)
@@ -386,10 +399,9 @@ def seal_offline_revalidated_corpus_task_v1(
         row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
         if row is None or row["state"] != "FAILED" or row["route"] != OPENROUTER_ROUTE:
             raise _error("offline revalidation requires one failed OpenRouter task")
-        if any(
-            page < row["first_physical_page"] or page > row["last_physical_page"] for page in pages
-        ):
-            raise _error("offline revalidation page lies outside the task frontier")
+        expected_pages = list(range(row["first_physical_page"], row["last_physical_page"] + 1))
+        if revalidated_pages != expected_pages:
+            raise _error("offline revalidation does not cover the task frontier")
         event_ordinal = connection.execute(
             "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (task_id,)
         ).fetchone()[0]
