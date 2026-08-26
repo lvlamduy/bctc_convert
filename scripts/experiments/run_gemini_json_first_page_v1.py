@@ -60,7 +60,11 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument("--pdf", type=Path)
     parser.add_argument("--physical-page", type=int)
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
-    parser.add_argument("--prompt-variant", choices=("compact", "balanced"), default="balanced")
+    parser.add_argument(
+        "--prompt-variant",
+        choices=("simple", "compact", "balanced"),
+        default="simple",
+    )
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--artifact-dir", type=Path, required=True)
     parser.add_argument(
