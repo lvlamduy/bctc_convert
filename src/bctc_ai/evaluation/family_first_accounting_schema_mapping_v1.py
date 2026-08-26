@@ -527,6 +527,7 @@ def _cell(value: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         or token.get("classification")
         not in {
             "DASH_ZERO",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
             "MIXED_GROUPED_INTEGER_CANDIDATE",
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
             "SIGNED_NUMBER",
@@ -536,6 +537,10 @@ def _cell(value: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         or type(value.get("sample_id")) is not str
         or type(value.get("crop_ref")) is not dict
         or type(value.get("bbox")) is not list
+        or (
+            token.get("classification") == "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE"
+            and (token.get("scale") != 2 or context.get("unit_kind") != "PERCENT")
+        )
     ):
         raise _error("schema-ready numeric cell is not one exact pixel-bound value")
     return {
@@ -593,6 +598,7 @@ def _sum_row_values(values: list[dict[str, Any]]) -> dict[str, int]:
             or token.get("classification")
             not in {
                 "DASH_ZERO",
+                "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
                 "MIXED_GROUPED_INTEGER_CANDIDATE",
                 "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
                 "SIGNED_NUMBER",

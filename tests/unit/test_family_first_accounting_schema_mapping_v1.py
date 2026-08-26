@@ -149,6 +149,32 @@ def _value(
     }
 
 
+def test_malformed_decimal_candidate_maps_only_after_percent_context_is_resolved() -> None:
+    value = _value(1, 0, 143, "1,.43")
+    value["parsed_token"].update(
+        {
+            "classification": "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            "scale": 2,
+        }
+    )
+    percent_context = {
+        "currency": None,
+        "magnitude_power10": None,
+        "period": {"as_of_date": "2025-06-30", "kind": "SNAPSHOT"},
+        "unit_kind": "PERCENT",
+    }
+
+    mapped = subject._cell(value, percent_context)
+
+    assert mapped["numeric_value"] == {"coefficient": 143, "scale": 2}
+    assert mapped["raw_prediction"] == "1,.43"
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="schema-ready numeric cell is not one exact pixel-bound value",
+    ):
+        subject._cell(value, {**percent_context, "unit_kind": "MONEY"})
+
+
 def _row(role: str, surface: str, ordinal: int, amounts: tuple[int, int]) -> dict[str, object]:
     return {
         "label_match": {"surface": surface},
