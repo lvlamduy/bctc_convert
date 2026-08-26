@@ -3751,6 +3751,8 @@ def _project_unique_contextual_structural_body_matches_v1(
     pages: Sequence[Mapping[str, Any]],
     matches: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
+    *,
+    row_axis: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Fence one exact contextual body from sibling tables under a broad parent.
 
@@ -3785,6 +3787,36 @@ def _project_unique_contextual_structural_body_matches_v1(
         )
         else _decorate_scopes(source_matches, region)
     )
+
+    rows_by_occurrence_id: dict[str, list[Mapping[str, Any]]] = {}
+    if row_axis is not None:
+        if type(row_axis) is not dict or type(row_axis.get("rows")) is not list:
+            raise _error("contextual structural body row-axis input drifted")
+        for row in row_axis["rows"]:
+            label_match = row.get("label_match") if type(row) is dict else None
+            occurrence_id = label_match.get("occurrence_id") if type(label_match) is dict else None
+            if type(occurrence_id) is not str or not occurrence_id:
+                raise _error("contextual structural body row lost its occurrence identity")
+            rows_by_occurrence_id.setdefault(occurrence_id, []).append(row)
+
+    def visible_values(match: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+        if row_axis is None:
+            return _same_row_numeric_samples(pages, match)
+        rows = rows_by_occurrence_id.get(match["occurrence_id"], [])
+        if len(rows) != 1:
+            return []
+        row = rows[0]
+        values = row.get("values")
+        if (
+            row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or row.get("missing_column_ordinals") != []
+            or type(values) is not list
+            or not values
+            or [value.get("column_ordinal") for value in values] != list(range(len(values)))
+        ):
+            return []
+        return values
+
     page_by_sequence = {page["page_sequence"]: page for page in pages}
 
     def visual_key(match: Mapping[str, Any]) -> tuple[int, float, int]:
@@ -3807,7 +3839,7 @@ def _project_unique_contextual_structural_body_matches_v1(
         if match.get("role_kind") == "STRUCTURAL_GROUP"
         and match.get("scope_owner_role") is None
         and str(match.get("match_kind", "")).startswith("EXACT_")
-        and not _same_row_numeric_samples(pages, match)
+        and not visible_values(match)
         and type(match.get("occurrence_id")) is str
         and match["occurrence_id"]
     ]
@@ -3818,7 +3850,7 @@ def _project_unique_contextual_structural_body_matches_v1(
             for match in decorated
             if match.get("role_kind") == "ADDITIVE_CHILD"
             and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
-            and _same_row_numeric_samples(pages, match)
+            and visible_values(match)
         ]
         if len({match["role"] for match in direct_visible}) >= 2:
             candidates.append(owner)
@@ -3833,7 +3865,7 @@ def _project_unique_contextual_structural_body_matches_v1(
         if match.get("role_kind") == "SOURCE_ONLY_GROUP_PARENT"
         and match.get("scope_owner_role") is None
         and str(match.get("match_kind", "")).startswith("EXACT_")
-        and not _same_row_numeric_samples(pages, match)
+        and not visible_values(match)
     ]
     if not siblings:
         # A contextual subgroup can begin on the sole continuation page after
@@ -3852,18 +3884,22 @@ def _project_unique_contextual_structural_body_matches_v1(
             for match in decorated
             if match.get("role_kind") == "ADDITIVE_CHILD"
             and match.get("scope_owner_occurrence_id") != owner["occurrence_id"]
-            and _same_row_numeric_samples(pages, match)
+            and visible_values(match)
         ]
         owner_visible = [
             match
             for match in decorated
             if match.get("role_kind") == "ADDITIVE_CHILD"
             and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
-            and _same_row_numeric_samples(pages, match)
+            and visible_values(match)
         ]
-        owner_lane_counts = {
-            len(_same_row_numeric_samples(pages, match)) for match in owner_visible
-        }
+        owner_lane_counts = {len(visible_values(match)) for match in owner_visible}
+        unowned_additive = [
+            match
+            for match in decorated
+            if match.get("role_kind") == "ADDITIVE_CHILD"
+            and match.get("scope_owner_occurrence_id") != owner["occurrence_id"]
+        ]
         post_owner_unowned = [
             match
             for match in decorated
@@ -3877,12 +3913,10 @@ def _project_unique_contextual_structural_body_matches_v1(
             or region.get("continuation_page_count") != 1
             or owner_page != region_page + 1
             or not unowned_visible
+            or (row_axis is not None and len(unowned_visible) != len(unowned_additive))
             or len(owner_lane_counts) != 1
             or 0 in owner_lane_counts
-            or any(
-                len(_same_row_numeric_samples(pages, match)) in owner_lane_counts
-                for match in unowned_visible
-            )
+            or any(len(visible_values(match)) in owner_lane_counts for match in unowned_visible)
             or any(visual_key(match) >= owner_key for match in unowned_visible)
             or post_owner_unowned
         ):
@@ -3907,7 +3941,7 @@ def _project_unique_contextual_structural_body_matches_v1(
         for match in projected
         if match.get("role_kind") == "ADDITIVE_CHILD"
         and match.get("scope_owner_occurrence_id") == owner["occurrence_id"]
-        and _same_row_numeric_samples(pages, match)
+        and visible_values(match)
     }
     if len(projected_direct_roles) < 2:
         raise _error("contextual structural body projection lost its direct evidence")
@@ -12835,6 +12869,27 @@ def _build(
         )
     except row_v1.AccountingFamilyRowAxisV1Error as exc:
         raise _error("sealed V1 occurrence row/lane projection failed") from exc
+    post_row_matches = _project_unique_contextual_structural_body_matches_v1(
+        parsed_pages,
+        row_matches,
+        selected_region,
+        row_axis=raw_axis,
+    )
+    if [match["occurrence_id"] for match in post_row_matches] != [
+        match["occurrence_id"] for match in row_matches
+    ]:
+        row_matches = post_row_matches
+        expanded_matches = [canonical_clone_v1(match) for match in row_matches]
+        expanded = _expanded_region(expected_effective, row_matches)
+        try:
+            raw_axis = row_v1._build_axis(
+                parsed_pages,
+                scan,
+                expanded,
+                visible_dash_rescues,
+            )
+        except row_v1.AccountingFamilyRowAxisV1Error as exc:
+            raise _error("contextual structural body row/lane replay failed") from exc
     raw_axis, unique_dash_speck_evidence = _project_unique_dash_speck_rescues_v2(
         raw_axis,
         row_matches,

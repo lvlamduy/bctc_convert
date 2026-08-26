@@ -917,6 +917,71 @@ def test_unique_contextual_structural_body_projects_exact_next_page_boundary() -
     assert all("scope_owner_occurrence_id" not in item for item in projected_raw)
     assert [item["role"] for item in projected] == ["TARGET_VIEW", "TARGET_A", "TARGET_B"]
 
+    wrapped_pages = copy.deepcopy(pages)
+    for page_sequence, line_ordinals in ((1, {1, 2}), (2, {1, 2})):
+        page = wrapped_pages[page_sequence - 1]
+        for line in page["lines"]:
+            if line["line_ordinal"] in line_ordinals:
+                line["bbox"][1] += 30
+                line["bbox"][3] += 30
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            wrapped_pages, decorated, region
+        )
+        == decorated
+    )
+
+    def complete_row(match_record: dict[str, object], lane_count: int) -> dict[str, object]:
+        return {
+            "label_match": {"occurrence_id": match_record["occurrence_id"]},
+            "missing_column_ordinals": [],
+            "status": "VISIBLE_VALUE_LANES_BOUND",
+            "values": [{"column_ordinal": lane} for lane in range(lane_count)],
+        }
+
+    additive = [item for item in decorated if item["role_kind"] == "ADDITIVE_CHILD"]
+    wrapped_row_axis = {
+        "rows": [complete_row(item, 2 if item["role"] == "PRIOR_ROLE" else 4) for item in additive]
+    }
+    projected_from_rows = subject._project_unique_contextual_structural_body_matches_v1(
+        wrapped_pages,
+        decorated,
+        region,
+        row_axis=wrapped_row_axis,
+    )
+    assert [item["role"] for item in projected_from_rows] == [
+        "TARGET_VIEW",
+        "TARGET_A",
+        "TARGET_B",
+    ]
+
+    partial_axis = copy.deepcopy(wrapped_row_axis)
+    partial_axis["rows"][0]["status"] = "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    partial_axis["rows"][0]["missing_column_ordinals"] = [1]
+    partial_axis["rows"][0]["values"] = [{"column_ordinal": 0}]
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            wrapped_pages,
+            decorated,
+            region,
+            row_axis=partial_axis,
+        )
+        == decorated
+    )
+
+    same_lane_axis = copy.deepcopy(wrapped_row_axis)
+    for row in same_lane_axis["rows"][:2]:
+        row["values"] = [{"column_ordinal": lane} for lane in range(4)]
+    assert (
+        subject._project_unique_contextual_structural_body_matches_v1(
+            wrapped_pages,
+            decorated,
+            region,
+            row_axis=same_lane_axis,
+        )
+        == decorated
+    )
+
     wrong_continuation = copy.deepcopy(region)
     wrong_continuation["continuation_page_count"] = 0
     assert (
