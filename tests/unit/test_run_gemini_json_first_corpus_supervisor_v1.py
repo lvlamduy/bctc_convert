@@ -699,6 +699,90 @@ def test_google_fallback_selects_scope_and_items_from_typed_batch_failures(
     ]
 
 
+def test_google_fallback_uses_balanced_after_one_persistent_item_semantic_failure(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "VCB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-balanced",
+        "attempt_count": 2,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "fallback_attempt": 1,
+                "fallback_results": [
+                    {
+                        "physical_pages": [9],
+                        "prompt_variant": "items",
+                        "result": {
+                            "failed_pages": [9],
+                            "semantic_failed_pages": [9],
+                        },
+                    }
+                ],
+            }
+        ),
+        "provider_job_ref": "batches/typed",
+        "relative_path": "VCB/report.pdf",
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FALLBACK_PENDING",
+        "task_id": "task-balanced",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "state": kwargs["next_state"]}
+
+    calls = []
+
+    def command(argv, *, expected):
+        calls.append(
+            (
+                argv[argv.index("--prompt-variant") + 1],
+                Path(argv[argv.index("--artifact-dir") + 1]),
+            )
+        )
+        return 0, {"disposition": "SUCCEEDED", "physical_pages": [9]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target, "corpus_ledger_summary_v1", lambda _ledger: {"prompt_variant": "simple"}
+    )
+    monkeypatch.setattr(
+        target,
+        "batch_failed_page_requests_v1",
+        lambda _database, *, batch_name: [
+            {
+                "error": {"error_type": "GeminiFinancialPageJsonV1Error"},
+                "physical_page": 9,
+                "request_id": "p9",
+            }
+        ],
+    )
+    result = target._run_google_fallback(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        openrouter_workers=20,
+        provider_timeout_seconds=60,
+        max_fallback_attempts=2,
+    )
+    assert result["state"] == "SUCCEEDED"
+    assert calls[0][0] == "balanced"
+    assert "attempt-02" in calls[0][1].parts
+
+
 def test_google_repair_excludes_semantic_pages_replayed_into_cache(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"

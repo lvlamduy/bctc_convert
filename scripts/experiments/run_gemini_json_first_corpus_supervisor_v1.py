@@ -598,6 +598,7 @@ def _run_google_fallback(
         )
     original_state = task["state"]
     prior_fallback_attempt = 0
+    prior_receipt = None
     if original_state == "FALLBACK_PENDING":
         try:
             prior_receipt = json.loads(task["last_receipt_json"])
@@ -630,6 +631,21 @@ def _run_google_fallback(
         fallback_attempt = max(prior_fallback_attempt, *(existing_attempts or [0])) + 1
     fallback_attempt_root = fallback_root / f"attempt-{fallback_attempt:02d}"
     default_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
+    prior_item_semantic_pages: set[int] = set()
+    if type(prior_receipt) is dict:
+        prior_results = prior_receipt.get("fallback_results")
+        if type(prior_results) is list:
+            for prior_result in prior_results:
+                result = prior_result.get("result") if type(prior_result) is dict else None
+                semantic = result.get("semantic_failed_pages") if type(result) is dict else None
+                if (
+                    type(prior_result) is dict
+                    and prior_result.get("prompt_variant") == "items"
+                    and type(semantic) is list
+                    and semantic == sorted(set(semantic))
+                    and all(type(page) is int for page in semantic)
+                ):
+                    prior_item_semantic_pages.update(semantic)
     prompt_frontiers: dict[str, list[int]] = {}
     for failure in failures:
         error = failure.get("error")
@@ -637,14 +653,16 @@ def _run_google_fallback(
         if type(provider_error) is dict and provider_error.get("finish_reason") == "RECITATION":
             variant = "scope"
         elif type(error) is dict and error.get("error_type") == "GeminiFinancialPageJsonV1Error":
-            variant = "items"
+            variant = (
+                "balanced" if failure["physical_page"] in prior_item_semantic_pages else "items"
+            )
         else:
             variant = default_variant
         prompt_frontiers.setdefault(variant, []).append(failure["physical_page"])
 
     return_code = 0
     fallback_results = []
-    for variant in (default_variant, "scope", "items"):
+    for variant in (default_variant, "scope", "items", "balanced"):
         frontier = sorted(set(prompt_frontiers.get(variant, [])))
         if not frontier:
             continue
