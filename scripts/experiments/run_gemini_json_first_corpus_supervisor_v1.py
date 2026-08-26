@@ -1933,6 +1933,9 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             and task["state"] in {"SUBMITTED", "RUNNING"}
             and not _is_openrouter_acceleration_task_v1(task)
         ]
+        accelerated_google = [
+            task for task in unfinished if _is_openrouter_acceleration_task_v1(task)
+        ]
         openrouter = [
             task
             for task in unfinished
@@ -2025,6 +2028,13 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             time.sleep(min(args.google_poll_interval_seconds, 1.0))
             continue
         if google_submit_futures:
+            time.sleep(min(args.google_poll_interval_seconds, 1.0))
+            continue
+        if accelerated_google:
+            # A separate accelerator owns this document under a sealed ledger
+            # claim.  It will atomically move every task in the document to a
+            # terminal state; the ordinary supervisor must neither poll the
+            # claim as a Google batch nor mistake it for a dead scheduler.
             time.sleep(min(args.google_poll_interval_seconds, 1.0))
             continue
         openrouter_executor.shutdown(wait=True, cancel_futures=True)

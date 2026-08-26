@@ -356,6 +356,58 @@ def test_scheduler_throttles_google_polling_while_batch_remains_active(
     assert poll_times == [0.0, 15.0]
 
 
+def test_scheduler_waits_for_externally_accelerated_google_document(monkeypatch, tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.touch()
+    clock = [0.0]
+    calls = [0]
+    task = {
+        "provider_job_ref": "gjfpaccelv1:claim:" + "a" * 64,
+        "route": target.GOOGLE_ROUTE,
+        "state": "RUNNING",
+        "task_id": "gjfptaskv1:" + "4" * 64,
+    }
+
+    def tasks(_ledger):
+        calls[0] += 1
+        return [{**task, "state": "SUCCEEDED"}] if calls[0] > 1 else [task]
+
+    monkeypatch.setattr(target.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(
+        target.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds)
+    )
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1", "policy": {}})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "max_task_attempts": 3},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", tasks)
+    monkeypatch.setattr(target, "_finalize_google_manifests", lambda **_kwargs: [])
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {})
+
+    result = target.run_corpus(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "google-keys",
+            google_key_slot=1,
+            google_poll_interval_seconds=15,
+            google_watch_max_seconds=60,
+            ledger=ledger,
+            max_active_google=1,
+            max_fallback_attempts=2,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=20,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=60,
+            source_root=tmp_path / "source",
+        )
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert clock == [1.0]
+
+
 def test_scheduler_quarantines_failed_document_until_other_work_finishes(
     monkeypatch, tmp_path
 ) -> None:
