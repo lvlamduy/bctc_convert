@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from hashlib import sha256
 from pathlib import Path
 
 import fitz
@@ -214,3 +215,96 @@ def test_bounded_page_frontier_runs_in_parallel_without_claiming_whole_document(
     contract = json.loads((artifacts / "document-contract.json").read_bytes())
     assert contract["format_version"] == "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
     assert contract["selected_physical_pages"] == [1, 3]
+
+
+def test_prior_semantic_response_replays_without_another_paid_provider_call(tmp_path) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 1)
+    rendered = target._render_page(pdf, 1, 300)
+    page = {
+        "status": "NO_RELEVANT_FINANCIAL_CONTENT",
+        "sections": [],
+        "completion": {
+            "all_relevant_content_transcribed": True,
+            "uncertainty_exact": [],
+        },
+    }
+    usage = {
+        "prompt_tokens": 10,
+        "completion_tokens": 5,
+        "total_tokens": 15,
+        "cost": 0.0001,
+        "completion_tokens_details": {"reasoning_tokens": 0},
+    }
+    raw = (
+        json.dumps(
+            {
+                "id": "response-replay",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "google/gemini-3.7-flash-20260813",
+                "provider": "Google",
+                "service_tier": "flex",
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps(page)},
+                    }
+                ],
+                "usage": usage,
+            },
+            separators=(",", ":"),
+        ).encode()
+        + b"\n"
+    )
+    attempt = artifacts / "page-00001" / "attempt-0001"
+    attempt.mkdir(parents=True)
+    (attempt / "raw-response.json").write_bytes(raw)
+    attempts = [
+        {
+            "attempt_ordinal": 1,
+            "credential_slot": "OPENROUTER_SLOT_1",
+            "elapsed_seconds": "0.010",
+            "http_status": 200,
+            "outcome": "COMPLETED",
+            "provider": "OPENROUTER",
+            "usage": {
+                "actual_cost_usd": "0.000100000000",
+                "billing_disposition": "BILLED_ACTUAL",
+                "cached_input_tokens": 0,
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "thought_tokens": 0,
+                "total_tokens": 15,
+            },
+        }
+    ]
+    (attempt / "semantic-validation-failure.json").write_text(
+        json.dumps(
+            {
+                "attempts": attempts,
+                "error_type": "GeminiFinancialPageJsonV1Error",
+                "page": rendered.page,
+                "raw_response_sha256": sha256(raw).hexdigest(),
+                "usage": attempts[0]["usage"],
+            }
+        )
+    )
+
+    def provider(**kwargs):
+        raise AssertionError("a paid provider call was not authorized")
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["ingested_pages"] == [1]
+    assert result["semantic_failed_pages"] == []
+    assert (artifacts / "page-00001" / "attempt-0002" / "semantic-replay.json").is_file()

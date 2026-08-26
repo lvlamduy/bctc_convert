@@ -21,6 +21,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    seal_offline_revalidated_corpus_task_v1,
     transition_corpus_task_v1,
     validate_gemini_json_first_corpus_plan_v1,
 )
@@ -58,6 +59,14 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status")
     status.add_argument("--ledger", type=Path, required=True)
+
+    repair = commands.add_parser("repair-openrouter")
+    repair.add_argument("--plan", type=Path, required=True)
+    repair.add_argument("--ledger", type=Path, required=True)
+    repair.add_argument("--task-id", required=True)
+    repair.add_argument("--source-root", type=Path, required=True)
+    repair.add_argument("--database", type=Path, required=True)
+    repair.add_argument("--artifact-root", type=Path, required=True)
 
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
@@ -476,9 +485,16 @@ def _run_openrouter(
         ],
         expected={0, 2},
     )
+    semantic_failed_pages = receipt.get("semantic_failed_pages")
+    if type(semantic_failed_pages) is not list:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter result lacks its semantic-failure frontier"
+        )
     next_state = (
         "SUCCEEDED"
         if return_code == 0
+        else "FAILED"
+        if semantic_failed_pages
         else "FAILED"
         if task["attempt_count"] >= max_attempts
         else "NEEDS_RETRY"
@@ -666,6 +682,73 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     return result
 
 
+def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Replay immutable semantic responses and seal one formerly failed document."""
+
+    plan = _plan(args.plan)
+    tasks = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    matches = [task for task in tasks if task["task_id"] == args.task_id]
+    if len(matches) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "offline repair requires one exact failed OpenRouter task"
+        )
+    task = matches[0]
+    source = _source(task, args.source_root)
+    return_code, result = _command(
+        [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(args.database),
+            "--artifact-dir",
+            str(_task_root(task, args.artifact_root)),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(plan["policy"]["openrouter_workers"]),
+            "--prompt-variant",
+            corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
+            "--output-contract-mode",
+            "json-schema",
+            "--offline-replay-only",
+        ],
+        expected={0, 2},
+    )
+    if return_code != 0 or result.get("disposition") != "SUCCEEDED":
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "offline OpenRouter repair did not close the document"
+        )
+    replayed_pages = result.get("ingested_pages")
+    if type(replayed_pages) is not list or not replayed_pages:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "offline OpenRouter repair replayed no semantic page"
+        )
+    sealed = seal_offline_revalidated_corpus_task_v1(
+        args.ledger,
+        task_id=task["task_id"],
+        receipt={
+            "document_manifest_id": result["manifest_id"],
+            "offline_revalidated": True,
+            "replayed_pages": replayed_pages,
+            "result": result,
+        },
+    )
+    return {
+        "disposition": "SUCCEEDED",
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "repaired_task": {
+            "attempt_count": sealed["attempt_count"],
+            "state": sealed["state"],
+            "task_id": sealed["task_id"],
+        },
+        "result": result,
+    }
+
+
 def main() -> int:
     args = _parser().parse_args()
     if args.command == "init":
@@ -677,6 +760,8 @@ def main() -> int:
         )
     elif args.command == "status":
         result = corpus_ledger_summary_v1(args.ledger)
+    elif args.command == "repair-openrouter":
+        result = repair_openrouter_task(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

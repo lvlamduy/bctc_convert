@@ -81,6 +81,37 @@ class ProviderResultV1:
     response_id_sha256: str
 
 
+def replay_openrouter_provider_result_v1(
+    raw_response_bytes: bytes,
+    *,
+    attempts: tuple[dict[str, Any], ...],
+) -> ProviderResultV1:
+    """Rebuild one already billed OpenRouter result without another API request."""
+
+    if type(raw_response_bytes) is not bytes or not raw_response_bytes:
+        raise GeminiJsonFirstProviderV1Error("OpenRouter replay response bytes are absent")
+    if (
+        type(attempts) is not tuple
+        or not attempts
+        or any(type(attempt) is not dict for attempt in attempts)
+    ):
+        raise GeminiJsonFirstProviderV1Error("OpenRouter replay attempts are invalid")
+    text, response_id, model, provider, usage = _openrouter_response_v1(raw_response_bytes)
+    envelope = _json_object(raw_response_bytes, "OpenRouter")
+    if envelope.get("service_tier") != OPENROUTER_SERVICE_TIER:
+        raise GeminiJsonFirstProviderV1Error("OpenRouter replay service tier drifted")
+    return ProviderResultV1(
+        output_text=text,
+        raw_response_bytes=raw_response_bytes,
+        provider_name=provider,
+        provider_model=model,
+        service_tier=OPENROUTER_SERVICE_TIER,
+        attempts=tuple(canonical_clone_v1(list(attempts))),
+        usage=usage,
+        response_id_sha256=sha256(response_id.encode("utf-8")).hexdigest(),
+    )
+
+
 def _load_unique_keys(path: Path, pattern: re.Pattern[str], label: str) -> list[str]:
     if not path.is_file():
         raise GeminiJsonFirstProviderV1Error(f"{label} credential file is absent")

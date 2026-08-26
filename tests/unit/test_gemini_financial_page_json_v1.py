@@ -166,6 +166,44 @@ def test_hierarchy_path_is_a_soft_model_proposal() -> None:
     assert validate_financial_page_json_v1(page) == page
 
 
+def test_exact_model_cell_pack_expands_only_when_declared_width_closes() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"] = ["434.609.559凸425.746.734"]
+    table["rows"][1]["values_exact"] = ["29.412.253凸30.754.076"]
+    table["rows"][2]["values_exact"] = ["434.609.559凸425.746.734"]
+
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [
+        "434.609.559",
+        "425.746.734",
+    ]
+    # Input/raw-shaped value remains untouched by canonicalization.
+    assert page["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [
+        "434.609.559凸425.746.734"
+    ]
+
+    partial = copy.deepcopy(page)
+    partial["sections"][0]["tables"][0]["rows"][0]["values_exact"] = ["434.609.559凸425.746.734凸1"]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(partial)
+
+
+def test_merged_header_blanks_and_same_cell_dash_pack_are_soft_conventions() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"][0]["header_path_exact"] = [None, "Quá hạn", "Trên 3 tháng"]
+    table["rows"][0]["values_exact"][0] = "-凸-"
+
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert checked_table["columns"][0]["header_path_exact"] == [
+        "Quá hạn",
+        "Trên 3 tháng",
+    ]
+    assert checked_table["rows"][0]["values_exact"][0] == "-"
+
+
 def test_anonymous_empty_relevant_section_rejects() -> None:
     page = _page()
     page["sections"].append(

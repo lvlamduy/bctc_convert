@@ -38,6 +38,7 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     ProviderResultV1,
     call_gemini_json_first_v1,
     load_openrouter_api_key_v1,
+    replay_openrouter_provider_result_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
@@ -72,6 +73,9 @@ class _PageOutcome:
     cached_json: dict[str, Any] | None = None
     provider_result: ProviderResultV1 | None = None
     provider_error: GeminiJsonFirstProviderV1Error | None = None
+    semantic_failure_present: bool = False
+    semantic_replay_source: str | None = None
+    offline_missing: bool = False
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -109,6 +113,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--retry-delay-seconds", type=float, default=5.0)
+    parser.add_argument(
+        "--offline-replay-only",
+        action="store_true",
+        help="Use cached pages and immutable semantic raw responses; never call a provider.",
+    )
     return parser
 
 
@@ -188,6 +197,46 @@ def _render_page(pdf: Path, physical_page: int, dpi: int) -> _RenderedPage:
     )
 
 
+def _replay_prior_semantic_result_v1(
+    *,
+    artifact_dir: Path,
+    physical_page: int,
+    expected_page: dict[str, Any],
+) -> tuple[ProviderResultV1 | None, str | None, bool]:
+    """Try every immutable semantic failure before authorizing another paid call."""
+
+    page_root = artifact_dir / f"page-{physical_page:05d}"
+    failures = sorted(page_root.glob("attempt-*/semantic-validation-failure.json"))
+    if not failures:
+        return None, None, False
+    for failure_path in failures:
+        if failure_path.is_symlink() or not failure_path.is_file():
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay failure receipt is not one regular file"
+            )
+        failure = json.loads(failure_path.read_bytes())
+        if type(failure) is not dict or failure.get("page") != expected_page:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay page binding drifted"
+            )
+        attempts = failure.get("attempts")
+        raw_path = failure_path.with_name("raw-response.json")
+        if type(attempts) is not list or raw_path.is_symlink() or not raw_path.is_file():
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "semantic replay source receipt is incomplete"
+            )
+        raw = raw_path.read_bytes()
+        if sha256(raw).hexdigest() != failure.get("raw_response_sha256"):
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error("semantic replay source hash drifted")
+        result = replay_openrouter_provider_result_v1(raw, attempts=tuple(attempts))
+        try:
+            decode_financial_page_json_text_v1(result.output_text)
+        except Exception:
+            continue
+        return result, str(raw_path.relative_to(artifact_dir)), True
+    return None, None, True
+
+
 def _extract_page(
     *,
     pdf: Path,
@@ -207,6 +256,8 @@ def _extract_page(
     retries: int,
     retry_delay_seconds: float,
     provider_call: Callable[..., ProviderResultV1],
+    artifact_dir: Path,
+    offline_replay_only: bool,
 ) -> _PageOutcome:
     rendered = _render_page(pdf, physical_page, dpi)
     cache_key = extraction_cache_key_v1(
@@ -224,6 +275,31 @@ def _extract_page(
     cached = lookup_cached_page_json_v1(database, cache_key)
     if cached is not None:
         return _PageOutcome(physical_page=physical_page, page=rendered.page, cached_json=cached)
+    replayed, replay_source, semantic_failure_present = _replay_prior_semantic_result_v1(
+        artifact_dir=artifact_dir,
+        physical_page=physical_page,
+        expected_page=rendered.page,
+    )
+    if replayed is not None:
+        return _PageOutcome(
+            physical_page=physical_page,
+            page=rendered.page,
+            provider_result=replayed,
+            semantic_failure_present=True,
+            semantic_replay_source=replay_source,
+        )
+    if semantic_failure_present:
+        return _PageOutcome(
+            physical_page=physical_page,
+            page=rendered.page,
+            semantic_failure_present=True,
+        )
+    if offline_replay_only:
+        return _PageOutcome(
+            physical_page=physical_page,
+            page=rendered.page,
+            offline_missing=True,
+        )
     try:
         result = provider_call(
             google_api_keys=None,
@@ -267,6 +343,7 @@ def run_openrouter_document_v1(
     retry_delay_seconds: float = 5.0,
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
     physical_pages: Sequence[int] | None = None,
+    offline_replay_only: bool = False,
 ) -> dict[str, Any]:
     """Run or resume a whole document or one explicit bounded page frontier."""
 
@@ -341,6 +418,8 @@ def run_openrouter_document_v1(
                 retries=retries,
                 retry_delay_seconds=retry_delay_seconds,
                 provider_call=provider_call,
+                artifact_dir=artifact_dir,
+                offline_replay_only=offline_replay_only,
             ): physical_page
             for physical_page in selected_pages
         }
@@ -349,12 +428,22 @@ def run_openrouter_document_v1(
             outcomes[outcome.physical_page] = outcome
 
     failed_pages: list[int] = []
+    semantic_failed_pages: list[int] = []
+    offline_missing_pages: list[int] = []
     cached_pages: list[int] = []
     ingested_pages: list[int] = []
     for physical_page in selected_pages:
         outcome = outcomes[physical_page]
         if outcome.cached_json is not None:
             cached_pages.append(physical_page)
+            continue
+        if outcome.semantic_failure_present and outcome.provider_result is None:
+            failed_pages.append(physical_page)
+            semantic_failed_pages.append(physical_page)
+            continue
+        if outcome.offline_missing:
+            failed_pages.append(physical_page)
+            offline_missing_pages.append(physical_page)
             continue
         attempt_dir = _next_attempt_dir(artifact_dir, physical_page)
         if outcome.provider_error is not None:
@@ -383,6 +472,16 @@ def run_openrouter_document_v1(
         raw = result.raw_response_bytes
         raw_bytes = raw if raw.endswith(b"\n") else raw + b"\n"
         _write_new(attempt_dir / "raw-response.json", raw_bytes)
+        if outcome.semantic_replay_source is not None:
+            _write_new(
+                attempt_dir / "semantic-replay.json",
+                canonical_json_bytes_v1(
+                    {
+                        "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                        "source_relative_path": outcome.semantic_replay_source,
+                    }
+                ),
+            )
         try:
             page_json = decode_financial_page_json_text_v1(result.output_text)
         except Exception as exc:
@@ -392,6 +491,7 @@ def run_openrouter_document_v1(
                     {
                         "attempts": list(result.attempts),
                         "error_type": type(exc).__name__,
+                        "error_message": str(exc),
                         "page": outcome.page,
                         "raw_response_sha256": sha256(raw_bytes).hexdigest(),
                         "usage": result.usage,
@@ -399,6 +499,7 @@ def run_openrouter_document_v1(
                 ),
             )
             failed_pages.append(physical_page)
+            semantic_failed_pages.append(physical_page)
             continue
         if result.provider_name != OPENROUTER_SELECTED_PROVIDER:
             raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
@@ -463,7 +564,9 @@ def run_openrouter_document_v1(
         "failed_pages": failed_pages,
         "ingested_pages": ingested_pages,
         "manifest_id": manifest["document_manifest_id"] if manifest is not None else None,
+        "offline_missing_pages": offline_missing_pages,
         "page_count": len(selected_pages),
+        "semantic_failed_pages": semantic_failed_pages,
         "usage": usage_summary_v1(database),
     }
     if physical_pages is not None:
@@ -483,7 +586,9 @@ def main() -> int:
         pdf=args.pdf,
         database=args.database,
         artifact_dir=args.artifact_dir,
-        api_key=load_openrouter_api_key_v1(args.openrouter_key_file),
+        api_key=(
+            "" if args.offline_replay_only else load_openrouter_api_key_v1(args.openrouter_key_file)
+        ),
         source_logical_name=args.source_logical_name,
         dpi=args.dpi,
         workers=args.workers,
@@ -493,6 +598,7 @@ def main() -> int:
         retries=args.retries,
         retry_delay_seconds=args.retry_delay_seconds,
         physical_pages=args.physical_page,
+        offline_replay_only=args.offline_replay_only,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["disposition"] == "SUCCEEDED" else 2

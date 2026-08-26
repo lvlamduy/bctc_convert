@@ -9,6 +9,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    seal_offline_revalidated_corpus_task_v1,
     transition_corpus_task_v1,
     validate_gemini_json_first_corpus_plan_v1,
 )
@@ -175,3 +176,58 @@ def test_task_transitions_are_append_only_bounded_and_expected_state_guarded(tmp
         receipt={"fallback_attempt": 1},
     )
     assert fallback_retry["attempt_count"] == 1
+
+
+def test_failed_openrouter_task_can_only_be_sealed_by_complete_offline_revalidation(
+    tmp_path,
+) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan())
+    task = list_corpus_tasks_v1(ledger, states=["PENDING"], route=OPENROUTER_ROUTE, limit=1)[0]
+    running = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={"semantic_failed_pages": [1]},
+    )
+    result = {
+        "disposition": "SUCCEEDED",
+        "failed_pages": [],
+        "manifest_id": "gfdmv1:manifest:" + "3" * 64,
+        "offline_missing_pages": [],
+        "semantic_failed_pages": [],
+    }
+    repaired = seal_offline_revalidated_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        receipt={
+            "document_manifest_id": result["manifest_id"],
+            "offline_revalidated": True,
+            "replayed_pages": [1],
+            "result": result,
+        },
+    )
+    assert repaired["state"] == "SUCCEEDED"
+    assert repaired["attempt_count"] == running["attempt_count"]
+
+    tampered = copy.deepcopy(result)
+    tampered["semantic_failed_pages"] = [1]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error):
+        seal_offline_revalidated_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            receipt={
+                "document_manifest_id": result["manifest_id"],
+                "offline_revalidated": True,
+                "replayed_pages": [1],
+                "result": tampered,
+            },
+        )

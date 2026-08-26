@@ -53,6 +53,7 @@ _CONTINUATION_KINDS = frozenset(
 )
 _FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL | re.IGNORECASE)
 _SPACE = re.compile(r"\s+")
+_MODEL_CELL_PACK_SEPARATOR = "凸"
 
 
 class GeminiFinancialPageJsonV1Error(ValueError):
@@ -308,20 +309,69 @@ def _cell_raw(value: Any) -> str | None:
     return value
 
 
-def _path(value: Any, label: str, *, final: str | None | object = ...) -> list[str | None]:
+def _path(
+    value: Any,
+    label: str,
+    *,
+    final: str | None | object = ...,
+    omit_null_components: bool = False,
+) -> list[str | None]:
     if type(value) is not list or not value:
         raise _error(f"{label} must be one nonempty path")
     result: list[str | None] = []
     for ordinal, item in enumerate(value):
         if item is None:
+            if omit_null_components:
+                continue
             if ordinal != len(value) - 1:
                 raise _error(f"{label} may contain null only at the end")
             result.append(None)
         else:
             result.append(_raw(item, f"{label}[{ordinal}]"))
+    if not result and omit_null_components and all(item is None for item in value):
+        return [None]
+    if not result:
+        raise _error(f"{label} must retain at least one nonblank component")
     if final is not ... and result[-1] != final:
         raise _error(f"{label} final item differs from the row label")
     return result
+
+
+def _expand_exact_model_cell_pack_v1(values: list[Any], *, width: int) -> list[Any] | None:
+    """Expand one deterministic model cell pack only when it closes the row width.
+
+    Gemini occasionally emits multiple adjacent numeric cells inside one string,
+    separated by the literal sentinel ``凸``.  This is not source punctuation.
+    Expansion is admitted only for a deficient row, only when every segment is
+    nonblank, and only when the ordered expansion yields the declared width
+    exactly.  Raw provider bytes remain unchanged in the store.
+    """
+
+    if len(values) >= width or not any(
+        type(value) is str and _MODEL_CELL_PACK_SEPARATOR in value for value in values
+    ):
+        return None
+    expanded: list[Any] = []
+    for value in values:
+        if type(value) is str and _MODEL_CELL_PACK_SEPARATOR in value:
+            parts = value.split(_MODEL_CELL_PACK_SEPARATOR)
+            if any(not part.strip() for part in parts):
+                return None
+            expanded.extend(parts)
+        else:
+            expanded.append(value)
+    return expanded if len(expanded) == width else None
+
+
+def _canonical_cell_pack_dash_v1(value: Any) -> Any:
+    """Project a same-cell pack consisting solely of accounting dashes to one dash."""
+
+    if type(value) is not str or _MODEL_CELL_PACK_SEPARATOR not in value:
+        return value
+    parts = value.split(_MODEL_CELL_PACK_SEPARATOR)
+    if parts and all(part.strip() in {"-", "–", "—", "_"} for part in parts):
+        return "-"
+    return value
 
 
 def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
@@ -403,7 +453,11 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     {"header_path_exact", "value_kind"},
                     "column",
                 )
-                _path(column["header_path_exact"], "column header path")
+                column["header_path_exact"] = _path(
+                    column["header_path_exact"],
+                    "column header path",
+                    omit_null_components=True,
+                )
                 if column["value_kind"] not in _VALUE_KINDS:
                     raise _error("column value_kind drifted")
             width = len(table["columns"])
@@ -426,8 +480,6 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 if type(row["values_exact"]) is not list:
                     raise _error("row values must be an array")
                 row_widths.append(len(row["values_exact"]))
-                for cell in row["values_exact"]:
-                    _cell_raw(cell)
             if all(row_width == width for row_width in row_widths):
                 pass
             elif (
@@ -437,7 +489,18 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             ):
                 del table["columns"][0]
             else:
-                raise _error("row values do not align with table value columns")
+                for row in table["rows"]:
+                    expanded = _expand_exact_model_cell_pack_v1(row["values_exact"], width=width)
+                    if expanded is not None:
+                        row["values_exact"] = expanded
+                if any(len(row["values_exact"]) != width for row in table["rows"]):
+                    raise _error("row values do not align with table value columns")
+            for row in table["rows"]:
+                row["values_exact"] = [
+                    _canonical_cell_pack_dash_v1(cell) for cell in row["values_exact"]
+                ]
+                for cell in row["values_exact"]:
+                    _cell_raw(cell)
 
     completion = _exact_dict(
         root["completion"],
