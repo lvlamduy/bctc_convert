@@ -1744,3 +1744,63 @@ def test_accelerate_pending_google_documents_refreshes_after_each_document(
     assert result["race_count"] == 0
     assert calls == ["task-a", "task-b"]
     assert [item["task_id"] for item in result["completed_documents"]] == calls
+
+
+def test_finalize_google_manifests_reuses_accelerated_current_selection(
+    monkeypatch, tmp_path
+) -> None:
+    source_sha256 = "a" * 64
+    document_plan_id = "gjfpdocv1:" + "b" * 64
+    relative_path = "HDB/report.pdf"
+    plan = {
+        "documents": [
+            {
+                "document": {
+                    "page_count": 3,
+                    "relative_path": relative_path,
+                    "source_sha256": source_sha256,
+                },
+                "document_plan_id": document_plan_id,
+                "route": target.GOOGLE_ROUTE,
+                "tasks": [{"task_id": "task-1"}, {"task_id": "task-2"}],
+            }
+        ]
+    }
+    claim_id = "gjfpaccelv1:claim:" + "c" * 64
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger: [
+            {"provider_job_ref": claim_id, "state": "SUCCEEDED", "task_id": "task-1"},
+            {"provider_job_ref": claim_id, "state": "SUCCEEDED", "task_id": "task-2"},
+        ],
+    )
+    selected_manifest = tmp_path / "selected.json"
+    selected_manifest.write_text(
+        json.dumps(
+            {
+                "document": {
+                    "source_logical_name": relative_path,
+                    "source_sha256": source_sha256,
+                },
+                "page_count": 3,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        target,
+        "load_current_document_manifest_selection_v1",
+        lambda *_a, **_k: ({"selection_id": "selection"}, selected_manifest),
+    )
+    monkeypatch.setattr(
+        target,
+        "_command",
+        lambda *_a, **_k: pytest.fail("accelerated selection must not rebuild a batch manifest"),
+    )
+    assert target._finalize_google_manifests(
+        plan=plan,
+        ledger=tmp_path / "ledger.sqlite3",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+    ) == [str(selected_manifest)]

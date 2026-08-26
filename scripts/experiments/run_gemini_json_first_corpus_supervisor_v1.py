@@ -1660,6 +1660,45 @@ def _finalize_google_manifests(
     for planned in plan["documents"]:
         if planned["route"] != GOOGLE_ROUTE:
             continue
+        rows = [by_id[task["task_id"]] for task in planned["tasks"]]
+        acceleration_claims = {row["provider_job_ref"] for row in rows}
+        accelerated = (
+            len(acceleration_claims) == 1
+            and all(row["state"] == "SUCCEEDED" for row in rows)
+            and all(
+                type(row["provider_job_ref"]) is str
+                and row["provider_job_ref"].startswith("gjfpaccelv1:claim:")
+                for row in rows
+            )
+        )
+        if accelerated:
+            document_root = (
+                artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
+            )
+            selected = load_current_document_manifest_selection_v1(
+                document_root,
+                document_plan_id=planned["document_plan_id"],
+                source_sha256=planned["document"]["source_sha256"],
+            )
+            if selected is None:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "accelerated Google document lacks its current manifest selection"
+                )
+            _selection, selected_manifest_path = selected
+            selected_manifest = _json_file(selected_manifest_path)
+            selected_document = selected_manifest.get("document")
+            if (
+                type(selected_document) is not dict
+                or selected_manifest.get("page_count") != planned["document"]["page_count"]
+                or selected_document.get("source_sha256") != planned["document"]["source_sha256"]
+                or selected_document.get("source_logical_name")
+                != planned["document"]["relative_path"]
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "accelerated Google document manifest binding drifted"
+                )
+            outputs.append(str(selected_manifest_path))
+            continue
         artifact_dirs: list[Path] = []
         for task in planned["tasks"]:
             row = by_id[task["task_id"]]
