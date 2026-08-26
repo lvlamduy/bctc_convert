@@ -237,6 +237,32 @@ def test_file_backed_batch_submission_download_and_jsonl_decode() -> None:
     assert completed.provider_results["page-003"].usage["input_tokens"] == 1754
 
 
+def test_file_batch_preserves_one_abnormal_model_response_as_page_failure() -> None:
+    operation_raw = json.dumps(_completed_file_operation()).encode()
+    complete = _response()
+    truncated = copy.deepcopy(complete)
+    truncated["candidates"][0]["finishReason"] = "MAX_TOKENS"
+    results_raw = b"\n".join(
+        [
+            json.dumps({"key": "page-003", "response": complete}).encode(),
+            json.dumps({"key": "page-004", "response": truncated}).encode(),
+        ]
+    )
+    completed = decode_completed_google_file_batch_v1(
+        raw_operation_bytes=operation_raw,
+        raw_results_bytes=results_raw,
+        expected_request_ids=["page-003", "page-004"],
+        credential_slot="GOOGLE_SLOT_2",
+        elapsed_seconds="42.500",
+    )
+    assert set(completed.provider_results) == {"page-003"}
+    failure = completed.failures["page-004"]
+    assert failure["error_type"] == "GeminiJsonFirstProviderV1Error"
+    assert failure["finish_reason"] == "MAX_TOKENS"
+    assert failure["usage_metadata"] == truncated["usageMetadata"]
+    assert len(failure["provider_response_sha256"]) == 64
+
+
 def test_submit_and_poll_preserve_exact_batch_identity() -> None:
     calls = []
 

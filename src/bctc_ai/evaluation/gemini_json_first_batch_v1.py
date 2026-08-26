@@ -15,6 +15,7 @@ from typing import Any
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
+    GeminiJsonFirstProviderV1Error,
     ProviderResultV1,
     _google_generate_content_body_v1,
     _google_generate_content_response_v1,
@@ -84,6 +85,26 @@ class CompletedBatchV1:
     provider_results: dict[str, ProviderResultV1]
     failures: dict[str, dict[str, Any]]
     raw_operation_bytes: bytes
+
+
+def _per_request_model_failure_v1(
+    *, response: Mapping[str, Any], response_raw: bytes, error: Exception
+) -> dict[str, Any]:
+    """Return a bounded failure receipt for one transport-successful model response."""
+
+    candidates = response.get("candidates")
+    first = candidates[0] if type(candidates) is list and candidates else None
+    finish_reason = first.get("finishReason") if type(first) is dict else None
+    usage = response.get("usageMetadata")
+    return {
+        "error_message": str(error),
+        "error_type": type(error).__name__,
+        "finish_reason": finish_reason if type(finish_reason) is str else None,
+        "provider_response_sha256": sha256(response_raw).hexdigest(),
+        "usage_metadata": (
+            json.loads(canonical_json_bytes_v1(usage)) if type(usage) is dict else None
+        ),
+    }
 
 
 def _json_object(raw: bytes, label: str) -> dict[str, Any]:
@@ -571,9 +592,15 @@ def decode_completed_google_inline_batch_v1(
         if type(response) is not dict:
             raise GeminiJsonFirstBatchV1Error("batch success response is absent")
         response_raw = canonical_json_bytes_v1(response) + b"\n"
-        text, response_id, model, usage = _google_generate_content_response_v1(
-            response_raw, service_tier=GOOGLE_BATCH_SERVICE_TIER
-        )
+        try:
+            text, response_id, model, usage = _google_generate_content_response_v1(
+                response_raw, service_tier=GOOGLE_BATCH_SERVICE_TIER
+            )
+        except GeminiJsonFirstProviderV1Error as exc:
+            failures[request_id] = _per_request_model_failure_v1(
+                response=response, response_raw=response_raw, error=exc
+            )
+            continue
         attempt = {
             "attempt_ordinal": 1,
             "credential_slot": credential_slot,
@@ -652,9 +679,15 @@ def decode_completed_google_file_batch_v1(
         if type(response) is not dict:
             raise GeminiJsonFirstBatchV1Error("batch success response is absent")
         response_raw = canonical_json_bytes_v1(response) + b"\n"
-        output_text, response_id, model, usage = _google_generate_content_response_v1(
-            response_raw, service_tier=GOOGLE_BATCH_SERVICE_TIER
-        )
+        try:
+            output_text, response_id, model, usage = _google_generate_content_response_v1(
+                response_raw, service_tier=GOOGLE_BATCH_SERVICE_TIER
+            )
+        except GeminiJsonFirstProviderV1Error as exc:
+            failures[request_id] = _per_request_model_failure_v1(
+                response=response, response_raw=response_raw, error=exc
+            )
+            continue
         attempt = {
             "attempt_ordinal": 1,
             "credential_slot": credential_slot,

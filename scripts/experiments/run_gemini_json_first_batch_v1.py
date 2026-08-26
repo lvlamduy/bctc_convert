@@ -657,17 +657,19 @@ def _poll(args: argparse.Namespace) -> int:
         return 0
     operation = json.loads(raw)
     expected_request_ids = [item["request_id"] for item in manifest["requests"]]
+    result_bytes = None
+    if provider == "GOOGLE_GEMINI_BATCH_API" and manifest.get("batch_input_file_ref") is not None:
+        result_bytes = download_google_file_v1(
+            api_key=api_key,
+            file_name=google_batch_responses_file_v1(raw),
+            timeout_seconds=args.timeout_seconds,
+        )
+        _write_same(args.artifact_dir / "batch-results.jsonl", result_bytes)
     completed = (
         (
             decode_completed_google_file_batch_v1(
                 raw_operation_bytes=raw,
-                raw_results_bytes=(
-                    result_bytes := download_google_file_v1(
-                        api_key=api_key,
-                        file_name=google_batch_responses_file_v1(raw),
-                        timeout_seconds=args.timeout_seconds,
-                    )
-                ),
+                raw_results_bytes=result_bytes,
                 expected_request_ids=expected_request_ids,
                 credential_slot=credential_slot,
                 elapsed_seconds=_elapsed_seconds(operation),
@@ -687,8 +689,6 @@ def _poll(args: argparse.Namespace) -> int:
             elapsed_seconds=_elapsed_seconds(operation),
         )
     )
-    if provider == "GOOGLE_GEMINI_BATCH_API" and manifest.get("batch_input_file_ref") is not None:
-        _write_same(args.artifact_dir / "batch-results.jsonl", result_bytes)
     finalized = batch_finalized_requests_v1(args.database, batch_name=completed.batch_name)
     by_id = {item["request_id"]: item for item in manifest["requests"]}
     for request_id, error in completed.failures.items():
