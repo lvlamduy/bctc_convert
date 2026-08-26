@@ -859,7 +859,7 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
     assert final_receipt["alternate_prompt_pages"] == [2]
     assert final_receipt["alternate_prompt_variant"] == "items"
     assert final_receipt["revalidated_document_pages"] == [1, 2, 3]
-    assert final_receipt["semantic_retry_pages"] == []
+    assert final_receipt["protected_retry_pages"] == []
 
 
 def test_openrouter_first_semantic_failure_moves_to_item_retry(monkeypatch, tmp_path) -> None:
@@ -937,7 +937,19 @@ def test_openrouter_item_retry_accepts_semantic_subset_and_rejects_ambiguous_fro
         ),
     }
     assert target._provider_retry_pages_v1(semantic) == [2]
-    assert target._semantic_retry_pages_v1(semantic) == [2]
+    assert target._protected_retry_pages_v1(semantic) == [2]
+    unresolved = {
+        **task,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [2],
+                "semantic_failed_pages": [],
+                "unresolved_pages": [2],
+            }
+        ),
+    }
+    assert target._provider_retry_pages_v1(unresolved) == [2]
+    assert target._protected_retry_pages_v1(unresolved) == [2]
 
     for prior in (
         {"failed_pages": [2, 2], "semantic_failed_pages": []},
@@ -1040,7 +1052,7 @@ def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
     )
     assert result["state"] == expected_state
     receipt = transitions[-1]["receipt"]
-    assert receipt["semantic_retry_pages"] == [2]
+    assert receipt["protected_retry_pages"] == [2]
     if expected_state == "SUCCEEDED":
         assert receipt["manifest_id"].startswith("gfdmv1:manifest:")
         assert (tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json").is_file()

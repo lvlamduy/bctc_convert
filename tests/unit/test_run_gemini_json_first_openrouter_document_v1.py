@@ -103,6 +103,28 @@ def _google_result() -> ProviderResultV1:
     )
 
 
+def _unresolved_result() -> ProviderResultV1:
+    original = _result()
+    page = {
+        "status": "UNRESOLVED_PAGE",
+        "sections": [],
+        "completion": {
+            "all_relevant_content_transcribed": False,
+            "uncertainty_exact": ["The page edge is cut and the table is incomplete."],
+        },
+    }
+    return ProviderResultV1(
+        output_text=json.dumps(page),
+        raw_response_bytes=b'{"provider":"unresolved"}',
+        provider_name=original.provider_name,
+        provider_model=original.provider_model,
+        service_tier=original.service_tier,
+        attempts=original.attempts,
+        usage=original.usage,
+        response_id_sha256="3" * 64,
+    )
+
+
 def test_parallel_document_run_persists_in_parent_and_resumes_from_cache(tmp_path) -> None:
     pdf = tmp_path / "document.pdf"
     database = tmp_path / "store.sqlite3"
@@ -206,6 +228,51 @@ def test_one_failed_page_does_not_abort_siblings_and_only_failure_retries(tmp_pa
     assert second["ingested_pages"] == [2]
     assert len(retried) == 1
     assert (artifacts / "document-manifest.json").is_file()
+
+
+def test_unresolved_page_is_cached_but_never_seals_a_document_manifest(tmp_path) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 1)
+    calls = 0
+
+    def provider(**_kwargs):
+        nonlocal calls
+        calls += 1
+        return _unresolved_result()
+
+    first = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+    )
+    assert first["disposition"] == "NEEDS_RETRY"
+    assert first["failed_pages"] == [1]
+    assert first["unresolved_pages"] == [1]
+    assert first["ingested_pages"] == [1]
+    assert not (artifacts / "document-manifest.json").exists()
+
+    replay = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("cached unresolved page must not trigger a paid provider call")
+        ),
+    )
+    assert calls == 1
+    assert replay["disposition"] == "NEEDS_RETRY"
+    assert replay["failed_pages"] == [1]
+    assert replay["unresolved_pages"] == [1]
+    assert replay["cached_pages"] == []
+    assert replay["ingested_pages"] == []
+    assert not (artifacts / "document-manifest.json").exists()
 
 
 def test_provider_failure_falls_back_one_page_to_google_and_builds_mixed_manifest(

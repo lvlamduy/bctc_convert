@@ -555,8 +555,8 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
     return failed
 
 
-def _semantic_retry_pages_v1(task: dict[str, Any]) -> list[int]:
-    """Return the authenticated semantic subset of one item retry."""
+def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
+    """Return pages known to contain financial content before an item retry."""
 
     if task["state"] != "NEEDS_RETRY":
         return []
@@ -567,11 +567,23 @@ def _semantic_retry_pages_v1(task: dict[str, Any]) -> list[int]:
             "OpenRouter retry receipt is invalid"
         ) from exc
     semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
-    if type(semantic) is not list or semantic != sorted(set(semantic)):
+    unresolved = prior.get("unresolved_pages", []) if type(prior) is dict else None
+    if (
+        type(semantic) is not list
+        or semantic != sorted(set(semantic))
+        or type(unresolved) is not list
+        or unresolved != sorted(set(unresolved))
+    ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter semantic retry frontier is invalid"
+            "OpenRouter protected retry frontier is invalid"
         )
-    return semantic
+    protected = sorted(set(semantic) | set(unresolved))
+    failed = prior.get("failed_pages")
+    if type(failed) is not list or not set(protected).issubset(failed):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter protected retry pages are not failed pages"
+        )
+    return protected
 
 
 def _mixed_prompt_manifest_v1(
@@ -638,9 +650,9 @@ def _mixed_prompt_manifest_v1(
 
 
 def _semantic_retry_no_relevant_pages_v1(
-    manifest: dict[str, Any], *, semantic_pages: list[int]
+    manifest: dict[str, Any], *, protected_pages: list[int]
 ) -> list[int]:
-    """Reject a semantic financial page that an item retry silently drops."""
+    """Reject a known financial page that an item retry silently drops."""
 
     pages = manifest.get("pages")
     if type(pages) is not list:
@@ -662,12 +674,12 @@ def _semantic_retry_no_relevant_pages_v1(
                 "mixed-prompt manifest page frontier is duplicate"
             )
         status_by_page[physical_page] = status
-    if any(page not in status_by_page for page in semantic_pages):
+    if any(page not in status_by_page for page in protected_pages):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "mixed-prompt manifest omits a semantic retry page"
+            "mixed-prompt manifest omits a protected retry page"
         )
     return [
-        page for page in semantic_pages if status_by_page[page] == "NO_RELEVANT_FINANCIAL_CONTENT"
+        page for page in protected_pages if status_by_page[page] == "NO_RELEVANT_FINANCIAL_CONTENT"
     ]
 
 
@@ -687,7 +699,7 @@ def _run_openrouter(
     max_attempts: int,
 ) -> dict[str, Any]:
     retry_pages = _provider_retry_pages_v1(task)
-    semantic_retry_pages = _semantic_retry_pages_v1(task)
+    protected_retry_pages = _protected_retry_pages_v1(task)
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
         task = transition_corpus_task_v1(
             ledger,
@@ -746,7 +758,7 @@ def _run_openrouter(
             write=False,
         )
         dropped_semantic_pages = _semantic_retry_no_relevant_pages_v1(
-            manifest, semantic_pages=semantic_retry_pages
+            manifest, protected_pages=protected_retry_pages
         )
         if dropped_semantic_pages:
             receipt = {
@@ -754,7 +766,7 @@ def _run_openrouter(
                 "alternate_prompt_pages": retry_pages,
                 "alternate_prompt_variant": "items",
                 "semantic_item_no_relevant_pages": dropped_semantic_pages,
-                "semantic_retry_pages": semantic_retry_pages,
+                "protected_retry_pages": protected_retry_pages,
             }
             return_code = 2
         else:
@@ -768,7 +780,7 @@ def _run_openrouter(
                 "alternate_prompt_variant": "items",
                 "manifest_id": manifest["document_manifest_id"],
                 "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
-                "semantic_retry_pages": semantic_retry_pages,
+                "protected_retry_pages": protected_retry_pages,
             }
     next_state = (
         "SUCCEEDED"

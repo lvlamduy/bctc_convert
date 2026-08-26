@@ -540,13 +540,18 @@ def run_openrouter_document_v1(
 
     failed_pages: list[int] = []
     semantic_failed_pages: list[int] = []
+    unresolved_pages: list[int] = []
     offline_missing_pages: list[int] = []
     cached_pages: list[int] = []
     ingested_pages: list[int] = []
     for physical_page in selected_pages:
         outcome = outcomes[physical_page]
         if outcome.cached_json is not None:
-            cached_pages.append(physical_page)
+            if outcome.cached_json["status"] == "UNRESOLVED_PAGE":
+                failed_pages.append(physical_page)
+                unresolved_pages.append(physical_page)
+            else:
+                cached_pages.append(physical_page)
             continue
         if outcome.semantic_failure_present and outcome.provider_result is None:
             failed_pages.append(physical_page)
@@ -671,6 +676,9 @@ def run_openrouter_document_v1(
             ),
         )
         ingested_pages.append(physical_page)
+        if page_json["status"] == "UNRESOLVED_PAGE":
+            failed_pages.append(physical_page)
+            unresolved_pages.append(physical_page)
 
     manifest = None
     if not failed_pages and physical_pages is None:
@@ -717,6 +725,7 @@ def run_openrouter_document_v1(
         "offline_missing_pages": offline_missing_pages,
         "page_count": len(selected_pages),
         "semantic_failed_pages": semantic_failed_pages,
+        "unresolved_pages": unresolved_pages,
         "usage": usage_summary_v1(database),
     }
     if physical_pages is not None:
