@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -101,3 +102,78 @@ def test_document_manifest_command_rejects_overlap_or_contract_drift(
                 output=tmp_path / "document-manifest.json",
             )
         )
+
+
+def test_register_existing_is_hash_bound_and_idempotent(tmp_path, monkeypatch, capsys) -> None:
+    artifacts = tmp_path / "job"
+    artifacts.mkdir()
+    manifest = {
+        "display_name": "one-document-part-1",
+        "output_contract_mode": "JSON_SCHEMA",
+        "prompt_sha256": "p",
+        "prompt_variant": "balanced",
+        "provider": "GOOGLE_GEMINI_BATCH_API",
+        "requested_model": "gemini-3.7-flash",
+        "requested_service_tier": "batch",
+        "requests": [
+            {
+                "document": {
+                    "source_logical_name": "filing.pdf",
+                    "source_sha256": "a" * 64,
+                    "source_size_bytes": 123,
+                },
+                "page": {"physical_page": 1},
+                "provider_file_ref": None,
+                "request_id": "page-1",
+            }
+        ],
+        "response_schema_sha256": "s",
+        "thinking_level": "low",
+    }
+    manifest_bytes = json.dumps(manifest).encode()
+    submission_bytes = b'{"name":"batches/existing","metadata":{"state":"BATCH_STATE_PENDING"}}\n'
+    (artifacts / "manifest.json").write_bytes(manifest_bytes)
+    (artifacts / "submission-response.json").write_bytes(submission_bytes)
+    receipt = {
+        "batch_name": "batches/existing",
+        "credential_slot": "GOOGLE_SLOT_2",
+        "elapsed_seconds": "1.000",
+        "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+        "provider": "GOOGLE_GEMINI_BATCH_API",
+        "state": "BATCH_STATE_PENDING",
+        "submission_response_sha256": hashlib.sha256(submission_bytes).hexdigest(),
+    }
+    (artifacts / "submission-receipt.json").write_text(json.dumps(receipt))
+    observed = {}
+    monkeypatch.setattr(
+        target, "initialize_gemini_financial_page_store_v1", lambda path: path.touch()
+    )
+    monkeypatch.setattr(target, "batch_progress_v1", lambda path: observed.get("progress", []))
+
+    def register(path, **kwargs):
+        observed.update({"path": path, **kwargs})
+        return "gfpstorev1:batch:existing"
+
+    monkeypatch.setattr(target, "register_batch_submission_v1", register)
+    args = argparse.Namespace(database=tmp_path / "store.sqlite3", artifact_dir=artifacts)
+    assert target._register_existing(args) == 0
+    assert observed["submission"].batch_name == "batches/existing"
+    assert observed["requests"][0]["request_id"] == "page-1"
+    assert json.loads(capsys.readouterr().out)["disposition"] == "REGISTERED_EXISTING"
+
+    observed["progress"] = [
+        {
+            "batch_job_id": "gfpstorev1:batch:existing",
+            "batch_name": "batches/existing",
+            "credential_slot": "GOOGLE_SLOT_2",
+            "provider": "GOOGLE_GEMINI_BATCH_API",
+            "request_count": 1,
+        }
+    ]
+    assert target._register_existing(args) == 0
+    assert json.loads(capsys.readouterr().out)["disposition"] == "ALREADY_REGISTERED"
+
+    receipt["manifest_sha256"] = "0" * 64
+    (artifacts / "submission-receipt.json").write_text(json.dumps(receipt))
+    with pytest.raises(target.RunGeminiJsonFirstBatchV1Error, match="manifest hash"):
+        target._register_existing(args)

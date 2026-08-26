@@ -24,6 +24,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
 )
 from bctc_ai.evaluation.gemini_json_first_batch_v1 import (  # noqa: E402
     ACTIVE_BATCH_STATES,
+    BatchSubmissionV1,
     InlinePageRequestV1,
     build_google_file_batch_body_v1,
     build_google_inline_batch_body_v1,
@@ -133,6 +134,10 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status")
     status.add_argument("--database", type=Path, required=True)
+
+    register_existing = commands.add_parser("register-existing")
+    register_existing.add_argument("--database", type=Path, required=True)
+    register_existing.add_argument("--artifact-dir", type=Path, required=True)
 
     document_manifest = commands.add_parser("document-manifest")
     document_manifest.add_argument("--database", type=Path, required=True)
@@ -486,6 +491,100 @@ def _elapsed_seconds(operation: dict[str, Any]) -> str:
     return format(seconds, ".3f")
 
 
+def _register_existing(args: argparse.Namespace) -> int:
+    """Idempotently bind an already-submitted provider batch to one store."""
+
+    receipt = _json_file(args.artifact_dir / "submission-receipt.json")
+    manifest_bytes = (args.artifact_dir / "manifest.json").read_bytes()
+    submission_raw = (args.artifact_dir / "submission-response.json").read_bytes()
+    if sha256(manifest_bytes).hexdigest() != receipt.get("manifest_sha256"):
+        raise RunGeminiJsonFirstBatchV1Error("batch manifest hash drifted")
+    if sha256(submission_raw).hexdigest() != receipt.get("submission_response_sha256"):
+        raise RunGeminiJsonFirstBatchV1Error("batch submission response hash drifted")
+    manifest = json.loads(manifest_bytes)
+    provider = receipt.get("provider")
+    if provider != manifest.get("provider") or provider not in {
+        "GOOGLE_GEMINI_BATCH_API",
+        "OPENROUTER_BATCH",
+    }:
+        raise RunGeminiJsonFirstBatchV1Error("batch provider identity drifted")
+    required_receipt = {
+        "batch_name",
+        "credential_slot",
+        "elapsed_seconds",
+        "manifest_sha256",
+        "provider",
+        "state",
+        "submission_response_sha256",
+    }
+    if set(receipt) != required_receipt:
+        raise RunGeminiJsonFirstBatchV1Error("batch submission receipt fields drifted")
+    if not args.database.exists():
+        initialize_gemini_financial_page_store_v1(args.database)
+    existing = [
+        item
+        for item in batch_progress_v1(args.database)
+        if item["batch_name"] == receipt["batch_name"]
+    ]
+    if existing:
+        item = existing[0]
+        if (
+            item["provider"] != provider
+            or item["credential_slot"] != receipt["credential_slot"]
+            or item["request_count"] != len(manifest.get("requests", []))
+        ):
+            raise RunGeminiJsonFirstBatchV1Error(
+                "registered batch differs from the supplied immutable artifacts"
+            )
+        print(json.dumps({"disposition": "ALREADY_REGISTERED", **item}, sort_keys=True))
+        return 0
+    submission = BatchSubmissionV1(
+        batch_name=receipt["batch_name"],
+        state=receipt["state"],
+        raw_response_bytes=submission_raw,
+        elapsed_seconds=receipt["elapsed_seconds"],
+        credential_slot=receipt["credential_slot"],
+    )
+    requests = [
+        {
+            "document": request["document"],
+            "page": request["page"],
+            "request_id": request["request_id"],
+        }
+        for request in manifest.get("requests", [])
+    ]
+    operation_summary = (
+        summarize_openrouter_batch_v1(submission_raw) if provider == "OPENROUTER_BATCH" else None
+    )
+    batch_job_id = register_batch_submission_v1(
+        args.database,
+        submission=submission,
+        display_name=manifest["display_name"],
+        requests=requests,
+        prompt_variant=manifest["prompt_variant"],
+        output_contract_mode=manifest["output_contract_mode"],
+        prompt_sha256=manifest["prompt_sha256"],
+        response_schema_sha256=manifest["response_schema_sha256"],
+        requested_model=manifest["requested_model"],
+        thinking_level=manifest["thinking_level"],
+        provider=provider,
+        requested_service_tier=manifest["requested_service_tier"],
+        operation_summary=operation_summary,
+    )
+    print(
+        json.dumps(
+            {
+                "batch_job_id": batch_job_id,
+                "batch_name": receipt["batch_name"],
+                "disposition": "REGISTERED_EXISTING",
+                "request_count": len(requests),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def _poll(args: argparse.Namespace) -> int:
     receipt = _json_file(args.artifact_dir / "submission-receipt.json")
     manifest_bytes = (args.artifact_dir / "manifest.json").read_bytes()
@@ -730,6 +829,8 @@ def main() -> int:
         return _submit(args)
     if args.command == "poll":
         return _poll(args)
+    if args.command == "register-existing":
+        return _register_existing(args)
     if args.command == "document-manifest":
         return _document_manifest(args)
     print(json.dumps({"progress": batch_progress_v1(args.database)}, sort_keys=True))
