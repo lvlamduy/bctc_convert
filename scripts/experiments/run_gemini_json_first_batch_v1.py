@@ -260,6 +260,11 @@ def _selected_pages(pdf_path: Path, pages: list[int] | None, all_pages: bool) ->
 
 
 def _submit(args: argparse.Namespace) -> int:
+    if args.provider == "openrouter":
+        raise RunGeminiJsonFirstBatchV1Error(
+            "OpenRouter Vertex Gemini Batch image transport is unsupported; "
+            "use OpenRouter synchronous Vertex Flex or Google JSONL Batch"
+        )
     if args.artifact_dir.exists() and any(args.artifact_dir.iterdir()):
         raise RunGeminiJsonFirstBatchV1Error("artifact directory must be empty")
     args.artifact_dir.mkdir(parents=True, exist_ok=True)

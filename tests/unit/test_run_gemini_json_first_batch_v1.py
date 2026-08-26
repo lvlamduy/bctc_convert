@@ -16,6 +16,23 @@ target = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(target)
 
 
+def test_submit_rejects_openrouter_image_batch_before_media_or_artifact_write(
+    tmp_path,
+) -> None:
+    artifact_dir = tmp_path / "must-not-exist"
+    with pytest.raises(
+        target.RunGeminiJsonFirstBatchV1Error,
+        match="OpenRouter Vertex Gemini Batch image transport is unsupported",
+    ):
+        target._submit(
+            argparse.Namespace(
+                artifact_dir=artifact_dir,
+                provider="openrouter",
+            )
+        )
+    assert not artifact_dir.exists()
+
+
 def _write_batch_manifest(path: Path, pages: list[int], *, prompt: str = "p") -> None:
     path.mkdir()
     document = {
