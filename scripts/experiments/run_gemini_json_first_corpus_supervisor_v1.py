@@ -94,7 +94,12 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--database", type=Path, required=True)
     run.add_argument("--artifact-root", type=Path, required=True)
     run.add_argument("--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt")
-    run.add_argument("--google-key-slot", type=int, default=2)
+    run.add_argument(
+        "--google-key-slot",
+        type=int,
+        help="Force one Google slot; otherwise --google-key-slots is distributed per task.",
+    )
+    run.add_argument("--google-key-slots", default="1,2")
     run.add_argument(
         "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
     )
@@ -184,6 +189,34 @@ def _task_index(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
         for task in document["tasks"]:
             result[task["task_id"]] = {"planned_document": document, "task": task}
     return result
+
+
+def _google_slots_v1(args: argparse.Namespace) -> list[int]:
+    forced = getattr(args, "google_key_slot", None)
+    if forced is not None:
+        slots = [forced]
+    else:
+        raw = getattr(args, "google_key_slots", "1,2")
+        try:
+            slots = [int(value) for value in raw.split(",")]
+        except (AttributeError, ValueError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "Google key-slot axis is invalid"
+            ) from exc
+    if not slots or slots != list(dict.fromkeys(slots)) or any(slot <= 0 for slot in slots):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google key-slot axis is empty, duplicate, or nonpositive"
+        )
+    return slots
+
+
+def _google_slot_for_task_v1(task_id: str, slots: list[int]) -> int:
+    if type(task_id) is not str or not task_id.startswith("gjfptaskv1:"):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("corpus task ID is invalid")
+    digest = task_id.removeprefix("gjfptaskv1:")
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("corpus task digest is invalid")
+    return slots[int(digest[:16], 16) % len(slots)]
 
 
 def _source(task: dict[str, Any], source_root: Path) -> Path:
@@ -609,6 +642,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         )
     if not 1 <= args.max_fallback_attempts <= 10:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("fallback attempt bound lies outside 1..10")
+    google_slots = _google_slots_v1(args)
     args.artifact_root.mkdir(parents=True, exist_ok=True)
     _write_or_verify(args.artifact_root / "corpus-plan.json", canonical_json_bytes_v1(plan))
     started = time.monotonic()
@@ -675,7 +709,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 openrouter_key_file=args.openrouter_key_file,
                 openrouter_workers=args.openrouter_workers,
                 google_key_file=args.google_key_file,
-                google_key_slot=args.google_key_slot,
+                google_key_slot=_google_slot_for_task_v1(openrouter[0]["task_id"], google_slots),
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
@@ -697,7 +731,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 database=args.database,
                 artifact_root=args.artifact_root,
                 google_key_file=args.google_key_file,
-                google_key_slot=args.google_key_slot,
+                google_key_slot=_google_slot_for_task_v1(task["task_id"], google_slots),
                 provider_timeout_seconds=args.provider_timeout_seconds,
             )
             google_submit_futures[future] = task["task_id"]

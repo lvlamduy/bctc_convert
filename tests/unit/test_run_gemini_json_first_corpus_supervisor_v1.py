@@ -108,6 +108,19 @@ def test_source_binding_and_subprocess_json_receipt_are_fail_closed(tmp_path) ->
         target._last_json("noise only")
 
 
+def test_google_key_slots_are_unique_and_task_stable() -> None:
+    assert target._google_slots_v1(Namespace(google_key_slot=None, google_key_slots="1,2")) == [
+        1,
+        2,
+    ]
+    task_id = "gjfptaskv1:" + "f" * 64
+    selected = target._google_slot_for_task_v1(task_id, [1, 2])
+    assert selected in {1, 2}
+    assert target._google_slot_for_task_v1(task_id, [1, 2]) == selected
+    with pytest.raises(target.RunGeminiJsonFirstCorpusSupervisorV1Error):
+        target._google_slots_v1(Namespace(google_key_slot=None, google_key_slots="1,1"))
+
+
 def test_google_poll_is_nonblocking_while_batch_remains_active(monkeypatch, tmp_path) -> None:
     task = {
         "artifact_relative_path": "task-1",
@@ -213,11 +226,15 @@ def test_scheduler_progresses_google_and_openrouter_concurrently(
     ledger.touch()
     phase = {"complete": False}
     calls = []
-    google_task = {"route": target.GOOGLE_ROUTE, "state": "RUNNING", "task_id": "g"}
+    google_task = {
+        "route": target.GOOGLE_ROUTE,
+        "state": "RUNNING",
+        "task_id": "gjfptaskv1:" + "1" * 64,
+    }
     openrouter_task = {
         "route": target.OPENROUTER_ROUTE,
         "state": "PENDING",
-        "task_id": "o",
+        "task_id": "gjfptaskv1:" + "2" * 64,
     }
 
     def tasks(_ledger):
