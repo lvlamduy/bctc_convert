@@ -101,7 +101,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=5)
     parser.add_argument(
         "--prompt-variant",
-        choices=("simple", "compact", "balanced"),
+        choices=("simple", "items", "compact", "balanced"),
         default="simple",
     )
     parser.add_argument(

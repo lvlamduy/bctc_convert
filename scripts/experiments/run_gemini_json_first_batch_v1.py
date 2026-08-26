@@ -93,7 +93,7 @@ def _parser() -> argparse.ArgumentParser:
     submit.add_argument("--dpi", type=int, choices=(200, 300), default=300)
     submit.add_argument(
         "--prompt-variant",
-        choices=("simple", "compact", "balanced"),
+        choices=("simple", "items", "compact", "balanced"),
         default="simple",
     )
     submit.add_argument(

@@ -160,7 +160,7 @@ def initialize_gemini_json_first_corpus_ledger_v1(
     """Create one exact ledger atomically and materialize every planned task."""
 
     checked = validate_gemini_json_first_corpus_plan_v1(dict(plan))
-    if prompt_variant not in {"simple", "compact", "balanced"}:
+    if prompt_variant not in {"simple", "items", "compact", "balanced"}:
         raise _error("corpus ledger prompt variant is invalid")
     if output_contract_mode not in {"JSON_SCHEMA", "PROMPT_JSON"}:
         raise _error("corpus ledger output contract mode is invalid")
