@@ -77,6 +77,7 @@ def _page() -> dict[str, object]:
 
 def test_prompt_variants_share_one_schema_blind_contract() -> None:
     simple = build_financial_page_json_prompt_v1(variant="simple")
+    items = build_financial_page_json_prompt_v1(variant="items")
     compact = build_financial_page_json_prompt_v1(variant="compact")
     balanced = build_financial_page_json_prompt_v1(variant="balanced")
     assert len(simple) < 1_000
@@ -85,13 +86,16 @@ def test_prompt_variants_share_one_schema_blind_contract() -> None:
     assert len(simple) < len(compact) < len(balanced)
     assert "Bảng cân đối kế toán" in compact
     assert "không dịch vector" in balanced
-    for prompt in (simple, compact, balanced):
+    for prompt in (simple, items, compact, balanced):
         assert "ReportNormId" not in prompt
         assert "Family12" not in prompt
         assert "NO_RELEVANT_FINANCIAL_CONTENT" in prompt
         assert 'chuỗi "0"' in prompt
     for prompt in (compact, balanced):
         assert 'gạch dưới "_"' in prompt
+    assert "narratives_exact luôn là mảng rỗng" in items
+    assert "Không chép các đoạn văn" in items
+    assert "không bỏ sót hàng" in items
     schema = financial_page_json_response_schema_v1()
     assert schema["required"] == ["status", "sections", "completion"]
     assert list(schema["properties"]) == ["status", "sections", "completion"]

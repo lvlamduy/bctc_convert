@@ -66,7 +66,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
     parser.add_argument(
         "--prompt-variant",
-        choices=("simple", "compact", "balanced"),
+        choices=("simple", "items", "compact", "balanced"),
         default="simple",
     )
     parser.add_argument("--database", type=Path, required=True)

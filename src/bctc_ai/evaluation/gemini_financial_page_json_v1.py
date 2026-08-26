@@ -104,6 +104,22 @@ def build_financial_page_json_prompt_v1(
         "Markdown hay nội dung ngoài JSON."
     )
 
+    items = (
+        "Đọc duy nhất ảnh này và trả đúng một JSON theo JSON Schema được cung cấp. "
+        "Chỉ số hóa: (1) các báo cáo tài chính chính; (2) bảng thuyết minh "
+        "hoặc danh sách khoản mục tài chính có nhãn hàng và giá trị. Không chép "
+        "các đoạn văn diễn giải, giới thiệu, pháp lý hoặc chính sách thuần túy; "
+        "narratives_exact luôn là mảng rỗng. Giữ đủ và đúng thứ tự mọi tiêu đề, "
+        "khoản mục, cột và giá trị nhìn thấy trong các bảng/danh sách đó; giữ "
+        "nguyên chính tả và chữ số, không sửa, tính lại hoặc suy đoán. Dấu gạch kế "
+        'toán có thể chép nguyên văn hoặc ghi chuỗi "0". hierarchy_path_exact mô tả '
+        "các cấp cha-con nhìn thấy. Nếu trang không có bảng/danh sách khoản mục "
+        "thuộc phạm vi trên, trả NO_RELEVANT_FINANCIAL_CONTENT với sections rỗng. Nếu "
+        "có nhưng không thể đọc đủ phần thiết yếu, trả UNRESOLVED_PAGE. Trước khi "
+        "kết thúc, kiểm tra không bỏ sót hàng hoặc phần cuối bảng. Không trả Markdown "
+        "hay nội dung ngoài JSON."
+    )
+
     common = (
         "Chuyển nội dung báo cáo tài chính nhìn thấy trong ảnh thành JSON theo "
         "JSON Schema được cung cấp. Chỉ lấy Bảng cân đối kế toán, Báo cáo kết quả "
@@ -149,10 +165,12 @@ def build_financial_page_json_prompt_v1(
         )
     if variant == "simple":
         return simple + contract
+    if variant == "items":
+        return items + contract
     if variant == "compact":
         return common + contract
     if variant != "balanced":
-        raise _error("prompt variant must be simple, compact, or balanced")
+        raise _error("prompt variant must be simple, items, compact, or balanced")
     return (
         common + "\n\nMỗi section và table theo đúng thứ tự từ trên xuống. columns chỉ gồm cột "
         "giá trị; header_path_exact đi từ header ngoài đến header trong. Mỗi hàng "
