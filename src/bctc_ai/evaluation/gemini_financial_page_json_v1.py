@@ -68,6 +68,12 @@ _ROW_LABEL_HEADER_ANCHORS = frozenset(
         "noi dung",
     }
 )
+_STRUCTURAL_ROW_KEY_HEADER_ANCHORS = _ROW_LABEL_HEADER_ANCHORS | frozenset(
+    {
+        "stt",
+        "so thu tu",
+    }
+)
 
 
 class GeminiFinancialPageJsonV1Error(ValueError):
@@ -526,12 +532,25 @@ def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
     """
 
     columns = table["columns"]
+    rows = table["rows"]
     leading_count = 0
     for column in columns:
         if column["value_kind"] != "TEXT":
             break
         leading_count += 1
     if leading_count == 0 or leading_count == len(columns):
+        return False
+    first_header = _search_fold_v1(
+        " ".join(str(item or "") for item in columns[0]["header_path_exact"])
+    )
+    if first_header not in _ROW_LABEL_HEADER_ANCHORS:
+        return False
+    if any(
+        row["label_exact"] is None
+        or not row["hierarchy_path_exact"]
+        or row["hierarchy_path_exact"][-1] != row["label_exact"]
+        for row in rows
+    ):
         return False
     value_columns = columns[leading_count:]
     value_width = len(value_columns)
@@ -609,6 +628,43 @@ def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
     table["columns"] = [*columns[:label_index], *columns[label_index + 1 :]]
     for row, normalized in zip(table["rows"], normalized_rows, strict=True):
         row["values_exact"] = normalized
+    return True
+
+
+def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> bool:
+    """Drop a complete leading row-key prefix already represented by each row.
+
+    Some otherwise complete Gemini tables retain ``STT`` and/or the printed
+    label header in ``columns`` while placing those visible row keys only in
+    ``label_exact`` and ``hierarchy_path_exact``.  Admit that convention only
+    when every row has one identical shorter width, the omitted columns form a
+    leading structural-key prefix, and every row binds its exact label as the
+    final hierarchy component.  No provided cell is moved, synthesized, or
+    discarded.
+    """
+
+    columns = table["columns"]
+    rows = table["rows"]
+    row_widths = {len(row["values_exact"]) for row in rows}
+    if len(row_widths) != 1:
+        return False
+    value_width = next(iter(row_widths))
+    missing_count = len(columns) - value_width
+    if missing_count <= 0 or value_width <= 0:
+        return False
+    omitted = columns[:missing_count]
+    for column in omitted:
+        header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
+        if header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS:
+            return False
+    if any(
+        row["label_exact"] is None
+        or not row["hierarchy_path_exact"]
+        or row["hierarchy_path_exact"][-1] != row["label_exact"]
+        for row in rows
+    ):
+        return False
+    table["columns"] = columns[missing_count:]
     return True
 
 
@@ -748,6 +804,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 row_widths.append(len(row["values_exact"]))
             if (
                 _normalize_explicit_row_label_column_v1(table)
+                or _normalize_omitted_leading_structural_columns_v1(table)
                 or _normalize_leading_text_header_proxies_v1(table)
                 or _normalize_four_column_movement_table_v1(table)
             ):
@@ -762,12 +819,6 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             ):
                 for row in table["rows"]:
                     row["values_exact"] = [None]
-            elif (
-                width > 1
-                and table["columns"][0]["value_kind"] == "TEXT"
-                and all(row_width == width - 1 for row_width in row_widths)
-            ):
-                del table["columns"][0]
             else:
                 for row in table["rows"]:
                     model_annotation_present = any(

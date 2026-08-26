@@ -237,6 +237,87 @@ def test_primary_statement_label_column_is_removed_without_dropping_stt_or_note(
     ]
 
 
+def test_uniform_omitted_stt_and_label_prefix_preserves_note_and_money_cells() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["STT"], "value_kind": "TEXT"},
+        {"header_path_exact": ["CHỈ TIÊU"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thuyết minh"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Số cuối kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số đầu kỳ"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "B. NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU",
+            "hierarchy_path_exact": ["B. NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU"],
+            "row_kind": "GROUP",
+            "values_exact": [None, None, None],
+        },
+        {
+            "label_exact": "I. Các khoản nợ Chính phủ và Ngân hàng Trung ương",
+            "hierarchy_path_exact": [
+                "B. NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU",
+                "I. Các khoản nợ Chính phủ và Ngân hàng Trung ương",
+            ],
+            "row_kind": "ITEM",
+            "values_exact": ["12", "162.609.396", "168.388.958"],
+        },
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked_table["columns"]] == [
+        ["Thuyết minh"],
+        ["Số cuối kỳ"],
+        ["Số đầu kỳ"],
+    ]
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        [None, None, None],
+        ["12", "162.609.396", "168.388.958"],
+    ]
+
+
+def test_uniform_omitted_stt_prefix_preserves_descriptive_table_cells() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["STT"], "value_kind": "UNKNOWN"},
+        {"header_path_exact": ["Tên công ty"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Giấy phép hoạt động số"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Lĩnh vực hoạt động"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Tỷ lệ sở hữu"], "value_kind": "PERCENT"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "1",
+            "hierarchy_path_exact": ["1"],
+            "row_kind": "ITEM",
+            "values_exact": ["Công ty A", "01/GP", "Ngân hàng", "49,50%"],
+        },
+        {
+            "label_exact": "2",
+            "hierarchy_path_exact": ["2"],
+            "row_kind": "ITEM",
+            "values_exact": ["Công ty B", "02/GP", "Bảo hiểm", "37,25%"],
+        },
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked_table["columns"] == table["columns"][1:]
+    assert checked_table["rows"] == table["rows"]
+
+
+def test_omitted_nonstructural_prefix_stays_unresolved() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Mã hợp đồng"], "value_kind": "TEXT"},
+        *table["columns"],
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
 def test_numeric_group_column_already_carried_by_label_is_removed() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
