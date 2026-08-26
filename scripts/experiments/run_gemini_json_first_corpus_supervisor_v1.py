@@ -658,6 +658,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         thread_name_prefix="google-batch-submit",
     )
     google_submit_futures: dict[Future[dict[str, Any]], str] = {}
+    next_google_poll_at = 0.0
     while True:
         if openrouter_future is not None and openrouter_future.done():
             try:
@@ -758,20 +759,26 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             )
             continue
         if active_google:
-            polled = _poll_google(
-                task=active_google[0],
-                ledger=args.ledger,
-                database=args.database,
-                artifact_root=args.artifact_root,
-                google_key_file=args.google_key_file,
-                provider_timeout_seconds=args.provider_timeout_seconds,
-                max_attempts=summary["max_task_attempts"],
-            )
-            if polled["state"] != "RUNNING":
-                # Refill the newly free Google slot before starting a document call.
-                continue
-            if openrouter_future is None:
-                time.sleep(args.google_poll_interval_seconds)
+            now = time.monotonic()
+            if now >= next_google_poll_at:
+                polled = _poll_google(
+                    task=active_google[0],
+                    ledger=args.ledger,
+                    database=args.database,
+                    artifact_root=args.artifact_root,
+                    google_key_file=args.google_key_file,
+                    provider_timeout_seconds=args.provider_timeout_seconds,
+                    max_attempts=summary["max_task_attempts"],
+                )
+                next_google_poll_at = time.monotonic() + args.google_poll_interval_seconds
+                if polled["state"] != "RUNNING":
+                    # Refill the newly free Google slot before polling another batch.
+                    continue
+            delay = max(0.0, next_google_poll_at - time.monotonic())
+            if delay:
+                if openrouter_future is not None or google_submit_futures:
+                    delay = min(delay, 1.0)
+                time.sleep(delay)
                 continue
         if openrouter_future is not None:
             time.sleep(min(args.google_poll_interval_seconds, 1.0))
