@@ -79,6 +79,12 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
     )
+    run.add_argument(
+        "--openrouter-workers",
+        type=int,
+        default=20,
+        help="Bounded concurrent page requests for one OpenRouter document (1..30).",
+    )
     run.add_argument("--max-active-google", type=int, default=4)
     run.add_argument("--google-poll-interval-seconds", type=float, default=30.0)
     run.add_argument("--google-watch-max-seconds", type=float, default=172_800.0)
@@ -363,6 +369,7 @@ def _run_google_fallback(
     database: Path,
     artifact_root: Path,
     openrouter_key_file: Path,
+    openrouter_workers: int,
     provider_timeout_seconds: int,
     max_fallback_attempts: int,
 ) -> dict[str, Any]:
@@ -403,7 +410,7 @@ def _run_google_fallback(
         "--dpi",
         str(plan["policy"]["dpi"]),
         "--workers",
-        str(min(plan["policy"]["openrouter_workers"], len(pages))),
+        str(min(openrouter_workers, len(pages))),
         "--prompt-variant",
         corpus_ledger_summary_v1(ledger)["prompt_variant"],
         "--output-contract-mode",
@@ -446,6 +453,7 @@ def _run_openrouter(
     database: Path,
     artifact_root: Path,
     openrouter_key_file: Path,
+    openrouter_workers: int,
     provider_timeout_seconds: int,
     max_attempts: int,
 ) -> dict[str, Any]:
@@ -473,7 +481,7 @@ def _run_openrouter(
             "--dpi",
             str(plan["policy"]["dpi"]),
             "--workers",
-            str(plan["policy"]["openrouter_workers"]),
+            str(openrouter_workers),
             "--prompt-variant",
             corpus_ledger_summary_v1(ledger)["prompt_variant"],
             "--output-contract-mode",
@@ -568,6 +576,10 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
     if not 1 <= args.max_active_google <= 32:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("active Google bound lies outside 1..32")
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter worker bound lies outside 1..30"
+        )
     if not 1 <= args.max_fallback_attempts <= 10:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("fallback attempt bound lies outside 1..10")
     args.artifact_root.mkdir(parents=True, exist_ok=True)
@@ -624,6 +636,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 database=args.database,
                 artifact_root=args.artifact_root,
                 openrouter_key_file=args.openrouter_key_file,
+                openrouter_workers=args.openrouter_workers,
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_fallback_attempts=args.max_fallback_attempts,
             )
@@ -659,6 +672,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 database=args.database,
                 artifact_root=args.artifact_root,
                 openrouter_key_file=args.openrouter_key_file,
+                openrouter_workers=args.openrouter_workers,
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )

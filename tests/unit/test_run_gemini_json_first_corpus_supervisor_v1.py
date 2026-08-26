@@ -235,6 +235,7 @@ def test_scheduler_polls_google_before_openrouter_and_refills_terminal_slot(
         return {**google_task, "state": poll_state}
 
     def run_openrouter(**_kwargs):
+        assert _kwargs["openrouter_workers"] == 20
         calls.append("run-openrouter")
         phase["complete"] = True
         return {**openrouter_task, "state": "SUCCEEDED"}
@@ -267,6 +268,7 @@ def test_scheduler_polls_google_before_openrouter_and_refills_terminal_slot(
             max_active_google=1,
             max_fallback_attempts=2,
             openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=20,
             plan=tmp_path / "plan.json",
             provider_timeout_seconds=60,
             source_root=tmp_path / "source",
@@ -369,6 +371,7 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         database=tmp_path / "store.sqlite3",
         artifact_root=tmp_path / "artifacts",
         openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=20,
         provider_timeout_seconds=60,
         max_fallback_attempts=2,
     )
