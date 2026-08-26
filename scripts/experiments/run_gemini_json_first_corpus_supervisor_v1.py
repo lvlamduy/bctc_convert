@@ -520,6 +520,98 @@ def _run_google_fallback(
     )
 
 
+def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
+    """Return the exact provider-only frontier eligible for the item prompt."""
+
+    if task["state"] != "NEEDS_RETRY":
+        return None
+    try:
+        prior = json.loads(task["last_receipt_json"])
+    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter retry receipt is invalid"
+        ) from exc
+    failed = prior.get("failed_pages") if type(prior) is dict else None
+    semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
+    if (
+        type(failed) is not list
+        or not failed
+        or failed != sorted(set(failed))
+        or semantic != []
+        or any(
+            type(page) is not int
+            or page < task["first_physical_page"]
+            or page > task["last_physical_page"]
+            for page in failed
+        )
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter retry is not one exact provider-only page frontier"
+        )
+    return failed
+
+
+def _mixed_prompt_manifest_v1(
+    *,
+    task: dict[str, Any],
+    ledger: Path,
+    database: Path,
+    artifact_root: Path,
+    repair_pages: list[int],
+) -> dict[str, Any]:
+    """Build one document manifest binding ``items`` only to repair pages."""
+
+    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    if (
+        not repair_pages
+        or repair_pages != sorted(set(repair_pages))
+        or any(page not in expected_pages for page in repair_pages)
+        or expected_pages != list(range(1, task["document_page_count"] + 1))
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair page frontier is duplicate, out of range, or not a full document"
+        )
+    default_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
+    if default_variant == "items":
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair must differ from the corpus default prompt"
+        )
+    default_prompt_sha = sha256(
+        build_financial_page_json_prompt_v1(variant=default_variant).encode("utf-8")
+    ).hexdigest()
+    items_prompt_sha = sha256(
+        build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+    ).hexdigest()
+    page_prompt_sha256s = {
+        page: items_prompt_sha if page in repair_pages else default_prompt_sha
+        for page in expected_pages
+    }
+    manifest = build_financial_document_manifest_v1(
+        database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=expected_pages,
+        prompt_sha256=page_prompt_sha256s,
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+        requested_model=GOOGLE_MODEL,
+        allowed_gateway_service_tiers=[
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+            },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+    )
+    _write_or_verify(
+        _task_root(task, artifact_root) / "mixed-prompt-document-manifest.json",
+        canonical_json_bytes_v1(manifest),
+    )
+    return manifest
+
+
 def _run_openrouter(
     *,
     task: dict[str, Any],
@@ -535,6 +627,7 @@ def _run_openrouter(
     provider_timeout_seconds: int,
     max_attempts: int,
 ) -> dict[str, Any]:
+    retry_pages = _provider_retry_pages_v1(task)
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
         task = transition_corpus_task_v1(
             ledger,
@@ -544,51 +637,67 @@ def _run_openrouter(
             receipt={"document_run_started": True},
         )
     source = _source(task, source_root)
-    return_code, receipt = _command(
-        [
-            sys.executable,
-            str(OPENROUTER_RUNNER),
-            "--pdf",
-            str(source),
-            "--source-logical-name",
-            task["relative_path"],
-            "--database",
-            str(database),
-            "--artifact-dir",
-            str(_task_root(task, artifact_root)),
-            "--dpi",
-            str(plan["policy"]["dpi"]),
-            "--workers",
-            str(openrouter_workers),
-            "--prompt-variant",
-            corpus_ledger_summary_v1(ledger)["prompt_variant"],
-            "--output-contract-mode",
-            "json-schema",
-            "--openrouter-key-file",
-            str(openrouter_key_file),
-            "--google-key-file",
-            str(google_key_file),
-            "--google-key-slot",
-            str(google_key_slot),
-            "--google-standard-mode",
-            "on-provider-error",
-            "--timeout-seconds",
-            str(provider_timeout_seconds),
-        ],
-        expected={0, 2},
-    )
+    command = [
+        sys.executable,
+        str(OPENROUTER_RUNNER),
+        "--pdf",
+        str(source),
+        "--source-logical-name",
+        task["relative_path"],
+        "--database",
+        str(database),
+        "--artifact-dir",
+        str(_task_root(task, artifact_root)),
+        "--dpi",
+        str(plan["policy"]["dpi"]),
+        "--workers",
+        str(openrouter_workers),
+        "--prompt-variant",
+        "items" if retry_pages is not None else corpus_ledger_summary_v1(ledger)["prompt_variant"],
+        "--output-contract-mode",
+        "json-schema",
+        "--openrouter-key-file",
+        str(openrouter_key_file),
+        "--google-key-file",
+        str(google_key_file),
+        "--google-key-slot",
+        str(google_key_slot),
+        "--google-standard-mode",
+        "on-provider-error",
+        "--timeout-seconds",
+        str(provider_timeout_seconds),
+    ]
+    if retry_pages is not None:
+        for page in retry_pages:
+            command.extend(("--physical-page", str(page)))
+    return_code, receipt = _command(command, expected={0, 2})
     semantic_failed_pages = receipt.get("semantic_failed_pages")
     if type(semantic_failed_pages) is not list:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter result lacks its semantic-failure frontier"
         )
+    if return_code == 0 and retry_pages is not None:
+        manifest = _mixed_prompt_manifest_v1(
+            task=task,
+            ledger=ledger,
+            database=database,
+            artifact_root=artifact_root,
+            repair_pages=retry_pages,
+        )
+        receipt = {
+            **receipt,
+            "alternate_prompt_pages": retry_pages,
+            "alternate_prompt_variant": "items",
+            "manifest_id": manifest["document_manifest_id"],
+            "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
+        }
     next_state = (
         "SUCCEEDED"
         if return_code == 0
         else "FAILED"
         if semantic_failed_pages
         else "FAILED"
-        if task["attempt_count"] >= max_attempts
+        if retry_pages is not None or task["attempt_count"] >= max_attempts
         else "NEEDS_RETRY"
     )
     return transition_corpus_task_v1(
@@ -943,58 +1052,19 @@ def repair_openrouter_items_task(args: argparse.Namespace) -> dict[str, Any]:
         )
     task = matches[0]
     _source(task, args.source_root)
-    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
     repair_pages = sorted(set(args.physical_page))
-    if (
-        len(repair_pages) != len(args.physical_page)
-        or any(page not in expected_pages for page in repair_pages)
-        or expected_pages != list(range(1, task["document_page_count"] + 1))
-    ):
+    if len(repair_pages) != len(args.physical_page):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "item-only repair page frontier is duplicate, out of range, or not a full document"
+            "item-only repair page frontier is duplicate"
         )
-
-    summary = corpus_ledger_summary_v1(args.ledger)
-    default_variant = summary["prompt_variant"]
-    if default_variant == "items":
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "item-only repair must differ from the corpus default prompt"
-        )
-    default_prompt_sha = sha256(
-        build_financial_page_json_prompt_v1(variant=default_variant).encode("utf-8")
-    ).hexdigest()
-    items_prompt_sha = sha256(
-        build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
-    ).hexdigest()
-    page_prompt_sha256s = {
-        page: items_prompt_sha if page in repair_pages else default_prompt_sha
-        for page in expected_pages
-    }
-    schema_sha = canonical_json_sha256_v1(financial_page_json_response_schema_v1())
-    manifest = build_financial_document_manifest_v1(
-        args.database,
-        source_sha256=task["source_sha256"],
-        source_logical_name=task["relative_path"],
-        expected_physical_pages=expected_pages,
-        prompt_sha256=page_prompt_sha256s,
-        response_schema_sha256=schema_sha,
-        requested_model=GOOGLE_MODEL,
-        allowed_gateway_service_tiers=[
-            {
-                "gateway": "GOOGLE_GEMINI_API",
-                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-            },
-            {
-                "gateway": "OPENROUTER",
-                "requested_service_tier": OPENROUTER_SERVICE_TIER,
-            },
-        ],
+    manifest = _mixed_prompt_manifest_v1(
+        task=task,
+        ledger=args.ledger,
+        database=args.database,
+        artifact_root=args.artifact_root,
+        repair_pages=repair_pages,
     )
-    task_root = _task_root(task, args.artifact_root)
-    _write_or_verify(
-        task_root / "mixed-prompt-document-manifest.json",
-        canonical_json_bytes_v1(manifest),
-    )
+    expected_pages = list(range(1, task["document_page_count"] + 1))
     result = {
         "alternate_prompt_pages": repair_pages,
         "alternate_prompt_variant": "items",

@@ -762,3 +762,117 @@ def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
     args.physical_page = [2, 2]
     with pytest.raises(target.RunGeminiJsonFirstCorpusSupervisorV1Error, match="duplicate"):
         target.repair_openrouter_items_task(args)
+
+
+def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "VIB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    prior = {
+        "cached_pages": [1, 3],
+        "failed_pages": [2],
+        "semantic_failed_pages": [],
+    }
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(prior),
+        "relative_path": "VIB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+    commands = []
+    manifests = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {
+            **task,
+            "attempt_count": 2,
+            "state": kwargs["next_state"],
+        }
+
+    def command(argv, *, expected):
+        commands.append(argv)
+        assert expected == {0, 2}
+        assert argv[argv.index("--prompt-variant") + 1] == "items"
+        assert argv.count("--physical-page") == 1
+        assert argv[argv.index("--physical-page") + 1] == "2"
+        return 0, {
+            "cached_pages": [],
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "ingested_pages": [2],
+            "manifest_id": None,
+            "semantic_failed_pages": [],
+        }
+
+    def manifest(_database, **kwargs):
+        manifests.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
+            "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert len(commands) == 1
+    assert [item["next_state"] for item in transitions] == ["RUNNING", "SUCCEEDED"]
+    assert result["state"] == "SUCCEEDED"
+    prompts = manifests[0]["prompt_sha256"]
+    assert prompts[1] == prompts[3]
+    assert prompts[2] != prompts[1]
+    final_receipt = transitions[-1]["receipt"]
+    assert final_receipt["alternate_prompt_pages"] == [2]
+    assert final_receipt["alternate_prompt_variant"] == "items"
+    assert final_receipt["revalidated_document_pages"] == [1, 2, 3]
+
+
+def test_openrouter_item_retry_rejects_semantic_or_ambiguous_frontier() -> None:
+    task = {
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "state": "NEEDS_RETRY",
+    }
+    for prior in (
+        {"failed_pages": [2], "semantic_failed_pages": [2]},
+        {"failed_pages": [2, 2], "semantic_failed_pages": []},
+        {"failed_pages": [0], "semantic_failed_pages": []},
+    ):
+        candidate = {**task, "last_receipt_json": canonical_json_bytes_v1(prior)}
+        with pytest.raises(
+            target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+            match="provider-only page frontier",
+        ):
+            target._provider_retry_pages_v1(candidate)
