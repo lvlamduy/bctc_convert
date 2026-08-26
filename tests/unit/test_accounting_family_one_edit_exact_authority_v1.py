@@ -752,6 +752,34 @@ def test_exact_retrieval_parent_anchors_child_when_independent_parent_ocr_is_noi
     assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
 
 
+def test_exact_retrieval_owner_anchors_shared_contextual_alias_when_source_owner_is_noisy() -> None:
+    spec = _v4_context_free_spec()
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        # Retrieval seals the contextual owner, while the independent source
+        # reader cannot classify it.  The leaf alias is intentionally declared
+        # both contextual and context-free, as in reusable presentation specs.
+        _line(1, "Domestic deposits", "Domestic depositz"),
+        _line(2, "Vietnam dong balancx", "Vietnam dong balance"),
+        _line(3, "Other balance", "Other balance"),
+        _line(4, "Next family", "Next family"),
+    )
+    region = _selected(pages, spec)
+    expanded = _expanded(pages, region, spec)
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, spec, region, expanded
+    )
+
+    leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
+    assert leaf["within_role"] == "DOMESTIC_GROUP"
+    assert leaf["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+    subject.validate_accounting_family_one_edit_exact_authority_replay_v1(
+        receipt, pages, spec, region, expanded
+    )
+
+
 def test_one_edit_parent_without_exact_same_span_source_cannot_anchor_child() -> None:
     pages = _three_level_pages(parent_source="Another family")
     region = _selected(pages)

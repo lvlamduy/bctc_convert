@@ -1808,7 +1808,22 @@ def _check(
                 )
                 for item in source_role_axis
             }
-            if not decorated_same_physical_span:
+            # A role may deliberately expose the *same* alias through a
+            # contextual matcher and a context-free fallback.  When the
+            # independent source channel cannot read the structural owner,
+            # decoration conservatively assigns that exact row to the
+            # context-free occurrence.  Retain the raw contextual occurrence
+            # as a challenger only when the decorated same-span records are
+            # themselves owner-free.  The recursively exact retrieval owner
+            # below must still bind the requested context.  An independently
+            # observed different owner therefore continues to veto this
+            # fallback.
+            owner_free_same_physical_span = bool(decorated_same_physical_span) and all(
+                item.get("matched_within_role") is None
+                and item.get("source_scope_owner_role") is None
+                for item in decorated_same_physical_span
+            )
+            if not decorated_same_physical_span or owner_free_same_physical_span:
                 source_role_axis.extend(
                     item
                     for item in raw_source_role_axis
