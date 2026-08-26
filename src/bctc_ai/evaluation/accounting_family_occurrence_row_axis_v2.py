@@ -635,6 +635,9 @@ _EXTREME_MARGIN_VERTICAL_STAMP_V4_COMPONENT_STATUS = (
 )
 _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE = "TALL_CHROMATIC_INTERNAL_COMPONENT_CHAIN"
 _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE = "CLIPPED_NEUTRAL_EXTERNAL_PEER_CHAIN"
+_EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE = (
+    "NEUTRAL_FRAGMENTED_EXTERNAL_VERTICAL_PEER_CHAIN"
+)
 _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERENCE_FURNITURE_V3"
 _PRINTED_NOTE_REFERENCE_V3_LEGACY_TOPOLOGY_DEPENDENCY_REF = {
     "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -6564,7 +6567,7 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     }, False
 
 
-def _extreme_margin_vertical_stamp_surface_v4(line: Mapping[str, Any]) -> bool:
+def _extreme_margin_vertical_stamp_standard_surface_v4(line: Mapping[str, Any]) -> bool:
     vietocr = line.get("vietocr_text")
     numeric = line.get("numeric_raw_prediction")
     if type(numeric) is not str:
@@ -6586,6 +6589,115 @@ def _extreme_margin_vertical_stamp_surface_v4(line: Mapping[str, Any]) -> bool:
         and not token["percentage_mark_present"]
         for token in tokens
     )
+
+
+def _extreme_margin_fragmented_line_kind_v4(line: Mapping[str, Any]) -> str | None:
+    """Classify one compact source fragment in a vertical page-edge stamp.
+
+    The fragmented mode is deliberately different from a financial column:
+    it requires one small exact integer anchor in the complete peer axis and
+    at least one reader-disagreement fragment.  Individual records are only
+    classified here; the exhaustive peer-axis gates live in
+    ``_extreme_margin_fragmented_peer_ordinals_v4``.
+    """
+
+    vietocr = line.get("vietocr_text")
+    numeric = line.get("numeric_raw_prediction")
+    if type(numeric) is not str:
+        recognition = line.get("numeric_recognition")
+        numeric = recognition.get("raw_prediction") if type(recognition) is dict else None
+    if type(vietocr) is not str or type(numeric) is not str:
+        return None
+    surfaces = (vietocr.strip(), numeric.strip())
+    compact = tuple("".join(normalize_vietnamese_anchor_v1(value).split()) for value in surfaces)
+    if not all(compact) or any(len(value) > 4 for value in compact):
+        return None
+    tokens = tuple(row_v1.parse_visible_financial_numeric_token_v1(value) for value in surfaces)
+
+    def small_integer(token: Mapping[str, Any]) -> bool:
+        return (
+            token["classification"] == "SIGNED_NUMBER"
+            and token["sign"] == 1
+            and token["scale"] == 0
+            and not token["percentage_mark_present"]
+            and 1 <= token["coefficient"] <= 999
+        )
+
+    numeric_flags = tuple(small_integer(token) for token in tokens)
+    if (
+        numeric_flags == (True, True)
+        and surfaces[0] == surfaces[1]
+        and re.fullmatch(r"[1-9][0-9]{1,2}", surfaces[0]) is not None
+    ):
+        return "EXACT_SMALL_INTEGER_ANCHOR"
+    if sum(numeric_flags) == 1:
+        return "ONE_READER_NUMERIC_FRAGMENT"
+    if numeric_flags == (False, False):
+        return "NONNUMERIC_COMPACT_FRAGMENT"
+    return None
+
+
+def _extreme_margin_fragmented_peer_ordinals_v4(
+    source_line_axis: Sequence[Mapping[str, Any]],
+    candidate: Mapping[str, Any],
+    *,
+    body_text_scale: float,
+    page_width: int,
+) -> list[int]:
+    """Return the exhaustive connected vertical stamp axis around a fragment."""
+
+    if (
+        not math.isfinite(body_text_scale)
+        or body_text_scale <= 0
+        or page_width <= 0
+        or len(source_line_axis) < 6
+        or len(source_line_axis) > _MAX_ROLE_OCCURRENCES
+    ):
+        return []
+    candidate_records = [
+        line for line in source_line_axis if line.get("sample_id") == candidate.get("sample_id")
+    ]
+    if len(candidate_records) != 1:
+        return []
+    kinds = [_extreme_margin_fragmented_line_kind_v4(line) for line in source_line_axis]
+    if (
+        any(kind is None for kind in kinds)
+        or kinds.count("EXACT_SMALL_INTEGER_ANCHOR") != 1
+        or kinds.count("ONE_READER_NUMERIC_FRAGMENT") < 1
+        or kinds[source_line_axis.index(candidate_records[0])]
+        not in {"EXACT_SMALL_INTEGER_ANCHOR", "ONE_READER_NUMERIC_FRAGMENT"}
+    ):
+        return []
+    bboxes = [line["bbox"] for line in source_line_axis]
+    if any(
+        bbox[0] * 20 < page_width * 19
+        or bbox[2] > page_width
+        or page_width - bbox[2] > math.ceil(body_text_scale / 2)
+        for bbox in bboxes
+    ) or max(bbox[0] for bbox in bboxes) >= min(bbox[2] for bbox in bboxes):
+        return []
+    vertical = sorted(bboxes, key=lambda bbox: (bbox[1], bbox[3], bbox[0], bbox[2]))
+    if max(bbox[3] for bbox in vertical) - min(bbox[1] for bbox in vertical) < math.ceil(
+        6 * body_text_scale
+    ) or any(
+        right[1] - left[3] > math.ceil(body_text_scale)
+        for left, right in zip(vertical, vertical[1:], strict=False)
+    ):
+        return []
+    return sorted(
+        line["line_ordinal"]
+        for line in source_line_axis
+        if line["sample_id"] != candidate["sample_id"]
+    )
+
+
+def _extreme_margin_vertical_stamp_surface_v4(line: Mapping[str, Any]) -> bool:
+    return _extreme_margin_vertical_stamp_standard_surface_v4(
+        line
+    ) or _extreme_margin_fragmented_line_kind_v4(line) in {
+        "EXACT_SMALL_INTEGER_ANCHOR",
+        "ONE_READER_NUMERIC_FRAGMENT",
+    }
 
 
 def _authenticated_extreme_margin_vertical_stamp_component_proof_v4(
@@ -6751,7 +6863,7 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
     selected_snapshot: Mapping[str, Any] | None,
     render_by_page: Mapping[int, Mapping[str, Any]],
 ) -> tuple[dict[str, Any] | None, bool]:
-    """Authenticate one tall/clipped page-edge stamp OCR'd as a small integer."""
+    """Authenticate one tall, clipped, or fragmented page-edge stamp."""
 
     page_width = page.get("page_width")
     if (
@@ -6775,14 +6887,34 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
     height = bbox[3] - bbox[1]
     margin_boundary = math.ceil(centers[-1] + lane_tolerance)
     right_edge_gap = page_width - bbox[2]
+    margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
+    candidate_records = [
+        line for line in margin_axis if line["sample_id"] == candidate["sample_id"]
+    ]
+    fragmented_peer_ordinals = _extreme_margin_fragmented_peer_ordinals_v4(
+        margin_axis,
+        candidate,
+        body_text_scale=float(scale),
+        page_width=page_width,
+    )
+    standard_geometry = (
+        right_edge_gap <= math.ceil(scale / 4)
+        and height >= math.ceil(3 * scale / 2)
+        and height >= width
+    )
+    fragmented_geometry = (
+        bool(fragmented_peer_ordinals)
+        and right_edge_gap <= math.ceil(scale / 2)
+        and height >= math.ceil(3 * scale / 4)
+        and width <= math.ceil(5 * scale / 2)
+    )
     if (
         bbox[0] < margin_boundary
         or bbox[0] * 20 < page_width * 19
         or bbox[2] > page_width
         or right_edge_gap < 0
-        or right_edge_gap > math.ceil(scale / 4)
-        or height < math.ceil(3 * scale / 2)
-        or height < width
+        or not (standard_geometry or fragmented_geometry)
+        or len(candidate_records) != 1
     ):
         return None, False
     full_page_label_band, full_page_label_evidence = _build_inspected_label_band(
@@ -6811,13 +6943,7 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
         )
     ):
         return None, False
-    margin_axis = _extreme_margin_v2_band_axis(page, margin_boundary=margin_boundary)
-    candidate_records = [
-        line for line in margin_axis if line["sample_id"] == candidate["sample_id"]
-    ]
     external_peer_ordinals = _extreme_margin_v2_geometric_peer_ordinals(margin_axis, candidate)
-    if len(candidate_records) != 1:
-        return None, False
     page_sequence = page["page_sequence"]
     if selected_snapshot is None or page_sequence not in render_by_page:
         return None, selected_snapshot is not None
@@ -6846,21 +6972,34 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
     )
     if component_proof is None:
         return None, False
+    standard_surface = _extreme_margin_vertical_stamp_standard_surface_v4(candidate)
     chromatic_mode = (
-        height >= math.ceil(3 * scale)
+        standard_surface
+        and standard_geometry
+        and height >= math.ceil(3 * scale)
         and candidate_crop["chromatic_ink_pixel_count"] * 2 >= candidate_crop["ink_pixel_count"]
     )
     clipped_mode = (
-        right_edge_gap <= 1
+        standard_surface
+        and standard_geometry
+        and right_edge_gap <= 1
         and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
         and len(external_peer_ordinals) >= 3
     )
-    if chromatic_mode == clipped_mode:
+    fragmented_mode = (
+        fragmented_geometry
+        and _extreme_margin_fragmented_line_kind_v4(candidate)
+        in {"EXACT_SMALL_INTEGER_ANCHOR", "ONE_READER_NUMERIC_FRAGMENT"}
+        and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
+        and len(fragmented_peer_ordinals) >= 5
+    )
+    if sum((chromatic_mode, clipped_mode, fragmented_mode)) != 1:
         return None, False
     page_line_by_ordinal = {line["line_ordinal"]: line for line in page["lines"]}
     peer_crops = []
-    if clipped_mode:
-        for ordinal in external_peer_ordinals:
+    selected_peer_ordinals = fragmented_peer_ordinals if fragmented_mode else external_peer_ordinals
+    if clipped_mode or fragmented_mode:
+        for ordinal in selected_peer_ordinals:
             proof = _authenticated_extreme_margin_crop_proof(
                 image=image,
                 render_record=render_record,
@@ -6869,7 +7008,7 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
             )
             if proof["ink_pixel_count"] > 0:
                 peer_crops.append(proof)
-        if len(peer_crops) < 3:
+        if len(peer_crops) < (5 if fragmented_mode else 3):
             return None, False
     qualifying_peer_ordinals = [proof["source_line_record"]["line_ordinal"] for proof in peer_crops]
     document_pages_sha256 = canonical_json_sha256_v1(pages)
@@ -6882,6 +7021,8 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
         _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE
         if chromatic_mode
         else _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE
+        if clipped_mode
+        else _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
     )
     material = {
         "candidate_crop_proof": candidate_crop,
@@ -8034,6 +8175,188 @@ def _printed_note_reference_line_is_inside_region(
     )
 
 
+def _project_authenticated_fragmented_extreme_margin_columns_v4(
+    *,
+    pages: Sequence[Mapping[str, Any]],
+    expanded_region: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    axis: Mapping[str, Any],
+) -> tuple[dict[str, Any], frozenset[str]]:
+    """Propose removal of one fragmented page-edge stamp column.
+
+    This is only a provisional projection.  The caller retains it iff every
+    removed numeric sample later receives exact rendered V4 furniture
+    authority; otherwise the original V1 axis is replayed unchanged.
+    """
+
+    projected = canonical_clone_v1(axis)
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
+    semantic_ordinals_by_page: dict[int, set[int]] = {}
+    for match in matches:
+        page_sequence = match["page_sequence"]
+        semantic_ordinals_by_page.setdefault(page_sequence, set()).update(
+            range(match["source_line_index"], match["end_source_line_index"] + 1)
+        )
+    candidate_sample_ids: set[str] = set()
+    changed = False
+    for grid in projected["column_grids"]:
+        page_sequence = grid["page_sequence"]
+        page = page_by_sequence[page_sequence]
+        local_lines = body_by_page.get(page_sequence, [])
+        centers = grid["column_centers"]
+        page_width = page.get("page_width")
+        if (
+            len(centers) < 3
+            or not local_lines
+            or type(page_width) is not int
+            or page_width <= 0
+            or centers[-1] * 20 < page_width * 19
+            or centers[-2] * 20 >= page_width * 19
+        ):
+            continue
+        scale = row_v1.median_text_height_v1(local_lines)
+        financial_centers = centers[:-1]
+        financial_tolerance = max(
+            scale * 1.6,
+            min(
+                right - left
+                for left, right in zip(financial_centers, financial_centers[1:], strict=False)
+            )
+            * 0.42,
+        )
+        margin_boundary = math.ceil((centers[-2] + centers[-1]) / 2)
+        source_axis = sorted(
+            (
+                _extreme_margin_line_record(line)
+                for line in page["lines"]
+                if line["bbox"][0] >= margin_boundary
+                and line["bbox"][2] <= page_width
+                and (
+                    line["vietocr_text"].strip()
+                    or line["numeric_recognition"]["raw_prediction"].strip()
+                )
+            ),
+            key=lambda line: (line["line_ordinal"], line["bbox"]),
+        )
+        anchors = [
+            line
+            for line in source_axis
+            if _extreme_margin_fragmented_line_kind_v4(line) == "EXACT_SMALL_INTEGER_ANCHOR"
+        ]
+        if (
+            len(anchors) != 1
+            or not _extreme_margin_fragmented_peer_ordinals_v4(
+                source_axis,
+                anchors[0],
+                body_text_scale=float(scale),
+                page_width=page_width,
+            )
+            or any(
+                line["line_ordinal"] in semantic_ordinals_by_page.get(page_sequence, set())
+                for line in source_axis
+            )
+            or any(
+                line["line_ordinal"] in grid["header_evidence_source_line_indices"]
+                for line in source_axis
+            )
+            or _extreme_margin_vertical_stamp_collides_with_note_axis_v4(
+                page,
+                candidate=anchors[0],
+                centers=financial_centers,
+                lane_tolerance=float(financial_tolerance),
+                scale=float(scale),
+            )
+        ):
+            continue
+        page_candidate_ids = {
+            line["sample_id"]
+            for line in source_axis
+            if _extreme_margin_fragmented_line_kind_v4(line)
+            in {"EXACT_SMALL_INTEGER_ANCHOR", "ONE_READER_NUMERIC_FRAGMENT"}
+            and row_v1.parse_visible_financial_numeric_token_v1(line["numeric_raw_prediction"])[
+                "classification"
+            ]
+            in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+        }
+        if len(page_candidate_ids) < 2:
+            continue
+        rows_on_page = [
+            row for row in projected["rows"] if row["label_match"]["page_sequence"] == page_sequence
+        ]
+        removed_values = [
+            value
+            for row in rows_on_page
+            for value in row["values"]
+            if value["column_center"] == centers[-1]
+        ] + [
+            value
+            for trailing in projected["trailing_value_rows"]
+            if trailing["page_sequence"] == page_sequence
+            for value in trailing["values"]
+            if value["column_center"] == centers[-1]
+        ]
+        if (
+            not removed_values
+            or any(value["sample_id"] not in page_candidate_ids for value in removed_values)
+            or any(
+                rescue["column_center"] == centers[-1]
+                for rescue in projected["visible_dash_rescues"]
+                if rescue["page_sequence"] == page_sequence
+            )
+        ):
+            continue
+        for row in rows_on_page:
+            retained = [
+                value for value in row["values"] if value["sample_id"] not in page_candidate_ids
+            ]
+            if any(value["column_center"] not in financial_centers for value in retained):
+                return canonical_clone_v1(axis), frozenset()
+            for value in retained:
+                value["column_ordinal"] = financial_centers.index(value["column_center"])
+            row["values"] = sorted(retained, key=lambda value: value["column_ordinal"])
+            visible = {value["column_ordinal"] for value in retained}
+            row["missing_column_ordinals"] = [
+                ordinal for ordinal in range(len(financial_centers)) if ordinal not in visible
+            ]
+            row["status"] = (
+                "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+                if not retained
+                else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+                if row["missing_column_ordinals"]
+                else "VISIBLE_VALUE_LANES_BOUND"
+            )
+        for trailing in projected["trailing_value_rows"]:
+            if trailing["page_sequence"] != page_sequence:
+                continue
+            retained = [
+                value
+                for value in trailing["values"]
+                if value["sample_id"] not in page_candidate_ids
+            ]
+            for value in retained:
+                value["column_ordinal"] = financial_centers.index(value["column_center"])
+            trailing["values"] = sorted(retained, key=lambda value: value["column_ordinal"])
+            visible = {value["column_ordinal"] for value in retained}
+            trailing["missing_column_ordinals"] = [
+                ordinal for ordinal in range(len(financial_centers)) if ordinal not in visible
+            ]
+            trailing["status"] = (
+                "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+                if retained and not trailing["missing_column_ordinals"]
+                else "PARTIAL_TRAILING_VALUE_ROW_REQUIRES_PIXEL_RESCUE"
+            )
+        grid["column_centers"] = canonical_clone_v1(financial_centers)
+        candidate_sample_ids.update(page_candidate_ids)
+        changed = True
+    if not candidate_sample_ids:
+        return canonical_clone_v1(axis), frozenset()
+    return (
+        _regenerate_v1_axis(projected) if changed else canonical_clone_v1(axis),
+        frozenset(candidate_sample_ids),
+    )
+
+
 def _project_authenticated_printed_note_reference_columns_v3(
     *,
     pages: Sequence[Mapping[str, Any]],
@@ -8246,6 +8569,7 @@ def _build_numeric_sample_universe(
     selected_snapshot: Mapping[str, Any] | None,
     render_snapshots: Sequence[Mapping[str, Any]],
     printed_note_candidate_sample_ids: frozenset[str] = frozenset(),
+    fragmented_stamp_candidate_sample_ids: frozenset[str] = frozenset(),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Own every typed body-lane sample or expose it as source-only.
 
@@ -8370,6 +8694,9 @@ def _build_numeric_sample_universe(
         )
         table_left = centers[0] - adjacent_lane_span * 0.75
         table_right = centers[-1] + adjacent_lane_span * 0.75
+        forced_furniture_candidate_sample_ids = (
+            printed_note_candidate_sample_ids | fragmented_stamp_candidate_sample_ids
+        )
         for line in local_lines:
             if (
                 line["sample_id"] in universe_by_sample
@@ -8382,7 +8709,7 @@ def _build_numeric_sample_universe(
                 continue
             center = (line["bbox"][0] + line["bbox"][2]) / 2
             if (
-                line["sample_id"] not in printed_note_candidate_sample_ids
+                line["sample_id"] not in forced_furniture_candidate_sample_ids
                 and not table_left <= center <= table_right
             ):
                 continue
@@ -8392,15 +8719,17 @@ def _build_numeric_sample_universe(
             lanes_by_sample[line["sample_id"]] = lane
             if abs(center - centers[lane]) > lane_tolerance:
                 off_lane_sample_ids.add(line["sample_id"])
-        forced_note_lines = [
-            line for line in candidates if line["sample_id"] in printed_note_candidate_sample_ids
+        forced_furniture_lines = [
+            line
+            for line in candidates
+            if line["sample_id"] in forced_furniture_candidate_sample_ids
         ]
         ordinary_lines = [
             line
             for line in candidates
-            if line["sample_id"] not in printed_note_candidate_sample_ids
+            if line["sample_id"] not in forced_furniture_candidate_sample_ids
         ]
-        physical_clusters = [[line] for line in forced_note_lines]
+        physical_clusters = [[line] for line in forced_furniture_lines]
         if ordinary_lines:
             physical_clusters.extend(
                 row_v1.cluster_numeric_rows_v1(
@@ -9680,9 +10009,20 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
             or bbox[0] * geometry["page_edge_denominator"]
             < geometry["page_width"] * geometry["page_edge_numerator"]
             or bbox[2] > geometry["page_width"]
-            or not 0 <= geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 4)
-            or geometry["candidate_height"] < math.ceil(3 * geometry["body_text_scale"] / 2)
-            or geometry["candidate_height"] < geometry["candidate_width"]
+            or not (
+                geometry["stamp_mode"]
+                in {
+                    _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE,
+                    _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE,
+                }
+                and 0 <= geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 4)
+                and geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"] / 2)
+                and geometry["candidate_height"] >= geometry["candidate_width"]
+                or geometry["stamp_mode"] == _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+                and 0 <= geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 2)
+                and geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"] / 4)
+                and geometry["candidate_width"] <= math.ceil(5 * geometry["body_text_scale"] / 2)
+            )
             or source["column_ordinal"] >= len(grid["column_centers"])
             or source["column_center"] != grid["column_centers"][source["column_ordinal"]]
             or source["column_ordinal"]
@@ -9783,20 +10123,50 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
             candidate_crop=candidate_crop,
         )
 
+        standard_surface = _extreme_margin_vertical_stamp_standard_surface_v4(candidate_lines[0])
+        standard_geometry = (
+            geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 4)
+            and geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"] / 2)
+            and geometry["candidate_height"] >= geometry["candidate_width"]
+        )
+        fragmented_geometry = (
+            geometry["right_edge_gap"] <= math.ceil(geometry["body_text_scale"] / 2)
+            and geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"] / 4)
+            and geometry["candidate_width"] <= math.ceil(5 * geometry["body_text_scale"] / 2)
+        )
+        fragmented_peer_ordinals = _extreme_margin_fragmented_peer_ordinals_v4(
+            source_axis,
+            candidate_lines[0],
+            body_text_scale=geometry["body_text_scale"],
+            page_width=geometry["page_width"],
+        )
         chromatic_mode = (
-            geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"])
+            standard_surface
+            and standard_geometry
+            and geometry["candidate_height"] >= math.ceil(3 * geometry["body_text_scale"])
             and candidate_crop["chromatic_ink_pixel_count"] * 2 >= candidate_crop["ink_pixel_count"]
         )
         clipped_mode = (
-            geometry["right_edge_gap"] <= 1
+            standard_surface
+            and standard_geometry
+            and geometry["right_edge_gap"] <= 1
             and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
             and len(peer_ordinals) >= 3
         )
+        fragmented_mode = (
+            fragmented_geometry
+            and _extreme_margin_fragmented_line_kind_v4(candidate_lines[0])
+            in {"EXACT_SMALL_INTEGER_ANCHOR", "ONE_READER_NUMERIC_FRAGMENT"}
+            and candidate_crop["chromatic_ink_pixel_count"] * 4 <= candidate_crop["ink_pixel_count"]
+            and len(fragmented_peer_ordinals) >= 5
+        )
         expected_mode = (
             _EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE
-            if chromatic_mode and not clipped_mode
+            if chromatic_mode and not clipped_mode and not fragmented_mode
             else _EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE
-            if clipped_mode and not chromatic_mode
+            if clipped_mode and not chromatic_mode and not fragmented_mode
+            else _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+            if fragmented_mode and not chromatic_mode and not clipped_mode
             else None
         )
         source_by_ordinal = {line["line_ordinal"]: line for line in source_axis}
@@ -9819,13 +10189,24 @@ def _validate_extreme_margin_vertical_stamp_furniture_axis_v4(
                     )
                 )
             )
+            or (
+                expected_mode == _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+                and (len(peer_crops) < 5 or peer_ordinals != fragmented_peer_ordinals)
+            )
             or any(
                 not same_typed_json_v1(
                     _validate_extreme_margin_v2_exact_crop_proof(proof)["source_line_record"],
                     source_by_ordinal.get(proof["source_line_record"]["line_ordinal"]),
                 )
                 or proof["ink_pixel_count"] <= 0
-                or not _extreme_margin_peer_surfaces_are_nonnumeric(proof["source_line_record"])
+                or (
+                    expected_mode == _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+                    and _extreme_margin_fragmented_line_kind_v4(proof["source_line_record"]) is None
+                    or expected_mode != _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+                    and not _extreme_margin_peer_surfaces_are_nonnumeric(
+                        proof["source_line_record"]
+                    )
+                )
                 or proof["render_binding"]["render_id"]
                 != candidate_crop["render_binding"]["render_id"]
                 or proof["render_binding"]["document_ordinal"]
@@ -12938,6 +13319,16 @@ def _build(
             axis=original_axis,
         )
     )
+    fragmented_stamp_candidate_sample_ids: frozenset[str] = frozenset()
+    if not printed_note_candidate_sample_ids:
+        projected_axis, fragmented_stamp_candidate_sample_ids = (
+            _project_authenticated_fragmented_extreme_margin_columns_v4(
+                pages=parsed_pages,
+                expanded_region=expanded,
+                matches=row_matches,
+                axis=original_axis,
+            )
+        )
     projected_numeric_result = _build_numeric_sample_universe(
         parsed_pages,
         expanded,
@@ -12949,6 +13340,7 @@ def _build(
         selected_snapshot=selected_snapshot,
         render_snapshots=render_snapshots,
         printed_note_candidate_sample_ids=printed_note_candidate_sample_ids,
+        fragmented_stamp_candidate_sample_ids=fragmented_stamp_candidate_sample_ids,
     )
     projected_furniture = projected_numeric_result[2]
     authenticated_printed_note_sample_ids = {
@@ -12959,6 +13351,12 @@ def _build(
             _PRINTED_NOTE_REFERENCE_FURNITURE_V3_STATUS,
             _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS,
         }
+    }
+    authenticated_fragmented_stamp_sample_ids = {
+        evidence["sample_id"]
+        for evidence in projected_furniture
+        if evidence["status"] == _EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+        and evidence["geometry"]["stamp_mode"] == _EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
     }
     if (
         printed_note_candidate_sample_ids
@@ -12972,6 +13370,38 @@ def _build(
             extreme_margin_render_reasons,
         ) = projected_numeric_result
     elif printed_note_candidate_sample_ids:
+        axis = original_axis
+        (
+            numeric_sample_universe,
+            internal_unassigned_numeric_clusters,
+            authenticated_extreme_margin_furniture_evidence,
+            fallback_render_reasons,
+        ) = _build_numeric_sample_universe(
+            parsed_pages,
+            expanded,
+            row_matches,
+            original_axis,
+            coextensive_evidence,
+            topology_candidates_id=topology_candidates_id,
+            printed_note_v3_topology_candidates_id=printed_note_v3_topology_candidates_id,
+            selected_snapshot=selected_snapshot,
+            render_snapshots=render_snapshots,
+        )
+        extreme_margin_render_reasons = list(
+            dict.fromkeys([*projected_numeric_result[3], *fallback_render_reasons])
+        )
+    elif (
+        fragmented_stamp_candidate_sample_ids
+        and authenticated_fragmented_stamp_sample_ids == fragmented_stamp_candidate_sample_ids
+    ):
+        axis = projected_axis
+        (
+            numeric_sample_universe,
+            internal_unassigned_numeric_clusters,
+            authenticated_extreme_margin_furniture_evidence,
+            extreme_margin_render_reasons,
+        ) = projected_numeric_result
+    elif fragmented_stamp_candidate_sample_ids:
         axis = original_axis
         (
             numeric_sample_universe,

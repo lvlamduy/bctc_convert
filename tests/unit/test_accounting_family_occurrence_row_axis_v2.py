@@ -1811,6 +1811,43 @@ def _extreme_right_vertical_stamp_v4_fixture(
                 else []
             ),
         ]
+    elif mode == "FRAGMENTED":
+        bbox = candidate_bbox or [950, 230, 995, 250]
+        candidate = _line(
+            930,
+            candidate_vietocr or "180",
+            candidate_numeric or "180",
+            bbox,
+        )
+        peers = (
+            [
+                _line(931, "G Ty", "61", [950, 180, 995, 200]),
+                _line(932, "NHIN", "H", [950, 205, 995, 225]),
+                _line(933, "& YC", "& 10", [950, 255, 995, 275]),
+                _line(934, "1 Nổ", "IN", [950, 280, 995, 300]),
+                _line(935, "THỔ", "3H", [950, 305, 995, 325]),
+            ]
+            if include_peers
+            else []
+        )
+        colored = [
+            ([955, bbox[1] + 2, 963, bbox[3] - 2], "black"),
+            ([968, bbox[1] + 2, 976, bbox[3] - 2], "black"),
+            ([981, bbox[1] + 2, 989, bbox[3] - 2], "black"),
+            *(
+                [
+                    ([955, 182, 963, 198], "black"),
+                    ([968, 182, 976, 198], "black"),
+                    ([981, 182, 989, 198], "black"),
+                    ([960, 208, 985, 222], "black"),
+                    ([960, 258, 985, 272], "black"),
+                    ([960, 283, 985, 297], "black"),
+                    ([960, 308, 985, 322], "black"),
+                ]
+                if include_peers
+                else []
+            ),
+        ]
     else:
         raise AssertionError("unsupported vertical-stamp fixture mode")
     stamp_lines = [candidate, *peers]
@@ -2818,17 +2855,25 @@ def test_extreme_margin_v2_numeric_rotated_stamp_requires_exact_pixels_and_repla
 
 
 @pytest.mark.parametrize(
-    ("mode", "expected_mode", "expected_peer_count"),
+    ("mode", "expected_mode", "expected_peer_count", "expected_owned_count"),
     [
         (
             "CHROMATIC",
             subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_CHROMATIC_MODE,
             0,
+            1,
         ),
         (
             "CLIPPED",
             subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_CLIPPED_MODE,
             3,
+            1,
+        ),
+        (
+            "FRAGMENTED",
+            subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE,
+            5,
+            2,
         ),
     ],
 )
@@ -2836,6 +2881,7 @@ def test_extreme_right_vertical_stamp_v4_owns_one_sample_and_publicly_replays(
     mode: str,
     expected_mode: str,
     expected_peer_count: int,
+    expected_owned_count: int,
 ) -> None:
     pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode=mode)
     scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
@@ -2848,39 +2894,44 @@ def test_extreme_right_vertical_stamp_v4_owns_one_sample_and_publicly_replays(
 
     assert axis["internal_unassigned_numeric_clusters"] == []
     evidence = axis["authenticated_extreme_margin_furniture_evidence"]
-    assert len(evidence) == 1
-    stamp = evidence[0]
-    assert stamp["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
-    assert stamp["geometry"]["stamp_mode"] == expected_mode
-    assert len(stamp["peer_crop_proofs"]) == expected_peer_count
-    component_proof = stamp["component_peer_proof"]
-    assert component_proof["qualifying_component_count"] >= 3
-    assert component_proof["qualifying_vertical_span"] * 4 >= (
-        stamp["geometry"]["candidate_height"] * 3
-    )
+    assert len(evidence) == expected_owned_count
+    for stamp in evidence:
+        assert stamp["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+        assert stamp["geometry"]["stamp_mode"] == expected_mode
+        assert len(stamp["peer_crop_proofs"]) == expected_peer_count
+        component_proof = stamp["component_peer_proof"]
+        assert component_proof["qualifying_component_count"] >= 3
+        assert component_proof["qualifying_vertical_span"] * 4 >= (
+            stamp["geometry"]["candidate_height"] * 3
+        )
     owned = [
         sample
         for sample in axis["numeric_sample_universe"]
         if sample["owner_kind"] == subject._EXTREME_MARGIN_FURNITURE_OWNER_KIND
     ]
-    assert len(owned) == 1
-    assert owned[0]["sample_id"] == stamp["sample_id"]
-    assert owned[0]["owner_id"] == stamp["evidence_id"]
+    assert len(owned) == expected_owned_count
+    assert {(sample["sample_id"], sample["owner_id"]) for sample in owned} == {
+        (stamp["sample_id"], stamp["evidence_id"]) for stamp in evidence
+    }
+    if mode == "FRAGMENTED":
+        assert axis["row_axis"]["column_grids"][0]["column_centers"] == [655.0, 855.0]
+        assert {stamp["source_record"]["raw_prediction"] for stamp in evidence} == {"61", "180"}
     closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
         axis, _f3_spec(), _f3_hierarchy()
     )
     assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
-    assert (
-        len(
-            [
-                receipt
-                for receipt in closure["coverage_receipt"]
-                if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
-                and receipt["sample_ids"] == [stamp["sample_id"]]
-            ]
+    for stamp in evidence:
+        assert (
+            len(
+                [
+                    receipt
+                    for receipt in closure["coverage_receipt"]
+                    if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+                    and receipt["sample_ids"] == [stamp["sample_id"]]
+                ]
+            )
+            == 1
         )
-        == 1
-    )
     duplicated_closure = copy.deepcopy(closure)
     furniture_receipt = next(
         receipt
@@ -2922,6 +2973,87 @@ def test_extreme_right_vertical_stamp_v4_owns_one_sample_and_publicly_replays(
         )
         == axis
     )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "SECOND_EXACT_NUMERIC_ANCHOR",
+        "INCOMPLETE_PEER_AXIS",
+        "HORIZONTAL_PEER_AXIS",
+        "CONFLICTING_MARGIN_LABEL",
+        "NO_RENDER_AUTHORITY",
+    ],
+)
+def test_fragmented_extreme_margin_projection_fails_closed_without_every_gate(
+    attack: str,
+) -> None:
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(
+        mode="FRAGMENTED",
+        margin_label=attack == "CONFLICTING_MARGIN_LABEL",
+    )
+    if attack == "SECOND_EXACT_NUMERIC_ANCHOR":
+        peer = next(line for line in stamp_lines if line["vietocr_text"] == "G Ty")
+        peer["vietocr_text"] = "61"
+    elif attack == "INCOMPLETE_PEER_AXIS":
+        removed = stamp_lines[-1]
+        pages[0]["lines"].remove(removed)
+        stamp_lines.remove(removed)
+        _reindex_page_lines(pages[0]["lines"])
+    elif attack == "HORIZONTAL_PEER_AXIS":
+        for ordinal, line in enumerate(stamp_lines):
+            line["bbox"][1] = 180 + ordinal
+            line["bbox"][3] = 200 + ordinal
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="black",
+        with_render=attack != "NO_RENDER_AUTHORITY",
+        render_colored_bboxes=colored,
+    )
+
+    assert not any(
+        evidence["status"] == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_STATUS
+        and evidence["geometry"]["stamp_mode"]
+        == subject._EXTREME_MARGIN_VERTICAL_STAMP_V4_FRAGMENTED_MODE
+        for evidence in axis["authenticated_extreme_margin_furniture_evidence"]
+    )
+    assert any(len(grid["column_centers"]) == 3 for grid in axis["row_axis"]["column_grids"])
+
+
+def test_fragmented_extreme_margin_peer_consensus_tamper_rejects() -> None:
+    pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode="FRAGMENTED")
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="black",
+        with_render=True,
+        render_colored_bboxes=colored,
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    peer = next(
+        line
+        for line in evidence["margin_band"]["source_line_axis"]
+        if line["vietocr_text"] == "G Ty"
+    )
+    peer["vietocr_text"] = "61"
+    evidence["margin_band"]["source_line_axis_sha256"] = canonical_json_sha256_v1(
+        evidence["margin_band"]["source_line_axis"]
+    )
+    crop = next(
+        proof
+        for proof in evidence["peer_crop_proofs"]
+        if proof["source_line_record"]["numeric_raw_prediction"] == "61"
+    )
+    crop["source_line_record"]["vietocr_text"] = "61"
+    _coherently_rehash_furniture_axis(attacked)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="peer-mode proof",
+    ):
+        subject._validate_result(attacked)
 
 
 @pytest.mark.parametrize(
