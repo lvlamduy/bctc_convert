@@ -86,6 +86,13 @@ class _PageOutcome:
     offline_missing: bool = False
 
 
+@dataclass(frozen=True)
+class _PersistedPageOutcome:
+    physical_page: int
+    page: dict[str, Any]
+    disposition: str
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
@@ -434,6 +441,144 @@ def _extract_page(
     )
 
 
+def _persist_page_outcome_v1(
+    *,
+    outcome: _PageOutcome,
+    artifact_dir: Path,
+    database: Path,
+    document: dict[str, Any],
+    prompt_variant: str,
+    output_contract_mode: str,
+    prompt_sha256: str,
+    response_schema_sha256: str,
+) -> _PersistedPageOutcome:
+    """Persist one completed future immediately and release its provider payload."""
+
+    physical_page = outcome.physical_page
+    if outcome.cached_json is not None:
+        disposition = (
+            "CACHED_UNRESOLVED" if outcome.cached_json["status"] == "UNRESOLVED_PAGE" else "CACHED"
+        )
+        return _PersistedPageOutcome(physical_page, outcome.page, disposition)
+    if outcome.semantic_failure_present and outcome.provider_result is None:
+        return _PersistedPageOutcome(physical_page, outcome.page, "SEMANTIC_FAILED")
+    if outcome.offline_missing:
+        return _PersistedPageOutcome(physical_page, outcome.page, "OFFLINE_MISSING")
+    attempt_dir = _next_attempt_dir(artifact_dir, physical_page)
+    if outcome.fallback_source_error is not None:
+        source_error = outcome.fallback_source_error
+        if source_error.raw_response_bytes is not None:
+            source_raw = source_error.raw_response_bytes
+            _write_new(
+                attempt_dir / "source-raw-response-before-fallback.json",
+                source_raw if source_raw.endswith(b"\n") else source_raw + b"\n",
+            )
+        _write_new(
+            attempt_dir / "provider-fallback.json",
+            canonical_json_bytes_v1(
+                {
+                    "fallback_gateway": "GOOGLE_GEMINI_API",
+                    "source_attempts": list(source_error.attempts),
+                    "source_error_type": type(source_error).__name__,
+                }
+            ),
+        )
+    if outcome.provider_error is not None:
+        error = outcome.provider_error
+        if error.raw_response_bytes is not None:
+            raw = error.raw_response_bytes
+            _write_new(
+                attempt_dir / "raw-response-before-validation.json",
+                raw if raw.endswith(b"\n") else raw + b"\n",
+            )
+        _write_new(
+            attempt_dir / "failure.json",
+            canonical_json_bytes_v1(
+                {
+                    "attempts": list(error.attempts),
+                    "error_type": type(error).__name__,
+                    "page": outcome.page,
+                }
+            ),
+        )
+        return _PersistedPageOutcome(physical_page, outcome.page, "PROVIDER_FAILED")
+    result = outcome.provider_result
+    if result is None:
+        raise AssertionError("page outcome has no terminal disposition")
+    raw = result.raw_response_bytes
+    raw_bytes = raw if raw.endswith(b"\n") else raw + b"\n"
+    _write_new(attempt_dir / "raw-response.json", raw_bytes)
+    if outcome.semantic_replay_source is not None:
+        _write_new(
+            attempt_dir / "semantic-replay.json",
+            canonical_json_bytes_v1(
+                {
+                    "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                    "source_relative_path": outcome.semantic_replay_source,
+                }
+            ),
+        )
+    try:
+        page_json = decode_financial_page_json_text_v1(result.output_text)
+    except Exception as exc:
+        _write_new(
+            attempt_dir / "semantic-validation-failure.json",
+            canonical_json_bytes_v1(
+                {
+                    "attempts": list(result.attempts),
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "page": outcome.page,
+                    "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                    "usage": result.usage,
+                }
+            ),
+        )
+        return _PersistedPageOutcome(physical_page, outcome.page, "SEMANTIC_FAILED")
+    if result.provider_name not in {OPENROUTER_SELECTED_PROVIDER, "GOOGLE_GEMINI_API"}:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
+    requested_service_tier = (
+        GOOGLE_STANDARD_SERVICE_TIER
+        if result.provider_name == "GOOGLE_GEMINI_API"
+        else OPENROUTER_SERVICE_TIER
+    )
+    identities = ingest_financial_page_extraction_v1(
+        database,
+        document=document,
+        page=outcome.page,
+        prompt_variant=prompt_variant,
+        output_contract_mode=output_contract_mode,
+        prompt_sha256=prompt_sha256,
+        response_schema_sha256=response_schema_sha256,
+        requested_model=GOOGLE_MODEL,
+        requested_service_tier=requested_service_tier,
+        thinking_level="low",
+        provider_result=result,
+        page_json=page_json,
+    )
+    page_bytes = canonical_json_bytes_v1(page_json)
+    _write_new(attempt_dir / "page.json", page_bytes)
+    _write_new(
+        attempt_dir / "observation.json",
+        canonical_json_bytes_v1(
+            {
+                "attempts": list(result.attempts),
+                "content_counts": count_financial_page_content_v1(page_json),
+                "database_identities": identities,
+                "page": outcome.page,
+                "page_json_sha256": sha256(page_bytes).hexdigest(),
+                "provider_model": result.provider_model,
+                "provider_name": result.provider_name,
+                "raw_response_sha256": sha256(raw_bytes).hexdigest(),
+                "service_tier": result.service_tier,
+                "usage": result.usage,
+            }
+        ),
+    )
+    disposition = "INGESTED_UNRESOLVED" if page_json["status"] == "UNRESOLVED_PAGE" else "INGESTED"
+    return _PersistedPageOutcome(physical_page, outcome.page, disposition)
+
+
 def run_openrouter_document_v1(
     *,
     pdf: Path,
@@ -522,7 +667,7 @@ def run_openrouter_document_v1(
     if not database.exists():
         initialize_gemini_financial_page_store_v1(database)
 
-    outcomes: dict[int, _PageOutcome] = {}
+    outcomes: dict[int, _PersistedPageOutcome] = {}
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gemini-page") as executor:
         futures = {
             executor.submit(
@@ -553,7 +698,16 @@ def run_openrouter_document_v1(
             for physical_page in selected_pages
         }
         for future in as_completed(futures):
-            outcome = future.result()
+            outcome = _persist_page_outcome_v1(
+                outcome=future.result(),
+                artifact_dir=artifact_dir,
+                database=database,
+                document=document,
+                prompt_variant=prompt_variant,
+                output_contract_mode=output_contract_mode,
+                prompt_sha256=prompt_sha,
+                response_schema_sha256=schema_sha,
+            )
             outcomes[outcome.physical_page] = outcome
 
     failed_pages: list[int] = []
@@ -564,139 +718,27 @@ def run_openrouter_document_v1(
     ingested_pages: list[int] = []
     for physical_page in selected_pages:
         outcome = outcomes[physical_page]
-        if outcome.cached_json is not None:
-            if outcome.cached_json["status"] == "UNRESOLVED_PAGE":
-                failed_pages.append(physical_page)
-                unresolved_pages.append(physical_page)
-            else:
-                cached_pages.append(physical_page)
-            continue
-        if outcome.semantic_failure_present and outcome.provider_result is None:
-            failed_pages.append(physical_page)
-            semantic_failed_pages.append(physical_page)
-            continue
-        if outcome.offline_missing:
-            failed_pages.append(physical_page)
-            offline_missing_pages.append(physical_page)
-            continue
-        attempt_dir = _next_attempt_dir(artifact_dir, physical_page)
-        if outcome.provider_error is not None:
-            error = outcome.provider_error
-            if error.raw_response_bytes is not None:
-                raw = error.raw_response_bytes
-                _write_new(
-                    attempt_dir / "raw-response-before-validation.json",
-                    raw if raw.endswith(b"\n") else raw + b"\n",
-                )
-            _write_new(
-                attempt_dir / "failure.json",
-                canonical_json_bytes_v1(
-                    {
-                        "attempts": list(error.attempts),
-                        "error_type": type(error).__name__,
-                        "page": outcome.page,
-                    }
-                ),
-            )
-            failed_pages.append(physical_page)
-            continue
-        result = outcome.provider_result
-        if result is None:
-            raise AssertionError("page outcome has no terminal disposition")
-        raw = result.raw_response_bytes
-        raw_bytes = raw if raw.endswith(b"\n") else raw + b"\n"
-        _write_new(attempt_dir / "raw-response.json", raw_bytes)
-        if outcome.fallback_source_error is not None:
-            source_error = outcome.fallback_source_error
-            if source_error.raw_response_bytes is not None:
-                source_raw = source_error.raw_response_bytes
-                _write_new(
-                    attempt_dir / "source-raw-response-before-fallback.json",
-                    source_raw if source_raw.endswith(b"\n") else source_raw + b"\n",
-                )
-            _write_new(
-                attempt_dir / "provider-fallback.json",
-                canonical_json_bytes_v1(
-                    {
-                        "fallback_gateway": "GOOGLE_GEMINI_API",
-                        "source_attempts": list(source_error.attempts),
-                        "source_error_type": type(source_error).__name__,
-                    }
-                ),
-            )
-        if outcome.semantic_replay_source is not None:
-            _write_new(
-                attempt_dir / "semantic-replay.json",
-                canonical_json_bytes_v1(
-                    {
-                        "raw_response_sha256": sha256(raw_bytes).hexdigest(),
-                        "source_relative_path": outcome.semantic_replay_source,
-                    }
-                ),
-            )
-        try:
-            page_json = decode_financial_page_json_text_v1(result.output_text)
-        except Exception as exc:
-            _write_new(
-                attempt_dir / "semantic-validation-failure.json",
-                canonical_json_bytes_v1(
-                    {
-                        "attempts": list(result.attempts),
-                        "error_type": type(exc).__name__,
-                        "error_message": str(exc),
-                        "page": outcome.page,
-                        "raw_response_sha256": sha256(raw_bytes).hexdigest(),
-                        "usage": result.usage,
-                    }
-                ),
-            )
-            failed_pages.append(physical_page)
-            semantic_failed_pages.append(physical_page)
-            continue
-        if result.provider_name not in {OPENROUTER_SELECTED_PROVIDER, "GOOGLE_GEMINI_API"}:
-            raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
-        requested_service_tier = (
-            GOOGLE_STANDARD_SERVICE_TIER
-            if result.provider_name == "GOOGLE_GEMINI_API"
-            else OPENROUTER_SERVICE_TIER
-        )
-        identities = ingest_financial_page_extraction_v1(
-            database,
-            document=document,
-            page=outcome.page,
-            prompt_variant=prompt_variant,
-            output_contract_mode=output_contract_mode,
-            prompt_sha256=prompt_sha,
-            response_schema_sha256=schema_sha,
-            requested_model=GOOGLE_MODEL,
-            requested_service_tier=requested_service_tier,
-            thinking_level="low",
-            provider_result=result,
-            page_json=page_json,
-        )
-        page_bytes = canonical_json_bytes_v1(page_json)
-        _write_new(attempt_dir / "page.json", page_bytes)
-        _write_new(
-            attempt_dir / "observation.json",
-            canonical_json_bytes_v1(
-                {
-                    "attempts": list(result.attempts),
-                    "content_counts": count_financial_page_content_v1(page_json),
-                    "database_identities": identities,
-                    "page": outcome.page,
-                    "page_json_sha256": sha256(page_bytes).hexdigest(),
-                    "provider_model": result.provider_model,
-                    "provider_name": result.provider_name,
-                    "raw_response_sha256": sha256(raw_bytes).hexdigest(),
-                    "service_tier": result.service_tier,
-                    "usage": result.usage,
-                }
-            ),
-        )
-        ingested_pages.append(physical_page)
-        if page_json["status"] == "UNRESOLVED_PAGE":
+        if outcome.disposition == "CACHED":
+            cached_pages.append(physical_page)
+        elif outcome.disposition == "CACHED_UNRESOLVED":
             failed_pages.append(physical_page)
             unresolved_pages.append(physical_page)
+        elif outcome.disposition == "SEMANTIC_FAILED":
+            failed_pages.append(physical_page)
+            semantic_failed_pages.append(physical_page)
+        elif outcome.disposition == "OFFLINE_MISSING":
+            failed_pages.append(physical_page)
+            offline_missing_pages.append(physical_page)
+        elif outcome.disposition == "PROVIDER_FAILED":
+            failed_pages.append(physical_page)
+        elif outcome.disposition == "INGESTED_UNRESOLVED":
+            ingested_pages.append(physical_page)
+            failed_pages.append(physical_page)
+            unresolved_pages.append(physical_page)
+        elif outcome.disposition == "INGESTED":
+            ingested_pages.append(physical_page)
+        else:
+            raise AssertionError("persisted page outcome disposition is unknown")
 
     manifest = None
     if not failed_pages and physical_pages is None:

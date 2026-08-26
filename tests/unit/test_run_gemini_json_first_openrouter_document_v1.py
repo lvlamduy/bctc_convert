@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import threading
 from hashlib import sha256
 from pathlib import Path
 
@@ -170,6 +171,62 @@ def test_parallel_document_run_persists_in_parent_and_resumes_from_cache(tmp_pat
     assert replay["ingested_pages"] == []
     assert calls == []
     assert len(list((artifacts / "run-receipts").glob("*.json"))) == 2
+
+
+def test_parallel_document_persists_each_completed_future_before_slowest_finishes(
+    monkeypatch, tmp_path
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 2)
+    second_persisted = threading.Event()
+    persistence_order = []
+
+    def extract(**kwargs):
+        page = kwargs["physical_page"]
+        if page == 1:
+            assert second_persisted.wait(timeout=1)
+        return target._PageOutcome(
+            physical_page=page,
+            page={
+                "image_sha256": str(page) * 64,
+                "image_size_bytes": 1,
+                "media_type": "image/png",
+                "physical_page": page,
+                "pixel_height": 1,
+                "pixel_width": 1,
+                "render_dpi": 300,
+            },
+            cached_json={"status": "NO_RELEVANT_FINANCIAL_CONTENT"},
+        )
+
+    original_persist = target._persist_page_outcome_v1
+
+    def persist(**kwargs):
+        result = original_persist(**kwargs)
+        persistence_order.append(result.physical_page)
+        if result.physical_page == 2:
+            second_persisted.set()
+        return result
+
+    monkeypatch.setattr(target, "_extract_page", extract)
+    monkeypatch.setattr(target, "_persist_page_outcome_v1", persist)
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: {"document_manifest_id": "gfdmv1:manifest:" + "a" * 64},
+    )
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {"run_count": 2})
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=2,
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert persistence_order == [2, 1]
 
 
 def test_one_failed_page_does_not_abort_siblings_and_only_failure_retries(tmp_path) -> None:
