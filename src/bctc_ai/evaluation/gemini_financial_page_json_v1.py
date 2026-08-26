@@ -440,6 +440,70 @@ def _signed_integer_cell_v1(value: Any) -> int | None:
     return -number if negative else number
 
 
+def _accounting_integer_cell_v1(value: Any) -> int | None:
+    """Parse one printed integer while treating an accounting dash as exact zero."""
+
+    if type(value) is str and re.fullmatch(r"\s*[-–—_]\s*", value):
+        return 0
+    return _signed_integer_cell_v1(value)
+
+
+def _normalize_four_column_movement_table_v1(table: dict[str, Any]) -> bool:
+    """Drop one redundant label header and place omitted dash cells uniquely.
+
+    Gemini occasionally emits the visible row-label header as a TEXT value
+    column, then omits printed dash cells from the four numeric movement
+    columns.  This projection is accepted only for the exact
+    opening/increase/decrease/closing header shape and only when every short
+    row is uniquely reconstructed by the printed accounting equation.  Raw
+    provider bytes and every nonblank cell remain unchanged.
+    """
+
+    columns = table["columns"]
+    rows = table["rows"]
+    if len(columns) != 5 or columns[0]["value_kind"] != "TEXT":
+        return False
+    value_columns = columns[1:]
+    headers = [
+        _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
+        for column in value_columns
+    ]
+    if not (
+        "so du" in headers[0]
+        and "tang" in headers[1]
+        and "giam" in headers[2]
+        and "so du" in headers[3]
+    ):
+        return False
+    if any(column["value_kind"] not in {"MONEY", "COUNT", "UNKNOWN"} for column in value_columns):
+        return False
+
+    normalized_rows: list[list[Any]] = []
+    for row in rows:
+        values = row["values_exact"]
+        if len(values) == 4:
+            normalized_rows.append(list(values))
+            continue
+        parsed = [_accounting_integer_cell_v1(value) for value in values]
+        if any(number is None for number in parsed):
+            return False
+        if len(values) == 2 and parsed[0] == parsed[1]:
+            normalized_rows.append([values[0], None, None, values[1]])
+            continue
+        if len(values) == 3 and parsed[0] + parsed[1] == parsed[2] and parsed[1] != 0:
+            if parsed[1] > 0:
+                normalized_rows.append([values[0], values[1], None, values[2]])
+            else:
+                normalized_rows.append([values[0], None, values[1], values[2]])
+            continue
+        return False
+
+    table["columns"] = value_columns
+    for row, normalized in zip(rows, normalized_rows, strict=True):
+        row["values_exact"] = normalized
+    return True
+
+
 def _move_unique_arithmetic_total_v1(
     values: list[Any], columns: list[dict[str, Any]], *, model_annotation_present: bool
 ) -> list[Any]:
@@ -574,6 +638,9 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 if type(row["values_exact"]) is not list:
                     raise _error("row values must be an array")
                 row_widths.append(len(row["values_exact"]))
+            if _normalize_four_column_movement_table_v1(table):
+                width = len(table["columns"])
+                row_widths = [len(row["values_exact"]) for row in table["rows"]]
             if all(row_width == width for row_width in row_widths):
                 pass
             elif (

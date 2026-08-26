@@ -256,6 +256,81 @@ def test_signed_derivative_leg_uniquely_inserts_missing_asset_or_liability_cell(
     assert checked_rows[1]["values_exact"] == ["3.646.093", None, "(31.284)", "(31.284)"]
 
 
+def test_movement_table_omitted_dashes_are_placed_by_exact_header_and_equation() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Vốn chủ sở hữu"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Số dư 1.1.2026"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tăng trong kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Giảm trong kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số dư 31.3.2026"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Vốn điều lệ",
+            "hierarchy_path_exact": ["Vốn điều lệ"],
+            "row_kind": "ITEM",
+            "values_exact": ["51.366.566", "51.366.566"],
+        },
+        {
+            "label_exact": "Chênh lệch tỷ giá hối đoái",
+            "hierarchy_path_exact": ["Chênh lệch tỷ giá hối đoái"],
+            "row_kind": "ITEM",
+            "values_exact": ["-", "(89.008)", "(89.008)"],
+        },
+        {
+            "label_exact": "Lợi nhuận chưa phân phối",
+            "hierarchy_path_exact": ["Lợi nhuận chưa phân phối"],
+            "row_kind": "ITEM",
+            "values_exact": ["22.272.006", "3.933.827", "26.205.833"],
+        },
+        {
+            "label_exact": "Tổng",
+            "hierarchy_path_exact": ["Tổng"],
+            "row_kind": "TOTAL",
+            "values_exact": ["91.005.607", "3.933.827", "(89.008)", "94.850.426"],
+        },
+    ]
+
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert len(checked_table["columns"]) == 4
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        ["51.366.566", None, None, "51.366.566"],
+        ["-", None, "(89.008)", "(89.008)"],
+        ["22.272.006", "3.933.827", None, "26.205.833"],
+        ["91.005.607", "3.933.827", "(89.008)", "94.850.426"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "headers,values",
+    [
+        (["Số dư đầu kỳ", "Tăng", "Khác", "Số dư cuối kỳ"], ["1", "2", "3"]),
+        (["Số dư đầu kỳ", "Tăng", "Giảm", "Số dư cuối kỳ"], ["1", "2", "4"]),
+        (["Số dư đầu kỳ", "Tăng", "Giảm", "Số dư cuối kỳ"], ["1", "2"]),
+    ],
+)
+def test_movement_table_soft_replay_rejects_ambiguous_or_nonexact_rows(headers, values) -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Khoản mục"], "value_kind": "TEXT"},
+        *[{"header_path_exact": [header], "value_kind": "MONEY"} for header in headers],
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Hàng",
+            "hierarchy_path_exact": ["Hàng"],
+            "row_kind": "ITEM",
+            "values_exact": values,
+        }
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
 def test_dash_annotation_pack_and_arithmetic_total_close_one_nine_cell_row() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
