@@ -138,7 +138,7 @@ def test_google_poll_is_nonblocking_while_batch_remains_active(monkeypatch, tmp_
     def command(argv, *, expected):
         assert "poll" in argv
         assert "watch" not in argv
-        assert expected == {0}
+        assert expected == {0, 2}
         return 0, {"state": "BATCH_STATE_RUNNING"}
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
@@ -372,7 +372,12 @@ def test_google_retry_exhaustion_moves_to_typed_fallback(monkeypatch, tmp_path) 
         return {**task, "state": kwargs["next_state"]}
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
-    monkeypatch.setattr(target, "_command", lambda _argv, *, expected: (0, {}))
+
+    def command(_argv, *, expected):
+        assert expected == {0, 2}
+        return 2, {"disposition": "NEEDS_RETRY"}
+
+    monkeypatch.setattr(target, "_command", command)
     monkeypatch.setattr(
         target,
         "batch_progress_v1",

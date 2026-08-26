@@ -385,7 +385,7 @@ def _poll_google(
             "--timeout-seconds",
             str(provider_timeout_seconds),
         ],
-        expected={0},
+        expected={0, 2},
     )
     matching = [
         item
