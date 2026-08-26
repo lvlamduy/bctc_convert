@@ -2256,6 +2256,19 @@ def _v4_ready_explicit_continuation_duplicate_signature(
     parent headers opened the otherwise identical source axis.
     """
 
+    def without_row_affinity(value: Any) -> Any:
+        """Drop only the region-relative ranking score from an exact source axis."""
+
+        if type(value) is dict:
+            return {
+                key: without_row_affinity(item)
+                for key, item in value.items()
+                if key != "row_affinity"
+            }
+        if type(value) is list:
+            return [without_row_affinity(item) for item in value]
+        return canonical_clone_v1(value)
+
     row_axis = candidate.get("row_axis")
     context = candidate.get("column_context")
     closure = candidate.get("additive_closure")
@@ -2302,7 +2315,7 @@ def _v4_ready_explicit_continuation_duplicate_signature(
     for sample in universe:
         if type(sample) is not dict:
             return None
-        projected = canonical_clone_v1(sample)
+        projected = without_row_affinity(sample)
         projected.pop("owner_id", None)
         sample_projection.append(projected)
     coverage_projection = []
@@ -2337,9 +2350,13 @@ def _v4_ready_explicit_continuation_duplicate_signature(
         "numeric_sample_universe": sample_projection,
         "observed_roles": canonical_clone_v1(region.get("observed_roles")),
         "population": population,
-        "resolved_roles": canonical_clone_v1(resolved),
-        "rows": canonical_clone_v1(rows),
-        "trailing_value_rows": canonical_clone_v1(trailing),
+        # ``row_affinity`` is a region-relative contender score.  The carried
+        # and nested windows can therefore assign slightly different floats to
+        # the same physical source cell.  Exact sample/crop/bbox/line/role,
+        # context, equations and coverage remain present in this signature.
+        "resolved_roles": without_row_affinity(resolved),
+        "rows": without_row_affinity(rows),
+        "trailing_value_rows": without_row_affinity(trailing),
         "visible_dash_rescues": canonical_clone_v1(row_axis.get("visible_dash_rescues", [])),
     }
 

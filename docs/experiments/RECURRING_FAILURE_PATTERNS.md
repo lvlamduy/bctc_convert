@@ -129,8 +129,10 @@ Trạng thái:
   region có cùng exact end boundary và khớp tuyệt đối toàn bộ child occurrence,
   source row/sample, period/unit, equation, coverage và population; root-owner ID
   khác nhau do hai header được canonicalize duy nhất ở top-level structural
-  child. Bất kỳ lệch parent/child/boundary/axis hoặc có hai nearest candidate
-  ngang nhau đều giữ ambiguity.
+  child. `row_affinity` là contender score phụ thuộc cửa sổ outer/inner nên được
+  bỏ riêng khỏi duplicate signature chỉ sau khi sample/crop/bbox/source-line/
+  role vẫn exact; bất kỳ lệch parent/child/boundary/source axis hoặc có hai
+  nearest candidate ngang nhau đều giữ ambiguity.
 - **Status:** `MITIGATED`.
 
 ## RFP-004 — Parent, child, alternative view, or similar wording changes population

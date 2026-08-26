@@ -3928,9 +3928,42 @@ def test_v4_nearest_explicit_continuation_supersedes_exact_carried_duplicate() -
     assert reasons == []
 
 
+def test_v4_continuation_duplicate_ignores_only_region_relative_row_affinity() -> None:
+    carried, continuation = _v4_duplicate_explicit_continuation_candidates()
+
+    def change_affinity(value: object) -> None:
+        if type(value) is dict:
+            for key, item in value.items():
+                if key == "row_affinity" and type(item) is float:
+                    value[key] = item + 0.125
+                else:
+                    change_affinity(item)
+        elif type(value) is list:
+            for item in value:
+                change_affinity(item)
+
+    change_affinity(continuation)
+    selected, reasons = subject._select_candidate_evidence(
+        [carried, continuation],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is continuation
+    assert reasons == []
+
+
 @pytest.mark.parametrize(
     "mutation",
-    ["DIFFERENT_PARENT", "DIFFERENT_CHILD", "DIFFERENT_BOUNDARY", "DIFFERENT_AXIS"],
+    [
+        "DIFFERENT_PARENT",
+        "DIFFERENT_CHILD",
+        "DIFFERENT_BOUNDARY",
+        "DIFFERENT_AXIS",
+        "DIFFERENT_SAMPLE",
+    ],
 )
 def test_v4_continuation_duplicate_requires_one_exact_nested_source_axis(
     mutation: str,
@@ -3948,8 +3981,10 @@ def test_v4_continuation_duplicate_requires_one_exact_nested_source_axis(
         continuation["row_axis"]["topology_region"][
             "cluster_end_document_line_ordinal_exclusive"
         ] = 199
-    else:
+    elif mutation == "DIFFERENT_AXIS":
         continuation["column_context"]["unit_axis"][0]["magnitude_power10"] = 3
+    else:
+        continuation["row_axis"]["rows"][0]["values"][0]["sample_id"] = "different-sample"
 
     selected, reasons = subject._select_candidate_evidence(
         [carried, continuation],
