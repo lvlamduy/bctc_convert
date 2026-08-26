@@ -81,6 +81,10 @@ def test_family12_topology_spec_is_schema_free_shared_v4_data() -> None:
         "chứng khoán" in margin["matchers"][0]["aliases"]
     )
     assert margin["matchers"][0]["allow_trailing_organization_qualifier"] is True
+    assert (
+        "Các khoản cho vay margin chứng khoán và ứng trước khách hàng"
+        in margin["matchers"][0]["aliases"]
+    )
     other = leaf_roles["OTHER_ENTERPRISE_LOANS"]
     assert other["matchers"] == [
         {
@@ -665,6 +669,33 @@ def test_family12_wrapped_margin_vpbanks_variant_is_one_exact_contextual_child()
     assert margin[0]["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
     assert margin[0]["source_line_index"] == 3
     assert margin[0]["end_source_line_index"] == 5
+
+
+def test_family12_margin_phrase_accepts_one_bounded_organization_qualifier() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Cho vay khách hàng",
+                    "Phân tích theo loại hình doanh nghiệp",
+                    "Công ty TNHH",
+                    "Các khoản cho vay margin chứng khoán",
+                    "và ứng trước khách hàng tại MB?",
+                    "Khác",
+                ]
+            )
+        ],
+        build_loan_enterprise_family12_topology_spec_v1(),
+    )
+
+    margin = next(
+        match
+        for match in result["regions"][0]["child_matches"]
+        if match["role"] == "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert margin["match_kind"] == ("EXACT_ACCENTLESS_ALIAS_WITH_TRAILING_ORGANIZATION_QUALIFIER")
+    assert margin["matched_within_role"] == "ENTERPRISE_TYPE_BRANCH"
 
 
 def test_family12_margin_organization_qualifier_does_not_admit_semantic_suffix() -> None:

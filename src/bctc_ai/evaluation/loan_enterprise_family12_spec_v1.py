@@ -353,6 +353,7 @@ _CHILDREN = [
             "Cho vay giao dịch ký quỹ",
             "Ứng trước tiền bán chứng khoán",
             "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+            "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
             "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
             "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch "
             "đầu tư chứng khoán",
