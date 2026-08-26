@@ -30,6 +30,10 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
+from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (  # noqa: E402
+    GeminiCurrentDocumentManifestSelectionV1Error,
+    load_current_document_manifest_selection_v1,
+)
 
 FORMAT_VERSION = "GEMINI_JSON_FIRST_WHOLE_PAGE_REPAIR_STATUS_V1"
 TERMINAL_STATES = frozenset({"FAILED", "SUCCEEDED"})
@@ -152,17 +156,36 @@ def build_whole_page_repair_status_v1(
             raise GeminiJsonFirstWholePageRepairStatusV1Error(
                 "planned document task is absent from the ledger"
             )
-        manifest_path = (
-            artifact_root
-            / "documents"
-            / planned["document_plan_id"].split(":", 1)[1]
-            / "current-document-manifest.json"
-        )
-        manifest, manifest_error = _manifest_ref(
-            manifest_path,
-            document=document,
-            expected_page_count=document["page_count"],
-        )
+        document_root = artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
+        selection_id = None
+        try:
+            selected = load_current_document_manifest_selection_v1(
+                document_root,
+                document_plan_id=planned["document_plan_id"],
+                source_sha256=document["source_sha256"],
+            )
+        except GeminiCurrentDocumentManifestSelectionV1Error as exc:
+            manifest = None
+            manifest_error = "SELECTION_ERROR:" + str(exc)
+        else:
+            manifest_path = (
+                document_root / "current-document-manifest.json"
+                if selected is None
+                else selected[1]
+            )
+            selection_id = None if selected is None else selected[0]["selection_id"]
+            manifest, manifest_error = _manifest_ref(
+                manifest_path,
+                document=document,
+                expected_page_count=document["page_count"],
+            )
+            if (
+                manifest is not None
+                and selected is not None
+                and manifest["document_manifest_id"] != selected[0]["document_manifest_id"]
+            ):
+                manifest = None
+                manifest_error = "SELECTION_MANIFEST_ID_MISMATCH"
         affected_pages = []
         manifest_image_mismatches = []
         with fitz.open(source) as pdf:
@@ -200,6 +223,7 @@ def build_whole_page_repair_status_v1(
             manifest_record = {
                 key: value for key, value in manifest.items() if key != "image_sha256s"
             }
+            manifest_record["selection_id"] = selection_id
         documents.append(
             {
                 "affected_page_count": len(affected_pages),

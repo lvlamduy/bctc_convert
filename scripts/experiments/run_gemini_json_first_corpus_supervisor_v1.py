@@ -51,6 +51,10 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
+from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (  # noqa: E402
+    build_current_document_manifest_selection_v1,
+    load_current_document_manifest_selection_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     batch_failed_page_requests_v1,
     batch_finalized_requests_v1,
@@ -793,6 +797,70 @@ def _page_prompt_variants_v1(
     return result
 
 
+def _write_current_document_manifest_selection_v1(
+    *,
+    artifact_root: Path,
+    planned: dict[str, Any],
+    task: dict[str, Any],
+    manifest: dict[str, Any],
+    page_images: dict[int, str],
+    variants: dict[int, str],
+) -> tuple[Path, dict[str, Any]]:
+    """Persist a content-addressed manifest and advance one append-only head."""
+
+    document_root = artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
+    payload = canonical_json_bytes_v1(manifest) + b"\n"
+    manifest_digest = manifest["document_manifest_id"].split(":", 2)[2]
+    relative_path = Path("current-document-manifests") / f"{manifest_digest}.json"
+    output = document_root / relative_path
+    _write_or_verify(output, payload)
+
+    existing = load_current_document_manifest_selection_v1(
+        document_root,
+        document_plan_id=planned["document_plan_id"],
+        source_sha256=task["source_sha256"],
+    )
+    if (
+        existing is not None
+        and existing[0]["document_manifest_id"] == manifest["document_manifest_id"]
+    ):
+        selection = existing[0]
+    else:
+        selection = build_current_document_manifest_selection_v1(
+            document_plan_id=planned["document_plan_id"],
+            source_sha256=task["source_sha256"],
+            document_manifest_id=manifest["document_manifest_id"],
+            document_manifest_ref={
+                "path": relative_path.as_posix(),
+                "sha256": sha256(payload).hexdigest(),
+                "size_bytes": len(payload),
+            },
+            page_image_frontier_sha256=canonical_json_sha256_v1(
+                [
+                    {"image_sha256": page_images[page], "physical_page": page}
+                    for page in sorted(page_images)
+                ]
+            ),
+            page_prompt_frontier_sha256=canonical_json_sha256_v1(
+                [
+                    {"physical_page": page, "prompt_variant": variants[page]}
+                    for page in sorted(variants)
+                ]
+            ),
+            prior_selection_ids=[] if existing is None else [existing[0]["selection_id"]],
+        )
+        selection_output = (
+            document_root
+            / "current-document-manifest-selections"
+            / (selection["selection_id"].split(":", 2)[2] + ".json")
+        )
+        _write_or_verify(selection_output, canonical_json_bytes_v1(selection) + b"\n")
+    legacy = document_root / "current-document-manifest.json"
+    if not legacy.exists():
+        _write_or_verify(legacy, payload)
+    return output, selection
+
+
 def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
     """Seal one document only from current whole-page images and explicit prompts."""
 
@@ -865,13 +933,14 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
             "document_manifest_id": manifest["document_manifest_id"],
             "unresolved_pages": unresolved_pages,
         }
-    output = (
-        args.artifact_root
-        / "documents"
-        / planned["document_plan_id"].split(":", 1)[1]
-        / "current-document-manifest.json"
+    output, selection = _write_current_document_manifest_selection_v1(
+        artifact_root=args.artifact_root,
+        planned=planned,
+        task=task,
+        manifest=manifest,
+        page_images=page_images,
+        variants=variants,
     )
-    _write_or_verify(output, canonical_json_bytes_v1(manifest) + b"\n")
     failed_task_ids = sorted(task["task_id"] for task in tasks if task["state"] == "FAILED")
     repaired_tasks = []
     if failed_task_ids:
@@ -905,6 +974,7 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         "status_counts": manifest["status_counts"],
         "totals": manifest["totals"],
         "repaired_task_ids": [task["task_id"] for task in repaired_tasks],
+        "selection_id": selection["selection_id"],
     }
 
 

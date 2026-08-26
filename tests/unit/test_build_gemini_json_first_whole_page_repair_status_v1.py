@@ -13,6 +13,9 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
+from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (
+    build_current_document_manifest_selection_v1,
+)
 
 _PATH = (
     Path(__file__).resolve().parents[2]
@@ -143,3 +146,83 @@ def test_status_authenticates_current_image_manifest_and_writes_immutable_snapsh
     assert output.stat().st_nlink == 1
     assert json.loads(output.read_bytes()) == status
     assert target._write_snapshot(tmp_path / "status", status) == output
+
+
+def test_status_prefers_unique_append_only_manifest_selection_over_legacy(
+    monkeypatch, tmp_path
+) -> None:
+    source_root, artifact_root, source, document, plan = _fixture(tmp_path)
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger: [{"state": "SUCCEEDED", "task_id": "task-1"}],
+    )
+    with fitz.open(source) as pdf:
+        rendered = render_full_pdf_page_v1(
+            pdf[0], physical_page=1, dpi=300, source_sha256=document["source_sha256"]
+        )
+    material = {
+        "document": {
+            "document_id": "gfpstorev1:document:" + "c" * 64,
+            "source_logical_name": document["relative_path"],
+            "source_sha256": document["source_sha256"],
+            "source_size_bytes": document["source_size_bytes"],
+        },
+        "extraction_contract": {
+            "page_image_sha256s": [
+                {"image_sha256": rendered.page["image_sha256"], "physical_page": 1}
+            ]
+        },
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+        "page_count": 1,
+        "pages": [
+            {
+                "image": {"sha256": rendered.page["image_sha256"]},
+                "physical_page": 1,
+                "status": "PRIMARY_FINANCIAL_STATEMENT",
+            }
+        ],
+        "status_counts": {"PRIMARY_FINANCIAL_STATEMENT": 1},
+        "totals": {"cost_usd": "0.002000000000"},
+    }
+    manifest = {
+        **material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material),
+    }
+    raw = canonical_json_bytes_v1(manifest) + b"\n"
+    document_root = artifact_root / "documents" / ("a" * 64)
+    relative = Path("current-document-manifests") / (
+        manifest["document_manifest_id"].split(":", 2)[2] + ".json"
+    )
+    manifest_path = document_root / relative
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_bytes(raw)
+    selection = build_current_document_manifest_selection_v1(
+        document_plan_id=plan["documents"][0]["document_plan_id"],
+        source_sha256=document["source_sha256"],
+        document_manifest_id=manifest["document_manifest_id"],
+        document_manifest_ref={
+            "path": relative.as_posix(),
+            "sha256": sha256(raw).hexdigest(),
+            "size_bytes": len(raw),
+        },
+        page_image_frontier_sha256="d" * 64,
+        page_prompt_frontier_sha256="e" * 64,
+        prior_selection_ids=[],
+    )
+    selection_path = (
+        document_root
+        / "current-document-manifest-selections"
+        / (selection["selection_id"].split(":", 2)[2] + ".json")
+    )
+    selection_path.parent.mkdir(parents=True)
+    selection_path.write_bytes(canonical_json_bytes_v1(selection) + b"\n")
+    status = target.build_whole_page_repair_status_v1(
+        plan=plan,
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        artifact_root=artifact_root,
+    )
+    current = status["documents"][0]["current_manifest"]
+    assert current["document_manifest_id"] == manifest["document_manifest_id"]
+    assert current["selection_id"] == selection["selection_id"]
