@@ -1390,7 +1390,8 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
             last_physical_page=task["document_page_count"],
         )
         protected_pages = frontiers["items"]
-        retry_code = 0
+        failed_retry_pages: set[int] = set()
+        balanced_pages: set[int] = set()
         prompt_pages: dict[str, list[int]] = {}
         for variant, pages in (
             (default_variant, frontiers["default"]),
@@ -1419,8 +1420,39 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
             )
             variants.update({page: prompt_variant for page in pages})
             if code != 0:
-                retry_code = 2
-        return_code = retry_code
+                retry_frontiers = _retry_prompt_frontiers_from_receipt_v1(
+                    result,
+                    first_physical_page=min(pages),
+                    last_physical_page=max(pages),
+                )
+                failed_retry_pages.update(result["failed_pages"])
+                if (
+                    prompt_variant == "items"
+                    and not retry_frontiers["default"]
+                    and not retry_frontiers["scope"]
+                ):
+                    balanced_pages.update(retry_frontiers["items"])
+        if balanced_pages:
+            pages = sorted(balanced_pages)
+            code, result = run_frontier(pages=pages, prompt_variant="balanced")
+            if _summary_page_image_sha256s_v1(
+                result.get("page_image_sha256s"), allowed_pages=pages
+            ) != {page: current_images[page] for page in pages}:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "OpenRouter acceleration balanced-retry image frontier drifted"
+                )
+            provider_results.append(
+                {
+                    "physical_pages": pages,
+                    "prompt_variant": "balanced",
+                    "result": result,
+                }
+            )
+            variants.update({page: "balanced" for page in pages})
+            failed_retry_pages.difference_update(pages)
+            if code != 0:
+                failed_retry_pages.update(result["failed_pages"])
+        return_code = 2 if failed_retry_pages else 0
 
     receipt_material: dict[str, Any] = {
         "acceleration_attempt": attempt_number,
