@@ -120,6 +120,22 @@ def build_financial_page_json_prompt_v1(
         "hay nội dung ngoài JSON."
     )
 
+    scope = (
+        "Đọc duy nhất ảnh này và trả đúng một JSON theo JSON Schema được cung cấp. "
+        "Chỉ coi là nội dung cần số hóa khi trang có: (1) Bảng cân đối kế toán, "
+        "Báo cáo kết quả kinh doanh hoặc Báo cáo lưu chuyển tiền tệ; hoặc (2) bảng "
+        "thuyết minh có số dư hay giá trị tài chính thực tế của các khoản mục theo "
+        "một hay nhiều kỳ. Trang chỉ mô tả chính sách kế toán, phương pháp, tỷ lệ quy "
+        "định, tỷ lệ dự phòng, tỷ lệ khấu trừ, ngưỡng, điều kiện, pháp lý hoặc văn "
+        "xuôi mà không có số dư/giá trị tài chính thực tế thì trả "
+        "NO_RELEVANT_FINANCIAL_CONTENT với sections rỗng; không chép lại nội dung đó. "
+        "Nếu trang thuộc phạm vi cần số hóa, giữ đủ và đúng thứ tự mọi tiêu đề, khoản "
+        "mục, cột và giá trị nhìn thấy; giữ nguyên chính tả và chữ số, không sửa, tính "
+        "lại hoặc suy đoán. Dấu gạch kế toán có thể chép nguyên văn hoặc ghi chuỗi "
+        '"0". Nếu không thể đọc đủ phần thiết yếu, trả UNRESOLVED_PAGE. Không trả '
+        "Markdown hay nội dung ngoài JSON."
+    )
+
     common = (
         "Chuyển nội dung báo cáo tài chính nhìn thấy trong ảnh thành JSON theo "
         "JSON Schema được cung cấp. Chỉ lấy Bảng cân đối kế toán, Báo cáo kết quả "
@@ -167,10 +183,12 @@ def build_financial_page_json_prompt_v1(
         return simple + contract
     if variant == "items":
         return items + contract
+    if variant == "scope":
+        return scope + contract
     if variant == "compact":
         return common + contract
     if variant != "balanced":
-        raise _error("prompt variant must be simple, items, compact, or balanced")
+        raise _error("prompt variant must be simple, items, scope, compact, or balanced")
     return (
         common + "\n\nMỗi section và table theo đúng thứ tự từ trên xuống. columns chỉ gồm cột "
         "giá trị; header_path_exact đi từ header ngoài đến header trong. Mỗi hàng "

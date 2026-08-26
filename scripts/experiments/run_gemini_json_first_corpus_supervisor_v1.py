@@ -68,7 +68,9 @@ def _parser() -> argparse.ArgumentParser:
     initialize.add_argument("--plan", type=Path, required=True)
     initialize.add_argument("--ledger", type=Path, required=True)
     initialize.add_argument(
-        "--prompt-variant", choices=("simple", "items", "compact", "balanced"), default="simple"
+        "--prompt-variant",
+        choices=("simple", "items", "scope", "compact", "balanced"),
+        default="simple",
     )
     initialize.add_argument("--max-task-attempts", type=int, default=3)
 
