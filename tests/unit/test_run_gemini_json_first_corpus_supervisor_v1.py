@@ -295,6 +295,68 @@ def test_scheduler_progresses_google_and_openrouter_concurrently(
     assert sorted(calls) == ["poll-google", "run-openrouter"]
 
 
+def test_scheduler_quarantines_failed_document_until_other_work_finishes(
+    monkeypatch, tmp_path
+) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.touch()
+    phase = {"complete": False}
+    failed_task = {
+        "route": target.OPENROUTER_ROUTE,
+        "state": "FAILED",
+        "task_id": "gjfptaskv1:" + "1" * 64,
+    }
+    pending_task = {
+        "route": target.OPENROUTER_ROUTE,
+        "state": "PENDING",
+        "task_id": "gjfptaskv1:" + "2" * 64,
+    }
+    calls = []
+
+    def tasks(_ledger):
+        state = "SUCCEEDED" if phase["complete"] else "PENDING"
+        return [failed_task, {**pending_task, "state": state}]
+
+    def run_openrouter(**_kwargs):
+        calls.append(_kwargs["task"]["task_id"])
+        phase["complete"] = True
+        return {**pending_task, "state": "SUCCEEDED"}
+
+    monkeypatch.setattr(
+        target,
+        "_plan",
+        lambda _path: {"corpus_plan_id": "plan-1", "policy": {}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "max_task_attempts": 2},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", tasks)
+    monkeypatch.setattr(target, "_run_openrouter", run_openrouter)
+
+    result = target.run_corpus(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "google-keys",
+            google_key_slot=1,
+            google_poll_interval_seconds=0,
+            google_watch_max_seconds=60,
+            ledger=ledger,
+            max_active_google=1,
+            max_fallback_attempts=2,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=25,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=60,
+            source_root=tmp_path / "source",
+        )
+    )
+    assert result["disposition"] == "FAILED"
+    assert calls == [pending_task["task_id"]]
+
+
 def test_google_retry_exhaustion_moves_to_typed_fallback(monkeypatch, tmp_path) -> None:
     task = {
         "artifact_relative_path": "task-1",

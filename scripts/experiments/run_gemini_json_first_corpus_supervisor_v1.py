@@ -681,12 +681,12 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             )
         tasks = list_corpus_tasks_v1(args.ledger)
         failed = [task for task in tasks if task["state"] == "FAILED"]
-        if failed:
-            openrouter_executor.shutdown(wait=True, cancel_futures=True)
-            google_submit_executor.shutdown(wait=True, cancel_futures=True)
-            return {"disposition": "FAILED", **corpus_ledger_summary_v1(args.ledger)}
-        unfinished = [task for task in tasks if task["state"] != "SUCCEEDED"]
+        unfinished = [task for task in tasks if task["state"] not in {"SUCCEEDED", "FAILED"}]
         if not unfinished:
+            if failed:
+                openrouter_executor.shutdown(wait=True, cancel_futures=True)
+                google_submit_executor.shutdown(wait=True, cancel_futures=True)
+                return {"disposition": "FAILED", **corpus_ledger_summary_v1(args.ledger)}
             break
         active_google = [
             task
