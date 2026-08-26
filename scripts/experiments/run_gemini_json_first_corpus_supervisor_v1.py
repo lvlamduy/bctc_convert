@@ -67,10 +67,20 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
 
 BATCH_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_batch_v1.py"
 OPENROUTER_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_openrouter_document_v1.py"
+GOOGLE_SUBMIT_RETRY_DELAY_SECONDS = 30.0
+RETRYABLE_GOOGLE_UPLOAD_DISPOSITION = "RETRYABLE_GOOGLE_UPLOAD_START"
 
 
 class RunGeminiJsonFirstCorpusSupervisorV1Error(RuntimeError):
     pass
+
+
+class _ProviderSubprocessError(RunGeminiJsonFirstCorpusSupervisorV1Error):
+    def __init__(self, *, returncode: int, stdout: str, stderr: str) -> None:
+        super().__init__("provider subprocess failed outside its typed disposition")
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -262,10 +272,67 @@ def _command(command: list[str], *, expected: set[int]) -> tuple[int, dict[str, 
         text=True,
     )
     if completed.returncode not in expected:
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "provider subprocess failed outside its typed disposition"
+        raise _ProviderSubprocessError(
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
         )
     return completed.returncode, _last_json(completed.stdout)
+
+
+def _retryable_google_upload_start_failure_v1(error: _ProviderSubprocessError) -> bool:
+    if error.returncode != 1:
+        return False
+    marker = "Google file upload start returned HTTP "
+    if marker in error.stderr:
+        suffix = error.stderr.rsplit(marker, 1)[1].splitlines()[0]
+        try:
+            status = int(suffix)
+        except ValueError:
+            return False
+        return status in {429, 500, 502, 503, 504}
+    return "Google file upload start failed or timed out" in error.stderr
+
+
+def _defer_retryable_google_upload_v1(
+    *, task: dict[str, Any], attempt: Path, artifact_root: Path
+) -> dict[str, Any]:
+    unsafe_names = {
+        "batch-input.jsonl",
+        "manifest.json",
+        "submission-receipt.json",
+        "submission-response.json",
+    }
+    if any((attempt / name).exists() for name in unsafe_names):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "retryable Google upload failure crossed the safe pre-submission boundary"
+        )
+    if attempt.exists():
+        unexpected = {path.name for path in attempt.iterdir()} - {"uploaded-files"}
+        if unexpected:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "retryable Google upload failure has an unsafe artifact shape"
+            )
+    material = {
+        "disposition": RETRYABLE_GOOGLE_UPLOAD_DISPOSITION,
+        "format_version": "GEMINI_JSON_FIRST_GOOGLE_UPLOAD_DEFERRAL_V1",
+        "provider_failure_kind": "GOOGLE_FILE_UPLOAD_START_TRANSIENT",
+        "task_id": task["task_id"],
+    }
+    deferral_id = "gjfpgudv1:deferral:" + canonical_json_sha256_v1(material)
+    receipt = {**material, "deferral_id": deferral_id}
+    receipt_path = (
+        _task_root(task, artifact_root)
+        / "google-submit-deferrals"
+        / (deferral_id.rsplit(":", 1)[1] + ".json")
+    )
+    _write_or_verify(receipt_path, canonical_json_bytes_v1(receipt) + b"\n")
+    return {
+        "disposition": RETRYABLE_GOOGLE_UPLOAD_DISPOSITION,
+        "receipt": receipt,
+        "state": task["state"],
+        "task_id": task["task_id"],
+    }
 
 
 def _plan(path: Path) -> dict[str, Any]:
@@ -497,7 +564,16 @@ def _recover_or_submit_google(
                 str(provider_timeout_seconds),
             )
         )
-        _, submitted = _command(command, expected={0})
+        try:
+            _, submitted = _command(command, expected={0})
+        except _ProviderSubprocessError as error:
+            if not _retryable_google_upload_start_failure_v1(error):
+                raise
+            return _defer_retryable_google_upload_v1(
+                task=task,
+                attempt=attempt,
+                artifact_root=artifact_root,
+            )
     return transition_corpus_task_v1(
         ledger,
         task_id=task["task_id"],
@@ -2046,6 +2122,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         thread_name_prefix="google-batch-submit",
     )
     google_submit_futures: dict[Future[dict[str, Any]], str] = {}
+    google_submit_not_before: dict[str, float] = {}
     next_google_poll_at = 0.0
     while True:
         if openrouter_future is not None and openrouter_future.done():
@@ -2058,11 +2135,18 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             openrouter_future = None
         for future in [future for future in google_submit_futures if future.done()]:
             try:
-                future.result()
+                submission_result = future.result()
             except Exception:
                 openrouter_executor.shutdown(wait=True, cancel_futures=True)
                 google_submit_executor.shutdown(wait=True, cancel_futures=True)
                 raise
+            task_id = google_submit_futures[future]
+            if submission_result.get("disposition") == RETRYABLE_GOOGLE_UPLOAD_DISPOSITION:
+                google_submit_not_before[task_id] = (
+                    time.monotonic() + GOOGLE_SUBMIT_RETRY_DELAY_SECONDS
+                )
+            else:
+                google_submit_not_before.pop(task_id, None)
             del google_submit_futures[future]
         if time.monotonic() - started > args.google_watch_max_seconds:
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
@@ -2117,6 +2201,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if item["route"] == GOOGLE_ROUTE
             and item["state"] in {"PENDING", "NEEDS_RETRY"}
             and item["task_id"] not in inflight_google_task_ids
+            and time.monotonic() >= google_submit_not_before.get(item["task_id"], 0.0)
         ][:available]:
             future = google_submit_executor.submit(
                 _recover_or_submit_google,
@@ -2180,6 +2265,15 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             continue
         if google_submit_futures:
             time.sleep(min(args.google_poll_interval_seconds, 1.0))
+            continue
+        cooling_google = [
+            deadline
+            for task_id, deadline in google_submit_not_before.items()
+            if deadline > time.monotonic()
+            and any(task["task_id"] == task_id for task in unfinished)
+        ]
+        if cooling_google:
+            time.sleep(min(max(0.0, min(cooling_google) - time.monotonic()), 1.0))
             continue
         if accelerated_google:
             # A separate accelerator owns this document under a sealed ledger

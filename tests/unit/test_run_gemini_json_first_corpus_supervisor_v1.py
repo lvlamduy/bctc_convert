@@ -617,6 +617,79 @@ def test_interrupted_google_file_uploads_are_preserved_before_clean_resubmission
     assert unsafe.is_dir()
 
 
+def test_google_upload_start_429_is_deferred_without_advancing_the_ledger(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "HDB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task_id = "gjfptaskv1:" + "1" * 64
+    task = {
+        "artifact_relative_path": "tasks/one",
+        "attempt_count": 0,
+        "first_physical_page": 1,
+        "last_physical_page": 1,
+        "relative_path": "HDB/report.pdf",
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "PENDING",
+        "task_id": task_id,
+    }
+    plan = {
+        "documents": [
+            {
+                "document": {"page_count": 1},
+                "tasks": [{"task_id": task_id}],
+            }
+        ],
+        "policy": {"dpi": 300},
+    }
+    monkeypatch.setattr(target, "_google_success_pages", lambda *_args: set())
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+
+    def command(_argv, *, expected):
+        assert expected == {0}
+        raise target._ProviderSubprocessError(
+            returncode=1,
+            stdout="",
+            stderr=(
+                "bctc_ai.evaluation.gemini_json_first_batch_v1."
+                "GeminiJsonFirstBatchV1Error: Google file upload start returned HTTP 429\n"
+            ),
+        )
+
+    monkeypatch.setattr(target, "_command", command)
+    result = target._recover_or_submit_google(
+        task=task,
+        plan=plan,
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        google_key_file=tmp_path / "keys",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+    )
+    assert result["disposition"] == target.RETRYABLE_GOOGLE_UPLOAD_DISPOSITION
+    assert result["state"] == "PENDING"
+    receipts = list((tmp_path / "artifacts/tasks/one/google-submit-deferrals").glob("*.json"))
+    assert len(receipts) == 1
+    receipt = json.loads(receipts[0].read_bytes())
+    assert receipt["provider_failure_kind"] == "GOOGLE_FILE_UPLOAD_START_TRANSIENT"
+
+    nonretryable = target._ProviderSubprocessError(
+        returncode=1,
+        stdout="",
+        stderr="GeminiJsonFirstBatchV1Error: Google file upload start returned HTTP 400\n",
+    )
+    assert not target._retryable_google_upload_start_failure_v1(nonretryable)
+
+
 def test_google_fallback_selects_scope_and_items_from_typed_batch_failures(
     monkeypatch, tmp_path
 ) -> None:
