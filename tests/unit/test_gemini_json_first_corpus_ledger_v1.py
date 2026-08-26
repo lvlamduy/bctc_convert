@@ -9,6 +9,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
     transition_corpus_task_v1,
@@ -279,3 +280,65 @@ def test_failed_openrouter_task_can_be_sealed_by_complete_google_page_fallback(t
     )
     assert repaired["state"] == "SUCCEEDED"
     assert repaired["attempt_count"] == running["attempt_count"]
+
+
+def test_failed_chunks_can_be_sealed_by_complete_current_document_revalidation(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan())
+    tasks = list_corpus_tasks_v1(ledger)
+    document_plan_id = tasks[0]["document_plan_id"]
+    document_tasks = [task for task in tasks if task["document_plan_id"] == document_plan_id]
+    failed = document_tasks[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=failed["task_id"],
+        expected_state="PENDING",
+        next_state="FAILED",
+        receipt={"provider_failure": True},
+    )
+    for task in document_tasks[1:]:
+        transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="PENDING",
+            next_state="RUNNING",
+            receipt={"started": True},
+        )
+        transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="RUNNING",
+            next_state="SUCCEEDED",
+            receipt={"completed": True},
+        )
+    pages = list(range(1, failed["document_page_count"] + 1))
+    receipt = {
+        "current_document_revalidated": True,
+        "document_manifest_id": "gfdmv1:manifest:" + "5" * 64,
+        "page_image_sha256s": [
+            {"image_sha256": f"{page:064x}", "physical_page": page} for page in pages
+        ],
+        "page_prompt_variants": [
+            {
+                "physical_page": page,
+                "prompt_variant": "items" if page == 1 else "simple",
+            }
+            for page in pages
+        ],
+        "repaired_task_ids": [failed["task_id"]],
+        "revalidated_pages": pages,
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": len(pages)},
+    }
+    repaired = seal_current_document_revalidated_corpus_tasks_v1(
+        ledger, task_id=failed["task_id"], receipt=receipt
+    )
+    assert [task["task_id"] for task in repaired] == [failed["task_id"]]
+    assert repaired[0]["state"] == "SUCCEEDED"
+    assert repaired[0]["attempt_count"] == 0
+
+    tampered = copy.deepcopy(receipt)
+    tampered["page_image_sha256s"][0]["image_sha256"] = "z" * 64
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="image frontier"):
+        seal_current_document_revalidated_corpus_tasks_v1(
+            ledger, task_id=failed["task_id"], receipt=tampered
+        )

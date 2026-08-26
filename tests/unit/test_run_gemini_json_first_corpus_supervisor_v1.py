@@ -1161,6 +1161,86 @@ def test_current_document_manifest_binds_image_and_prompt_frontiers(monkeypatch,
         "items",
     ]
     assert Path(result["output"]).is_file()
+    assert result["repaired_task_ids"] == []
+
+
+def test_current_document_manifest_atomically_seals_failed_chunks(monkeypatch, tmp_path) -> None:
+    tasks = [
+        {
+            "artifact_relative_path": "task-1",
+            "document_page_count": 3,
+            "first_physical_page": 1,
+            "last_physical_page": 2,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "a" * 64,
+            "state": "FAILED",
+            "task_id": "task-1",
+        },
+        {
+            "artifact_relative_path": "task-2",
+            "document_page_count": 3,
+            "first_physical_page": 3,
+            "last_physical_page": 3,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "a" * 64,
+            "state": "SUCCEEDED",
+            "task_id": "task-2",
+        },
+    ]
+    planned = {
+        "document": {"page_count": 3},
+        "document_plan_id": "gjfpdocv1:" + "b" * 64,
+        "route": target.GOOGLE_ROUTE,
+        "tasks": [{"task_id": "task-1"}, {"task_id": "task-2"}],
+    }
+    monkeypatch.setattr(
+        target, "_plan", lambda _path: {"documents": [planned], "policy": {"dpi": 300}}
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _ledger: tasks)
+    monkeypatch.setattr(
+        target, "corpus_ledger_summary_v1", lambda _ledger: {"prompt_variant": "simple"}
+    )
+    images = {page: str(page) * 64 for page in (1, 2, 3)}
+    monkeypatch.setattr(target, "_current_page_image_sha256s_v1", lambda **_kwargs: images)
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "c" * 64,
+            "page_count": 3,
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
+            "status_counts": {"FINANCIAL_NOTE_CONTENT": 3},
+            "totals": {"cost_usd": "0.010000000000"},
+        },
+    )
+    captured = []
+
+    def seal(_ledger, *, task_id, receipt):
+        captured.append((task_id, receipt))
+        return [{"task_id": "task-1"}]
+
+    monkeypatch.setattr(target, "seal_current_document_revalidated_corpus_tasks_v1", seal)
+    result = target.build_current_document_manifest(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            ledger=tmp_path / "ledger.sqlite3",
+            page_prompt_variant=["2=scope"],
+            plan=tmp_path / "plan.json",
+            source_root=tmp_path / "source",
+            task_id="task-1",
+        )
+    )
+    assert result["repaired_task_ids"] == ["task-1"]
+    assert captured[0][0] == "task-1"
+    assert captured[0][1]["repaired_task_ids"] == ["task-1"]
+    assert captured[0][1]["revalidated_pages"] == [1, 2, 3]
+    assert captured[0][1]["page_prompt_variants"][1] == {
+        "physical_page": 2,
+        "prompt_variant": "scope",
+    }
 
 
 def test_page_prompt_variant_overrides_fail_closed() -> None:

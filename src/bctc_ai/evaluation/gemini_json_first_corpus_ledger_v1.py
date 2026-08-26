@@ -482,3 +482,145 @@ def seal_google_fallback_corpus_task_v1(
         connection.commit()
         updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
     return dict(updated)
+
+
+def seal_current_document_revalidated_corpus_tasks_v1(
+    path: Path,
+    *,
+    task_id: str,
+    receipt: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Atomically seal failed chunks after one current whole-page manifest replays.
+
+    This is route agnostic: the authority is the validated document manifest,
+    its complete image/prompt frontiers, and the already authenticated ledger
+    document partition.  It never changes attempts or reopens a provider job.
+    """
+
+    checked = canonical_clone_v1(dict(receipt))
+    if set(checked) != {
+        "current_document_revalidated",
+        "document_manifest_id",
+        "page_image_sha256s",
+        "page_prompt_variants",
+        "repaired_task_ids",
+        "revalidated_pages",
+        "status_counts",
+    }:
+        raise _error("current document revalidation receipt fields drifted")
+    if checked["current_document_revalidated"] is not True:
+        raise _error("current document revalidation receipt is not affirmative")
+    manifest_id = checked["document_manifest_id"]
+    if type(manifest_id) is not str or not manifest_id.startswith("gfdmv1:manifest:"):
+        raise _error("current document revalidation manifest is invalid")
+    revalidated_pages = checked["revalidated_pages"]
+    if (
+        type(revalidated_pages) is not list
+        or not revalidated_pages
+        or revalidated_pages != list(range(1, len(revalidated_pages) + 1))
+    ):
+        raise _error("current document revalidation page frontier is invalid")
+    image_frontier = checked["page_image_sha256s"]
+    if (
+        type(image_frontier) is not list
+        or [item.get("physical_page") for item in image_frontier if type(item) is dict]
+        != revalidated_pages
+        or any(
+            type(item) is not dict
+            or set(item) != {"image_sha256", "physical_page"}
+            or type(item["image_sha256"]) is not str
+            or len(item["image_sha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in item["image_sha256"])
+            for item in image_frontier
+        )
+    ):
+        raise _error("current document revalidation image frontier is invalid")
+    prompt_frontier = checked["page_prompt_variants"]
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    if (
+        type(prompt_frontier) is not list
+        or [item.get("physical_page") for item in prompt_frontier if type(item) is dict]
+        != revalidated_pages
+        or any(
+            type(item) is not dict
+            or set(item) != {"physical_page", "prompt_variant"}
+            or item["prompt_variant"] not in allowed_variants
+            for item in prompt_frontier
+        )
+    ):
+        raise _error("current document revalidation prompt frontier is invalid")
+    repaired_task_ids = checked["repaired_task_ids"]
+    if (
+        type(repaired_task_ids) is not list
+        or not repaired_task_ids
+        or repaired_task_ids != sorted(set(repaired_task_ids))
+        or any(type(value) is not str or not value for value in repaired_task_ids)
+    ):
+        raise _error("current document revalidation task frontier is invalid")
+    status_counts = checked["status_counts"]
+    allowed_statuses = {
+        "FINANCIAL_NOTE_CONTENT",
+        "NO_RELEVANT_FINANCIAL_CONTENT",
+        "PRIMARY_FINANCIAL_STATEMENT",
+    }
+    if (
+        type(status_counts) is not dict
+        or not status_counts
+        or not set(status_counts) <= allowed_statuses
+        or any(type(count) is not int or count < 0 for count in status_counts.values())
+        or sum(status_counts.values()) != len(revalidated_pages)
+    ):
+        raise _error("current document revalidation status counts are invalid")
+
+    receipt_bytes = canonical_json_bytes_v1(checked)
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        selected = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if selected is None:
+            raise _error("current document revalidation task is absent")
+        rows = connection.execute(
+            "SELECT * FROM task WHERE document_plan_id=? ORDER BY first_physical_page,task_id",
+            (selected["document_plan_id"],),
+        ).fetchall()
+        if not rows or any(
+            row["relative_path"] != selected["relative_path"]
+            or row["source_sha256"] != selected["source_sha256"]
+            or row["document_page_count"] != selected["document_page_count"]
+            or row["state"] not in {"FAILED", "SUCCEEDED"}
+            for row in rows
+        ):
+            raise _error("current document revalidation ledger frontier is not terminal")
+        expected_pages = [
+            page
+            for row in rows
+            for page in range(row["first_physical_page"], row["last_physical_page"] + 1)
+        ]
+        failed_rows = [row for row in rows if row["state"] == "FAILED"]
+        if (
+            expected_pages != revalidated_pages
+            or len(revalidated_pages) != selected["document_page_count"]
+            or [row["task_id"] for row in failed_rows] != repaired_task_ids
+        ):
+            raise _error("current document revalidation does not cover the ledger document")
+        for row in failed_rows:
+            event_ordinal = connection.execute(
+                "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (row["task_id"],)
+            ).fetchone()[0]
+            connection.execute(
+                "INSERT INTO task_event VALUES (?,?,?,?,?)",
+                (row["task_id"], event_ordinal, "FAILED", "SUCCEEDED", receipt_bytes),
+            )
+            connection.execute(
+                "UPDATE task SET state='SUCCEEDED', last_receipt_json=? WHERE task_id=?",
+                (receipt_bytes, row["task_id"]),
+            )
+        connection.commit()
+        updated = [
+            dict(
+                connection.execute(
+                    "SELECT * FROM task WHERE task_id=?", (row["task_id"],)
+                ).fetchone()
+            )
+            for row in failed_rows
+        ]
+    return updated

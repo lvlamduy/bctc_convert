@@ -28,6 +28,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
     transition_corpus_task_v1,
@@ -807,9 +808,11 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
     tasks = [
         task for task in list_corpus_tasks_v1(args.ledger) if task["task_id"] in planned_task_ids
     ]
-    if len(tasks) != len(planned_task_ids) or any(task["state"] != "SUCCEEDED" for task in tasks):
+    if len(tasks) != len(planned_task_ids) or any(
+        task["state"] not in {"FAILED", "SUCCEEDED"} for task in tasks
+    ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "current document manifest requires every planned task to be succeeded"
+            "current document manifest requires a terminal planned task frontier"
         )
     task = next(task for task in tasks if task["task_id"] == args.task_id)
     expected_pages = list(range(1, task["document_page_count"] + 1))
@@ -869,6 +872,28 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         / "current-document-manifest.json"
     )
     _write_or_verify(output, canonical_json_bytes_v1(manifest) + b"\n")
+    failed_task_ids = sorted(task["task_id"] for task in tasks if task["state"] == "FAILED")
+    repaired_tasks = []
+    if failed_task_ids:
+        repaired_tasks = seal_current_document_revalidated_corpus_tasks_v1(
+            args.ledger,
+            task_id=args.task_id,
+            receipt={
+                "current_document_revalidated": True,
+                "document_manifest_id": manifest["document_manifest_id"],
+                "page_image_sha256s": [
+                    {"image_sha256": page_images[page], "physical_page": page}
+                    for page in expected_pages
+                ],
+                "page_prompt_variants": [
+                    {"physical_page": page, "prompt_variant": variants[page]}
+                    for page in expected_pages
+                ],
+                "repaired_task_ids": failed_task_ids,
+                "revalidated_pages": expected_pages,
+                "status_counts": manifest["status_counts"],
+            },
+        )
     return {
         "disposition": "SUCCEEDED",
         "document_manifest_id": manifest["document_manifest_id"],
@@ -879,6 +904,7 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         ],
         "status_counts": manifest["status_counts"],
         "totals": manifest["totals"],
+        "repaired_task_ids": [task["task_id"] for task in repaired_tasks],
     }
 
 
