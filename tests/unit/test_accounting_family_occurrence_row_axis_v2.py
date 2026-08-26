@@ -3021,6 +3021,39 @@ def test_fragmented_extreme_margin_projection_fails_closed_without_every_gate(
     assert any(len(grid["column_centers"]) == 3 for grid in axis["row_axis"]["column_grids"])
 
 
+def test_semantic_label_ordinals_exclude_interleaved_unselected_source_lines() -> None:
+    page = {
+        "lines": [
+            _line(41, "Phần đầu nhãn", "", [40, 100, 300, 120]),
+            _line(42, "Mảnh dấu xen giữa", "61", [950, 100, 995, 120]),
+            _line(43, "Phần cuối nhãn", "", [40, 122, 300, 142]),
+        ],
+        "page_sequence": 7,
+        "page_width": 1000,
+    }
+    noncontiguous_match = {
+        "end_source_line_index": 2,
+        "page_sequence": 7,
+        "source_line_index": 0,
+        "source_line_indices": [0, 2],
+    }
+    legacy_contiguous_match = {
+        "end_source_line_index": 2,
+        "page_sequence": 7,
+        "source_line_index": 0,
+    }
+
+    assert subject._semantic_label_line_ordinals_for_page_v1(page, [noncontiguous_match]) == [
+        41,
+        43,
+    ]
+    assert subject._semantic_label_line_ordinals_for_page_v1(page, [legacy_contiguous_match]) == [
+        41,
+        42,
+        43,
+    ]
+
+
 def test_fragmented_extreme_margin_peer_consensus_tamper_rejects() -> None:
     pages, stamp_lines, colored = _extreme_right_vertical_stamp_v4_fixture(mode="FRAGMENTED")
     _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(

@@ -6143,6 +6143,22 @@ def _extreme_margin_v2_geometric_peer_ordinals(
     return sorted(peers)
 
 
+def _semantic_label_line_ordinals_for_page_v1(
+    page: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+) -> list[int]:
+    """Replay only source lines explicitly selected by semantic matches."""
+
+    return sorted(
+        {
+            page["lines"][index]["line_ordinal"]
+            for match in matches
+            if match["page_sequence"] == page["page_sequence"]
+            for index in row_v1._match_source_line_indices(match)
+        }
+    )
+
+
 def _extreme_margin_v2_component_qualifies(
     component: Mapping[str, Any],
     *,
@@ -6436,13 +6452,9 @@ def _build_authenticated_extreme_margin_furniture_evidence_v2(
     )
     if any(label["bbox"][2] >= margin_boundary for label in full_page_label_evidence):
         return None, False
-    semantic_label_line_ordinals = sorted(
-        {
-            page["lines"][index]["line_ordinal"]
-            for match in matches
-            if match["page_sequence"] == page["page_sequence"]
-            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
-        }
+    semantic_label_line_ordinals = _semantic_label_line_ordinals_for_page_v1(
+        page,
+        matches,
     )
     if candidate["line_ordinal"] in semantic_label_line_ordinals:
         return None, False
@@ -6925,13 +6937,9 @@ def _build_authenticated_extreme_margin_vertical_stamp_furniture_evidence_v4(
     )
     if any(label["bbox"][2] >= margin_boundary for label in full_page_label_evidence):
         return None, False
-    semantic_label_line_ordinals = sorted(
-        {
-            page["lines"][index]["line_ordinal"]
-            for match in matches
-            if match["page_sequence"] == page["page_sequence"]
-            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
-        }
+    semantic_label_line_ordinals = _semantic_label_line_ordinals_for_page_v1(
+        page,
+        matches,
     )
     if candidate["line_ordinal"] in semantic_label_line_ordinals or (
         _extreme_margin_vertical_stamp_collides_with_note_axis_v4(
@@ -7166,13 +7174,9 @@ def _build_authenticated_extreme_margin_nonnumeric_decoration_v3(
         or bbox[2] - bbox[0] > math.ceil(scale * 1.25)
     ):
         return None, False
-    semantic_label_line_ordinals = sorted(
-        {
-            page["lines"][index]["line_ordinal"]
-            for match in matches
-            if match["page_sequence"] == page["page_sequence"]
-            for index in range(match["source_line_index"], match["end_source_line_index"] + 1)
-        }
+    semantic_label_line_ordinals = _semantic_label_line_ordinals_for_page_v1(
+        page,
+        matches,
     )
     if candidate_ordinal in semantic_label_line_ordinals:
         return None, False
@@ -8192,12 +8196,10 @@ def _project_authenticated_fragmented_extreme_margin_columns_v4(
     projected = canonical_clone_v1(axis)
     page_by_sequence = {page["page_sequence"]: page for page in pages}
     body_by_page = row_v1._role_body_lines_by_page(pages, expanded_region, matches)
-    semantic_ordinals_by_page: dict[int, set[int]] = {}
-    for match in matches:
-        page_sequence = match["page_sequence"]
-        semantic_ordinals_by_page.setdefault(page_sequence, set()).update(
-            range(match["source_line_index"], match["end_source_line_index"] + 1)
-        )
+    semantic_ordinals_by_page = {
+        page["page_sequence"]: set(_semantic_label_line_ordinals_for_page_v1(page, matches))
+        for page in pages
+    }
     candidate_sample_ids: set[str] = set()
     changed = False
     for grid in projected["column_grids"]:
