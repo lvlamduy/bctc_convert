@@ -868,6 +868,25 @@ def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
         if len(values) == old_width and values[label_index] == row["label_exact"]:
             normalized_rows.append([*values[:label_index], *values[label_index + 1 :]])
             continue
+        transaction_header = (
+            _search_fold_v1(" ".join(str(item or "") for item in columns[1]["header_path_exact"]))
+            if label_index == 0 and len(columns) > 1
+            else ""
+        )
+        if (
+            label_index == 0
+            and transaction_header in {"giao dich", "loai giao dich"}
+            and columns[1]["value_kind"] == "TEXT"
+            and len(values) + 1 == new_width
+            and row["label_exact"] is not None
+            and _row_label_matches_hierarchy_leaf_v1(row)
+            and all(
+                _cell_matches_value_kind_v1(cell, column["value_kind"])
+                for cell, column in zip(values, columns[2:], strict=True)
+            )
+        ):
+            normalized_rows.append([row["label_exact"], *values])
+            continue
         padded = (
             _unique_null_padding_by_value_kind_v1(
                 list(values), [*columns[:label_index], *columns[label_index + 1 :]]

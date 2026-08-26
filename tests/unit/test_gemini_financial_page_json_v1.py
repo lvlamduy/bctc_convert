@@ -536,6 +536,57 @@ def test_leading_text_header_proxy_with_visible_cell_or_short_row_rejects() -> N
         validate_financial_page_json_v1(short)
 
 
+def test_related_party_owner_and_transaction_cells_replay_without_losing_text() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Bên liên quan"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Giao dịch"], "value_kind": "TEXT"},
+        {"header_path_exact": ["30/06/2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/12/2024"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "SMBC - Cổ đông lớn",
+            "hierarchy_path_exact": ["SMBC - Cổ đông lớn"],
+            "row_kind": "GROUP",
+            "values_exact": [None, None, None],
+        },
+        {
+            "label_exact": "Vay từ SMBC",
+            "hierarchy_path_exact": ["SMBC - Cổ đông lớn", "Vay từ SMBC"],
+            "row_kind": "ITEM",
+            "values_exact": ["(29.902.338)", "(7.405.187)"],
+        },
+        {
+            "label_exact": "CTCP Cảng Sài Gòn",
+            "hierarchy_path_exact": ["CTCP Cảng Sài Gòn"],
+            "row_kind": "ITEM",
+            "values_exact": ["Tiền gửi không kỳ hạn", "(658)", "(1.225)"],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert checked_table["columns"] == table["columns"][1:]
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        [None, None, None],
+        ["Vay từ SMBC", "(29.902.338)", "(7.405.187)"],
+        ["Tiền gửi không kỳ hạn", "(658)", "(1.225)"],
+    ]
+
+    note_column = copy.deepcopy(page)
+    note_column["sections"][0]["tables"][0]["columns"][1]["header_path_exact"] = ["Thuyết minh"]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(note_column)
+
+    wrong_owner = copy.deepcopy(page)
+    wrong_owner["sections"][0]["tables"][0]["rows"][1]["hierarchy_path_exact"][-1] = (
+        "Giao dịch khác"
+    )
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(wrong_owner)
+
+
 def test_hierarchy_path_is_a_soft_model_proposal() -> None:
     page = _page()
     row = page["sections"][0]["tables"][0]["rows"][1]
