@@ -491,6 +491,9 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         assert "--physical-page" in argv
         assert argv.count("--physical-page") == 2
         assert "7" in argv and "9" in argv
+        assert argv[argv.index("--google-key-file") + 1] == str(tmp_path / "google")
+        assert argv[argv.index("--google-key-slot") + 1] == "2"
+        assert argv[argv.index("--google-standard-mode") + 1] == "on-provider-error"
         return 0, {"disposition": "SUCCEEDED"}
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
@@ -516,6 +519,8 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         database=tmp_path / "store.sqlite3",
         artifact_root=tmp_path / "artifacts",
         openrouter_key_file=tmp_path / "openrouter",
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
         openrouter_workers=20,
         provider_timeout_seconds=60,
         max_fallback_attempts=2,
