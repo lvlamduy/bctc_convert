@@ -25,6 +25,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
     financial_page_json_response_schema_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
+    GeminiJsonFirstCorpusLedgerV1Error,
     claim_google_document_for_openrouter_acceleration_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
@@ -156,6 +157,24 @@ def _parser() -> argparse.ArgumentParser:
     accelerate.add_argument("--openrouter-workers", type=int, default=25)
     accelerate.add_argument("--provider-timeout-seconds", type=int, default=900)
     accelerate.add_argument("--max-acceleration-attempts", type=int, default=2)
+
+    accelerate_pending = commands.add_parser("accelerate-pending-google")
+    accelerate_pending.add_argument("--plan", type=Path, required=True)
+    accelerate_pending.add_argument("--ledger", type=Path, required=True)
+    accelerate_pending.add_argument("--source-root", type=Path, required=True)
+    accelerate_pending.add_argument("--database", type=Path, required=True)
+    accelerate_pending.add_argument("--artifact-root", type=Path, required=True)
+    accelerate_pending.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    accelerate_pending.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    accelerate_pending.add_argument("--google-key-slot", type=int, default=2)
+    accelerate_pending.add_argument("--openrouter-workers", type=int, default=25)
+    accelerate_pending.add_argument("--provider-timeout-seconds", type=int, default=900)
+    accelerate_pending.add_argument("--max-acceleration-attempts", type=int, default=2)
+    accelerate_pending.add_argument("--max-documents", type=int, default=140)
 
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
@@ -1289,6 +1308,101 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _all_pending_google_documents_v1(*, plan: dict[str, Any], ledger: Path) -> list[dict[str, Any]]:
+    """Return smallest-first documents whose complete Google task frontier is pending."""
+
+    rows = list_corpus_tasks_v1(ledger, route=GOOGLE_ROUTE)
+    row_by_task_id = {row["task_id"]: row for row in rows}
+    if len(row_by_task_id) != len(rows):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google acceleration ledger task frontier is duplicate"
+        )
+    candidates: list[dict[str, Any]] = []
+    for document in plan["documents"]:
+        if document["route"] != GOOGLE_ROUTE:
+            continue
+        task_ids = [task["task_id"] for task in document["tasks"]]
+        document_rows = [row_by_task_id.get(task_id) for task_id in task_ids]
+        if any(row is None for row in document_rows):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "Google acceleration plan and ledger task frontiers differ"
+            )
+        if all(row["state"] == "PENDING" for row in document_rows):
+            candidates.append(
+                {
+                    "document_page_count": document["document"]["page_count"],
+                    "relative_path": document["document"]["relative_path"],
+                    "task_id": task_ids[0],
+                }
+            )
+    return sorted(
+        candidates,
+        key=lambda item: (
+            item["document_page_count"],
+            item["relative_path"],
+            item["task_id"],
+        ),
+    )
+
+
+def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, Any]:
+    """Continuously claim pending Google documents and finish them through OpenRouter."""
+
+    if not 1 <= args.max_documents <= 140:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration document bound lies outside 1..140"
+        )
+    plan = _plan(args.plan)
+    completed: list[dict[str, Any]] = []
+    race_count = 0
+    while len(completed) < args.max_documents:
+        candidates = _all_pending_google_documents_v1(plan=plan, ledger=args.ledger)
+        if not candidates:
+            break
+        claimed = False
+        for candidate in candidates:
+            document_args = argparse.Namespace(**vars(args), task_id=candidate["task_id"])
+            try:
+                result = accelerate_google_document(document_args)
+            except GeminiJsonFirstCorpusLedgerV1Error as exc:
+                if "requires one all-pending document" not in str(exc):
+                    raise
+                race_count += 1
+                continue
+            claimed = True
+            completed.append(
+                {
+                    "disposition": result["disposition"],
+                    "document_manifest_id": result.get("document_manifest_id"),
+                    "document_page_count": candidate["document_page_count"],
+                    "relative_path": candidate["relative_path"],
+                    "selection_id": result.get("selection_id"),
+                    "task_id": candidate["task_id"],
+                }
+            )
+            if result["disposition"] == "NEEDS_RETRY":
+                return {
+                    "completed_documents": completed,
+                    "disposition": "NEEDS_RETRY",
+                    "ledger": corpus_ledger_summary_v1(args.ledger),
+                    "race_count": race_count,
+                }
+            break
+        if not claimed:
+            # Google may have claimed every candidate between the read and write locks.
+            if not _all_pending_google_documents_v1(plan=plan, ledger=args.ledger):
+                break
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter acceleration could not reserve a stable pending document"
+            )
+    return {
+        "completed_documents": completed,
+        "disposition": "SUCCEEDED",
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "race_count": race_count,
+    }
+
+
 def _semantic_retry_no_relevant_pages_v1(
     manifest: dict[str, Any], *, protected_pages: list[int]
 ) -> list[int]:
@@ -2071,6 +2185,8 @@ def main() -> int:
         result = build_current_document_manifest(args)
     elif args.command == "accelerate-google-document":
         result = accelerate_google_document(args)
+    elif args.command == "accelerate-pending-google":
+        result = accelerate_pending_google_documents(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

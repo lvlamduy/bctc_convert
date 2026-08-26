@@ -1664,3 +1664,83 @@ def test_google_document_acceleration_preserves_semantic_page_when_items_drops_i
     assert result["semantic_item_no_relevant_pages"] == [2]
     assert transitions == []
     assert len(calls) == 2
+
+
+def test_all_pending_google_documents_are_smallest_first_and_require_complete_frontier(
+    monkeypatch, tmp_path
+) -> None:
+    plan = {
+        "documents": [
+            {
+                "document": {"page_count": 50, "relative_path": "B/large.pdf"},
+                "route": target.GOOGLE_ROUTE,
+                "tasks": [{"task_id": "large-1"}, {"task_id": "large-2"}],
+            },
+            {
+                "document": {"page_count": 20, "relative_path": "A/small.pdf"},
+                "route": target.GOOGLE_ROUTE,
+                "tasks": [{"task_id": "small-1"}],
+            },
+            {
+                "document": {"page_count": 10, "relative_path": "C/openrouter.pdf"},
+                "route": target.OPENROUTER_ROUTE,
+                "tasks": [{"task_id": "openrouter-1"}],
+            },
+        ]
+    }
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda *_a, **_k: [
+            {"state": "PENDING", "task_id": "large-1"},
+            {"state": "SUBMITTED", "task_id": "large-2"},
+            {"state": "PENDING", "task_id": "small-1"},
+        ],
+    )
+    assert target._all_pending_google_documents_v1(
+        plan=plan, ledger=tmp_path / "ledger.sqlite3"
+    ) == [
+        {
+            "document_page_count": 20,
+            "relative_path": "A/small.pdf",
+            "task_id": "small-1",
+        }
+    ]
+
+
+def test_accelerate_pending_google_documents_refreshes_after_each_document(
+    monkeypatch, tmp_path
+) -> None:
+    args = Namespace(
+        ledger=tmp_path / "ledger.sqlite3",
+        max_documents=3,
+        plan=tmp_path / "plan.json",
+    )
+    monkeypatch.setattr(target, "_plan", lambda _path: {"documents": []})
+    frontiers = iter(
+        [
+            [{"document_page_count": 20, "relative_path": "a.pdf", "task_id": "task-a"}],
+            [{"document_page_count": 30, "relative_path": "b.pdf", "task_id": "task-b"}],
+            [],
+        ]
+    )
+    monkeypatch.setattr(
+        target, "_all_pending_google_documents_v1", lambda **_kwargs: next(frontiers)
+    )
+    calls = []
+
+    def accelerate(document_args):
+        calls.append(document_args.task_id)
+        return {
+            "disposition": "SUCCEEDED",
+            "document_manifest_id": "manifest-" + document_args.task_id,
+            "selection_id": "selection-" + document_args.task_id,
+        }
+
+    monkeypatch.setattr(target, "accelerate_google_document", accelerate)
+    monkeypatch.setattr(target, "corpus_ledger_summary_v1", lambda _path: {"progress": []})
+    result = target.accelerate_pending_google_documents(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["race_count"] == 0
+    assert calls == ["task-a", "task-b"]
+    assert [item["task_id"] for item in result["completed_documents"]] == calls
