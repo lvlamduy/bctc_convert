@@ -367,6 +367,53 @@ def test_google_document_acceleration_claim_is_atomic_resumable_and_bounded(tmp_
     assert resumed["claim_id"] == claim["claim_id"]
     assert [task["attempt_count"] for task in resumed["tasks"]] == [1] * len(document_tasks)
 
+    retry_ledger = tmp_path / "retry-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(retry_ledger, plan=_plan(), max_task_attempts=2)
+    retry_tasks = list_corpus_tasks_v1(retry_ledger, states=["PENDING"], route=GOOGLE_ROUTE)
+    retry_document_id = retry_tasks[0]["document_plan_id"]
+    retry_document_tasks = [
+        task for task in retry_tasks if task["document_plan_id"] == retry_document_id
+    ]
+    for task in retry_document_tasks:
+        transition_corpus_task_v1(
+            retry_ledger,
+            task_id=task["task_id"],
+            expected_state="PENDING",
+            next_state="SUBMITTED",
+            receipt={"provider_batch_name": "cancelled"},
+        )
+        transition_corpus_task_v1(
+            retry_ledger,
+            task_id=task["task_id"],
+            expected_state="SUBMITTED",
+            next_state="NEEDS_RETRY",
+            receipt={"provider_batch_state": "BATCH_STATE_CANCELLED"},
+        )
+    already_succeeded = retry_document_tasks[-1]
+    transition_corpus_task_v1(
+        retry_ledger,
+        task_id=already_succeeded["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"gateway": "OPENROUTER"},
+        provider_job_ref="prior-openrouter-claim",
+    )
+    transition_corpus_task_v1(
+        retry_ledger,
+        task_id=already_succeeded["task_id"],
+        expected_state="RUNNING",
+        next_state="SUCCEEDED",
+        receipt={"document_manifest_id": "gfdmv1:manifest:" + "a" * 64},
+    )
+    retried = claim_google_document_for_openrouter_acceleration_v1(
+        retry_ledger, task_id=retry_document_tasks[0]["task_id"]
+    )
+    assert [task["state"] for task in retried["tasks"]] == [
+        *("RUNNING" for _task in retry_document_tasks[:-1]),
+        "SUCCEEDED",
+    ]
+    assert [task["attempt_count"] for task in retried["tasks"]] == [2] * len(retry_document_tasks)
+
     other_ledger = tmp_path / "other-ledger.sqlite3"
     initialize_gemini_json_first_corpus_ledger_v1(other_ledger, plan=_plan())
     other_tasks = list_corpus_tasks_v1(other_ledger, states=["PENDING"], route=GOOGLE_ROUTE)
@@ -382,7 +429,7 @@ def test_google_document_acceleration_claim_is_atomic_resumable_and_bounded(tmp_
         next_state="SUBMITTED",
         receipt={"provider_batch_name": "already-submitted"},
     )
-    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="all-pending"):
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="retryable document frontier"):
         claim_google_document_for_openrouter_acceleration_v1(
             other_ledger, task_id=other_document_tasks[-1]["task_id"]
         )

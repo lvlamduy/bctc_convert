@@ -1135,6 +1135,7 @@ def build_financial_document_manifest_v1(
     requested_service_tier: str | None = None,
     selected_provider: str | None = None,
     allowed_gateway_service_tiers: Sequence[Mapping[str, str]] | None = None,
+    preferred_gateway_service_tiers: Sequence[Mapping[str, str]] | None = None,
     page_image_sha256s: Mapping[int, str] | None = None,
 ) -> dict[str, Any]:
     """Bind one complete document to an exact immutable extraction contract.
@@ -1214,6 +1215,8 @@ def build_financial_document_manifest_v1(
     ):
         raise _error("document manifest extraction contract is invalid")
     if allowed_gateway_service_tiers is None:
+        if preferred_gateway_service_tiers is not None:
+            raise _error("document manifest provider preference requires mixed routes")
         if (
             type(requested_service_tier) is not str
             or not requested_service_tier
@@ -1252,6 +1255,27 @@ def build_financial_document_manifest_v1(
             **common_contract,
             "allowed_gateway_service_tiers": routes,
         }
+        preferred_routes: list[dict[str, str]] | None = None
+        if preferred_gateway_service_tiers is not None:
+            preferred_routes = []
+            for route in preferred_gateway_service_tiers:
+                if type(route) is not dict or set(route) != {
+                    "gateway",
+                    "requested_service_tier",
+                }:
+                    raise _error("mixed document provider preference fields drifted")
+                if any(type(value) is not str or not value for value in route.values()):
+                    raise _error("mixed document provider preference is invalid")
+                preferred_routes.append(dict(route))
+            preferred_route_keys = [
+                (route["gateway"], route["requested_service_tier"]) for route in preferred_routes
+            ]
+            if (
+                len(preferred_route_keys) != len(set(preferred_route_keys))
+                or set(preferred_route_keys) != allowed_routes
+            ):
+                raise _error("mixed document provider preference is not one route permutation")
+            extraction_contract["preferred_gateway_service_tiers"] = preferred_routes
     placeholders = ",".join("?" for _ in pages)
     with _connect(path, readonly=True) as connection:
         if source_logical_name is None:
@@ -1338,9 +1362,38 @@ def build_financial_document_manifest_v1(
             if record["gateway_count"] == 1
             and (record["gateway"], record["requested_service_tier"]) in allowed_routes
         ]
+        if preferred_routes is not None:
+            route_rank = {
+                (route["gateway"], route["requested_service_tier"]): rank
+                for rank, route in enumerate(preferred_routes)
+            }
+            records_by_page: dict[int, list[Any]] = {}
+            for record in records:
+                records_by_page.setdefault(record["physical_page"], []).append(record)
+            selected_records = []
+            for page in pages:
+                candidates = records_by_page.get(page, [])
+                if not candidates:
+                    continue
+                best_rank = min(
+                    route_rank[(record["gateway"], record["requested_service_tier"])]
+                    for record in candidates
+                )
+                best = [
+                    record
+                    for record in candidates
+                    if route_rank[(record["gateway"], record["requested_service_tier"])]
+                    == best_rank
+                ]
+                if len(best) != 1:
+                    raise _error("preferred document provider route is not unique")
+                selected_records.append(best[0])
+            records = selected_records
     returned_pages = [record["physical_page"] for record in records]
+    if set(returned_pages) != set(pages):
+        raise _error("document manifest page frontier is incomplete")
     if returned_pages != pages:
-        raise _error("document manifest page frontier is incomplete or duplicate")
+        raise _error("document manifest page frontier is duplicate")
     page_records: list[dict[str, Any]] = []
     status_counts: dict[str, int] = {}
     total_cost = Decimal(0)

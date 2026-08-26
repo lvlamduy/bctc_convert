@@ -423,6 +423,37 @@ def test_document_manifest_can_bind_one_unique_route_per_page_for_typed_fallback
             allowed_gateway_service_tiers=routes,
         )
 
+    preferred = [routes[1], routes[0]]
+    selected = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        expected_physical_pages=[7, 8],
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        allowed_gateway_service_tiers=routes,
+        preferred_gateway_service_tiers=preferred,
+    )
+    assert selected["extraction_contract"]["preferred_gateway_service_tiers"] == preferred
+    assert [page["provider_route"]["gateway"] for page in selected["pages"]] == [
+        "OPENROUTER",
+        "OPENROUTER",
+    ]
+
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="route permutation"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            allowed_gateway_service_tiers=routes,
+            preferred_gateway_service_tiers=[routes[1]],
+        )
+
 
 def test_document_manifest_v3_binds_one_explicit_prompt_hash_per_page(tmp_path) -> None:
     path = tmp_path / "store.sqlite3"

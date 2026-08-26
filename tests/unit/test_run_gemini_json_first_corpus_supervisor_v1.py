@@ -2015,10 +2015,25 @@ def test_google_document_acceleration_seals_full_manifest_without_duplicate_subm
     monkeypatch, tmp_path
 ) -> None:
     args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
-    monkeypatch.setattr(
-        target,
-        "_command",
-        lambda _argv, *, expected: (
+    args.openrouter_only = True
+    prior_contract = (
+        args.artifact_root
+        / "documents"
+        / ("c" * 64)
+        / "openrouter-acceleration"
+        / "attempt-01"
+        / "base"
+        / "document-contract.json"
+    )
+    prior_contract.parent.mkdir(parents=True)
+    prior_contract.write_text(
+        json.dumps({"google_standard_mode": "on-provider-error"}), encoding="utf-8"
+    )
+    commands = []
+
+    def command(argv, *, expected):
+        commands.append(argv)
+        return (
             0,
             {
                 "disposition": "SUCCEEDED",
@@ -2030,7 +2045,12 @@ def test_google_document_acceleration_seals_full_manifest_without_duplicate_subm
                 "semantic_failed_pages": [],
                 "unresolved_pages": [],
             },
-        ),
+        )
+
+    monkeypatch.setattr(
+        target,
+        "_command",
+        command,
     )
     manifest = {
         "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
@@ -2059,6 +2079,8 @@ def test_google_document_acceleration_seals_full_manifest_without_duplicate_subm
     assert result["completed_task_ids"] == [task["task_id"] for task in tasks]
     assert [item["next_state"] for item in transitions] == ["SUCCEEDED", "SUCCEEDED"]
     assert all(item["expected_state"] == "RUNNING" for item in transitions)
+    assert commands[0][commands[0].index("--google-standard-mode") + 1] == "disabled"
+    assert "attempt-02/base" in commands[0][commands[0].index("--artifact-dir") + 1]
     assert len(list((args.artifact_root / "documents").rglob("run-receipts/*.json"))) == 1
 
 
@@ -2261,6 +2283,187 @@ def test_google_document_acceleration_escalates_provider_retry_semantic_failure(
     ]
 
 
+def test_google_document_acceleration_promotes_repeated_provider_failure_to_items(
+    monkeypatch, tmp_path
+) -> None:
+    args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    receipt_root = (
+        args.artifact_root / "documents" / ("c" * 64) / "openrouter-acceleration" / "run-receipts"
+    )
+    receipt_root.mkdir(parents=True)
+    (receipt_root / ("a" * 64 + ".json")).write_text(
+        json.dumps(
+            {
+                "acceleration_attempt": 1,
+                "format_version": "GEMINI_JSON_FIRST_OPENROUTER_ACCELERATION_RECEIPT_V1",
+                "provider_results": [
+                    {
+                        "physical_pages": [1, 2, 3],
+                        "prompt_variant": "simple",
+                        "result": {
+                            "failed_pages": [2],
+                            "recitation_failed_pages": [],
+                            "semantic_failed_pages": [],
+                            "unresolved_pages": [],
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    calls = []
+
+    def command(argv, *, expected):
+        variant = argv[argv.index("--prompt-variant") + 1]
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        calls.append((variant, pages))
+        selected_pages = pages or [1, 2, 3]
+        failed = not pages
+        return (2 if failed else 0), {
+            "disposition": "NEEDS_RETRY" if failed else "SUCCEEDED",
+            "failed_pages": [2] if failed else [],
+            "page_image_sha256s": [
+                {"image_sha256": images[page], "physical_page": page} for page in selected_pages
+            ],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    manifest = {
+        "document_manifest_id": "gfdmv1:manifest:" + "5" * 64,
+        "pages": [
+            {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+        ],
+    }
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", lambda *_a, **_k: manifest)
+    monkeypatch.setattr(
+        target,
+        "build_current_document_manifest",
+        lambda _args: {
+            "document_manifest_id": manifest["document_manifest_id"],
+            "selection_id": "gjfcdmsv1:selection:" + "4" * 64,
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "transition_corpus_task_v1",
+        lambda _ledger, **kwargs: {"task_id": kwargs["task_id"]},
+    )
+    result = target.accelerate_google_document(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == [("simple", []), ("items", [2])]
+    assert result["provider_results"][-1]["prompt_variant"] == "items"
+    assert result["completed_task_ids"] == [task["task_id"] for task in tasks]
+
+
+def test_google_document_acceleration_retry_sends_only_unresolved_pages(
+    monkeypatch, tmp_path
+) -> None:
+    args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    for task in tasks:
+        task["attempt_count"] = 2
+    calls = []
+
+    def command(argv, *, expected):
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        calls.append(pages)
+        return 0, {
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "page_image_sha256s": [{"image_sha256": images[2], "physical_page": 2}],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "_missing_current_default_pages_v1",
+        lambda **_kwargs: [2],
+    )
+    manifests = [
+        {
+            "document_manifest_id": "gfdmv1:manifest:" + "2" * 64,
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
+        }
+    ]
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_a, **_k: manifests.pop(0),
+    )
+    monkeypatch.setattr(
+        target,
+        "build_current_document_manifest",
+        lambda _args: {
+            "document_manifest_id": "gfdmv1:manifest:" + "2" * 64,
+            "selection_id": "gjfcdmsv1:selection:" + "1" * 64,
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "transition_corpus_task_v1",
+        lambda _ledger, **kwargs: {"task_id": kwargs["task_id"]},
+    )
+    result = target.accelerate_google_document(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == [[2]]
+    assert result["provider_results"][0]["physical_pages"] == [2]
+    assert manifests == []
+
+
+def test_missing_current_default_pages_accepts_only_typed_incomplete_frontier(
+    monkeypatch, tmp_path
+) -> None:
+    calls = []
+
+    def manifest(_database, **kwargs):
+        page = kwargs["expected_physical_pages"][0]
+        calls.append((page, kwargs["preferred_gateway_service_tiers"][0]["gateway"]))
+        if page == 2:
+            raise target.GeminiFinancialPageStoreV1Error(
+                "document manifest page frontier is incomplete"
+            )
+        return {"pages": [{"physical_page": page}]}
+
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    missing = target._missing_current_default_pages_v1(
+        database=tmp_path / "store.sqlite3",
+        task={"relative_path": "ACB/report.pdf", "source_sha256": "a" * 64},
+        expected_pages=[1, 2, 3],
+        current_images={page: str(page) * 64 for page in (1, 2, 3)},
+        default_variant="simple",
+    )
+    assert missing == [2]
+    assert calls == [(1, "OPENROUTER"), (2, "OPENROUTER"), (3, "OPENROUTER")]
+
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            target.GeminiFinancialPageStoreV1Error("document manifest page frontier is duplicate")
+        ),
+    )
+    with pytest.raises(target.GeminiFinancialPageStoreV1Error, match="duplicate"):
+        target._missing_current_default_pages_v1(
+            database=tmp_path / "store.sqlite3",
+            task={"relative_path": "ACB/report.pdf", "source_sha256": "a" * 64},
+            expected_pages=[1],
+            current_images={1: "1" * 64},
+            default_variant="simple",
+        )
+
+
 def test_all_pending_google_documents_are_smallest_first_and_require_complete_frontier(
     monkeypatch, tmp_path
 ) -> None:
@@ -2277,6 +2480,11 @@ def test_all_pending_google_documents_are_smallest_first_and_require_complete_fr
                 "tasks": [{"task_id": "small-1"}],
             },
             {
+                "document": {"page_count": 30, "relative_path": "A/mixed.pdf"},
+                "route": target.GOOGLE_ROUTE,
+                "tasks": [{"task_id": "mixed-1"}, {"task_id": "mixed-2"}],
+            },
+            {
                 "document": {"page_count": 10, "relative_path": "C/openrouter.pdf"},
                 "route": target.OPENROUTER_ROUTE,
                 "tasks": [{"task_id": "openrouter-1"}],
@@ -2289,7 +2497,9 @@ def test_all_pending_google_documents_are_smallest_first_and_require_complete_fr
         lambda *_a, **_k: [
             {"state": "PENDING", "task_id": "large-1"},
             {"state": "SUBMITTED", "task_id": "large-2"},
-            {"state": "PENDING", "task_id": "small-1"},
+            {"state": "NEEDS_RETRY", "task_id": "small-1"},
+            {"state": "NEEDS_RETRY", "task_id": "mixed-1"},
+            {"state": "SUCCEEDED", "task_id": "mixed-2"},
         ],
     )
     assert target._all_pending_google_documents_v1(
@@ -2299,7 +2509,12 @@ def test_all_pending_google_documents_are_smallest_first_and_require_complete_fr
             "document_page_count": 20,
             "relative_path": "A/small.pdf",
             "task_id": "small-1",
-        }
+        },
+        {
+            "document_page_count": 30,
+            "relative_path": "A/mixed.pdf",
+            "task_id": "mixed-1",
+        },
     ]
 
 

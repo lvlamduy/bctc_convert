@@ -58,6 +58,7 @@ from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (  # n
     load_current_document_manifest_selection_v1,
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    GeminiFinancialPageStoreV1Error,
     batch_failed_page_requests_v1,
     batch_finalized_requests_v1,
     batch_progress_v1,
@@ -168,6 +169,11 @@ def _parser() -> argparse.ArgumentParser:
     accelerate.add_argument("--openrouter-workers", type=int, default=25)
     accelerate.add_argument("--provider-timeout-seconds", type=int, default=900)
     accelerate.add_argument("--max-acceleration-attempts", type=int, default=2)
+    accelerate.add_argument(
+        "--openrouter-only",
+        action="store_true",
+        help="Disable direct-Google fallback for every OpenRouter page request.",
+    )
 
     accelerate_pending = commands.add_parser("accelerate-pending-google")
     accelerate_pending.add_argument("--plan", type=Path, required=True)
@@ -186,6 +192,11 @@ def _parser() -> argparse.ArgumentParser:
     accelerate_pending.add_argument("--provider-timeout-seconds", type=int, default=900)
     accelerate_pending.add_argument("--max-acceleration-attempts", type=int, default=2)
     accelerate_pending.add_argument("--max-documents", type=int, default=140)
+    accelerate_pending.add_argument(
+        "--openrouter-only",
+        action="store_true",
+        help="Disable direct-Google fallback for every OpenRouter page request.",
+    )
 
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
@@ -881,6 +892,126 @@ def _retry_prompt_frontiers_from_receipt_v1(
     }
 
 
+def _prior_acceleration_provider_failures_v1(
+    receipt_root: Path,
+) -> dict[str, set[int]]:
+    """Replay provider-only failures from immutable prior acceleration receipts."""
+
+    failures: dict[str, set[int]] = {}
+    attempts: set[int] = set()
+    for path in receipt_root.glob("*.json"):
+        receipt = _json_file(path)
+        attempt = receipt.get("acceleration_attempt")
+        results = receipt.get("provider_results")
+        if (
+            receipt.get("format_version") != "GEMINI_JSON_FIRST_OPENROUTER_ACCELERATION_RECEIPT_V1"
+            or type(attempt) is not int
+            or attempt <= 0
+            or attempt in attempts
+            or type(results) is not list
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "prior OpenRouter acceleration receipt is invalid"
+            )
+        attempts.add(attempt)
+        for item in results:
+            if type(item) is not dict:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "prior OpenRouter acceleration result is invalid"
+                )
+            variant = item.get("prompt_variant")
+            pages = item.get("physical_pages")
+            result = item.get("result")
+            if (
+                type(variant) is not str
+                or type(pages) is not list
+                or not pages
+                or pages != sorted(set(pages))
+                or any(type(page) is not int or page <= 0 for page in pages)
+                or type(result) is not dict
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "prior OpenRouter acceleration result frontier is invalid"
+                )
+            failed = result.get("failed_pages")
+            if failed == []:
+                continue
+            frontiers = _retry_prompt_frontiers_from_receipt_v1(
+                result,
+                first_physical_page=min(pages),
+                last_physical_page=max(pages),
+            )
+            if not set(failed).issubset(pages):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "prior OpenRouter acceleration failed outside its result frontier"
+                )
+            failures.setdefault(variant, set()).update(frontiers["default"])
+    return failures
+
+
+def _missing_current_default_pages_v1(
+    *,
+    database: Path,
+    task: dict[str, Any],
+    expected_pages: list[int],
+    current_images: dict[int, str],
+    default_variant: str,
+) -> list[int]:
+    """Find only pages without one preferred, authenticated default-prompt version."""
+
+    prompt_sha256 = sha256(
+        build_financial_page_json_prompt_v1(variant=default_variant).encode("utf-8")
+    ).hexdigest()
+    missing = []
+    for page in expected_pages:
+        try:
+            build_financial_document_manifest_v1(
+                database,
+                source_sha256=task["source_sha256"],
+                source_logical_name=task["relative_path"],
+                expected_physical_pages=[page],
+                page_image_sha256s={page: current_images[page]},
+                prompt_sha256=prompt_sha256,
+                response_schema_sha256=canonical_json_sha256_v1(
+                    financial_page_json_response_schema_v1()
+                ),
+                requested_model=GOOGLE_MODEL,
+                allowed_gateway_service_tiers=[
+                    {
+                        "gateway": "GOOGLE_GEMINI_API",
+                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+                    },
+                    {
+                        "gateway": "GOOGLE_GEMINI_BATCH_API",
+                        "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+                    },
+                    {
+                        "gateway": "OPENROUTER",
+                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                    },
+                ],
+                preferred_gateway_service_tiers=[
+                    {
+                        "gateway": "OPENROUTER",
+                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                    },
+                    {
+                        "gateway": "GOOGLE_GEMINI_BATCH_API",
+                        "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+                    },
+                    {
+                        "gateway": "GOOGLE_GEMINI_API",
+                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+                    },
+                ],
+            )
+        except GeminiFinancialPageStoreV1Error as exc:
+            if str(exc) != "document manifest page frontier is incomplete":
+                raise
+            missing.append(page)
+    return missing
+
+
 def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
     frontiers = _retry_prompt_frontiers_v1(task)
     if frontiers is None:
@@ -950,6 +1081,16 @@ def _page_variant_manifest_v1(
             {
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+        preferred_gateway_service_tiers=[
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
             },
         ],
     )
@@ -1321,6 +1462,20 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
             },
         ],
+        preferred_gateway_service_tiers=[
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_BATCH_API",
+                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+            },
+        ],
     )
     unresolved_pages = [
         page["physical_page"] for page in manifest["pages"] if page["status"] == "UNRESOLVED_PAGE"
@@ -1429,12 +1584,28 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
     document_root = current_document_root / "openrouter-acceleration"
     receipt_root = document_root / "run-receipts"
     attempt_number = len(list(receipt_root.glob("*.json"))) + 1
+    google_standard_mode = (
+        "disabled" if getattr(args, "openrouter_only", False) else "on-provider-error"
+    )
+    attempted_contract = (
+        document_root / f"attempt-{attempt_number:02d}" / "base" / "document-contract.json"
+    )
+    if attempted_contract.is_file():
+        attempted_mode = _json_file(attempted_contract).get("google_standard_mode", "disabled")
+        if attempted_mode != google_standard_mode:
+            existing_attempts = [
+                int(path.name.removeprefix("attempt-"))
+                for path in document_root.glob("attempt-[0-9][0-9]")
+                if path.is_dir() and path.name.removeprefix("attempt-").isdigit()
+            ]
+            attempt_number = max(existing_attempts, default=attempt_number) + 1
     if attempt_number > args.max_acceleration_attempts:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter acceleration attempt bound is exhausted"
         )
     attempt_root = document_root / f"attempt-{attempt_number:02d}"
     default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
+    prior_provider_failures = _prior_acceleration_provider_failures_v1(receipt_root)
 
     def run_frontier(*, pages: list[int] | None, prompt_variant: str):
         artifact_dir = attempt_root / "base"
@@ -1470,7 +1641,7 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
             "--google-key-slot",
             str(args.google_key_slot),
             "--google-standard-mode",
-            "on-provider-error",
+            google_standard_mode,
             "--timeout-seconds",
             str(args.provider_timeout_seconds),
         ]
@@ -1479,35 +1650,59 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
                 command.extend(("--physical-page", str(page)))
         return _command(command, expected={0, 2})
 
-    return_code, initial = run_frontier(pages=None, prompt_variant=default_variant)
-    if (
-        _summary_page_image_sha256s_v1(
-            initial.get("page_image_sha256s"), allowed_pages=expected_pages
-        )
-        != current_images
-    ):
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter acceleration base image frontier drifted"
-        )
     variants = {page: default_variant for page in expected_pages}
-    provider_results = [
-        {"physical_pages": expected_pages, "prompt_variant": default_variant, "result": initial}
-    ]
+    initial_pages = expected_pages
+    if any(task.get("attempt_count", 1) > 1 for task in tasks):
+        initial_pages = _missing_current_default_pages_v1(
+            database=args.database,
+            task=task,
+            expected_pages=expected_pages,
+            current_images=current_images,
+            default_variant=default_variant,
+        )
+    return_code = 0
+    initial: dict[str, Any] | None = None
+    provider_results = []
+    if initial_pages:
+        return_code, initial = run_frontier(
+            pages=(None if initial_pages == expected_pages else initial_pages),
+            prompt_variant=default_variant,
+        )
+        if _summary_page_image_sha256s_v1(
+            initial.get("page_image_sha256s"), allowed_pages=initial_pages
+        ) != {page: current_images[page] for page in initial_pages}:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter acceleration base image frontier drifted"
+            )
+        provider_results.append(
+            {
+                "physical_pages": initial_pages,
+                "prompt_variant": default_variant,
+                "result": initial,
+            }
+        )
     protected_pages: list[int] = []
     if return_code != 0:
+        assert initial is not None
         frontiers = _retry_prompt_frontiers_from_receipt_v1(
             initial,
             first_physical_page=1,
             last_physical_page=task["document_page_count"],
+        )
+        repeated_default_provider_pages = set(frontiers["default"]) & prior_provider_failures.get(
+            default_variant, set()
         )
         protected_pages = frontiers["items"]
         failed_retry_pages: set[int] = set()
         balanced_pages: set[int] = set()
         prompt_pages: dict[str, list[int]] = {}
         for variant, pages in (
-            (default_variant, frontiers["default"]),
+            (
+                default_variant,
+                sorted(set(frontiers["default"]) - repeated_default_provider_pages),
+            ),
             ("scope", frontiers["scope"]),
-            ("items", frontiers["items"]),
+            ("items", sorted(set(frontiers["items"]) | repeated_default_provider_pages)),
         ):
             prompt_pages.setdefault(variant, []).extend(pages)
         for prompt_variant, pages in (
@@ -1539,12 +1734,11 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 failed_retry_pages.update(result["failed_pages"])
                 if prompt_variant == default_variant:
-                    prompt_pages["items"].extend(retry_frontiers["items"])
-                if (
-                    prompt_variant == "items"
-                    and not retry_frontiers["default"]
-                    and not retry_frontiers["scope"]
-                ):
+                    prompt_pages["items"].extend(
+                        retry_frontiers["default"] + retry_frontiers["items"]
+                    )
+                if prompt_variant == "items" and not retry_frontiers["scope"]:
+                    balanced_pages.update(retry_frontiers["default"])
                     balanced_pages.update(retry_frontiers["items"])
         if balanced_pages:
             pages = sorted(balanced_pages)
@@ -1608,6 +1802,20 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
             {
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+        preferred_gateway_service_tiers=[
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_BATCH_API",
+                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
             },
         ],
     )
@@ -1691,7 +1899,12 @@ def _all_pending_google_documents_v1(*, plan: dict[str, Any], ledger: Path) -> l
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "Google acceleration plan and ledger task frontiers differ"
             )
-        if all(row["state"] == "PENDING" for row in document_rows):
+        retryable_states = {"PENDING", "NEEDS_RETRY"}
+        if (
+            document_rows
+            and any(row["state"] in retryable_states for row in document_rows)
+            and all(row["state"] in retryable_states | {"SUCCEEDED"} for row in document_rows)
+        ):
             candidates.append(
                 {
                     "document_page_count": document["document"]["page_count"],
@@ -1729,7 +1942,7 @@ def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, A
             try:
                 result = accelerate_google_document(document_args)
             except GeminiJsonFirstCorpusLedgerV1Error as exc:
-                if "requires one all-pending document" not in str(exc):
+                if "requires one retryable document frontier" not in str(exc):
                     raise
                 race_count += 1
                 continue

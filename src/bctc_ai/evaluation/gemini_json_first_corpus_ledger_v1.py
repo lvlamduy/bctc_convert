@@ -672,9 +672,12 @@ def claim_google_document_for_openrouter_acceleration_v1(
         ):
             raise _error("OpenRouter acceleration document frontier is invalid")
         states = {row["state"] for row in rows}
-        if states == {"PENDING"}:
+        retryable_states = {"PENDING", "NEEDS_RETRY"}
+        if states and states <= retryable_states | {"SUCCEEDED"} and states & retryable_states:
             identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
             for row in rows:
+                if row["state"] == "SUCCEEDED":
+                    continue
                 attempt_count = row["attempt_count"] + 1
                 if attempt_count > identity["max_task_attempts"]:
                     raise _error("OpenRouter acceleration retry bound is exhausted")
@@ -683,7 +686,13 @@ def claim_google_document_for_openrouter_acceleration_v1(
                 ).fetchone()[0]
                 connection.execute(
                     "INSERT INTO task_event VALUES (?,?,?,?,?)",
-                    (row["task_id"], event_ordinal, "PENDING", "RUNNING", receipt_bytes),
+                    (
+                        row["task_id"],
+                        event_ordinal,
+                        row["state"],
+                        "RUNNING",
+                        receipt_bytes,
+                    ),
                 )
                 connection.execute(
                     "UPDATE task SET state='RUNNING',attempt_count=?,provider_job_ref=?,"
@@ -698,7 +707,7 @@ def claim_google_document_for_openrouter_acceleration_v1(
         elif states == {"SUCCEEDED"} and all(row["provider_job_ref"] == claim_id for row in rows):
             connection.commit()
         else:
-            raise _error("OpenRouter acceleration requires one all-pending document")
+            raise _error("OpenRouter acceleration requires one retryable document frontier")
         updated = connection.execute(
             "SELECT * FROM task WHERE document_plan_id=? ORDER BY first_physical_page,task_id",
             (selected["document_plan_id"],),
