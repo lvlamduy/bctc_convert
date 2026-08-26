@@ -24,6 +24,9 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
     decode_financial_page_json_text_v1,
     financial_page_json_response_schema_v1,
 )
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
     GOOGLE_SERVICE_TIER,
@@ -66,7 +69,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
     parser.add_argument(
         "--prompt-variant",
-        choices=("simple", "items", "compact", "balanced"),
+        choices=("simple", "items", "scope", "compact", "balanced"),
         default="simple",
     )
     parser.add_argument("--database", type=Path, required=True)
@@ -109,7 +112,9 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _image(args: argparse.Namespace) -> tuple[bytes, str, dict[str, Any], dict[str, Any]]:
+def _image(
+    args: argparse.Namespace,
+) -> tuple[bytes, str, dict[str, Any], dict[str, Any], dict[str, Any]]:
     if args.image is not None:
         payload = args.image.read_bytes()
         if payload.startswith(_PNG):
@@ -124,20 +129,37 @@ def _image(args: argparse.Namespace) -> tuple[bytes, str, dict[str, Any], dict[s
         physical_page = args.physical_page or 1
         logical_name = args.source_logical_name or args.image.name
         input_kind = "IMAGE"
+        render_receipt = {
+            "dpi": args.dpi,
+            "format_version": "GEMINI_JSON_FIRST_EXTERNAL_IMAGE_INPUT_V1",
+            "image": {
+                "height": height,
+                "media_type": media_type,
+                "sha256": sha256(payload).hexdigest(),
+                "size_bytes": len(payload),
+                "width": width,
+            },
+            "physical_page": physical_page,
+        }
     else:
         if args.physical_page is None or args.physical_page <= 0:
             raise RunGeminiJsonFirstPageV1Error("--pdf requires positive --physical-page")
         if args.dpi not in {200, 300}:
             raise RunGeminiJsonFirstPageV1Error("DPI must be exactly 200 or 300")
         source_bytes = args.pdf.read_bytes()
+        source_sha = sha256(source_bytes).hexdigest()
         with fitz.open(args.pdf) as document:
             if args.physical_page > document.page_count:
                 raise RunGeminiJsonFirstPageV1Error("physical page lies outside PDF")
-            pixmap = document.load_page(args.physical_page - 1).get_pixmap(
-                dpi=args.dpi, alpha=False
+            rendered = render_full_pdf_page_v1(
+                document.load_page(args.physical_page - 1),
+                physical_page=args.physical_page,
+                dpi=args.dpi,
+                source_sha256=source_sha,
             )
-            width, height = pixmap.width, pixmap.height
-            payload = pixmap.tobytes("png")
+            width, height = rendered.page["pixel_width"], rendered.page["pixel_height"]
+            payload = rendered.image
+            render_receipt = rendered.receipt
         media_type = "image/png"
         physical_page = args.physical_page
         logical_name = args.source_logical_name or args.pdf.name
@@ -156,7 +178,7 @@ def _image(args: argparse.Namespace) -> tuple[bytes, str, dict[str, Any], dict[s
         "pixel_width": width,
         "render_dpi": args.dpi,
     }
-    return payload, media_type, document, {**page, "input_kind": input_kind}
+    return payload, media_type, document, {**page, "input_kind": input_kind}, render_receipt
 
 
 def _write(path: Path, payload: bytes) -> None:
@@ -174,7 +196,7 @@ def _append_attempt(path: Path, attempt: dict[str, Any]) -> None:
 
 def main() -> int:
     args = _parser().parse_args()
-    image, media_type, document, page_with_kind = _image(args)
+    image, media_type, document, page_with_kind, render_receipt = _image(args)
     input_kind = page_with_kind.pop("input_kind")
     page = page_with_kind
     output_contract_mode = args.output_contract_mode.replace("-", "_").upper()
@@ -233,6 +255,10 @@ def main() -> int:
         args.artifact_dir.mkdir(parents=True)
     _write(args.artifact_dir / "prompt.txt", prompt_bytes)
     _write(args.artifact_dir / "response-schema.json", canonical_json_bytes_v1(schema) + b"\n")
+    _write(
+        args.artifact_dir / "render-receipt.json",
+        canonical_json_bytes_v1(render_receipt) + b"\n",
+    )
     progress_path = args.artifact_dir / "attempts-progress.jsonl"
     _write(progress_path, b"")
     openrouter_key = (
@@ -337,6 +363,7 @@ def main() -> int:
         "input": {
             "document": document,
             "input_kind": input_kind,
+            "page_render_format_version": render_receipt["format_version"],
             "page": page,
             "prompt_sha256": prompt_sha,
             "prompt_variant": args.prompt_variant,

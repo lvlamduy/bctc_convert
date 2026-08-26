@@ -39,6 +39,9 @@ from bctc_ai.evaluation.gemini_json_first_batch_v1 import (  # noqa: E402
     summarize_google_batch_operation_v1,
     upload_google_file_v1,
 )
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
@@ -229,21 +232,19 @@ def _render_pages(
         if any(page > pdf.page_count for page in pages):
             raise RunGeminiJsonFirstBatchV1Error("physical page lies outside the PDF")
         for physical_page in sorted(pages):
-            pixmap = pdf[physical_page - 1].get_pixmap(dpi=dpi, alpha=False)
-            image = pixmap.tobytes("png")
+            page_render = render_full_pdf_page_v1(
+                pdf[physical_page - 1],
+                physical_page=physical_page,
+                dpi=dpi,
+                source_sha256=document["source_sha256"],
+            )
+            image = page_render.image
             rendered.append(
                 {
                     "document": document,
                     "image": image,
-                    "page": {
-                        "image_sha256": sha256(image).hexdigest(),
-                        "image_size_bytes": len(image),
-                        "media_type": "image/png",
-                        "physical_page": physical_page,
-                        "pixel_height": pixmap.height,
-                        "pixel_width": pixmap.width,
-                        "render_dpi": dpi,
-                    },
+                    "page": page_render.page,
+                    "render_receipt": page_render.receipt,
                     "request_id": f"{document['source_sha256'][:16]}-p{physical_page:05d}",
                 }
             )
@@ -403,7 +404,7 @@ def _submit(args: argparse.Namespace) -> int:
     manifest = {
         "body_size_bytes": body_size,
         "display_name": args.display_name,
-        "format_version": "GEMINI_JSON_FIRST_BATCH_RUN_V1",
+        "format_version": "GEMINI_JSON_FIRST_BATCH_RUN_V2",
         "media_transfer": args.media_transfer.upper(),
         "batch_input_file_ref": (
             None
@@ -427,6 +428,7 @@ def _submit(args: argparse.Namespace) -> int:
                 "document": item["document"],
                 "page": item["page"],
                 "provider_file_ref": uploaded_by_request.get(item["request_id"]),
+                "render_receipt": item["render_receipt"],
                 "request_id": item["request_id"],
             }
             for item in rendered
@@ -894,6 +896,9 @@ def _document_manifest(args: argparse.Namespace) -> int:
         "source_sha256": document["source_sha256"],
         "source_logical_name": document["source_logical_name"],
         "expected_physical_pages": expected_pages,
+        "page_image_sha256s": {
+            page: retry_page_bindings[page]["image_sha256"] for page in expected_pages
+        },
         "prompt_sha256": contract["prompt_sha256"],
         "response_schema_sha256": contract["response_schema_sha256"],
         "requested_model": contract["requested_model"],

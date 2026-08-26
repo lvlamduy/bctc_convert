@@ -31,6 +31,9 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
     decode_financial_page_json_text_v1,
     financial_page_json_response_schema_v1,
 )
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
@@ -67,6 +70,7 @@ class RunGeminiJsonFirstOpenRouterDocumentV1Error(RuntimeError):
 class _RenderedPage:
     image: bytes
     page: dict[str, Any]
+    receipt: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -193,23 +197,25 @@ def _document(pdf: Path, source_logical_name: str | None = None) -> tuple[dict[s
     )
 
 
-def _render_page(pdf: Path, physical_page: int, dpi: int) -> _RenderedPage:
+def _render_page(
+    pdf: Path,
+    physical_page: int,
+    dpi: int,
+    source_sha256: str | None = None,
+) -> _RenderedPage:
+    if source_sha256 is None:
+        source_sha256 = sha256(pdf.read_bytes()).hexdigest()
     with fitz.open(pdf) as document:
-        pixmap = document.load_page(physical_page - 1).get_pixmap(dpi=dpi, alpha=False)
-        image = pixmap.tobytes("png")
-        width = pixmap.width
-        height = pixmap.height
+        rendered = render_full_pdf_page_v1(
+            document.load_page(physical_page - 1),
+            physical_page=physical_page,
+            dpi=dpi,
+            source_sha256=source_sha256,
+        )
     return _RenderedPage(
-        image=image,
-        page={
-            "physical_page": physical_page,
-            "image_sha256": sha256(image).hexdigest(),
-            "image_size_bytes": len(image),
-            "pixel_width": width,
-            "pixel_height": height,
-            "render_dpi": dpi,
-            "media_type": "image/png",
-        },
+        image=rendered.image,
+        page=rendered.page,
+        receipt=rendered.receipt,
     )
 
 
@@ -225,16 +231,24 @@ def _replay_prior_semantic_result_v1(
     failures = sorted(page_root.glob("attempt-*/semantic-validation-failure.json"))
     if not failures:
         return None, None, False
+    matching_failure = False
     for failure_path in failures:
         if failure_path.is_symlink() or not failure_path.is_file():
             raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
                 "semantic replay failure receipt is not one regular file"
             )
         failure = json.loads(failure_path.read_bytes())
-        if type(failure) is not dict or failure.get("page") != expected_page:
+        prior_page = failure.get("page") if type(failure) is dict else None
+        if type(prior_page) is not dict or any(
+            prior_page.get(field) != expected_page[field]
+            for field in ("media_type", "physical_page", "render_dpi")
+        ):
             raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
                 "semantic replay page binding drifted"
             )
+        if prior_page != expected_page:
+            continue
+        matching_failure = True
         attempts = failure.get("attempts")
         raw_path = failure_path.with_name("raw-response.json")
         if type(attempts) is not list or raw_path.is_symlink() or not raw_path.is_file():
@@ -267,7 +281,7 @@ def _replay_prior_semantic_result_v1(
         except Exception:
             continue
         return result, str(raw_path.relative_to(artifact_dir)), True
-    return None, None, True
+    return None, None, matching_failure
 
 
 def _extract_page(
@@ -295,7 +309,11 @@ def _extract_page(
     artifact_dir: Path,
     offline_replay_only: bool,
 ) -> _PageOutcome:
-    rendered = _render_page(pdf, physical_page, dpi)
+    rendered = _render_page(pdf, physical_page, dpi, source_sha256)
+    _write_or_verify(
+        artifact_dir / f"page-{physical_page:05d}" / "render-receipt.json",
+        canonical_json_bytes_v1(rendered.receipt),
+    )
     cache_key = extraction_cache_key_v1(
         source_sha256=source_sha256,
         source_logical_name=source_logical_name,
@@ -706,6 +724,9 @@ def run_openrouter_document_v1(
             source_sha256=document["source_sha256"],
             source_logical_name=document["source_logical_name"],
             expected_physical_pages=range(1, page_count + 1),
+            page_image_sha256s={
+                page: outcomes[page].page["image_sha256"] for page in range(1, page_count + 1)
+            },
             prompt_sha256=prompt_sha,
             response_schema_sha256=schema_sha,
             requested_model=GOOGLE_MODEL,

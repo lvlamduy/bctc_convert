@@ -485,3 +485,63 @@ def test_document_manifest_v3_binds_one_explicit_prompt_hash_per_page(tmp_path) 
             requested_service_tier="flex",
             selected_provider="GOOGLE_GEMINI_API",
         )
+
+
+def test_document_manifest_v4_binds_one_exact_full_page_image_per_page(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    original = _ingest(path, image_sha256="c" * 64)
+    expanded = _ingest(path, image_sha256="f" * 64)
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            expected_physical_pages=[7],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+        )
+    selected = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        expected_physical_pages=[7],
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        selected_provider="GOOGLE_GEMINI_API",
+        page_image_sha256s={7: "f" * 64},
+    )
+    assert selected["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+    assert selected["extraction_contract"]["page_image_sha256s"] == [
+        {"image_sha256": "f" * 64, "physical_page": 7}
+    ]
+    assert selected["pages"][0]["page_json_version_id"] == expanded["page_json_version_id"]
+    assert selected["pages"][0]["page_json_version_id"] != original["page_json_version_id"]
+
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="page image frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            expected_physical_pages=[7],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+            page_image_sha256s={},
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            expected_physical_pages=[7],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+            page_image_sha256s={7: "9" * 64},
+        )

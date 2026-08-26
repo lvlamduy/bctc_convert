@@ -320,7 +320,7 @@ def test_provider_failure_falls_back_one_page_to_google_and_builds_mixed_manifes
     assert result["failed_pages"] == []
     assert policies == ["OPENROUTER_PILOT", "GOOGLE_DIRECT_STANDARD", "OPENROUTER_PILOT"]
     manifest = json.loads((artifacts / "document-manifest.json").read_bytes())
-    assert manifest["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
+    assert manifest["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
     assert {page["provider_route"]["gateway"] for page in manifest["pages"]} == {
         "GOOGLE_GEMINI_API",
         "OPENROUTER",

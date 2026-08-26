@@ -1135,6 +1135,7 @@ def build_financial_document_manifest_v1(
     requested_service_tier: str | None = None,
     selected_provider: str | None = None,
     allowed_gateway_service_tiers: Sequence[Mapping[str, str]] | None = None,
+    page_image_sha256s: Mapping[int, str] | None = None,
 ) -> dict[str, Any]:
     """Bind one complete document to an exact immutable extraction contract.
 
@@ -1182,6 +1183,25 @@ def build_financial_document_manifest_v1(
         }
     else:
         raise _error("document manifest extraction contract is invalid")
+    selected_page_images: dict[int, str] | None = None
+    if page_image_sha256s is not None:
+        if (
+            type(page_image_sha256s) is not dict
+            or set(page_image_sha256s) != set(pages)
+            or any(type(key) is not int for key in page_image_sha256s)
+            or any(
+                type(value) is not str
+                or len(value) != 64
+                or any(character not in "0123456789abcdef" for character in value)
+                for value in page_image_sha256s.values()
+            )
+        ):
+            raise _error("document manifest page image frontier is invalid")
+        selected_page_images = dict(sorted(page_image_sha256s.items()))
+        prompt_contract["page_image_sha256s"] = [
+            {"image_sha256": image_sha, "physical_page": page}
+            for page, image_sha in selected_page_images.items()
+        ]
     common_contract = {
         **prompt_contract,
         "response_schema_sha256": response_schema_sha256,
@@ -1190,7 +1210,7 @@ def build_financial_document_manifest_v1(
     if any(
         type(value) is not str or not value
         for key, value in common_contract.items()
-        if key != "page_prompt_sha256s"
+        if key not in {"page_image_sha256s", "page_prompt_sha256s"}
     ):
         raise _error("document manifest extraction contract is invalid")
     if allowed_gateway_service_tiers is None:
@@ -1298,6 +1318,12 @@ def build_financial_document_manifest_v1(
             for record in records
             if record["prompt_sha256"] == page_prompt_sha256s[record["physical_page"]]
         ]
+    if selected_page_images is not None:
+        records = [
+            record
+            for record in records
+            if record["image_sha256"] == selected_page_images[record["physical_page"]]
+        ]
     if allowed_routes is None:
         records = [
             record
@@ -1387,7 +1413,9 @@ def build_financial_document_manifest_v1(
         },
         "extraction_contract": extraction_contract,
         "format_version": (
-            "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3"
+            "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+            if selected_page_images is not None
+            else "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3"
             if page_prompt_sha256s is not None
             else "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1"
             if allowed_routes is None

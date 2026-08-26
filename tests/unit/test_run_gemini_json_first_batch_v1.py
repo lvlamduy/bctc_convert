@@ -50,7 +50,10 @@ def _write_batch_manifest(path: Path, pages: list[int], *, prompt: str = "p") ->
         "requests": [
             {
                 "document": document,
-                "page": {"physical_page": page},
+                "page": {
+                    "image_sha256": format(page, "064x"),
+                    "physical_page": page,
+                },
                 "request_id": f"page-{page}",
             }
             for page in pages
