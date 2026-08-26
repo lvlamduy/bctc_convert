@@ -200,14 +200,14 @@ def test_google_poll_transitions_only_after_terminal_ingestion(monkeypatch, tmp_
 
 
 @pytest.mark.parametrize(
-    ("poll_state", "expected_calls"),
+    "poll_state",
     [
-        ("RUNNING", ["poll-google", "run-openrouter"]),
-        ("SUCCEEDED", ["poll-google"]),
+        "RUNNING",
+        "SUCCEEDED",
     ],
 )
-def test_scheduler_polls_google_before_openrouter_and_refills_terminal_slot(
-    monkeypatch, tmp_path, poll_state, expected_calls
+def test_scheduler_progresses_google_and_openrouter_concurrently(
+    monkeypatch, tmp_path, poll_state
 ) -> None:
     ledger = tmp_path / "ledger.sqlite3"
     ledger.touch()
@@ -275,7 +275,7 @@ def test_scheduler_polls_google_before_openrouter_and_refills_terminal_slot(
         )
     )
     assert result["disposition"] == "SUCCEEDED"
-    assert calls == expected_calls
+    assert sorted(calls) == ["poll-google", "run-openrouter"]
 
 
 def test_google_retry_exhaustion_moves_to_typed_fallback(monkeypatch, tmp_path) -> None:

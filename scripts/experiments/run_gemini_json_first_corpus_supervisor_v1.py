@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -611,7 +612,19 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     args.artifact_root.mkdir(parents=True, exist_ok=True)
     _write_or_verify(args.artifact_root / "corpus-plan.json", canonical_json_bytes_v1(plan))
     started = time.monotonic()
+    openrouter_executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="openrouter-document",
+    )
+    openrouter_future: Future[dict[str, Any]] | None = None
     while True:
+        if openrouter_future is not None and openrouter_future.done():
+            try:
+                openrouter_future.result()
+            except Exception:
+                openrouter_executor.shutdown(wait=True, cancel_futures=True)
+                raise
+            openrouter_future = None
         if time.monotonic() - started > args.google_watch_max_seconds:
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "corpus supervisor exceeded its bounded provider wait"
@@ -619,6 +632,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         tasks = list_corpus_tasks_v1(args.ledger)
         failed = [task for task in tasks if task["state"] == "FAILED"]
         if failed:
+            openrouter_executor.shutdown(wait=True, cancel_futures=True)
             return {"disposition": "FAILED", **corpus_ledger_summary_v1(args.ledger)}
         unfinished = [task for task in tasks if task["state"] != "SUCCEEDED"]
         if not unfinished:
@@ -628,6 +642,28 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             for task in unfinished
             if task["route"] == GOOGLE_ROUTE and task["state"] in {"SUBMITTED", "RUNNING"}
         ]
+        openrouter = [
+            task
+            for task in unfinished
+            if task["route"] == OPENROUTER_ROUTE
+            and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
+        ]
+        if openrouter_future is None and openrouter:
+            openrouter_future = openrouter_executor.submit(
+                _run_openrouter,
+                task=openrouter[0],
+                plan=plan,
+                ledger=args.ledger,
+                source_root=args.source_root,
+                database=args.database,
+                artifact_root=args.artifact_root,
+                openrouter_key_file=args.openrouter_key_file,
+                openrouter_workers=args.openrouter_workers,
+                google_key_file=args.google_key_file,
+                google_key_slot=args.google_key_slot,
+                provider_timeout_seconds=args.provider_timeout_seconds,
+                max_attempts=summary["max_task_attempts"],
+            )
         available = args.max_active_google - len(active_google)
         for task in [
             item
@@ -667,12 +703,6 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 max_fallback_attempts=args.max_fallback_attempts,
             )
             continue
-        openrouter = [
-            task
-            for task in unfinished
-            if task["route"] == OPENROUTER_ROUTE
-            and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
-        ]
         if active_google:
             polled = _poll_google(
                 task=active_google[0],
@@ -686,25 +716,13 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if polled["state"] != "RUNNING":
                 # Refill the newly free Google slot before starting a document call.
                 continue
-            if not openrouter:
+            if openrouter_future is None:
                 time.sleep(args.google_poll_interval_seconds)
                 continue
-        if openrouter:
-            _run_openrouter(
-                task=openrouter[0],
-                plan=plan,
-                ledger=args.ledger,
-                source_root=args.source_root,
-                database=args.database,
-                artifact_root=args.artifact_root,
-                openrouter_key_file=args.openrouter_key_file,
-                openrouter_workers=args.openrouter_workers,
-                google_key_file=args.google_key_file,
-                google_key_slot=args.google_key_slot,
-                provider_timeout_seconds=args.provider_timeout_seconds,
-                max_attempts=summary["max_task_attempts"],
-            )
+        if openrouter_future is not None:
+            time.sleep(min(args.google_poll_interval_seconds, 1.0))
             continue
+        openrouter_executor.shutdown(wait=True, cancel_futures=True)
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("scheduler has no runnable task")
 
     manifests = _finalize_google_manifests(
@@ -724,6 +742,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         args.artifact_root / "run-receipts" / (sha256(payload).hexdigest() + ".json"),
         payload,
     )
+    openrouter_executor.shutdown(wait=True)
     return result
 
 
