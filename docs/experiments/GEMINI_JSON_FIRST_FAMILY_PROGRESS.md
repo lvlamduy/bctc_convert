@@ -6,12 +6,16 @@ JSON. Thứ tự bắt buộc là Family 1 đến Family cuối cùng; không b�
 
 ## Corpus ingestion checkpoint
 
-- 2026-08-26: `1.756/8.947` trang có page JSON hợp lệ, thuộc 33 tài liệu.
-- Phân loại: 1.414 trang thuyết minh, 204 trang báo cáo tài chính chính, 137
-  trang không có nội dung tài chính liên quan và 1 trang `UNRESOLVED_PAGE`.
-- Usage cộng dồn: 3.534.138 input tokens, 2.698.525 output tokens, 86.731
-  thought tokens; chi phí ước tính/billed cộng dồn `6.3260000625 USD`.
-- Supervisor V21 đang resume ledger cũ; checkpoint này chưa phải corpus freeze.
+- Checkpoint 2026-08-26: `2.197/8.947` trang có page JSON hợp lệ (24,6%),
+  thuộc 39 tài liệu; 37/140 tài liệu đã hoàn tất toàn bộ task tại checkpoint.
+- Phân loại theo version mới nhất của từng trang: 1.777 trang thuyết minh, 243
+  trang báo cáo tài chính chính, 176 trang không có nội dung tài chính liên quan
+  và 1 trang `UNRESOLVED_PAGE`.
+- Usage cộng dồn: 4.416.181 input tokens, 3.332.802 output tokens, 118.295
+  thought tokens; chi phí ước tính/billed cộng dồn `7.6885764375 USD`.
+- Supervisor V23 đang chạy tiếp Google Batch và OpenRouter; checkpoint này chưa
+  phải corpus freeze. ACB H1/2025 hợp nhất trang 22 là trang provider-filter
+  duy nhất đang OPEN, không chặn các task còn lại.
 
 | Family | Trạng thái JSON-first | Bằng chứng |
 |---:|---|---|
