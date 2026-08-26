@@ -653,9 +653,15 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
     if missing_count <= 0 or value_width <= 0:
         return False
     omitted = columns[:missing_count]
+    anonymous_numeric_key = (
+        missing_count == 1
+        and omitted[0]["value_kind"] in {"COUNT", "UNKNOWN"}
+        and all(item is None for item in omitted[0]["header_path_exact"])
+        and all(_signed_integer_cell_v1(row["label_exact"]) is not None for row in rows)
+    )
     for column in omitted:
         header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
-        if header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS:
+        if header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS and not anonymous_numeric_key:
             return False
     if any(
         row["label_exact"] is None

@@ -307,6 +307,47 @@ def test_uniform_omitted_stt_prefix_preserves_descriptive_table_cells() -> None:
     assert checked_table["rows"] == table["rows"]
 
 
+def test_uniform_anonymous_count_prefix_is_bound_by_numeric_row_labels() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "COUNT"},
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+        {"header_path_exact": [None], "value_kind": "PERCENT"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "6",
+            "hierarchy_path_exact": ["6"],
+            "row_kind": "ITEM",
+            "values_exact": ["Công ty A", "077-08/ĐT", "Bảo hiểm", "33,15%"],
+        },
+        {
+            "label_exact": "7",
+            "hierarchy_path_exact": ["7"],
+            "row_kind": "ITEM",
+            "values_exact": ["Công ty B", "985-326", "Ngân hàng", "65,00%"],
+        },
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked_table["columns"] == table["columns"][1:]
+    assert checked_table["rows"] == table["rows"]
+
+
+def test_anonymous_count_prefix_requires_every_numeric_row_label() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "COUNT"},
+        *table["columns"],
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
 def test_omitted_nonstructural_prefix_stays_unresolved() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
