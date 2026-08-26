@@ -355,6 +355,130 @@ def test_omitted_nonstructural_prefix_stays_unresolved() -> None:
         {"header_path_exact": ["Mã hợp đồng"], "value_kind": "TEXT"},
         *table["columns"],
     ]
+    table["rows"][0]["hierarchy_path_exact"] = ["Sai nhãn"]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
+def test_generic_text_row_key_allows_an_exact_blank_continuation_label() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Họ và tên"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Chức vụ"], "value_kind": "TEXT"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Bà Nguyễn Thị A",
+            "hierarchy_path_exact": ["Bà Nguyễn Thị A"],
+            "row_kind": "ITEM",
+            "values_exact": ["Trưởng ban"],
+        },
+        {
+            "label_exact": None,
+            "hierarchy_path_exact": [None],
+            "row_kind": "ITEM",
+            "values_exact": ["(tiếp theo từ trang trước)"],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked["columns"] == [{"header_path_exact": ["Chức vụ"], "value_kind": "TEXT"}]
+    assert checked["rows"] == table["rows"]
+
+
+def test_generic_text_row_key_accepts_cosmetic_bullets_and_parent_joined_leaf() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+        {"header_path_exact": ["Kỳ này"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Kỳ trước"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "- Tiền gửi không kỳ hạn bằng VND",
+            "hierarchy_path_exact": ["Tiền, vàng gửi không kỳ hạn- Tiền gửi không kỳ hạn bằng VND"],
+            "row_kind": "ITEM",
+            "values_exact": ["313.034.765", "321.102.773"],
+        },
+        {
+            "label_exact": "- Chứng khoán Chính phủ",
+            "hierarchy_path_exact": ["Chứng khoán Chính phủ"],
+            "row_kind": "ITEM",
+            "values_exact": ["85.069.336", "80.284.569"],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked["columns"] == table["columns"][1:]
+    assert checked["rows"] == table["rows"]
+
+
+def test_explicit_label_column_places_one_missing_null_by_unique_value_kind() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["STT"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Chỉ tiêu"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thuyết minh"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Kỳ này"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Kỳ trước"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Lưu chuyển tiền từ hoạt động đầu tư",
+            "hierarchy_path_exact": ["Lưu chuyển tiền từ hoạt động đầu tư"],
+            "row_kind": "GROUP",
+            "values_exact": [None, "-", None],
+        },
+        {
+            "label_exact": "Tiền chi mua sắm tài sản cố định",
+            "hierarchy_path_exact": ["Tiền chi mua sắm tài sản cố định"],
+            "row_kind": "ITEM",
+            "values_exact": ["21", None, "(2.100)", "(1.900)"],
+        },
+    ]
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked["columns"]] == [
+        ["STT"],
+        ["Thuyết minh"],
+        ["Kỳ này"],
+        ["Kỳ trước"],
+    ]
+    assert checked["rows"][0]["values_exact"] == [None, None, "-", None]
+
+
+def test_explicit_label_column_does_not_guess_ambiguous_missing_null() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Chỉ tiêu"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Cột A"], "value_kind": "UNKNOWN"},
+        {"header_path_exact": ["Cột B"], "value_kind": "UNKNOWN"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Hàng",
+            "hierarchy_path_exact": ["Hàng"],
+            "row_kind": "ITEM",
+            "values_exact": ["1"],
+        }
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
+def test_noisy_two_dash_cell_pack_expands_only_without_letters_or_digits() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"] = ["-毀-"]
+    table["rows"] = [table["rows"][0]]
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked["rows"][0]["values_exact"] == ["-", "-"]
+
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"] = ["-2-"]
+    table["rows"] = [table["rows"][0]]
     with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
         validate_financial_page_json_v1(page)
 

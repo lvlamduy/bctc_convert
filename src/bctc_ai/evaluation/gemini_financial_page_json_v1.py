@@ -59,6 +59,7 @@ _MODEL_DASH_ANNOTATION = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _DASH_PACK = re.compile(r"\A\s*[-–—_](?:\s+[-–—_])+\s*\Z")
+_DASH_NOISE_PACK = re.compile(r"\A\s*[-–—_]\s*[^0-9A-Za-z\s.,()%]{1,3}\s*[-–—_]\s*\Z")
 _ROW_LABEL_HEADER_ANCHORS = frozenset(
     {
         "ben lien quan",
@@ -387,6 +388,8 @@ def _expand_exact_model_cell_pack_v1(values: list[Any], *, width: int) -> list[A
         elif type(value) is str and _DASH_PACK.fullmatch(value):
             parts = re.findall(r"[-–—_]", value)
             expanded.extend("-" for _part in parts)
+        elif type(value) is str and _DASH_NOISE_PACK.fullmatch(value):
+            expanded.extend(("-", "-"))
         else:
             expanded.append(value)
     return expanded if len(expanded) == width else None
@@ -461,6 +464,73 @@ def _accounting_integer_cell_v1(value: Any) -> int | None:
     if type(value) is str and re.fullmatch(r"\s*[-–—_]\s*", value):
         return 0
     return _signed_integer_cell_v1(value)
+
+
+def _row_label_matches_hierarchy_leaf_v1(row: dict[str, Any]) -> bool:
+    """Bind cosmetic bullet variants without changing either source string."""
+
+    path = row["hierarchy_path_exact"]
+    label = row["label_exact"]
+    if not path:
+        return False
+    leaf = path[-1]
+    if leaf == label:
+        return True
+    if type(leaf) is not str or type(label) is not str:
+        return False
+
+    def normalized(value: str) -> str:
+        return _SPACE.sub(" ", value).strip()
+
+    label_without_bullet = re.sub(r"\A[-–—_•]\s*", "", normalized(label), count=1)
+    leaf_normalized = normalized(leaf)
+    if leaf_normalized == label_without_bullet:
+        return True
+    return any(
+        leaf_normalized.endswith(f"{separator}{label_without_bullet}")
+        or leaf_normalized.endswith(f"{separator} {label_without_bullet}")
+        for separator in ("-", "–", "—")
+    )
+
+
+def _cell_matches_value_kind_v1(value: Any, value_kind: str) -> bool:
+    """Check one candidate cell placement against its declared value kind."""
+
+    if value is None or value_kind == "UNKNOWN":
+        return True
+    if type(value) is not str:
+        return False
+    if value_kind == "TEXT":
+        return _accounting_integer_cell_v1(value) is None
+    if value_kind in {"MONEY", "COUNT"}:
+        return _accounting_integer_cell_v1(value) is not None
+    if value_kind == "PERCENT":
+        text = value.strip()
+        return _accounting_integer_cell_v1(text) is not None or bool(
+            re.fullmatch(r"\(?\s*[+-]?[0-9]+(?:[.,][0-9]+)?\s*%\s*\)?", text)
+        )
+    return False
+
+
+def _unique_null_padding_by_value_kind_v1(
+    values: list[Any], columns: list[dict[str, Any]]
+) -> list[Any] | None:
+    """Insert one omitted null only when column kinds locate it uniquely."""
+
+    if len(values) + 1 != len(columns):
+        return None
+    candidates: list[list[Any]] = []
+    for index in range(len(columns)):
+        candidate = [*values[:index], None, *values[index:]]
+        if (
+            all(
+                _cell_matches_value_kind_v1(cell, column["value_kind"])
+                for cell, column in zip(candidate, columns, strict=True)
+            )
+            and candidate not in candidates
+        ):
+            candidates.append(candidate)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _normalize_four_column_movement_table_v1(table: dict[str, Any]) -> bool:
@@ -546,9 +616,7 @@ def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
     if first_header not in _ROW_LABEL_HEADER_ANCHORS:
         return False
     if any(
-        row["label_exact"] is None
-        or not row["hierarchy_path_exact"]
-        or row["hierarchy_path_exact"][-1] != row["label_exact"]
+        not row["hierarchy_path_exact"] or row["hierarchy_path_exact"][-1] != row["label_exact"]
         for row in rows
     ):
         return False
@@ -584,8 +652,8 @@ def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
     visible ``Chỉ tiêu`` column is serialized only as ``label_exact``.  A debt
     classification table similarly uses its numeric ``Nhóm`` cell as the row
     label.  Only one exact label-header candidate is admitted.  Short rows can
-    be padded solely when every provided cell is null, so no visible value is
-    repositioned or invented.
+    be padded only when one null position is uniquely implied by the remaining
+    declared value kinds, so no visible value is discarded or invented.
     """
 
     columns = table["columns"]
@@ -620,8 +688,15 @@ def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
         if len(values) == old_width and values[label_index] == row["label_exact"]:
             normalized_rows.append([*values[:label_index], *values[label_index + 1 :]])
             continue
-        if len(values) < new_width and all(value is None for value in values):
-            normalized_rows.append([*values, *([None] * (new_width - len(values)))])
+        padded = (
+            _unique_null_padding_by_value_kind_v1(
+                list(values), [*columns[:label_index], *columns[label_index + 1 :]]
+            )
+            if label_index > 0
+            else None
+        )
+        if padded is not None:
+            normalized_rows.append(padded)
             continue
         return False
 
@@ -659,16 +734,20 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
         and all(item is None for item in omitted[0]["header_path_exact"])
         and all(_signed_integer_cell_v1(row["label_exact"]) is not None for row in rows)
     )
+    generic_text_key = (
+        missing_count == 1
+        and omitted[0]["value_kind"] == "TEXT"
+        and all(_row_label_matches_hierarchy_leaf_v1(row) for row in rows)
+    )
     for column in omitted:
         header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
-        if header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS and not anonymous_numeric_key:
+        if (
+            header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS
+            and not anonymous_numeric_key
+            and not generic_text_key
+        ):
             return False
-    if any(
-        row["label_exact"] is None
-        or not row["hierarchy_path_exact"]
-        or row["hierarchy_path_exact"][-1] != row["label_exact"]
-        for row in rows
-    ):
+    if any(not _row_label_matches_hierarchy_leaf_v1(row) for row in rows):
         return False
     table["columns"] = columns[missing_count:]
     return True
