@@ -822,6 +822,9 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
         return {
             "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
             "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
         }
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
@@ -856,23 +859,193 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
     assert final_receipt["alternate_prompt_pages"] == [2]
     assert final_receipt["alternate_prompt_variant"] == "items"
     assert final_receipt["revalidated_document_pages"] == [1, 2, 3]
+    assert final_receipt["semantic_retry_pages"] == []
 
 
-def test_openrouter_item_retry_rejects_semantic_or_ambiguous_frontier() -> None:
+def test_openrouter_first_semantic_failure_moves_to_item_retry(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "VPB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 0,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": None,
+        "relative_path": "VPB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "PENDING",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 1, "state": kwargs["next_state"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(
+        target,
+        "_command",
+        lambda *_args, **_kwargs: (
+            2,
+            {
+                "disposition": "NEEDS_RETRY",
+                "failed_pages": [2],
+                "semantic_failed_pages": [2],
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert result["state"] == "NEEDS_RETRY"
+    assert [item["next_state"] for item in transitions] == ["RUNNING", "NEEDS_RETRY"]
+
+
+def test_openrouter_item_retry_accepts_semantic_subset_and_rejects_ambiguous_frontier() -> None:
     task = {
         "document_page_count": 3,
         "first_physical_page": 1,
         "last_physical_page": 3,
         "state": "NEEDS_RETRY",
     }
+    semantic = {
+        **task,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {"failed_pages": [2], "semantic_failed_pages": [2]}
+        ),
+    }
+    assert target._provider_retry_pages_v1(semantic) == [2]
+    assert target._semantic_retry_pages_v1(semantic) == [2]
+
     for prior in (
-        {"failed_pages": [2], "semantic_failed_pages": [2]},
         {"failed_pages": [2, 2], "semantic_failed_pages": []},
         {"failed_pages": [0], "semantic_failed_pages": []},
+        {"failed_pages": [2], "semantic_failed_pages": [3]},
     ):
         candidate = {**task, "last_receipt_json": canonical_json_bytes_v1(prior)}
         with pytest.raises(
             target.RunGeminiJsonFirstCorpusSupervisorV1Error,
-            match="provider-only page frontier",
+            match="failed-page frontier",
         ):
             target._provider_retry_pages_v1(candidate)
+
+
+@pytest.mark.parametrize(
+    ("item_status", "expected_state"),
+    [
+        ("FINANCIAL_NOTE_CONTENT", "SUCCEEDED"),
+        ("NO_RELEVANT_FINANCIAL_CONTENT", "FAILED"),
+    ],
+)
+def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
+    monkeypatch, tmp_path, item_status, expected_state
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "VPB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "cached_pages": [1, 3],
+                "failed_pages": [2],
+                "semantic_failed_pages": [2],
+            }
+        ),
+        "relative_path": "VPB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 2, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        assert argv[argv.index("--prompt-variant") + 1] == "items"
+        assert argv[argv.index("--physical-page") + 1] == "2"
+        return 0, {
+            "cached_pages": [],
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "ingested_pages": [2],
+            "manifest_id": None,
+            "semantic_failed_pages": [],
+        }
+
+    def manifest(_database, **_kwargs):
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "e" * 64,
+            "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+            "pages": [
+                {"physical_page": 1, "status": "FINANCIAL_NOTE_CONTENT"},
+                {"physical_page": 2, "status": item_status},
+                {"physical_page": 3, "status": "FINANCIAL_NOTE_CONTENT"},
+            ],
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert result["state"] == expected_state
+    receipt = transitions[-1]["receipt"]
+    assert receipt["semantic_retry_pages"] == [2]
+    if expected_state == "SUCCEEDED":
+        assert receipt["manifest_id"].startswith("gfdmv1:manifest:")
+        assert (tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json").is_file()
+    else:
+        assert receipt["semantic_item_no_relevant_pages"] == [2]
+        assert not (
+            tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json"
+        ).exists()

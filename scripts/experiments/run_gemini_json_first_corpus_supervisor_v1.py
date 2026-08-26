@@ -521,7 +521,7 @@ def _run_google_fallback(
 
 
 def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
-    """Return the exact provider-only frontier eligible for the item prompt."""
+    """Return the exact failed-page frontier eligible for the item prompt."""
 
     if task["state"] != "NEEDS_RETRY":
         return None
@@ -537,7 +537,9 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
         type(failed) is not list
         or not failed
         or failed != sorted(set(failed))
-        or semantic != []
+        or type(semantic) is not list
+        or semantic != sorted(set(semantic))
+        or not set(semantic).issubset(failed)
         or any(
             type(page) is not int
             or page < task["first_physical_page"]
@@ -546,9 +548,28 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
         )
     ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter retry is not one exact provider-only page frontier"
+            "OpenRouter retry is not one exact failed-page frontier"
         )
     return failed
+
+
+def _semantic_retry_pages_v1(task: dict[str, Any]) -> list[int]:
+    """Return the authenticated semantic subset of one item retry."""
+
+    if task["state"] != "NEEDS_RETRY":
+        return []
+    try:
+        prior = json.loads(task["last_receipt_json"])
+    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter retry receipt is invalid"
+        ) from exc
+    semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
+    if type(semantic) is not list or semantic != sorted(set(semantic)):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter semantic retry frontier is invalid"
+        )
+    return semantic
 
 
 def _mixed_prompt_manifest_v1(
@@ -558,6 +579,7 @@ def _mixed_prompt_manifest_v1(
     database: Path,
     artifact_root: Path,
     repair_pages: list[int],
+    write: bool = True,
 ) -> dict[str, Any]:
     """Build one document manifest binding ``items`` only to repair pages."""
 
@@ -605,11 +627,46 @@ def _mixed_prompt_manifest_v1(
             },
         ],
     )
-    _write_or_verify(
-        _task_root(task, artifact_root) / "mixed-prompt-document-manifest.json",
-        canonical_json_bytes_v1(manifest),
-    )
+    if write:
+        _write_or_verify(
+            _task_root(task, artifact_root) / "mixed-prompt-document-manifest.json",
+            canonical_json_bytes_v1(manifest),
+        )
     return manifest
+
+
+def _semantic_retry_no_relevant_pages_v1(
+    manifest: dict[str, Any], *, semantic_pages: list[int]
+) -> list[int]:
+    """Reject a semantic financial page that an item retry silently drops."""
+
+    pages = manifest.get("pages")
+    if type(pages) is not list:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "mixed-prompt manifest lacks its page frontier"
+        )
+    status_by_page: dict[int, str] = {}
+    for page in pages:
+        if type(page) is not dict:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error("mixed-prompt manifest page is invalid")
+        physical_page = page.get("physical_page")
+        status = page.get("status")
+        if type(physical_page) is not int or type(status) is not str:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "mixed-prompt manifest page identity is invalid"
+            )
+        if physical_page in status_by_page:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "mixed-prompt manifest page frontier is duplicate"
+            )
+        status_by_page[physical_page] = status
+    if any(page not in status_by_page for page in semantic_pages):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "mixed-prompt manifest omits a semantic retry page"
+        )
+    return [
+        page for page in semantic_pages if status_by_page[page] == "NO_RELEVANT_FINANCIAL_CONTENT"
+    ]
 
 
 def _run_openrouter(
@@ -628,6 +685,7 @@ def _run_openrouter(
     max_attempts: int,
 ) -> dict[str, Any]:
     retry_pages = _provider_retry_pages_v1(task)
+    semantic_retry_pages = _semantic_retry_pages_v1(task)
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
         task = transition_corpus_task_v1(
             ledger,
@@ -683,19 +741,36 @@ def _run_openrouter(
             database=database,
             artifact_root=artifact_root,
             repair_pages=retry_pages,
+            write=False,
         )
-        receipt = {
-            **receipt,
-            "alternate_prompt_pages": retry_pages,
-            "alternate_prompt_variant": "items",
-            "manifest_id": manifest["document_manifest_id"],
-            "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
-        }
+        dropped_semantic_pages = _semantic_retry_no_relevant_pages_v1(
+            manifest, semantic_pages=semantic_retry_pages
+        )
+        if dropped_semantic_pages:
+            receipt = {
+                **receipt,
+                "alternate_prompt_pages": retry_pages,
+                "alternate_prompt_variant": "items",
+                "semantic_item_no_relevant_pages": dropped_semantic_pages,
+                "semantic_retry_pages": semantic_retry_pages,
+            }
+            return_code = 2
+        else:
+            _write_or_verify(
+                _task_root(task, artifact_root) / "mixed-prompt-document-manifest.json",
+                canonical_json_bytes_v1(manifest),
+            )
+            receipt = {
+                **receipt,
+                "alternate_prompt_pages": retry_pages,
+                "alternate_prompt_variant": "items",
+                "manifest_id": manifest["document_manifest_id"],
+                "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
+                "semantic_retry_pages": semantic_retry_pages,
+            }
     next_state = (
         "SUCCEEDED"
         if return_code == 0
-        else "FAILED"
-        if semantic_failed_pages
         else "FAILED"
         if retry_pages is not None or task["attempt_count"] >= max_attempts
         else "NEEDS_RETRY"
