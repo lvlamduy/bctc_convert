@@ -1746,8 +1746,9 @@ def test_accelerate_pending_google_documents_refreshes_after_each_document(
     assert [item["task_id"] for item in result["completed_documents"]] == calls
 
 
-def test_finalize_google_manifests_reuses_accelerated_current_selection(
-    monkeypatch, tmp_path
+@pytest.mark.parametrize("current_mode", ["accelerated", "revalidated"])
+def test_finalize_google_manifests_reuses_selected_current_manifest(
+    monkeypatch, tmp_path, current_mode
 ) -> None:
     source_sha256 = "a" * 64
     document_plan_id = "gjfpdocv1:" + "b" * 64
@@ -1766,13 +1767,30 @@ def test_finalize_google_manifests_reuses_accelerated_current_selection(
             }
         ]
     }
-    claim_id = "gjfpaccelv1:claim:" + "c" * 64
+    claim_id = (
+        "gjfpaccelv1:claim:" + "c" * 64 if current_mode == "accelerated" else "batches/google-batch"
+    )
+    last_receipt = (
+        None
+        if current_mode == "accelerated"
+        else json.dumps({"current_document_revalidated": True}).encode("utf-8")
+    )
     monkeypatch.setattr(
         target,
         "list_corpus_tasks_v1",
         lambda _ledger: [
-            {"provider_job_ref": claim_id, "state": "SUCCEEDED", "task_id": "task-1"},
-            {"provider_job_ref": claim_id, "state": "SUCCEEDED", "task_id": "task-2"},
+            {
+                "last_receipt_json": last_receipt,
+                "provider_job_ref": claim_id,
+                "state": "SUCCEEDED",
+                "task_id": "task-1",
+            },
+            {
+                "last_receipt_json": last_receipt,
+                "provider_job_ref": claim_id,
+                "state": "SUCCEEDED",
+                "task_id": "task-2",
+            },
         ],
     )
     selected_manifest = tmp_path / "selected.json"

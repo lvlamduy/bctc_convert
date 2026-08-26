@@ -1671,7 +1671,18 @@ def _finalize_google_manifests(
                 for row in rows
             )
         )
-        if accelerated:
+        current_revalidated = False
+        for row in rows:
+            try:
+                last_receipt = json.loads(row["last_receipt_json"])
+            except (TypeError, json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            if (
+                type(last_receipt) is dict
+                and last_receipt.get("current_document_revalidated") is True
+            ):
+                current_revalidated = True
+        if accelerated or current_revalidated:
             document_root = (
                 artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
             )
@@ -1682,7 +1693,7 @@ def _finalize_google_manifests(
             )
             if selected is None:
                 raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                    "accelerated Google document lacks its current manifest selection"
+                    "current Google document lacks its selected revalidated manifest"
                 )
             _selection, selected_manifest_path = selected
             selected_manifest = _json_file(selected_manifest_path)
@@ -1695,7 +1706,7 @@ def _finalize_google_manifests(
                 != planned["document"]["relative_path"]
             ):
                 raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                    "accelerated Google document manifest binding drifted"
+                    "current Google document manifest binding drifted"
                 )
             outputs.append(str(selected_manifest_path))
             continue
