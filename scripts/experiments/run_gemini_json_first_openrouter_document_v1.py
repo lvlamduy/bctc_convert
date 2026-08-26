@@ -745,6 +745,13 @@ def run_openrouter_document_v1(
         "manifest_id": manifest["document_manifest_id"] if manifest is not None else None,
         "offline_missing_pages": offline_missing_pages,
         "page_count": len(selected_pages),
+        "page_image_sha256s": [
+            {
+                "image_sha256": outcomes[page].page["image_sha256"],
+                "physical_page": page,
+            }
+            for page in selected_pages
+        ],
         "semantic_failed_pages": semantic_failed_pages,
         "unresolved_pages": unresolved_pages,
         "usage": usage_summary_v1(database),

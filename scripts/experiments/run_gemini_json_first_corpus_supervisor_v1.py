@@ -14,6 +14,8 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
+import fitz
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
@@ -34,6 +36,9 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
 from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (  # noqa: E402
     GOOGLE_ROUTE,
     OPENROUTER_ROUTE,
+)
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
@@ -592,6 +597,7 @@ def _mixed_prompt_manifest_v1(
     ledger: Path,
     database: Path,
     artifact_root: Path,
+    page_image_sha256s: dict[int, str],
     repair_pages: list[int],
     write: bool = True,
 ) -> dict[str, Any]:
@@ -627,6 +633,7 @@ def _mixed_prompt_manifest_v1(
         source_sha256=task["source_sha256"],
         source_logical_name=task["relative_path"],
         expected_physical_pages=expected_pages,
+        page_image_sha256s=page_image_sha256s,
         prompt_sha256=page_prompt_sha256s,
         response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
         requested_model=GOOGLE_MODEL,
@@ -647,6 +654,65 @@ def _mixed_prompt_manifest_v1(
             canonical_json_bytes_v1(manifest),
         )
     return manifest
+
+
+def _summary_page_image_sha256s_v1(
+    value: Any,
+    *,
+    allowed_pages: list[int],
+) -> dict[int, str]:
+    if type(value) is not list:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "provider result lacks its page image frontier"
+        )
+    result: dict[int, str] = {}
+    for item in value:
+        if type(item) is not dict or set(item) != {"image_sha256", "physical_page"}:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "provider page image frontier fields drifted"
+            )
+        page = item["physical_page"]
+        image_sha = item["image_sha256"]
+        if (
+            type(page) is not int
+            or page not in allowed_pages
+            or page in result
+            or type(image_sha) is not str
+            or len(image_sha) != 64
+            or any(character not in "0123456789abcdef" for character in image_sha)
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "provider page image frontier is invalid"
+            )
+        result[page] = image_sha
+    if sorted(result) != allowed_pages:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "provider page image frontier is incomplete"
+        )
+    return result
+
+
+def _current_page_image_sha256s_v1(
+    *,
+    task: dict[str, Any],
+    source_root: Path,
+    dpi: int,
+) -> dict[int, str]:
+    source = _source(task, source_root)
+    expected_pages = list(range(1, task["document_page_count"] + 1))
+    result: dict[int, str] = {}
+    with fitz.open(source) as document:
+        if document.page_count != task["document_page_count"]:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error("planned source PDF page count drifted")
+        for physical_page in expected_pages:
+            rendered = render_full_pdf_page_v1(
+                document[physical_page - 1],
+                physical_page=physical_page,
+                dpi=dpi,
+                source_sha256=task["source_sha256"],
+            )
+            result[physical_page] = rendered.page["image_sha256"]
+    return result
 
 
 def _semantic_retry_no_relevant_pages_v1(
@@ -749,11 +815,25 @@ def _run_openrouter(
             "OpenRouter result lacks its semantic-failure frontier"
         )
     if return_code == 0 and retry_pages is not None:
+        retry_page_images = _summary_page_image_sha256s_v1(
+            receipt.get("page_image_sha256s"),
+            allowed_pages=retry_pages,
+        )
+        current_page_images = _current_page_image_sha256s_v1(
+            task=task,
+            source_root=source_root,
+            dpi=plan["policy"]["dpi"],
+        )
+        if retry_page_images != {page: current_page_images[page] for page in retry_pages}:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "retry result does not bind the current whole-page images"
+            )
         manifest = _mixed_prompt_manifest_v1(
             task=task,
             ledger=ledger,
             database=database,
             artifact_root=artifact_root,
+            page_image_sha256s=current_page_images,
             repair_pages=retry_pages,
             write=False,
         )
@@ -779,6 +859,10 @@ def _run_openrouter(
                 "alternate_prompt_pages": retry_pages,
                 "alternate_prompt_variant": "items",
                 "manifest_id": manifest["document_manifest_id"],
+                "page_image_sha256s": [
+                    {"image_sha256": image_sha, "physical_page": page}
+                    for page, image_sha in current_page_images.items()
+                ],
                 "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
                 "protected_retry_pages": protected_retry_pages,
             }
@@ -1132,7 +1216,7 @@ def repair_openrouter_items_task(args: argparse.Namespace) -> dict[str, Any]:
     on the caller-declared recitation frontier.
     """
 
-    _plan(args.plan)
+    plan = _plan(args.plan)
     tasks = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
     matches = [task for task in tasks if task["task_id"] == args.task_id]
     if len(matches) != 1:
@@ -1151,6 +1235,11 @@ def repair_openrouter_items_task(args: argparse.Namespace) -> dict[str, Any]:
         ledger=args.ledger,
         database=args.database,
         artifact_root=args.artifact_root,
+        page_image_sha256s=_current_page_image_sha256s_v1(
+            task=task,
+            source_root=args.source_root,
+            dpi=plan["policy"]["dpi"],
+        ),
         repair_pages=repair_pages,
     )
     expected_pages = list(range(1, task["document_page_count"] + 1))

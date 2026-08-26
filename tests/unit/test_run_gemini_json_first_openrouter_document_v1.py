@@ -148,6 +148,8 @@ def test_parallel_document_run_persists_in_parent_and_resumes_from_cache(tmp_pat
     assert first["ingested_pages"] == [1, 2, 3]
     assert first["cached_pages"] == []
     assert first["failed_pages"] == []
+    assert [item["physical_page"] for item in first["page_image_sha256s"]] == [1, 2, 3]
+    assert all(len(item["image_sha256"]) == 64 for item in first["page_image_sha256s"])
     assert len(calls) == 3
     assert (artifacts / "document-manifest.json").is_file()
     manifest = json.loads((artifacts / "document-manifest.json").read_bytes())
@@ -354,6 +356,7 @@ def test_bounded_page_frontier_runs_in_parallel_without_claiming_whole_document(
     assert result["physical_pages"] == [1, 3]
     assert result["ingested_pages"] == [1, 3]
     assert result["page_count"] == 2
+    assert [item["physical_page"] for item in result["page_image_sha256s"]] == [1, 3]
     assert len(calls) == 2
     assert not (artifacts / "document-manifest.json").exists()
     contract = json.loads((artifacts / "document-contract.json").read_bytes())

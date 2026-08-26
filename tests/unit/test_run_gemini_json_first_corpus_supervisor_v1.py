@@ -719,7 +719,7 @@ def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
     }
     captured = []
     sealed = []
-    monkeypatch.setattr(target, "_plan", lambda _path: {"policy": {}})
+    monkeypatch.setattr(target, "_plan", lambda _path: {"policy": {"dpi": 300}})
     monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: [task])
     monkeypatch.setattr(
         target,
@@ -735,6 +735,11 @@ def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
         }
 
     monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
     monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {"run_count": 3})
     monkeypatch.setattr(
         target,
@@ -755,6 +760,7 @@ def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
     assert list(prompts) == [1, 2, 3]
     assert prompts[1] == prompts[3]
     assert prompts[2] != prompts[1]
+    assert captured[0]["page_image_sha256s"] == {page: str(page) * 64 for page in (1, 2, 3)}
     assert result["result"]["alternate_prompt_pages"] == [2]
     assert sealed[0]["receipt"]["fallback_pages"] == [2]
     assert (tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json").is_file()
@@ -814,6 +820,7 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
             "failed_pages": [],
             "ingested_pages": [2],
             "manifest_id": None,
+            "page_image_sha256s": [{"image_sha256": "2" * 64, "physical_page": 2}],
             "semantic_failed_pages": [],
         }
 
@@ -835,6 +842,11 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
         lambda _ledger: {"prompt_variant": "simple"},
     )
     monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
     result = target._run_openrouter(
         task=task,
         plan={"policy": {"dpi": 300}},
@@ -855,11 +867,35 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
     prompts = manifests[0]["prompt_sha256"]
     assert prompts[1] == prompts[3]
     assert prompts[2] != prompts[1]
+    assert manifests[0]["page_image_sha256s"] == {page: str(page) * 64 for page in (1, 2, 3)}
     final_receipt = transitions[-1]["receipt"]
     assert final_receipt["alternate_prompt_pages"] == [2]
     assert final_receipt["alternate_prompt_variant"] == "items"
     assert final_receipt["revalidated_document_pages"] == [1, 2, 3]
     assert final_receipt["protected_retry_pages"] == []
+
+
+def test_provider_page_image_frontier_rejects_missing_duplicate_and_bad_hash() -> None:
+    valid = [
+        {"image_sha256": "1" * 64, "physical_page": 1},
+        {"image_sha256": "2" * 64, "physical_page": 2},
+    ]
+    assert target._summary_page_image_sha256s_v1(valid, allowed_pages=[1, 2]) == {
+        1: "1" * 64,
+        2: "2" * 64,
+    }
+    attacks = (
+        valid[:1],
+        [valid[0], valid[0]],
+        [valid[0], {"image_sha256": "not-a-hash", "physical_page": 2}],
+        [valid[0], {"image_sha256": "2" * 64, "physical_page": 3}],
+    )
+    for attack in attacks:
+        with pytest.raises(
+            target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+            match="page image frontier",
+        ):
+            target._summary_page_image_sha256s_v1(attack, allowed_pages=[1, 2])
 
 
 def test_openrouter_first_semantic_failure_moves_to_item_retry(monkeypatch, tmp_path) -> None:
@@ -1014,6 +1050,7 @@ def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
             "failed_pages": [],
             "ingested_pages": [2],
             "manifest_id": None,
+            "page_image_sha256s": [{"image_sha256": "2" * 64, "physical_page": 2}],
             "semantic_failed_pages": [],
         }
 
@@ -1036,6 +1073,11 @@ def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
         lambda _ledger: {"prompt_variant": "simple"},
     )
     monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
     result = target._run_openrouter(
         task=task,
         plan={"policy": {"dpi": 300}},
