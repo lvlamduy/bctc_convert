@@ -15,6 +15,7 @@ produces an empty unresolved leaf axis.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -54,6 +55,7 @@ CLAIM_BOUNDARY = (
 _SAFETY = {
     "bank_file_note_page_or_fixed_year_used_for_routing": False,
     "currency_or_magnitude_inferred_from_money_lane_kind": False,
+    "damaged_split_year_reader_requires_expected_period_and_exact_replay": True,
     "header_geometry_reuses_shared_multilevel_graph": True,
     "mapping_authority": False,
     "merged_period_without_word_boxes_can_resolve": False,
@@ -61,6 +63,7 @@ _SAFETY = {
     "period_parent_partition_must_be_exact": True,
     "period_unit_axis_proposal_only": True,
     "provider_sequence_used_as_visual_order": False,
+    "raw_vietocr_split_year_preserved_in_projection_evidence": True,
     "schema_authority": False,
 }
 _RESULT_FIELDS = {
@@ -72,9 +75,20 @@ _RESULT_FIELDS = {
     "leaf_axis",
     "metrics",
     "period_resolution_mode",
+    "reader_projection_evidence",
     "safety",
     "status",
     "unresolved_reasons",
+}
+_READER_PROJECTION_FIELDS = {
+    "bbox",
+    "expected_period_year",
+    "numeric_reader_score",
+    "numeric_reader_text",
+    "projected_vietocr_text",
+    "projection_kind",
+    "source_line_index",
+    "visible_vietocr_text",
 }
 _METRIC_FIELDS = {"column_count", "period_parent_count", "typed_leaf_count"}
 _LEAF_FIELDS = {
@@ -118,6 +132,11 @@ _VIETNAMESE_FULL_DATE_SURFACE = re.compile(
     r"(?<!\d)(?:ngay\s+)?\d{1,2}\s+thang\s+\d{1,2}\s+nam\s+\d{4}(?!\d)"
 )
 _RELATIVE_PERIOD_SURFACE = re.compile(r"\b(?:so cuoi ky|so cuoi nam|so dau ky|so dau nam)\b")
+_DAMAGED_SPLIT_YEAR_SURFACE = re.compile(r"^nam\s+([0-9?]{4})$")
+_EXACT_SPLIT_YEAR_SURFACE = re.compile(r"^nam\s+(20\d{2})$")
+_SPLIT_YEAR_PROJECTION_KIND = (
+    "EXACT_EXPECTED_PERIOD_SPLIT_YEAR_NUMERIC_READER_CHALLENGER_PROPOSAL_ONLY"
+)
 
 
 class AccountingMultilevelHeaderLeafAxisV1Error(ValueError):
@@ -206,6 +225,87 @@ def _merged_period_surface_lacks_word_boxes(lines: Sequence[Mapping[str, Any]]) 
         ):
             return True
     return False
+
+
+def _accentless_preserving_damage(surface: str) -> str:
+    decomposed = unicodedata.normalize("NFD", surface)
+    return (
+        re.sub(
+            r"\s+",
+            " ",
+            "".join(
+                character for character in decomposed if unicodedata.category(character) != "Mn"
+            ),
+        )
+        .strip()
+        .lower()
+    )
+
+
+def _project_exact_numeric_reader_split_year_challengers(
+    lines: Sequence[Mapping[str, Any]],
+    document_period_context: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Repair only a visibly damaged split-year fragment from its bound reader.
+
+    The challenger never invents a period.  Its crop-bound numeric surface
+    must replace question-mark glyphs only, retain every visible digit, score
+    at least 0.95, and equal one of the two already authenticated balance
+    period years.  An undamaged disagreement, another year, or a low-score
+    read remains unresolved in the ordinary multi-level graph.
+    """
+
+    expected_periods = (
+        document_period_context.get("current_period_end"),
+        document_period_context.get("balance_comparative_period_end"),
+    )
+    expected_years = {
+        period.rsplit("/", 1)[-1]
+        for period in expected_periods
+        if type(period) is str and re.fullmatch(r"\d{1,2}/\d{1,2}/20\d{2}", period)
+    }
+    projected = [canonical_clone_v1(line) for line in lines]
+    evidence: list[dict[str, Any]] = []
+
+    for line in projected:
+        visible_text = line["vietocr_text"]
+        visible = _accentless_preserving_damage(visible_text)
+        challenger = line.get("numeric_text")
+        score = line.get("numeric_score")
+        if type(challenger) is not str or type(score) is not float or score < 0.95:
+            continue
+        damaged_match = _DAMAGED_SPLIT_YEAR_SURFACE.fullmatch(visible)
+        challenger_match = _EXACT_SPLIT_YEAR_SURFACE.fullmatch(
+            _accentless_preserving_damage(challenger)
+        )
+        if damaged_match is None or challenger_match is None:
+            continue
+        damaged_year = damaged_match.group(1)
+        exact_year = challenger_match.group(1)
+        if (
+            "?" not in damaged_year
+            or exact_year not in expected_years
+            or any(
+                visible_digit != "?" and visible_digit != exact_digit
+                for visible_digit, exact_digit in zip(damaged_year, exact_year, strict=True)
+            )
+        ):
+            continue
+        projected_text = challenger.strip()
+        line["vietocr_text"] = projected_text
+        evidence.append(
+            {
+                "bbox": canonical_clone_v1(line["bbox"]),
+                "expected_period_year": exact_year,
+                "numeric_reader_score": score,
+                "numeric_reader_text": challenger,
+                "projected_vietocr_text": projected_text,
+                "projection_kind": _SPLIT_YEAR_PROJECTION_KIND,
+                "source_line_index": line["source_line_index"],
+                "visible_vietocr_text": visible_text,
+            }
+        )
+    return projected, sorted(evidence, key=lambda item: item["source_line_index"])
 
 
 def _inputs(
@@ -654,6 +754,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         != "ADAPTIVE_ACCOUNTING_MULTILEVEL_HEADER_GRAPH_V1"
         or type(value["period_resolution_mode"]) is not str
         or not value["period_resolution_mode"]
+        or type(value["reader_projection_evidence"]) is not list
         or type(value["leaf_axis"]) is not list
         or type(value["unresolved_reasons"]) is not list
         or any(type(reason) is not str or not reason for reason in value["unresolved_reasons"])
@@ -673,6 +774,74 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
     ):
         raise _error("multilevel header leaf-axis result contract drifted")
+    projection_source_indices: set[int] = set()
+    graph_cells_by_source_index = {
+        cell.get("source_line_index"): cell
+        for cell in value["header_graph"].get("cells", [])
+        if type(cell) is dict and type(cell.get("source_line_index")) is int
+    }
+    for evidence in value["reader_projection_evidence"]:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _READER_PROJECTION_FIELDS
+            or evidence["projection_kind"] != _SPLIT_YEAR_PROJECTION_KIND
+            or type(evidence["source_line_index"]) is not int
+            or evidence["source_line_index"] < 0
+            or evidence["source_line_index"] in projection_source_indices
+            or type(evidence["bbox"]) is not list
+            or len(evidence["bbox"]) != 4
+            or any(type(item) is not int for item in evidence["bbox"])
+            or type(evidence["visible_vietocr_text"]) is not str
+            or type(evidence["numeric_reader_text"]) is not str
+            or type(evidence["numeric_reader_score"]) is not float
+            or evidence["numeric_reader_score"] < 0.95
+            or type(evidence["projected_vietocr_text"]) is not str
+            or evidence["projected_vietocr_text"] != evidence["numeric_reader_text"].strip()
+            or type(evidence["expected_period_year"]) is not str
+        ):
+            raise _error("multilevel header reader projection evidence drifted")
+        visible_match = _DAMAGED_SPLIT_YEAR_SURFACE.fullmatch(
+            _accentless_preserving_damage(evidence["visible_vietocr_text"])
+        )
+        projected_match = _EXACT_SPLIT_YEAR_SURFACE.fullmatch(
+            _accentless_preserving_damage(evidence["projected_vietocr_text"])
+        )
+        if (
+            visible_match is None
+            or projected_match is None
+            or "?" not in visible_match.group(1)
+            or projected_match.group(1) != evidence["expected_period_year"]
+            or any(
+                visible_digit != "?" and visible_digit != exact_digit
+                for visible_digit, exact_digit in zip(
+                    visible_match.group(1), projected_match.group(1), strict=True
+                )
+            )
+        ):
+            raise _error("multilevel header reader projection surface drifted")
+        graph_cell = graph_cells_by_source_index.get(evidence["source_line_index"])
+        if (
+            graph_cell is None
+            or graph_cell.get("bbox") != evidence["bbox"]
+            or graph_cell.get("text") != evidence["projected_vietocr_text"]
+        ):
+            raise _error("multilevel header reader projection graph binding drifted")
+        projection_source_indices.add(evidence["source_line_index"])
+    if [
+        evidence["source_line_index"] for evidence in value["reader_projection_evidence"]
+    ] != sorted(projection_source_indices):
+        raise _error("multilevel header reader projection evidence axis drifted")
+    if value["status"] == "MULTILEVEL_HEADER_LEAF_AXIS_BOUND_PROPOSAL_ONLY":
+        resolved_period_years = {
+            leaf["resolved_period"].rsplit("/", 1)[-1]
+            for leaf in value["leaf_axis"]
+            if type(leaf) is dict and type(leaf.get("resolved_period")) is str
+        }
+        if any(
+            evidence["expected_period_year"] not in resolved_period_years
+            for evidence in value["reader_projection_evidence"]
+        ):
+            raise _error("multilevel header reader projection period binding drifted")
     for ordinal, leaf in enumerate(value["leaf_axis"]):
         if (
             type(leaf) is not dict
@@ -736,7 +905,6 @@ def build_accounting_multilevel_header_leaf_axis_v1(
     """Bind exactly two balance-period parents to typed body-column leaves."""
 
     lines = _canonical_header_lines(header_lines)
-    merged_period_surface_lacks_word_boxes = _merged_period_surface_lacks_word_boxes(lines)
     centers, period_context, expected_kinds = _inputs(
         column_centers,
         page_width,
@@ -744,6 +912,10 @@ def build_accounting_multilevel_header_leaf_axis_v1(
         period_semantics,
         expected_lane_kinds,
     )
+    lines, reader_projection_evidence = _project_exact_numeric_reader_split_year_challengers(
+        lines, period_context
+    )
+    merged_period_surface_lacks_word_boxes = _merged_period_surface_lacks_word_boxes(lines)
     try:
         graph = build_multilevel_header_graph_v1(
             lines,
@@ -807,6 +979,7 @@ def build_accounting_multilevel_header_leaf_axis_v1(
             "typed_leaf_count": len(leaves),
         },
         "period_resolution_mode": period_mode,
+        "reader_projection_evidence": reader_projection_evidence,
         "safety": canonical_clone_v1(_SAFETY),
         "status": (
             "MULTILEVEL_HEADER_LEAF_AXIS_BOUND_PROPOSAL_ONLY"

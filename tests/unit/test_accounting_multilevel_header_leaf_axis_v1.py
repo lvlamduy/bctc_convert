@@ -151,7 +151,6 @@ def test_narrow_period_headers_can_anchor_two_identical_typed_leaf_groups() -> N
         )
         == result
     )
-
     forged = copy.deepcopy(result)
     forged["leaf_axis"][1]["period_parent_column_stop"] = 3
     material = copy.deepcopy(forged)
@@ -201,6 +200,104 @@ def test_split_vietnamese_date_fragments_use_exact_intersection_and_repeated_lea
         )
         == result
     )
+
+
+def test_damaged_split_year_uses_only_one_expected_high_score_numeric_challenger() -> None:
+    headers = _split_vietnamese_date_headers()
+    headers[2]["vietocr_text"] = "năm 2?25"
+    headers[2]["numeric_text"] = "năm 2025"
+    headers[2]["numeric_score"] = 0.99
+
+    result = _build_split_vietnamese_date_header(headers)
+
+    assert result["status"] == "MULTILEVEL_HEADER_LEAF_AXIS_BOUND_PROPOSAL_ONLY"
+    assert [leaf["resolved_period"] for leaf in result["leaf_axis"]] == [
+        "31/12/2025",
+        "31/12/2025",
+        "31/12/2024",
+        "31/12/2024",
+    ]
+    assert any(cell["text"] == "năm 2025" for cell in result["header_graph"]["cells"])
+    assert result["reader_projection_evidence"] == [
+        {
+            "bbox": [879, 860, 1014, 894],
+            "expected_period_year": "2025",
+            "numeric_reader_score": 0.99,
+            "numeric_reader_text": "năm 2025",
+            "projected_vietocr_text": "năm 2025",
+            "projection_kind": (
+                "EXACT_EXPECTED_PERIOD_SPLIT_YEAR_NUMERIC_READER_CHALLENGER_PROPOSAL_ONLY"
+            ),
+            "source_line_index": 29,
+            "visible_vietocr_text": "năm 2?25",
+        }
+    ]
+    assert (
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            result,
+            headers,
+            column_centers=[957.5, 1084.5, 1330.0, 1442.25],
+            page_width=1623,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+        == result
+    )
+
+    forged = copy.deepcopy(result)
+    forged["reader_projection_evidence"][0]["visible_vietocr_text"] = "năm 2?24"
+    material = copy.deepcopy(forged)
+    material.pop("axis_id")
+    forged["axis_id"] = "amhlav1:axis:" + canonical_json_sha256_v1(material)
+    with pytest.raises(AccountingMultilevelHeaderLeafAxisV1Error, match="surface drifted"):
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            forged,
+            headers,
+            column_centers=[957.5, 1084.5, 1330.0, 1442.25],
+            page_width=1623,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+
+    changed_challenger = copy.deepcopy(headers)
+    changed_challenger[2]["numeric_text"] = "năm 2024"
+    with pytest.raises(AccountingMultilevelHeaderLeafAxisV1Error, match="does not replay exactly"):
+        validate_accounting_multilevel_header_leaf_axis_replay_v1(
+            result,
+            changed_challenger,
+            column_centers=[957.5, 1084.5, 1330.0, 1442.25],
+            page_width=1623,
+            document_period_context=_context(),
+            period_semantics="BALANCE_COMPARATIVE",
+            expected_lane_kinds=_KINDS,
+        )
+
+
+@pytest.mark.parametrize(
+    "attack", ["wrong_year", "digit_conflict", "low_score", "undamaged", "nonyear"]
+)
+def test_split_year_numeric_challenger_attacks_remain_unresolved(attack: str) -> None:
+    headers = _split_vietnamese_date_headers()
+    headers[2]["vietocr_text"] = "năm 2?25"
+    headers[2]["numeric_text"] = "năm 2025"
+    headers[2]["numeric_score"] = 0.99
+    if attack == "wrong_year":
+        headers[2]["numeric_text"] = "năm 2026"
+    elif attack == "digit_conflict":
+        headers[2]["numeric_text"] = "năm 2024"
+    elif attack == "low_score":
+        headers[2]["numeric_score"] = 0.94
+    elif attack == "undamaged":
+        headers[2]["vietocr_text"] = "năm 2023"
+    else:
+        headers[2]["vietocr_text"] = "năm 2?AB"
+
+    result = _build_split_vietnamese_date_header(headers)
+
+    assert result["status"] == "UNRESOLVED_MULTILEVEL_HEADER_LEAF_AXIS"
+    assert result["leaf_axis"] == []
 
 
 @pytest.mark.parametrize(

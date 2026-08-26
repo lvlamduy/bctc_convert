@@ -86,7 +86,12 @@ Trạng thái:
   thì giữ nguyên outer region thay vì đoán. Header ngày tiếng Việt bị OCR tách dòng
   chỉ được ghép khi hai period khớp document context, fragment graph liên thông,
   có exact one-lane intersection anchor và hai nhóm typed leaf lặp lại tạo một
-  partition đầy đủ; fragment rời/mơ hồ/low-confidence toàn bộ vẫn unresolved.
+  partition đầy đủ. Một split-year fragment có đúng bốn glyph số/dấu hỏi chỉ
+  được reader challenger thay các glyph `?` khi score ít nhất 0.95, mọi digit
+  còn nhìn thấy giữ nguyên và kết quả bằng đúng một năm balance-period đã
+  authenticated; receipt giữ raw VietOCR, reader surface/score, bbox/source-line
+  và public replay. Fragment rời, năm không thuộc context, digit xung đột,
+  undamaged disagreement hoặc low-confidence toàn bộ vẫn unresolved.
 - **Status:** `MITIGATED`.
 
 ## RFP-003 — Continuation or repeated period blocks are joined by adjacency
