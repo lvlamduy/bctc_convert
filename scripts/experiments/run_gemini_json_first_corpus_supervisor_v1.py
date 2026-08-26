@@ -617,14 +617,28 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         thread_name_prefix="openrouter-document",
     )
     openrouter_future: Future[dict[str, Any]] | None = None
+    google_submit_executor = ThreadPoolExecutor(
+        max_workers=min(args.max_active_google, 4),
+        thread_name_prefix="google-batch-submit",
+    )
+    google_submit_futures: dict[Future[dict[str, Any]], str] = {}
     while True:
         if openrouter_future is not None and openrouter_future.done():
             try:
                 openrouter_future.result()
             except Exception:
                 openrouter_executor.shutdown(wait=True, cancel_futures=True)
+                google_submit_executor.shutdown(wait=True, cancel_futures=True)
                 raise
             openrouter_future = None
+        for future in [future for future in google_submit_futures if future.done()]:
+            try:
+                future.result()
+            except Exception:
+                openrouter_executor.shutdown(wait=True, cancel_futures=True)
+                google_submit_executor.shutdown(wait=True, cancel_futures=True)
+                raise
+            del google_submit_futures[future]
         if time.monotonic() - started > args.google_watch_max_seconds:
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "corpus supervisor exceeded its bounded provider wait"
@@ -633,6 +647,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         failed = [task for task in tasks if task["state"] == "FAILED"]
         if failed:
             openrouter_executor.shutdown(wait=True, cancel_futures=True)
+            google_submit_executor.shutdown(wait=True, cancel_futures=True)
             return {"disposition": "FAILED", **corpus_ledger_summary_v1(args.ledger)}
         unfinished = [task for task in tasks if task["state"] != "SUCCEEDED"]
         if not unfinished:
@@ -664,25 +679,28 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
-        available = args.max_active_google - len(active_google)
+        available = args.max_active_google - len(active_google) - len(google_submit_futures)
+        inflight_google_task_ids = set(google_submit_futures.values())
         for task in [
             item
             for item in unfinished
-            if item["route"] == GOOGLE_ROUTE and item["state"] in {"PENDING", "NEEDS_RETRY"}
+            if item["route"] == GOOGLE_ROUTE
+            and item["state"] in {"PENDING", "NEEDS_RETRY"}
+            and item["task_id"] not in inflight_google_task_ids
         ][:available]:
-            active_google.append(
-                _recover_or_submit_google(
-                    task=task,
-                    plan=plan,
-                    ledger=args.ledger,
-                    source_root=args.source_root,
-                    database=args.database,
-                    artifact_root=args.artifact_root,
-                    google_key_file=args.google_key_file,
-                    google_key_slot=args.google_key_slot,
-                    provider_timeout_seconds=args.provider_timeout_seconds,
-                )
+            future = google_submit_executor.submit(
+                _recover_or_submit_google,
+                task=task,
+                plan=plan,
+                ledger=args.ledger,
+                source_root=args.source_root,
+                database=args.database,
+                artifact_root=args.artifact_root,
+                google_key_file=args.google_key_file,
+                google_key_slot=args.google_key_slot,
+                provider_timeout_seconds=args.provider_timeout_seconds,
             )
+            google_submit_futures[future] = task["task_id"]
         fallback = [
             task
             for task in unfinished
@@ -722,7 +740,11 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         if openrouter_future is not None:
             time.sleep(min(args.google_poll_interval_seconds, 1.0))
             continue
+        if google_submit_futures:
+            time.sleep(min(args.google_poll_interval_seconds, 1.0))
+            continue
         openrouter_executor.shutdown(wait=True, cancel_futures=True)
+        google_submit_executor.shutdown(wait=True, cancel_futures=True)
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("scheduler has no runnable task")
 
     manifests = _finalize_google_manifests(
@@ -743,6 +765,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         payload,
     )
     openrouter_executor.shutdown(wait=True)
+    google_submit_executor.shutdown(wait=True)
     return result
 
 
