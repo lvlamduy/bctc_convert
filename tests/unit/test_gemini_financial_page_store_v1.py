@@ -12,6 +12,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     _parents,
     _visual_state,
+    build_financial_document_manifest_v1,
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
@@ -190,3 +191,52 @@ def test_store_refuses_overwrite_and_identity_tamper(tmp_path) -> None:
         connection.execute("UPDATE store_identity SET format_version='FORGED'")
     with pytest.raises(GeminiFinancialPageStoreV1Error, match="identity drifted"):
         lookup_cached_page_json_v1(path, "missing")
+
+
+def test_document_manifest_binds_exact_policy_page_frontier_and_usage(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    ids = _ingest(path)
+    manifest = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        expected_physical_pages=[7],
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        selected_provider="GOOGLE_GEMINI_API",
+    )
+    assert manifest["document_manifest_id"].startswith("gfdmv1:manifest:")
+    assert manifest["page_count"] == 1
+    assert manifest["status_counts"] == {"FINANCIAL_NOTE_CONTENT": 1}
+    assert manifest["pages"][0]["page_json_version_id"] == ids["page_json_version_id"]
+    assert manifest["pages"][0]["content_counts"] == {
+        "cell_count": 6,
+        "row_count": 3,
+        "section_count": 1,
+        "table_count": 1,
+    }
+    assert manifest["totals"] == {
+        "cached_input_tokens": 0,
+        "cell_count": 6,
+        "cost_usd": "0.003937500000",
+        "input_tokens": 5000,
+        "output_tokens": 1000,
+        "row_count": 3,
+        "section_count": 1,
+        "table_count": 1,
+        "thought_tokens": 100,
+        "total_tokens": 6100,
+    }
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            expected_physical_pages=[6, 7],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+        )

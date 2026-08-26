@@ -1049,3 +1049,173 @@ def usage_summary_v1(path: Path) -> dict[str, Any]:
         "thought_tokens": row["thought_tokens"],
         "total_cost_usd": format(total_cost, ".12f"),
     }
+
+
+def build_financial_document_manifest_v1(
+    path: Path,
+    *,
+    source_sha256: str,
+    expected_physical_pages: Sequence[int],
+    prompt_sha256: str,
+    response_schema_sha256: str,
+    requested_model: str,
+    requested_service_tier: str,
+    selected_provider: str,
+) -> dict[str, Any]:
+    """Bind one complete document to an exact immutable extraction contract.
+
+    The manifest is deliberately an index of page JSON versions rather than a
+    second copy of every large JSON object.  Consumers can retrieve exact page
+    content by ``page_json_version_id`` while cheaply proving full page coverage,
+    provider/prompt provenance, status counts, tokens, and cost.
+    """
+
+    if (
+        type(source_sha256) is not str
+        or len(source_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in source_sha256)
+    ):
+        raise _error("document manifest source SHA-256 is invalid")
+    pages = list(expected_physical_pages)
+    if (
+        not pages
+        or any(type(page) is not int or page <= 0 for page in pages)
+        or pages != sorted(set(pages))
+    ):
+        raise _error("document manifest page frontier is invalid")
+    exact_strings = {
+        "prompt_sha256": prompt_sha256,
+        "response_schema_sha256": response_schema_sha256,
+        "requested_model": requested_model,
+        "requested_service_tier": requested_service_tier,
+        "selected_provider": selected_provider,
+    }
+    if any(type(value) is not str or not value for value in exact_strings.values()):
+        raise _error("document manifest extraction contract is invalid")
+    placeholders = ",".join("?" for _ in pages)
+    with _connect(path, readonly=True) as connection:
+        document_rows = connection.execute(
+            "SELECT * FROM document WHERE source_sha256=?", (source_sha256,)
+        ).fetchall()
+        if len(document_rows) != 1:
+            raise _error("document manifest source is not unique in the store")
+        document = document_rows[0]
+        records = connection.execute(
+            f"""
+            SELECT p.physical_page, p.page_id, p.image_sha256,
+                   p.image_size_bytes, p.pixel_width, p.pixel_height,
+                   p.render_dpi, p.media_type,
+                   r.extraction_run_id, r.selected_model,
+                   r.selected_service_tier, r.response_id_sha256,
+                   r.input_tokens, r.output_tokens, r.thought_tokens,
+                   r.cached_input_tokens, r.total_tokens, r.cost_usd,
+                   r.cost_disposition,
+                   j.page_json_version_id, j.page_status,
+                   j.canonical_json_sha256,
+                   (SELECT COUNT(*) FROM section_node AS s
+                    WHERE s.page_json_version_id=j.page_json_version_id) AS section_count,
+                   (SELECT COUNT(*) FROM table_node AS t
+                    WHERE t.page_json_version_id=j.page_json_version_id) AS table_count,
+                   (SELECT COUNT(*) FROM row_node AS n
+                    WHERE n.page_json_version_id=j.page_json_version_id) AS row_count,
+                   (SELECT COUNT(*) FROM value_cell AS v
+                    WHERE v.page_json_version_id=j.page_json_version_id) AS cell_count
+            FROM page AS p
+            JOIN extraction_run AS r USING (page_id)
+            JOIN page_json_version AS j USING (extraction_run_id)
+            WHERE p.document_id=?
+              AND p.physical_page IN ({placeholders})
+              AND r.prompt_sha256=?
+              AND r.response_schema_sha256=?
+              AND r.requested_model=?
+              AND r.requested_service_tier=?
+              AND r.selected_provider=?
+            ORDER BY p.physical_page
+            """,
+            (
+                document["document_id"],
+                *pages,
+                prompt_sha256,
+                response_schema_sha256,
+                requested_model,
+                requested_service_tier,
+                selected_provider,
+            ),
+        ).fetchall()
+    returned_pages = [record["physical_page"] for record in records]
+    if returned_pages != pages:
+        raise _error("document manifest page frontier is incomplete or duplicate")
+    page_records: list[dict[str, Any]] = []
+    status_counts: dict[str, int] = {}
+    total_cost = Decimal(0)
+    totals = {
+        "cached_input_tokens": 0,
+        "cell_count": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "row_count": 0,
+        "section_count": 0,
+        "table_count": 0,
+        "thought_tokens": 0,
+        "total_tokens": 0,
+    }
+    for record in records:
+        status = record["page_status"]
+        status_counts[status] = status_counts.get(status, 0) + 1
+        total_cost += Decimal(record["cost_usd"])
+        for field in totals:
+            totals[field] += record[field]
+        page_records.append(
+            {
+                "canonical_json_sha256": record["canonical_json_sha256"],
+                "content_counts": {
+                    "cell_count": record["cell_count"],
+                    "row_count": record["row_count"],
+                    "section_count": record["section_count"],
+                    "table_count": record["table_count"],
+                },
+                "cost_disposition": record["cost_disposition"],
+                "cost_usd": record["cost_usd"],
+                "extraction_run_id": record["extraction_run_id"],
+                "image": {
+                    "height": record["pixel_height"],
+                    "media_type": record["media_type"],
+                    "render_dpi": record["render_dpi"],
+                    "sha256": record["image_sha256"],
+                    "size_bytes": record["image_size_bytes"],
+                    "width": record["pixel_width"],
+                },
+                "page_id": record["page_id"],
+                "page_json_version_id": record["page_json_version_id"],
+                "physical_page": record["physical_page"],
+                "response_id_sha256": record["response_id_sha256"],
+                "selected_model": record["selected_model"],
+                "selected_service_tier": record["selected_service_tier"],
+                "status": status,
+                "usage": {
+                    "cached_input_tokens": record["cached_input_tokens"],
+                    "input_tokens": record["input_tokens"],
+                    "output_tokens": record["output_tokens"],
+                    "thought_tokens": record["thought_tokens"],
+                    "total_tokens": record["total_tokens"],
+                },
+            }
+        )
+    material = {
+        "document": {
+            "document_id": document["document_id"],
+            "source_logical_name": document["source_logical_name"],
+            "source_sha256": document["source_sha256"],
+            "source_size_bytes": document["source_size_bytes"],
+        },
+        "extraction_contract": exact_strings,
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1",
+        "page_count": len(page_records),
+        "pages": page_records,
+        "status_counts": dict(sorted(status_counts.items())),
+        "totals": {**totals, "cost_usd": format(total_cost, ".12f")},
+    }
+    return {
+        **material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material),
+    }
