@@ -21,6 +21,11 @@ from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
+def test_malformed_duplicate_decimal_mark_is_only_a_provisional_numeric_cell() -> None:
+    assert row_axis_v1._is_numeric({"numeric_recognition": {"raw_prediction": "1,.43"}})
+    assert not row_axis_v1._is_numeric({"numeric_recognition": {"raw_prediction": "1,,43"}})
+
+
 def _spec(*, continuation_pages: int = 1) -> dict[str, object]:
     return {
         "children": [

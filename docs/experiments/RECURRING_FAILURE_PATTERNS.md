@@ -229,7 +229,12 @@ Trạng thái:
   theo chiều component → result qua toàn bộ derived direct-frontier DAG và kết
   thúc ở một visible source total đã replay. Chuỗi chỉ-derived, nhánh rời,
   đường ngược từ parent xuống child hoặc equation không exhaustive vẫn không
-  tạo numeric authority.
+  tạo numeric authority. Tương tự, PP-OCR có hai dấu thập phân khác loại liền
+  nhau như `1,.43` chỉ tạo typed candidate giữ nguyên raw surface; candidate chỉ
+  được dùng khi VietOCR trên đúng crop đọc cùng coefficient/scale, lane là
+  `PERCENT`, có ít nhất hai peer scale-2 cùng trục và sample đi vào một exact
+  visible exhaustive equation. Reader/unit/peer/equation thiếu hoặc xung đột
+  đều giữ unresolved; accounting không chọn hay sửa digit.
 - **Status:** `MITIGATED`.
 
 ## RFP-008 — Content hash or cheap validation is mistaken for source authority

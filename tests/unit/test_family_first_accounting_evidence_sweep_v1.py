@@ -766,6 +766,109 @@ def _noise_suffix_value(sample_id: str, raw: str, coefficient: int) -> dict[str,
     }
 
 
+def _malformed_decimal_value(sample_id: str, raw: str, coefficient: int) -> dict[str, object]:
+    return {
+        "column_ordinal": 0,
+        "parsed_token": {
+            "classification": "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": raw,
+            "percentage_mark_present": False,
+            "scale": 2,
+            "separator_interpretation": "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            "sign": 1,
+        },
+        "sample_id": sample_id,
+    }
+
+
+def _percentage_value(sample_id: str, raw: str, coefficient: int) -> dict[str, object]:
+    return {
+        "column_ordinal": 0,
+        "parsed_token": {
+            "classification": "SIGNED_NUMBER",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": raw,
+            "percentage_mark_present": False,
+            "scale": 2,
+            "separator_interpretation": "DECIMAL_POINT",
+            "sign": 1,
+        },
+        "sample_id": sample_id,
+    }
+
+
+def test_malformed_decimal_candidate_requires_same_crop_percent_peers_and_equation() -> None:
+    candidate = _malformed_decimal_value("malformed", "1,.43", 143)
+    peer_1 = _percentage_value("peer-1", "20.00", 2_000)
+    peer_2 = _percentage_value("peer-2", "78.57", 7_857)
+    total = _percentage_value("total", "100.00", 10_000)
+    row_axis = {
+        "rows": [
+            {"role": "FOREIGN_INVESTED", "values": [candidate]},
+            {"role": "STATE_OWNED", "values": [peer_1]},
+            {"role": "OTHER_ENTERPRISE", "values": [peer_2]},
+        ],
+        "trailing_value_rows": [{"values": [total]}],
+    }
+    column = {"unit_axis": [{"column_ordinal": 0, "unit_kind": "PERCENT"}]}
+    closure = {
+        "format_version": "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
+        "status": "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL",
+        "lane_sums": [{"component_sample_ids": ["malformed", "peer-1", "peer-2"]}],
+        "exact_total_candidates": [{"sample_ids": ["total"]}],
+    }
+    pages = [{"lines": [{"sample_id": "malformed", "vietocr_text": "1.43"}]}]
+
+    assert (
+        subject._mixed_separator_consensus_reasons(
+            row_axis=row_axis,
+            column_context=column,
+            closure=closure,
+            joined_pages=pages,
+        )
+        == []
+    )
+
+    pages[0]["lines"][0]["vietocr_text"] = "1.44"
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["MALFORMED_DECIMAL_MARK:INDEPENDENT_SAME_CROP_READER_DISAGREES:malformed"]
+
+    pages[0]["lines"][0]["vietocr_text"] = "1.43"
+    column["unit_axis"][0]["unit_kind"] = "MONEY"
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["MALFORMED_DECIMAL_MARK:PERCENTAGE_UNIT_NOT_RESOLVED:malformed"]
+
+    column["unit_axis"][0]["unit_kind"] = "PERCENT"
+    row_axis["rows"][2]["values"][0]["parsed_token"]["scale"] = 1
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["MALFORMED_DECIMAL_MARK:SCALE_TWO_PERCENTAGE_LANE_PEERS_NOT_ESTABLISHED:malformed"]
+
+    row_axis["rows"][2]["values"][0]["parsed_token"]["scale"] = 2
+    closure["status"] = "UNRESOLVED_ADDITIVE_TABLE_CLOSURE"
+    closure["lane_sums"] = []
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["MALFORMED_DECIMAL_MARK:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:malformed"]
+
+
 def test_mixed_separator_candidate_requires_independent_reader_money_peers_and_equation() -> None:
     candidate = _mixed_value("mixed", "1.460,873", 1_460_873)
     row_axis = {

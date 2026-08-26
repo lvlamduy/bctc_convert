@@ -648,6 +648,7 @@ _PRINTED_NOTE_REFERENCE_FURNITURE_V4_STATUS = "AUTHENTICATED_PRINTED_NOTE_REFERE
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
 _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
     "DASH_ZERO",
+    "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
     "MIXED_GROUPED_INTEGER_CANDIDATE",
     "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
     "SIGNED_NUMBER",
@@ -1003,8 +1004,8 @@ _DEPENDENCIES = {
     },
     "row_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
-        "sha256": "e60ed90535a05732356b0e9bc61d7a7f9cfd7e6fef0953167d0325eb573e3aba",
-        "size_bytes": 94_434,
+        "sha256": "f1d1ec17a0891475a83aac6e5c1fd3c68a14c2f0fcd5e04ca8f8514d6a27ca3f",
+        "size_bytes": 94_488,
     },
     "selected_snapshot_validator": {
         "path": "src/bctc_ai/evaluation/authenticated_semantic_region_snapshot_v1.py",
@@ -1839,6 +1840,7 @@ def _direct_frontier_number(value: Mapping[str, Any]) -> dict[str, Any] | None:
         or parsed.get("classification")
         not in {
             "DASH_ZERO",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
             "MIXED_GROUPED_INTEGER_CANDIDATE",
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
             "SIGNED_NUMBER",
@@ -9016,6 +9018,7 @@ def _validate_numeric_sample_record(record: Any) -> dict[str, Any]:
         or parsed["classification"]
         not in {
             "DASH_ZERO",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
             "MIXED_GROUPED_INTEGER_CANDIDATE",
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
             "SIGNED_NUMBER",

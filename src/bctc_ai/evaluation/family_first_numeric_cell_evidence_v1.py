@@ -84,6 +84,7 @@ _DIGITS = re.compile(r"^[0-9]+$")
 _GROUPED_INTEGER_WITH_NOISE_SUFFIX = re.compile(
     r"^([0-9]{1,3}([.,])[0-9]{3}(?:\2[0-9]{3})*)[\s]+(\S.*)$"
 )
+_MALFORMED_DUPLICATE_DECIMAL_MARK = re.compile(r"^([0-9]+)([.,])([.,])([0-9]{2})$")
 
 
 class FamilyFirstNumericCellEvidenceV1Error(ValueError):
@@ -311,6 +312,26 @@ def parse_visible_financial_numeric_token_v1(raw_text: Any) -> dict[str, Any]:
                 separator="DECIMAL_POINT" if separator == "." else "DECIMAL_COMMA",
             )
     elif len(present) == 2:
+        # PP-OCR can duplicate a percentage decimal mark as two adjacent,
+        # different punctuation glyphs (for example ``1,.43``).  Preserve the
+        # visible digits as a typed candidate only.  A downstream source-bound
+        # gate must still require an independent same-crop reader, an exact
+        # percentage lane with scale-two peers, and exact visible accounting
+        # closure; this parser never chooses the candidate from arithmetic.
+        malformed_decimal = _MALFORMED_DUPLICATE_DECIMAL_MARK.fullmatch(core)
+        if malformed_decimal is not None and malformed_decimal.group(2) != malformed_decimal.group(
+            3
+        ):
+            return _parsed_number(
+                token,
+                classification="MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+                digits=malformed_decimal.group(1) + malformed_decimal.group(4),
+                scale=2,
+                negative=negative,
+                parentheses=parentheses,
+                percentage=percentage,
+                separator="MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            )
         mixed_grouped = _mixed_grouped_integer(core)
         if mixed_grouped is not None and not percentage:
             return _parsed_number(

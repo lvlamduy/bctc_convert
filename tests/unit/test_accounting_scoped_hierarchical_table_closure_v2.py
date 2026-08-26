@@ -5630,6 +5630,7 @@ def test_v4_rounding_bound_is_exact_at_boundary_and_vetoes_over_bound(
 @pytest.mark.parametrize(
     "disallowed_classification",
     [
+        "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
         "MIXED_GROUPED_INTEGER_CANDIDATE",
         "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
     ],

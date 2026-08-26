@@ -58,6 +58,20 @@ def _provider(text: str = "603.040.884") -> dict[str, object]:
             0,
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
         ),
+        (
+            "1,.43",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            143,
+            2,
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+        ),
+        (
+            "1.,43",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+            143,
+            2,
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
+        ),
         ("12,5%", "SIGNED_NUMBER", 125, 1, "DECIMAL_COMMA"),
         ("0", "SIGNED_NUMBER", 0, 0, "NONE"),
         ("-", "DASH_ZERO", 0, 0, "DASH"),
@@ -67,6 +81,9 @@ def _provider(text: str = "603.040.884") -> dict[str, object]:
         ("1.234x", "UNRESOLVED_TOKEN", None, None, None),
         ("1.234 567", "UNRESOLVED_TOKEN", None, None, None),
         ("1.234,567 STAMP", "UNRESOLVED_TOKEN", None, None, None),
+        ("1,,43", "UNRESOLVED_TOKEN", None, None, None),
+        ("1..43", "UNRESOLVED_TOKEN", None, None, None),
+        ("1,.4", "UNRESOLVED_TOKEN", None, None, None),
     ],
 )
 def test_conservative_numeric_token_grammar(

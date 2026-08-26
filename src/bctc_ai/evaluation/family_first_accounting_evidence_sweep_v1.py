@@ -796,14 +796,16 @@ def _mixed_separator_consensus_reasons(
     closure: dict[str, Any],
     joined_pages: list[dict[str, Any]],
 ) -> list[str]:
-    """Require independent text, money/scale, and equation support.
+    """Require independent text, lane/scale, and equation support.
 
     The raw PP-OCRv6 token retains either the complete digit sequence with
     mixed grouping punctuation or one intact grouped-integer prefix followed
     by OCR contamination. Fresh VietOCR on the identical crop must retain the
-    same scale-zero integer (exactly, or as the same grouped leading prefix),
-    the resolved lane must be monetary with consistent scale-zero peers, and
-    the candidate must participate in an exact visible accounting equation.
+    same scale-zero integer (exactly, or as the same grouped leading prefix).
+    A duplicated decimal-mark candidate must independently replay the same
+    scale-two decimal in a percentage lane.  In both cases the lane needs
+    consistent raw peers and the candidate must participate in an exact
+    visible accounting equation.
     No bank, page, family, expected value, or manual pixel coordinate enters
     this decision.
     """
@@ -867,6 +869,7 @@ def _mixed_separator_consensus_reasons(
         for role, value in values
         if value["parsed_token"]["classification"]
         in {
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
             "MIXED_GROUPED_INTEGER_CANDIDATE",
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
         }
@@ -891,18 +894,21 @@ def _mixed_separator_consensus_reasons(
         sample_id = candidate["sample_id"]
         parsed = candidate["parsed_token"]
         candidate_kind = parsed["classification"]
-        reason_prefix = (
-            "MIXED_SEPARATOR"
-            if candidate_kind == "MIXED_GROUPED_INTEGER_CANDIDATE"
-            else "OCR_NOISE_SUFFIX"
-        )
+        reason_prefix = {
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE": "MALFORMED_DECIMAL_MARK",
+            "MIXED_GROUPED_INTEGER_CANDIDATE": "MIXED_SEPARATOR",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE": "OCR_NOISE_SUFFIX",
+        }[candidate_kind]
         semantic_surface = semantic_by_sample.get(sample_id, "")
         semantic = parse_visible_financial_numeric_token_v1(semantic_surface)
+        malformed_decimal = candidate_kind == "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE"
+        expected_scale = 2 if malformed_decimal else 0
+        expected_percentage_mark = parsed["percentage_mark_present"] if malformed_decimal else False
         independent_agrees = (
             semantic["classification"] == "SIGNED_NUMBER"
             and semantic["coefficient"] == parsed["coefficient"]
-            and semantic["scale"] == 0
-            and semantic["percentage_mark_present"] is False
+            and semantic["scale"] == expected_scale
+            and semantic["percentage_mark_present"] is expected_percentage_mark
         ) or (
             candidate_kind == "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE"
             and semantic_retains_grouped_prefix(semantic_surface, parsed["coefficient"])
@@ -910,8 +916,14 @@ def _mixed_separator_consensus_reasons(
         if not independent_agrees:
             reasons.append(reason_prefix + ":INDEPENDENT_SAME_CROP_READER_DISAGREES:" + sample_id)
         unit = units.get(candidate["column_ordinal"])
-        if unit is None or unit.get("unit_kind") != "MONEY":
-            reasons.append(reason_prefix + ":INTEGER_MONEY_UNIT_NOT_RESOLVED:" + sample_id)
+        expected_unit_kind = "PERCENT" if malformed_decimal else "MONEY"
+        if unit is None or unit.get("unit_kind") != expected_unit_kind:
+            unit_reason = (
+                "PERCENTAGE_UNIT_NOT_RESOLVED"
+                if malformed_decimal
+                else "INTEGER_MONEY_UNIT_NOT_RESOLVED"
+            )
+            reasons.append(reason_prefix + ":" + unit_reason + ":" + sample_id)
         peers = [
             value["parsed_token"]
             for peer_role, value in values
@@ -931,16 +943,24 @@ def _mixed_separator_consensus_reasons(
             value
             for _peer_role, value in values
             if value["column_ordinal"] == candidate["column_ordinal"]
-            and value["parsed_token"]["classification"] in {"DASH_ZERO", "SIGNED_NUMBER"}
+            and value["sample_id"] != sample_id
+            and value["parsed_token"]["classification"] == "SIGNED_NUMBER"
         ]
         if (
             len(peers) < 2
             or not raw_signed_anchors
             or any(
-                peer["scale"] != 0 or peer["percentage_mark_present"] is not False for peer in peers
+                peer["scale"] != expected_scale
+                or peer["percentage_mark_present"] is not expected_percentage_mark
+                for peer in peers
             )
         ):
-            reasons.append(reason_prefix + ":SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED:" + sample_id)
+            peer_reason = (
+                "SCALE_TWO_PERCENTAGE_LANE_PEERS_NOT_ESTABLISHED"
+                if malformed_decimal
+                else "SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED"
+            )
+            reasons.append(reason_prefix + ":" + peer_reason + ":" + sample_id)
         if not _mixed_candidate_has_accounting_corroboration(
             role=role,
             sample_id=sample_id,

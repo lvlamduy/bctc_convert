@@ -519,8 +519,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "9185dbd8854994ec1f2a2c7c1e27568ddda604f80ab7b29e6ed230286e209b12",
-        "size_bytes": 613_511,
+        "sha256": "17ad22e2ecf43329a6cf5af7e1026175f5152c9f7008037cdfb4ee68be69e2f1",
+        "size_bytes": 613_677,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -861,6 +861,7 @@ def _number(value: Mapping[str, Any]) -> dict[str, Any]:
         or parsed.get("classification")
         not in {
             "DASH_ZERO",
+            "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
             "MIXED_GROUPED_INTEGER_CANDIDATE",
             "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
             "SIGNED_NUMBER",
@@ -1514,6 +1515,7 @@ def _printed_source_cells_by_lane(
                 or cell["classification"]
                 not in {
                     "DASH_ZERO",
+                    "MALFORMED_DUPLICATE_DECIMAL_MARK_CANDIDATE",
                     "MIXED_GROUPED_INTEGER_CANDIDATE",
                     "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
                     "SIGNED_NUMBER",
