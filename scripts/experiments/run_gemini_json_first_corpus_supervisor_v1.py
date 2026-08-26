@@ -869,9 +869,17 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
             "offline OpenRouter repair did not close the document"
         )
     replayed_pages = result.get("ingested_pages")
-    if type(replayed_pages) is not list or not replayed_pages:
+    cached_pages = result.get("cached_pages")
+    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    if (
+        type(replayed_pages) is not list
+        or replayed_pages != sorted(set(replayed_pages))
+        or type(cached_pages) is not list
+        or cached_pages != sorted(set(cached_pages))
+        or sorted(set(replayed_pages) | set(cached_pages)) != expected_pages
+    ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "offline OpenRouter repair replayed no semantic page"
+            "offline OpenRouter repair did not revalidate its complete page frontier"
         )
     sealed = seal_offline_revalidated_corpus_task_v1(
         args.ledger,
@@ -880,6 +888,7 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
             "document_manifest_id": result["manifest_id"],
             "offline_revalidated": True,
             "replayed_pages": replayed_pages,
+            "revalidated_pages": expected_pages,
             "result": result,
         },
     )
