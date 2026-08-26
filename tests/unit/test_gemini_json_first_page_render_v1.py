@@ -8,6 +8,7 @@ import pytest
 
 from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (
     GeminiJsonFirstPageRenderV1Error,
+    inspect_full_pdf_page_box_v1,
     render_full_pdf_page_v1,
 )
 
@@ -83,6 +84,23 @@ def test_full_page_render_restores_complete_media_box_from_declared_crop(
     assert rendered.receipt["selected_media_box"] == [0.0, 0.0, 200.0, 100.0]
     assert rendered.page["pixel_height"] == 278
     assert rendered.image != standard
+
+
+def test_full_page_box_inspection_matches_render_without_mutating_page(tmp_path) -> None:
+    path = tmp_path / "cropped.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=100)
+    page.insert_text((70, 30), "MIDDLE", fontsize=10)
+    page.set_cropbox(fitz.Rect(0, 10, 200, 90))
+    document.save(path)
+    document.close()
+    with fitz.open(path) as document:
+        before = fitz.Rect(document[0].cropbox)
+        inspection = inspect_full_pdf_page_box_v1(document[0])
+        after = fitz.Rect(document[0].cropbox)
+    assert inspection.mode == "EXPANDED_DECLARED_MEDIA_BOX"
+    assert list(inspection.selected_media) == [0.0, 0.0, 200.0, 100.0]
+    assert before == after
 
 
 def test_full_page_render_ignores_out_of_page_invisible_ocr_text(tmp_path) -> None:

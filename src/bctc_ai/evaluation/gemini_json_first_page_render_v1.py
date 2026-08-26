@@ -37,6 +37,16 @@ class FullPdfPageRenderV1:
     receipt: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class FullPdfPageBoxInspectionV1:
+    mode: str
+    original_crop: fitz.Rect
+    original_media: fitz.Rect
+    painted: fitz.Rect | None
+    painted_object_count: int
+    selected_media: fitz.Rect
+
+
 def _rect_values(rect: fitz.Rect) -> list[float]:
     return [round(float(value), 6) for value in (rect.x0, rect.y0, rect.x1, rect.y1)]
 
@@ -118,6 +128,34 @@ def _selected_media_box(page: fitz.Page) -> tuple[fitz.Rect, fitz.Rect | None, i
     return selected, painted, painted_object_count
 
 
+def inspect_full_pdf_page_box_v1(page: fitz.Page) -> FullPdfPageBoxInspectionV1:
+    """Inspect only the physical canvas; never infer table or semantic structure."""
+
+    original_media = fitz.Rect(page.mediabox)
+    original_crop = fitz.Rect(page.cropbox)
+    selected_media, painted, painted_object_count = _selected_media_box(page)
+    source_bounds_expanded = (
+        _rect_delta(selected_media, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
+    )
+    declared_crop_expanded = (
+        _rect_delta(original_crop, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
+    )
+    return FullPdfPageBoxInspectionV1(
+        mode=(
+            "EXPANDED_SOURCE_CONTENT_BOUNDS"
+            if source_bounds_expanded
+            else "EXPANDED_DECLARED_MEDIA_BOX"
+            if declared_crop_expanded
+            else "DECLARED_PAGE_BOX"
+        ),
+        original_crop=original_crop,
+        original_media=original_media,
+        painted=painted,
+        painted_object_count=painted_object_count,
+        selected_media=selected_media,
+    )
+
+
 def render_full_pdf_page_v1(
     page: fitz.Page,
     *,
@@ -137,22 +175,13 @@ def render_full_pdf_page_v1(
         or any(character not in "0123456789abcdef" for character in source_sha256)
     ):
         raise GeminiJsonFirstPageRenderV1Error("source SHA-256 is invalid")
-    original_media = fitz.Rect(page.mediabox)
-    original_crop = fitz.Rect(page.cropbox)
-    selected_media, painted, painted_object_count = _selected_media_box(page)
-    source_bounds_expanded = (
-        _rect_delta(selected_media, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
-    )
-    declared_crop_expanded = (
-        _rect_delta(original_crop, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
-    )
-    expanded = source_bounds_expanded or declared_crop_expanded
-    if expanded:
+    inspection = inspect_full_pdf_page_box_v1(page)
+    if inspection.mode != "DECLARED_PAGE_BOX":
         # PyMuPDF resets CropBox to the complete local page rectangle when the
         # MediaBox is assigned.  Assigning ``selected_media`` again as a
         # CropBox is incorrect for MediaBoxes with a negative origin because
         # CropBox coordinates are local to that newly assigned media extent.
-        page.set_mediabox(selected_media)
+        page.set_mediabox(inspection.selected_media)
     pixmap = page.get_pixmap(dpi=dpi, alpha=False)
     image = pixmap.tobytes("png")
     image_sha256 = sha256(image).hexdigest()
@@ -176,21 +205,17 @@ def render_full_pdf_page_v1(
             "size_bytes": len(image),
             "width": pixmap.width,
         },
-        "mode": (
-            "EXPANDED_SOURCE_CONTENT_BOUNDS"
-            if source_bounds_expanded
-            else "EXPANDED_DECLARED_MEDIA_BOX"
-            if declared_crop_expanded
-            else "DECLARED_PAGE_BOX"
-        ),
+        "mode": inspection.mode,
         "material_overflow_ratio": format(MIN_MATERIAL_OVERFLOW_RATIO, ".2f"),
-        "original_crop_box": _rect_values(original_crop),
-        "original_media_box": _rect_values(original_media),
-        "painted_content_box": None if painted is None else _rect_values(painted),
-        "painted_object_count": painted_object_count,
+        "original_crop_box": _rect_values(inspection.original_crop),
+        "original_media_box": _rect_values(inspection.original_media),
+        "painted_content_box": (
+            None if inspection.painted is None else _rect_values(inspection.painted)
+        ),
+        "painted_object_count": inspection.painted_object_count,
         "physical_page": physical_page,
         "rotation_degrees": page.rotation,
-        "selected_media_box": _rect_values(selected_media),
+        "selected_media_box": _rect_values(inspection.selected_media),
         "source_sha256": source_sha256,
     }
     return FullPdfPageRenderV1(image=image, page=page_record, receipt=receipt)
