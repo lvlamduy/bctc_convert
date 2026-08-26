@@ -3900,6 +3900,16 @@ def _project_unique_contextual_structural_body_matches_v1(
             if match.get("role_kind") == "ADDITIVE_CHILD"
             and match.get("scope_owner_occurrence_id") != owner["occurrence_id"]
         ]
+        prior_unowned_pages = {
+            match["page_sequence"]
+            for match in unowned_additive
+            if match["page_sequence"] < owner["page_sequence"]
+        }
+        prior_visible_pages = {
+            match["page_sequence"]
+            for match in unowned_visible
+            if match["page_sequence"] < owner["page_sequence"]
+        }
         post_owner_unowned = [
             match
             for match in decorated
@@ -3913,7 +3923,10 @@ def _project_unique_contextual_structural_body_matches_v1(
             or region.get("continuation_page_count") != 1
             or owner_page != region_page + 1
             or not unowned_visible
-            or (row_axis is not None and len(unowned_visible) != len(unowned_additive))
+            or (
+                row_axis is not None
+                and (not prior_unowned_pages or not prior_unowned_pages <= prior_visible_pages)
+            )
             or len(owner_lane_counts) != 1
             or 0 in owner_lane_counts
             or any(len(visible_values(match)) in owner_lane_counts for match in unowned_visible)
