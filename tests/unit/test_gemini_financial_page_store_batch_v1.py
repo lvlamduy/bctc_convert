@@ -10,6 +10,7 @@ from bctc_ai.evaluation.gemini_json_first_batch_v1 import BatchSubmissionV1
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
+    batch_failed_page_requests_v1,
     batch_progress_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
@@ -191,3 +192,20 @@ def test_batch_result_cannot_bind_a_different_page_or_cache(tmp_path) -> None:
             disposition="INGESTED",
             extraction_run_id="gfpstorev1:run:" + "0" * 64,
         )
+
+
+def test_failed_batch_page_retains_typed_provider_error_for_fallback(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    _register(path)
+    error = {"provider_error": {"finish_reason": "RECITATION"}}
+    record_batch_request_result_v1(
+        path,
+        batch_name="batches/batch-1",
+        request_id="page-007",
+        disposition="FAILED",
+        error=error,
+    )
+    assert batch_failed_page_requests_v1(path, batch_name="batches/batch-1") == [
+        {"error": error, "physical_page": 7, "request_id": "page-007"}
+    ]

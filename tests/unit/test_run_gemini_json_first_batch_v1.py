@@ -78,6 +78,26 @@ def test_document_manifest_command_merges_disjoint_batches_in_page_order(
     assert observed["selected_provider"] == "GOOGLE_GEMINI_BATCH_API"
     assert json.loads(output.read_bytes())["document_manifest_id"] == "gfdmv1:manifest:ok"
 
+    observed.clear()
+    mixed_output = tmp_path / "mixed-document-manifest.json"
+    assert (
+        target._document_manifest(
+            argparse.Namespace(
+                allow_openrouter_fallback=True,
+                batch_artifact_dir=[first, second],
+                database=tmp_path / "store.sqlite3",
+                expected_page_count=3,
+                output=mixed_output,
+            )
+        )
+        == 0
+    )
+    assert "selected_provider" not in observed
+    assert observed["allowed_gateway_service_tiers"] == [
+        {"gateway": "GOOGLE_GEMINI_BATCH_API", "requested_service_tier": "batch"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+    ]
+
 
 @pytest.mark.parametrize(
     ("second_pages", "second_prompt", "message"),

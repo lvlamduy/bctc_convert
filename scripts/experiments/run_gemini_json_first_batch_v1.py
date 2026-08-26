@@ -171,6 +171,11 @@ def _parser() -> argparse.ArgumentParser:
         "--batch-artifact-dir", type=Path, action="append", required=True
     )
     document_manifest.add_argument("--expected-page-count", type=int, required=True)
+    document_manifest.add_argument(
+        "--allow-openrouter-fallback",
+        action="store_true",
+        help="Allow a unique OpenRouter Flex extraction only where Google Batch has no page.",
+    )
     document_manifest.add_argument("--output", type=Path, required=True)
     return parser
 
@@ -828,15 +833,20 @@ def _watch(args: argparse.Namespace) -> int:
 def _document_manifest(args: argparse.Namespace) -> int:
     if args.expected_page_count <= 0:
         raise RunGeminiJsonFirstBatchV1Error("expected page count must be positive")
+    allow_openrouter_fallback = bool(getattr(args, "allow_openrouter_fallback", False))
     manifests = [
         _json_file(artifact_dir / "manifest.json") for artifact_dir in args.batch_artifact_dir
     ]
     contract_fields = (
-        "prompt_sha256",
-        "provider",
-        "requested_model",
-        "requested_service_tier",
-        "response_schema_sha256",
+        ("prompt_sha256", "requested_model", "response_schema_sha256")
+        if allow_openrouter_fallback
+        else (
+            "prompt_sha256",
+            "provider",
+            "requested_model",
+            "requested_service_tier",
+            "response_schema_sha256",
+        )
     )
     contracts = [
         {field: manifest.get(field) for field in contract_fields} for manifest in manifests
@@ -875,17 +885,26 @@ def _document_manifest(args: argparse.Namespace) -> int:
             "batch artifact manifests do not cover the exact document page frontier"
         )
     contract = contracts[0]
-    output = build_financial_document_manifest_v1(
-        args.database,
-        source_sha256=document["source_sha256"],
-        source_logical_name=document["source_logical_name"],
-        expected_physical_pages=expected_pages,
-        prompt_sha256=contract["prompt_sha256"],
-        response_schema_sha256=contract["response_schema_sha256"],
-        requested_model=contract["requested_model"],
-        requested_service_tier=contract["requested_service_tier"],
-        selected_provider=contract["provider"],
-    )
+    manifest_args: dict[str, Any] = {
+        "source_sha256": document["source_sha256"],
+        "source_logical_name": document["source_logical_name"],
+        "expected_physical_pages": expected_pages,
+        "prompt_sha256": contract["prompt_sha256"],
+        "response_schema_sha256": contract["response_schema_sha256"],
+        "requested_model": contract["requested_model"],
+    }
+    if allow_openrouter_fallback:
+        manifest_args["allowed_gateway_service_tiers"] = [
+            {
+                "gateway": "GOOGLE_GEMINI_BATCH_API",
+                "requested_service_tier": "batch",
+            },
+            {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        ]
+    else:
+        manifest_args["requested_service_tier"] = contract["requested_service_tier"]
+        manifest_args["selected_provider"] = contract["provider"]
+    output = build_financial_document_manifest_v1(args.database, **manifest_args)
     _write_same(args.output, canonical_json_bytes_v1(output) + b"\n")
     print(
         json.dumps(

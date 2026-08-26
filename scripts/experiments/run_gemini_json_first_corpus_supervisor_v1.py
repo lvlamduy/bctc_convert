@@ -30,6 +30,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (  # noqa: E402
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    batch_failed_page_requests_v1,
     batch_finalized_requests_v1,
     batch_progress_v1,
     usage_summary_v1,
@@ -73,6 +74,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--google-poll-interval-seconds", type=float, default=30.0)
     run.add_argument("--google-watch-max-seconds", type=float, default=172_800.0)
     run.add_argument("--provider-timeout-seconds", type=int, default=900)
+    run.add_argument("--max-fallback-attempts", type=int, default=2)
     return parser
 
 
@@ -331,7 +333,7 @@ def _poll_google(
     if progress["failed_pages"] == 0 and progress["ingested_pages"] == progress["request_count"]:
         next_state = "SUCCEEDED"
     elif task["attempt_count"] >= max_attempts:
-        next_state = "FAILED"
+        next_state = "FALLBACK_PENDING"
     else:
         next_state = "NEEDS_RETRY"
     return transition_corpus_task_v1(
@@ -340,6 +342,89 @@ def _poll_google(
         expected_state="RUNNING",
         next_state=next_state,
         receipt=progress,
+    )
+
+
+def _run_google_fallback(
+    *,
+    task: dict[str, Any],
+    plan: dict[str, Any],
+    ledger: Path,
+    source_root: Path,
+    database: Path,
+    artifact_root: Path,
+    openrouter_key_file: Path,
+    provider_timeout_seconds: int,
+    max_fallback_attempts: int,
+) -> dict[str, Any]:
+    """Run only terminal Google failures through bounded OpenRouter Flex calls."""
+
+    failures = batch_failed_page_requests_v1(database, batch_name=task["provider_job_ref"])
+    pages = sorted({failure["physical_page"] for failure in failures})
+    if not pages or len(pages) != len(failures):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Google fallback page frontier is empty or duplicate"
+        )
+    if task["state"] == "FALLBACK_PENDING":
+        task = transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="FALLBACK_PENDING",
+            next_state="FALLBACK_RUNNING",
+            receipt={
+                "failed_requests": failures,
+                "gateway": "OPENROUTER",
+            },
+        )
+    source = _source(task, source_root)
+    fallback_root = _task_root(task, artifact_root) / "openrouter-fallback"
+    prior_receipts = len(list((fallback_root / "run-receipts").glob("*.json")))
+    fallback_attempt = prior_receipts + 1
+    command = [
+        sys.executable,
+        str(OPENROUTER_RUNNER),
+        "--pdf",
+        str(source),
+        "--source-logical-name",
+        task["relative_path"],
+        "--database",
+        str(database),
+        "--artifact-dir",
+        str(fallback_root),
+        "--dpi",
+        str(plan["policy"]["dpi"]),
+        "--workers",
+        str(min(plan["policy"]["openrouter_workers"], len(pages))),
+        "--prompt-variant",
+        corpus_ledger_summary_v1(ledger)["prompt_variant"],
+        "--output-contract-mode",
+        "json-schema",
+        "--openrouter-key-file",
+        str(openrouter_key_file),
+        "--timeout-seconds",
+        str(provider_timeout_seconds),
+    ]
+    for page in pages:
+        command.extend(("--physical-page", str(page)))
+    return_code, receipt = _command(command, expected={0, 2})
+    next_state = (
+        "SUCCEEDED"
+        if return_code == 0
+        else "FALLBACK_PENDING"
+        if fallback_attempt < max_fallback_attempts
+        else "FAILED"
+    )
+    return transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="FALLBACK_RUNNING",
+        next_state=next_state,
+        receipt={
+            "fallback_attempt": fallback_attempt,
+            "fallback_pages": pages,
+            "fallback_result": receipt,
+            "gateway": "OPENROUTER",
+        },
     )
 
 
@@ -428,6 +513,10 @@ def _finalize_google_manifests(
                 for attempt in sorted(task_root.glob("google-attempt-*"))
                 if (attempt / "manifest.json").is_file()
             )
+        fallback_used = any(
+            (_task_root(by_id[task["task_id"]], artifact_root) / "openrouter-fallback").exists()
+            for task in planned["tasks"]
+        )
         output = (
             artifact_root
             / "documents"
@@ -447,6 +536,8 @@ def _finalize_google_manifests(
         ]
         for artifact in artifact_dirs:
             command.extend(("--batch-artifact-dir", str(artifact)))
+        if fallback_used:
+            command.append("--allow-openrouter-fallback")
         _command(command, expected={0})
         outputs.append(str(output))
     return outputs
@@ -461,6 +552,8 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
     if not 1 <= args.max_active_google <= 32:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("active Google bound lies outside 1..32")
+    if not 1 <= args.max_fallback_attempts <= 10:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("fallback attempt bound lies outside 1..10")
     args.artifact_root.mkdir(parents=True, exist_ok=True)
     _write_or_verify(args.artifact_root / "corpus-plan.json", canonical_json_bytes_v1(plan))
     started = time.monotonic()
@@ -500,6 +593,25 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                     provider_timeout_seconds=args.provider_timeout_seconds,
                 )
             )
+        fallback = [
+            task
+            for task in unfinished
+            if task["route"] == GOOGLE_ROUTE
+            and task["state"] in {"FALLBACK_PENDING", "FALLBACK_RUNNING"}
+        ]
+        if fallback:
+            _run_google_fallback(
+                task=fallback[0],
+                plan=plan,
+                ledger=args.ledger,
+                source_root=args.source_root,
+                database=args.database,
+                artifact_root=args.artifact_root,
+                openrouter_key_file=args.openrouter_key_file,
+                provider_timeout_seconds=args.provider_timeout_seconds,
+                max_fallback_attempts=args.max_fallback_attempts,
+            )
+            continue
         openrouter = [
             task
             for task in unfinished

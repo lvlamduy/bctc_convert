@@ -1005,6 +1005,41 @@ def batch_finalized_requests_v1(path: Path, *, batch_name: str) -> dict[str, str
     return {row["request_id"]: row["disposition"] for row in rows if row["disposition"]}
 
 
+def batch_failed_page_requests_v1(path: Path, *, batch_name: str) -> list[dict[str, Any]]:
+    """Return exact failed page bindings and typed errors for one terminal batch."""
+
+    with _connect(path, readonly=True) as connection:
+        rows = connection.execute(
+            """
+            SELECT r.request_id, p.physical_page, x.error_json
+            FROM batch_job AS j
+            JOIN batch_page_request AS r USING (batch_job_id)
+            JOIN page AS p USING (page_id)
+            JOIN batch_request_result AS x
+              ON x.batch_job_id=r.batch_job_id AND x.request_id=r.request_id
+            WHERE j.provider_batch_name=? AND x.disposition='FAILED'
+            ORDER BY p.physical_page, r.request_id
+            """,
+            (batch_name,),
+        ).fetchall()
+    result = []
+    for row in rows:
+        try:
+            error = json.loads(row["error_json"])
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise _error("failed batch request error receipt is invalid") from exc
+        if type(error) is not dict:
+            raise _error("failed batch request error receipt is not one object")
+        result.append(
+            {
+                "error": error,
+                "physical_page": row["physical_page"],
+                "request_id": row["request_id"],
+            }
+        )
+    return result
+
+
 def query_family_anchor_regions_v1(
     path: Path,
     *,
@@ -1097,8 +1132,9 @@ def build_financial_document_manifest_v1(
     prompt_sha256: str,
     response_schema_sha256: str,
     requested_model: str,
-    requested_service_tier: str,
-    selected_provider: str,
+    requested_service_tier: str | None = None,
+    selected_provider: str | None = None,
+    allowed_gateway_service_tiers: Sequence[Mapping[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Bind one complete document to an exact immutable extraction contract.
 
@@ -1125,15 +1161,52 @@ def build_financial_document_manifest_v1(
         or pages != sorted(set(pages))
     ):
         raise _error("document manifest page frontier is invalid")
-    exact_strings = {
+    common_contract = {
         "prompt_sha256": prompt_sha256,
         "response_schema_sha256": response_schema_sha256,
         "requested_model": requested_model,
-        "requested_service_tier": requested_service_tier,
-        "selected_provider": selected_provider,
     }
-    if any(type(value) is not str or not value for value in exact_strings.values()):
+    if any(type(value) is not str or not value for value in common_contract.values()):
         raise _error("document manifest extraction contract is invalid")
+    if allowed_gateway_service_tiers is None:
+        if (
+            type(requested_service_tier) is not str
+            or not requested_service_tier
+            or type(selected_provider) is not str
+            or not selected_provider
+        ):
+            raise _error("document manifest extraction contract is invalid")
+        allowed_routes = None
+        extraction_contract = {
+            **common_contract,
+            "requested_service_tier": requested_service_tier,
+            "selected_provider": selected_provider,
+        }
+    else:
+        if requested_service_tier is not None or selected_provider is not None:
+            raise _error("mixed document manifest cannot also select one provider")
+        routes: list[dict[str, str]] = []
+        for route in allowed_gateway_service_tiers:
+            if type(route) is not dict or set(route) != {"gateway", "requested_service_tier"}:
+                raise _error("mixed document provider route fields drifted")
+            gateway = route["gateway"]
+            service_tier = route["requested_service_tier"]
+            if (
+                type(gateway) is not str
+                or not gateway
+                or type(service_tier) is not str
+                or not service_tier
+            ):
+                raise _error("mixed document provider route is invalid")
+            routes.append({"gateway": gateway, "requested_service_tier": service_tier})
+        routes.sort(key=lambda route: (route["gateway"], route["requested_service_tier"]))
+        if not routes or len({tuple(route.values()) for route in routes}) != len(routes):
+            raise _error("mixed document provider routes are empty or duplicate")
+        allowed_routes = {(route["gateway"], route["requested_service_tier"]) for route in routes}
+        extraction_contract = {
+            **common_contract,
+            "allowed_gateway_service_tiers": routes,
+        }
     placeholders = ",".join("?" for _ in pages)
     with _connect(path, readonly=True) as connection:
         if source_logical_name is None:
@@ -1154,10 +1227,15 @@ def build_financial_document_manifest_v1(
                    p.image_size_bytes, p.pixel_width, p.pixel_height,
                    p.render_dpi, p.media_type,
                    r.extraction_run_id, r.selected_model,
+                   r.requested_service_tier, r.selected_provider,
                    r.selected_service_tier, r.response_id_sha256,
                    r.input_tokens, r.output_tokens, r.thought_tokens,
                    r.cached_input_tokens, r.total_tokens, r.cost_usd,
                    r.cost_disposition,
+                   (SELECT MIN(a.provider) FROM provider_attempt AS a
+                    WHERE a.extraction_run_id=r.extraction_run_id) AS gateway,
+                   (SELECT COUNT(DISTINCT a.provider) FROM provider_attempt AS a
+                    WHERE a.extraction_run_id=r.extraction_run_id) AS gateway_count,
                    j.page_json_version_id, j.page_status,
                    j.canonical_json_sha256,
                    (SELECT COUNT(*) FROM section_node AS s
@@ -1176,8 +1254,6 @@ def build_financial_document_manifest_v1(
               AND r.prompt_sha256=?
               AND r.response_schema_sha256=?
               AND r.requested_model=?
-              AND r.requested_service_tier=?
-              AND r.selected_provider=?
             ORDER BY p.physical_page
             """,
             (
@@ -1186,10 +1262,22 @@ def build_financial_document_manifest_v1(
                 prompt_sha256,
                 response_schema_sha256,
                 requested_model,
-                requested_service_tier,
-                selected_provider,
             ),
         ).fetchall()
+    if allowed_routes is None:
+        records = [
+            record
+            for record in records
+            if record["requested_service_tier"] == requested_service_tier
+            and record["selected_provider"] == selected_provider
+        ]
+    else:
+        records = [
+            record
+            for record in records
+            if record["gateway_count"] == 1
+            and (record["gateway"], record["requested_service_tier"]) in allowed_routes
+        ]
     returned_pages = [record["physical_page"] for record in records]
     if returned_pages != pages:
         raise _error("document manifest page frontier is incomplete or duplicate")
@@ -1213,42 +1301,47 @@ def build_financial_document_manifest_v1(
         total_cost += Decimal(record["cost_usd"])
         for field in totals:
             totals[field] += record[field]
-        page_records.append(
-            {
-                "canonical_json_sha256": record["canonical_json_sha256"],
-                "content_counts": {
-                    "cell_count": record["cell_count"],
-                    "row_count": record["row_count"],
-                    "section_count": record["section_count"],
-                    "table_count": record["table_count"],
-                },
-                "cost_disposition": record["cost_disposition"],
-                "cost_usd": record["cost_usd"],
-                "extraction_run_id": record["extraction_run_id"],
-                "image": {
-                    "height": record["pixel_height"],
-                    "media_type": record["media_type"],
-                    "render_dpi": record["render_dpi"],
-                    "sha256": record["image_sha256"],
-                    "size_bytes": record["image_size_bytes"],
-                    "width": record["pixel_width"],
-                },
-                "page_id": record["page_id"],
-                "page_json_version_id": record["page_json_version_id"],
-                "physical_page": record["physical_page"],
-                "response_id_sha256": record["response_id_sha256"],
-                "selected_model": record["selected_model"],
-                "selected_service_tier": record["selected_service_tier"],
-                "status": status,
-                "usage": {
-                    "cached_input_tokens": record["cached_input_tokens"],
-                    "input_tokens": record["input_tokens"],
-                    "output_tokens": record["output_tokens"],
-                    "thought_tokens": record["thought_tokens"],
-                    "total_tokens": record["total_tokens"],
-                },
+        page_record = {
+            "canonical_json_sha256": record["canonical_json_sha256"],
+            "content_counts": {
+                "cell_count": record["cell_count"],
+                "row_count": record["row_count"],
+                "section_count": record["section_count"],
+                "table_count": record["table_count"],
+            },
+            "cost_disposition": record["cost_disposition"],
+            "cost_usd": record["cost_usd"],
+            "extraction_run_id": record["extraction_run_id"],
+            "image": {
+                "height": record["pixel_height"],
+                "media_type": record["media_type"],
+                "render_dpi": record["render_dpi"],
+                "sha256": record["image_sha256"],
+                "size_bytes": record["image_size_bytes"],
+                "width": record["pixel_width"],
+            },
+            "page_id": record["page_id"],
+            "page_json_version_id": record["page_json_version_id"],
+            "physical_page": record["physical_page"],
+            "response_id_sha256": record["response_id_sha256"],
+            "selected_model": record["selected_model"],
+            "selected_service_tier": record["selected_service_tier"],
+            "status": status,
+            "usage": {
+                "cached_input_tokens": record["cached_input_tokens"],
+                "input_tokens": record["input_tokens"],
+                "output_tokens": record["output_tokens"],
+                "thought_tokens": record["thought_tokens"],
+                "total_tokens": record["total_tokens"],
+            },
+        }
+        if allowed_routes is not None:
+            page_record["provider_route"] = {
+                "gateway": record["gateway"],
+                "requested_service_tier": record["requested_service_tier"],
+                "selected_provider": record["selected_provider"],
             }
-        )
+        page_records.append(page_record)
     material = {
         "document": {
             "document_id": document["document_id"],
@@ -1256,8 +1349,12 @@ def build_financial_document_manifest_v1(
             "source_sha256": document["source_sha256"],
             "source_size_bytes": document["source_size_bytes"],
         },
-        "extraction_contract": exact_strings,
-        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1",
+        "extraction_contract": extraction_contract,
+        "format_version": (
+            "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V1"
+            if allowed_routes is None
+            else "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
+        ),
         "page_count": len(page_records),
         "pages": page_records,
         "status_counts": dict(sorted(status_counts.items())),

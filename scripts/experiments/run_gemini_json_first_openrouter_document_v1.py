@@ -12,7 +12,7 @@ import argparse
 import json
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from hashlib import sha256
@@ -83,6 +83,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--artifact-dir", type=Path, required=True)
+    parser.add_argument(
+        "--physical-page",
+        type=int,
+        action="append",
+        help="Process only this 1-based page; repeat for a bounded fallback frontier.",
+    )
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
     parser.add_argument("--workers", type=int, default=5)
     parser.add_argument(
@@ -260,14 +266,26 @@ def run_openrouter_document_v1(
     retries: int = 2,
     retry_delay_seconds: float = 5.0,
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
+    physical_pages: Sequence[int] | None = None,
 ) -> dict[str, Any]:
-    """Run or resume one complete document without concurrent SQLite writers."""
+    """Run or resume a whole document or one explicit bounded page frontier."""
 
     if dpi not in {200, 300} or type(workers) is not int or not 1 <= workers <= 32:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("DPI or worker count is invalid")
     if output_contract_mode not in {"JSON_SCHEMA", "PROMPT_JSON"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
     document, page_count = _document(pdf, source_logical_name)
+    selected_pages = (
+        list(range(1, page_count + 1)) if physical_pages is None else sorted(set(physical_pages))
+    )
+    if (
+        not selected_pages
+        or len(selected_pages) != (page_count if physical_pages is None else len(physical_pages))
+        or any(type(page) is not int or page <= 0 or page > page_count for page in selected_pages)
+    ):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "selected physical-page frontier is empty, duplicate, or out of range"
+        )
     prompt = build_financial_page_json_prompt_v1(
         variant=prompt_variant,
         include_contract_template=output_contract_mode == "PROMPT_JSON",
@@ -293,6 +311,9 @@ def run_openrouter_document_v1(
         "response_schema_sha256": schema_sha,
         "selected_provider": OPENROUTER_SELECTED_PROVIDER,
     }
+    if physical_pages is not None:
+        contract["format_version"] = "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
+        contract["selected_physical_pages"] = selected_pages
     contract["document_run_id"] = "gjfporv1:document:" + canonical_json_sha256_v1(contract)
     _write_or_verify(artifact_dir / "document-contract.json", canonical_json_bytes_v1(contract))
     if not database.exists():
@@ -321,7 +342,7 @@ def run_openrouter_document_v1(
                 retry_delay_seconds=retry_delay_seconds,
                 provider_call=provider_call,
             ): physical_page
-            for physical_page in range(1, page_count + 1)
+            for physical_page in selected_pages
         }
         for future in as_completed(futures):
             outcome = future.result()
@@ -330,7 +351,7 @@ def run_openrouter_document_v1(
     failed_pages: list[int] = []
     cached_pages: list[int] = []
     ingested_pages: list[int] = []
-    for physical_page in range(1, page_count + 1):
+    for physical_page in selected_pages:
         outcome = outcomes[physical_page]
         if outcome.cached_json is not None:
             cached_pages.append(physical_page)
@@ -419,7 +440,7 @@ def run_openrouter_document_v1(
         ingested_pages.append(physical_page)
 
     manifest = None
-    if not failed_pages:
+    if not failed_pages and physical_pages is None:
         manifest = build_financial_document_manifest_v1(
             database,
             source_sha256=document["source_sha256"],
@@ -442,9 +463,12 @@ def run_openrouter_document_v1(
         "failed_pages": failed_pages,
         "ingested_pages": ingested_pages,
         "manifest_id": manifest["document_manifest_id"] if manifest is not None else None,
-        "page_count": page_count,
+        "page_count": len(selected_pages),
         "usage": usage_summary_v1(database),
     }
+    if physical_pages is not None:
+        summary["document_page_count"] = page_count
+        summary["physical_pages"] = selected_pages
     summary_bytes = canonical_json_bytes_v1(summary)
     _write_or_verify(
         artifact_dir / "run-receipts" / (sha256(summary_bytes).hexdigest() + ".json"),
@@ -468,6 +492,7 @@ def main() -> int:
         timeout_seconds=args.timeout_seconds,
         retries=args.retries,
         retry_delay_seconds=args.retry_delay_seconds,
+        physical_pages=args.physical_page,
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["disposition"] == "SUCCEEDED" else 2

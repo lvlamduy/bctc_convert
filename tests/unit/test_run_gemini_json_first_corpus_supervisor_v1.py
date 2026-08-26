@@ -196,3 +196,106 @@ def test_google_poll_transitions_only_after_terminal_ingestion(monkeypatch, tmp_
     assert result["state"] == "SUCCEEDED"
     assert transitions[0]["expected_state"] == "RUNNING"
     assert transitions[0]["next_state"] == "SUCCEEDED"
+
+
+def test_google_retry_exhaustion_moves_to_typed_fallback(monkeypatch, tmp_path) -> None:
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 2,
+        "provider_job_ref": "batches/done",
+        "state": "RUNNING",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "state": kwargs["next_state"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", lambda _argv, *, expected: (0, {}))
+    monkeypatch.setattr(
+        target,
+        "batch_progress_v1",
+        lambda _database: [
+            {
+                "batch_name": "batches/done",
+                "failed_pages": 1,
+                "ingested_pages": 0,
+                "request_count": 1,
+                "state": "BATCH_STATE_SUCCEEDED",
+            }
+        ],
+    )
+    result = target._poll_google(
+        task=task,
+        ledger=tmp_path / "ledger.sqlite3",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        google_key_file=tmp_path / "keys",
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert result["state"] == "FALLBACK_PENDING"
+    assert transitions[0]["next_state"] == "FALLBACK_PENDING"
+
+
+def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "MBB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 2,
+        "provider_job_ref": "batches/done",
+        "relative_path": "MBB/report.pdf",
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FALLBACK_PENDING",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        assert "--physical-page" in argv
+        assert argv.count("--physical-page") == 2
+        assert "7" in argv and "9" in argv
+        return 0, {"disposition": "SUCCEEDED"}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "batch_failed_page_requests_v1",
+        lambda _database, *, batch_name: [
+            {"error": {"provider_error": {}}, "physical_page": 7, "request_id": "p7"},
+            {"error": {"provider_error": {}}, "physical_page": 9, "request_id": "p9"},
+        ],
+    )
+    result = target._run_google_fallback(
+        task=task,
+        plan={"policy": {"dpi": 300, "openrouter_workers": 5}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        provider_timeout_seconds=60,
+        max_fallback_attempts=2,
+    )
+    assert result["state"] == "SUCCEEDED"
+    assert [item["next_state"] for item in transitions] == [
+        "FALLBACK_RUNNING",
+        "SUCCEEDED",
+    ]

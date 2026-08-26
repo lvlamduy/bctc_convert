@@ -313,3 +313,110 @@ def test_document_manifest_disambiguates_byte_identical_logical_filings(tmp_path
     assert selected["document"]["source_logical_name"] == "second.pdf"
     assert selected["pages"][0]["page_json_version_id"] == second["page_json_version_id"]
     assert selected["pages"][0]["page_json_version_id"] != first["page_json_version_id"]
+
+
+def test_document_manifest_can_bind_one_unique_route_per_page_for_typed_fallback(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    openrouter_result = replace(
+        _result(),
+        provider_name="Google",
+        provider_model="google/gemini-3.7-flash",
+        attempts=(
+            {
+                "attempt_ordinal": 1,
+                "credential_slot": "OPENROUTER_SLOT_1",
+                "elapsed_seconds": "10.000",
+                "http_status": 200,
+                "outcome": "COMPLETED",
+                "provider": "OPENROUTER",
+                "usage": _result().usage,
+            },
+        ),
+    )
+    _ingest(
+        path,
+        physical_page=7,
+        image_sha256="c" * 64,
+        provider_result=openrouter_result,
+    )
+    batch_result = replace(
+        _result(),
+        provider_name="GOOGLE_GEMINI_BATCH_API",
+        provider_model="gemini-3.7-flash",
+        service_tier="batch",
+        attempts=(
+            {
+                "attempt_ordinal": 1,
+                "credential_slot": "GOOGLE_SLOT_2",
+                "elapsed_seconds": "30.000",
+                "http_status": 200,
+                "outcome": "COMPLETED_BATCH",
+                "provider": "GOOGLE_GEMINI_BATCH_API",
+                "usage": _result().usage,
+            },
+        ),
+    )
+    ingest_financial_page_extraction_v1(
+        path,
+        document={
+            "source_logical_name": "report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 123,
+        },
+        page={
+            "physical_page": 8,
+            "image_sha256": "f" * 64,
+            "image_size_bytes": 456,
+            "pixel_width": 1654,
+            "pixel_height": 2339,
+            "render_dpi": 200,
+            "media_type": "image/png",
+        },
+        prompt_variant="compact",
+        output_contract_mode="JSON_SCHEMA",
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="batch",
+        thinking_level="low",
+        provider_result=batch_result,
+        page_json=_page(),
+    )
+    routes = [
+        {"gateway": "GOOGLE_GEMINI_BATCH_API", "requested_service_tier": "batch"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+    ]
+    manifest = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        expected_physical_pages=[7, 8],
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        allowed_gateway_service_tiers=routes,
+    )
+    assert manifest["format_version"] == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
+    assert [page["provider_route"]["gateway"] for page in manifest["pages"]] == [
+        "OPENROUTER",
+        "GOOGLE_GEMINI_BATCH_API",
+    ]
+
+    _ingest(
+        path,
+        physical_page=8,
+        image_sha256="f" * 64,
+        provider_result=openrouter_result,
+    )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            allowed_gateway_service_tiers=routes,
+        )

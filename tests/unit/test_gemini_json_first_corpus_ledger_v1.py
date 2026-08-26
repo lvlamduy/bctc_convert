@@ -150,3 +150,28 @@ def test_task_transitions_are_append_only_bounded_and_expected_state_guarded(tmp
         receipt={"provider_state": "RUNNING"},
     )
     assert provider_running["attempt_count"] == 1
+
+    fallback = transition_corpus_task_v1(
+        ledger,
+        task_id=other["task_id"],
+        expected_state="RUNNING",
+        next_state="FALLBACK_PENDING",
+        receipt={"failed_pages": [1]},
+    )
+    assert fallback["attempt_count"] == 1
+    fallback_running = transition_corpus_task_v1(
+        ledger,
+        task_id=other["task_id"],
+        expected_state="FALLBACK_PENDING",
+        next_state="FALLBACK_RUNNING",
+        receipt={"gateway": "OPENROUTER"},
+    )
+    assert fallback_running["attempt_count"] == 1
+    fallback_retry = transition_corpus_task_v1(
+        ledger,
+        task_id=other["task_id"],
+        expected_state="FALLBACK_RUNNING",
+        next_state="FALLBACK_PENDING",
+        receipt={"fallback_attempt": 1},
+    )
+    assert fallback_retry["attempt_count"] == 1

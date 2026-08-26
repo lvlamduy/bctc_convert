@@ -21,15 +21,28 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1,
 )
 
-FORMAT_VERSION = "GEMINI_JSON_FIRST_CORPUS_LEDGER_V1"
-TASK_STATES = frozenset({"PENDING", "SUBMITTED", "RUNNING", "SUCCEEDED", "NEEDS_RETRY", "FAILED"})
+FORMAT_VERSION = "GEMINI_JSON_FIRST_CORPUS_LEDGER_V2"
+TASK_STATES = frozenset(
+    {
+        "PENDING",
+        "SUBMITTED",
+        "RUNNING",
+        "SUCCEEDED",
+        "NEEDS_RETRY",
+        "FALLBACK_PENDING",
+        "FALLBACK_RUNNING",
+        "FAILED",
+    }
+)
 TERMINAL_TASK_STATES = frozenset({"SUCCEEDED", "FAILED"})
 
 _TRANSITIONS = {
     "PENDING": frozenset({"SUBMITTED", "RUNNING", "FAILED"}),
     "SUBMITTED": frozenset({"RUNNING", "SUCCEEDED", "NEEDS_RETRY", "FAILED"}),
-    "RUNNING": frozenset({"SUCCEEDED", "NEEDS_RETRY", "FAILED"}),
+    "RUNNING": frozenset({"SUCCEEDED", "NEEDS_RETRY", "FALLBACK_PENDING", "FAILED"}),
     "NEEDS_RETRY": frozenset({"SUBMITTED", "RUNNING", "FAILED"}),
+    "FALLBACK_PENDING": frozenset({"FALLBACK_RUNNING", "FAILED"}),
+    "FALLBACK_RUNNING": frozenset({"SUCCEEDED", "FALLBACK_PENDING", "FAILED"}),
     "SUCCEEDED": frozenset(),
     "FAILED": frozenset(),
 }
@@ -62,7 +75,8 @@ CREATE TABLE task (
   attempt_count INTEGER NOT NULL,
   provider_job_ref TEXT,
   last_receipt_json BLOB,
-  CHECK(state IN ('PENDING','SUBMITTED','RUNNING','SUCCEEDED','NEEDS_RETRY','FAILED')),
+  CHECK(state IN ('PENDING','SUBMITTED','RUNNING','SUCCEEDED','NEEDS_RETRY',
+                  'FALLBACK_PENDING','FALLBACK_RUNNING','FAILED')),
   CHECK(route IN ('GOOGLE_GEMINI_BATCH_API','OPENROUTER_VERTEX_FLEX')),
   CHECK(first_physical_page > 0),
   CHECK(last_physical_page >= first_physical_page),

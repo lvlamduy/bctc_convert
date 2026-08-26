@@ -182,3 +182,35 @@ def test_one_failed_page_does_not_abort_siblings_and_only_failure_retries(tmp_pa
     assert second["ingested_pages"] == [2]
     assert len(retried) == 1
     assert (artifacts / "document-manifest.json").is_file()
+
+
+def test_bounded_page_frontier_runs_in_parallel_without_claiming_whole_document(tmp_path) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 3)
+    calls = []
+
+    def provider(**kwargs):
+        calls.append(kwargs["image"])
+        return _result()
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=2,
+        physical_pages=[3, 1],
+        provider_call=provider,
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["document_page_count"] == 3
+    assert result["physical_pages"] == [1, 3]
+    assert result["ingested_pages"] == [1, 3]
+    assert result["page_count"] == 2
+    assert len(calls) == 2
+    assert not (artifacts / "document-manifest.json").exists()
+    contract = json.loads((artifacts / "document-contract.json").read_bytes())
+    assert contract["format_version"] == "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
+    assert contract["selected_physical_pages"] == [1, 3]
