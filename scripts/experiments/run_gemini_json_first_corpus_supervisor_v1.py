@@ -41,6 +41,7 @@ from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
     render_full_pdf_page_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
     OPENROUTER_SERVICE_TIER,
@@ -117,6 +118,20 @@ def _parser() -> argparse.ArgumentParser:
     repair_google.add_argument("--google-key-slot", type=int, default=2)
     repair_google.add_argument("--openrouter-workers", type=int, default=20)
     repair_google.add_argument("--provider-timeout-seconds", type=int, default=900)
+
+    current_manifest = commands.add_parser("document-manifest-current")
+    current_manifest.add_argument("--plan", type=Path, required=True)
+    current_manifest.add_argument("--ledger", type=Path, required=True)
+    current_manifest.add_argument("--task-id", required=True)
+    current_manifest.add_argument("--source-root", type=Path, required=True)
+    current_manifest.add_argument("--database", type=Path, required=True)
+    current_manifest.add_argument("--artifact-root", type=Path, required=True)
+    current_manifest.add_argument(
+        "--page-prompt-variant",
+        action="append",
+        default=[],
+        metavar="PAGE=VARIANT",
+    )
 
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
@@ -713,6 +728,128 @@ def _current_page_image_sha256s_v1(
             )
             result[physical_page] = rendered.page["image_sha256"]
     return result
+
+
+def _page_prompt_variants_v1(
+    *,
+    expected_pages: list[int],
+    default_variant: str,
+    overrides: list[str],
+) -> dict[int, str]:
+    allowed = {"balanced", "compact", "items", "scope", "simple"}
+    if default_variant not in allowed:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("default page prompt variant is invalid")
+    result = {page: default_variant for page in expected_pages}
+    seen: set[int] = set()
+    for override in overrides:
+        if type(override) is not str or override.count("=") != 1:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "page prompt override must be PAGE=VARIANT"
+            )
+        raw_page, variant = override.split("=", 1)
+        try:
+            page = int(raw_page)
+        except ValueError as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "page prompt override page is invalid"
+            ) from exc
+        if page not in result or page in seen or variant not in allowed:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "page prompt override is duplicate, out of range, or invalid"
+            )
+        seen.add(page)
+        result[page] = variant
+    return result
+
+
+def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
+    """Seal one document only from current whole-page images and explicit prompts."""
+
+    plan = _plan(args.plan)
+    indexed = _task_index(plan)
+    selected = indexed.get(args.task_id)
+    if selected is None:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "current document manifest task is absent from the corpus plan"
+        )
+    planned = selected["planned_document"]
+    planned_task_ids = {task["task_id"] for task in planned["tasks"]}
+    tasks = [
+        task for task in list_corpus_tasks_v1(args.ledger) if task["task_id"] in planned_task_ids
+    ]
+    if len(tasks) != len(planned_task_ids) or any(task["state"] != "SUCCEEDED" for task in tasks):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "current document manifest requires every planned task to be succeeded"
+        )
+    task = next(task for task in tasks if task["task_id"] == args.task_id)
+    expected_pages = list(range(1, task["document_page_count"] + 1))
+    variants = _page_prompt_variants_v1(
+        expected_pages=expected_pages,
+        default_variant=corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
+        overrides=args.page_prompt_variant,
+    )
+    prompt_sha256s = {
+        page: sha256(
+            build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
+        ).hexdigest()
+        for page, variant in variants.items()
+    }
+    page_images = _current_page_image_sha256s_v1(
+        task=task,
+        source_root=args.source_root,
+        dpi=plan["policy"]["dpi"],
+    )
+    manifest = build_financial_document_manifest_v1(
+        args.database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=expected_pages,
+        page_image_sha256s=page_images,
+        prompt_sha256=prompt_sha256s,
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+        requested_model=GOOGLE_MODEL,
+        allowed_gateway_service_tiers=[
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_BATCH_API",
+                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+            },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+    )
+    unresolved_pages = [
+        page["physical_page"] for page in manifest["pages"] if page["status"] == "UNRESOLVED_PAGE"
+    ]
+    if unresolved_pages:
+        return {
+            "disposition": "NEEDS_RETRY",
+            "document_manifest_id": manifest["document_manifest_id"],
+            "unresolved_pages": unresolved_pages,
+        }
+    output = (
+        args.artifact_root
+        / "documents"
+        / planned["document_plan_id"].split(":", 1)[1]
+        / "current-document-manifest.json"
+    )
+    _write_or_verify(output, canonical_json_bytes_v1(manifest) + b"\n")
+    return {
+        "disposition": "SUCCEEDED",
+        "document_manifest_id": manifest["document_manifest_id"],
+        "output": str(output),
+        "page_count": manifest["page_count"],
+        "page_prompt_variants": [
+            {"physical_page": page, "prompt_variant": variant} for page, variant in variants.items()
+        ],
+        "status_counts": manifest["status_counts"],
+        "totals": manifest["totals"],
+    }
 
 
 def _semantic_retry_no_relevant_pages_v1(
@@ -1413,10 +1550,12 @@ def main() -> int:
         result = repair_openrouter_items_task(args)
     elif args.command == "repair-openrouter-google":
         result = repair_openrouter_google_task(args)
+    elif args.command == "document-manifest-current":
+        result = build_current_document_manifest(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    return 0 if result.get("disposition") != "FAILED" else 2
+    return 0 if result.get("disposition") not in {"FAILED", "NEEDS_RETRY"} else 2
 
 
 if __name__ == "__main__":

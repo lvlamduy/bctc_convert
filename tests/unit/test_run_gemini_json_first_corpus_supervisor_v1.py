@@ -898,6 +898,85 @@ def test_provider_page_image_frontier_rejects_missing_duplicate_and_bad_hash() -
             target._summary_page_image_sha256s_v1(attack, allowed_pages=[1, 2])
 
 
+def test_current_document_manifest_binds_image_and_prompt_frontiers(monkeypatch, tmp_path) -> None:
+    task = {
+        "artifact_relative_path": "task-1",
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "relative_path": "ACB/report.pdf",
+        "source_sha256": "a" * 64,
+        "state": "SUCCEEDED",
+        "task_id": "task-1",
+    }
+    planned = {
+        "document": {"page_count": 3},
+        "document_plan_id": "gjfpdocv1:" + "b" * 64,
+        "route": target.OPENROUTER_ROUTE,
+        "tasks": [{"task_id": "task-1"}],
+    }
+    monkeypatch.setattr(
+        target, "_plan", lambda _path: {"documents": [planned], "policy": {"dpi": 300}}
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _ledger: [task])
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    images = {page: str(page) * 64 for page in (1, 2, 3)}
+    monkeypatch.setattr(target, "_current_page_image_sha256s_v1", lambda **_kwargs: images)
+    captured = []
+
+    def manifest(_database, **kwargs):
+        captured.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "c" * 64,
+            "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+            "page_count": 3,
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
+            "status_counts": {"FINANCIAL_NOTE_CONTENT": 3},
+            "totals": {"cost_usd": "0.010000000000"},
+        }
+
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        page_prompt_variant=["2=scope", "3=items"],
+        plan=tmp_path / "plan.json",
+        source_root=tmp_path / "source",
+        task_id="task-1",
+    )
+    result = target.build_current_document_manifest(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert captured[0]["page_image_sha256s"] == images
+    prompts = captured[0]["prompt_sha256"]
+    assert len(set(prompts.values())) == 3
+    assert [item["prompt_variant"] for item in result["page_prompt_variants"]] == [
+        "simple",
+        "scope",
+        "items",
+    ]
+    assert Path(result["output"]).is_file()
+
+
+def test_page_prompt_variant_overrides_fail_closed() -> None:
+    for overrides in (["1=scope", "1=items"], ["4=scope"], ["1=unknown"], ["bad"]):
+        with pytest.raises(
+            target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+            match="page prompt override",
+        ):
+            target._page_prompt_variants_v1(
+                expected_pages=[1, 2, 3],
+                default_variant="simple",
+                overrides=overrides,
+            )
+
+
 def test_openrouter_first_semantic_failure_moves_to_item_retry(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "VPB" / "report.pdf"
