@@ -534,6 +534,37 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
     ]
 
 
+def test_interrupted_google_file_uploads_are_preserved_before_clean_resubmission(
+    tmp_path,
+) -> None:
+    attempt = tmp_path / "task" / "google-attempt-0001"
+    uploaded = attempt / "uploaded-files"
+    uploaded.mkdir(parents=True)
+    for page in (1, 2):
+        (uploaded / f"request-{page}.json").write_text(
+            json.dumps({"file": {"name": f"files/{page}"}}), encoding="utf-8"
+        )
+    quarantine = target._quarantine_pre_submission_google_uploads_v1(attempt)
+    assert not attempt.exists()
+    assert [path.name for path in sorted((quarantine / "uploaded-files").glob("*.json"))] == [
+        "request-1.json",
+        "request-2.json",
+    ]
+    receipt = json.loads((quarantine / "quarantine-receipt.json").read_bytes())
+    assert receipt["disposition"] == "QUARANTINED_PRE_SUBMISSION_UPLOADS"
+    assert len(receipt["uploaded_files"]) == 2
+
+    unsafe = tmp_path / "unsafe" / "google-attempt-0001"
+    (unsafe / "uploaded-files").mkdir(parents=True)
+    (unsafe / "uploaded-files" / "request.json").write_text(
+        json.dumps({"file": {"name": "files/unsafe"}}), encoding="utf-8"
+    )
+    (unsafe / "manifest.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(target.RunGeminiJsonFirstCorpusSupervisorV1Error, match="safe pre"):
+        target._quarantine_pre_submission_google_uploads_v1(unsafe)
+    assert unsafe.is_dir()
+
+
 def test_google_fallback_selects_scope_and_items_from_typed_batch_failures(
     monkeypatch, tmp_path
 ) -> None:

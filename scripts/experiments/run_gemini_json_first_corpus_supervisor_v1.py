@@ -354,6 +354,71 @@ def _google_success_pages(task: dict[str, Any], artifact_root: Path, database: P
     return succeeded
 
 
+def _quarantine_pre_submission_google_uploads_v1(attempt: Path) -> Path:
+    """Preserve an interrupted file-upload frontier that cannot have submitted a batch."""
+
+    children = sorted(attempt.iterdir())
+    if len(children) != 1 or children[0].name != "uploaded-files" or not children[0].is_dir():
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "incomplete Google attempt is beyond its safe pre-submission upload boundary"
+        )
+    uploaded = []
+    for path in sorted(children[0].iterdir()):
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or path.stat().st_nlink != 1
+            or path.suffix != ".json"
+            or path.name == "batch-input.json"
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "incomplete Google upload frontier contains an unsafe artifact"
+            )
+        raw = path.read_bytes()
+        try:
+            value = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "incomplete Google upload receipt is invalid"
+            ) from exc
+        if type(value) is not dict or type(value.get("file")) is not dict:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "incomplete Google upload receipt fields drifted"
+            )
+        uploaded.append(
+            {
+                "path": path.relative_to(attempt).as_posix(),
+                "sha256": sha256(raw).hexdigest(),
+                "size_bytes": len(raw),
+            }
+        )
+    if not uploaded:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "incomplete Google upload frontier is empty"
+        )
+    material = {
+        "attempt_name": attempt.name,
+        "disposition": "QUARANTINED_PRE_SUBMISSION_UPLOADS",
+        "format_version": "GEMINI_JSON_FIRST_GOOGLE_INCOMPLETE_ATTEMPT_V1",
+        "uploaded_files": uploaded,
+    }
+    quarantine_id = "gjfpgqv1:quarantine:" + canonical_json_sha256_v1(material)
+    receipt = {**material, "quarantine_id": quarantine_id}
+    quarantine_root = attempt.parent / "abandoned-google-attempts"
+    quarantine = quarantine_root / quarantine_id.split(":", 2)[2]
+    if quarantine.exists():
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "incomplete Google upload quarantine identity already exists"
+        )
+    quarantine_root.mkdir(parents=True, exist_ok=True)
+    os.replace(attempt, quarantine)
+    _write_or_verify(
+        quarantine / "quarantine-receipt.json",
+        canonical_json_bytes_v1(receipt) + b"\n",
+    )
+    return quarantine
+
+
 def _recover_or_submit_google(
     *,
     task: dict[str, Any],
@@ -384,9 +449,7 @@ def _recover_or_submit_google(
         submitted = _json_file(receipt_path)
     else:
         if attempt.exists() and any(attempt.iterdir()):
-            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                "incomplete Google attempt has no submission receipt"
-            )
+            _quarantine_pre_submission_google_uploads_v1(attempt)
         pages = sorted(
             set(range(task["first_physical_page"], task["last_physical_page"] + 1))
             - _google_success_pages(task, artifact_root, database)
