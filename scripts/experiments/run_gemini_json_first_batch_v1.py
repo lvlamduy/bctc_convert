@@ -60,6 +60,7 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     batch_finalized_requests_v1,
     batch_progress_v1,
+    build_financial_document_manifest_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
     record_batch_poll_v1,
@@ -132,6 +133,14 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status")
     status.add_argument("--database", type=Path, required=True)
+
+    document_manifest = commands.add_parser("document-manifest")
+    document_manifest.add_argument("--database", type=Path, required=True)
+    document_manifest.add_argument(
+        "--batch-artifact-dir", type=Path, action="append", required=True
+    )
+    document_manifest.add_argument("--expected-page-count", type=int, required=True)
+    document_manifest.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -651,12 +660,78 @@ def _poll(args: argparse.Namespace) -> int:
     return 0
 
 
+def _document_manifest(args: argparse.Namespace) -> int:
+    if args.expected_page_count <= 0:
+        raise RunGeminiJsonFirstBatchV1Error("expected page count must be positive")
+    manifests = [
+        _json_file(artifact_dir / "manifest.json") for artifact_dir in args.batch_artifact_dir
+    ]
+    contract_fields = (
+        "prompt_sha256",
+        "provider",
+        "requested_model",
+        "requested_service_tier",
+        "response_schema_sha256",
+    )
+    contracts = [
+        {field: manifest.get(field) for field in contract_fields} for manifest in manifests
+    ]
+    if not contracts or any(contract != contracts[0] for contract in contracts[1:]):
+        raise RunGeminiJsonFirstBatchV1Error(
+            "batch artifact manifests do not share one extraction contract"
+        )
+    requests = [request for manifest in manifests for request in manifest.get("requests", [])]
+    if not requests:
+        raise RunGeminiJsonFirstBatchV1Error("batch artifact manifests contain no requests")
+    document = requests[0].get("document")
+    if type(document) is not dict or any(
+        request.get("document") != document for request in requests[1:]
+    ):
+        raise RunGeminiJsonFirstBatchV1Error(
+            "batch artifact manifests do not bind one exact document"
+        )
+    pages = [request.get("page", {}).get("physical_page") for request in requests]
+    expected_pages = list(range(1, args.expected_page_count + 1))
+    if sorted(pages) != expected_pages:
+        raise RunGeminiJsonFirstBatchV1Error(
+            "batch artifact manifests do not cover the exact document page frontier"
+        )
+    contract = contracts[0]
+    output = build_financial_document_manifest_v1(
+        args.database,
+        source_sha256=document["source_sha256"],
+        expected_physical_pages=expected_pages,
+        prompt_sha256=contract["prompt_sha256"],
+        response_schema_sha256=contract["response_schema_sha256"],
+        requested_model=contract["requested_model"],
+        requested_service_tier=contract["requested_service_tier"],
+        selected_provider=contract["provider"],
+    )
+    _write_same(args.output, canonical_json_bytes_v1(output) + b"\n")
+    print(
+        json.dumps(
+            {
+                "document_manifest_id": output["document_manifest_id"],
+                "output": str(args.output),
+                "page_count": output["page_count"],
+                "status_counts": output["status_counts"],
+                "totals": output["totals"],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def main() -> int:
     args = _parser().parse_args()
     if args.command == "submit":
         return _submit(args)
     if args.command == "poll":
         return _poll(args)
+    if args.command == "document-manifest":
+        return _document_manifest(args)
     print(json.dumps({"progress": batch_progress_v1(args.database)}, sort_keys=True))
     return 0
 
