@@ -914,6 +914,19 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
         and all(item is None for item in omitted[0]["header_path_exact"])
         and all(_signed_integer_cell_v1(row["label_exact"]) is not None for row in rows)
     )
+    anonymous_row_label_key = (
+        missing_count == 1
+        and omitted[0]["value_kind"] == "UNKNOWN"
+        and all(item is None for item in omitted[0]["header_path_exact"])
+        and all(_row_label_matches_hierarchy_leaf_v1(row) for row in rows)
+        and all(
+            all(
+                _cell_matches_value_kind_v1(cell, column["value_kind"])
+                for cell, column in zip(row["values_exact"], columns[missing_count:], strict=True)
+            )
+            for row in rows
+        )
+    )
     generic_text_key = (
         missing_count == 1
         and omitted[0]["value_kind"] == "TEXT"
@@ -924,6 +937,7 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
         if (
             header not in _STRUCTURAL_ROW_KEY_HEADER_ANCHORS
             and not anonymous_numeric_key
+            and not anonymous_row_label_key
             and not generic_text_key
         ):
             return False

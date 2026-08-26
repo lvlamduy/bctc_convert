@@ -790,6 +790,40 @@ def test_complete_group_heading_without_value_cells_gets_exact_null_width() -> N
         validate_financial_page_json_v1(attack)
 
 
+def test_anonymous_unknown_row_label_proxy_is_removed_only_with_exact_suffix() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "UNKNOWN"},
+        {"header_path_exact": ["31/03/2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/03/2024"], "value_kind": "MONEY"},
+    ]
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert len(checked_table["columns"]) == 2
+    assert checked_table["rows"][0]["values_exact"] == [
+        "434.609.559",
+        "425.746.734",
+    ]
+
+    named = copy.deepcopy(page)
+    named["sections"][0]["tables"][0]["columns"][0]["header_path_exact"] = ["Mã số"]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(named)
+
+    wrong_suffix = copy.deepcopy(page)
+    wrong_suffix["sections"][0]["tables"][0]["columns"][1]["value_kind"] = "TEXT"
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(wrong_suffix)
+
+    wrong_owner = copy.deepcopy(page)
+    wrong_owner["sections"][0]["tables"][0]["rows"][0]["hierarchy_path_exact"][-1] = (
+        "Khoản mục khác"
+    )
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(wrong_owner)
+
+
 def test_exact_empty_model_cell_replays_as_blank_without_relaxing_whitespace() -> None:
     page = _page()
     page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = ""
