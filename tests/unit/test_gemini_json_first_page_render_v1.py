@@ -58,6 +58,80 @@ def test_full_page_render_keeps_one_normal_declared_page_box(tmp_path) -> None:
     assert rendered.image == standard
 
 
+def test_full_page_render_restores_complete_media_box_from_declared_crop(
+    tmp_path,
+) -> None:
+    path = tmp_path / "cropped.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=100)
+    page.insert_text((70, 30), "MIDDLE", fontsize=10)
+    page.set_cropbox(fitz.Rect(0, 10, 200, 90))
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with fitz.open(path) as document:
+        standard = document[0].get_pixmap(dpi=200, alpha=False).tobytes("png")
+    with fitz.open(path) as document:
+        rendered = render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=200,
+            source_sha256=sha256(source).hexdigest(),
+        )
+    assert rendered.receipt["mode"] == "EXPANDED_DECLARED_MEDIA_BOX"
+    assert rendered.receipt["original_crop_box"] == [0.0, 10.0, 200.0, 90.0]
+    assert rendered.receipt["selected_media_box"] == [0.0, 0.0, 200.0, 100.0]
+    assert rendered.page["pixel_height"] == 278
+    assert rendered.image != standard
+
+
+def test_full_page_render_ignores_out_of_page_invisible_ocr_text(tmp_path) -> None:
+    path = tmp_path / "invisible-ocr.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=100)
+    page.insert_text((70, 30), "MIDDLE", fontsize=10)
+    page.insert_text((400, 30), "OCR", fontsize=10, render_mode=3)
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with fitz.open(path) as document:
+        standard = document[0].get_pixmap(dpi=200, alpha=False).tobytes("png")
+    with fitz.open(path) as document:
+        rendered = render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=200,
+            source_sha256=sha256(source).hexdigest(),
+        )
+    assert rendered.receipt["mode"] == "DECLARED_PAGE_BOX"
+    assert rendered.receipt["painted_object_count"] == 1
+    assert rendered.image == standard
+
+
+def test_full_page_render_handles_visible_content_above_media_origin(tmp_path) -> None:
+    path = tmp_path / "negative-origin.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=100)
+    page.draw_rect(
+        fitz.Rect(10, -20, 50, 20),
+        color=(0, 0, 0),
+        fill=(0, 0, 0),
+    )
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with fitz.open(path) as document:
+        rendered = render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=200,
+            source_sha256=sha256(source).hexdigest(),
+        )
+    assert rendered.receipt["mode"] == "EXPANDED_SOURCE_CONTENT_BOUNDS"
+    assert rendered.receipt["selected_media_box"][1] < 0
+    assert rendered.page["pixel_height"] > 278
+
+
 def test_full_page_render_rejects_unbounded_hidden_source_content(tmp_path) -> None:
     path = tmp_path / "unsafe.pdf"
     source = _pdf(path, hidden_x=400)

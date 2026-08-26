@@ -22,6 +22,8 @@ MAX_PAGE_BOX_EXPANSION_RATIO = 0.25
 MIN_MATERIAL_OVERFLOW_RATIO = 0.03
 MIN_MATERIAL_OVERFLOW_POINTS = 8.0
 EDGE_PADDING_POINTS = 2.0
+PAGE_BOX_EQUALITY_TOLERANCE_POINTS = 0.5
+_NONPAINTED_DISPLAY_TYPES = frozenset({"ignore-text"})
 
 
 class GeminiJsonFirstPageRenderV1Error(RuntimeError):
@@ -53,6 +55,8 @@ def _painted_content_bounds(page: fitz.Page) -> tuple[fitz.Rect | None, int]:
     for entry in page.get_bboxlog():
         if type(entry) is not tuple or len(entry) < 2 or type(entry[0]) is not str:
             raise GeminiJsonFirstPageRenderV1Error("PDF display-list bounds are invalid")
+        if entry[0] in _NONPAINTED_DISPLAY_TYPES:
+            continue
         rect = fitz.Rect(entry[1])
         if not _valid_rect(rect):
             continue
@@ -62,6 +66,15 @@ def _painted_content_bounds(page: fitz.Page) -> tuple[fitz.Rect | None, int]:
             bounds.include_rect(rect)
         count += 1
     return bounds, count
+
+
+def _rect_delta(left: fitz.Rect, right: fitz.Rect) -> float:
+    return max(
+        abs(float(left.x0) - float(right.x0)),
+        abs(float(left.y0) - float(right.y0)),
+        abs(float(left.x1) - float(right.x1)),
+        abs(float(left.y1) - float(right.y1)),
+    )
 
 
 def _selected_media_box(page: fitz.Page) -> tuple[fitz.Rect, fitz.Rect | None, int]:
@@ -127,10 +140,19 @@ def render_full_pdf_page_v1(
     original_media = fitz.Rect(page.mediabox)
     original_crop = fitz.Rect(page.cropbox)
     selected_media, painted, painted_object_count = _selected_media_box(page)
-    expanded = selected_media != original_media or original_crop != original_media
+    source_bounds_expanded = (
+        _rect_delta(selected_media, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
+    )
+    declared_crop_expanded = (
+        _rect_delta(original_crop, original_media) > PAGE_BOX_EQUALITY_TOLERANCE_POINTS
+    )
+    expanded = source_bounds_expanded or declared_crop_expanded
     if expanded:
+        # PyMuPDF resets CropBox to the complete local page rectangle when the
+        # MediaBox is assigned.  Assigning ``selected_media`` again as a
+        # CropBox is incorrect for MediaBoxes with a negative origin because
+        # CropBox coordinates are local to that newly assigned media extent.
         page.set_mediabox(selected_media)
-        page.set_cropbox(selected_media)
     pixmap = page.get_pixmap(dpi=dpi, alpha=False)
     image = pixmap.tobytes("png")
     image_sha256 = sha256(image).hexdigest()
@@ -154,7 +176,13 @@ def render_full_pdf_page_v1(
             "size_bytes": len(image),
             "width": pixmap.width,
         },
-        "mode": "EXPANDED_SOURCE_CONTENT_BOUNDS" if expanded else "DECLARED_PAGE_BOX",
+        "mode": (
+            "EXPANDED_SOURCE_CONTENT_BOUNDS"
+            if source_bounds_expanded
+            else "EXPANDED_DECLARED_MEDIA_BOX"
+            if declared_crop_expanded
+            else "DECLARED_PAGE_BOX"
+        ),
         "material_overflow_ratio": format(MIN_MATERIAL_OVERFLOW_RATIO, ".2f"),
         "original_crop_box": _rect_values(original_crop),
         "original_media_box": _rect_values(original_media),
