@@ -533,7 +533,17 @@ def _run_google_fallback(
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "Google fallback page frontier is empty or duplicate"
         )
-    if task["state"] == "FALLBACK_PENDING":
+    original_state = task["state"]
+    prior_fallback_attempt = 0
+    if original_state == "FALLBACK_PENDING":
+        try:
+            prior_receipt = json.loads(task["last_receipt_json"])
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            prior_receipt = None
+        if type(prior_receipt) is dict:
+            value = prior_receipt.get("fallback_attempt", 0)
+            if type(value) is int and value >= 0:
+                prior_fallback_attempt = value
         task = transition_corpus_task_v1(
             ledger,
             task_id=task["task_id"],
@@ -546,41 +556,77 @@ def _run_google_fallback(
         )
     source = _source(task, source_root)
     fallback_root = _task_root(task, artifact_root) / "openrouter-fallback"
-    prior_receipts = len(list((fallback_root / "run-receipts").glob("*.json")))
-    fallback_attempt = prior_receipts + 1
-    command = [
-        sys.executable,
-        str(OPENROUTER_RUNNER),
-        "--pdf",
-        str(source),
-        "--source-logical-name",
-        task["relative_path"],
-        "--database",
-        str(database),
-        "--artifact-dir",
-        str(fallback_root),
-        "--dpi",
-        str(plan["policy"]["dpi"]),
-        "--workers",
-        str(min(openrouter_workers, len(pages))),
-        "--prompt-variant",
-        corpus_ledger_summary_v1(ledger)["prompt_variant"],
-        "--output-contract-mode",
-        "json-schema",
-        "--openrouter-key-file",
-        str(openrouter_key_file),
-        "--google-key-file",
-        str(google_key_file),
-        "--google-key-slot",
-        str(google_key_slot),
-        "--google-standard-mode",
-        "on-provider-error",
-        "--timeout-seconds",
-        str(provider_timeout_seconds),
-    ]
-    for page in pages:
-        command.extend(("--physical-page", str(page)))
-    return_code, receipt = _command(command, expected={0, 2})
+    existing_attempts = sorted(
+        int(path.name.split("-", 1)[1])
+        for path in fallback_root.glob("attempt-*")
+        if path.is_dir() and path.name.split("-", 1)[1].isdigit()
+    )
+    if original_state == "FALLBACK_RUNNING" and existing_attempts:
+        fallback_attempt = existing_attempts[-1]
+    else:
+        fallback_attempt = max(prior_fallback_attempt, *(existing_attempts or [0])) + 1
+    fallback_attempt_root = fallback_root / f"attempt-{fallback_attempt:02d}"
+    default_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
+    prompt_frontiers: dict[str, list[int]] = {}
+    for failure in failures:
+        error = failure.get("error")
+        provider_error = error.get("provider_error") if type(error) is dict else None
+        if type(provider_error) is dict and provider_error.get("finish_reason") == "RECITATION":
+            variant = "scope"
+        elif type(error) is dict and error.get("error_type") == "GeminiFinancialPageJsonV1Error":
+            variant = "items"
+        else:
+            variant = default_variant
+        prompt_frontiers.setdefault(variant, []).append(failure["physical_page"])
+
+    return_code = 0
+    fallback_results = []
+    for variant in (default_variant, "scope", "items"):
+        frontier = sorted(set(prompt_frontiers.get(variant, [])))
+        if not frontier:
+            continue
+        command = [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(database),
+            "--artifact-dir",
+            str(fallback_attempt_root / variant),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(min(openrouter_workers, len(frontier))),
+            "--prompt-variant",
+            variant,
+            "--output-contract-mode",
+            "json-schema",
+            "--openrouter-key-file",
+            str(openrouter_key_file),
+            "--google-key-file",
+            str(google_key_file),
+            "--google-key-slot",
+            str(google_key_slot),
+            "--google-standard-mode",
+            "on-provider-error",
+            "--timeout-seconds",
+            str(provider_timeout_seconds),
+        ]
+        for page in frontier:
+            command.extend(("--physical-page", str(page)))
+        code, result = _command(command, expected={0, 2})
+        fallback_results.append(
+            {
+                "physical_pages": frontier,
+                "prompt_variant": variant,
+                "result": result,
+            }
+        )
+        if code != 0:
+            return_code = 2
     next_state = (
         "SUCCEEDED"
         if return_code == 0
@@ -596,7 +642,7 @@ def _run_google_fallback(
         receipt={
             "fallback_attempt": fallback_attempt,
             "fallback_pages": pages,
-            "fallback_result": receipt,
+            "fallback_results": fallback_results,
             "gateway": "OPENROUTER",
         },
     )
