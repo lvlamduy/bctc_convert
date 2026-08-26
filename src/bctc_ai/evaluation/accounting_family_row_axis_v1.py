@@ -151,6 +151,19 @@ _RESCUE_PROJECTION_FIELDS = {
     "role",
     "supporting_peer_dash_column_ordinal",
 }
+_COMPOUND_NUMERIC_RESCUE_PROJECTION_FIELDS = _RESCUE_PROJECTION_FIELDS | {
+    "parsed_token",
+    "source_bbox",
+    "source_crop_ref",
+    "source_line_ordinal",
+    "source_raw_prediction",
+    "source_reader_score",
+    "source_sample_id",
+    "source_vietocr_text",
+    "token_count",
+    "token_index",
+    "token_raw_prediction",
+}
 
 
 class AccountingFamilyRowAxisV1Error(ValueError):
@@ -1300,7 +1313,78 @@ def _rescue_projection(
         "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
         "VISIBLE_HORIZONTAL_DASH_GLYPH",
     }:
-        return projection, None
+        missing = sorted(row["missing_column_ordinals"])
+        assigned_sample_ids = {
+            value["sample_id"] for candidate in rows for value in candidate["values"]
+        }
+        compound_candidates = []
+        for line in local_lines:
+            raw_surface = " ".join(line["numeric_recognition"]["raw_prediction"].split())
+            vietocr_surface = " ".join(line["vietocr_text"].split())
+            tokens = raw_surface.split()
+            parsed_tokens = [parse_visible_financial_numeric_token_v1(token) for token in tokens]
+            vertically_aligned = any(
+                line["bbox"][1] < box[3] and box[1] < line["bbox"][3] for box in label_boxes
+            )
+            if (
+                len(missing) < 2
+                or missing != list(range(missing[0], missing[-1] + 1))
+                or len(tokens) != len(missing)
+                or line["sample_id"] in assigned_sample_ids
+                or raw_surface != vietocr_surface
+                or line["numeric_recognition"]["reader_score"] < 0.95
+                or not vertically_aligned
+                or not (
+                    line["bbox"][0] <= centers[missing[0]]
+                    and centers[missing[-1]] <= line["bbox"][2]
+                )
+                or any(token["classification"] != "SIGNED_NUMBER" for token in parsed_tokens)
+            ):
+                continue
+            compound_candidates.append((line, tokens, parsed_tokens))
+        if (
+            len(compound_candidates) != 1
+            or lane not in missing
+            or dash["glyph_metrics"]["component_count"] <= 0
+        ):
+            return projection, None
+        source, tokens, parsed_tokens = compound_candidates[0]
+        token_index = missing.index(lane)
+        projection = {
+            **projection,
+            "classification": "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN",
+            "parsed_token": canonical_clone_v1(parsed_tokens[token_index]),
+            "source_bbox": canonical_clone_v1(source["bbox"]),
+            "source_crop_ref": canonical_clone_v1(source["crop_ref"]),
+            "source_line_ordinal": source["line_ordinal"],
+            "source_raw_prediction": " ".join(
+                source["numeric_recognition"]["raw_prediction"].split()
+            ),
+            "source_reader_score": source["numeric_recognition"]["reader_score"],
+            "source_sample_id": source["sample_id"],
+            "source_vietocr_text": " ".join(source["vietocr_text"].split()),
+            "token_count": len(tokens),
+            "token_index": token_index,
+            "token_raw_prediction": tokens[token_index],
+        }
+        crop_ref = dash["crop_ref"]
+        return projection, {
+            "bbox": canonical_clone_v1(region_record["recognition_raw_pixel_bbox"]),
+            "column_center": expected["column_center"],
+            "column_ordinal": lane,
+            "crop_ref": {
+                "path": f"authenticated-render-region/{region_record['region_id']}.png",
+                "sha256": crop_ref["sha256"],
+                "size_bytes": crop_ref["size_bytes"],
+            },
+            "line_ordinal": source["line_ordinal"],
+            "page_sequence": raw["page_sequence"],
+            "parsed_token": canonical_clone_v1(parsed_tokens[token_index]),
+            "raw_prediction": tokens[token_index],
+            "reader_score": source["numeric_recognition"]["reader_score"],
+            "row_affinity": None,
+            "sample_id": region_record["region_id"],
+        }
     crop_ref = dash["crop_ref"]
     value = {
         "bbox": canonical_clone_v1(region_record["recognition_raw_pixel_bbox"]),
@@ -1791,13 +1875,23 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if identity != "afrav1:axis:" + canonical_json_sha256_v1(material):
         raise _error("family row-axis hash identity drifted")
     for rescue in value["visible_dash_rescues"]:
+        compound = (
+            type(rescue) is dict
+            and rescue.get("classification") == "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN"
+        )
         if (
             type(rescue) is not dict
-            or set(rescue) != _RESCUE_PROJECTION_FIELDS
+            or set(rescue)
+            != (
+                _COMPOUND_NUMERIC_RESCUE_PROJECTION_FIELDS
+                if compound
+                else _RESCUE_PROJECTION_FIELDS
+            )
             or rescue["classification"]
             not in {
                 "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
                 "UNRESOLVED_NOT_ONE_DASH_GLYPH",
+                "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN",
                 "VISIBLE_HORIZONTAL_DASH_GLYPH",
             }
             or type(rescue["column_center"]) is not float
@@ -1819,6 +1913,33 @@ def _validate_result(value: Any) -> dict[str, Any]:
             )
         ):
             raise _error("visible-dash rescue projection drifted")
+        if compound:
+            tokens = rescue["source_raw_prediction"].split()
+            parsed = parse_visible_financial_numeric_token_v1(rescue["token_raw_prediction"])
+            if (
+                type(rescue["source_sample_id"]) is not str
+                or not rescue["source_sample_id"]
+                or type(rescue["source_line_ordinal"]) is not int
+                or rescue["source_line_ordinal"] < 0
+                or type(rescue["source_reader_score"]) is not float
+                or not math.isfinite(rescue["source_reader_score"])
+                or rescue["source_reader_score"] < 0.95
+                or rescue["source_raw_prediction"] != rescue["source_vietocr_text"]
+                or rescue["source_raw_prediction"] != " ".join(tokens)
+                or type(rescue["token_count"]) is not int
+                or not 2 <= rescue["token_count"] <= 8
+                or rescue["token_count"] != len(tokens)
+                or type(rescue["token_index"]) is not int
+                or not 0 <= rescue["token_index"] < rescue["token_count"]
+                or rescue["token_raw_prediction"] != tokens[rescue["token_index"]]
+                or parsed["classification"] != "SIGNED_NUMBER"
+                or not same_typed_json_v1(rescue["parsed_token"], parsed)
+                or rescue["dash_evidence"]["classification"] != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                or rescue["dash_evidence"]["glyph_metrics"]["component_count"] <= 0
+            ):
+                raise _error("compound numeric source-line rescue drifted")
+            _bbox(rescue["source_bbox"], None)
+            _ref(rescue["source_crop_ref"])
         if (
             rescue["supporting_peer_dash_column_ordinal"] is not None
             and rescue["classification"] != "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE"
@@ -1838,6 +1959,59 @@ def _validate_result(value: Any) -> dict[str, Any]:
             rescue["supporting_peer_dash_column_ordinal"] is not None
         ) != (rescue["region_id"] in assigned_region_ids):
             raise _error("degraded visible-mark admission drifted")
+    compound_groups: dict[str, list[Mapping[str, Any]]] = {}
+    for rescue in value["visible_dash_rescues"]:
+        if rescue["classification"] != "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN":
+            continue
+        compound_groups.setdefault(rescue["source_sample_id"], []).append(rescue)
+        matching_values = [
+            item
+            for row in value["rows"]
+            for item in row["values"]
+            if item["sample_id"] == rescue["region_id"]
+        ]
+        if (
+            len(matching_values) != 1
+            or matching_values[0]["column_ordinal"] != rescue["column_ordinal"]
+            or matching_values[0]["line_ordinal"] != rescue["source_line_ordinal"]
+            or matching_values[0]["raw_prediction"] != rescue["token_raw_prediction"]
+            or not same_typed_json_v1(matching_values[0]["parsed_token"], rescue["parsed_token"])
+        ):
+            raise _error("compound numeric rescue value binding drifted")
+    for group in compound_groups.values():
+        token_count = group[0]["token_count"]
+        stable_fields = {
+            "page_sequence",
+            "role",
+            "source_bbox",
+            "source_crop_ref",
+            "source_line_ordinal",
+            "source_raw_prediction",
+            "source_reader_score",
+            "source_sample_id",
+            "source_vietocr_text",
+            "token_count",
+        }
+        if (
+            len(group) != token_count
+            or sorted(item["token_index"] for item in group) != list(range(token_count))
+            or len({item["column_ordinal"] for item in group}) != token_count
+            or sorted(item["column_ordinal"] for item in group)
+            != list(
+                range(
+                    min(item["column_ordinal"] for item in group),
+                    max(item["column_ordinal"] for item in group) + 1,
+                )
+            )
+            or any(
+                not same_typed_json_v1(
+                    {field: item[field] for field in stable_fields},
+                    {field: group[0][field] for field in stable_fields},
+                )
+                for item in group[1:]
+            )
+        ):
+            raise _error("compound numeric rescue source-token axis drifted")
     for row in value["rows"]:
         if row["status"] not in {
             "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",

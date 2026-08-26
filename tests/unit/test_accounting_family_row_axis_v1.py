@@ -149,10 +149,18 @@ def _ordinary_pages() -> list[dict[str, object]]:
 
 
 def _dash_region(
-    raw_pixel_bbox: list[int], *, blank: bool = False, degraded_short_mark: bool = False
+    raw_pixel_bbox: list[int],
+    *,
+    blank: bool = False,
+    degraded_short_mark: bool = False,
+    numeric_components: bool = False,
 ) -> dict[str, object]:
     image = Image.new("RGB", (42, 27), "white")
-    if not blank:
+    if numeric_components:
+        draw = ImageDraw.Draw(image)
+        for left in (8, 15, 24, 31):
+            draw.rectangle((left, 7, left + 3, 20), fill="black")
+    elif not blank:
         ImageDraw.Draw(image).rectangle(
             (16, 11, 17, 13) if degraded_short_mark else (16, 11, 25, 15),
             fill="black",
@@ -188,6 +196,29 @@ def _dash_region(
         "region_id": "ffaprv1:region:" + canonical_json_sha256_v1(material),
         "region_png_bytes": payload,
     }
+
+
+def _compound_numeric_pages() -> list[dict[str, object]]:
+    return [
+        _page(
+            [
+                _line(0, "Phân tích dư nợ theo thời gian", "", [30, 20, 430, 42]),
+                _line(1, "Nợ ngắn hạn", "", [50, 100, 300, 122]),
+                _line(2, "100 10,00", "100 10,00", [580, 100, 750, 122]),
+                _line(3, "90", "90", [780, 100, 840, 122]),
+                _line(4, "9,00", "9,00", [880, 100, 940, 122]),
+                _line(5, "Nợ trung hạn", "", [50, 150, 300, 172]),
+                _line(6, "200", "200", [580, 150, 640, 172]),
+                _line(7, "20,00", "20,00", [680, 150, 740, 172]),
+                _line(8, "180", "180", [780, 150, 840, 172]),
+                _line(9, "18,00", "18,00", [880, 150, 940, 172]),
+                _line(10, "300", "300", [580, 200, 640, 222]),
+                _line(11, "30,00", "30,00", [680, 200, 740, 222]),
+                _line(12, "270", "270", [780, 200, 840, 222]),
+                _line(13, "27,00", "27,00", [880, 200, 940, 222]),
+            ]
+        )
+    ]
 
 
 def test_visible_rows_bind_to_body_derived_lane_ordinals() -> None:
@@ -1430,6 +1461,163 @@ def test_header_supported_grid_can_crop_and_replay_the_visible_dash_cells() -> N
         ["200", "-"],
     ]
     assert result["metrics"]["visible_dash_zero_count"] == 2
+
+
+def test_exact_compound_numeric_source_line_splits_only_across_its_missing_lanes() -> None:
+    pages = _compound_numeric_pages()
+    base = build_accounting_family_row_axis_v1(pages, _spec())
+    target = base["rows"][0]
+    assert target["missing_column_ordinals"] == [0, 1]
+    centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+        base["rows"], target, base["column_grids"]
+    )
+    proposals = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in pages[0]["lines"]],
+        label_boxes=[pages[0]["lines"][1]["bbox"]],
+        is_numeric=lambda line: (
+            line["numeric_recognition"]["raw_prediction"].replace(",", "").isdigit()
+        ),
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )
+    rescues = tuple(
+        {
+            "column_ordinal": lane,
+            "page_sequence": 1,
+            "region": _dash_region(
+                next(
+                    item["raw_pixel_bbox"] for item in proposals if item["column_ordinal"] == lane
+                ),
+                numeric_components=True,
+            ),
+            "role": "SHORT_TERM",
+        }
+        for lane in (0, 1)
+    )
+
+    result = build_accounting_family_row_axis_v1(
+        pages,
+        _spec(),
+        visible_dash_rescues=rescues,
+    )
+
+    short = result["rows"][0]
+    assert result["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert short["missing_column_ordinals"] == []
+    assert [value["raw_prediction"] for value in short["values"]] == [
+        "100",
+        "10,00",
+        "90",
+        "9,00",
+    ]
+    compound = [
+        item
+        for item in result["visible_dash_rescues"]
+        if item["classification"] == "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN"
+    ]
+    assert [item["token_index"] for item in compound] == [0, 1]
+    assert {item["source_sample_id"] for item in compound} == {"sample-000000003"}
+    assert result["metrics"]["visible_dash_zero_count"] == 0
+    assert (
+        validate_accounting_family_row_axis_replay_v1(
+            result,
+            pages,
+            _spec(),
+            visible_dash_rescues=rescues,
+        )
+        == result
+    )
+    forged = copy.deepcopy(result)
+    forged_compound = [
+        item
+        for item in forged["visible_dash_rescues"]
+        if item["classification"] == "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN"
+    ]
+    for item in forged_compound:
+        item["source_raw_prediction"] = "101 10,00"
+        item["source_vietocr_text"] = "101 10,00"
+    forged_compound[0]["token_raw_prediction"] = "101"
+    forged_compound[0]["parsed_token"] = row_axis_v1.parse_visible_financial_numeric_token_v1("101")
+    forged_value = next(
+        value
+        for value in forged["rows"][0]["values"]
+        if value["sample_id"] == forged_compound[0]["region_id"]
+    )
+    forged_value["raw_prediction"] = "101"
+    forged_value["parsed_token"] = row_axis_v1.parse_visible_financial_numeric_token_v1("101")
+    forged_material = copy.deepcopy(forged)
+    forged_material.pop("row_axis_id")
+    forged["row_axis_id"] = "afrav1:axis:" + canonical_json_sha256_v1(forged_material)
+    with pytest.raises(AccountingFamilyRowAxisV1Error, match="does not replay exactly"):
+        validate_accounting_family_row_axis_replay_v1(
+            forged,
+            pages,
+            _spec(),
+            visible_dash_rescues=rescues,
+        )
+
+
+@pytest.mark.parametrize("attack", ["reader-disagreement", "blank-crop", "extra-source-line"])
+def test_compound_numeric_source_line_rescue_fails_closed_on_ambiguous_evidence(
+    attack: str,
+) -> None:
+    pages = _compound_numeric_pages()
+    if attack == "reader-disagreement":
+        pages[0]["lines"][2]["vietocr_text"] = "100 11,00"
+    elif attack == "extra-source-line":
+        pages[0]["lines"].insert(
+            3,
+            _line(3, "101 10,10", "101 10,10", [580, 100, 750, 122], page=2),
+        )
+        for ordinal, line in enumerate(pages[0]["lines"]):
+            line["line_ordinal"] = ordinal
+    base = build_accounting_family_row_axis_v1(pages, _spec())
+    target = base["rows"][0]
+    centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+        base["rows"], target, base["column_grids"]
+    )
+    proposals = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in pages[0]["lines"]],
+        label_boxes=[pages[0]["lines"][1]["bbox"]],
+        is_numeric=lambda line: (
+            line["numeric_recognition"]["raw_prediction"].replace(",", "").isdigit()
+        ),
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )
+    rescues = tuple(
+        {
+            "column_ordinal": lane,
+            "page_sequence": 1,
+            "region": _dash_region(
+                next(
+                    item["raw_pixel_bbox"] for item in proposals if item["column_ordinal"] == lane
+                ),
+                blank=attack == "blank-crop",
+                numeric_components=attack != "blank-crop",
+            ),
+            "role": "SHORT_TERM",
+        }
+        for lane in (0, 1)
+    )
+
+    result = build_accounting_family_row_axis_v1(
+        pages,
+        _spec(),
+        visible_dash_rescues=rescues,
+    )
+
+    short = result["rows"][0]
+    assert short["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert short["missing_column_ordinals"] == [0, 1]
+    assert not any(
+        item["classification"] == "VISIBLE_COMPOUND_NUMERIC_LINE_TOKEN"
+        for item in result["visible_dash_rescues"]
+    )
 
 
 def test_pixel_replayed_dash_completes_only_the_body_grid_missing_lane() -> None:
