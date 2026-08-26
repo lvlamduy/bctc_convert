@@ -193,8 +193,10 @@ def build_financial_page_json_prompt_v1(
         common + "\n\nMỗi section và table theo đúng thứ tự từ trên xuống. columns chỉ gồm cột "
         "giá trị; header_path_exact đi từ header ngoài đến header trong. Mỗi hàng "
         "ảnh xuất hiện đúng một lần, values_exact đọc ngang đúng hàng và có đúng số "
-        "phần tử bằng columns; ô thật sự trống dùng null, còn dấu gạch và số 0 phải "
-        "giữ thành chuỗi nguyên văn. Giữ cả hàng cha không có số và subtotal/total "
+        "phần tử bằng columns; ô thật sự trống dùng null. Riêng ở lượt kiểm tra này, "
+        'mọi ô chỉ có dấu gạch kế toán phải trả chính xác chuỗi "0"; tuyệt đối không '
+        "chép ký tự của dấu gạch và không nối dấu gạch vào số ở ô bên cạnh. Giữ cả "
+        "hàng cha không có số và subtotal/total "
         "không có nhãn. hierarchy_path_exact đi từ cha ngoài cùng đến chính hàng; "
         "phần tử cuối phải bằng label_exact, hoặc null nếu hàng không nhãn. Dùng "
         "UNKNOWN khi không chắc loại hàng/cột; không bỏ hàng và không dịch vector "

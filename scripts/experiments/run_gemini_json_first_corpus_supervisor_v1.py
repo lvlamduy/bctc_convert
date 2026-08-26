@@ -1530,6 +1530,7 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
                 }
             )
             variants.update({page: prompt_variant for page in pages})
+            failed_retry_pages.difference_update(pages)
             if code != 0:
                 retry_frontiers = _retry_prompt_frontiers_from_receipt_v1(
                     result,
@@ -1537,6 +1538,8 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
                     last_physical_page=max(pages),
                 )
                 failed_retry_pages.update(result["failed_pages"])
+                if prompt_variant == default_variant:
+                    prompt_pages["items"].extend(retry_frontiers["items"])
                 if (
                     prompt_variant == "items"
                     and not retry_frontiers["default"]

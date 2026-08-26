@@ -2190,6 +2190,77 @@ def test_google_document_acceleration_uses_balanced_only_after_persistent_semant
     ]
 
 
+def test_google_document_acceleration_escalates_provider_retry_semantic_failure(
+    monkeypatch, tmp_path
+) -> None:
+    args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    calls = []
+
+    def command(argv, *, expected):
+        variant = argv[argv.index("--prompt-variant") + 1]
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        calls.append((variant, pages))
+        selected_pages = pages or [1, 2, 3]
+        semantic = pages == [2]
+        if variant != "balanced":
+            return 2, {
+                "disposition": "NEEDS_RETRY",
+                "failed_pages": [2],
+                "page_image_sha256s": [
+                    {"image_sha256": images[page], "physical_page": page} for page in selected_pages
+                ],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [2] if semantic else [],
+                "unresolved_pages": [],
+            }
+        return 0, {
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "page_image_sha256s": [{"image_sha256": images[2], "physical_page": 2}],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    manifest = {
+        "document_manifest_id": "gfdmv1:manifest:" + "7" * 64,
+        "pages": [
+            {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+        ],
+    }
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", lambda *_a, **_k: manifest)
+    monkeypatch.setattr(
+        target,
+        "build_current_document_manifest",
+        lambda _args: {
+            "document_manifest_id": manifest["document_manifest_id"],
+            "selection_id": "gjfcdmsv1:selection:" + "6" * 64,
+        },
+    )
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {"task_id": kwargs["task_id"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    result = target.accelerate_google_document(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == [
+        ("simple", []),
+        ("simple", [2]),
+        ("items", [2]),
+        ("balanced", [2]),
+    ]
+    assert [transition["next_state"] for transition in transitions] == [
+        "SUCCEEDED",
+        "SUCCEEDED",
+    ]
+
+
 def test_all_pending_google_documents_are_smallest_first_and_require_complete_frontier(
     monkeypatch, tmp_path
 ) -> None:

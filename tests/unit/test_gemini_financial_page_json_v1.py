@@ -87,6 +87,8 @@ def test_prompt_variants_share_one_schema_blind_contract() -> None:
     assert len(simple) < len(compact) < len(balanced)
     assert "Bảng cân đối kế toán" in compact
     assert "không dịch vector" in balanced
+    assert 'phải trả chính xác chuỗi "0"' in balanced
+    assert "không nối dấu gạch vào số" in balanced
     for prompt in (simple, items, scope, compact, balanced):
         assert "ReportNormId" not in prompt
         assert "Family12" not in prompt
