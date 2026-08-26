@@ -624,3 +624,86 @@ def seal_current_document_revalidated_corpus_tasks_v1(
             for row in failed_rows
         ]
     return updated
+
+
+def claim_google_document_for_openrouter_acceleration_v1(
+    path: Path,
+    *,
+    task_id: str,
+) -> dict[str, Any]:
+    """Atomically reserve every pending Google chunk of one document for OpenRouter."""
+
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        selected = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if selected is None or selected["route"] != GOOGLE_ROUTE:
+            raise _error("OpenRouter acceleration requires one planned Google task")
+        rows = connection.execute(
+            "SELECT * FROM task WHERE document_plan_id=? ORDER BY first_physical_page,task_id",
+            (selected["document_plan_id"],),
+        ).fetchall()
+        task_ids = [row["task_id"] for row in rows]
+        material = {
+            "document_plan_id": selected["document_plan_id"],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_ACCELERATION_CLAIM_V1",
+            "gateway": "OPENROUTER",
+            "source_sha256": selected["source_sha256"],
+            "task_ids": task_ids,
+        }
+        claim_id = "gjfpaccelv1:claim:" + canonical_json_sha256_v1(material)
+        receipt = {**material, "claim_id": claim_id}
+        receipt_bytes = canonical_json_bytes_v1(receipt)
+        expected_pages = [
+            page
+            for row in rows
+            for page in range(row["first_physical_page"], row["last_physical_page"] + 1)
+        ]
+        if (
+            not rows
+            or any(
+                row["route"] != GOOGLE_ROUTE
+                or row["relative_path"] != selected["relative_path"]
+                or row["source_sha256"] != selected["source_sha256"]
+                or row["document_page_count"] != selected["document_page_count"]
+                for row in rows
+            )
+            or expected_pages != list(range(1, selected["document_page_count"] + 1))
+        ):
+            raise _error("OpenRouter acceleration document frontier is invalid")
+        states = {row["state"] for row in rows}
+        if states == {"PENDING"}:
+            identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
+            for row in rows:
+                attempt_count = row["attempt_count"] + 1
+                if attempt_count > identity["max_task_attempts"]:
+                    raise _error("OpenRouter acceleration retry bound is exhausted")
+                event_ordinal = connection.execute(
+                    "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (row["task_id"],)
+                ).fetchone()[0]
+                connection.execute(
+                    "INSERT INTO task_event VALUES (?,?,?,?,?)",
+                    (row["task_id"], event_ordinal, "PENDING", "RUNNING", receipt_bytes),
+                )
+                connection.execute(
+                    "UPDATE task SET state='RUNNING',attempt_count=?,provider_job_ref=?,"
+                    "last_receipt_json=? WHERE task_id=?",
+                    (attempt_count, claim_id, receipt_bytes, row["task_id"]),
+                )
+            connection.commit()
+        elif states <= {"RUNNING", "SUCCEEDED"} and any(row["state"] == "RUNNING" for row in rows):
+            if any(row["provider_job_ref"] != claim_id for row in rows):
+                raise _error("OpenRouter acceleration resume claim is invalid")
+            connection.commit()
+        elif states == {"SUCCEEDED"} and all(row["provider_job_ref"] == claim_id for row in rows):
+            connection.commit()
+        else:
+            raise _error("OpenRouter acceleration requires one all-pending document")
+        updated = connection.execute(
+            "SELECT * FROM task WHERE document_plan_id=? ORDER BY first_physical_page,task_id",
+            (selected["document_plan_id"],),
+        ).fetchall()
+    return {
+        "claim_id": claim_id,
+        "document_plan_id": selected["document_plan_id"],
+        "tasks": [dict(row) for row in updated],
+    }

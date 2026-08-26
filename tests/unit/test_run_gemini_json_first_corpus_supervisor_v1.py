@@ -1482,3 +1482,185 @@ def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
         assert not (
             tmp_path / "artifacts" / "task-1" / "mixed-prompt-document-manifest.json"
         ).exists()
+
+
+def _acceleration_fixture(monkeypatch, tmp_path):
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    tasks = [
+        {
+            "artifact_relative_path": "task-1",
+            "document_page_count": 3,
+            "first_physical_page": 1,
+            "last_physical_page": 2,
+            "provider_job_ref": "gjfpaccelv1:claim:" + "a" * 64,
+            "relative_path": "ACB/report.pdf",
+            "route": target.GOOGLE_ROUTE,
+            "source_sha256": "b" * 64,
+            "state": "RUNNING",
+            "task_id": "task-1",
+        },
+        {
+            "artifact_relative_path": "task-2",
+            "document_page_count": 3,
+            "first_physical_page": 3,
+            "last_physical_page": 3,
+            "provider_job_ref": "gjfpaccelv1:claim:" + "a" * 64,
+            "relative_path": "ACB/report.pdf",
+            "route": target.GOOGLE_ROUTE,
+            "source_sha256": "b" * 64,
+            "state": "RUNNING",
+            "task_id": "task-2",
+        },
+    ]
+    planned = {
+        "document": {"page_count": 3},
+        "document_plan_id": "gjfpdocv1:" + "c" * 64,
+        "route": target.GOOGLE_ROUTE,
+        "tasks": [{"task_id": "task-1"}, {"task_id": "task-2"}],
+    }
+    monkeypatch.setattr(
+        target, "_plan", lambda _path: {"documents": [planned], "policy": {"dpi": 300}}
+    )
+    monkeypatch.setattr(
+        target,
+        "claim_google_document_for_openrouter_acceleration_v1",
+        lambda _ledger, *, task_id: {
+            "claim_id": "gjfpaccelv1:claim:" + "a" * 64,
+            "document_plan_id": planned["document_plan_id"],
+            "tasks": tasks,
+        },
+    )
+    monkeypatch.setattr(target, "_source", lambda *_args, **_kwargs: source)
+    images = {page: str(page) * 64 for page in (1, 2, 3)}
+    monkeypatch.setattr(target, "_current_page_image_sha256s_v1", lambda **_kwargs: images)
+    monkeypatch.setattr(
+        target, "corpus_ledger_summary_v1", lambda _ledger: {"prompt_variant": "simple"}
+    )
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        database=tmp_path / "store.sqlite3",
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        ledger=tmp_path / "ledger.sqlite3",
+        max_acceleration_attempts=2,
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        plan=tmp_path / "plan.json",
+        provider_timeout_seconds=60,
+        source_root=tmp_path,
+        task_id="task-1",
+    )
+    return args, tasks, images
+
+
+def test_google_document_acceleration_seals_full_manifest_without_duplicate_submission(
+    monkeypatch, tmp_path
+) -> None:
+    args, tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        target,
+        "_command",
+        lambda _argv, *, expected: (
+            0,
+            {
+                "disposition": "SUCCEEDED",
+                "failed_pages": [],
+                "page_image_sha256s": [
+                    {"image_sha256": images[page], "physical_page": page} for page in (1, 2, 3)
+                ],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [],
+                "unresolved_pages": [],
+            },
+        ),
+    )
+    manifest = {
+        "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
+        "pages": [
+            {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+        ],
+    }
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", lambda *_a, **_k: manifest)
+    monkeypatch.setattr(
+        target,
+        "build_current_document_manifest",
+        lambda _args: {
+            "document_manifest_id": manifest["document_manifest_id"],
+            "selection_id": "gjfcdmsv1:selection:" + "e" * 64,
+        },
+    )
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {"task_id": kwargs["task_id"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    result = target.accelerate_google_document(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["completed_task_ids"] == [task["task_id"] for task in tasks]
+    assert [item["next_state"] for item in transitions] == ["SUCCEEDED", "SUCCEEDED"]
+    assert all(item["expected_state"] == "RUNNING" for item in transitions)
+    assert len(list((args.artifact_root / "documents").rglob("run-receipts/*.json"))) == 1
+
+
+def test_google_document_acceleration_preserves_semantic_page_when_items_drops_it(
+    monkeypatch, tmp_path
+) -> None:
+    args, _tasks, images = _acceleration_fixture(monkeypatch, tmp_path)
+    calls = []
+
+    def command(argv, *, expected):
+        calls.append(argv)
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        if not pages:
+            return 2, {
+                "disposition": "NEEDS_RETRY",
+                "failed_pages": [2],
+                "page_image_sha256s": [
+                    {"image_sha256": images[page], "physical_page": page} for page in (1, 2, 3)
+                ],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [2],
+                "unresolved_pages": [],
+            }
+        assert pages == [2]
+        assert argv[argv.index("--prompt-variant") + 1] == "items"
+        return 0, {
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "page_image_sha256s": [{"image_sha256": images[2], "physical_page": 2}],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_a, **_k: {
+            "document_manifest_id": "gfdmv1:manifest:" + "f" * 64,
+            "pages": [
+                {
+                    "physical_page": page,
+                    "status": (
+                        "NO_RELEVANT_FINANCIAL_CONTENT" if page == 2 else "FINANCIAL_NOTE_CONTENT"
+                    ),
+                }
+                for page in (1, 2, 3)
+            ],
+        },
+    )
+    transitions = []
+    monkeypatch.setattr(
+        target, "transition_corpus_task_v1", lambda *_a, **kwargs: transitions.append(kwargs)
+    )
+    result = target.accelerate_google_document(args)
+    assert result["disposition"] == "NEEDS_RETRY"
+    assert result["semantic_item_no_relevant_pages"] == [2]
+    assert transitions == []
+    assert len(calls) == 2

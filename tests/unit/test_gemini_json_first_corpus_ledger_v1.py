@@ -6,6 +6,7 @@ import pytest
 
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     GeminiJsonFirstCorpusLedgerV1Error,
+    claim_google_document_for_openrouter_acceleration_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
@@ -341,4 +342,44 @@ def test_failed_chunks_can_be_sealed_by_complete_current_document_revalidation(t
     with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="image frontier"):
         seal_current_document_revalidated_corpus_tasks_v1(
             ledger, task_id=failed["task_id"], receipt=tampered
+        )
+
+
+def test_google_document_acceleration_claim_is_atomic_resumable_and_bounded(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan(), max_task_attempts=2)
+    google = list_corpus_tasks_v1(ledger, states=["PENDING"], route=GOOGLE_ROUTE)
+    document_plan_id = google[0]["document_plan_id"]
+    document_tasks = [task for task in google if task["document_plan_id"] == document_plan_id]
+    claim = claim_google_document_for_openrouter_acceleration_v1(
+        ledger, task_id=document_tasks[0]["task_id"]
+    )
+    assert claim["claim_id"].startswith("gjfpaccelv1:claim:")
+    assert [task["state"] for task in claim["tasks"]] == ["RUNNING"] * len(document_tasks)
+    assert [task["attempt_count"] for task in claim["tasks"]] == [1] * len(document_tasks)
+    assert {task["provider_job_ref"] for task in claim["tasks"]} == {claim["claim_id"]}
+    resumed = claim_google_document_for_openrouter_acceleration_v1(
+        ledger, task_id=document_tasks[-1]["task_id"]
+    )
+    assert resumed["claim_id"] == claim["claim_id"]
+    assert [task["attempt_count"] for task in resumed["tasks"]] == [1] * len(document_tasks)
+
+    other_ledger = tmp_path / "other-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(other_ledger, plan=_plan())
+    other_tasks = list_corpus_tasks_v1(other_ledger, states=["PENDING"], route=GOOGLE_ROUTE)
+    other_document_plan_id = other_tasks[0]["document_plan_id"]
+    other_document_tasks = [
+        task for task in other_tasks if task["document_plan_id"] == other_document_plan_id
+    ]
+    other = other_document_tasks[0]
+    transition_corpus_task_v1(
+        other_ledger,
+        task_id=other["task_id"],
+        expected_state="PENDING",
+        next_state="SUBMITTED",
+        receipt={"provider_batch_name": "already-submitted"},
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="all-pending"):
+        claim_google_document_for_openrouter_acceleration_v1(
+            other_ledger, task_id=other_document_tasks[-1]["task_id"]
         )

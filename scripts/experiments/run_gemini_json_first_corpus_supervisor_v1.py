@@ -25,6 +25,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
     financial_page_json_response_schema_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
+    claim_google_document_for_openrouter_acceleration_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
@@ -138,6 +139,24 @@ def _parser() -> argparse.ArgumentParser:
         metavar="PAGE=VARIANT",
     )
 
+    accelerate = commands.add_parser("accelerate-google-document")
+    accelerate.add_argument("--plan", type=Path, required=True)
+    accelerate.add_argument("--ledger", type=Path, required=True)
+    accelerate.add_argument("--task-id", required=True)
+    accelerate.add_argument("--source-root", type=Path, required=True)
+    accelerate.add_argument("--database", type=Path, required=True)
+    accelerate.add_argument("--artifact-root", type=Path, required=True)
+    accelerate.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    accelerate.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    accelerate.add_argument("--google-key-slot", type=int, default=2)
+    accelerate.add_argument("--openrouter-workers", type=int, default=25)
+    accelerate.add_argument("--provider-timeout-seconds", type=int, default=900)
+    accelerate.add_argument("--max-acceleration-attempts", type=int, default=2)
+
     run = commands.add_parser("run")
     run.add_argument("--plan", type=Path, required=True)
     run.add_argument("--ledger", type=Path, required=True)
@@ -240,6 +259,15 @@ def _task_index(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
         for task in document["tasks"]:
             result[task["task_id"]] = {"planned_document": document, "task": task}
     return result
+
+
+def _is_openrouter_acceleration_task_v1(task: dict[str, Any]) -> bool:
+    return (
+        task.get("route") == GOOGLE_ROUTE
+        and task.get("state") == "RUNNING"
+        and type(task.get("provider_job_ref")) is str
+        and task["provider_job_ref"].startswith("gjfpaccelv1:claim:")
+    )
 
 
 def _google_slots_v1(args: argparse.Namespace) -> list[int]:
@@ -558,6 +586,21 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter retry receipt is invalid"
         ) from exc
+    return _retry_prompt_frontiers_from_receipt_v1(
+        prior,
+        first_physical_page=task["first_physical_page"],
+        last_physical_page=task["last_physical_page"],
+    )
+
+
+def _retry_prompt_frontiers_from_receipt_v1(
+    prior: Any,
+    *,
+    first_physical_page: int,
+    last_physical_page: int,
+) -> dict[str, list[int]]:
+    """Classify a typed failed-page receipt into bounded adaptive prompts."""
+
     failed = prior.get("failed_pages") if type(prior) is dict else None
     semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
     unresolved = prior.get("unresolved_pages", []) if type(prior) is dict else None
@@ -575,9 +618,7 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         or not (set(semantic) | set(unresolved) | set(recitation)).issubset(failed)
         or set(recitation) & (set(semantic) | set(unresolved))
         or any(
-            type(page) is not int
-            or page < task["first_physical_page"]
-            or page > task["last_physical_page"]
+            type(page) is not int or page < first_physical_page or page > last_physical_page
             for page in failed
         )
     ):
@@ -876,11 +917,27 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
     tasks = [
         task for task in list_corpus_tasks_v1(args.ledger) if task["task_id"] in planned_task_ids
     ]
-    if len(tasks) != len(planned_task_ids) or any(
-        task["state"] not in {"FAILED", "SUCCEEDED"} for task in tasks
+
+    def admissible(task: dict[str, Any]) -> bool:
+        return task["state"] in {"FAILED", "SUCCEEDED"} or (
+            task["state"] == "RUNNING"
+            and task["route"] == GOOGLE_ROUTE
+            and type(task.get("provider_job_ref")) is str
+            and task["provider_job_ref"].startswith("gjfpaccelv1:claim:")
+        )
+
+    acceleration_claims = {
+        task["provider_job_ref"]
+        for task in tasks
+        if task["state"] == "RUNNING" and admissible(task)
+    }
+    if (
+        len(tasks) != len(planned_task_ids)
+        or any(not admissible(task) for task in tasks)
+        or len(acceleration_claims) > 1
     ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "current document manifest requires a terminal planned task frontier"
+            "current document manifest requires a terminal or claimed acceleration frontier"
         )
     task = next(task for task in tasks if task["task_id"] == args.task_id)
     expected_pages = list(range(1, task["document_page_count"] + 1))
@@ -975,6 +1032,260 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         "totals": manifest["totals"],
         "repaired_task_ids": [task["task_id"] for task in repaired_tasks],
         "selection_id": selection["selection_id"],
+    }
+
+
+def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
+    """Run one all-pending Google document through bounded OpenRouter concurrency."""
+
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration worker bound lies outside 1..30"
+        )
+    if not 1 <= args.max_acceleration_attempts <= 10:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration attempt bound lies outside 1..10"
+        )
+    plan = _plan(args.plan)
+    selected = _task_index(plan).get(args.task_id)
+    if selected is None or selected["planned_document"]["route"] != GOOGLE_ROUTE:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration task is not one planned Google document"
+        )
+    planned = selected["planned_document"]
+    claim = claim_google_document_for_openrouter_acceleration_v1(args.ledger, task_id=args.task_id)
+    tasks = claim["tasks"]
+    if all(task["state"] == "SUCCEEDED" for task in tasks):
+        return {
+            "claim_id": claim["claim_id"],
+            "disposition": "ALREADY_SUCCEEDED",
+            "task_ids": [task["task_id"] for task in tasks],
+        }
+    if any(task["state"] not in {"RUNNING", "SUCCEEDED"} for task in tasks):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration claim did not reserve its document"
+        )
+    task = tasks[0]
+    expected_pages = list(range(1, task["document_page_count"] + 1))
+    current_images = _current_page_image_sha256s_v1(
+        task=task,
+        source_root=args.source_root,
+        dpi=plan["policy"]["dpi"],
+    )
+    source = _source(task, args.source_root)
+    document_root = (
+        args.artifact_root
+        / "documents"
+        / planned["document_plan_id"].split(":", 1)[1]
+        / "openrouter-acceleration"
+    )
+    receipt_root = document_root / "run-receipts"
+    attempt_number = len(list(receipt_root.glob("*.json"))) + 1
+    if attempt_number > args.max_acceleration_attempts:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration attempt bound is exhausted"
+        )
+    attempt_root = document_root / f"attempt-{attempt_number:02d}"
+    default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
+
+    def run_frontier(*, pages: list[int] | None, prompt_variant: str):
+        artifact_dir = attempt_root / "base"
+        if pages is not None:
+            artifact_dir = attempt_root / "adaptive-retry" / prompt_variant
+        command = [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(args.database),
+            "--artifact-dir",
+            str(artifact_dir),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(
+                args.openrouter_workers
+                if pages is None
+                else min(args.openrouter_workers, len(pages))
+            ),
+            "--prompt-variant",
+            prompt_variant,
+            "--output-contract-mode",
+            "json-schema",
+            "--openrouter-key-file",
+            str(args.openrouter_key_file),
+            "--google-key-file",
+            str(args.google_key_file),
+            "--google-key-slot",
+            str(args.google_key_slot),
+            "--google-standard-mode",
+            "on-provider-error",
+            "--timeout-seconds",
+            str(args.provider_timeout_seconds),
+        ]
+        if pages is not None:
+            for page in pages:
+                command.extend(("--physical-page", str(page)))
+        return _command(command, expected={0, 2})
+
+    return_code, initial = run_frontier(pages=None, prompt_variant=default_variant)
+    if (
+        _summary_page_image_sha256s_v1(
+            initial.get("page_image_sha256s"), allowed_pages=expected_pages
+        )
+        != current_images
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration base image frontier drifted"
+        )
+    variants = {page: default_variant for page in expected_pages}
+    provider_results = [
+        {"physical_pages": expected_pages, "prompt_variant": default_variant, "result": initial}
+    ]
+    protected_pages: list[int] = []
+    if return_code != 0:
+        frontiers = _retry_prompt_frontiers_from_receipt_v1(
+            initial,
+            first_physical_page=1,
+            last_physical_page=task["document_page_count"],
+        )
+        protected_pages = frontiers["items"]
+        retry_code = 0
+        prompt_pages: dict[str, list[int]] = {}
+        for variant, pages in (
+            (default_variant, frontiers["default"]),
+            ("scope", frontiers["scope"]),
+            ("items", frontiers["items"]),
+        ):
+            prompt_pages.setdefault(variant, []).extend(pages)
+        for prompt_variant, pages in (
+            (variant, sorted(set(pages))) for variant, pages in prompt_pages.items()
+        ):
+            if not pages:
+                continue
+            code, result = run_frontier(pages=pages, prompt_variant=prompt_variant)
+            if _summary_page_image_sha256s_v1(
+                result.get("page_image_sha256s"), allowed_pages=pages
+            ) != {page: current_images[page] for page in pages}:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "OpenRouter acceleration retry image frontier drifted"
+                )
+            provider_results.append(
+                {
+                    "physical_pages": pages,
+                    "prompt_variant": prompt_variant,
+                    "result": result,
+                }
+            )
+            variants.update({page: prompt_variant for page in pages})
+            if code != 0:
+                retry_code = 2
+        return_code = retry_code
+
+    receipt_material: dict[str, Any] = {
+        "acceleration_attempt": attempt_number,
+        "claim_id": claim["claim_id"],
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_ACCELERATION_RECEIPT_V1",
+        "provider_results": provider_results,
+        "task_ids": [task["task_id"] for task in tasks],
+    }
+    if return_code != 0:
+        receipt_material["disposition"] = "NEEDS_RETRY"
+        payload = canonical_json_bytes_v1(receipt_material)
+        _write_or_verify(receipt_root / (sha256(payload).hexdigest() + ".json"), payload)
+        return receipt_material
+
+    prompt_sha256s = {
+        page: sha256(
+            build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
+        ).hexdigest()
+        for page, variant in variants.items()
+    }
+    manifest = build_financial_document_manifest_v1(
+        args.database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=expected_pages,
+        page_image_sha256s=current_images,
+        prompt_sha256=prompt_sha256s,
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+        requested_model=GOOGLE_MODEL,
+        allowed_gateway_service_tiers=[
+            {
+                "gateway": "GOOGLE_GEMINI_API",
+                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+            },
+            {
+                "gateway": "GOOGLE_GEMINI_BATCH_API",
+                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+            },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+        ],
+    )
+    unresolved_pages = [
+        page["physical_page"] for page in manifest["pages"] if page["status"] == "UNRESOLVED_PAGE"
+    ]
+    dropped_pages = _semantic_retry_no_relevant_pages_v1(manifest, protected_pages=protected_pages)
+    if unresolved_pages or dropped_pages:
+        receipt_material.update(
+            {
+                "disposition": "NEEDS_RETRY",
+                "semantic_item_no_relevant_pages": dropped_pages,
+                "unresolved_pages": unresolved_pages,
+            }
+        )
+        payload = canonical_json_bytes_v1(receipt_material)
+        _write_or_verify(receipt_root / (sha256(payload).hexdigest() + ".json"), payload)
+        return receipt_material
+    manifest_result = build_current_document_manifest(
+        argparse.Namespace(
+            artifact_root=args.artifact_root,
+            database=args.database,
+            ledger=args.ledger,
+            page_prompt_variant=[
+                f"{page}={variant}"
+                for page, variant in variants.items()
+                if variant != default_variant
+            ],
+            plan=args.plan,
+            source_root=args.source_root,
+            task_id=args.task_id,
+        )
+    )
+    if manifest_result.get("document_manifest_id") != manifest["document_manifest_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter acceleration manifest does not replay exactly"
+        )
+    receipt_material.update(
+        {
+            "disposition": "SUCCEEDED",
+            "document_manifest_id": manifest["document_manifest_id"],
+            "selection_id": manifest_result["selection_id"],
+        }
+    )
+    payload = canonical_json_bytes_v1(receipt_material)
+    _write_or_verify(receipt_root / (sha256(payload).hexdigest() + ".json"), payload)
+    completed = []
+    for row in tasks:
+        if row["state"] == "RUNNING":
+            updated = transition_corpus_task_v1(
+                args.ledger,
+                task_id=row["task_id"],
+                expected_state="RUNNING",
+                next_state="SUCCEEDED",
+                receipt=receipt_material,
+            )
+            completed.append(updated["task_id"])
+    return {
+        **receipt_material,
+        "completed_task_ids": completed,
+        "ledger": corpus_ledger_summary_v1(args.ledger),
     }
 
 
@@ -1337,7 +1648,9 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         active_google = [
             task
             for task in unfinished
-            if task["route"] == GOOGLE_ROUTE and task["state"] in {"SUBMITTED", "RUNNING"}
+            if task["route"] == GOOGLE_ROUTE
+            and task["state"] in {"SUBMITTED", "RUNNING"}
+            and not _is_openrouter_acceleration_task_v1(task)
         ]
         openrouter = [
             task
@@ -1756,6 +2069,8 @@ def main() -> int:
         result = repair_openrouter_google_task(args)
     elif args.command == "document-manifest-current":
         result = build_current_document_manifest(args)
+    elif args.command == "accelerate-google-document":
+        result = accelerate_google_document(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
