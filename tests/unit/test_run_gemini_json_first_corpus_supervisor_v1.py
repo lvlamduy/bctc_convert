@@ -770,7 +770,7 @@ def test_item_only_repair_seals_one_prompt_hash_per_page_without_provider_call(
         target.repair_openrouter_items_task(args)
 
 
-def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
+def test_openrouter_untyped_provider_retry_repeats_default_prompt_and_seals_manifest(
     monkeypatch, tmp_path
 ) -> None:
     source_root = tmp_path / "source"
@@ -811,7 +811,7 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
     def command(argv, *, expected):
         commands.append(argv)
         assert expected == {0, 2}
-        assert argv[argv.index("--prompt-variant") + 1] == "items"
+        assert argv[argv.index("--prompt-variant") + 1] == "simple"
         assert argv.count("--physical-page") == 1
         assert argv[argv.index("--physical-page") + 1] == "2"
         return 0, {
@@ -866,11 +866,11 @@ def test_openrouter_provider_retry_uses_only_item_frontier_and_seals_manifest(
     assert result["state"] == "SUCCEEDED"
     prompts = manifests[0]["prompt_sha256"]
     assert prompts[1] == prompts[3]
-    assert prompts[2] != prompts[1]
+    assert prompts[2] == prompts[1]
     assert manifests[0]["page_image_sha256s"] == {page: str(page) * 64 for page in (1, 2, 3)}
     final_receipt = transitions[-1]["receipt"]
     assert final_receipt["alternate_prompt_pages"] == [2]
-    assert final_receipt["alternate_prompt_variant"] == "items"
+    assert final_receipt["alternate_prompt_variant"] == "simple"
     assert final_receipt["revalidated_document_pages"] == [1, 2, 3]
     assert final_receipt["protected_retry_pages"] == []
 
@@ -896,6 +896,205 @@ def test_provider_page_image_frontier_rejects_missing_duplicate_and_bad_hash() -
             match="page image frontier",
         ):
             target._summary_page_image_sha256s_v1(attack, allowed_pages=[1, 2])
+
+
+def test_openrouter_recitation_retry_uses_scope_and_may_resolve_to_no_relevant(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "ACB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [2],
+                "recitation_failed_pages": [2],
+                "semantic_failed_pages": [],
+            }
+        ),
+        "relative_path": "ACB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 2, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        assert argv[argv.index("--prompt-variant") + 1] == "scope"
+        assert argv[argv.index("--physical-page") + 1] == "2"
+        assert "adaptive-retry/scope" in argv[argv.index("--artifact-dir") + 1]
+        return 0, {
+            "cached_pages": [],
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "ingested_pages": [2],
+            "page_image_sha256s": [{"image_sha256": "2" * 64, "physical_page": 2}],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "f" * 64,
+            "pages": [
+                {
+                    "physical_page": page,
+                    "status": (
+                        "NO_RELEVANT_FINANCIAL_CONTENT" if page == 2 else "FINANCIAL_NOTE_CONTENT"
+                    ),
+                }
+                for page in (1, 2, 3)
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert result["state"] == "SUCCEEDED"
+    receipt = transitions[-1]["receipt"]
+    assert receipt["alternate_prompt_variant"] == "scope"
+    assert receipt["protected_retry_pages"] == []
+    assert (tmp_path / "artifacts" / "task-1" / "adaptive-prompt-document-manifest.json").is_file()
+
+
+def test_openrouter_adaptive_retry_partitions_mixed_failure_kinds(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "MBB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 4,
+        "first_physical_page": 1,
+        "last_physical_page": 4,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [2, 3, 4],
+                "recitation_failed_pages": [2],
+                "semantic_failed_pages": [3],
+            }
+        ),
+        "relative_path": "MBB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+    calls = []
+    manifests = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 2, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        variant = argv[argv.index("--prompt-variant") + 1]
+        page = int(argv[argv.index("--physical-page") + 1])
+        calls.append((variant, page))
+        return 0, {
+            "cached_pages": [],
+            "failed_pages": [],
+            "ingested_pages": [page],
+            "page_image_sha256s": [{"image_sha256": str(page) * 64, "physical_page": page}],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+        }
+
+    def manifest(_database, **kwargs):
+        manifests.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "c" * 64,
+            "pages": [
+                {
+                    "physical_page": page,
+                    "status": (
+                        "NO_RELEVANT_FINANCIAL_CONTENT" if page == 2 else "FINANCIAL_NOTE_CONTENT"
+                    ),
+                }
+                for page in (1, 2, 3, 4)
+            ],
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3, 4)},
+    )
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=25,
+        google_key_file=tmp_path / "google",
+        google_key_slot=2,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+    )
+    assert result["state"] == "SUCCEEDED"
+    assert calls == [("simple", 4), ("scope", 2), ("items", 3)]
+    prompt_hashes = manifests[0]["prompt_sha256"]
+    assert len({prompt_hashes[2], prompt_hashes[3], prompt_hashes[4]}) == 3
+    receipt = transitions[-1]["receipt"]
+    assert receipt["protected_retry_pages"] == [3]
+    assert receipt["alternate_prompt_variants"] == [
+        {"physical_pages": [4], "prompt_variant": "simple"},
+        {"physical_pages": [2], "prompt_variant": "scope"},
+        {"physical_pages": [3], "prompt_variant": "items"},
+    ]
 
 
 def test_current_document_manifest_binds_image_and_prompt_frontiers(monkeypatch, tmp_path) -> None:
@@ -1065,11 +1264,32 @@ def test_openrouter_item_retry_accepts_semantic_subset_and_rejects_ambiguous_fro
     }
     assert target._provider_retry_pages_v1(unresolved) == [2]
     assert target._protected_retry_pages_v1(unresolved) == [2]
+    recitation = {
+        **task,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [2],
+                "recitation_failed_pages": [2],
+                "semantic_failed_pages": [],
+            }
+        ),
+    }
+    assert target._retry_prompt_frontiers_v1(recitation) == {
+        "default": [],
+        "items": [],
+        "scope": [2],
+    }
+    assert target._protected_retry_pages_v1(recitation) == []
 
     for prior in (
         {"failed_pages": [2, 2], "semantic_failed_pages": []},
         {"failed_pages": [0], "semantic_failed_pages": []},
         {"failed_pages": [2], "semantic_failed_pages": [3]},
+        {
+            "failed_pages": [2],
+            "recitation_failed_pages": [2],
+            "semantic_failed_pages": [2],
+        },
     ):
         candidate = {**task, "last_receipt_json": canonical_json_bytes_v1(prior)}
         with pytest.raises(

@@ -388,6 +388,45 @@ def test_provider_failure_falls_back_one_page_to_google_and_builds_mixed_manifes
     assert json.loads(fallback.read_bytes())["fallback_gateway"] == "GOOGLE_GEMINI_API"
 
 
+def test_provider_recitation_is_a_typed_retry_frontier(tmp_path) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 1)
+
+    def provider(**_kwargs):
+        error = GeminiJsonFirstProviderV1Error("provider stopped for recitation")
+        error.attempts = ()
+        error.raw_response_bytes = b'{"candidates":[{"finishReason":"RECITATION"}]}'
+        raise error
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+    )
+    assert result["disposition"] == "NEEDS_RETRY"
+    assert result["failed_pages"] == [1]
+    assert result["recitation_failed_pages"] == [1]
+    failure = json.loads((artifacts / "page-00001" / "attempt-0001" / "failure.json").read_bytes())
+    assert failure["provider_failure_kind"] == "RECITATION"
+
+
+def test_recitation_detection_does_not_guess_from_errors_or_other_finish_reasons() -> None:
+    for raw in (
+        b'{"error":"recitation"}',
+        b'{"candidates":[{"finishReason":"SAFETY"}]}',
+        b'{"choices":[{"finish_reason":"stop"}]}',
+        b"not-json",
+    ):
+        error = GeminiJsonFirstProviderV1Error("failed")
+        error.raw_response_bytes = raw
+        assert not target._provider_error_is_recitation_v1(error)
+
+
 def test_bounded_page_frontier_runs_in_parallel_without_claiming_whole_document(tmp_path) -> None:
     pdf = tmp_path / "document.pdf"
     database = tmp_path / "store.sqlite3"

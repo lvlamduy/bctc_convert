@@ -542,8 +542,8 @@ def _run_google_fallback(
     )
 
 
-def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
-    """Return the exact failed-page frontier eligible for the item prompt."""
+def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | None:
+    """Classify one exact failed-page frontier without inspecting page content."""
 
     if task["state"] != "NEEDS_RETRY":
         return None
@@ -555,13 +555,20 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
         ) from exc
     failed = prior.get("failed_pages") if type(prior) is dict else None
     semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
+    unresolved = prior.get("unresolved_pages", []) if type(prior) is dict else None
+    recitation = prior.get("recitation_failed_pages", []) if type(prior) is dict else None
     if (
         type(failed) is not list
         or not failed
         or failed != sorted(set(failed))
         or type(semantic) is not list
         or semantic != sorted(set(semantic))
-        or not set(semantic).issubset(failed)
+        or type(unresolved) is not list
+        or unresolved != sorted(set(unresolved))
+        or type(recitation) is not list
+        or recitation != sorted(set(recitation))
+        or not (set(semantic) | set(unresolved) | set(recitation)).issubset(failed)
+        or set(recitation) & (set(semantic) | set(unresolved))
         or any(
             type(page) is not int
             or page < task["first_physical_page"]
@@ -572,7 +579,20 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter retry is not one exact failed-page frontier"
         )
-    return failed
+    protected = set(semantic) | set(unresolved)
+    recitation_pages = set(recitation)
+    return {
+        "default": sorted(set(failed) - protected - recitation_pages),
+        "items": sorted(protected),
+        "scope": sorted(recitation_pages),
+    }
+
+
+def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
+    frontiers = _retry_prompt_frontiers_v1(task)
+    if frontiers is None:
+        return None
+    return sorted(page for pages in frontiers.values() for page in pages)
 
 
 def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
@@ -580,67 +600,44 @@ def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
 
     if task["state"] != "NEEDS_RETRY":
         return []
-    try:
-        prior = json.loads(task["last_receipt_json"])
-    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter retry receipt is invalid"
-        ) from exc
-    semantic = prior.get("semantic_failed_pages") if type(prior) is dict else None
-    unresolved = prior.get("unresolved_pages", []) if type(prior) is dict else None
-    if (
-        type(semantic) is not list
-        or semantic != sorted(set(semantic))
-        or type(unresolved) is not list
-        or unresolved != sorted(set(unresolved))
-    ):
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter protected retry frontier is invalid"
-        )
-    protected = sorted(set(semantic) | set(unresolved))
-    failed = prior.get("failed_pages")
-    if type(failed) is not list or not set(protected).issubset(failed):
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter protected retry pages are not failed pages"
-        )
-    return protected
+    frontiers = _retry_prompt_frontiers_v1(task)
+    if frontiers is None:
+        return []
+    return frontiers["items"]
 
 
-def _mixed_prompt_manifest_v1(
+def _page_variant_manifest_v1(
     *,
     task: dict[str, Any],
     ledger: Path,
     database: Path,
     artifact_root: Path,
     page_image_sha256s: dict[int, str],
-    repair_pages: list[int],
+    page_prompt_variants: dict[int, str],
     write: bool = True,
 ) -> dict[str, Any]:
-    """Build one document manifest binding ``items`` only to repair pages."""
+    """Build one document manifest with explicit prompt variants by page."""
 
     expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
     if (
-        not repair_pages
-        or repair_pages != sorted(set(repair_pages))
-        or any(page not in expected_pages for page in repair_pages)
+        not page_prompt_variants
+        or any(type(page) is not int or page not in expected_pages for page in page_prompt_variants)
+        or any(variant not in allowed_variants for variant in page_prompt_variants.values())
         or expected_pages != list(range(1, task["document_page_count"] + 1))
     ):
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "item-only repair page frontier is duplicate, out of range, or not a full document"
+            "page prompt variant frontier is invalid or not a full document"
         )
     default_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
-    if default_variant == "items":
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "item-only repair must differ from the corpus default prompt"
-        )
-    default_prompt_sha = sha256(
-        build_financial_page_json_prompt_v1(variant=default_variant).encode("utf-8")
-    ).hexdigest()
-    items_prompt_sha = sha256(
-        build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
-    ).hexdigest()
+    if default_variant not in allowed_variants:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("corpus default prompt variant is invalid")
     page_prompt_sha256s = {
-        page: items_prompt_sha if page in repair_pages else default_prompt_sha
+        page: sha256(
+            build_financial_page_json_prompt_v1(
+                variant=page_prompt_variants.get(page, default_variant)
+            ).encode("utf-8")
+        ).hexdigest()
         for page in expected_pages
     }
     manifest = build_financial_document_manifest_v1(
@@ -662,6 +659,39 @@ def _mixed_prompt_manifest_v1(
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
             },
         ],
+    )
+    if write:
+        _write_or_verify(
+            _task_root(task, artifact_root) / "adaptive-prompt-document-manifest.json",
+            canonical_json_bytes_v1(manifest),
+        )
+    return manifest
+
+
+def _mixed_prompt_manifest_v1(
+    *,
+    task: dict[str, Any],
+    ledger: Path,
+    database: Path,
+    artifact_root: Path,
+    page_image_sha256s: dict[int, str],
+    repair_pages: list[int],
+    write: bool = True,
+) -> dict[str, Any]:
+    """Backward-compatible item-only manifest wrapper."""
+
+    if not repair_pages or repair_pages != sorted(set(repair_pages)):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "item-only repair page frontier is duplicate or empty"
+        )
+    manifest = _page_variant_manifest_v1(
+        task=task,
+        ledger=ledger,
+        database=database,
+        artifact_root=artifact_root,
+        page_image_sha256s=page_image_sha256s,
+        page_prompt_variants={page: "items" for page in repair_pages},
+        write=False,
     )
     if write:
         _write_or_verify(
@@ -901,7 +931,12 @@ def _run_openrouter(
     provider_timeout_seconds: int,
     max_attempts: int,
 ) -> dict[str, Any]:
-    retry_pages = _provider_retry_pages_v1(task)
+    retry_frontiers = _retry_prompt_frontiers_v1(task)
+    retry_pages = (
+        None
+        if retry_frontiers is None
+        else sorted(page for pages in retry_frontiers.values() for page in pages)
+    )
     protected_retry_pages = _protected_retry_pages_v1(task)
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
         task = transition_corpus_task_v1(
@@ -912,97 +947,170 @@ def _run_openrouter(
             receipt={"document_run_started": True},
         )
     source = _source(task, source_root)
-    command = [
-        sys.executable,
-        str(OPENROUTER_RUNNER),
-        "--pdf",
-        str(source),
-        "--source-logical-name",
-        task["relative_path"],
-        "--database",
-        str(database),
-        "--artifact-dir",
-        str(_task_root(task, artifact_root)),
-        "--dpi",
-        str(plan["policy"]["dpi"]),
-        "--workers",
-        str(openrouter_workers),
-        "--prompt-variant",
-        "items" if retry_pages is not None else corpus_ledger_summary_v1(ledger)["prompt_variant"],
-        "--output-contract-mode",
-        "json-schema",
-        "--openrouter-key-file",
-        str(openrouter_key_file),
-        "--google-key-file",
-        str(google_key_file),
-        "--google-key-slot",
-        str(google_key_slot),
-        "--google-standard-mode",
-        "on-provider-error",
-        "--timeout-seconds",
-        str(provider_timeout_seconds),
-    ]
-    if retry_pages is not None:
-        for page in retry_pages:
-            command.extend(("--physical-page", str(page)))
-    return_code, receipt = _command(command, expected={0, 2})
-    semantic_failed_pages = receipt.get("semantic_failed_pages")
-    if type(semantic_failed_pages) is not list:
-        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "OpenRouter result lacks its semantic-failure frontier"
+    default_prompt_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
+
+    def run_frontier(*, pages: list[int] | None, prompt_variant: str) -> tuple[int, dict[str, Any]]:
+        selected_artifact_dir = _task_root(task, artifact_root)
+        if pages is not None:
+            selected_artifact_dir = selected_artifact_dir / "adaptive-retry" / prompt_variant
+        command = [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(database),
+            "--artifact-dir",
+            str(selected_artifact_dir),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(openrouter_workers),
+            "--prompt-variant",
+            prompt_variant,
+            "--output-contract-mode",
+            "json-schema",
+            "--openrouter-key-file",
+            str(openrouter_key_file),
+            "--google-key-file",
+            str(google_key_file),
+            "--google-key-slot",
+            str(google_key_slot),
+            "--google-standard-mode",
+            "on-provider-error",
+            "--timeout-seconds",
+            str(provider_timeout_seconds),
+        ]
+        if pages is not None:
+            for page in pages:
+                command.extend(("--physical-page", str(page)))
+        return _command(command, expected={0, 2})
+
+    if retry_frontiers is None:
+        return_code, receipt = run_frontier(
+            pages=None,
+            prompt_variant=default_prompt_variant,
         )
-    if return_code == 0 and retry_pages is not None:
-        retry_page_images = _summary_page_image_sha256s_v1(
-            receipt.get("page_image_sha256s"),
-            allowed_pages=retry_pages,
-        )
+        semantic_failed_pages = receipt.get("semantic_failed_pages")
+        recitation_failed_pages = receipt.get("recitation_failed_pages", [])
+        if type(semantic_failed_pages) is not list or type(recitation_failed_pages) is not list:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter result lacks a typed retry frontier"
+            )
+    else:
         current_page_images = _current_page_image_sha256s_v1(
             task=task,
             source_root=source_root,
             dpi=plan["policy"]["dpi"],
         )
-        if retry_page_images != {page: current_page_images[page] for page in retry_pages}:
-            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                "retry result does not bind the current whole-page images"
-            )
-        manifest = _mixed_prompt_manifest_v1(
-            task=task,
-            ledger=ledger,
-            database=database,
-            artifact_root=artifact_root,
-            page_image_sha256s=current_page_images,
-            repair_pages=retry_pages,
-            write=False,
+        retry_results = []
+        retry_variants: dict[int, str] = {}
+        return_code = 0
+        aggregate: dict[str, list[int]] = {
+            "cached_pages": [],
+            "failed_pages": [],
+            "ingested_pages": [],
+            "offline_missing_pages": [],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+        prompt_pages: dict[str, list[int]] = {}
+        for prompt_variant, pages in (
+            (default_prompt_variant, retry_frontiers["default"]),
+            ("scope", retry_frontiers["scope"]),
+            ("items", retry_frontiers["items"]),
+        ):
+            prompt_pages.setdefault(prompt_variant, []).extend(pages)
+        prompt_frontiers = tuple(
+            (variant, sorted(set(pages))) for variant, pages in prompt_pages.items()
         )
-        dropped_semantic_pages = _semantic_retry_no_relevant_pages_v1(
-            manifest, protected_pages=protected_retry_pages
-        )
-        if dropped_semantic_pages:
-            receipt = {
-                **receipt,
-                "alternate_prompt_pages": retry_pages,
-                "alternate_prompt_variant": "items",
-                "semantic_item_no_relevant_pages": dropped_semantic_pages,
-                "protected_retry_pages": protected_retry_pages,
-            }
-            return_code = 2
-        else:
-            _write_or_verify(
-                _task_root(task, artifact_root) / "mixed-prompt-document-manifest.json",
-                canonical_json_bytes_v1(manifest),
+        for prompt_variant, pages in prompt_frontiers:
+            if not pages:
+                continue
+            code, result = run_frontier(pages=pages, prompt_variant=prompt_variant)
+            result_images = _summary_page_image_sha256s_v1(
+                result.get("page_image_sha256s"),
+                allowed_pages=pages,
             )
-            receipt = {
-                **receipt,
-                "alternate_prompt_pages": retry_pages,
-                "alternate_prompt_variant": "items",
-                "manifest_id": manifest["document_manifest_id"],
-                "page_image_sha256s": [
-                    {"image_sha256": image_sha, "physical_page": page}
-                    for page, image_sha in current_page_images.items()
-                ],
-                "revalidated_document_pages": list(range(1, task["document_page_count"] + 1)),
-                "protected_retry_pages": protected_retry_pages,
-            }
+            if result_images != {page: current_page_images[page] for page in pages}:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "retry result does not bind the current whole-page images"
+                )
+            for field in aggregate:
+                values = result.get(field, [])
+                if (
+                    type(values) is not list
+                    or values != sorted(set(values))
+                    or any(page not in pages for page in values)
+                ):
+                    raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                        "adaptive retry result page frontier is invalid"
+                    )
+                aggregate[field].extend(values)
+            retry_results.append(
+                {
+                    "physical_pages": pages,
+                    "prompt_variant": prompt_variant,
+                    "result": result,
+                }
+            )
+            retry_variants.update({page: prompt_variant for page in pages})
+            if code != 0:
+                return_code = 2
+        receipt = {
+            **{field: sorted(values) for field, values in aggregate.items()},
+            "adaptive_retry_results": retry_results,
+            "alternate_prompt_pages": retry_pages,
+            "alternate_prompt_variants": [
+                {"physical_pages": pages, "prompt_variant": variant}
+                for variant, pages in prompt_frontiers
+                if pages
+            ],
+            "protected_retry_pages": protected_retry_pages,
+        }
+        if return_code == 0:
+            manifest = _page_variant_manifest_v1(
+                task=task,
+                ledger=ledger,
+                database=database,
+                artifact_root=artifact_root,
+                page_image_sha256s=current_page_images,
+                page_prompt_variants=retry_variants,
+                write=False,
+            )
+            dropped_semantic_pages = _semantic_retry_no_relevant_pages_v1(
+                manifest, protected_pages=protected_retry_pages
+            )
+            if dropped_semantic_pages:
+                receipt["semantic_item_no_relevant_pages"] = dropped_semantic_pages
+                return_code = 2
+            else:
+                manifest_name = (
+                    "mixed-prompt-document-manifest.json"
+                    if set(retry_variants.values()) == {"items"}
+                    else "adaptive-prompt-document-manifest.json"
+                )
+                _write_or_verify(
+                    _task_root(task, artifact_root) / manifest_name,
+                    canonical_json_bytes_v1(manifest),
+                )
+                receipt.update(
+                    {
+                        "manifest_id": manifest["document_manifest_id"],
+                        "page_image_sha256s": [
+                            {"image_sha256": image_sha, "physical_page": page}
+                            for page, image_sha in current_page_images.items()
+                        ],
+                        "revalidated_document_pages": list(
+                            range(1, task["document_page_count"] + 1)
+                        ),
+                    }
+                )
+            if len(retry_results) == 1:
+                receipt["alternate_prompt_variant"] = retry_results[0]["prompt_variant"]
     next_state = (
         "SUCCEEDED"
         if return_code == 0

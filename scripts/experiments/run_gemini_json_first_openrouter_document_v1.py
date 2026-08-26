@@ -93,6 +93,32 @@ class _PersistedPageOutcome:
     disposition: str
 
 
+def _provider_error_is_recitation_v1(error: GeminiJsonFirstProviderV1Error) -> bool:
+    """Recognize the provider's explicit no-output recitation disposition."""
+
+    raw = error.raw_response_bytes
+    if type(raw) is not bytes or not raw:
+        return False
+    try:
+        envelope = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    if type(envelope) is not dict:
+        return False
+    candidates = envelope.get("candidates")
+    if type(candidates) is list and any(
+        type(candidate) is dict and candidate.get("finishReason") == "RECITATION"
+        for candidate in candidates
+    ):
+        return True
+    choices = envelope.get("choices")
+    return type(choices) is list and any(
+        type(choice) is dict
+        and choice.get("finish_reason", choice.get("finishReason")) == "RECITATION"
+        for choice in choices
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
@@ -485,6 +511,7 @@ def _persist_page_outcome_v1(
         )
     if outcome.provider_error is not None:
         error = outcome.provider_error
+        recitation = _provider_error_is_recitation_v1(error)
         if error.raw_response_bytes is not None:
             raw = error.raw_response_bytes
             _write_new(
@@ -498,10 +525,17 @@ def _persist_page_outcome_v1(
                     "attempts": list(error.attempts),
                     "error_type": type(error).__name__,
                     "page": outcome.page,
+                    "provider_failure_kind": (
+                        "RECITATION" if recitation else "OTHER_PROVIDER_FAILURE"
+                    ),
                 }
             ),
         )
-        return _PersistedPageOutcome(physical_page, outcome.page, "PROVIDER_FAILED")
+        return _PersistedPageOutcome(
+            physical_page,
+            outcome.page,
+            "PROVIDER_RECITATION_FAILED" if recitation else "PROVIDER_FAILED",
+        )
     result = outcome.provider_result
     if result is None:
         raise AssertionError("page outcome has no terminal disposition")
@@ -712,6 +746,7 @@ def run_openrouter_document_v1(
 
     failed_pages: list[int] = []
     semantic_failed_pages: list[int] = []
+    recitation_failed_pages: list[int] = []
     unresolved_pages: list[int] = []
     offline_missing_pages: list[int] = []
     cached_pages: list[int] = []
@@ -731,6 +766,9 @@ def run_openrouter_document_v1(
             offline_missing_pages.append(physical_page)
         elif outcome.disposition == "PROVIDER_FAILED":
             failed_pages.append(physical_page)
+        elif outcome.disposition == "PROVIDER_RECITATION_FAILED":
+            failed_pages.append(physical_page)
+            recitation_failed_pages.append(physical_page)
         elif outcome.disposition == "INGESTED_UNRESOLVED":
             ingested_pages.append(physical_page)
             failed_pages.append(physical_page)
@@ -794,6 +832,7 @@ def run_openrouter_document_v1(
             }
             for page in selected_pages
         ],
+        "recitation_failed_pages": recitation_failed_pages,
         "semantic_failed_pages": semantic_failed_pages,
         "unresolved_pages": unresolved_pages,
         "usage": usage_summary_v1(database),
