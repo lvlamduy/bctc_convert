@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
@@ -131,6 +132,23 @@ def _parser() -> argparse.ArgumentParser:
         default=ROOT / "docs/experiments/openrouter",
     )
     poll.add_argument("--timeout-seconds", type=int, default=60)
+
+    watch = commands.add_parser("watch")
+    watch.add_argument("--database", type=Path, required=True)
+    watch.add_argument("--artifact-dir", type=Path, required=True)
+    watch.add_argument(
+        "--google-key-file",
+        type=Path,
+        default=ROOT / "docs/experiments/gemma.txt",
+    )
+    watch.add_argument(
+        "--openrouter-key-file",
+        type=Path,
+        default=ROOT / "docs/experiments/openrouter",
+    )
+    watch.add_argument("--timeout-seconds", type=int, default=60)
+    watch.add_argument("--poll-interval-seconds", type=float, default=30.0)
+    watch.add_argument("--max-wait-seconds", type=float, default=86_400.0)
 
     status = commands.add_parser("status")
     status.add_argument("--database", type=Path, required=True)
@@ -759,6 +777,38 @@ def _poll(args: argparse.Namespace) -> int:
     return 0
 
 
+def _watch(args: argparse.Namespace) -> int:
+    """Resume-safe polling loop for one previously submitted batch."""
+
+    if args.poll_interval_seconds <= 0 or args.poll_interval_seconds > 3_600:
+        raise RunGeminiJsonFirstBatchV1Error("poll interval lies outside 0..3600 seconds")
+    if args.max_wait_seconds <= 0 or args.max_wait_seconds > 7 * 86_400:
+        raise RunGeminiJsonFirstBatchV1Error("maximum wait lies outside 0..7 days")
+    receipt = _json_file(args.artifact_dir / "submission-receipt.json")
+    started = time.monotonic()
+    while True:
+        _poll(args)
+        matching = [
+            item
+            for item in batch_progress_v1(args.database)
+            if item["batch_name"] == receipt.get("batch_name")
+        ]
+        if len(matching) != 1:
+            raise RunGeminiJsonFirstBatchV1Error(
+                "watched batch is not uniquely registered in the page store"
+            )
+        progress = matching[0]
+        if progress["state"] not in ACTIVE_BATCH_STATES:
+            disposition = "SUCCEEDED" if progress["failed_pages"] == 0 else "NEEDS_RETRY"
+            print(json.dumps({"disposition": disposition, **progress}, sort_keys=True))
+            return 0 if disposition == "SUCCEEDED" else 2
+        if time.monotonic() - started >= args.max_wait_seconds:
+            raise RunGeminiJsonFirstBatchV1Error(
+                "watch reached its bounded wait before the batch became terminal"
+            )
+        time.sleep(args.poll_interval_seconds)
+
+
 def _document_manifest(args: argparse.Namespace) -> int:
     if args.expected_page_count <= 0:
         raise RunGeminiJsonFirstBatchV1Error("expected page count must be positive")
@@ -842,6 +892,8 @@ def main() -> int:
         return _submit(args)
     if args.command == "poll":
         return _poll(args)
+    if args.command == "watch":
+        return _watch(args)
     if args.command == "register-existing":
         return _register_existing(args)
     if args.command == "document-manifest":

@@ -212,3 +212,63 @@ def test_register_existing_is_hash_bound_and_idempotent(tmp_path, monkeypatch, c
     (artifacts / "submission-receipt.json").write_text(json.dumps(receipt))
     with pytest.raises(target.RunGeminiJsonFirstBatchV1Error, match="manifest hash"):
         target._register_existing(args)
+
+
+@pytest.mark.parametrize(("failed_pages", "exit_code"), [(0, 0), (1, 2)])
+def test_watch_stops_at_terminal_disposition(
+    tmp_path, monkeypatch, capsys, failed_pages, exit_code
+) -> None:
+    artifacts = tmp_path / "job"
+    artifacts.mkdir()
+    (artifacts / "submission-receipt.json").write_text(json.dumps({"batch_name": "batches/one"}))
+    polls = []
+    monkeypatch.setattr(target, "_poll", lambda args: polls.append(args) or 0)
+    monkeypatch.setattr(
+        target,
+        "batch_progress_v1",
+        lambda path: [
+            {
+                "batch_name": "batches/one",
+                "failed_pages": failed_pages,
+                "state": "BATCH_STATE_SUCCEEDED",
+            }
+        ],
+    )
+    args = argparse.Namespace(
+        artifact_dir=artifacts,
+        database=tmp_path / "store.sqlite3",
+        max_wait_seconds=60,
+        poll_interval_seconds=1,
+    )
+    assert target._watch(args) == exit_code
+    assert len(polls) == 1
+    expected = "SUCCEEDED" if exit_code == 0 else "NEEDS_RETRY"
+    assert json.loads(capsys.readouterr().out)["disposition"] == expected
+
+
+def test_watch_has_bounded_wait(tmp_path, monkeypatch) -> None:
+    artifacts = tmp_path / "job"
+    artifacts.mkdir()
+    (artifacts / "submission-receipt.json").write_text(json.dumps({"batch_name": "batches/one"}))
+    monkeypatch.setattr(target, "_poll", lambda args: 0)
+    monkeypatch.setattr(
+        target,
+        "batch_progress_v1",
+        lambda path: [
+            {
+                "batch_name": "batches/one",
+                "failed_pages": 0,
+                "state": "BATCH_STATE_RUNNING",
+            }
+        ],
+    )
+    ticks = iter((0.0, 2.0))
+    monkeypatch.setattr(target.time, "monotonic", lambda: next(ticks))
+    args = argparse.Namespace(
+        artifact_dir=artifacts,
+        database=tmp_path / "store.sqlite3",
+        max_wait_seconds=1,
+        poll_interval_seconds=0.1,
+    )
+    with pytest.raises(target.RunGeminiJsonFirstBatchV1Error, match="bounded wait"):
+        target._watch(args)
