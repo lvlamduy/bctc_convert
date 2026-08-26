@@ -8296,13 +8296,24 @@ def _project_authenticated_fragmented_extreme_margin_columns_v4(
             for value in trailing["values"]
             if value["column_center"] == centers[-1]
         ]
+        removed_rescues = [
+            rescue
+            for rescue in projected["visible_dash_rescues"]
+            if rescue["page_sequence"] == page_sequence and rescue["column_center"] == centers[-1]
+        ]
         if (
             not removed_values
             or any(value["sample_id"] not in page_candidate_ids for value in removed_values)
             or any(
-                rescue["column_center"] == centers[-1]
-                for rescue in projected["visible_dash_rescues"]
-                if rescue["page_sequence"] == page_sequence
+                rescue["classification"] != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                or rescue["supporting_peer_dash_column_ordinal"] is not None
+                or rescue["dash_evidence"]["classification"] != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                or rescue["dash_evidence"]["normalized_value"] is not None
+                or rescue["proposed_raw_pixel_bbox"][0] < margin_boundary
+                or rescue["proposed_raw_pixel_bbox"][2] > page_width
+                or rescue["recognition_raw_pixel_bbox"][0] < margin_boundary
+                or rescue["recognition_raw_pixel_bbox"][2] > page_width
+                for rescue in removed_rescues
             )
         ):
             continue
@@ -8346,6 +8357,9 @@ def _project_authenticated_fragmented_extreme_margin_columns_v4(
                 if retained and not trailing["missing_column_ordinals"]
                 else "PARTIAL_TRAILING_VALUE_ROW_REQUIRES_PIXEL_RESCUE"
             )
+        projected["visible_dash_rescues"] = [
+            rescue for rescue in projected["visible_dash_rescues"] if rescue not in removed_rescues
+        ]
         grid["column_centers"] = canonical_clone_v1(financial_centers)
         candidate_sample_ids.update(page_candidate_ids)
         changed = True
