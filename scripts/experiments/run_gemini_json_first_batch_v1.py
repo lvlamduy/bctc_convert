@@ -789,9 +789,22 @@ def _document_manifest(args: argparse.Namespace) -> int:
         raise RunGeminiJsonFirstBatchV1Error(
             "batch artifact manifests do not bind one exact document"
         )
-    pages = [request.get("page", {}).get("physical_page") for request in requests]
+    retry_page_bindings: dict[int, dict[str, Any]] = {}
+    for request in requests:
+        page = request.get("page")
+        physical_page = page.get("physical_page") if type(page) is dict else None
+        if type(physical_page) is not int or physical_page <= 0:
+            raise RunGeminiJsonFirstBatchV1Error(
+                "batch artifact manifest contains an invalid physical page"
+            )
+        prior = retry_page_bindings.get(physical_page)
+        if prior is not None and prior != page:
+            raise RunGeminiJsonFirstBatchV1Error(
+                "batch artifact manifests disagree on one retried page binding"
+            )
+        retry_page_bindings[physical_page] = page
     expected_pages = list(range(1, args.expected_page_count + 1))
-    if sorted(pages) != expected_pages:
+    if sorted(retry_page_bindings) != expected_pages:
         raise RunGeminiJsonFirstBatchV1Error(
             "batch artifact manifests do not cover the exact document page frontier"
         )

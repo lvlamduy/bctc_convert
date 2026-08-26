@@ -82,7 +82,7 @@ def test_document_manifest_command_merges_disjoint_batches_in_page_order(
 @pytest.mark.parametrize(
     ("second_pages", "second_prompt", "message"),
     [
-        ([2, 3], "p", "page frontier"),
+        ([4], "p", "page frontier"),
         ([3], "different", "extraction contract"),
     ],
 )
@@ -102,6 +102,41 @@ def test_document_manifest_command_rejects_overlap_or_contract_drift(
                 output=tmp_path / "document-manifest.json",
             )
         )
+
+
+def test_document_manifest_allows_exact_retry_overlap_but_rejects_page_drift(
+    tmp_path, monkeypatch
+) -> None:
+    first = tmp_path / "first"
+    retry = tmp_path / "retry"
+    second = tmp_path / "second"
+    _write_batch_manifest(first, [1, 2])
+    _write_batch_manifest(retry, [2])
+    _write_batch_manifest(second, [3])
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda database, **kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:retry",
+            "page_count": 3,
+            "status_counts": {"FINANCIAL_NOTE_CONTENT": 3},
+            "totals": {"cost_usd": "0.01"},
+        },
+    )
+    args = argparse.Namespace(
+        batch_artifact_dir=[first, retry, second],
+        database=tmp_path / "store.sqlite3",
+        expected_page_count=3,
+        output=tmp_path / "document-manifest.json",
+    )
+    assert target._document_manifest(args) == 0
+
+    retry_manifest = json.loads((retry / "manifest.json").read_text())
+    retry_manifest["requests"][0]["page"]["image_sha256"] = "b" * 64
+    (retry / "manifest.json").write_text(json.dumps(retry_manifest))
+    args.output = tmp_path / "other-manifest.json"
+    with pytest.raises(target.RunGeminiJsonFirstBatchV1Error, match="retried page binding"):
+        target._document_manifest(args)
 
 
 def test_register_existing_is_hash_bound_and_idempotent(tmp_path, monkeypatch, capsys) -> None:
