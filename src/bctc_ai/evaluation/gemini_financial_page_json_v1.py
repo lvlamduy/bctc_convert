@@ -54,6 +54,11 @@ _CONTINUATION_KINDS = frozenset(
 _FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL | re.IGNORECASE)
 _SPACE = re.compile(r"\s+")
 _MODEL_CELL_PACK_SEPARATOR = "凸"
+_MODEL_DASH_ANNOTATION = re.compile(
+    r"\A\s*(.*?)\s+paradise_missing_here_dash_handled_as_dash_or_zero\s*->\s*[-–—_]\s*\Z",
+    re.IGNORECASE | re.DOTALL,
+)
+_DASH_PACK = re.compile(r"\A\s*[-–—_](?:\s+[-–—_])+\s*\Z")
 
 
 class GeminiFinancialPageJsonV1Error(ValueError):
@@ -347,9 +352,7 @@ def _expand_exact_model_cell_pack_v1(values: list[Any], *, width: int) -> list[A
     exactly.  Raw provider bytes remain unchanged in the store.
     """
 
-    if len(values) >= width or not any(
-        type(value) is str and _MODEL_CELL_PACK_SEPARATOR in value for value in values
-    ):
+    if len(values) >= width:
         return None
     expanded: list[Any] = []
     for value in values:
@@ -358,6 +361,17 @@ def _expand_exact_model_cell_pack_v1(values: list[Any], *, width: int) -> list[A
             if any(not part.strip() for part in parts):
                 return None
             expanded.extend(parts)
+        elif type(value) is str and (match := _MODEL_DASH_ANNOTATION.fullmatch(value)):
+            prefix = match.group(1).strip()
+            if prefix in {"-", "–", "—", "_"}:
+                expanded.append("-")
+            elif prefix:
+                expanded.extend((prefix, "-"))
+            else:
+                return None
+        elif type(value) is str and _DASH_PACK.fullmatch(value):
+            parts = re.findall(r"[-–—_]", value)
+            expanded.extend("-" for _part in parts)
         else:
             expanded.append(value)
     return expanded if len(expanded) == width else None
@@ -366,12 +380,92 @@ def _expand_exact_model_cell_pack_v1(values: list[Any], *, width: int) -> list[A
 def _canonical_cell_pack_dash_v1(value: Any) -> Any:
     """Project a same-cell pack consisting solely of accounting dashes to one dash."""
 
+    if type(value) is str and (match := _MODEL_DASH_ANNOTATION.fullmatch(value)):
+        if match.group(1).strip() in {"-", "–", "—", "_"}:
+            return "-"
     if type(value) is not str or _MODEL_CELL_PACK_SEPARATOR not in value:
         return value
     parts = value.split(_MODEL_CELL_PACK_SEPARATOR)
     if parts and all(part.strip() in {"-", "–", "—", "_"} for part in parts):
         return "-"
     return value
+
+
+def _search_fold_v1(value: str) -> str:
+    normalized = unicodedata.normalize("NFD", value.casefold())
+    return "".join(
+        character for character in normalized if not unicodedata.combining(character)
+    ).replace("đ", "d")
+
+
+def _fill_signed_asset_liability_gap_v1(
+    values: list[Any], columns: list[dict[str, Any]]
+) -> list[Any] | None:
+    """Insert one uniquely implied blank asset/liability cell before a visible total."""
+
+    width = len(columns)
+    if width < 4 or len(values) != width - 1 or values[-1] != values[-2]:
+        return None
+    leaves = [
+        _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
+        for column in columns[-3:]
+    ]
+    if not (
+        "tai san" in leaves[0]
+        and ("cong no" in leaves[1] or "no phai tra" in leaves[1])
+        and "tong" in leaves[2]
+    ):
+        return None
+    signed = _signed_integer_cell_v1(values[-1])
+    if signed is None or signed == 0:
+        return None
+    insertion = width - 3 if signed < 0 else width - 2
+    return [*values[:insertion], None, *values[insertion:]]
+
+
+def _signed_integer_cell_v1(value: Any) -> int | None:
+    if type(value) is not str:
+        return None
+    text = value.strip()
+    negative = text.startswith("(") and text.endswith(")")
+    if negative:
+        text = text[1:-1].strip()
+    if text.startswith("-") and text[1:].strip():
+        negative = True
+        text = text[1:].strip()
+    digits = re.sub(r"[.,\s]", "", text)
+    if not digits.isdigit():
+        return None
+    number = int(digits)
+    return -number if negative else number
+
+
+def _move_unique_arithmetic_total_v1(
+    values: list[Any], columns: list[dict[str, Any]], *, model_annotation_present: bool
+) -> list[Any]:
+    """Move one displaced total only when exact integer arithmetic proves its position."""
+
+    if not model_annotation_present or not values or values[-1] is not None:
+        return values
+    last_header = _search_fold_v1(
+        " ".join(str(item or "") for item in columns[-1]["header_path_exact"])
+    )
+    if "tong" not in last_header and "total" not in last_header:
+        return values
+    parsed = [_signed_integer_cell_v1(value) for value in values[:-1]]
+    candidates: list[int] = []
+    for index, candidate in enumerate(parsed):
+        if candidate is None:
+            continue
+        others = [number for offset, number in enumerate(parsed) if offset != index and number]
+        if others and candidate == sum(others):
+            candidates.append(index)
+    if len(candidates) != 1:
+        return values
+    result = list(values)
+    result[-1] = result[candidates[0]]
+    result[candidates[0]] = None
+    return result
 
 
 def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
@@ -483,6 +577,13 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             if all(row_width == width for row_width in row_widths):
                 pass
             elif (
+                width == 1
+                and table["columns"][0]["value_kind"] == "TEXT"
+                and all(row_width == 0 for row_width in row_widths)
+            ):
+                for row in table["rows"]:
+                    row["values_exact"] = [None]
+            elif (
                 width > 1
                 and table["columns"][0]["value_kind"] == "TEXT"
                 and all(row_width == width - 1 for row_width in row_widths)
@@ -490,9 +591,23 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 del table["columns"][0]
             else:
                 for row in table["rows"]:
+                    model_annotation_present = any(
+                        type(value) is str and _MODEL_DASH_ANNOTATION.fullmatch(value)
+                        for value in row["values_exact"]
+                    )
                     expanded = _expand_exact_model_cell_pack_v1(row["values_exact"], width=width)
                     if expanded is not None:
-                        row["values_exact"] = expanded
+                        row["values_exact"] = _move_unique_arithmetic_total_v1(
+                            expanded,
+                            table["columns"],
+                            model_annotation_present=model_annotation_present,
+                        )
+                        continue
+                    filled = _fill_signed_asset_liability_gap_v1(
+                        row["values_exact"], table["columns"]
+                    )
+                    if filled is not None:
+                        row["values_exact"] = filled
                 if any(len(row["values_exact"]) != width for row in table["rows"]):
                     raise _error("row values do not align with table value columns")
             for row in table["rows"]:

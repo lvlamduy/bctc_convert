@@ -203,6 +203,106 @@ def test_merged_header_blanks_and_same_cell_dash_pack_are_soft_conventions() -> 
     ]
     assert checked_table["rows"][0]["values_exact"][0] == "-"
 
+    multiline = _page()
+    multiline["sections"][0]["tables"][0]["rows"][0]["values_exact"] = ["-\n-"]
+    multiline_checked = validate_financial_page_json_v1(multiline)
+    assert multiline_checked["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [
+        "-",
+        "-",
+    ]
+
+
+def test_label_only_text_table_receives_one_null_cell_without_losing_narrative() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [{"header_path_exact": ["Nội dung"], "value_kind": "TEXT"}]
+    table["rows"] = [
+        {
+            "label_exact": "Nợ được phân loại vào nhóm nợ có rủi ro thấp hơn khi:",
+            "hierarchy_path_exact": ["Nợ được phân loại vào nhóm nợ có rủi ro thấp hơn khi:"],
+            "row_kind": "ITEM",
+            "values_exact": [],
+        }
+    ]
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [None]
+
+
+def test_signed_derivative_leg_uniquely_inserts_missing_asset_or_liability_cell() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Giá trị hợp đồng"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tài sản"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Công nợ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tổng cộng"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Giao dịch hoán đổi tiền tệ",
+            "hierarchy_path_exact": ["Giao dịch hoán đổi tiền tệ"],
+            "row_kind": "ITEM",
+            "values_exact": ["80.034.373", "350.144", "350.144"],
+        },
+        {
+            "label_exact": "Giao dịch kỳ hạn tiền tệ",
+            "hierarchy_path_exact": ["Giao dịch kỳ hạn tiền tệ"],
+            "row_kind": "ITEM",
+            "values_exact": ["3.646.093", "(31.284)", "(31.284)"],
+        },
+    ]
+    checked_rows = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]["rows"]
+    assert checked_rows[0]["values_exact"] == ["80.034.373", "350.144", None, "350.144"]
+    assert checked_rows[1]["values_exact"] == ["3.646.093", None, "(31.284)", "(31.284)"]
+
+
+def test_dash_annotation_pack_and_arithmetic_total_close_one_nine_cell_row() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [name], "value_kind": "MONEY"}
+        for name in [
+            "Quá hạn",
+            "Không chịu lãi suất",
+            "Dưới 1 tháng",
+            "Từ 1 đến 3 tháng",
+            "Từ 3 đến 6 tháng",
+            "Từ 6 đến 12 tháng",
+            "Từ 1 đến 5 năm",
+            "Trên 5 năm",
+            "Tổng cộng",
+        ]
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Tiền gửi của khách hàng",
+            "hierarchy_path_exact": ["Tiền gửi của khách hàng"],
+            "row_kind": "ITEM",
+            "values_exact": [
+                "- paradise_missing_here_dash_handled_as_dash_or_zero -> -",
+                "128.791.054",
+                "171.834.972",
+                "116.669.771",
+                "89.027.381",
+                "30.981.400 paradise_missing_here_dash_handled_as_dash_or_zero -> -",
+                "537.304.578",
+                None,
+            ],
+        }
+    ]
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [
+        "-",
+        "128.791.054",
+        "171.834.972",
+        "116.669.771",
+        "89.027.381",
+        "30.981.400",
+        "-",
+        None,
+        "537.304.578",
+    ]
+
 
 def test_anonymous_empty_relevant_section_rejects() -> None:
     page = _page()

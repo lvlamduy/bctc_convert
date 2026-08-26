@@ -69,6 +69,8 @@ def _parser() -> argparse.ArgumentParser:
     repair.add_argument("--source-root", type=Path, required=True)
     repair.add_argument("--database", type=Path, required=True)
     repair.add_argument("--artifact-root", type=Path, required=True)
+    repair.add_argument("--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt")
+    repair.add_argument("--google-key-slot", type=int, default=2)
 
     repair_google = commands.add_parser("repair-openrouter-google")
     repair_google.add_argument("--plan", type=Path, required=True)
@@ -815,30 +817,46 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         )
     task = matches[0]
     source = _source(task, args.source_root)
-    return_code, result = _command(
-        [
-            sys.executable,
-            str(OPENROUTER_RUNNER),
-            "--pdf",
-            str(source),
-            "--source-logical-name",
-            task["relative_path"],
-            "--database",
-            str(args.database),
-            "--artifact-dir",
-            str(_task_root(task, args.artifact_root)),
-            "--dpi",
-            str(plan["policy"]["dpi"]),
-            "--workers",
-            str(plan["policy"]["openrouter_workers"]),
-            "--prompt-variant",
-            corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
-            "--output-contract-mode",
-            "json-schema",
-            "--offline-replay-only",
-        ],
-        expected={0, 2},
-    )
+    task_root = _task_root(task, args.artifact_root)
+    contract = _json_file(task_root / "document-contract.json")
+    google_standard_mode = contract.get("google_standard_mode", "disabled")
+    if google_standard_mode not in {"disabled", "on-provider-error"}:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "offline repair document fallback mode is invalid"
+        )
+    command = [
+        sys.executable,
+        str(OPENROUTER_RUNNER),
+        "--pdf",
+        str(source),
+        "--source-logical-name",
+        task["relative_path"],
+        "--database",
+        str(args.database),
+        "--artifact-dir",
+        str(task_root),
+        "--dpi",
+        str(plan["policy"]["dpi"]),
+        "--workers",
+        str(plan["policy"]["openrouter_workers"]),
+        "--prompt-variant",
+        corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
+        "--output-contract-mode",
+        "json-schema",
+        "--offline-replay-only",
+    ]
+    if google_standard_mode != "disabled":
+        command.extend(
+            (
+                "--google-key-file",
+                str(args.google_key_file),
+                "--google-key-slot",
+                str(args.google_key_slot),
+                "--google-standard-mode",
+                google_standard_mode,
+            )
+        )
+    return_code, result = _command(command, expected={0, 2})
     if return_code != 0 or result.get("disposition") != "SUCCEEDED":
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "offline OpenRouter repair did not close the document"
