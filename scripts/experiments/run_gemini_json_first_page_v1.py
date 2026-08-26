@@ -59,6 +59,10 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument("--image", type=Path)
     source.add_argument("--pdf", type=Path)
     parser.add_argument("--physical-page", type=int)
+    parser.add_argument(
+        "--source-logical-name",
+        help="Stable corpus-relative filing path; defaults to the input filename.",
+    )
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
     parser.add_argument(
         "--prompt-variant",
@@ -118,7 +122,7 @@ def _image(args: argparse.Namespace) -> tuple[bytes, str, dict[str, Any], dict[s
             width, height = image.size
         source_bytes = payload
         physical_page = args.physical_page or 1
-        logical_name = args.image.name
+        logical_name = args.source_logical_name or args.image.name
         input_kind = "IMAGE"
     else:
         if args.physical_page is None or args.physical_page <= 0:
@@ -136,7 +140,7 @@ def _image(args: argparse.Namespace) -> tuple[bytes, str, dict[str, Any], dict[s
             payload = pixmap.tobytes("png")
         media_type = "image/png"
         physical_page = args.physical_page
-        logical_name = args.pdf.name
+        logical_name = args.source_logical_name or args.pdf.name
         input_kind = "PDF_PAGE_RENDER"
     document = {
         "source_logical_name": logical_name,
@@ -195,6 +199,8 @@ def main() -> int:
     if not args.database.exists():
         initialize_gemini_financial_page_store_v1(args.database)
     cache_key = extraction_cache_key_v1(
+        source_sha256=document["source_sha256"],
+        source_logical_name=document["source_logical_name"],
         image_sha256=page["image_sha256"],
         prompt_sha256=prompt_sha,
         response_schema_sha256=schema_sha,

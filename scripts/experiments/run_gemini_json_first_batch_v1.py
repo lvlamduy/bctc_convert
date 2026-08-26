@@ -83,6 +83,10 @@ def _parser() -> argparse.ArgumentParser:
 
     submit = commands.add_parser("submit")
     submit.add_argument("--pdf", type=Path, required=True)
+    submit.add_argument(
+        "--source-logical-name",
+        help="Stable corpus-relative filing path; defaults to the PDF filename.",
+    )
     page_selection = submit.add_mutually_exclusive_group(required=True)
     page_selection.add_argument("--physical-page", type=int, action="append")
     page_selection.add_argument("--all-pages", action="store_true")
@@ -202,11 +206,14 @@ def _selected_key(path: Path, slot: int) -> tuple[str, str]:
 
 
 def _render_pages(
-    pdf_path: Path, pages: list[int], dpi: int
+    pdf_path: Path,
+    pages: list[int],
+    dpi: int,
+    source_logical_name: str | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     source = pdf_path.read_bytes()
     document = {
-        "source_logical_name": pdf_path.name,
+        "source_logical_name": source_logical_name or pdf_path.name,
         "source_sha256": sha256(source).hexdigest(),
         "source_size_bytes": len(source),
     }
@@ -262,7 +269,12 @@ def _submit(args: argparse.Namespace) -> int:
     prompt_sha = sha256(prompt.encode()).hexdigest()
     schema_sha = canonical_json_sha256_v1(schema)
     selected_pages = _selected_pages(args.pdf, args.physical_page, args.all_pages)
-    _, rendered = _render_pages(args.pdf, selected_pages, args.dpi)
+    _, rendered = _render_pages(
+        args.pdf,
+        selected_pages,
+        args.dpi,
+        args.source_logical_name,
+    )
     if args.provider == "google":
         if args.google_key_slot is None:
             raise RunGeminiJsonFirstBatchV1Error(
@@ -866,6 +878,7 @@ def _document_manifest(args: argparse.Namespace) -> int:
     output = build_financial_document_manifest_v1(
         args.database,
         source_sha256=document["source_sha256"],
+        source_logical_name=document["source_logical_name"],
         expected_physical_pages=expected_pages,
         prompt_sha256=contract["prompt_sha256"],
         response_schema_sha256=contract["response_schema_sha256"],

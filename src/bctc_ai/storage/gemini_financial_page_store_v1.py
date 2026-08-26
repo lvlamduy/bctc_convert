@@ -30,7 +30,7 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1,
 )
 
-FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V7"
+FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V8"
 DEFAULT_DATABASE_PATH = Path("data/local/gemini_financial_page_store_v1.sqlite3")
 
 
@@ -55,7 +55,7 @@ CREATE TABLE document (
     source_sha256 TEXT NOT NULL,
     source_size_bytes INTEGER NOT NULL CHECK (source_size_bytes >= 0),
     source_logical_name TEXT NOT NULL,
-    UNIQUE(source_sha256, source_size_bytes)
+    UNIQUE(source_sha256, source_size_bytes, source_logical_name)
 ) STRICT;
 CREATE TABLE page (
     page_id TEXT PRIMARY KEY,
@@ -295,6 +295,8 @@ def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
 
 def extraction_cache_key_v1(
     *,
+    source_sha256: str,
+    source_logical_name: str,
     image_sha256: str,
     prompt_sha256: str,
     response_schema_sha256: str,
@@ -306,6 +308,8 @@ def extraction_cache_key_v1(
 ) -> str:
     material = {
         "format_version": FORMAT_VERSION,
+        "source_logical_name": source_logical_name,
+        "source_sha256": source_sha256,
         "image_sha256": image_sha256,
         "prompt_sha256": prompt_sha256,
         "prompt_variant": prompt_variant,
@@ -453,6 +457,8 @@ def ingest_financial_page_extraction_v1(
     checked = validate_financial_page_json_v1(page_json)
     document_id, page_id = _source_identities(document, page)
     cache_key = extraction_cache_key_v1(
+        source_sha256=document["source_sha256"],
+        source_logical_name=document["source_logical_name"],
         image_sha256=page["image_sha256"],
         prompt_sha256=prompt_sha256,
         response_schema_sha256=response_schema_sha256,
@@ -736,6 +742,8 @@ def register_batch_submission_v1(
                 connection, document=request["document"], page=request["page"]
             )
             cache_key = extraction_cache_key_v1(
+                source_sha256=request["document"]["source_sha256"],
+                source_logical_name=request["document"]["source_logical_name"],
                 image_sha256=request["page"]["image_sha256"],
                 prompt_sha256=prompt_sha256,
                 response_schema_sha256=response_schema_sha256,
@@ -1061,6 +1069,7 @@ def build_financial_document_manifest_v1(
     path: Path,
     *,
     source_sha256: str,
+    source_logical_name: str | None = None,
     expected_physical_pages: Sequence[int],
     prompt_sha256: str,
     response_schema_sha256: str,
@@ -1082,6 +1091,10 @@ def build_financial_document_manifest_v1(
         or any(character not in "0123456789abcdef" for character in source_sha256)
     ):
         raise _error("document manifest source SHA-256 is invalid")
+    if source_logical_name is not None and (
+        type(source_logical_name) is not str or not source_logical_name
+    ):
+        raise _error("document manifest source logical name is invalid")
     pages = list(expected_physical_pages)
     if (
         not pages
@@ -1100,9 +1113,15 @@ def build_financial_document_manifest_v1(
         raise _error("document manifest extraction contract is invalid")
     placeholders = ",".join("?" for _ in pages)
     with _connect(path, readonly=True) as connection:
-        document_rows = connection.execute(
-            "SELECT * FROM document WHERE source_sha256=?", (source_sha256,)
-        ).fetchall()
+        if source_logical_name is None:
+            document_rows = connection.execute(
+                "SELECT * FROM document WHERE source_sha256=?", (source_sha256,)
+            ).fetchall()
+        else:
+            document_rows = connection.execute(
+                "SELECT * FROM document WHERE source_sha256=? AND source_logical_name=?",
+                (source_sha256, source_logical_name),
+            ).fetchall()
         if len(document_rows) != 1:
             raise _error("document manifest source is not unique in the store")
         document = document_rows[0]

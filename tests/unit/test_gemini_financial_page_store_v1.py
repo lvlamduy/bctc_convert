@@ -75,12 +75,19 @@ def _result() -> ProviderResultV1:
     )
 
 
-def _ingest(path: Path, *, physical_page: int = 7, image_sha256: str = "c" * 64) -> dict[str, str]:
+def _ingest(
+    path: Path,
+    *,
+    physical_page: int = 7,
+    image_sha256: str = "c" * 64,
+    source_logical_name: str = "report.pdf",
+    source_sha256: str = "b" * 64,
+) -> dict[str, str]:
     return ingest_financial_page_extraction_v1(
         path,
         document={
-            "source_logical_name": "report.pdf",
-            "source_sha256": "b" * 64,
+            "source_logical_name": source_logical_name,
+            "source_sha256": source_sha256,
             "source_size_bytes": 123,
         },
         page={
@@ -111,6 +118,20 @@ def test_store_is_append_only_indexed_and_cache_addressed(tmp_path) -> None:
     ids = _ingest(path)
     assert all(value.startswith("gfpstorev1:") for value in ids.values())
     cache = extraction_cache_key_v1(
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        image_sha256="c" * 64,
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        thinking_level="low",
+        prompt_variant="compact",
+        output_contract_mode="JSON_SCHEMA",
+    )
+    assert cache != extraction_cache_key_v1(
+        source_sha256="b" * 64,
+        source_logical_name="different-filing.pdf",
         image_sha256="c" * 64,
         prompt_sha256="d" * 64,
         response_schema_sha256="e" * 64,
@@ -257,3 +278,35 @@ def test_document_manifest_binds_exact_policy_page_frontier_and_usage(tmp_path) 
             requested_service_tier="flex",
             selected_provider="GOOGLE_GEMINI_API",
         )
+
+
+def test_document_manifest_disambiguates_byte_identical_logical_filings(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    first = _ingest(path, source_logical_name="first.pdf", image_sha256="1" * 64)
+    second = _ingest(path, source_logical_name="second.pdf", image_sha256="2" * 64)
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="not unique"):
+        build_financial_document_manifest_v1(
+            path,
+            source_sha256="b" * 64,
+            expected_physical_pages=[7],
+            prompt_sha256="d" * 64,
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            selected_provider="GOOGLE_GEMINI_API",
+        )
+    selected = build_financial_document_manifest_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="second.pdf",
+        expected_physical_pages=[7],
+        prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64,
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        selected_provider="GOOGLE_GEMINI_API",
+    )
+    assert selected["document"]["source_logical_name"] == "second.pdf"
+    assert selected["pages"][0]["page_json_version_id"] == second["page_json_version_id"]
+    assert selected["pages"][0]["page_json_version_id"] != first["page_json_version_id"]

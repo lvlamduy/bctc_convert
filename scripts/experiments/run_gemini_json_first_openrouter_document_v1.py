@@ -77,6 +77,10 @@ class _PageOutcome:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
+    parser.add_argument(
+        "--source-logical-name",
+        help="Stable corpus-relative filing path; defaults to the PDF filename.",
+    )
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--artifact-dir", type=Path, required=True)
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
@@ -138,7 +142,7 @@ def _next_attempt_dir(root: Path, physical_page: int) -> Path:
     raise RunGeminiJsonFirstOpenRouterDocumentV1Error("page attempt frontier is exhausted")
 
 
-def _document(pdf: Path) -> tuple[dict[str, Any], int]:
+def _document(pdf: Path, source_logical_name: str | None = None) -> tuple[dict[str, Any], int]:
     if pdf.is_symlink() or not pdf.is_file():
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("PDF must be one regular file")
     source = pdf.read_bytes()
@@ -150,7 +154,7 @@ def _document(pdf: Path) -> tuple[dict[str, Any], int]:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("PDF has no pages")
     return (
         {
-            "source_logical_name": pdf.name,
+            "source_logical_name": source_logical_name or pdf.name,
             "source_sha256": sha256(source).hexdigest(),
             "source_size_bytes": len(source),
         },
@@ -184,6 +188,8 @@ def _extract_page(
     physical_page: int,
     dpi: int,
     database: Path,
+    source_sha256: str,
+    source_logical_name: str,
     prompt: str,
     prompt_variant: str,
     prompt_sha256: str,
@@ -198,6 +204,8 @@ def _extract_page(
 ) -> _PageOutcome:
     rendered = _render_page(pdf, physical_page, dpi)
     cache_key = extraction_cache_key_v1(
+        source_sha256=source_sha256,
+        source_logical_name=source_logical_name,
         image_sha256=rendered.page["image_sha256"],
         prompt_sha256=prompt_sha256,
         response_schema_sha256=response_schema_sha256,
@@ -243,6 +251,7 @@ def run_openrouter_document_v1(
     database: Path,
     artifact_dir: Path,
     api_key: str,
+    source_logical_name: str | None = None,
     dpi: int = 300,
     workers: int = 5,
     prompt_variant: str = "simple",
@@ -258,7 +267,7 @@ def run_openrouter_document_v1(
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("DPI or worker count is invalid")
     if output_contract_mode not in {"JSON_SCHEMA", "PROMPT_JSON"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
-    document, page_count = _document(pdf)
+    document, page_count = _document(pdf, source_logical_name)
     prompt = build_financial_page_json_prompt_v1(
         variant=prompt_variant,
         include_contract_template=output_contract_mode == "PROMPT_JSON",
@@ -298,6 +307,8 @@ def run_openrouter_document_v1(
                 physical_page=physical_page,
                 dpi=dpi,
                 database=database,
+                source_sha256=document["source_sha256"],
+                source_logical_name=document["source_logical_name"],
                 prompt=prompt,
                 prompt_variant=prompt_variant,
                 prompt_sha256=prompt_sha,
@@ -412,6 +423,7 @@ def run_openrouter_document_v1(
         manifest = build_financial_document_manifest_v1(
             database,
             source_sha256=document["source_sha256"],
+            source_logical_name=document["source_logical_name"],
             expected_physical_pages=range(1, page_count + 1),
             prompt_sha256=prompt_sha,
             response_schema_sha256=schema_sha,
@@ -448,6 +460,7 @@ def main() -> int:
         database=args.database,
         artifact_dir=args.artifact_dir,
         api_key=load_openrouter_api_key_v1(args.openrouter_key_file),
+        source_logical_name=args.source_logical_name,
         dpi=args.dpi,
         workers=args.workers,
         prompt_variant=args.prompt_variant,
