@@ -68,6 +68,20 @@ def build_financial_page_json_prompt_v1(
 ) -> str:
     """Return one schema-blind Vietnamese page transcription prompt."""
 
+    simple = (
+        "Đọc duy nhất ảnh này và trả đúng một JSON theo JSON Schema được cung cấp. "
+        "Chỉ chép nội dung thuộc báo cáo tài chính: Bảng cân đối kế toán, Báo cáo "
+        "kết quả kinh doanh, Báo cáo lưu chuyển tiền tệ và các thuyết minh tài chính. "
+        "Giữ đủ và đúng thứ tự mọi tiêu đề, khoản mục, cột và giá trị nhìn thấy; giữ "
+        "nguyên chính tả và chữ số, không sửa, tính lại hoặc suy đoán. Dấu gạch kế toán "
+        'có thể chép nguyên văn hoặc ghi chuỗi "0". hierarchy_path_exact mô tả các cấp '
+        "cha-con nhìn thấy; nếu không chắc loại hàng hoặc cột thì dùng UNKNOWN. Nếu trang "
+        "không có nội dung trên, trả NO_RELEVANT_FINANCIAL_CONTENT với sections rỗng. "
+        "Nếu có nội dung nhưng không thể đọc đủ phần thiết yếu, trả UNRESOLVED_PAGE. "
+        "Trước khi kết thúc, kiểm tra không bỏ sót hàng hoặc phần cuối trang. Không trả "
+        "Markdown hay nội dung ngoài JSON."
+    )
+
     common = (
         "Chuyển nội dung báo cáo tài chính nhìn thấy trong ảnh thành JSON theo "
         "JSON Schema được cung cấp. Chỉ lấy Bảng cân đối kế toán, Báo cáo kết quả "
@@ -111,10 +125,12 @@ def build_financial_page_json_prompt_v1(
             "sự trống. completion có đúng all_relevant_content_transcribed và "
             "uncertainty_exact; code sẽ tự đếm cấu trúc sau khi nhận JSON."
         )
+    if variant == "simple":
+        return simple + contract
     if variant == "compact":
         return common + contract
     if variant != "balanced":
-        raise _error("prompt variant must be compact or balanced")
+        raise _error("prompt variant must be simple, compact, or balanced")
     return (
         common + "\n\nMỗi section và table theo đúng thứ tự từ trên xuống. columns chỉ gồm cột "
         "giá trị; header_path_exact đi từ header ngoài đến header trong. Mỗi hàng "

@@ -87,7 +87,11 @@ def _parser() -> argparse.ArgumentParser:
     page_selection.add_argument("--physical-page", type=int, action="append")
     page_selection.add_argument("--all-pages", action="store_true")
     submit.add_argument("--dpi", type=int, choices=(200, 300), default=300)
-    submit.add_argument("--prompt-variant", choices=("compact", "balanced"), default="balanced")
+    submit.add_argument(
+        "--prompt-variant",
+        choices=("simple", "compact", "balanced"),
+        default="simple",
+    )
     submit.add_argument(
         "--output-contract-mode",
         choices=("json-schema", "prompt-json"),
