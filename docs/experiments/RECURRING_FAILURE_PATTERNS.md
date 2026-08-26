@@ -1,6 +1,6 @@
 # Recurring failure-pattern registry
 
-Updated: 2026-08-24 (UTC)
+Updated: 2026-08-26 (UTC)
 
 Đây là registry bắt buộc phải kiểm tra trước khi sửa shared OCR/table/mapping
 logic. Chỉ ghi failure đã lặp lại, có khả năng tái diễn hoặc làm sai authority;
@@ -324,13 +324,238 @@ Trạng thái:
 - **Anti-fix:** không đưa ReportNormId/expected value vào prompt; không để Gemma
   một mình quyết định row, column, digit hay mapping; không chạy full-page trên
   mọi trang; không resize/crop mất header context trước structure rescue.
-- **Current primitive:** existing hosted Gemma artifacts bind selected page/crop
-  hashes and keep numeric disagreement non-authoritative, nhưng chưa có shared
-  schema-blind page-structure challenger contract. Contract chung phải giữ exact
-  page/crop ref, prompt/model/settings/raw response/closed JSON, rồi đối chiếu
-  native text, PP-OCR geometry, VietOCR, row/column topology và accounting. Chỉ
-  trigger khi primary unresolved hoặc layout mới; disagreement giữ unresolved.
+- **Historical primitive:** các hosted Gemma artifact cũ bind selected page/crop
+  hashes và chỉ dùng model làm challenger đối chiếu native text/PP-OCR/VietOCR/
+  geometry. Đây là ranh giới của pipeline OCR lịch sử, không còn là kiến trúc
+  đọc của pipeline Gemini JSON-first.
+- **Current JSON-first boundary:** Gemini là reader duy nhất nhưng PDF/ảnh trang
+  bất biến vẫn là source cuối cùng; raw response, prompt/schema/model/provider,
+  image hash/DPI và token/cost phải được giữ. JSON có thể tạo table/hierarchy
+  candidate nhưng không tự tạo schema-mapping authority. Digit/hierarchy phải
+  qua strict contract, repeat/hard-page audit và exhaustive direct-frontier
+  equations; bất đồng không được sửa bằng PP-OCR/VietOCR/geometry fallback.
 - **Status:** `OPEN`.
+
+## RFP-014 — Derivable bookkeeping and deep cross-field constraints destabilize model JSON
+
+- **Failure pattern:** structured output trả đúng hình dạng tổng quát nhưng sai
+  ID/source-order kỹ thuật, tự đặt tên cho subtotal không nhãn, hoặc tạo thêm cột
+  nhãn dù vector chỉ có các cột giá trị. Deep provider schema cũng có thể trả
+  HTTP 500/capacity error trước khi sinh token.
+- **Evidence:** pilot Gemini 3.7 Flash ngày 2026-08-26 trên cùng MBB trang 31:
+  lần đầu sinh `section_1` và source order bắt đầu từ 1; sau khi bỏ ID, một lượt
+  tự đặt `Tổng cộng` trong hierarchy của hàng không nhãn; lượt khác thêm column
+  `TEXT` có header `null`. Hai direct-Google Flex attempt với schema sâu trả
+  HTTP 500 và không có usage; một OpenRouter Vertex Flex attempt trả
+  `finish_reason=error`, 0 token/0 cost. Strict validator đã chặn tất cả.
+  Trên MBB trang LCTT 7 ở 300 DPI, receipt đặt trước `sections` chỉ đếm 26/33
+  hàng và 1/2 bảng. Sau khi ép receipt xuống cuối, section/table/row/cell khớp
+  1/1/33/99 nhưng model vẫn tự đếm populated-cell sai 61 thay vì 63. Output thật
+  chỉ dùng khoảng 3,6K/65,5K token và kết thúc `stop`, nên đây là lỗi self-count,
+  không phải token truncation.
+  MBB trang CĐKT 3 lặp hai lần đều trả literal `" -"` cho hai dash dù prompt đã
+  cấm rõ whitespace; cùng trang chép đúng 39 hàng/117 cell và 11/11 phương trình
+  nhiều tầng, nhưng gán một số subtotal thành `ITEM` dù hierarchy đúng.
+- **Cause:** bắt model sinh dữ liệu có thể suy ra từ array position; kỳ vọng JSON
+  Schema biểu diễn được cross-field equality/array-width/visible-label truth;
+  prompt quá ngắn không nói rõ cột nhãn và unlabeled subtotal.
+- **Anti-fix:** không normalize `section_1→s1`, renumber hoặc chèn/bỏ cột sau
+  response; không biến invented label thành source; không retry billed semantic
+  failure; không hạ DPI để giảm token trên scan mờ.
+- **Current primitive:** model contract chỉ chứa source content; ID/order được
+  derive trong database projection. Prompt/schema nói rõ columns chỉ là value
+  columns và unlabeled row kết thúc path bằng `null`; request pin seed 0. Raw
+  response được lưu trước validation. Chỉ retry cùng model/provider cho HTTP
+  retryable hoặc zero-token/zero-cost provider error. Ảnh chỉ dùng 200/300 DPI.
+  Local validator giữ closed fields, exact row width/path invariant; accounting
+  equations kiểm tra multi-level subtotal sau transcription. Completion receipt
+  nằm sau sections và chỉ giữ các count cấu trúc code có thể replay exact;
+  populated-cell được code tự tính, không lấy self-count model làm authority.
+  Raw whitespace-wrapped dash và `_` biệt lập được giữ nguyên và chỉ projection
+  dẫn xuất mới phân loại `DASH`; chuỗi chứa `_` cùng ký tự khác vẫn là `VALUE`.
+  Whitespace quanh chữ/số vẫn reject. `row_kind` là proposal,
+  subtotal/total phải được graph + exact direct-frontier equation tái xác nhận.
+- **Status:** `MITIGATED` trên hard-page pilot; chưa `RESOLVED` trước whole-PDF
+  và cross-page/repeat panel.
+
+## RFP-015 — Text Batch success does not prove multimodal Batch capability
+
+- **Failure pattern:** một provider/model xử lý text Batch bình thường nhưng từ
+  chối ảnh ở giai đoạn Batch validation/serialization; hoặc Files API image chạy
+  đúng ở `generateContent` thường nhưng thất bại khi đặt trực tiếp trong inline
+  Batch. Nếu chỉ probe text rồi mở full corpus, toàn bộ job ảnh có thể thất bại
+  dù model và credential vẫn khỏe.
+- **Evidence:** ngày 2026-08-26, OpenRouter Batch `google/gemini-3.7-flash`
+  hoàn tất text JSON 61 token, nhưng image data-URI bị cấm; cùng ảnh qua URL S3
+  HTTPS ký hợp lệ vượt input validator rồi Vertex adapter trả lỗi typed rằng
+  serializer Batch không hỗ trợ image. Google direct inline Batch nhận ảnh
+  base64 và Files URI nhưng per-request đều `INVALID_ARGUMENT`; Files URI đó
+  chạy thành công qua `models/gemini-3.7-flash:generateContent` với 1.754 input
+  và 4.132 output token. Tài liệu Google chỉ dẫn multimodal Batch lớn qua file
+  JSONL tham chiếu các File API resources.
+  Probe bổ sung cùng ngày đặt hai ảnh 300 DPI/base64 trong hai request của một
+  batch 3.404.103 byte: submission được nhận nhưng terminal 2/2 failed,
+  `usage=null`, với cùng typed rejection đối với base64/data-URI; đây không phải
+  giới hạn do chỉ có một ảnh hoặc do kích thước request quá nhỏ.
+- **Cause:** capability khác nhau theo transport endpoint và adapter; text,
+  synchronous multimodal, inline Batch và JSONL file Batch không tương đương.
+  Tài liệu OpenRouter Batch Beta ngày 2026-08-26 xác nhận transport hiện
+  `text-only` và reject cả image URL lẫn `input_image`/`input_file`; trong khi
+  catalog của chính model Batch vẫn liệt kê image/PDF/audio. Catalog capability
+  không phải endpoint capability. OpenRouter Files API cũng không công bố
+  `file_id` binding cho Batch, nên upload file hoặc S3 presigned URL không thể
+  tự tạo ra một media transport chưa được adapter hỗ trợ.
+- **Anti-fix:** không suy image Batch từ model catalog/text Batch; không retry
+  cùng wire shape khi đã có typed unsupported/invalid-argument; không nhét URL
+  có credential vào DB/log; không chuyển semantic failure thành provider
+  fallback.
+- **Current primitive:** trước corpus phải có một actual image request thành
+  công trên đúng endpoint/wire shape. Google multimodal dùng Files API + JSONL
+  Batch; OpenRouter dùng Vertex Flex đồng bộ cho tới khi một image Batch
+  capability probe thật sự qua. Batch/job/page IDs được lưu resumable; ảnh S3
+  là object content-addressed bất biến, receipt chỉ giữ URL hash/expiry chứ
+  không giữ presigned URL.
+- **Status:** `MITIGATED`; Google JSONL image Batch positive đã hoàn tất 1/1,
+  còn whole-PDF/two-key/resume gate trước corpus.
+
+## RFP-016 — Credential existence does not prove Batch or capacity capability
+
+- **Failure pattern:** một API key gọi được metadata/upload hoặc từng endpoint
+  khác nhưng không đủ billing/tier/capacity cho Batch; nếu round-robin mù trên
+  corpus, một nửa job có thể kẹt hoặc thất bại trước inference.
+- **Evidence:** ngày 2026-08-26, Google slot sinh viên upload đủ 30 ảnh và JSONL
+  nhưng create Batch trả HTTP 400 `FAILED_PRECONDITION`. Một direct-standard
+  request đúng model/ảnh/prompt trên cùng slot chờ 849,178 giây rồi HTTP 503
+  `CAPACITY_SHED`, `usage=null`. Slot trả phí `…UrJOHw` nhận hai Google JSONL
+  Batch 30+30 trang và chuyển sang `BATCH_STATE_RUNNING`.
+- **Cause:** capability và quota/billing được xét theo credential + endpoint +
+  tier, không thể suy từ việc key có cú pháp hợp lệ hay upload file thành công.
+- **Anti-fix:** không retry vô hạn; không chia việc round-robin trước capability
+  gate; không chuyển lỗi precondition/capacity thành kết quả OCR rỗng.
+- **Current primitive:** mỗi credential có typed capability receipt. Chỉ slot đã
+  hoàn tất một image Batch positive mới nhận corpus jobs; slot lỗi được giữ lại
+  để probe lại có kiểm soát khi quota/billing thay đổi.
+- **Status:** `OPEN`; slot trả phí đang chạy whole-PDF gate, slot sinh viên chưa
+  có Batch positive.
+
+## RFP-017 — Page validator becomes a second layout parser
+
+- **Failure pattern:** OCR JSON contains every visible label and value, but the
+  page is rejected because the model chose `GROUP` instead of `SUBTOTAL`, placed
+  a visible title in `table.title_exact` instead of `narratives_exact`, or used a
+  different but coherent hierarchy path.
+- **Evidence:** MBB Q1/2025 p3 and p31 under the balanced and simple prompts have
+  identical row/cell/populated-cell coverage (39/117/94 and 21/84/80) and exact
+  financial values. Only soft placement/classification differs. Rejecting either
+  representation would discard good OCR before the graph layer can evaluate it.
+  Whole-PDF simple-prompt replay exposed the same defect more directly: 9 pages
+  had complete JSON and normal `STOP`, but 8 encoded the printed label column in
+  `columns` while keeping that cell in `label_exact`, and one omitted only a
+  decorative leading hyphen from the final hierarchy item. All 9 raw responses
+  replay after generic canonicalization, including p32 with 24 rows/96 cells.
+  Corpus production exposed two further complete representations in ACB H1/2025:
+  p76 packed adjacent money cells with a literal `凸` sentinel, and expanding
+  only deficient rows yielded exactly 24 rows × 9 declared columns; p83 used
+  leading `null` only for blank levels of a merged column header and `-凸-` for
+  a same-cell accounting dash, while retaining 22 rows × 8 declared columns.
+  Both replayed from already billed raw responses and matched the page images;
+  no third provider call was needed.
+- **Cause:** mixing transport/schema integrity with accounting interpretation.
+- **Anti-fix:** do not encode every observed bank/page layout in JSON validation;
+  do not require LLM `row_kind` or hierarchy to be mapping authority; do not
+  retry a complete page merely to force one preferred serialization.
+- **Current primitive:** hard validation is limited to parseable bounded JSON,
+  required fields/types, status/data consistency and true value-width
+  consistency. If every row omits exactly one leading textual column because
+  that cell is already held in `label_exact`, the canonical projection removes
+  that redundant column while the immutable provider response is retained.
+  A packed-cell sentinel is expanded only when the row is deficient, every
+  segment is nonblank and the ordered expansion closes the declared width
+  exactly. Blank levels in merged column headers are omitted from the canonical
+  path; a same-cell pack consisting solely of dash glyphs projects to one dash.
+  Title placement, row kind and hierarchy are proposals consumed by indexed
+  retrieval, graph variants and exact accounting equations later.
+- **Status:** `MITIGATED`; simple-prompt p3/p13/p31 pilots pass. Keep adding
+  layout fixtures, but expand soft graph normalization rather than hard page
+  rejection unless source data itself is missing or structurally unusable.
+
+## RFP-019 — Billed semantic response is retried instead of replayed
+
+- **Failure pattern:** provider returns a normal billed JSON response, page
+  validation rejects one soft convention, then document-level retry calls the
+  provider again even though the immutable raw response could be revalidated
+  after a canonicalizer fix.
+- **Evidence:** the first 89-page OpenRouter production document ingested 86
+  pages. Page 44 had a genuine zero-usage provider error and succeeded on retry.
+  Pages 76/83 each returned complete billed output twice but failed the old
+  structural validator both times. Offline replay under commit `42c5a12`
+  recovered 24×9 and 22×8 cells in 19.5 seconds, reused 87 cached pages, made
+  zero provider requests and closed manifest
+  `gfdmv1:manifest:606439b26e01eccbda991efb4f032984bd6feeafea44e1e884d6fbbc10a49a6e`.
+- **Cause:** semantic validation failure and retryable transport/provider failure
+  shared the same document `NEEDS_RETRY` state; failure artifacts also omitted
+  the exception message.
+- **Anti-fix:** do not blindly resubmit billed semantic output; do not overwrite
+  the old raw response or erase the failed task history; do not mark a partial
+  document successful before every physical page has one extraction.
+- **Current primitive:** the runner checks cache, then replays every immutable
+  semantic raw response before authorizing a provider call. A still-invalid
+  semantic page is non-retryable and records the exact exception message.
+  `--offline-replay-only` makes recovery impossible to route to a provider, and
+  a dedicated append-only `FAILED→SUCCEEDED` receipt is allowed only after the
+  full document manifest closes with no semantic/offline-missing page.
+- **Status:** `MITIGATED`; actual 89-page recovery passed. Final cost reporting
+  must include the two historical duplicate billed semantic attempts rather
+  than relying only on successfully ingested extraction runs.
+
+## RFP-018 — Provider batch success is not page extraction success
+
+- **Failure pattern:** Google marks a Batch request successful at the operation
+  layer although the model candidate ends with `RECITATION` and contains no JSON;
+  retrying the same page repeatedly cannot complete a document manifest.
+- **Evidence:** MBB Q1/2025 simple-prompt Batch completed 30/30 transport requests
+  in both chunks. Page 13 nevertheless returned `RECITATION` with 1.304 input and
+  zero output token, then repeated the same typed failure in a dedicated Batch.
+  The same 300-DPI page completed through OpenRouter Vertex Flex in one call with
+  2.592 input/1.266 output tokens and exact financial narratives.
+- **Cause:** operation-level `successfulRequestCount` means the request reached a
+  model response, not that a normal complete JSON candidate exists.
+- **Anti-fix:** do not count Batch statistics as ingested pages; do not retry an
+  identical typed failure indefinitely; do not replace a failed page with empty
+  content or mix two provider outputs without page-level provenance.
+- **Current primitive:** each provider result passes its own finish/JSON/page gate.
+  After the bounded Google retry budget, only exact failed physical pages move to
+  OpenRouter Flex. The document manifest records the gateway and service tier per
+  page and requires exactly one allowed extraction for every page; duplicate
+  eligible extractions make the manifest ambiguous and fail closed.
+- **Status:** `MITIGATED`; 60-page mixed-provider manifest and isolated automated
+  fallback supervisor gate are the release evidence, not the provider Batch count.
+
+## RFP-020 — Prose transcription triggers recitation and wastes output budget
+
+- **Failure pattern:** prompt yêu cầu chép toàn bộ prose của thuyết minh dù tầng
+  family chỉ cần statement/table/line-item. Response dài giống tài liệu công
+  khai có thể bị provider kết thúc bằng `RECITATION`; trang prose-only cũng tiêu
+  nhiều output token mà không thêm dữ liệu mapping.
+- **Evidence:** sáu hard pages chạy prompt `items` đã đóng với tổng
+  `0.012789 USD`: prose-only trả JSON tối thiểu, còn bảng/khoản mục giữ label và
+  value. ACB H1/2025 hợp nhất p22 chứng minh giới hạn còn lại: bảng tài sản bảo
+  đảm 12 hàng đọc đúng khi crop bounded, nhưng cụm 5 nhãn nhóm nợ vẫn bị Google
+  `RECITATION`; OpenRouter Vertex image Batch không hỗ trợ cả data-URI lẫn URL
+  S3 ký.
+- **Cause:** scope transcription rộng hơn dữ liệu cần index; provider similarity
+  filter áp dụng độc lập trên mỗi response. Đây không phải chat context leakage:
+  request không gửi history hoặc `cachedContent`.
+- **Anti-fix:** không biến `RECITATION` thành trang rỗng; không retry vô hạn cùng
+  prompt/ảnh/provider; không gắn output prompt `items` vào cache key `simple`;
+  không né safety bằng encoding; không quay về PP-OCR/VietOCR/geometry.
+- **Current primitive:** prompt `items` có version/hash riêng, chỉ nhận primary
+  statements, bảng và line-item lists; prose-only trả
+  `NO_RELEVANT_FINANCIAL_CONTENT`. Raw response và finish reason được giữ; trang
+  `simple` hợp lệ được projection bằng code, còn trang thiếu source content đi
+  qua bounded provider/tile fallback với receipt source/page/coverage riêng.
+- **Status:** `OPEN`; cần composite page-version receipt và fallback độc lập đóng
+  được GJF-OPEN-001 trước khi freeze toàn corpus.
 
 ## Pre-change gate
 
