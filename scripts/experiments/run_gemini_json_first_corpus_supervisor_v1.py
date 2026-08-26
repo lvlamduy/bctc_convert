@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -280,15 +281,13 @@ def _recover_or_submit_google(
     )
 
 
-def _watch_google(
+def _poll_google(
     *,
     task: dict[str, Any],
     ledger: Path,
     database: Path,
     artifact_root: Path,
     google_key_file: Path,
-    poll_interval_seconds: float,
-    max_wait_seconds: float,
     provider_timeout_seconds: int,
     max_attempts: int,
 ) -> dict[str, Any]:
@@ -305,35 +304,30 @@ def _watch_google(
         [
             sys.executable,
             str(BATCH_RUNNER),
-            "watch",
+            "poll",
             "--database",
             str(database),
             "--artifact-dir",
             str(attempt),
             "--google-key-file",
             str(google_key_file),
-            "--poll-interval-seconds",
-            str(poll_interval_seconds),
-            "--max-wait-seconds",
-            str(max_wait_seconds),
             "--timeout-seconds",
             str(provider_timeout_seconds),
         ],
-        expected={0, 2},
+        expected={0},
     )
     matching = [
         item
         for item in batch_progress_v1(database)
         if item["batch_name"] == task["provider_job_ref"]
     ]
-    if len(matching) != 1 or matching[0]["state"] in {
-        "BATCH_STATE_PENDING",
-        "BATCH_STATE_RUNNING",
-    }:
+    if len(matching) != 1:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-            "watched Google batch did not reach one terminal state"
+            "polled Google batch is not uniquely present in the page store"
         )
     progress = matching[0]
+    if progress["state"] in {"BATCH_STATE_PENDING", "BATCH_STATE_RUNNING"}:
+        return task
     if progress["failed_pages"] == 0 and progress["ingested_pages"] == progress["request_count"]:
         next_state = "SUCCEEDED"
     elif task["attempt_count"] >= max_attempts:
@@ -469,9 +463,12 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("active Google bound lies outside 1..32")
     args.artifact_root.mkdir(parents=True, exist_ok=True)
     _write_or_verify(args.artifact_root / "corpus-plan.json", canonical_json_bytes_v1(plan))
-    # Internal-only path used by transition helpers; it is never serialized.
-    ran_openrouter_since_watch = False
+    started = time.monotonic()
     while True:
+        if time.monotonic() - started > args.google_watch_max_seconds:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "corpus supervisor exceeded its bounded provider wait"
+            )
         tasks = list_corpus_tasks_v1(args.ledger)
         failed = [task for task in tasks if task["state"] == "FAILED"]
         if failed:
@@ -509,7 +506,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if task["route"] == OPENROUTER_ROUTE
             and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
         ]
-        if openrouter and (not active_google or not ran_openrouter_since_watch):
+        if openrouter:
             _run_openrouter(
                 task=openrouter[0],
                 plan=plan,
@@ -521,21 +518,19 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
-            ran_openrouter_since_watch = bool(active_google)
             continue
         if active_google:
-            _watch_google(
+            polled = _poll_google(
                 task=active_google[0],
                 ledger=args.ledger,
                 database=args.database,
                 artifact_root=args.artifact_root,
                 google_key_file=args.google_key_file,
-                poll_interval_seconds=args.google_poll_interval_seconds,
-                max_wait_seconds=args.google_watch_max_seconds,
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
             )
-            ran_openrouter_since_watch = False
+            if polled["state"] == "RUNNING":
+                time.sleep(args.google_poll_interval_seconds)
             continue
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("scheduler has no runnable task")
 

@@ -105,3 +105,94 @@ def test_source_binding_and_subprocess_json_receipt_are_fail_closed(tmp_path) ->
     assert target._last_json('noise\n{"ok":true}\n') == {"ok": True}
     with pytest.raises(target.RunGeminiJsonFirstCorpusSupervisorV1Error, match="no JSON receipt"):
         target._last_json("noise only")
+
+
+def test_google_poll_is_nonblocking_while_batch_remains_active(monkeypatch, tmp_path) -> None:
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "provider_job_ref": "batches/active",
+        "state": "SUBMITTED",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert "poll" in argv
+        assert "watch" not in argv
+        assert expected == {0}
+        return 0, {"state": "BATCH_STATE_RUNNING"}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "batch_progress_v1",
+        lambda _database: [
+            {
+                "batch_name": "batches/active",
+                "failed_pages": 0,
+                "ingested_pages": 0,
+                "request_count": 30,
+                "state": "BATCH_STATE_RUNNING",
+            }
+        ],
+    )
+    result = target._poll_google(
+        task=task,
+        ledger=tmp_path / "ledger.sqlite3",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        google_key_file=tmp_path / "keys",
+        provider_timeout_seconds=60,
+        max_attempts=3,
+    )
+    assert result["state"] == "RUNNING"
+    assert [item["next_state"] for item in transitions] == ["RUNNING"]
+
+
+def test_google_poll_transitions_only_after_terminal_ingestion(monkeypatch, tmp_path) -> None:
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "provider_job_ref": "batches/done",
+        "state": "RUNNING",
+        "task_id": "task-1",
+    }
+    transitions = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "state": kwargs["next_state"]}
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", lambda _argv, *, expected: (0, {}))
+    monkeypatch.setattr(
+        target,
+        "batch_progress_v1",
+        lambda _database: [
+            {
+                "batch_name": "batches/done",
+                "failed_pages": 0,
+                "ingested_pages": 30,
+                "request_count": 30,
+                "state": "BATCH_STATE_SUCCEEDED",
+            }
+        ],
+    )
+    result = target._poll_google(
+        task=task,
+        ledger=tmp_path / "ledger.sqlite3",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        google_key_file=tmp_path / "keys",
+        provider_timeout_seconds=60,
+        max_attempts=3,
+    )
+    assert result["state"] == "SUCCEEDED"
+    assert transitions[0]["expected_state"] == "RUNNING"
+    assert transitions[0]["next_state"] == "SUCCEEDED"
