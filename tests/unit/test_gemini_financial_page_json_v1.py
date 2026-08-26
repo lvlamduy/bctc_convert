@@ -681,6 +681,115 @@ def test_movement_table_omitted_dashes_are_placed_by_exact_header_and_equation()
     ]
 
 
+def test_movement_table_accepts_opening_closing_and_use_adjustment_headers() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Tên chỉ tiêu"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Dư đầu"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Trích lập/Tăng"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Sử dụng/ Điều chỉnh"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Dư cuối"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Vốn điều lệ",
+            "hierarchy_path_exact": ["Vốn điều lệ"],
+            "row_kind": "ITEM",
+            "values_exact": ["53.063.241", "27.486.758", "80.549.999"],
+        },
+        {
+            "label_exact": "Thặng dư vốn cổ phần",
+            "hierarchy_path_exact": ["Thặng dư vốn cổ phần"],
+            "row_kind": "ITEM",
+            "values_exact": ["1.304.334", "1.304.334"],
+        },
+        {
+            "label_exact": "Quỹ khác",
+            "hierarchy_path_exact": ["Quỹ khác"],
+            "row_kind": "ITEM",
+            "values_exact": ["957.973", "556.625", "(477.961)", "1.036.637"],
+        },
+    ]
+
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert len(checked_table["columns"]) == 4
+    assert [row["values_exact"] for row in checked_table["rows"]] == [
+        ["53.063.241", "27.486.758", None, "80.549.999"],
+        ["1.304.334", None, None, "1.304.334"],
+        ["957.973", "556.625", "(477.961)", "1.036.637"],
+    ]
+
+
+def test_dual_period_share_table_restores_only_exact_preferred_blanks() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None, None], "value_kind": "TEXT"},
+        {"header_path_exact": ["30/09/2025", "Tổng số"], "value_kind": "MONEY"},
+        {"header_path_exact": ["30/09/2025", "Vốn CP thường"], "value_kind": "MONEY"},
+        {"header_path_exact": ["30/09/2025", "Vốn CP ưu đãi"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/12/2024", "Tổng số"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/12/2024", "Vốn CP thường"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/12/2024", "Vốn CP ưu đãi"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Vốn góp của cổ đông",
+            "hierarchy_path_exact": ["Vốn góp của cổ đông"],
+            "row_kind": "ITEM",
+            "values_exact": ["80.549.999", "80.549.999", "53.063.241", "53.063.241"],
+        },
+        {
+            "label_exact": "Cổ phiếu quỹ",
+            "hierarchy_path_exact": ["Cổ phiếu quỹ"],
+            "row_kind": "ITEM",
+            "values_exact": [None, None, None, None, None, None],
+        },
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert len(checked_table["columns"]) == 6
+    assert checked_table["rows"][0]["values_exact"] == [
+        "80.549.999",
+        "80.549.999",
+        None,
+        "53.063.241",
+        "53.063.241",
+        None,
+    ]
+    assert checked_table["rows"][1]["values_exact"] == [None] * 6
+
+    attack = copy.deepcopy(page)
+    attack["sections"][0]["tables"][0]["rows"][0]["values_exact"] = [
+        "80.549.999",
+        "79.000.000",
+        "53.063.241",
+        "53.063.241",
+    ]
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(attack)
+
+
+def test_complete_group_heading_without_value_cells_gets_exact_null_width() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"][0] = {
+        "label_exact": "Nguyên giá:",
+        "hierarchy_path_exact": ["Nguyên giá:"],
+        "row_kind": "GROUP",
+        "values_exact": [],
+    }
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][0]["values_exact"] == [None, None]
+
+    attack = copy.deepcopy(page)
+    attack["sections"][0]["tables"][0]["rows"][0]["row_kind"] = "ITEM"
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(attack)
+
+
 @pytest.mark.parametrize(
     "headers,values",
     [

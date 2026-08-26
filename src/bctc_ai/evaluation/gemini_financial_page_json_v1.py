@@ -571,12 +571,11 @@ def _normalize_four_column_movement_table_v1(table: dict[str, Any]) -> bool:
         _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
         for column in value_columns
     ]
-    if not (
-        "so du" in headers[0]
-        and "tang" in headers[1]
-        and "giam" in headers[2]
-        and "so du" in headers[3]
-    ):
+    opening = any(anchor in headers[0] for anchor in ("so du", "du dau", "dau ky"))
+    increase = any(anchor in headers[1] for anchor in ("tang", "trich lap"))
+    decrease = any(anchor in headers[2] for anchor in ("giam", "su dung", "dieu chinh"))
+    closing = any(anchor in headers[3] for anchor in ("so du", "du cuoi", "cuoi ky"))
+    if not (opening and increase and decrease and closing):
         return False
     if any(column["value_kind"] not in {"MONEY", "COUNT", "UNKNOWN"} for column in value_columns):
         return False
@@ -598,6 +597,68 @@ def _normalize_four_column_movement_table_v1(table: dict[str, Any]) -> bool:
                 normalized_rows.append([values[0], values[1], None, values[2]])
             else:
                 normalized_rows.append([values[0], None, values[1], values[2]])
+            continue
+        return False
+
+    table["columns"] = value_columns
+    for row, normalized in zip(rows, normalized_rows, strict=True):
+        row["values_exact"] = normalized
+    return True
+
+
+def _normalize_dual_period_preferred_share_blanks_v1(table: dict[str, Any]) -> bool:
+    """Restore omitted preferred-share blanks under two exact period triplets.
+
+    A visible equity table can have ``total/common/preferred`` columns for each
+    of two periods.  Gemini sometimes retains the anonymous row-label column
+    but emits only the two equal ``total/common`` cells when the preferred cell
+    is a printed dash.  The two missing positions are unique only for this
+    exact repeated header shape and only when each retained pair is equal.
+    """
+
+    columns = table["columns"]
+    rows = table["rows"]
+    if (
+        len(columns) != 7
+        or columns[0]["value_kind"] != "TEXT"
+        or any(item is not None for item in columns[0]["header_path_exact"])
+        or any(not _row_label_matches_hierarchy_leaf_v1(row) for row in rows)
+    ):
+        return False
+    value_columns = columns[1:]
+    if any(column["value_kind"] not in {"MONEY", "COUNT"} for column in value_columns):
+        return False
+    leaves = [
+        _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"][-1:]))
+        for column in value_columns
+    ]
+    if not (
+        all(anchor in leaves[index] for index, anchor in ((0, "tong"), (3, "tong")))
+        and all("thuong" in leaves[index] for index in (1, 4))
+        and all("uu dai" in leaves[index] for index in (2, 5))
+    ):
+        return False
+    period_paths = [column["header_path_exact"][:-1] for column in value_columns]
+    if not (
+        period_paths[0] == period_paths[1] == period_paths[2]
+        and period_paths[3] == period_paths[4] == period_paths[5]
+        and period_paths[0] != period_paths[3]
+    ):
+        return False
+
+    normalized_rows: list[list[Any]] = []
+    for row in rows:
+        values = row["values_exact"]
+        if len(values) == 6:
+            normalized_rows.append(list(values))
+            continue
+        if (
+            len(values) == 4
+            and values[0] == values[1]
+            and values[2] == values[3]
+            and all(_accounting_integer_cell_v1(value) is not None for value in values)
+        ):
+            normalized_rows.append([values[0], values[1], None, values[2], values[3], None])
             continue
         return False
 
@@ -910,6 +971,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 or _normalize_omitted_leading_structural_columns_v1(table)
                 or _normalize_leading_text_header_proxies_v1(table)
                 or _normalize_four_column_movement_table_v1(table)
+                or _normalize_dual_period_preferred_share_blanks_v1(table)
             ):
                 width = len(table["columns"])
                 row_widths = [len(row["values_exact"]) for row in table["rows"]]
@@ -924,6 +986,14 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     row["values_exact"] = [None]
             else:
                 for row in table["rows"]:
+                    if (
+                        row["row_kind"] == "GROUP"
+                        and row["label_exact"] is not None
+                        and _row_label_matches_hierarchy_leaf_v1(row)
+                        and row["values_exact"] == []
+                    ):
+                        row["values_exact"] = [None] * width
+                        continue
                     model_annotation_present = any(
                         type(value) is str and _MODEL_DASH_ANNOTATION.fullmatch(value)
                         for value in row["values_exact"]
