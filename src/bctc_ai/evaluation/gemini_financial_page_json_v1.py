@@ -15,8 +15,8 @@ from typing import Any
 
 from bctc_ai.source_structure.contracts_v1 import canonical_clone_v1
 
-FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_JSON_V5"
-MODEL_OUTPUT_FORMAT_VERSION = "FINANCIAL_PAGE_JSON_V5"
+FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_JSON_V6"
+MODEL_OUTPUT_FORMAT_VERSION = "FINANCIAL_PAGE_JSON_V6"
 SEARCH_NORMALIZATION_VERSION = "VIETNAMESE_FINANCIAL_SEARCH_V1"
 
 _STATUSES = frozenset(
@@ -345,8 +345,12 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             _raw(narrative, "financial narrative")
         if type(section["tables"]) is not list:
             raise _error("section tables must be an array")
-        if not section["tables"] and not section["narratives_exact"]:
-            raise _error("a relevant section must contain a table or narrative")
+        if (
+            not section["tables"]
+            and not section["narratives_exact"]
+            and section["title_exact"] is None
+        ):
+            raise _error("a relevant section without a table or narrative must retain its title")
         for table in section["tables"]:
             _exact_dict(
                 table,
@@ -373,9 +377,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     {"header_path_exact", "value_kind"},
                     "column",
                 )
-                path = _path(column["header_path_exact"], "column header path")
-                if path[-1] is None:
-                    raise _error("column header path cannot end in null")
+                _path(column["header_path_exact"], "column header path")
                 if column["value_kind"] not in _VALUE_KINDS:
                     raise _error("column value_kind drifted")
             width = len(table["columns"])

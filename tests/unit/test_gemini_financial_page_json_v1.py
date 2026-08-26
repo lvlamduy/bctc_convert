@@ -124,6 +124,36 @@ def test_minimal_irrelevant_page_is_closed_and_cheap_on_output() -> None:
         validate_financial_page_json_v1(invalid)
 
 
+def test_unlabeled_column_and_titled_parent_section_are_preserved() -> None:
+    page = _page()
+    page["sections"][0]["tables"][0]["columns"][0]["header_path_exact"] = [None]
+    page["sections"].append(
+        {
+            "content_kind": "FINANCIAL_NOTE",
+            "statement_type": "NOT_APPLICABLE",
+            "title_exact": "11. Thuế thu nhập doanh nghiệp",
+            "narratives_exact": [],
+            "tables": [],
+        }
+    )
+    assert validate_financial_page_json_v1(page) == page
+
+
+def test_anonymous_empty_relevant_section_rejects() -> None:
+    page = _page()
+    page["sections"].append(
+        {
+            "content_kind": "FINANCIAL_NOTE",
+            "statement_type": "NOT_APPLICABLE",
+            "title_exact": None,
+            "narratives_exact": [],
+            "tables": [],
+        }
+    )
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="must retain its title"):
+        validate_financial_page_json_v1(page)
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
