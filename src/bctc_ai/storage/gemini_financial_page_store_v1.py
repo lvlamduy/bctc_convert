@@ -496,10 +496,33 @@ def ingest_financial_page_extraction_v1(
     )
     with _connect(path) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        if connection.execute(
-            "SELECT 1 FROM extraction_run WHERE cache_key=?", (cache_key,)
-        ).fetchone():
-            raise _error("cache key already has a complete immutable extraction")
+        existing = connection.execute(
+            "SELECT extraction_run.extraction_run_id, extraction_run.page_id, "
+            "page_json_version.page_json_version_id, "
+            "page_json_version.raw_response_sha256, "
+            "page_json_version.canonical_json_sha256 "
+            "FROM extraction_run JOIN page_json_version "
+            "ON page_json_version.extraction_run_id=extraction_run.extraction_run_id "
+            "WHERE extraction_run.cache_key=?",
+            (cache_key,),
+        ).fetchone()
+        if existing is not None:
+            expected = (
+                extraction_run_id,
+                page_id,
+                page_json_version_id,
+                sha256(raw_bytes).hexdigest(),
+                sha256(canonical_bytes).hexdigest(),
+            )
+            if tuple(existing) != expected:
+                raise _error("cache key is already bound to different immutable content")
+            return {
+                "cache_key": cache_key,
+                "document_id": document_id,
+                "extraction_run_id": extraction_run_id,
+                "page_id": page_id,
+                "page_json_version_id": page_json_version_id,
+            }
         inserted_document_id, inserted_page_id = _insert_source_rows(
             connection, document=document, page=page
         )

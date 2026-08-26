@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -82,6 +83,7 @@ def _ingest(
     image_sha256: str = "c" * 64,
     source_logical_name: str = "report.pdf",
     source_sha256: str = "b" * 64,
+    provider_result: ProviderResultV1 | None = None,
 ) -> dict[str, str]:
     return ingest_financial_page_extraction_v1(
         path,
@@ -106,7 +108,7 @@ def _ingest(
         requested_model="gemini-3.7-flash",
         requested_service_tier="flex",
         thinking_level="low",
-        provider_result=_result(),
+        provider_result=provider_result or _result(),
         page_json=_page(),
     )
 
@@ -142,8 +144,9 @@ def test_store_is_append_only_indexed_and_cache_addressed(tmp_path) -> None:
         output_contract_mode="JSON_SCHEMA",
     )
     assert lookup_cached_page_json_v1(path, cache) == _page()
-    with pytest.raises(GeminiFinancialPageStoreV1Error, match="already"):
-        _ingest(path)
+    assert _ingest(path) == ids
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="different immutable content"):
+        _ingest(path, provider_result=replace(_result(), raw_response_bytes=b'{"changed":true}'))
     with sqlite3.connect(path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM section_node").fetchone()[0] == 1
         assert connection.execute("SELECT COUNT(*) FROM table_node").fetchone()[0] == 1
