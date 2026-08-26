@@ -6,6 +6,30 @@ lại trạng thái lịch sử của pipeline PP-OCR/VietOCR/geometry.
 
 ## OPEN — current
 
+### GJF-OPEN-002 — full-page Google `RECITATION` frontier
+
+- **Scope:** các request độc lập, `store=false`, không history/cachedContent, ảnh
+  300 DPI và prompt `simple`; mỗi hàng dưới đây đã có một lần Google standard
+  terminal `finishReason=RECITATION`, nên không được lặp lại nguyên payload:
+
+  | Source | Trang vật lý |
+  |---|---:|
+  | `BID/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 55 |
+  | `BID/2025/BCTC Hợp nhất quý 2 năm 2025.pdf` | 15 |
+  | `CTG/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf` | 11, 22 |
+  | `CTG/2025/BCTC Hợp nhất quý 1 năm 2025.pdf` | 12 |
+  | `CTG/2026/BCTC Hợp nhất quý 1 năm 2026.pdf` | 12, 54 |
+  | `HDB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf` | 30 |
+  | `MBB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf` | 24 |
+  | `MBB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf` | 13 |
+
+- **Evidence:** response có `responseId` riêng và citation metadata; BID quý
+  2 trang 15 ghi rõ các đoạn sinh ra giống nguồn pháp quy/có bản quyền. Đây là
+  output filter của Google, không phải context cũ từ request trước.
+- **Disposition:** `OPEN` ở cấp trang. Fallback tiếp theo phải là tiled-page
+  receipt có coverage/dedup hoặc model ảnh độc lập; không gọi lại full-page
+  payload giống hệt và không hạ thành `NO_RELEVANT`.
+
 ### GJF-OPEN-001 — ACB H1/2025 hợp nhất, trang vật lý 22
 
 - **Source:** `vietstock_bctc/ACB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm
@@ -34,6 +58,11 @@ lại trạng thái lịch sử của pipeline PP-OCR/VietOCR/geometry.
 - **GJF-CLOSED-002:** prompt `items` xử lý đúng sáu ca `RECITATION`/prose mẫu:
   bốn trang trả tối thiểu `NO_RELEVANT`, hai trang giữ đúng bảng/khoản mục. Tổng
   chi phí positive `0.012789 USD`; mỗi version giữ prompt hash riêng.
+- **GJF-CLOSED-003:** validator V21 replay generic các ô blank `""`, hierarchy
+  cell gộp dọc từ đúng hàng liền trước và một zero/dash bị bỏ khi phương trình
+  hai hàng chi tiết bằng tổng khép mọi cột. MBB 2026 quý 1 công ty mẹ (57 trang)
+  đóng manifest `gfdmv1:manifest:5403ee04dcc15db0c32ab703266dc99908353ec4ae92f1887fe0bf79af7a5cf5`
+  mà không gọi API lại; test JSON-first `108 passed`.
 
 ## SUPERSEDED / historical references
 
