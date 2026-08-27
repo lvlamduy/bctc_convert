@@ -3,7 +3,16 @@
   "family_owner_report_norm_id": 716,
   "family_report_norm_id": 746,
   "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
-  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7",
+  "footnote_narrative_mapping_transforms": [
+    {
+      "emitted_mapping_role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
+      "footnote_marker": "(*)",
+      "operation": "ADD_EXACT_TWO_LANE_NARRATIVE_SOURCE_TO_VISIBLE_ROOT_AND_EMIT_SOURCE",
+      "required_ordered_phrases": ["Không bao gồm", "cho vay giao dịch ký quỹ"],
+      "unit_aliases": ["triệu đồng", "triệu VND"]
+    }
+  ],
   "ignored_roles": ["STANDARD_CORE", "INCLUDED_MARGIN_SOURCE_DISCLOSURE", "DELAYED_LC_QUALITY_GROUP", "DELAYED_LC_STANDARD"],
   "role_bindings": [
     {"parent_report_norm_id": 746, "report_norm_id": 747, "role": "STANDARD"},
@@ -12,5 +21,14 @@
     {"parent_report_norm_id": 746, "report_norm_id": 750, "role": "DOUBTFUL"},
     {"parent_report_norm_id": 746, "report_norm_id": 751, "role": "LOSS"},
     {"parent_report_norm_id": 746, "report_norm_id": 1944, "role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"}
+  ],
+  "source_role_mapping_transforms": [
+    {
+      "emitted_mapping_role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
+      "inclusive_mapping_role": "STANDARD",
+      "operation": "SUBTRACT_EXACT_NONADDITIVE_SOURCE_FROM_INCLUSIVE_ROLE_AND_EMIT_SOURCE",
+      "source_owner_role": "STANDARD_CORE",
+      "source_role": "INCLUDED_MARGIN_SOURCE_DISCLOSURE"
+    }
   ]
 }

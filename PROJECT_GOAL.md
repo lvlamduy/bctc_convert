@@ -69,6 +69,19 @@ sale advances to survive organization qualifiers or wording changes without
 accepting unrelated rows. Exact source text and the matcher policy used remain
 in the evidence receipt; normalized text must also be indexed in the database.
 
+Apply this projection to every item, header, subtotal, and hierarchy label, not
+only family titles. Matching proceeds from strongest to weakest: exact source,
+exact normalized, one distinctive continuous core phrase, then multiple
+distinctive phrases in declared order. A bounded OCR-token error may be used
+only after page/table shortlisting and only when hierarchy plus accounting
+relations independently corroborate the role. Generic words such as `cho vay`,
+`khách hàng`, `tổng`, or `khác` are never sufficient by themselves. For example,
+both `Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán` and the longer
+VPBankS wording containing organization/customer qualifiers bind through the
+ordered cores `cho vay giao dịch ký quỹ` then `ứng trước`; the exact full wording
+is not required. If two candidates still survive, expand the contextual anchor
+from two related roles to three rather than selecting by string score.
+
 Families that share a structural mechanism must use the same engine and
 primitive with declarative family-specific roles, aliases, variants, and
 equations. Do not create a separate algorithm file per family unless a genuinely

@@ -1108,11 +1108,90 @@ def test_loan_quality_nested_margin_is_source_bound_but_not_double_counted() -> 
     assert result["reasons"] == []
     mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
     assert "INCLUDED_MARGIN_SOURCE_DISCLOSURE" not in mappings
-    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [100, 90]
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [93, 84]
+    assert [
+        cell["coefficient"]
+        for cell in mappings["STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"]["values"]
+    ] == [7, 6]
     assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
         130,
         107,
     ]
+    assert result["closure_receipt"]["mapping_normalizations"] == [
+        {
+            "emitted_mapping_role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
+            "inclusive_mapping_role": "STANDARD",
+            "normalized_inclusive_coefficients": [93, 84],
+            "observed_inclusive_coefficients": [100, 90],
+            "operation": ("SUBTRACT_EXACT_NONADDITIVE_SOURCE_FROM_INCLUSIVE_ROLE_AND_EMIT_SOURCE"),
+            "source_coefficients": [7, 6],
+            "source_role": "INCLUDED_MARGIN_SOURCE_DISCLOSURE",
+            "source_row_id": "r2",
+        }
+    ]
+
+
+def test_loan_quality_excluded_margin_uses_one_exact_footnote_source() -> None:
+    page = _loan_quality_page()
+    section = page["sections"][0]
+    section["tables"][0]["title_exact"] += " (*)"
+    section["narratives_exact"] = [
+        "(*) Không bao gồm 7 triệu đồng (31.12.2024: 6 triệu đồng) cho vay giao dịch "
+        "ký quỹ của Công ty chứng khoán."
+    ]
+    result = _evaluate_loan_quality(page)
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [100, 90]
+    assert [
+        cell["coefficient"]
+        for cell in mappings["STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"]["values"]
+    ] == [7, 6]
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        137,
+        113,
+    ]
+    receipt = result["closure_receipt"]["mapping_normalizations"]
+    assert receipt[0]["operation"] == (
+        "ADD_EXACT_TWO_LANE_NARRATIVE_SOURCE_TO_VISIBLE_ROOT_AND_EMIT_SOURCE"
+    )
+    assert receipt[0]["observed_root_coefficients"] == [130, 107]
+    assert receipt[0]["normalized_root_coefficients"] == [137, 113]
+    assert receipt[0]["source_coefficients"] == [7, 6]
+    assert receipt[0]["source_comparative_date"] == "2024-12-31"
+
+
+def test_loan_quality_excluded_margin_footnote_fails_closed() -> None:
+    missing = _loan_quality_page()
+    missing["sections"][0]["tables"][0]["title_exact"] += " (*)"
+    result = _evaluate_loan_quality(missing)
+    assert result["status"] == UNRESOLVED
+    assert result["reasons"] == ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"]
+
+    wrong_date = _loan_quality_page()
+    wrong_date["sections"][0]["tables"][0]["title_exact"] += " (*)"
+    wrong_date["sections"][0]["narratives_exact"] = [
+        "(*) Không bao gồm 7 triệu đồng (31.12.2023: 6 triệu đồng) cho vay giao dịch "
+        "ký quỹ của Công ty chứng khoán."
+    ]
+    assert _evaluate_loan_quality(wrong_date)["status"] == UNRESOLVED
+
+    duplicate = _loan_quality_page()
+    duplicate["sections"][0]["tables"][0]["title_exact"] += " (*)"
+    narrative = (
+        "(*) Không bao gồm 7 triệu đồng (31.12.2024: 6 triệu đồng) cho vay giao dịch "
+        "ký quỹ của Công ty chứng khoán."
+    )
+    duplicate["sections"][0]["narratives_exact"] = [narrative, narrative]
+    assert _evaluate_loan_quality(duplicate)["status"] == UNRESOLVED
+
+    conflicting_sources = _loan_quality_page(included_margin=True)
+    conflicting_sources["sections"][0]["tables"][0]["title_exact"] += " (*)"
+    conflicting_sources["sections"][0]["narratives_exact"] = [narrative]
+    conflict = _evaluate_loan_quality(conflicting_sources)
+    assert conflict["status"] == UNRESOLVED
+    assert conflict["reasons"] == ["NARRATIVE_MAPPING_NORMALIZATION_IS_NOT_UNIQUE"]
 
 
 def test_loan_quality_standalone_margin_is_one_direct_component() -> None:

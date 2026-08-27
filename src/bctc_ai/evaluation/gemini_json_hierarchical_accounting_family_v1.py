@@ -39,11 +39,20 @@ _SCHEMA_FORMATS = {
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5",
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7",
 }
 _DASHES = {"-", "–", "—", "_"}
 _DATE_DMY = re.compile(r"(?<!\d)([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})(?!\d)")
 _DATE_WORDS = re.compile(
     r"ng[aà]y\s+([0-3]?\d)\s+th[aá]ng\s+([01]?\d)\s+n[aă]m\s+((?:19|20)\d{2})",
+    re.IGNORECASE,
+)
+_EXCLUDED_TWO_LANE_NARRATIVE = re.compile(
+    r"(?P<current>[0-9]+(?:[.,][0-9]{3})*)\s+"
+    r"(?P<current_unit>tri[eệ]u\s+(?:[đd][oồ]ng|vnd))\s*"
+    r"\(\s*(?P<day>[0-3]?\d)[./-](?P<month>[01]?\d)[./-](?P<year>(?:19|20)\d{2})\s*:\s*"
+    r"(?P<comparative>[0-9]+(?:[.,][0-9]{3})*)\s+"
+    r"(?P<comparative_unit>tri[eệ]u\s+(?:[đd][oồ]ng|vnd))\s*\)",
     re.IGNORECASE,
 )
 _CURRENT_PERIOD_ALIASES = {
@@ -358,6 +367,74 @@ def _percent(value: Any) -> dict[str, Any]:
         "source_text": value,
         "state": "RAW_UNSIGNED_DECIMAL_PERCENT",
     }
+
+
+def _footnote_narrative_mapping_evidence(
+    *,
+    table_title: Any,
+    narratives: Any,
+    period_value_axis_receipt: dict[str, Any] | None,
+    policies: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Parse exact two-lane source adjustments declared by a table footnote."""
+
+    title = table_title if type(table_title) is str else ""
+    active = [policy for policy in policies if policy["footnote_marker"] in title]
+    if not active:
+        return [], []
+    if len(active) != 1 or type(narratives) is not list or period_value_axis_receipt is None:
+        return [], ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"]
+    policy = active[0]
+    matches = []
+    for narrative_ordinal, narrative in enumerate(narratives, start=1):
+        if type(narrative) is not str:
+            continue
+        folded = _normalized(narrative)
+        cursor = 0
+        for phrase in policy["required_ordered_phrases"]:
+            position = folded.find(_normalized(phrase), cursor)
+            if position < 0:
+                break
+            cursor = position + len(_normalized(phrase))
+        else:
+            source_match = _EXCLUDED_TWO_LANE_NARRATIVE.search(narrative)
+            if source_match is None or not all(
+                _normalized(unit) in {_normalized(alias) for alias in policy["unit_aliases"]}
+                for unit in (
+                    source_match.group("current_unit"),
+                    source_match.group("comparative_unit"),
+                )
+            ):
+                continue
+            try:
+                comparative_date = date(
+                    int(source_match.group("year")),
+                    int(source_match.group("month")),
+                    int(source_match.group("day")),
+                )
+                cells = [
+                    _money(source_match.group("current")),
+                    _money(source_match.group("comparative")),
+                ]
+            except (ValueError, TypeError):
+                continue
+            signatures = period_value_axis_receipt["period_signatures"]
+            if signatures[1] != ["DATE", comparative_date.isoformat()]:
+                continue
+            matches.append(
+                {
+                    "cells": cells,
+                    "emitted_mapping_role": policy["emitted_mapping_role"],
+                    "footnote_marker": policy["footnote_marker"],
+                    "narrative_exact": narrative,
+                    "narrative_ordinal": narrative_ordinal,
+                    "operation": policy["operation"],
+                    "source_comparative_date": comparative_date.isoformat(),
+                }
+            )
+    if len(matches) != 1:
+        return [], ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"]
+    return matches, []
 
 
 def _period_value_column_axis(
@@ -716,10 +793,18 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "ignored_roles",
         "role_bindings",
     }
-    if type(schema_spec) is dict and schema_spec.get("format_version") == (
-        "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
-    ):
+    if type(schema_spec) is dict and schema_spec.get("format_version") in {
+        "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+        "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7",
+    }:
         schema_fields.add("family_owner_report_norm_id")
+    if type(schema_spec) is dict and schema_spec.get("format_version") == (
+        "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7"
+    ):
+        schema_fields |= {
+            "footnote_narrative_mapping_transforms",
+            "source_role_mapping_transforms",
+        }
     if (
         type(schema_spec) is not dict
         or set(schema_spec) != schema_fields
@@ -735,7 +820,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         if (
             type(binding) is not dict
             or (
-                schema_spec["format_version"] == "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
+                schema_spec["format_version"]
+                in {
+                    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+                    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7",
+                }
                 and set(binding) != {"parent_report_norm_id", "report_norm_id", "role"}
             )
             or type(binding.get("role")) is not str
@@ -754,6 +843,82 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
     ignored = set(schema_spec["ignored_roles"])
     if set(bindings) | ignored != set(children_by_role) or set(bindings) & ignored:
         raise _error("Gemini JSON hierarchy schema frontier is incomplete")
+
+    source_role_mapping_transforms: list[dict[str, Any]] = []
+    footnote_narrative_mapping_transforms: list[dict[str, Any]] = []
+    if schema_spec["format_version"] == "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V7":
+        raw_source_transforms = schema_spec["source_role_mapping_transforms"]
+        raw_narrative_transforms = schema_spec["footnote_narrative_mapping_transforms"]
+        if (
+            type(raw_source_transforms) is not list
+            or type(raw_narrative_transforms) is not list
+            or len(raw_source_transforms) > 8
+            or len(raw_narrative_transforms) > 8
+        ):
+            raise _error("Gemini JSON hierarchy mapping transform axis is invalid")
+        for transform in raw_source_transforms:
+            if (
+                type(transform) is not dict
+                or set(transform)
+                != {
+                    "emitted_mapping_role",
+                    "inclusive_mapping_role",
+                    "operation",
+                    "source_owner_role",
+                    "source_role",
+                }
+                or transform["operation"]
+                != "SUBTRACT_EXACT_NONADDITIVE_SOURCE_FROM_INCLUSIVE_ROLE_AND_EMIT_SOURCE"
+                or transform["source_role"] not in children_by_role
+                or children_by_role[transform["source_role"]]["role_kind"] != "NONADDITIVE_CHILD"
+                or transform["source_owner_role"] not in children_by_role
+                or transform["inclusive_mapping_role"] not in bindings
+                or transform["emitted_mapping_role"] not in bindings
+                or transform["source_role"] == transform["emitted_mapping_role"]
+            ):
+                raise _error("Gemini JSON hierarchy source-role mapping transform is invalid")
+            source_role_mapping_transforms.append(canonical_clone_v1(transform))
+        for transform in raw_narrative_transforms:
+            if (
+                type(transform) is not dict
+                or set(transform)
+                != {
+                    "emitted_mapping_role",
+                    "footnote_marker",
+                    "operation",
+                    "required_ordered_phrases",
+                    "unit_aliases",
+                }
+                or transform["operation"]
+                != "ADD_EXACT_TWO_LANE_NARRATIVE_SOURCE_TO_VISIBLE_ROOT_AND_EMIT_SOURCE"
+                or transform["emitted_mapping_role"] not in bindings
+                or type(transform["footnote_marker"]) is not str
+                or not transform["footnote_marker"].strip()
+                or type(transform["required_ordered_phrases"]) is not list
+                or len(transform["required_ordered_phrases"]) < 2
+                or any(
+                    type(phrase) is not str or len(_normalized(phrase).split()) < 2
+                    for phrase in transform["required_ordered_phrases"]
+                )
+                or type(transform["unit_aliases"]) is not list
+                or not transform["unit_aliases"]
+                or any(
+                    type(alias) is not str or not _normalized(alias)
+                    for alias in transform["unit_aliases"]
+                )
+            ):
+                raise _error("Gemini JSON hierarchy narrative mapping transform is invalid")
+            footnote_narrative_mapping_transforms.append(canonical_clone_v1(transform))
+        source_emitted_roles = [
+            transform["emitted_mapping_role"] for transform in source_role_mapping_transforms
+        ]
+        narrative_emitted_roles = [
+            transform["emitted_mapping_role"] for transform in footnote_narrative_mapping_transforms
+        ]
+        if len(source_emitted_roles) != len(set(source_emitted_roles)) or len(
+            narrative_emitted_roles
+        ) != len(set(narrative_emitted_roles)):
+            raise _error("Gemini JSON hierarchy mapping transforms emit one role ambiguously")
 
     aliases_by_role = {
         child["role"]: sorted(
@@ -789,8 +954,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "evaluation": canonical_clone_v1(evaluation_spec),
         "family_result_role": family_result_role,
         "ignored_roles": sorted(ignored),
+        "footnote_narrative_mapping_transforms": footnote_narrative_mapping_transforms,
         "period_table_projection_policy": period_table_projection_policy,
         "schema": canonical_clone_v1(schema_spec),
+        "source_role_mapping_transforms": source_role_mapping_transforms,
         "topology": topology,
     }
 
@@ -1512,6 +1679,164 @@ def _intermediate_parent_subtotal_receipts(
     ]
 
 
+def _mapping_from_source_record(
+    *,
+    record: dict[str, Any],
+    role: str,
+    report_norm_id: int,
+    money_columns: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "columns": canonical_clone_v1(money_columns),
+        "hierarchy_path_exact": canonical_clone_v1(record.get("path", [])),
+        "label_exact": record.get("label_exact"),
+        "report_norm_id": report_norm_id,
+        "role": role,
+        "row_id": record["row_id"],
+        "values": canonical_clone_v1(record["cells"]),
+    }
+
+
+def _apply_mapping_normalizations(
+    *,
+    mappings: list[dict[str, Any]],
+    resolved: dict[str, dict[str, Any]],
+    narrative_evidence: list[dict[str, Any]],
+    compiled_specs: dict[str, Any],
+    money_columns: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    """Apply declared observed-source mapping transforms after accounting closure."""
+
+    output = canonical_clone_v1(mappings)
+    mapping_by_role = {mapping["role"]: mapping for mapping in output}
+    receipts: list[dict[str, Any]] = []
+    reasons: list[str] = []
+    role_kinds = {
+        child["role"]: child["role_kind"] for child in compiled_specs["topology"]["children"]
+    }
+    bindings = compiled_specs["bindings"]
+    for policy in compiled_specs["source_role_mapping_transforms"]:
+        source = resolved.get(policy["source_role"])
+        if source is None:
+            continue
+        inclusive = mapping_by_role.get(policy["inclusive_mapping_role"])
+        emitted_role = policy["emitted_mapping_role"]
+        if (
+            inclusive is None
+            or emitted_role in mapping_by_role
+            or role_kinds.get(policy["source_role"]) != "NONADDITIVE_CHILD"
+            or source.get("owner_role") != policy["source_owner_role"]
+        ):
+            reasons.append("SOURCE_ROLE_MAPPING_NORMALIZATION_IS_NOT_UNIQUE")
+            continue
+        observed_inclusive = [cell["coefficient"] for cell in inclusive["values"]]
+        source_values = _coefficients(source)
+        normalized_values = [
+            observed - source_value
+            for observed, source_value in zip(observed_inclusive, source_values, strict=True)
+        ]
+        inclusive["values"] = [
+            {
+                "coefficient": coefficient,
+                "source_text": None,
+                "state": "DERIVED_EXACT_SOURCE_MAPPING_NORMALIZATION",
+            }
+            for coefficient in normalized_values
+        ]
+        inclusive["mapping_normalization"] = {
+            "observed_inclusive_coefficients": observed_inclusive,
+            "operation": policy["operation"],
+            "source_role": policy["source_role"],
+            "source_row_id": source["row_id"],
+            "source_coefficients": source_values,
+        }
+        emitted = _mapping_from_source_record(
+            record=source,
+            role=emitted_role,
+            report_norm_id=bindings[emitted_role],
+            money_columns=money_columns,
+        )
+        emitted["mapping_normalization"] = {
+            "inclusive_mapping_role": policy["inclusive_mapping_role"],
+            "operation": policy["operation"],
+            "source_role": policy["source_role"],
+        }
+        output.append(emitted)
+        mapping_by_role[emitted_role] = emitted
+        receipts.append(
+            {
+                "emitted_mapping_role": emitted_role,
+                "inclusive_mapping_role": policy["inclusive_mapping_role"],
+                "normalized_inclusive_coefficients": normalized_values,
+                "observed_inclusive_coefficients": observed_inclusive,
+                "operation": policy["operation"],
+                "source_coefficients": source_values,
+                "source_role": policy["source_role"],
+                "source_row_id": source["row_id"],
+            }
+        )
+
+    root_role = compiled_specs["topology"]["parent"]["role"]
+    for evidence in narrative_evidence:
+        root = mapping_by_role.get(root_role)
+        emitted_role = evidence["emitted_mapping_role"]
+        if root is None or emitted_role in mapping_by_role:
+            reasons.append("NARRATIVE_MAPPING_NORMALIZATION_IS_NOT_UNIQUE")
+            continue
+        observed_root = [cell["coefficient"] for cell in root["values"]]
+        source_values = _coefficients(evidence)
+        normalized_root = [
+            observed + source_value
+            for observed, source_value in zip(observed_root, source_values, strict=True)
+        ]
+        root["values"] = [
+            {
+                "coefficient": coefficient,
+                "source_text": None,
+                "state": "DERIVED_EXACT_SOURCE_MAPPING_NORMALIZATION",
+            }
+            for coefficient in normalized_root
+        ]
+        root["mapping_normalization"] = {
+            "narrative_ordinal": evidence["narrative_ordinal"],
+            "observed_root_coefficients": observed_root,
+            "operation": evidence["operation"],
+            "source_coefficients": source_values,
+        }
+        source_record = {
+            "cells": evidence["cells"],
+            "label_exact": evidence["narrative_exact"],
+            "path": [],
+            "row_id": f"narrative:{evidence['narrative_ordinal']}",
+        }
+        emitted = _mapping_from_source_record(
+            record=source_record,
+            role=emitted_role,
+            report_norm_id=bindings[emitted_role],
+            money_columns=money_columns,
+        )
+        emitted["mapping_normalization"] = {
+            "operation": evidence["operation"],
+            "source_comparative_date": evidence["source_comparative_date"],
+            "source_kind": "EXACT_FOOTNOTE_NARRATIVE",
+        }
+        output.append(emitted)
+        mapping_by_role[emitted_role] = emitted
+        receipts.append(
+            {
+                "emitted_mapping_role": emitted_role,
+                "narrative_exact": evidence["narrative_exact"],
+                "narrative_ordinal": evidence["narrative_ordinal"],
+                "normalized_root_coefficients": normalized_root,
+                "observed_root_coefficients": observed_root,
+                "operation": evidence["operation"],
+                "source_coefficients": source_values,
+                "source_comparative_date": evidence["source_comparative_date"],
+            }
+        )
+    return output, receipts, reasons
+
+
 def _projected_target_column_index(
     table: dict[str, Any], *, target_column_aliases: list[str]
 ) -> int | None:
@@ -1827,6 +2152,13 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             table_id=table_id,
             reasons=reasons,
         )
+    narrative_mapping_evidence, narrative_reasons = _footnote_narrative_mapping_evidence(
+        table_title=table.get("title_exact"),
+        narratives=section.get("narratives_exact"),
+        period_value_axis_receipt=period_value_axis_receipt,
+        policies=compiled_specs["footnote_narrative_mapping_transforms"],
+    )
+    reasons.extend(narrative_reasons)
     source_rows = table.get("rows")
     if type(source_rows) is not list or not source_rows:
         raise _error("Gemini JSON hierarchy row axis is empty")
@@ -2230,6 +2562,26 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                 record["percentage_companions"]
             )
         mappings.append(mapping)
+    mappings, mapping_normalization_receipts, mapping_normalization_reasons = (
+        _apply_mapping_normalizations(
+            mappings=mappings,
+            resolved=resolved,
+            narrative_evidence=narrative_mapping_evidence,
+            compiled_specs=compiled_specs,
+            money_columns=money_columns,
+        )
+    )
+    if mapping_normalization_reasons:
+        failed = _candidate_result(
+            topology=topology,
+            page_json_version_id=page_json_version_id,
+            physical_page=physical_page,
+            section_id=section_id,
+            table_id=table_id,
+            reasons=mapping_normalization_reasons,
+        )
+        failed["parent_binding_kind"] = result["parent_binding_kind"]
+        return failed
     result["mappings"] = mappings
     source_role_label_matches = {
         role: {
@@ -2251,6 +2603,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         "rule": "EXACT_EXHAUSTIVE_GEMINI_JSON_RECURSIVE_DIRECT_FRONTIER_ALL_LANES",
         "used_anonymous_result_row_ids": sorted(used_anonymous),
     }
+    if mapping_normalization_receipts:
+        closure_receipt["mapping_normalizations"] = mapping_normalization_receipts
     if source_role_label_matches:
         closure_receipt["source_role_label_matches"] = source_role_label_matches
     result["closure_receipt"] = closure_receipt
