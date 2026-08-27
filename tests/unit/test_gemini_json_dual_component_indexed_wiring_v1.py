@@ -19,10 +19,12 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     initialize_gemini_financial_page_store_v1,
     query_selected_dual_component_family_regions_v1,
+    validate_selected_dual_component_family_candidate_replays_v1,
     validate_selected_dual_component_family_query_evidence_v1,
 )
 
@@ -146,7 +148,9 @@ def _trial(document: dict, *, candidate: dict | None, status: str, reasons: list
     }
 
 
-def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(tmp_path: Path) -> None:
+def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     database = tmp_path / "pages.sqlite3"
     initialize_gemini_financial_page_store_v1(database)
     target_page = _target_page(incidental=True)
@@ -216,6 +220,87 @@ def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(tmp_pat
         "unresolved_count": 0,
     }
     assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+    assert (
+        validate_selected_dual_component_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=indexed,
+            trials=sweep["trials"],
+        )
+        == sweep["trials"]
+    )
+
+    forged_candidate = copy.deepcopy(candidate)
+    forged_candidate["closure_receipt"]["source_inventory"][0]["row_axis"][0]["label_exact"] = (
+        "coherently forged source receipt"
+    )
+    candidate_material = {
+        key: value for key, value in forged_candidate.items() if key != "candidate_id"
+    }
+    forged_candidate["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(
+        candidate_material
+    )
+    forged_sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "4" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        indexed_query_evidence=indexed,
+        trials=[
+            _trial(documents[0], candidate=forged_candidate, status=READY, reasons=[]),
+            _trial(documents[1], candidate=None, status=NOT_OBSERVED, reasons=[]),
+        ],
+    )
+    assert validate_gemini_json_flat_family_sweep_v1(forged_sweep) == forged_sweep
+    with pytest.raises(ValueError, match="candidate does not replay exactly"):
+        validate_selected_dual_component_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=indexed,
+            trials=forged_sweep["trials"],
+        )
+
+    runner_path = (
+        ROOT / "scripts/experiments/run_gemini_json_dual_component_accounting_family_v1.py"
+    )
+    runner_spec = importlib.util.spec_from_file_location(
+        "dual_component_runner_candidate_attack_v1", runner_path
+    )
+    assert runner_spec is not None and runner_spec.loader is not None
+    runner = importlib.util.module_from_spec(runner_spec)
+    runner_spec.loader.exec_module(runner)
+    monkeypatch.setattr(
+        runner,
+        "validate_dual_component_experimental_audit_content_v1",
+        lambda value: value,
+    )
+    with pytest.raises(ValueError, match="candidate does not replay exactly"):
+        runner.validate_dual_component_experimental_audit_replay_v1(
+            {},
+            compiled_specs=compiled,
+            database=database,
+            sweep=forged_sweep,
+            sweep_output=tmp_path / "forged-sweep.json",
+            selected_page_json_version_ids=selected_ids,
+            indexed_query_evidence=indexed,
+            trials=forged_sweep["trials"],
+        )
+
+    drifted_schema = copy.deepcopy(schema)
+    drifted_schema["family_root_report_norm_id"] = 999999
+    drifted_compiled = compile_gemini_json_flat_family_specs_v1(
+        topology, evaluation, drifted_schema
+    )
+    with pytest.raises(ValueError, match="candidate does not replay exactly"):
+        validate_selected_dual_component_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=drifted_compiled,
+            indexed_query_evidence=indexed,
+            trials=sweep["trials"],
+        )
 
     tampered = copy.deepcopy(sweep)
     tampered["indexed_query_evidence"]["accepted_clusters"][0]["component_regions"][0][
@@ -264,6 +349,41 @@ def test_optional_only_page_and_partial_seed_are_unresolved_not_absent(tmp_path:
     assert indexed["query_receipt"]["indexed_seed_hit_count"] == 1
 
 
+def test_mixed_foreign_population_with_nonincidental_declared_role_is_unresolved(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    page["sections"][0]["tables"].append(
+        _table(
+            [
+                _row("Dự phòng rủi ro", ["1", "1"]),
+                _row("Khoản mục ngoài gia đình", ["2", "2"]),
+            ]
+        )
+    )
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    assert indexed["accepted_clusters"] == []
+    assert indexed["candidate_dispositions"][0]["disposition"] == "UNRESOLVED_CLUSTER"
+    assert (
+        "UNCONSUMED_ROLE_BEARING_FRAGMENT_UNDER_OWNER_FENCE"
+        in (indexed["candidate_dispositions"][0]["reason_codes"])
+    )
+    provision_hit = next(
+        hit
+        for hit in indexed["indexed_role_hits"]
+        if hit["role"] == "PURCHASE_PROVISION" and hit["table_id"] == "t3"
+    )
+    assert provision_hit["query_disposition"] == "UNCONSUMED_FAMILY_INTERVAL_ROLE_HIT"
+
+
 def test_database_replay_rejects_query_evidence_tamper(tmp_path: Path) -> None:
     database = tmp_path / "pages.sqlite3"
     initialize_gemini_financial_page_store_v1(database)
@@ -284,6 +404,59 @@ def test_database_replay_rejects_query_evidence_tamper(tmp_path: Path) -> None:
             compiled_specs=compiled,
             indexed_query_evidence=tampered,
         )
+
+
+def test_runner_pins_specs_and_authenticated_sqlite_main_file(
+    tmp_path: Path,
+) -> None:
+    runner_path = (
+        ROOT / "scripts/experiments/run_gemini_json_dual_component_accounting_family_v1.py"
+    )
+    spec = importlib.util.spec_from_file_location("dual_component_runner_seals_v1", runner_path)
+    assert spec is not None and spec.loader is not None
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    topology, evaluation, schema, compiled = _specs()
+    runner._validate_pinned_compiled_specs(compiled)
+    drifted_schema = copy.deepcopy(schema)
+    drifted_schema["family_root_report_norm_id"] = 999999
+    drifted = compile_gemini_json_flat_family_specs_v1(topology, evaluation, drifted_schema)
+    with pytest.raises(
+        runner.RunGeminiJsonDualComponentAccountingFamilyV1Error,
+        match="compiled spec triplet drifted",
+    ):
+        runner._validate_pinned_compiled_specs(drifted)
+
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    reference = {
+        "path": database.name,
+        "sha256": runner._sha256(database),
+        "size_bytes": database.stat().st_size,
+    }
+    sidecar = Path(f"{database}-wal")
+    sidecar.write_bytes(b"forged wal")
+    with pytest.raises(
+        runner.RunGeminiJsonDualComponentAccountingFamilyV1Error,
+        match="journal/WAL sidecar",
+    ):
+        with runner._authenticated_sqlite_snapshot(database, reference=reference):
+            pass
+    sidecar.unlink()
+
+    with runner._authenticated_sqlite_snapshot(database, reference=reference) as guard:
+        assert guard.path.is_file()
+        guard.validate()
+
+    moved = tmp_path / "original.sqlite3"
+    with pytest.raises(
+        runner.RunGeminiJsonDualComponentAccountingFamilyV1Error,
+        match="changed during use",
+    ):
+        with runner._authenticated_sqlite_snapshot(database, reference=reference):
+            database.replace(moved)
+            database.write_bytes(moved.read_bytes())
 
 
 def test_experimental_audit_content_validator_rejects_rehashed_axis_tamper(

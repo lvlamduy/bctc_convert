@@ -7,7 +7,11 @@ import argparse
 import json
 import os
 import sqlite3
+import stat
 import sys
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -38,6 +42,7 @@ from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
     query_selected_dual_component_family_regions_v1,
+    validate_selected_dual_component_family_candidate_replays_v1,
     validate_selected_dual_component_family_query_evidence_v1,
 )
 
@@ -73,6 +78,11 @@ PINNED_PREFLIGHT_AXIS_SHA256 = {
 PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
     "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8"
 )
+PINNED_COMPILED_SPEC_SHA256 = {
+    "evaluation": "b6f1703fe815a2741d8f22929c8aa094bb0ee76c801c132311ccb8c3a7db88ff",
+    "schema": "caa93bd566b31f1645d7b0097eda5ee064c1acaae843a6b1d4afbe136949edfb",
+    "topology": "bc1241b3cd77d9126e96c9ccb01078f0860bf4295c3f5622c5d5176ff17f084c",
+}
 PINNED_AUDIT_AXIS_COUNTS = {
     "comparator": 16,
     "equation": 256,
@@ -115,6 +125,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _validate_pinned_compiled_specs(compiled_specs: dict[str, Any]) -> None:
+    actual = {
+        name: sha256(canonical_json_bytes_v1(compiled_specs.get(name))).hexdigest()
+        for name in PINNED_COMPILED_SPEC_SHA256
+    }
+    if actual != PINNED_COMPILED_SPEC_SHA256:
+        raise _error("dual-component pinned compiled spec triplet drifted")
+
+
 def _content_ref(root: Path, reference: Any) -> Path:
     if type(reference) is not dict or set(reference) != {"path", "sha256", "size_bytes"}:
         raise _error("corpus content reference fields drifted")
@@ -130,6 +149,139 @@ def _content_ref(root: Path, reference: Any) -> Path:
     ):
         raise _error("corpus content reference does not authenticate")
     return path
+
+
+_SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
+
+
+def _file_identity(value: os.stat_result) -> tuple[int, ...]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_nlink,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _assert_no_sqlite_sidecars(path: Path) -> None:
+    if any(os.path.lexists(f"{path}{suffix}") for suffix in _SQLITE_SIDECAR_SUFFIXES):
+        raise _error("dual-component SQLite input has a journal/WAL sidecar")
+
+
+def _fd_sha256(descriptor: int) -> str:
+    offset = os.lseek(descriptor, 0, os.SEEK_CUR)
+    digest = sha256()
+    try:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        while block := os.read(descriptor, 1024 * 1024):
+            digest.update(block)
+    finally:
+        os.lseek(descriptor, offset, os.SEEK_SET)
+    return digest.hexdigest()
+
+
+class _AuthenticatedSqliteSnapshot:
+    def __init__(
+        self,
+        *,
+        source: Path,
+        source_descriptor: int,
+        source_identity: tuple[int, ...],
+        snapshot: Path,
+        snapshot_identity: tuple[int, ...],
+        expected_sha256: str,
+        expected_size_bytes: int,
+    ) -> None:
+        self.source = source
+        self.source_descriptor = source_descriptor
+        self.source_identity = source_identity
+        self.path = snapshot
+        self.snapshot_identity = snapshot_identity
+        self.expected_sha256 = expected_sha256
+        self.expected_size_bytes = expected_size_bytes
+
+    def validate(self) -> None:
+        _assert_no_sqlite_sidecars(self.source)
+        _assert_no_sqlite_sidecars(self.path)
+        source_fd_stat = os.fstat(self.source_descriptor)
+        try:
+            source_name_stat = os.stat(self.source, follow_symlinks=False)
+            snapshot_stat = os.stat(self.path, follow_symlinks=False)
+        except FileNotFoundError as exc:
+            raise _error("dual-component authenticated SQLite path disappeared") from exc
+        if (
+            not stat.S_ISREG(source_name_stat.st_mode)
+            or not stat.S_ISREG(snapshot_stat.st_mode)
+            or _file_identity(source_fd_stat) != self.source_identity
+            or _file_identity(source_name_stat) != self.source_identity
+            or _file_identity(snapshot_stat) != self.snapshot_identity
+            or source_fd_stat.st_size != self.expected_size_bytes
+            or snapshot_stat.st_size != self.expected_size_bytes
+            or _fd_sha256(self.source_descriptor) != self.expected_sha256
+            or _sha256(self.path) != self.expected_sha256
+        ):
+            raise _error("dual-component authenticated SQLite input changed during use")
+
+
+@contextmanager
+def _authenticated_sqlite_snapshot(
+    source: Path, *, reference: dict[str, Any]
+) -> Iterator[_AuthenticatedSqliteSnapshot]:
+    """Pin exact main-file bytes and exclude mutable SQLite sidecar state."""
+
+    _assert_no_sqlite_sidecars(source)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(source, flags)
+    try:
+        source_stat = os.fstat(descriptor)
+        named_stat = os.stat(source, follow_symlinks=False)
+        source_identity = _file_identity(source_stat)
+        if (
+            not stat.S_ISREG(source_stat.st_mode)
+            or source_identity != _file_identity(named_stat)
+            or source_stat.st_size != reference["size_bytes"]
+        ):
+            raise _error("dual-component SQLite source identity drifted before snapshot")
+        with tempfile.TemporaryDirectory(prefix="family14-authenticated-sqlite-") as directory:
+            snapshot = Path(directory) / "page-store.sqlite3"
+            digest = sha256()
+            copied = 0
+            snapshot_descriptor = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
+            try:
+                with os.fdopen(snapshot_descriptor, "wb") as output:
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    while block := os.read(descriptor, 1024 * 1024):
+                        output.write(block)
+                        digest.update(block)
+                        copied += len(block)
+                    output.flush()
+                    os.fsync(output.fileno())
+            except BaseException:
+                snapshot.unlink(missing_ok=True)
+                raise
+            if copied != reference["size_bytes"] or digest.hexdigest() != reference["sha256"]:
+                raise _error("dual-component SQLite snapshot bytes do not authenticate")
+            os.chmod(snapshot, 0o444)
+            snapshot_identity = _file_identity(os.stat(snapshot, follow_symlinks=False))
+            guard = _AuthenticatedSqliteSnapshot(
+                source=source,
+                source_descriptor=descriptor,
+                source_identity=source_identity,
+                snapshot=snapshot,
+                snapshot_identity=snapshot_identity,
+                expected_sha256=reference["sha256"],
+                expected_size_bytes=reference["size_bytes"],
+            )
+            guard.validate()
+            try:
+                yield guard
+            finally:
+                guard.validate()
+    finally:
+        os.close(descriptor)
 
 
 def _selected_page_axis(*, index: dict[str, Any], artifact_root: Path) -> list[str]:
@@ -715,6 +867,7 @@ def build_dual_component_experimental_audit_v1(
 def validate_dual_component_experimental_audit_replay_v1(
     value: Any,
     *,
+    compiled_specs: dict[str, Any],
     database: Path,
     sweep: dict[str, Any],
     sweep_output: Path,
@@ -724,7 +877,17 @@ def validate_dual_component_experimental_audit_replay_v1(
 ) -> dict[str, Any]:
     """Rebuild the complete persisted audit and reject any changed byte axis."""
 
+    _validate_pinned_compiled_specs(compiled_specs)
     validate_dual_component_experimental_audit_content_v1(value)
+    if not same_typed_json_v1(sweep.get("trials"), trials):
+        raise _error("dual-component audit trial/sweep axis drifted")
+    validate_selected_dual_component_family_candidate_replays_v1(
+        database,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=trials,
+    )
     expected = build_dual_component_experimental_audit_v1(
         database=database,
         sweep=sweep,
@@ -849,19 +1012,18 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run(args: argparse.Namespace) -> dict[str, Any]:
-    """Evaluate locally selected JSON only; no provider or OFFICIAL path exists."""
-
-    if args.run_kind != "EXPERIMENTAL":
-        raise _error("dual-component runner is EXPERIMENTAL-only")
-    index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
-    artifact_root = args.artifact_root.resolve()
-    database = _content_ref(artifact_root, index["database_ref"])
-    selected_ids = _selected_page_axis(index=index, artifact_root=artifact_root)
-    topology = _json(args.topology_spec)
-    evaluation = _json(args.evaluation_spec)
-    schema = _json(args.schema_binding_spec)
-    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+def _run_with_authenticated_database(
+    args: argparse.Namespace,
+    *,
+    index: dict[str, Any],
+    database_guard: _AuthenticatedSqliteSnapshot,
+    selected_ids: list[str],
+    topology: dict[str, Any],
+    evaluation: dict[str, Any],
+    schema: dict[str, Any],
+    compiled: dict[str, Any],
+) -> dict[str, Any]:
+    database = database_guard.path
     indexed = query_selected_dual_component_family_regions_v1(
         database,
         selected_page_json_version_ids=selected_ids,
@@ -944,6 +1106,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         indexed_query_evidence=indexed,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
+    validate_selected_dual_component_family_candidate_replays_v1(
+        database,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=compiled,
+        indexed_query_evidence=indexed,
+        trials=trials,
+    )
     audit = build_dual_component_experimental_audit_v1(
         database=database,
         sweep=sweep,
@@ -954,6 +1123,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     validate_dual_component_experimental_audit_replay_v1(
         audit,
+        compiled_specs=compiled,
         database=database,
         sweep=sweep,
         sweep_output=args.output,
@@ -962,6 +1132,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         trials=trials,
     )
     audit_output = args.output.with_suffix(".audit.json")
+    database_guard.validate()
     _write_once(args.output, sweep)
     _write_once(audit_output, audit)
     return {
@@ -975,6 +1146,35 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "run_kind": "EXPERIMENTAL",
         "sweep_id": sweep["sweep_id"],
     }
+
+
+def run(args: argparse.Namespace) -> dict[str, Any]:
+    """Evaluate locally selected JSON only; no provider or OFFICIAL path exists."""
+
+    if args.run_kind != "EXPERIMENTAL":
+        raise _error("dual-component runner is EXPERIMENTAL-only")
+    index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
+    artifact_root = args.artifact_root.resolve()
+    source_database = _content_ref(artifact_root, index["database_ref"])
+    selected_ids = _selected_page_axis(index=index, artifact_root=artifact_root)
+    topology = _json(args.topology_spec)
+    evaluation = _json(args.evaluation_spec)
+    schema = _json(args.schema_binding_spec)
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    _validate_pinned_compiled_specs(compiled)
+    with _authenticated_sqlite_snapshot(
+        source_database, reference=index["database_ref"]
+    ) as database_guard:
+        return _run_with_authenticated_database(
+            args,
+            index=index,
+            database_guard=database_guard,
+            selected_ids=selected_ids,
+            topology=topology,
+            evaluation=evaluation,
+            schema=schema,
+            compiled=compiled,
+        )
 
 
 def main() -> int:

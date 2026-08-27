@@ -2074,7 +2074,11 @@ def query_selected_dual_component_family_regions_v1(
             if page["fragments"]
             or any(
                 item["owner"] is not None
-                and item["population_disposition"] == "DECLARED_ROLE_ONLY_POPULATION"
+                and item["population_disposition"]
+                in {
+                    "DECLARED_ROLE_ONLY_POPULATION",
+                    "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION",
+                }
                 for item in page["role_bearing_fragments"]
             )
         ]
@@ -2131,7 +2135,11 @@ def query_selected_dual_component_family_regions_v1(
             hit_is_active = bool(hit["is_seed"]) or (
                 role_fragment is not None
                 and role_fragment["owner"] is not None
-                and role_fragment["population_disposition"] == "DECLARED_ROLE_ONLY_POPULATION"
+                and role_fragment["population_disposition"]
+                in {
+                    "DECLARED_ROLE_ONLY_POPULATION",
+                    "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION",
+                }
             )
             if location in consumed_locations:
                 hit["query_disposition"] = "CONSUMED_ACCEPTED_COMPONENT_FRAGMENT"
@@ -2205,6 +2213,66 @@ def validate_selected_dual_component_family_query_evidence_v1(
     ):
         raise _error("selected dual-component query evidence does not replay")
     return replayed
+
+
+def validate_selected_dual_component_family_candidate_replays_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+    trials: Any,
+) -> list[dict[str, Any]]:
+    """Rebuild every accepted candidate from authenticated SQLite page JSON."""
+
+    from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
+        build_gemini_json_dual_component_region_query_receipt_v1,
+        validate_gemini_json_dual_component_family_candidate_replay_v1,
+        validate_gemini_json_dual_component_sweep_query_bindings_v1,
+    )
+
+    evidence = validate_selected_dual_component_family_query_evidence_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+        indexed_query_evidence=indexed_query_evidence,
+    )
+    checked_trials = validate_gemini_json_dual_component_sweep_query_bindings_v1(
+        trials=trials,
+        indexed_query_evidence=evidence,
+        compiled_specs=compiled_specs,
+    )
+    accepted_clusters = evidence["accepted_clusters"]
+    version_ids = list(
+        dict.fromkeys(
+            region["page_json_version_id"]
+            for cluster in accepted_clusters
+            for region in cluster["component_regions"]
+        )
+    )
+    loaded = load_page_json_versions_v1(path, page_json_version_ids=version_ids)
+    page_json_by_version = {
+        record["page_json_version_id"]: record["page_json"] for record in loaded
+    }
+    if set(page_json_by_version) != set(version_ids):
+        raise _error("selected dual-component candidate page JSON axis is incomplete")
+    trial_by_ordinal = {trial["document_ordinal"]: trial for trial in checked_trials}
+    replayed_ordinals = []
+    for cluster in accepted_clusters:
+        trial = trial_by_ordinal[cluster["document_ordinal"]]
+        candidate = trial["candidates"][0]
+        regions = cluster["component_regions"]
+        validate_gemini_json_dual_component_family_candidate_replay_v1(
+            candidate,
+            regions=regions,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+            query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+        )
+        replayed_ordinals.append(cluster["document_ordinal"])
+    if replayed_ordinals != [cluster["document_ordinal"] for cluster in accepted_clusters]:
+        raise _error("selected dual-component accepted candidate replay axis drifted")
+    return checked_trials
 
 
 def query_selected_rollforward_family_regions_v1(

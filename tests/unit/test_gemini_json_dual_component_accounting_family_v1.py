@@ -309,6 +309,37 @@ def test_coalescer_rejects_duplicate_and_extra_declared_role_populations() -> No
     )
     assert "UNCONSUMED_ROLE_BEARING_FRAGMENT_UNDER_OWNER_FENCE" in _coalesce(extra)["reasons"]
 
+    mixed_extra = _page(
+        _section(
+            "Hoạt động mua nợ",
+            _balance(),
+            _detail(),
+            {
+                "columns": _columns(),
+                "continuation": "NONE",
+                "rows": [
+                    _row("Lãi từ các khoản nợ đã mua", ["1", "1"]),
+                    _row("Khoản mục ngoài gia đình", ["2", "2"]),
+                ],
+                "title_exact": "Chi tiết bổ sung",
+                "unit_exact": "Triệu đồng",
+            },
+        )
+    )
+    mixed_result = _coalesce(mixed_extra)
+    assert "UNCONSUMED_ROLE_BEARING_FRAGMENT_UNDER_OWNER_FENCE" in mixed_result["reasons"]
+    assert mixed_result["role_bearing_fragments"][-1]["population_disposition"] == (
+        "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION"
+    )
+
+    mixed_provision = copy.deepcopy(mixed_extra)
+    mixed_provision["sections"][0]["tables"][-1]["rows"][0] = _row("Dự phòng rủi ro", ["1", "1"])
+    mixed_result = _coalesce(mixed_provision)
+    assert "UNCONSUMED_ROLE_BEARING_FRAGMENT_UNDER_OWNER_FENCE" in mixed_result["reasons"]
+    assert mixed_result["role_bearing_fragments"][-1]["population_disposition"] == (
+        "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION"
+    )
+
 
 def test_foreign_population_incidental_role_does_not_compete_with_seed_fragments() -> None:
     historical = {
@@ -328,6 +359,21 @@ def test_foreign_population_incidental_role_does_not_compete_with_seed_fragments
     assert result["role_bearing_fragments"][0]["population_disposition"] == (
         "INCIDENTAL_ROLE_IN_FOREIGN_POPULATION"
     )
+
+    movement = {
+        "columns": _columns(),
+        "continuation": "NONE",
+        "rows": [
+            _row("Số dư đầu kỳ", ["1", "1"]),
+            _row("Dự phòng chung", ["1", "1"]),
+            _row("Số dư cuối kỳ", ["2", "2"], "TOTAL"),
+        ],
+        "title_exact": "Thay đổi dự phòng rủi ro mua nợ trong kỳ như sau:",
+        "unit_exact": "Triệu đồng",
+    }
+    result = _coalesce(_page(_section("Hoạt động mua nợ", _balance(), _detail(), movement)))
+    assert result["status"] == "ACCEPTED"
+    assert result["role_bearing_fragments"][-1]["owner"] is None
 
 
 def test_cross_section_owner_interval_and_resets_are_fail_closed() -> None:
@@ -353,6 +399,24 @@ def test_cross_section_owner_interval_and_resets_are_fail_closed() -> None:
     )
     result = _coalesce(narrative_reset)
     assert "NONORDERABLE_NARRATIVE_RESET_OR_HARD_NEGATIVE_IN_INTERVAL" in result["reasons"]
+
+    reset_after_owner_before_components = _page(
+        _section("Hoạt động mua nợ"),
+        _section(None, narratives=["12. Chứng khoán đầu tư"]),
+        _section("Chi tiết nợ đã mua", _balance(), _detail()),
+    )
+    result = _coalesce(reset_after_owner_before_components)
+    assert "NONORDERABLE_NARRATIVE_RESET_OR_HARD_NEGATIVE_IN_INTERVAL" in result["reasons"]
+
+
+def test_multiple_distinct_dates_in_one_header_are_unresolved() -> None:
+    page = _base_page()
+    page["sections"][0]["tables"][0]["columns"][0]["header_path_exact"][0] = (
+        "30/06/2026 / 31/12/2025"
+    )
+    candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert "BALANCE:MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER" in candidate["reasons"]
 
 
 def test_owner_can_be_exact_section_narrative_heading() -> None:

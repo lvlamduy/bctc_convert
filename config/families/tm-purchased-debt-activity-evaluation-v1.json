@@ -13,6 +13,21 @@
       "Dự phòng rủi ro cho các khoản nợ đã mua",
       "Tăng, giảm các khoản cho vay khách hàng và mua nợ"
     ],
+    "incidental_foreign_population_roles": [
+      "PURCHASE_PROVISION"
+    ],
+    "incidental_foreign_population_signatures": [
+      {
+        "required_alias_groups": [
+          [
+            "Giá trị nợ gốc bằng VND"
+          ],
+          [
+            "Lãi dự thu"
+          ]
+        ]
+      }
+    ],
     "max_page_span": 0,
     "owner_aliases": [
       "Hoạt động mua nợ",
@@ -25,7 +40,8 @@
       "Chứng khoán đầu tư giữ đến ngày đáo hạn",
       "Chứng khoán đầu tư sẵn sàng để bán",
       "Dự phòng rủi ro cho vay khách hàng",
-      "Tiền gửi của khách hàng"
+      "Tiền gửi của khách hàng",
+      "Thay đổi dự phòng rủi ro mua nợ"
     ]
   },
   "component_specs": [

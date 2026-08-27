@@ -21,6 +21,7 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+    _header_dates,
     _header_text,
     _matches,
     _money,
@@ -214,6 +215,8 @@ def compile_gemini_json_dual_component_family_specs_v1(
         != {
             "component_order",
             "hard_negative_aliases",
+            "incidental_foreign_population_roles",
+            "incidental_foreign_population_signatures",
             "max_page_span",
             "owner_aliases",
             "reset_aliases",
@@ -226,9 +229,33 @@ def compile_gemini_json_dual_component_family_specs_v1(
             or any(type(alias) is not str or not alias.strip() for alias in coalescing[field])
             for field in ("hard_negative_aliases", "owner_aliases", "reset_aliases")
         )
+        or type(coalescing.get("incidental_foreign_population_roles")) is not list
+        or not coalescing["incidental_foreign_population_roles"]
+        or type(coalescing.get("incidental_foreign_population_signatures")) is not list
+        or not coalescing["incidental_foreign_population_signatures"]
     ):
         raise _error("dual-component coalescing policy is invalid")
     aliases = _aliases_by_role(topology)
+    incidental_roles = coalescing["incidental_foreign_population_roles"]
+    if len(set(incidental_roles)) != len(incidental_roles) or any(
+        type(role) is not str or role not in aliases for role in incidental_roles
+    ):
+        raise _error("dual-component incidental foreign-population roles are invalid")
+    incidental_signatures = coalescing["incidental_foreign_population_signatures"]
+    if any(
+        type(signature) is not dict
+        or set(signature) != {"required_alias_groups"}
+        or type(signature["required_alias_groups"]) is not list
+        or len(signature["required_alias_groups"]) < 2
+        or any(
+            type(group) is not list
+            or not group
+            or any(type(alias) is not str or not alias.strip() for alias in group)
+            for group in signature["required_alias_groups"]
+        )
+        for signature in incidental_signatures
+    ):
+        raise _error("dual-component incidental foreign-population signatures are invalid")
     components = _compile_components(evaluation_spec["component_specs"], aliases_by_role=aliases)
     units, units_by_alias = _compile_units(evaluation_spec["unit_bindings"])
     schema_fields = {
@@ -271,6 +298,8 @@ def compile_gemini_json_dual_component_family_specs_v1(
     query_policy = {
         "component_seed_roles": {role: components[role]["seed_role"] for role in _COMPONENT_ROLES},
         "hard_negative_aliases": canonical_clone_v1(coalescing["hard_negative_aliases"]),
+        "incidental_foreign_population_roles": canonical_clone_v1(incidental_roles),
+        "incidental_foreign_population_signatures": canonical_clone_v1(incidental_signatures),
         "owner_aliases": canonical_clone_v1(coalescing["owner_aliases"]),
         "reset_aliases": canonical_clone_v1(coalescing["reset_aliases"]),
     }
@@ -383,11 +412,27 @@ def _declared_role_population(
         for ordinal, row in enumerate(rows, start=1)
         if type(row) is dict and row.get("row_kind") != "TOTAL"
     }
+    matched_roles = {role for item in role_hits for role in item["roles"]}
+    incidental_roles = set(compiled_specs["query_policy"]["incidental_foreign_population_roles"])
+    incidental_signature_match = any(
+        all(
+            any(
+                _matches(row.get("label_exact"), alias)
+                for row in rows
+                if type(row) is dict
+                for alias in alias_group
+            )
+            for alias_group in signature["required_alias_groups"]
+        )
+        for signature in compiled_specs["query_policy"]["incidental_foreign_population_signatures"]
+    )
     return {
         "population_disposition": (
             "DECLARED_ROLE_ONLY_POPULATION"
             if role_hits and non_total_row_ids <= role_row_ids
             else "INCIDENTAL_ROLE_IN_FOREIGN_POPULATION"
+            if role_hits and matched_roles <= incidental_roles and incidental_signature_match
+            else "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION"
             if role_hits
             else "NO_DECLARED_ROLE"
         ),
@@ -556,13 +601,17 @@ def coalesce_gemini_json_dual_component_page_v1(
             }
             if any(
                 item["owner"] == owner
-                and item["population_disposition"] == "DECLARED_ROLE_ONLY_POPULATION"
+                and item["population_disposition"]
+                in {
+                    "DECLARED_ROLE_ONLY_POPULATION",
+                    "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION",
+                }
                 and (item["locator"]["section_id"], item["locator"]["table_id"])
                 not in consumed_locations
                 for item in role_bearing_fragments
             ):
                 reasons.append("UNCONSUMED_ROLE_BEARING_FRAGMENT_UNDER_OWNER_FENCE")
-            first_section = int(component_regions[0]["section_id"][1:])
+            first_section = int(owner["section_id"][1:])
             last_section = int(component_regions[1]["section_id"][1:])
             if any(
                 first_section <= int(receipt["section_id"][1:]) <= last_section
@@ -679,6 +728,15 @@ def _period_axis(table: Mapping[str, Any]) -> dict[str, Any]:
             "reasons": ["EXACTLY_TWO_MONEY_COLUMNS_REQUIRED"],
         }
     headers = [_header_text(column) for column in columns]
+    if any(len(_header_dates(header)) > 1 for header in headers):
+        return {
+            "complete": False,
+            "headers_exact": headers,
+            "partial": False,
+            "reasons": ["MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER"],
+            "signatures": [],
+            "source": None,
+        }
     signatures = [_period_signature(header) for header in headers]
     present = sum(signature is not None for signature in signatures)
     reasons = []
