@@ -19,6 +19,7 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 
 FORMAT_VERSION = "GEMINI_JSON_FLAT_ACCOUNTING_FAMILY_SWEEP_V1"
@@ -1435,16 +1436,25 @@ def _validate_indexed_rollforward_query_evidence_v1(
         != "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
         or type(value) is not dict
         or set(value)
-        != {"accepted_regions", "candidate_dispositions", "format_version", "query_receipt"}
+        != {
+            "accepted_regions",
+            "candidate_dispositions",
+            "format_version",
+            "query_receipt",
+            "selected_document_axis",
+        }
         or value.get("format_version") != ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION
         or type(value.get("accepted_regions")) is not list
         or type(value.get("candidate_dispositions")) is not list
         or type(value.get("query_receipt")) is not dict
+        or type(value.get("selected_document_axis")) is not list
+        or not value["selected_document_axis"]
     ):
         raise _error("Gemini JSON indexed roll-forward query evidence is invalid")
     regions = value["accepted_regions"]
     dispositions = value["candidate_dispositions"]
     receipt = value["query_receipt"]
+    selected_documents = value["selected_document_axis"]
     locator_fields = {
         "document_id",
         "page_json_version_id",
@@ -1508,6 +1518,29 @@ def _validate_indexed_rollforward_query_evidence_v1(
         "layout": compiled_specs["layout"],
     }
     query_policy_sha256 = canonical_json_sha256_v1(query_policy)
+
+    selected_document_fields = {
+        "document_id",
+        "document_ordinal",
+        "source_logical_name",
+        "source_sha256",
+    }
+    selected_document_by_source: dict[str, dict[str, Any]] = {}
+    for ordinal, document in enumerate(selected_documents, start=1):
+        if (
+            type(document) is not dict
+            or set(document) != selected_document_fields
+            or document.get("document_ordinal") != ordinal
+            or type(document.get("document_id")) is not str
+            or re.fullmatch(r"gfpstorev1:document:[0-9a-f]{64}", document["document_id"]) is None
+            or type(document.get("source_logical_name")) is not str
+            or not document["source_logical_name"]
+            or document["source_logical_name"] in selected_document_by_source
+            or type(document.get("source_sha256")) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", document["source_sha256"]) is None
+        ):
+            raise _error("Gemini JSON indexed roll-forward selected document axis is invalid")
+        selected_document_by_source[document["source_logical_name"]] = document
 
     def valid_locator(item: dict[str, Any]) -> bool:
         return (
@@ -1601,6 +1634,14 @@ def _validate_indexed_rollforward_query_evidence_v1(
             )
         ):
             raise _error("Gemini JSON indexed roll-forward disposition is invalid")
+        selected_document = selected_document_by_source.get(disposition["source_logical_name"])
+        if (
+            selected_document is None
+            or disposition["document_id"] != selected_document["document_id"]
+            or disposition["document_ordinal"] != selected_document["document_ordinal"]
+            or disposition["source_sha256"] != selected_document["source_sha256"]
+        ):
+            raise _error("Gemini JSON indexed roll-forward disposition source is unselected")
         if classification is None:
             expected_disposition = "LOCAL_TABLE_CLASSIFICATION_ERROR"
             expected_reasons = ["ROLLFORWARD_LOCAL_TABLE_CLASSIFICATION_ERROR"]
@@ -1792,6 +1833,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
         "row_record_count",
         "selected_page_json_frontier_sha256",
         "selected_page_json_version_count",
+        "selected_document_axis_sha256",
+        "selected_document_count",
         "selected_source_axis_sha256",
         "target_document_count",
         "target_page_count",
@@ -1812,6 +1855,9 @@ def _validate_indexed_rollforward_query_evidence_v1(
         or receipt.get("exact_region_axis_sha256") != canonical_json_sha256_v1(regions)
         or receipt.get("exact_region_count") != len(regions)
         or receipt.get("target_document_count") != len(by_source)
+        or receipt.get("selected_document_count") != len(selected_documents)
+        or receipt.get("selected_document_axis_sha256")
+        != canonical_json_sha256_v1(selected_documents)
         or receipt.get("target_page_count")
         != len({region["page_json_version_id"] for region in regions})
         or receipt.get("accepted_layout_counts") != layout_counts
@@ -1845,6 +1891,242 @@ def _validate_indexed_rollforward_query_evidence_v1(
     ):
         raise _error("Gemini JSON indexed roll-forward query evidence does not replay")
     return canonical_clone_v1(value)
+
+
+def validate_gemini_json_rollforward_sweep_query_bindings_v1(
+    *,
+    trials: Any,
+    indexed_query_evidence: Any,
+    compiled_specs: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Bind every roll-forward trial and candidate to exact selected query evidence."""
+
+    evidence = _validate_indexed_rollforward_query_evidence_v1(
+        indexed_query_evidence,
+        compiled_specs=compiled_specs,
+    )
+    if type(trials) is not list:
+        raise _error("Gemini JSON roll-forward trial axis is invalid")
+    selected_documents = evidence["selected_document_axis"]
+    if len(trials) != len(selected_documents):
+        raise _error("Gemini JSON roll-forward trial axis does not cover selected documents")
+
+    from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        build_gemini_json_rollforward_region_query_receipt_v1,
+    )
+
+    locator_fields = (
+        "document_id",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "source_logical_name",
+        "source_sha256",
+        "table_id",
+    )
+    trial_fields = {
+        "candidate_count",
+        "candidates",
+        "document_ordinal",
+        "mappings",
+        "reasons",
+        "selected_candidate_id",
+        "source_logical_name",
+        "source_sha256",
+        "status",
+    }
+    candidate_fields = {
+        "candidate_id",
+        "claim_boundary",
+        "closure_receipt",
+        "component_regions",
+        "component_table_refs",
+        "document_id",
+        "family_id",
+        "mappings",
+        "page_json_version_id",
+        "physical_page",
+        "reasons",
+        "section_id",
+        "source_logical_name",
+        "source_sha256",
+        "status",
+        "table_id",
+    }
+    accepted_by_source: dict[str, list[dict[str, Any]]] = {}
+    for accepted in evidence["accepted_regions"]:
+        accepted_by_source.setdefault(accepted["source_logical_name"], []).append(
+            {field: accepted[field] for field in locator_fields}
+        )
+    near_sources = {
+        disposition["source_logical_name"]
+        for disposition in evidence["candidate_dispositions"]
+        if type(disposition["classification"]) is dict
+        and disposition["classification"]["local_owner_visible"] is True
+        and disposition["classification"]["structural_hard_negative_visible"] is False
+    }
+
+    def validate_candidate(
+        candidate: Any,
+        *,
+        document: dict[str, Any],
+        accepted_regions: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if (
+            type(candidate) is not dict
+            or set(candidate) != candidate_fields
+            or candidate.get("family_id") != compiled_specs["topology"]["family_id"]
+            or candidate.get("claim_boundary") != compiled_specs["claim_boundary"]
+            or candidate.get("status") not in {READY, UNRESOLVED}
+            or type(candidate.get("reasons")) is not list
+            or candidate["reasons"] != sorted(set(candidate["reasons"]))
+            or any(type(reason) is not str or not reason for reason in candidate["reasons"])
+            or type(candidate.get("mappings")) is not list
+            or type(candidate.get("closure_receipt")) is not dict
+            or type(candidate.get("component_regions")) is not list
+            or not candidate["component_regions"]
+            or candidate["source_logical_name"] != document["source_logical_name"]
+            or candidate["source_sha256"] != document["source_sha256"]
+            or candidate["document_id"] != document["document_id"]
+            or not same_typed_json_v1(candidate["component_regions"], accepted_regions)
+        ):
+            raise _error("Gemini JSON roll-forward candidate is not query-evidence bound")
+        first = accepted_regions[0]
+        if any(
+            candidate[field] != first[field]
+            for field in (
+                "page_json_version_id",
+                "physical_page",
+                "section_id",
+                "table_id",
+            )
+        ):
+            raise _error("Gemini JSON roll-forward candidate root locator drifted")
+        expected_component_table_refs = [
+            {"section_id": region["section_id"], "table_id": region["table_id"]}
+            for region in accepted_regions
+            if region["page_json_version_id"] == first["page_json_version_id"]
+        ]
+        if not same_typed_json_v1(candidate["component_table_refs"], expected_component_table_refs):
+            raise _error("Gemini JSON roll-forward candidate component refs drifted")
+        expected_query_receipt = build_gemini_json_rollforward_region_query_receipt_v1(
+            accepted_regions
+        )
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("query_receipt"),
+            expected_query_receipt,
+        ) or candidate["closure_receipt"].get(
+            "component_region_axis_sha256"
+        ) != canonical_json_sha256_v1(accepted_regions):
+            raise _error("Gemini JSON roll-forward candidate query receipt drifted")
+        candidate_material = {
+            key: value for key, value in candidate.items() if key != "candidate_id"
+        }
+        if candidate.get("candidate_id") != (
+            "gjfafcv1:candidate:" + canonical_json_sha256_v1(candidate_material)
+        ):
+            raise _error("Gemini JSON roll-forward candidate identity drifted")
+        accepted_locator_hashes = {canonical_json_sha256_v1(region) for region in accepted_regions}
+        for mapping in candidate["mappings"]:
+            if (
+                type(mapping) is not dict
+                or type(mapping.get("item_mapping_id")) is not str
+                or type(mapping.get("locator")) is not dict
+                or canonical_json_sha256_v1(mapping["locator"]) not in accepted_locator_hashes
+                or type(mapping.get("movement_role")) is not str
+                or type(mapping.get("lane_role")) is not str
+                or type(mapping.get("report_norm_id")) is not int
+                or mapping["report_norm_id"] <= 0
+                or type(mapping.get("row_id")) is not str
+            ):
+                raise _error("Gemini JSON roll-forward mapping is not component bound")
+            mapping_material = {
+                key: value for key, value in mapping.items() if key != "item_mapping_id"
+            }
+            if mapping["item_mapping_id"] != (
+                "gjfrfmv1:item:" + canonical_json_sha256_v1(mapping_material)
+            ):
+                raise _error("Gemini JSON roll-forward mapping identity drifted")
+        if (
+            candidate["status"] == READY and (candidate["reasons"] or not candidate["mappings"])
+        ) or (
+            candidate["status"] == UNRESOLVED
+            and (not candidate["reasons"] or candidate["mappings"])
+        ):
+            raise _error("Gemini JSON roll-forward candidate status semantics drifted")
+        return candidate
+
+    checked_trials = []
+    for ordinal, (trial, document) in enumerate(
+        zip(trials, selected_documents, strict=True), start=1
+    ):
+        if (
+            type(trial) is not dict
+            or set(trial) != trial_fields
+            or trial.get("document_ordinal") != ordinal
+            or document["document_ordinal"] != ordinal
+            or trial.get("source_logical_name") != document["source_logical_name"]
+            or trial.get("source_sha256") != document["source_sha256"]
+            or type(trial.get("candidates")) is not list
+            or type(trial.get("candidate_count")) is not int
+            or trial["candidate_count"] != len(trial["candidates"])
+            or len(trial["candidates"]) > 1
+            or type(trial.get("mappings")) is not list
+            or type(trial.get("reasons")) is not list
+            or trial["reasons"] != sorted(set(trial["reasons"]))
+            or any(type(reason) is not str or not reason for reason in trial["reasons"])
+            or trial.get("status") not in {READY, NOT_OBSERVED, UNRESOLVED}
+            or trial.get("selected_candidate_id") is not None
+            and type(trial["selected_candidate_id"]) is not str
+        ):
+            raise _error("Gemini JSON roll-forward trial source axis drifted")
+        source = document["source_logical_name"]
+        accepted_regions = accepted_by_source.get(source, [])
+        near = source in near_sources
+        candidates = [
+            validate_candidate(
+                candidate,
+                document=document,
+                accepted_regions=accepted_regions,
+            )
+            for candidate in trial["candidates"]
+        ]
+        if candidates and not accepted_regions:
+            raise _error("Gemini JSON roll-forward candidate has no accepted source regions")
+        candidate = candidates[0] if candidates else None
+        if candidate is not None and candidate["status"] == READY:
+            if (
+                trial["status"] != READY
+                or trial["selected_candidate_id"] != candidate["candidate_id"]
+                or not same_typed_json_v1(trial["mappings"], candidate["mappings"])
+                or trial["reasons"]
+            ):
+                raise _error("Gemini JSON roll-forward READY trial binding drifted")
+        elif candidate is not None:
+            if (
+                trial["status"] != UNRESOLVED
+                or trial["selected_candidate_id"] is not None
+                or trial["mappings"]
+                or trial["reasons"] != candidate["reasons"]
+            ):
+                raise _error("Gemini JSON roll-forward unresolved candidate binding drifted")
+        elif near:
+            if (
+                trial["status"] != UNRESOLVED
+                or trial["selected_candidate_id"] is not None
+                or trial["mappings"]
+                or trial["reasons"] != ["PARTIAL_REQUIRED_ANCHOR_FRONTIER_ONLY"]
+            ):
+                raise _error("Gemini JSON roll-forward near-only trial binding drifted")
+        elif (
+            trial["status"] != NOT_OBSERVED
+            or trial["selected_candidate_id"] is not None
+            or trial["mappings"]
+            or trial["reasons"]
+        ):
+            raise _error("Gemini JSON roll-forward not-observed trial binding drifted")
+        checked_trials.append(canonical_clone_v1(trial))
+    return checked_trials
 
 
 def build_gemini_json_flat_family_sweep_v1(
@@ -1886,6 +2168,15 @@ def build_gemini_json_flat_family_sweep_v1(
                 indexed_query_evidence,
                 compiled_specs=compiled,
             )
+        )
+    if (
+        checked_indexed_query_evidence is not None
+        and compiled.get("engine_format_version") == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
+    ):
+        trials = validate_gemini_json_rollforward_sweep_query_bindings_v1(
+            trials=trials,
+            indexed_query_evidence=checked_indexed_query_evidence,
+            compiled_specs=compiled,
         )
     checked_effective_frontier = None
     if effective_page_frontier is not None:

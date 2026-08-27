@@ -1825,13 +1825,30 @@ def query_selected_rollforward_family_regions_v1(
             raise _error("selected roll-forward frontier is repeated or not in corpus order")
 
         document_ordinals: dict[str, int] = {}
+        selected_document_axis: list[dict[str, Any]] = []
         selected_by_version: dict[str, dict[str, Any]] = {}
         selected_source_axis = []
         for row in selected_rows:
             record = dict(row)
-            ordinal = document_ordinals.setdefault(
-                record["document_id"], len(document_ordinals) + 1
-            )
+            ordinal = document_ordinals.get(record["document_id"])
+            if ordinal is None:
+                ordinal = len(document_ordinals) + 1
+                document_ordinals[record["document_id"]] = ordinal
+                selected_document_axis.append(
+                    {
+                        "document_id": record["document_id"],
+                        "document_ordinal": ordinal,
+                        "source_logical_name": record["source_logical_name"],
+                        "source_sha256": record["source_sha256"],
+                    }
+                )
+            else:
+                selected_document = selected_document_axis[ordinal - 1]
+                if (
+                    selected_document["source_logical_name"] != record["source_logical_name"]
+                    or selected_document["source_sha256"] != record["source_sha256"]
+                ):
+                    raise _error("selected roll-forward document source identity drifted")
             record["document_ordinal"] = ordinal
             selected_by_version[record["page_json_version_id"]] = record
             selected_source_axis.append(record)
@@ -2199,6 +2216,8 @@ def query_selected_rollforward_family_regions_v1(
         "row_record_count": len(full_row_rows),
         "selected_page_json_frontier_sha256": canonical_json_sha256_v1(version_ids),
         "selected_page_json_version_count": len(version_ids),
+        "selected_document_axis_sha256": canonical_json_sha256_v1(selected_document_axis),
+        "selected_document_count": len(selected_document_axis),
         "selected_source_axis_sha256": canonical_json_sha256_v1(selected_source_axis),
         "target_document_count": len(accepted_sources),
         "target_page_count": len({item["page_json_version_id"] for item in accepted_regions}),
@@ -2208,6 +2227,7 @@ def query_selected_rollforward_family_regions_v1(
         "candidate_dispositions": candidate_dispositions,
         "format_version": ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
         "query_receipt": query_receipt,
+        "selected_document_axis": selected_document_axis,
     }
 
 
@@ -2217,6 +2237,7 @@ def validate_selected_rollforward_family_query_evidence_v1(
     selected_page_json_version_ids: Sequence[str],
     compiled_specs: Mapping[str, Any],
     indexed_query_evidence: Any,
+    trials: Any | None = None,
 ) -> dict[str, Any]:
     """Rederive and exact-compare one public selected-frontier projection."""
 
@@ -2229,6 +2250,19 @@ def validate_selected_rollforward_family_query_evidence_v1(
         indexed_query_evidence, replayed
     ):
         raise _error("selected roll-forward query evidence does not replay exactly")
+    if trials is not None:
+        from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+            validate_gemini_json_rollforward_sweep_query_bindings_v1,
+        )
+
+        try:
+            validate_gemini_json_rollforward_sweep_query_bindings_v1(
+                trials=trials,
+                indexed_query_evidence=replayed,
+                compiled_specs=dict(compiled_specs),
+            )
+        except ValueError as exc:
+            raise _error("selected roll-forward sweep bindings do not replay exactly") from exc
     return canonical_clone_v1(replayed)
 
 

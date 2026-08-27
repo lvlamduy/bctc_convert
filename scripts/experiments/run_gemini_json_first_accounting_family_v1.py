@@ -37,6 +37,7 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     enqueue_gemini_family_region_repair_plans_v1,
@@ -1551,6 +1552,19 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         indexed_query_evidence=indexed_query_evidence,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
+    if rollforward_projection:
+        replayed_query_evidence = validate_selected_rollforward_family_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=sweep["indexed_query_evidence"],
+            trials=sweep["trials"],
+        )
+        if not same_typed_json_v1(
+            replayed_query_evidence,
+            sweep["indexed_query_evidence"],
+        ):
+            raise _error("roll-forward sweep and public SQLite replay drifted")
     repair_plans = (
         []
         if rollforward_projection
