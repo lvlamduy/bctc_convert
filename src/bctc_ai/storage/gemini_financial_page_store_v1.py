@@ -1331,8 +1331,17 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
     """Bind semantic aliases to exact labels with harmless list markers."""
 
     folded = {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases}
+    comma_forms = {
+        " ".join(tokens[:ordinal]) + ", " + " ".join(tokens[ordinal:])
+        for alias in folded
+        for tokens in [alias.split()]
+        for ordinal in range(1, len(tokens))
+    }
     punctuation_forms = (
-        set(folded) | {alias + ":" for alias in folded} | {alias + " (*)" for alias in folded}
+        set(folded)
+        | {alias + ":" for alias in folded}
+        | {alias + " (*)" for alias in folded}
+        | comma_forms
     )
     punctuation_forms |= {
         alias.replace("tien vang ", "tien, vang ", 1)
