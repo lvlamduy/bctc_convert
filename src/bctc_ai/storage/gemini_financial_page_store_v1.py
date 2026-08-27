@@ -1546,48 +1546,63 @@ def query_selected_family_anchor_regions_v1(
             """,
             (len(folded_sets),),
         ).fetchall()
+        matched_rows = connection.execute(
+            """
+            SELECT r.page_json_version_id, r.section_id, r.table_id,
+                   a.anchor_ordinal, r.row_id, r.source_order
+            FROM row_node AS r
+            JOIN selected_page_version AS s USING(page_json_version_id)
+            JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
+            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
+                     a.anchor_ordinal, r.source_order, r.row_id
+            """
+        ).fetchall()
+        hits_by_region_and_anchor: dict[tuple[str, str, str, int], list[str]] = {}
+        for row in matched_rows:
+            hits_by_region_and_anchor.setdefault(
+                (
+                    row["page_json_version_id"],
+                    row["section_id"],
+                    row["table_id"],
+                    row["anchor_ordinal"],
+                ),
+                [],
+            ).append(row["row_id"])
+        selected_pages_by_document: dict[str, list[dict[str, Any]]] = {}
+        for row in selected_rows:
+            selected_pages_by_document.setdefault(row["document_id"], []).append(
+                {
+                    "physical_page": row["physical_page"],
+                    "page_json_version_id": row["page_json_version_id"],
+                }
+            )
         result: list[dict[str, Any]] = []
         for candidate in candidates:
-            hit_groups = []
-            for anchor_ordinal in range(1, len(folded_sets) + 1):
-                rows = connection.execute(
-                    """
-                    SELECT DISTINCT r.row_id, r.source_order
-                    FROM row_node AS r
-                    JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
-                    WHERE r.page_json_version_id=? AND r.section_id=? AND r.table_id=?
-                      AND a.anchor_ordinal=?
-                    ORDER BY r.source_order, r.row_id
-                    """,
+            hit_groups = [
+                hits_by_region_and_anchor.get(
                     (
                         candidate["page_json_version_id"],
                         candidate["section_id"],
                         candidate["table_id"],
                         anchor_ordinal,
                     ),
-                ).fetchall()
-                hit_groups.append([row["row_id"] for row in rows])
+                    [],
+                )
+                for anchor_ordinal in range(1, len(folded_sets) + 1)
+            ]
             if not _distinct_anchor_assignment_exists_v1(hit_groups):
                 continue
-            context_pages = connection.execute(
-                """
-                SELECT p.physical_page, s.page_json_version_id
-                FROM selected_page_version AS s
-                JOIN page_json_version AS v USING(page_json_version_id)
-                JOIN page AS p USING(page_id)
-                WHERE p.document_id=? AND p.physical_page BETWEEN ? AND ?
-                ORDER BY p.physical_page, s.selection_ordinal
-                """,
-                (
-                    candidate["document_id"],
-                    max(1, candidate["physical_page"] - adjacent_page_radius),
-                    candidate["physical_page"] + adjacent_page_radius,
-                ),
-            ).fetchall()
+            context_pages = [
+                page
+                for page in selected_pages_by_document[candidate["document_id"]]
+                if max(1, candidate["physical_page"] - adjacent_page_radius)
+                <= page["physical_page"]
+                <= candidate["physical_page"] + adjacent_page_radius
+            ]
             result.append(
                 {
                     "anchor_row_ids": hit_groups,
-                    "context_pages": [dict(row) for row in context_pages],
+                    "context_pages": context_pages,
                     "document_id": candidate["document_id"],
                     "page_json_version_id": candidate["page_json_version_id"],
                     "physical_page": candidate["physical_page"],

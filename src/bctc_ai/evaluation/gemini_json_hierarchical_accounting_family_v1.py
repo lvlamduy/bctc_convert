@@ -550,11 +550,14 @@ def _solve(
                 if total_role in alternative["component_roles"]
                 for role in alternative["component_roles"]
             }
-            subtotal_components = [
-                resolved[role]
-                for role in direct_visible - cooccurring - {total_role}
-                if role_kinds.get(role) in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
-            ]
+            subtotal_components = sorted(
+                (
+                    resolved[role]
+                    for role in direct_visible - cooccurring - {total_role}
+                    if role_kinds.get(role) in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+                ),
+                key=lambda record: (record["ordinal"], record["role"], record["row_id"]),
+            )
             if subtotal_components and _sum(subtotal_components, 2) == _coefficients(
                 resolved[total_role]
             ):
