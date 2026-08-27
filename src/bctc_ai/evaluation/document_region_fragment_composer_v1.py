@@ -1102,6 +1102,10 @@ def _exact_axis_declared_role_inventory_v1(
         compiled_specs["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
     )
     inventory = []
+    columns = table.get("columns")
+    has_money_column = type(columns) is list and any(
+        type(column) is dict and column.get("value_kind") == "MONEY" for column in columns
+    )
     rows = table.get("rows")
     if type(rows) is list:
         for row_ordinal, row in enumerate(rows, start=1):
@@ -1134,7 +1138,17 @@ def _exact_axis_declared_role_inventory_v1(
                         "row_id": f"r{row_ordinal}",
                     }
                 )
-    columns = table.get("columns")
+            elif has_money_column and row.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}:
+                inventory.append(
+                    {
+                        "evidence_kind": "ANONYMOUS_ACCOUNTING_CARRIER_ROW",
+                        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+                        "label_exact": row.get("label_exact"),
+                        "row_id": f"r{row_ordinal}",
+                        "row_kind": row.get("row_kind"),
+                        "values_exact": canonical_clone_v1(row.get("values_exact")),
+                    }
+                )
     if type(columns) is list:
         for column_ordinal, column in enumerate(columns, start=1):
             if type(column) is not dict:

@@ -1054,6 +1054,99 @@ def test_exact_axis_inventory_handles_null_period_row_as_typed_unsupported() -> 
     assert request["projection_reasons"] == ["UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT"]
 
 
+def test_exact_axis_inventory_fails_closed_on_anonymous_conflicting_total() -> None:
+    page = _page(
+        [
+            _stacked_table(),
+            _table([_row(None, ["101", "80"], "TOTAL")]),
+        ],
+        title="Theo loại tiền tệ",
+    )
+    version_ids, records = _records([page])
+    compiled_specs = _compiled()
+    raw_policy = _policy(
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+        projection_adapter_id=GENERAL_ADAPTER_ID,
+        projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+        projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+        projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+    )
+    policy = compile_document_region_fragment_composer_policy_v1(
+        raw_policy, compiled_specs=compiled_specs
+    )
+    requests = [
+        inventory_exact_axis_document_region_fragment_v1(
+            page_record=records[0],
+            section_id="s1",
+            table_id=f"t{table_ordinal}",
+            document_period_axis=_axis(),
+            policy=policy,
+            compiled_specs=compiled_specs,
+        )
+        for table_ordinal in (1, 2)
+    ]
+    assert all(request is not None for request in requests)
+    assert requests[1]["adapter_projection_receipt"]["role_inventory"] == [
+        {
+            "evidence_kind": "ANONYMOUS_ACCOUNTING_CARRIER_ROW",
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_id": "r1",
+            "row_kind": "TOTAL",
+            "values_exact": ["101", "80"],
+        }
+    ]
+    result = compose_document_region_fragments_v1(
+        selected_page_json_version_ids=version_ids,
+        page_records=records,
+        fragment_requests=requests,
+        document_period_axis=_axis(),
+        policy=raw_policy,
+        compiled_specs=compiled_specs,
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+    )
+    assert result["status"] == UNRESOLVED
+    assert "UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT" in result["reasons"]
+
+
+@pytest.mark.parametrize(
+    "row,expected_relevant",
+    [
+        (_row(None, [None, None], "SUBTOTAL"), True),
+        (_row("Unrelated narrative item", ["7", "6"], "ITEM"), False),
+    ],
+)
+def test_exact_axis_inventory_captures_blank_carrier_but_not_unrelated_item(
+    row: dict, expected_relevant: bool
+) -> None:
+    _ids, records = _records([_page([_table([row])], title="Generic")])
+    compiled_specs = _compiled()
+    policy = compile_document_region_fragment_composer_policy_v1(
+        _policy(
+            projection_adapter=project_exact_axis_document_region_fragment_v1,
+            projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+            projection_adapter_id=GENERAL_ADAPTER_ID,
+            projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+            projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+            projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+        ),
+        compiled_specs=compiled_specs,
+    )
+    request = inventory_exact_axis_document_region_fragment_v1(
+        page_record=records[0],
+        section_id="s1",
+        table_id="t1",
+        document_period_axis=_axis(),
+        policy=policy,
+        compiled_specs=compiled_specs,
+    )
+    assert (request is not None) is expected_relevant
+    if request is not None:
+        assert request["projection_reasons"] == ["UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT"]
+
+
 def test_general_adapter_preserves_exact_parent_population_context() -> None:
     table = _stacked_table()
     for ordinal in (2, 3, 4, 6, 7, 8):
