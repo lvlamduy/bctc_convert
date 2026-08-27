@@ -9,7 +9,9 @@ import pytest
 from bctc_ai.evaluation.document_region_fragment_composer_v1 import (
     POLICY_FORMAT_VERSION,
     DocumentRegionFragmentComposerV1Error,
+    build_normalized_document_region_fragment_candidate_v1,
     compose_document_region_fragments_v1,
+    document_region_fragment_adapter_identity_v1,
     inventory_column_lane_document_region_fragment_v1,
     project_column_lane_document_region_fragment_v1,
     validate_document_region_fragment_composition_replay_v1,
@@ -84,7 +86,16 @@ def _page(tables: list[dict], *, title: str | None = None) -> dict:
     }
 
 
-def _policy(**changes: object) -> dict:
+def _policy(
+    *,
+    projection_adapter: object = project_column_lane_document_region_fragment_v1,
+    projection_inventory_adapter: object = inventory_column_lane_document_region_fragment_v1,
+    projection_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_PROJECTION",
+    projection_adapter_format_version: str = "DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
+    projection_inventory_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_INVENTORY",
+    projection_inventory_adapter_format_version: str = ("DOCUMENT_REGION_COLUMN_LANE_INVENTORY_V1"),
+    **changes: object,
+) -> dict:
     value = {
         "allow_distinctive_child_cluster_cross_page": False,
         "branch_aliases": [],
@@ -102,6 +113,16 @@ def _policy(**changes: object) -> dict:
         "owner_aliases": ["Theo loại tiền tệ"],
         "period_axis_cardinality": 2,
         "period_axis_semantics": "EXACT_DOCUMENT_ACCOUNTING_PERIOD_AXIS",
+        "projection_adapter_identity": document_region_fragment_adapter_identity_v1(
+            projection_adapter,
+            adapter_id=projection_adapter_id,
+            adapter_format_version=projection_adapter_format_version,
+        ),
+        "projection_inventory_adapter_identity": document_region_fragment_adapter_identity_v1(
+            projection_inventory_adapter,
+            adapter_id=projection_inventory_adapter_id,
+            adapter_format_version=projection_inventory_adapter_format_version,
+        ),
         "reset_aliases": ["Theo ngành kinh tế"],
         "unit_aliases": ["Triệu đồng", "Nghìn đồng"],
     }
@@ -142,28 +163,81 @@ def _records(pages: list[dict], document_id: str = "document-1") -> tuple[list[s
     ]
 
 
-def _request(version_id: str, table: int, columns: tuple[int, ...] = (1, 2)) -> dict:
+def _request(
+    version_id: str,
+    table: int,
+    columns: tuple[int, ...] = (1, 2),
+    *,
+    projection_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_PROJECTION",
+    projection_adapter_format_version: str = "DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
+    projection_adapter: object = project_column_lane_document_region_fragment_v1,
+    projection_inventory_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_INVENTORY",
+    projection_inventory_adapter_format_version: str = ("DOCUMENT_REGION_COLUMN_LANE_INVENTORY_V1"),
+    projection_inventory_adapter: object = inventory_column_lane_document_region_fragment_v1,
+) -> dict:
+    policy = _policy(
+        projection_adapter=projection_adapter,
+        projection_inventory_adapter=projection_inventory_adapter,
+        projection_adapter_id=projection_adapter_id,
+        projection_adapter_format_version=projection_adapter_format_version,
+        projection_inventory_adapter_id=projection_inventory_adapter_id,
+        projection_inventory_adapter_format_version=projection_inventory_adapter_format_version,
+    )
     return {
+        "composer_policy_sha256": canonical_json_sha256_v1(policy),
         "control_column_ids": [],
         "mapping_column_ids": [f"c{column}" for column in columns],
         "page_json_version_id": version_id,
+        "projection_adapter_format_version": projection_adapter_format_version,
+        "projection_adapter_id": projection_adapter_id,
+        "projection_adapter_implementation_ref_sha256": policy["projection_adapter_identity"][
+            "implementation_ref_sha256"
+        ],
+        "projection_inventory_adapter_format_version": (
+            projection_inventory_adapter_format_version
+        ),
+        "projection_inventory_adapter_id": projection_inventory_adapter_id,
+        "projection_inventory_adapter_implementation_ref_sha256": policy[
+            "projection_inventory_adapter_identity"
+        ]["implementation_ref_sha256"],
         "projection_kind": "BALANCE_MAPPING",
         "section_id": "s1",
         "table_id": f"t{table}",
     }
 
 
-def _compose(pages: list[dict], requests: list[dict], **policy_changes: object) -> dict:
+def _compose(
+    pages: list[dict],
+    requests: list[dict],
+    *,
+    projection_adapter: object = project_column_lane_document_region_fragment_v1,
+    projection_inventory_adapter: object = inventory_column_lane_document_region_fragment_v1,
+    projection_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_PROJECTION",
+    projection_adapter_format_version: str = "DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
+    projection_inventory_adapter_id: str = "DOCUMENT_REGION_COLUMN_LANE_INVENTORY",
+    projection_inventory_adapter_format_version: str = ("DOCUMENT_REGION_COLUMN_LANE_INVENTORY_V1"),
+    **policy_changes: object,
+) -> dict:
     version_ids, records = _records(pages)
     return compose_document_region_fragments_v1(
         selected_page_json_version_ids=version_ids,
         page_records=records,
         fragment_requests=requests,
         document_period_axis=_axis(),
-        policy=_policy(**policy_changes),
+        policy=_policy(
+            projection_adapter=projection_adapter,
+            projection_inventory_adapter=projection_inventory_adapter,
+            projection_adapter_id=projection_adapter_id,
+            projection_adapter_format_version=projection_adapter_format_version,
+            projection_inventory_adapter_id=projection_inventory_adapter_id,
+            projection_inventory_adapter_format_version=(
+                projection_inventory_adapter_format_version
+            ),
+            **policy_changes,
+        ),
         compiled_specs=_compiled(),
-        projection_adapter=project_column_lane_document_region_fragment_v1,
-        projection_inventory_adapter=inventory_column_lane_document_region_fragment_v1,
+        projection_adapter=projection_adapter,
+        projection_inventory_adapter=projection_inventory_adapter,
     )
 
 
@@ -184,6 +258,411 @@ def _basic_pages() -> tuple[list[dict], list[dict]]:
     ]
     ids, _ = _records(pages)
     return pages, [_request(ids[0], 1), _request(ids[1], 1)]
+
+
+GENERAL_ADAPTER_ID = "DOCUMENT_REGION_GENERAL_LAYOUT_PROJECTION"
+GENERAL_ADAPTER_VERSION = "DOCUMENT_REGION_GENERAL_LAYOUT_ADAPTER_V1"
+GENERAL_INVENTORY_ID = "DOCUMENT_REGION_GENERAL_LAYOUT_INVENTORY"
+GENERAL_INVENTORY_VERSION = "DOCUMENT_REGION_GENERAL_LAYOUT_INVENTORY_V1"
+
+
+def _coherent_period_swapping_column_adapter(**kwargs: object) -> dict:
+    candidate = project_column_lane_document_region_fragment_v1(**kwargs)
+    for field in ("role_rows", "anonymous_rows"):
+        for row in candidate[field]:
+            periods = [cell["period_signature"] for cell in row["cells"]]
+            for cell, period in zip(row["cells"], reversed(periods), strict=True):
+                cell["period_signature"] = period
+    candidate["projection_closure"]["role_rows"] = copy.deepcopy(candidate["role_rows"])
+    candidate["projection_closure"]["anonymous_rows"] = copy.deepcopy(candidate["anonymous_rows"])
+    candidate["projection_closure_sha256"] = canonical_json_sha256_v1(
+        candidate["projection_closure"]
+    )
+    policy = kwargs["policy"]
+    candidate["candidate_id"] = "drfcv1:fragment:" + canonical_json_sha256_v1(
+        {
+            "family_id": policy["family_id"],
+            "page_json_version_id": candidate["page_json_version_id"],
+            "projection_closure_sha256": candidate["projection_closure_sha256"],
+            "section_id": candidate["section_id"],
+            "table_id": candidate["table_id"],
+        }
+    )
+    return candidate
+
+
+def _general_request(version_id: str, *, layout_kind: str) -> dict:
+    policy = _policy(
+        projection_adapter=_general_layout_projection_adapter,
+        projection_inventory_adapter=_general_layout_inventory_adapter,
+        projection_adapter_id=GENERAL_ADAPTER_ID,
+        projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+        projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+        projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+    )
+    return {
+        "composer_policy_sha256": canonical_json_sha256_v1(policy),
+        "layout_kind": layout_kind,
+        "page_json_version_id": version_id,
+        "projection_adapter_format_version": GENERAL_ADAPTER_VERSION,
+        "projection_adapter_id": GENERAL_ADAPTER_ID,
+        "projection_adapter_implementation_ref_sha256": policy["projection_adapter_identity"][
+            "implementation_ref_sha256"
+        ],
+        "projection_inventory_adapter_format_version": GENERAL_INVENTORY_VERSION,
+        "projection_inventory_adapter_id": GENERAL_INVENTORY_ID,
+        "projection_inventory_adapter_implementation_ref_sha256": policy[
+            "projection_inventory_adapter_identity"
+        ]["implementation_ref_sha256"],
+        "projection_kind": "BALANCE_MAPPING",
+        "section_id": "s1",
+        "table_id": "t1",
+    }
+
+
+def _general_layout_inventory_adapter(
+    *,
+    page_record: dict,
+    section_id: str,
+    table_id: str,
+    document_period_axis: dict,
+    policy: dict,
+    compiled_specs: dict,
+) -> dict | None:
+    del document_period_axis, compiled_specs
+    section_index = int(section_id[1:]) - 1
+    table_index = int(table_id[1:]) - 1
+    table = page_record["page_json"]["sections"][section_index]["tables"][table_index]
+    layout_kind = table.get("title_exact")
+    if type(layout_kind) is not str or not layout_kind.startswith(("STACKED", "TRANSPOSED")):
+        return None
+    return {
+        "composer_policy_sha256": policy["policy_sha256"],
+        "layout_kind": layout_kind,
+        "page_json_version_id": page_record["page_json_version_id"],
+        "projection_adapter_format_version": policy["projection_adapter_identity"][
+            "adapter_format_version"
+        ],
+        "projection_adapter_id": policy["projection_adapter_identity"]["adapter_id"],
+        "projection_adapter_implementation_ref_sha256": policy["projection_adapter_identity"][
+            "implementation_ref_sha256"
+        ],
+        "projection_inventory_adapter_format_version": policy[
+            "projection_inventory_adapter_identity"
+        ]["adapter_format_version"],
+        "projection_inventory_adapter_id": policy["projection_inventory_adapter_identity"][
+            "adapter_id"
+        ],
+        "projection_inventory_adapter_implementation_ref_sha256": policy[
+            "projection_inventory_adapter_identity"
+        ]["implementation_ref_sha256"],
+        "projection_kind": "BALANCE_MAPPING",
+        "section_id": section_id,
+        "table_id": table_id,
+    }
+
+
+def _money_receipt(value: str | None) -> dict | None:
+    if value is None:
+        return None
+    return {
+        "coefficient": int(value.replace(",", "")),
+        "source_text": value,
+        "state": "RAW_SIGNED_INTEGER",
+    }
+
+
+def _general_layout_projection_adapter(
+    *,
+    page_record: dict,
+    request: dict,
+    document_period_axis: dict,
+    policy: dict,
+    compiled_specs: dict,
+) -> dict:
+    del document_period_axis
+    table = page_record["page_json"]["sections"][0]["tables"][0]
+    bindings: list[dict] = []
+
+    def add(kind: str, **fields: object) -> str:
+        binding_id = f"b{len(bindings) + 1}"
+        bindings.append({"binding_id": binding_id, "binding_kind": kind, **fields})
+        return binding_id
+
+    unit_id = add("TABLE_UNIT", unit_exact=table["unit_exact"])
+    logical_rows = []
+    if request["layout_kind"].startswith("STACKED"):
+        metric_id = add(
+            "COLUMN",
+            column_id="c1",
+            header_path_exact=table["columns"][0]["header_path_exact"],
+            value_kind="MONEY",
+        )
+        row_ids = {
+            ordinal: add(
+                "ROW",
+                row_id=f"r{ordinal}",
+                label_exact=row["label_exact"],
+                hierarchy_path_exact=row["hierarchy_path_exact"],
+                row_kind=row["row_kind"],
+            )
+            for ordinal, row in enumerate(table["rows"], start=1)
+        }
+        block_ids = {
+            1: add("ROW_BLOCK", row_ids=["r1", "r2", "r3", "r4"]),
+            2: add("ROW_BLOCK", row_ids=["r5", "r6", "r7", "r8"]),
+        }
+        value_ids = {
+            ordinal: add(
+                "VALUE_CELL",
+                row_id=f"r{ordinal}",
+                column_id="c1",
+                source_text=table["rows"][ordinal - 1]["values_exact"][0],
+            )
+            for ordinal in (2, 3, 4, 6, 7, 8)
+        }
+        row_specs = [
+            ("Cho vay bằng VND", "ITEM", {"VND_LOANS": "EXACT_NORMALIZED"}, 2, 6),
+            (
+                "Cho vay bằng ngoại tệ",
+                "ITEM",
+                {"FOREIGN_CURRENCY_AND_GOLD_LOANS": "EXACT_NORMALIZED"},
+                3,
+                7,
+            ),
+            ("Tổng cộng", "TOTAL", {}, 4, 8),
+        ]
+        for logical_ordinal, (label, row_kind, modes, current_row, prior_row) in enumerate(
+            row_specs, start=1
+        ):
+            row_binding_ids = [row_ids[current_row], row_ids[prior_row]]
+            source_path = table["rows"][current_row - 1]["hierarchy_path_exact"]
+            population_context = list(source_path[:-1]) if source_path[-1] == label else []
+            cells = []
+            for cell_ordinal, (period, value_row, period_row, block) in enumerate(
+                [
+                    (["DATE", "2025-12-31"], current_row, 1, 1),
+                    (["DATE", "2024-12-31"], prior_row, 5, 2),
+                ],
+                start=1,
+            ):
+                value = table["rows"][value_row - 1]["values_exact"][0]
+                cells.append(
+                    {
+                        "logical_cell_id": f"lc{logical_ordinal}_{cell_ordinal}",
+                        "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+                        "metric_source_binding_ids": [metric_id],
+                        "money": _money_receipt(value),
+                        "period_signature": period,
+                        "period_source_binding_ids": [row_ids[period_row], block_ids[block]],
+                        "source_text": value,
+                        "unit_signature": "trieu dong",
+                        "unit_source_binding_ids": [unit_id],
+                        "value_source_binding_ids": [value_ids[value_row]],
+                    }
+                )
+            logical_rows.append(
+                {
+                    "cells": cells,
+                    "hierarchy_path_exact": [*population_context, label],
+                    "label_exact": label,
+                    "label_match_modes": modes,
+                    "logical_row_id": f"lr{logical_ordinal}",
+                    "population_context_exact": population_context,
+                    "population_source_binding_ids": (
+                        row_binding_ids if population_context else []
+                    ),
+                    "role_source_binding_ids": row_binding_ids if modes else [],
+                    "row_kind": row_kind,
+                    "row_source_binding_ids": row_binding_ids,
+                    "source_position": [
+                        page_record["selected_frontier_ordinal"],
+                        1,
+                        1,
+                        current_row,
+                        1,
+                    ],
+                }
+            )
+    else:
+        column_ids = {
+            ordinal: add(
+                "COLUMN",
+                column_id=f"c{ordinal}",
+                header_path_exact=column["header_path_exact"],
+                value_kind=column["value_kind"],
+            )
+            for ordinal, column in enumerate(table["columns"], start=1)
+        }
+        row_ids = {
+            ordinal: add(
+                "ROW",
+                row_id=f"r{ordinal}",
+                label_exact=row["label_exact"],
+                hierarchy_path_exact=row["hierarchy_path_exact"],
+                row_kind=row["row_kind"],
+            )
+            for ordinal, row in enumerate(table["rows"], start=1)
+        }
+        value_ids = {
+            (row_ordinal, column_ordinal): add(
+                "VALUE_CELL",
+                row_id=f"r{row_ordinal}",
+                column_id=f"c{column_ordinal}",
+                source_text=table["rows"][row_ordinal - 1]["values_exact"][column_ordinal - 1],
+            )
+            for row_ordinal in (1, 2)
+            for column_ordinal in (1, 2, 3)
+        }
+        column_specs = [
+            ("Cho vay bằng VND", "ITEM", {"VND_LOANS": "EXACT_NORMALIZED"}, 1),
+            (
+                "Cho vay bằng ngoại tệ",
+                "ITEM",
+                {"FOREIGN_CURRENCY_AND_GOLD_LOANS": "EXACT_NORMALIZED"},
+                2,
+            ),
+            ("Tổng cộng", "TOTAL", {}, 3),
+        ]
+        for logical_ordinal, (label, row_kind, modes, column_ordinal) in enumerate(
+            column_specs, start=1
+        ):
+            cells = []
+            for row_ordinal, period in (
+                (1, ["DATE", "2025-12-31"]),
+                (2, ["DATE", "2024-12-31"]),
+            ):
+                value = table["rows"][row_ordinal - 1]["values_exact"][column_ordinal - 1]
+                cells.append(
+                    {
+                        "logical_cell_id": f"lc{logical_ordinal}_{row_ordinal}",
+                        "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+                        "metric_source_binding_ids": [column_ids[column_ordinal]],
+                        "money": _money_receipt(value),
+                        "period_signature": period,
+                        "period_source_binding_ids": [row_ids[row_ordinal]],
+                        "source_text": value,
+                        "unit_signature": "trieu dong",
+                        "unit_source_binding_ids": [unit_id],
+                        "value_source_binding_ids": [value_ids[(row_ordinal, column_ordinal)]],
+                    }
+                )
+            logical_rows.append(
+                {
+                    "cells": cells,
+                    "hierarchy_path_exact": [label],
+                    "label_exact": label,
+                    "label_match_modes": modes,
+                    "logical_row_id": f"lr{logical_ordinal}",
+                    "population_context_exact": [],
+                    "population_source_binding_ids": [],
+                    "role_source_binding_ids": [column_ids[column_ordinal]] if modes else [],
+                    "row_kind": row_kind,
+                    "row_source_binding_ids": [column_ids[column_ordinal]],
+                    "source_position": [
+                        page_record["selected_frontier_ordinal"],
+                        1,
+                        1,
+                        1,
+                        column_ordinal,
+                    ],
+                }
+            )
+    mutation = request["layout_kind"]
+    if mutation.endswith("_FORGED_VALUE"):
+        bindings[-1]["source_text"] = "999"
+    elif mutation.endswith("_MISSING_REF"):
+        logical_rows[0]["cells"][0]["value_source_binding_ids"] = ["b999"]
+    elif mutation.endswith("_DUPLICATE_BINDING"):
+        bindings.append(copy.deepcopy(bindings[0]))
+    elif mutation.endswith("_UNUSED_BINDING"):
+        add("SECTION_TITLE", title_exact=page_record["page_json"]["sections"][0]["title_exact"])
+    elif mutation.endswith("_SWAPPED_PERIOD"):
+        (
+            logical_rows[0]["cells"][0]["period_signature"],
+            logical_rows[0]["cells"][1]["period_signature"],
+        ) = (
+            logical_rows[0]["cells"][1]["period_signature"],
+            logical_rows[0]["cells"][0]["period_signature"],
+        )
+    elif mutation.endswith("_FORGED_ROLE"):
+        logical_rows[0]["label_match_modes"] = {
+            "FOREIGN_CURRENCY_AND_GOLD_LOANS": "EXACT_NORMALIZED"
+        }
+    elif mutation.endswith("_STRIPPED_CONTEXT"):
+        logical_rows[0]["hierarchy_path_exact"] = [logical_rows[0]["label_exact"]]
+        logical_rows[0]["population_context_exact"] = []
+        logical_rows[0]["population_source_binding_ids"] = []
+    elif mutation.endswith("_SWAPPED_LOGICAL_ORDER"):
+        logical_rows.reverse()
+        for ordinal, row in enumerate(logical_rows, start=1):
+            row["logical_row_id"] = f"lr{ordinal}"
+    return build_normalized_document_region_fragment_candidate_v1(
+        page_record=page_record,
+        section_id=request["section_id"],
+        table_id=request["table_id"],
+        adapter_format_version=GENERAL_ADAPTER_VERSION,
+        projection_kind=request["projection_kind"],
+        source_bindings=bindings,
+        logical_rows=logical_rows,
+        adapter_projection_receipt={
+            "layout_kind": request["layout_kind"],
+            "rule": "TEST_LAYOUT_EXACT_AXIS_PROJECTION",
+        },
+        reasons=[],
+        policy=policy,
+        compiled_specs=compiled_specs,
+    )
+
+
+def _stacked_table(*, title: str = "STACKED") -> dict:
+    return {
+        "columns": [{"header_path_exact": ["Giá trị", "Triệu đồng"], "value_kind": "MONEY"}],
+        "continuation": "NONE",
+        "rows": [
+            _row("31/12/2025", [None], "GROUP"),
+            _row("Cho vay bằng VND", ["60"]),
+            _row("Cho vay bằng ngoại tệ", ["40"]),
+            _row("Tổng cộng", ["100"], "TOTAL"),
+            _row("31/12/2024", [None], "GROUP"),
+            _row("Cho vay bằng VND", ["50"]),
+            _row("Cho vay bằng ngoại tệ", ["30"]),
+            _row("Tổng cộng", ["80"], "TOTAL"),
+        ],
+        "title_exact": title,
+        "unit_exact": "Triệu đồng",
+    }
+
+
+def _transposed_table(*, title: str = "TRANSPOSED") -> dict:
+    return {
+        "columns": [
+            {"header_path_exact": [label, "Triệu đồng"], "value_kind": "MONEY"}
+            for label in ("Cho vay bằng VND", "Cho vay bằng ngoại tệ", "Tổng cộng")
+        ],
+        "continuation": "NONE",
+        "rows": [
+            _row("31/12/2025", ["60", "40", "100"]),
+            _row("31/12/2024", ["50", "30", "80"]),
+        ],
+        "title_exact": title,
+        "unit_exact": "Triệu đồng",
+    }
+
+
+def _compose_general(table: dict) -> dict:
+    pages = [_page([table], title="Theo loại tiền tệ")]
+    ids, _ = _records(pages)
+    return _compose(
+        pages,
+        [_general_request(ids[0], layout_kind=table["title_exact"])],
+        projection_adapter=_general_layout_projection_adapter,
+        projection_inventory_adapter=_general_layout_inventory_adapter,
+        projection_adapter_id=GENERAL_ADAPTER_ID,
+        projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+        projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+        projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+    )
 
 
 def test_disjoint_adjacent_fragments_recompute_existing_accounting_closure() -> None:
@@ -274,6 +753,10 @@ def test_ninth_fragment_or_fifth_selected_page_is_rejected_by_declared_caps() ->
     with pytest.raises(DocumentRegionFragmentComposerV1Error, match="exceeds the cap"):
         _compose(pages, [_request(version_id, 1) for version_id in ids])
 
+    basic_pages, basic_requests = _basic_pages()
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="policy is invalid"):
+        _compose(basic_pages, basic_requests, maximum_components=9)
+
 
 def test_reset_hard_negative_and_unqualified_following_page_fail_closed() -> None:
     pages, requests = _basic_pages()
@@ -354,6 +837,84 @@ def test_omitted_role_bearing_table_is_not_silently_ignored() -> None:
     result = _compose(pages, [_request(ids[0], 1), _request(ids[0], 3)])
     assert result["status"] == UNRESOLVED
     assert any("UNCONSUMED_ROLE_BEARING" in reason for reason in result["reasons"])
+
+
+def test_fully_blank_declared_role_table_is_inventoried_and_remains_unknown() -> None:
+    page = _page(
+        [
+            _table([_row("Cho vay bằng VND", [None, None])]),
+            _table([_row("Cho vay bằng VND", ["60", "50"])]),
+            _table(
+                [
+                    _row("Cho vay bằng ngoại tệ", ["40", "30"]),
+                    _row(None, ["100", "80"], "TOTAL"),
+                ]
+            ),
+        ],
+        title="Theo loại tiền tệ",
+    )
+    ids, _ = _records([page])
+    omitted = _compose([page], [_request(ids[0], 2), _request(ids[0], 3)])
+    assert omitted["status"] == UNRESOLVED
+    assert any("UNCONSUMED_ROLE_BEARING" in reason for reason in omitted["reasons"])
+    included = _compose([page], [_request(ids[0], 1), _request(ids[0], 2), _request(ids[0], 3)])
+    assert included["status"] == UNRESOLVED
+    assert "MAPPED_ROLE_CELL_IS_BLANK_UNKNOWN:r1" in included["reasons"]
+
+
+@pytest.mark.parametrize("table", [_stacked_table(), _transposed_table()])
+def test_general_adapter_composes_true_stacked_and_transposed_period_axes(table: dict) -> None:
+    result = _compose_general(copy.deepcopy(table))
+    assert result["status"] == READY
+    assert {
+        mapping["role"]: [value["coefficient"] for value in mapping["values"]]
+        for mapping in result["mappings"]
+    } == {"VND_LOANS": [60, 50], "FOREIGN_CURRENCY_AND_GOLD_LOANS": [40, 30]}
+    assert all(
+        value["document_region_fragment_source_cells"][0]["exact_source_bindings"]
+        for mapping in result["mappings"]
+        for value in mapping["values"]
+    )
+    fragment = result["component_fragments"][0]
+    assert fragment["binding_model"] == "GENERAL_EXACT_SOURCE_BINDINGS"
+    assert fragment["adapter_identity"]["implementation_ref_sha256"]
+
+
+def test_general_adapter_preserves_exact_parent_population_context() -> None:
+    table = _stacked_table()
+    for ordinal in (2, 3, 4, 6, 7, 8):
+        row = table["rows"][ordinal - 1]
+        row["hierarchy_path_exact"] = ["Theo loại tiền tệ", row["label_exact"]]
+    result = _compose_general(table)
+    assert result["status"] == READY
+    assert all(
+        row["population_context_exact"] == ["Theo loại tiền tệ"]
+        for row in result["component_fragments"][0]["logical_rows"]
+    )
+
+    stripped = copy.deepcopy(table)
+    stripped["title_exact"] = "STACKED_STRIPPED_CONTEXT"
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="population context"):
+        _compose_general(stripped)
+
+
+@pytest.mark.parametrize(
+    "suffix,match",
+    [
+        ("FORGED_VALUE", "VALUE_CELL binding drifted"),
+        ("MISSING_REF", "value-source binding references"),
+        ("DUPLICATE_BINDING", "source binding identity"),
+        ("UNUSED_BINDING", "source bindings are not exhaustive"),
+        ("SWAPPED_PERIOD", "period is not source-authenticated"),
+        ("FORGED_ROLE", "role projection is not source-authenticated"),
+        ("SWAPPED_LOGICAL_ORDER", "logical source order"),
+    ],
+)
+def test_general_adapter_rejects_forged_missing_duplicate_or_semantic_rebinding(
+    suffix: str, match: str
+) -> None:
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match=match):
+        _compose_general(_stacked_table(title=f"STACKED_{suffix}"))
 
 
 def test_blank_structural_group_is_context_only_not_visible_zero_carrier() -> None:
@@ -441,6 +1002,33 @@ def test_pure_replay_rejects_composition_receipt_or_source_tamper() -> None:
     tampered["composition_receipt"]["ordered_region_axis_sha256"] = "0" * 64
     with pytest.raises(DocumentRegionFragmentComposerV1Error, match="does not replay"):
         validate_document_region_fragment_composition_replay_v1(**kwargs, composition=tampered)
+
+
+def test_source_header_period_binding_rejects_a_coherent_period_swapping_adapter() -> None:
+    pages, _ = _basic_pages()
+    ids, _ = _records(pages)
+    adapter_id = "DOCUMENT_REGION_COHERENT_PERIOD_SWAP_ATTACK"
+    requests = [
+        _request(
+            ids[0],
+            1,
+            projection_adapter_id=adapter_id,
+            projection_adapter=_coherent_period_swapping_column_adapter,
+        ),
+        _request(
+            ids[1],
+            1,
+            projection_adapter_id=adapter_id,
+            projection_adapter=_coherent_period_swapping_column_adapter,
+        ),
+    ]
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="source axis binding"):
+        _compose(
+            pages,
+            requests,
+            projection_adapter=_coherent_period_swapping_column_adapter,
+            projection_adapter_id=adapter_id,
+        )
 
 
 def _store_page(page: dict) -> dict:
@@ -560,4 +1148,40 @@ def test_public_store_replay_reloads_canonical_selected_json_and_rejects_tamper(
     with pytest.raises(DocumentRegionFragmentComposerV1Error, match="does not replay"):
         validate_document_region_fragment_composition_store_replay_v1(
             path, **kwargs, composition=tampered
+        )
+    malicious_kwargs = {**kwargs, "projection_adapter": _coherent_period_swapping_column_adapter}
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="implementation pin drifted"):
+        validate_document_region_fragment_composition_store_replay_v1(
+            path, **malicious_kwargs, composition=result
+        )
+    attack_id = "DOCUMENT_REGION_COHERENT_PERIOD_SWAP_ATTACK"
+    attack_requests = [
+        _request(
+            version_ids[0],
+            1,
+            projection_adapter_id=attack_id,
+            projection_adapter=_coherent_period_swapping_column_adapter,
+        ),
+        _request(
+            version_ids[1],
+            1,
+            projection_adapter_id=attack_id,
+            projection_adapter=_coherent_period_swapping_column_adapter,
+        ),
+    ]
+    attack_policy = _policy(
+        projection_adapter=_coherent_period_swapping_column_adapter,
+        projection_adapter_id=attack_id,
+    )
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="source axis binding"):
+        validate_document_region_fragment_composition_store_replay_v1(
+            path,
+            selected_page_json_version_ids=version_ids,
+            fragment_requests=attack_requests,
+            document_period_axis=_axis(document_id),
+            policy=attack_policy,
+            compiled_specs=_compiled(),
+            projection_adapter=_coherent_period_swapping_column_adapter,
+            projection_inventory_adapter=inventory_column_lane_document_region_fragment_v1,
+            composition=result,
         )

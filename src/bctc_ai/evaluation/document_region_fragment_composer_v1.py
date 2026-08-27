@@ -9,6 +9,8 @@ PDF, invokes OCR, or treats a synthetic table as source evidence.
 
 from __future__ import annotations
 
+import hashlib
+import inspect
 import re
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
@@ -35,6 +37,7 @@ POLICY_FORMAT_VERSION = "DOCUMENT_REGION_FRAGMENT_COMPOSER_POLICY_V1"
 FRAGMENT_FORMAT_VERSION = "DOCUMENT_REGION_FRAGMENT_CANDIDATE_V1"
 COMPOSITION_FORMAT_VERSION = "DOCUMENT_REGION_FRAGMENT_COMPOSITION_V1"
 RECEIPT_FORMAT_VERSION = "DOCUMENT_REGION_FRAGMENT_COMPOSITION_RECEIPT_V1"
+ADAPTER_IDENTITY_FORMAT_VERSION = "DOCUMENT_REGION_FRAGMENT_ADAPTER_IDENTITY_V1"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_EXACT_PAGE_TABLE_ROW_CELL_PROJECTION_ONLY_"
     "BOUNDED_RESET_FENCED_DOCUMENT_REGION_FRAGMENT_COMPOSITION_EXACT_PERIOD_"
@@ -54,6 +57,84 @@ class DocumentRegionFragmentComposerV1Error(ValueError):
 
 def _error(message: str) -> DocumentRegionFragmentComposerV1Error:
     return DocumentRegionFragmentComposerV1Error(message)
+
+
+def document_region_fragment_adapter_identity_v1(
+    adapter: Callable[..., Any], *, adapter_id: str, adapter_format_version: str
+) -> dict[str, Any]:
+    """Return a reproducible source pin for one trusted adapter."""
+
+    if (
+        not inspect.isfunction(adapter)
+        or type(adapter_id) is not str
+        or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", adapter_id) is None
+        or type(adapter_format_version) is not str
+        or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", adapter_format_version) is None
+        or adapter.__closure__ is not None
+    ):
+        raise _error("document-region adapter implementation is not pinnable")
+    source_file = inspect.getsourcefile(adapter)
+    if source_file is None:
+        raise _error("document-region adapter source module is unavailable")
+    try:
+        callable_source = inspect.getsource(adapter).encode("utf-8")
+        module_source = Path(source_file).read_bytes()
+    except (OSError, TypeError) as exc:
+        raise _error("document-region adapter source module is unavailable") from exc
+    material = {
+        "callable_module": adapter.__module__,
+        "callable_qualname": adapter.__qualname__,
+        "callable_source_sha256": hashlib.sha256(callable_source).hexdigest(),
+        "module_source_sha256": hashlib.sha256(module_source).hexdigest(),
+    }
+    return {
+        "adapter_format_version": adapter_format_version,
+        "adapter_id": adapter_id,
+        "callable_module": material["callable_module"],
+        "callable_qualname": material["callable_qualname"],
+        "format_version": ADAPTER_IDENTITY_FORMAT_VERSION,
+        "implementation_ref_sha256": canonical_json_sha256_v1(material),
+    }
+
+
+def _validate_adapter_identity(value: Any, *, field: str) -> dict[str, Any]:
+    required = {
+        "adapter_format_version",
+        "adapter_id",
+        "callable_module",
+        "callable_qualname",
+        "format_version",
+        "implementation_ref_sha256",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != required
+        or value.get("format_version") != ADAPTER_IDENTITY_FORMAT_VERSION
+        or type(value.get("adapter_id")) is not str
+        or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", value["adapter_id"]) is None
+        or type(value.get("adapter_format_version")) is not str
+        or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", value["adapter_format_version"]) is None
+        or type(value.get("callable_module")) is not str
+        or not value["callable_module"]
+        or type(value.get("callable_qualname")) is not str
+        or not value["callable_qualname"]
+        or type(value.get("implementation_ref_sha256")) is not str
+        or _SHA256.fullmatch(value["implementation_ref_sha256"]) is None
+    ):
+        raise _error(f"document-region {field} adapter identity is invalid")
+    return canonical_clone_v1(value)
+
+
+def _assert_callable_matches_adapter_identity(
+    adapter: Callable[..., Any], identity: Mapping[str, Any], *, field: str
+) -> None:
+    expected = document_region_fragment_adapter_identity_v1(
+        adapter,
+        adapter_id=identity["adapter_id"],
+        adapter_format_version=identity["adapter_format_version"],
+    )
+    if expected != identity:
+        raise _error(f"document-region {field} adapter implementation pin drifted")
 
 
 def _node_index(identifier: Any, prefix: str, limit: int) -> int:
@@ -127,6 +208,8 @@ def compile_document_region_fragment_composer_policy_v1(
         "owner_aliases",
         "period_axis_cardinality",
         "period_axis_semantics",
+        "projection_adapter_identity",
+        "projection_inventory_adapter_identity",
         "reset_aliases",
         "unit_aliases",
     }
@@ -138,7 +221,7 @@ def compile_document_region_fragment_composer_policy_v1(
         or policy.get("format_version") != POLICY_FORMAT_VERSION
         or policy.get("family_id") != topology.get("family_id")
         or type(policy.get("maximum_components")) is not int
-        or not 1 <= policy["maximum_components"] <= 32
+        or not 1 <= policy["maximum_components"] <= 8
         or type(policy.get("maximum_page_span")) is not int
         or not 1 <= policy["maximum_page_span"] <= 4
         or type(policy.get("allow_distinctive_child_cluster_cross_page")) is not bool
@@ -186,6 +269,19 @@ def compile_document_region_fragment_composer_policy_v1(
         policy["control_surface_aliases"], field="control-surface", allow_empty=True
     )
     compiled["unit_aliases"] = _compile_aliases(policy["unit_aliases"], field="unit")
+    compiled["projection_adapter_identity"] = _validate_adapter_identity(
+        policy["projection_adapter_identity"], field="projection"
+    )
+    compiled["projection_inventory_adapter_identity"] = _validate_adapter_identity(
+        policy["projection_inventory_adapter_identity"], field="projection-inventory"
+    )
+    compiled["compiled_specs_sha256"] = canonical_json_sha256_v1(
+        {
+            "evaluation": compiled_specs.get("evaluation"),
+            "schema": compiled_specs.get("schema"),
+            "topology": compiled_specs.get("topology"),
+        }
+    )
     compiled["policy_sha256"] = canonical_json_sha256_v1(policy)
     return compiled
 
@@ -464,9 +560,16 @@ def project_column_lane_document_region_fragment_v1(
     """
 
     request_fields = {
+        "composer_policy_sha256",
         "control_column_ids",
         "mapping_column_ids",
         "page_json_version_id",
+        "projection_adapter_format_version",
+        "projection_adapter_id",
+        "projection_adapter_implementation_ref_sha256",
+        "projection_inventory_adapter_format_version",
+        "projection_inventory_adapter_id",
+        "projection_inventory_adapter_implementation_ref_sha256",
         "projection_kind",
         "section_id",
         "table_id",
@@ -474,7 +577,20 @@ def project_column_lane_document_region_fragment_v1(
     if (
         type(request) is not dict
         or set(request) != request_fields
+        or request.get("composer_policy_sha256") != policy["policy_sha256"]
         or request.get("page_json_version_id") != page_record["page_json_version_id"]
+        or request.get("projection_adapter_id")
+        != policy["projection_adapter_identity"]["adapter_id"]
+        or request.get("projection_adapter_format_version")
+        != policy["projection_adapter_identity"]["adapter_format_version"]
+        or request.get("projection_adapter_implementation_ref_sha256")
+        != policy["projection_adapter_identity"]["implementation_ref_sha256"]
+        or request.get("projection_inventory_adapter_id")
+        != policy["projection_inventory_adapter_identity"]["adapter_id"]
+        or request.get("projection_inventory_adapter_format_version")
+        != policy["projection_inventory_adapter_identity"]["adapter_format_version"]
+        or request.get("projection_inventory_adapter_implementation_ref_sha256")
+        != policy["projection_inventory_adapter_identity"]["implementation_ref_sha256"]
         or request.get("projection_kind") not in {"BALANCE_MAPPING", "DECLARED_CONTROL"}
         or type(request.get("mapping_column_ids")) is not list
         or type(request.get("control_column_ids")) is not list
@@ -641,6 +757,10 @@ def project_column_lane_document_region_fragment_v1(
                 {**canonical_clone_v1(surface), "matched_aliases": branch_matches}
             )
     closure_material = {
+        "adapter_identity": canonical_clone_v1(policy["projection_adapter_identity"]),
+        "inventory_adapter_identity": canonical_clone_v1(
+            policy["projection_inventory_adapter_identity"]
+        ),
         "anonymous_rows": anonymous_rows,
         "control_column_ids": request["control_column_ids"],
         "filtered_non_money_column_ids": [
@@ -660,11 +780,16 @@ def project_column_lane_document_region_fragment_v1(
     }
     return {
         "adapter_format_version": "DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
+        "adapter_identity": canonical_clone_v1(policy["projection_adapter_identity"]),
         "anonymous_rows": anonymous_rows,
+        "binding_model": "ROW_COLUMN_LANE_REFERENCE",
         "candidate_id": "drfcv1:fragment:" + canonical_json_sha256_v1(identity_material),
         "continuation": table.get("continuation"),
         "document_id": page_record["document_id"],
         "format_version": FRAGMENT_FORMAT_VERSION,
+        "inventory_adapter_identity": canonical_clone_v1(
+            policy["projection_inventory_adapter_identity"]
+        ),
         "local_branch_evidence": local_branch_evidence,
         "local_owner_evidence": local_owner_evidence,
         "mapping_column_axis": period_records,
@@ -718,8 +843,6 @@ def inventory_column_lane_document_region_fragment_v1(
         values = row.get("values_exact") if type(row) is dict else None
         if type(values) is not list or len(values) != len(columns):
             raise _error("document-region inventory row vector drifted")
-        if not any(values[index] is not None for index in money_indices):
-            continue
         try:
             roles = _row_role_match_modes(
                 row,
@@ -729,7 +852,8 @@ def inventory_column_lane_document_region_fragment_v1(
             )
         except ValueError:
             roles = {"AMBIGUOUS": "AMBIGUOUS"}
-        if roles or row.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}:
+        has_money = any(values[index] is not None for index in money_indices)
+        if roles or (has_money and row.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}):
             has_role_or_total_numeric = True
             break
     surfaces = _table_surfaces(page_record=page_record, section_id=section_id, table_id=table_id)
@@ -758,16 +882,161 @@ def inventory_column_lane_document_region_fragment_v1(
         mapping_indices = list(money_indices)
     control_indices = [index for index in money_indices if index not in mapping_indices]
     return {
+        "composer_policy_sha256": policy["policy_sha256"],
         "control_column_ids": [f"c{index + 1}" for index in control_indices],
         "mapping_column_ids": [f"c{index + 1}" for index in mapping_indices],
         "page_json_version_id": page_record["page_json_version_id"],
+        "projection_adapter_id": policy["projection_adapter_identity"]["adapter_id"],
+        "projection_adapter_implementation_ref_sha256": policy["projection_adapter_identity"][
+            "implementation_ref_sha256"
+        ],
+        "projection_adapter_format_version": policy["projection_adapter_identity"][
+            "adapter_format_version"
+        ],
+        "projection_inventory_adapter_format_version": policy[
+            "projection_inventory_adapter_identity"
+        ]["adapter_format_version"],
+        "projection_inventory_adapter_id": policy["projection_inventory_adapter_identity"][
+            "adapter_id"
+        ],
+        "projection_inventory_adapter_implementation_ref_sha256": policy[
+            "projection_inventory_adapter_identity"
+        ]["implementation_ref_sha256"],
         "projection_kind": "BALANCE_MAPPING" if mapping_indices else "DECLARED_CONTROL",
         "section_id": section_id,
         "table_id": table_id,
     }
 
 
-def _validate_normalized_fragment_candidate(
+def build_normalized_document_region_fragment_candidate_v1(
+    *,
+    page_record: Mapping[str, Any],
+    section_id: str,
+    table_id: str,
+    adapter_format_version: str,
+    projection_kind: str,
+    source_bindings: Sequence[Mapping[str, Any]],
+    logical_rows: Sequence[Mapping[str, Any]],
+    adapter_projection_receipt: Mapping[str, Any],
+    reasons: Sequence[str],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build the layout-neutral normalized fragment envelope.
+
+    Table adapters remain responsible for interpreting their axes.  Every
+    normalized role and cell must reference one or more exact source bindings;
+    the composer replays those bindings against canonical page JSON before it
+    accepts the adapter projection.
+    """
+
+    if (
+        type(adapter_format_version) is not str
+        or not adapter_format_version
+        or projection_kind not in {"BALANCE_MAPPING", "DECLARED_CONTROL"}
+        or type(source_bindings) not in {list, tuple}
+        or type(logical_rows) not in {list, tuple}
+        or type(adapter_projection_receipt) is not dict
+        or type(reasons) not in {list, tuple}
+        or any(type(reason) is not str or not reason for reason in reasons)
+    ):
+        raise _error("normalized document-region adapter projection is invalid")
+    _section, table, _section_ordinal, _table_ordinal = _source_nodes(
+        page_record["page_json"], section_id=section_id, table_id=table_id
+    )
+    surfaces = _table_surfaces(page_record=page_record, section_id=section_id, table_id=table_id)
+    owner_evidence = []
+    branch_evidence = []
+    for surface in surfaces:
+        owner_matches = _contains_alias(surface["source_exact"], policy["owner_aliases"])
+        branch_matches = _contains_alias(surface["source_exact"], policy["branch_aliases"])
+        if owner_matches:
+            owner_evidence.append({**canonical_clone_v1(surface), "matched_aliases": owner_matches})
+        if branch_matches:
+            branch_evidence.append(
+                {**canonical_clone_v1(surface), "matched_aliases": branch_matches}
+            )
+    rows = canonical_clone_v1(list(logical_rows))
+    bindings = canonical_clone_v1(list(source_bindings))
+    role_kinds = {
+        child["role"]: child["role_kind"] for child in compiled_specs["topology"]["children"]
+    }
+    derived_reasons = list(reasons)
+    for row in rows:
+        roles = row.get("label_match_modes", {}) if type(row) is dict else {}
+        cells = row.get("cells", []) if type(row) is dict else []
+        if (
+            type(roles) is dict
+            and type(cells) is list
+            and any(type(cell) is dict and cell.get("money") is None for cell in cells)
+            and any(role_kinds.get(role) != "STRUCTURAL_GROUP" for role in roles)
+        ):
+            derived_reasons.append(
+                "MAPPED_ROLE_CELL_IS_BLANK_UNKNOWN:" + str(row.get("logical_row_id"))
+            )
+    sorted_reasons = sorted(set(derived_reasons))
+    closure_material = {
+        "adapter_identity": canonical_clone_v1(policy["projection_adapter_identity"]),
+        "adapter_projection_receipt": canonical_clone_v1(adapter_projection_receipt),
+        "inventory_adapter_identity": canonical_clone_v1(
+            policy["projection_inventory_adapter_identity"]
+        ),
+        "logical_rows": rows,
+        "projection_kind": projection_kind,
+        "reasons": sorted_reasons,
+        "source_bindings": bindings,
+    }
+    closure_sha256 = canonical_json_sha256_v1(closure_material)
+    identity_material = {
+        "family_id": policy["family_id"],
+        "page_json_version_id": page_record["page_json_version_id"],
+        "projection_closure_sha256": closure_sha256,
+        "section_id": section_id,
+        "table_id": table_id,
+    }
+    numeric_roles = sorted(
+        {
+            role
+            for row in rows
+            for role in row.get("label_match_modes", {})
+            if any(cell.get("money") is not None for cell in row.get("cells", []))
+        }
+    )
+    return {
+        "adapter_format_version": adapter_format_version,
+        "adapter_identity": canonical_clone_v1(policy["projection_adapter_identity"]),
+        "adapter_projection_receipt": canonical_clone_v1(adapter_projection_receipt),
+        "binding_model": "GENERAL_EXACT_SOURCE_BINDINGS",
+        "candidate_id": "drfcv1:fragment:" + canonical_json_sha256_v1(identity_material),
+        "continuation": table.get("continuation"),
+        "document_id": page_record["document_id"],
+        "format_version": FRAGMENT_FORMAT_VERSION,
+        "inventory_adapter_identity": canonical_clone_v1(
+            policy["projection_inventory_adapter_identity"]
+        ),
+        "local_branch_evidence": branch_evidence,
+        "local_owner_evidence": owner_evidence,
+        "logical_rows": rows,
+        "numeric_roles": numeric_roles,
+        "page_json_sha256": canonical_json_sha256_v1(page_record["page_json"]),
+        "page_json_version_id": page_record["page_json_version_id"],
+        "physical_page": page_record["physical_page"],
+        "projection_closure": closure_material,
+        "projection_closure_sha256": closure_sha256,
+        "projection_kind": projection_kind,
+        "reasons": sorted_reasons,
+        "section_id": section_id,
+        "selected_frontier_ordinal": page_record["selected_frontier_ordinal"],
+        "source_bindings": bindings,
+        "source_logical_name": page_record["source_logical_name"],
+        "source_sha256": page_record["source_sha256"],
+        "source_table_sha256": canonical_json_sha256_v1(table),
+        "status": "ELIGIBLE" if not sorted_reasons else "UNRESOLVED",
+        "table_id": table_id,
+    }
+
+
+def _validate_row_column_lane_fragment_candidate(
     candidate: Any,
     *,
     page_record: Mapping[str, Any],
@@ -777,11 +1046,14 @@ def _validate_normalized_fragment_candidate(
 ) -> dict[str, Any]:
     required = {
         "adapter_format_version",
+        "adapter_identity",
         "anonymous_rows",
+        "binding_model",
         "candidate_id",
         "continuation",
         "document_id",
         "format_version",
+        "inventory_adapter_identity",
         "local_branch_evidence",
         "local_owner_evidence",
         "mapping_column_axis",
@@ -813,6 +1085,12 @@ def _validate_normalized_fragment_candidate(
     if (
         type(candidate["adapter_format_version"]) is not str
         or not candidate["adapter_format_version"]
+        or candidate["adapter_format_version"]
+        != policy["projection_adapter_identity"]["adapter_format_version"]
+        or candidate["adapter_identity"] != policy["projection_adapter_identity"]
+        or candidate["inventory_adapter_identity"]
+        != policy["projection_inventory_adapter_identity"]
+        or candidate["binding_model"] != "ROW_COLUMN_LANE_REFERENCE"
         or candidate["format_version"] != FRAGMENT_FORMAT_VERSION
         or candidate["document_id"] != page_record["document_id"]
         or candidate["source_logical_name"] != page_record["source_logical_name"]
@@ -844,9 +1122,11 @@ def _validate_normalized_fragment_candidate(
         raise _error("normalized document-region fragment identity drifted")
     closure = candidate["projection_closure"]
     closure_fields = {
+        "adapter_identity",
         "anonymous_rows",
         "control_column_ids",
         "filtered_non_money_column_ids",
+        "inventory_adapter_identity",
         "mapping_column_axis",
         "projection_kind",
         "reasons",
@@ -855,6 +1135,8 @@ def _validate_normalized_fragment_candidate(
     if (
         type(closure) is not dict
         or set(closure) != closure_fields
+        or closure["adapter_identity"] != candidate["adapter_identity"]
+        or closure["inventory_adapter_identity"] != candidate["inventory_adapter_identity"]
         or closure["anonymous_rows"] != candidate["anonymous_rows"]
         or closure["mapping_column_axis"] != candidate["mapping_column_axis"]
         or closure["projection_kind"] != candidate["projection_kind"]
@@ -894,6 +1176,9 @@ def _validate_normalized_fragment_candidate(
         child["role"] for child in compiled_specs["topology"]["children"]
     }
     expected_periods = {tuple(value) for value in document_period_axis["period_signatures"]}
+    mapping_by_column_id = {
+        record["column_id"]: record for record in candidate["mapping_column_axis"]
+    }
     for row_record in [*candidate["role_rows"], *candidate["anonymous_rows"]]:
         if type(row_record) is not dict:
             raise _error("normalized document-region source row is invalid")
@@ -938,6 +1223,14 @@ def _validate_normalized_fragment_candidate(
             ):
                 raise _error("normalized document-region source cell contract drifted")
             column_index = _node_index(cell["column_id"], "c", len(columns))
+            mapping_record = mapping_by_column_id.get(cell["column_id"])
+            if (
+                mapping_record is None
+                or cell["period_signature"] != mapping_record["period_signature"]
+                or cell["unit_signature"] != mapping_record["unit_signature"]
+                or cell["metric_signature"] != "UNQUALIFIED_BALANCE_AMOUNT"
+            ):
+                raise _error("normalized document-region source axis binding drifted")
             if cell["source_text"] != source_values[column_index]:
                 raise _error("normalized document-region source cell text drifted")
             if cell["source_text"] is None:
@@ -963,13 +1256,732 @@ def _validate_normalized_fragment_candidate(
     return canonical_clone_v1(candidate)
 
 
+def _exact_source_binding_records(
+    source_bindings: Any,
+    *,
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Dereference a layout-neutral binding axis against canonical JSON."""
+
+    columns = table.get("columns")
+    rows = table.get("rows")
+    if type(source_bindings) is not list or type(columns) is not list or type(rows) is not list:
+        raise _error("normalized document-region general source binding axis is invalid")
+    records: dict[str, dict[str, Any]] = {}
+    locators = set()
+    for binding in source_bindings:
+        if (
+            type(binding) is not dict
+            or type(binding.get("binding_id")) is not str
+            or re.fullmatch(r"b[1-9][0-9]*", binding["binding_id"]) is None
+            or binding["binding_id"] in records
+        ):
+            raise _error("normalized document-region source binding identity is invalid")
+        kind = binding.get("binding_kind")
+        locator: tuple[Any, ...]
+        if kind == "ROW":
+            expected_fields = {
+                "binding_id",
+                "binding_kind",
+                "hierarchy_path_exact",
+                "label_exact",
+                "row_id",
+                "row_kind",
+            }
+            row_index = _node_index(binding.get("row_id"), "r", len(rows))
+            source_row = rows[row_index]
+            if (
+                set(binding) != expected_fields
+                or binding.get("label_exact") != source_row.get("label_exact")
+                or binding.get("hierarchy_path_exact") != source_row.get("hierarchy_path_exact")
+                or binding.get("row_kind") != source_row.get("row_kind")
+            ):
+                raise _error("normalized document-region ROW binding drifted")
+            locator = (kind, binding["row_id"])
+        elif kind == "COLUMN":
+            expected_fields = {
+                "binding_id",
+                "binding_kind",
+                "column_id",
+                "header_path_exact",
+                "value_kind",
+            }
+            column_index = _node_index(binding.get("column_id"), "c", len(columns))
+            source_column = columns[column_index]
+            if (
+                set(binding) != expected_fields
+                or binding.get("header_path_exact") != source_column.get("header_path_exact")
+                or binding.get("value_kind") != source_column.get("value_kind")
+            ):
+                raise _error("normalized document-region COLUMN binding drifted")
+            locator = (kind, binding["column_id"])
+        elif kind == "VALUE_CELL":
+            expected_fields = {
+                "binding_id",
+                "binding_kind",
+                "column_id",
+                "row_id",
+                "source_text",
+            }
+            row_index = _node_index(binding.get("row_id"), "r", len(rows))
+            column_index = _node_index(binding.get("column_id"), "c", len(columns))
+            source_values = rows[row_index].get("values_exact")
+            if (
+                set(binding) != expected_fields
+                or type(source_values) is not list
+                or len(source_values) != len(columns)
+                or binding.get("source_text") != source_values[column_index]
+            ):
+                raise _error("normalized document-region VALUE_CELL binding drifted")
+            locator = (kind, binding["row_id"], binding["column_id"])
+        elif kind == "ROW_BLOCK":
+            expected_fields = {"binding_id", "binding_kind", "row_ids"}
+            row_ids = binding.get("row_ids")
+            if type(row_ids) is not list or not row_ids or len(set(row_ids)) != len(row_ids):
+                raise _error("normalized document-region ROW_BLOCK binding is invalid")
+            indices = [_node_index(row_id, "r", len(rows)) for row_id in row_ids]
+            if set(binding) != expected_fields or indices != list(
+                range(indices[0], indices[0] + len(indices))
+            ):
+                raise _error("normalized document-region ROW_BLOCK binding drifted")
+            locator = (kind, *row_ids)
+        elif kind == "TABLE_UNIT":
+            expected_fields = {"binding_id", "binding_kind", "unit_exact"}
+            if set(binding) != expected_fields or binding.get("unit_exact") != table.get(
+                "unit_exact"
+            ):
+                raise _error("normalized document-region TABLE_UNIT binding drifted")
+            locator = (kind,)
+        elif kind == "TABLE_TITLE":
+            expected_fields = {"binding_id", "binding_kind", "title_exact"}
+            if set(binding) != expected_fields or binding.get("title_exact") != table.get(
+                "title_exact"
+            ):
+                raise _error("normalized document-region TABLE_TITLE binding drifted")
+            locator = (kind,)
+        elif kind == "SECTION_TITLE":
+            expected_fields = {"binding_id", "binding_kind", "title_exact"}
+            if set(binding) != expected_fields or binding.get("title_exact") != section.get(
+                "title_exact"
+            ):
+                raise _error("normalized document-region SECTION_TITLE binding drifted")
+            locator = (kind,)
+        elif kind == "SECTION_NARRATIVE":
+            expected_fields = {
+                "binding_id",
+                "binding_kind",
+                "narrative_exact",
+                "narrative_ordinal",
+            }
+            narratives = section.get("narratives_exact")
+            ordinal = binding.get("narrative_ordinal")
+            if (
+                set(binding) != expected_fields
+                or type(narratives) is not list
+                or type(ordinal) is not int
+                or not 1 <= ordinal <= len(narratives)
+                or binding.get("narrative_exact") != narratives[ordinal - 1]
+            ):
+                raise _error("normalized document-region SECTION_NARRATIVE binding drifted")
+            locator = (kind, ordinal)
+        else:
+            raise _error("normalized document-region source binding kind is invalid")
+        if locator in locators:
+            raise _error("normalized document-region source locator is bound more than once")
+        locators.add(locator)
+        records[binding["binding_id"]] = canonical_clone_v1(binding)
+    if list(records) != [f"b{ordinal}" for ordinal in range(1, len(records) + 1)]:
+        raise _error("normalized document-region source binding order is invalid")
+    return records
+
+
+def _binding_exact_strings(
+    binding: Mapping[str, Any], *, rows: Sequence[Mapping[str, Any]]
+) -> list[str]:
+    kind = binding["binding_kind"]
+    values: list[Any]
+    if kind == "ROW":
+        values = [binding.get("label_exact"), *binding.get("hierarchy_path_exact", [])]
+    elif kind == "COLUMN":
+        values = list(binding.get("header_path_exact", []))
+    elif kind == "ROW_BLOCK":
+        values = [
+            value
+            for row_id in binding["row_ids"]
+            for value in [
+                rows[_node_index(row_id, "r", len(rows))].get("label_exact"),
+                *rows[_node_index(row_id, "r", len(rows))].get("hierarchy_path_exact", []),
+            ]
+        ]
+    elif kind == "TABLE_UNIT":
+        values = [binding.get("unit_exact")]
+    elif kind in {"TABLE_TITLE", "SECTION_TITLE"}:
+        values = [binding.get("title_exact")]
+    elif kind == "SECTION_NARRATIVE":
+        values = [binding.get("narrative_exact")]
+    else:
+        values = []
+    return [value for value in values if type(value) is str and value]
+
+
+def _general_role_matches(
+    binding: Mapping[str, Any],
+    *,
+    rows: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, str]:
+    enabled = (
+        compiled_specs["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+    )
+    candidates = []
+    if binding["binding_kind"] == "ROW":
+        candidates.append(rows[_node_index(binding["row_id"], "r", len(rows))])
+    else:
+        for value in _binding_exact_strings(binding, rows=rows):
+            candidates.append(
+                {
+                    "hierarchy_path_exact": [value],
+                    "label_exact": value,
+                    "row_kind": "ITEM",
+                }
+            )
+    matches: dict[str, str] = {}
+    for candidate in candidates:
+        try:
+            modes = _row_role_match_modes(
+                candidate,
+                topology=compiled_specs["topology"],
+                aliases_by_role=compiled_specs["aliases_by_role"],
+                enable_declared_equivalences=enabled,
+            )
+        except ValueError as exc:
+            raise _error("normalized document-region role source is ambiguous") from exc
+        for role, mode in modes.items():
+            if role in matches and matches[role] != mode:
+                raise _error("normalized document-region role source mode is ambiguous")
+            matches[role] = mode
+    return matches
+
+
+def _binding_population_context(
+    binding: Mapping[str, Any],
+    *,
+    rows: Sequence[Mapping[str, Any]],
+    claimed_roles: set[str],
+    logical_label: Any,
+    compiled_specs: Mapping[str, Any],
+) -> list[str] | None:
+    if binding["binding_kind"] == "ROW":
+        source_row = rows[_node_index(binding["row_id"], "r", len(rows))]
+        path = source_row.get("hierarchy_path_exact")
+        if type(path) is not list:
+            return []
+        context = [value for value in path if type(value) is str and value]
+        if context and _normalized(context[-1]) == _normalized(source_row.get("label_exact")):
+            context.pop()
+        return context
+    if binding["binding_kind"] != "COLUMN":
+        return None
+    header = binding.get("header_path_exact")
+    if type(header) is not list:
+        return []
+    for index, value in enumerate(header):
+        if type(value) is not str:
+            continue
+        matches = _general_role_matches(
+            {
+                "binding_id": binding["binding_id"],
+                "binding_kind": "COLUMN",
+                "column_id": binding["column_id"],
+                "header_path_exact": [value],
+                "value_kind": binding["value_kind"],
+            },
+            rows=rows,
+            compiled_specs=compiled_specs,
+        )
+        if claimed_roles.intersection(matches) or (
+            not claimed_roles and _normalized(value) == _normalized(logical_label)
+        ):
+            return [item for item in header[:index] if type(item) is str and item]
+    return None
+
+
+def _validate_binding_reference_ids(
+    value: Any,
+    *,
+    bindings: Mapping[str, Mapping[str, Any]],
+    field: str,
+    allow_empty: bool,
+) -> list[str]:
+    if (
+        type(value) is not list
+        or (not value and not allow_empty)
+        or len(set(value)) != len(value)
+        or any(type(binding_id) is not str or binding_id not in bindings for binding_id in value)
+    ):
+        raise _error(f"normalized document-region {field} binding references are invalid")
+    return value
+
+
+def _validate_general_exact_source_binding_candidate(
+    candidate: Any,
+    *,
+    page_record: Mapping[str, Any],
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    required = {
+        "adapter_format_version",
+        "adapter_identity",
+        "adapter_projection_receipt",
+        "binding_model",
+        "candidate_id",
+        "continuation",
+        "document_id",
+        "format_version",
+        "inventory_adapter_identity",
+        "local_branch_evidence",
+        "local_owner_evidence",
+        "logical_rows",
+        "numeric_roles",
+        "page_json_sha256",
+        "page_json_version_id",
+        "physical_page",
+        "projection_closure",
+        "projection_closure_sha256",
+        "projection_kind",
+        "reasons",
+        "section_id",
+        "selected_frontier_ordinal",
+        "source_bindings",
+        "source_logical_name",
+        "source_sha256",
+        "source_table_sha256",
+        "status",
+        "table_id",
+    }
+    if type(candidate) is not dict or set(candidate) != required:
+        raise _error("normalized document-region general fragment contract drifted")
+    section, table, section_ordinal, table_ordinal = _source_nodes(
+        page_record["page_json"],
+        section_id=candidate["section_id"],
+        table_id=candidate["table_id"],
+    )
+    if (
+        candidate["binding_model"] != "GENERAL_EXACT_SOURCE_BINDINGS"
+        or candidate["adapter_identity"] != policy["projection_adapter_identity"]
+        or candidate["inventory_adapter_identity"]
+        != policy["projection_inventory_adapter_identity"]
+        or candidate["adapter_format_version"]
+        != policy["projection_adapter_identity"]["adapter_format_version"]
+        or candidate["format_version"] != FRAGMENT_FORMAT_VERSION
+        or candidate["document_id"] != page_record["document_id"]
+        or candidate["source_logical_name"] != page_record["source_logical_name"]
+        or candidate["source_sha256"] != page_record["source_sha256"]
+        or candidate["page_json_version_id"] != page_record["page_json_version_id"]
+        or candidate["physical_page"] != page_record["physical_page"]
+        or candidate["selected_frontier_ordinal"] != page_record["selected_frontier_ordinal"]
+        or candidate["page_json_sha256"] != canonical_json_sha256_v1(page_record["page_json"])
+        or candidate["source_table_sha256"] != canonical_json_sha256_v1(table)
+        or candidate["projection_closure_sha256"]
+        != canonical_json_sha256_v1(candidate["projection_closure"])
+        or candidate["status"] not in {"ELIGIBLE", "UNRESOLVED"}
+        or candidate["projection_kind"] not in {"BALANCE_MAPPING", "DECLARED_CONTROL"}
+        or type(candidate["reasons"]) is not list
+        or candidate["reasons"] != sorted(set(candidate["reasons"]))
+        or (candidate["status"] == "ELIGIBLE") == bool(candidate["reasons"])
+    ):
+        raise _error("normalized document-region general fragment source binding drifted")
+    closure = candidate["projection_closure"]
+    closure_fields = {
+        "adapter_identity",
+        "adapter_projection_receipt",
+        "logical_rows",
+        "inventory_adapter_identity",
+        "projection_kind",
+        "reasons",
+        "source_bindings",
+    }
+    if (
+        type(closure) is not dict
+        or set(closure) != closure_fields
+        or closure["adapter_identity"] != candidate["adapter_identity"]
+        or closure["inventory_adapter_identity"] != candidate["inventory_adapter_identity"]
+        or closure["adapter_projection_receipt"] != candidate["adapter_projection_receipt"]
+        or closure["logical_rows"] != candidate["logical_rows"]
+        or closure["projection_kind"] != candidate["projection_kind"]
+        or closure["reasons"] != candidate["reasons"]
+        or closure["source_bindings"] != candidate["source_bindings"]
+    ):
+        raise _error("normalized document-region general projection closure drifted")
+    identity_material = {
+        "family_id": policy["family_id"],
+        "page_json_version_id": candidate["page_json_version_id"],
+        "projection_closure_sha256": candidate["projection_closure_sha256"],
+        "section_id": candidate["section_id"],
+        "table_id": candidate["table_id"],
+    }
+    if candidate["candidate_id"] != "drfcv1:fragment:" + canonical_json_sha256_v1(
+        identity_material
+    ):
+        raise _error("normalized document-region general fragment identity drifted")
+    surfaces = _table_surfaces(
+        page_record=page_record,
+        section_id=candidate["section_id"],
+        table_id=candidate["table_id"],
+    )
+    expected_owner = []
+    expected_branch = []
+    for surface in surfaces:
+        owner_matches = _contains_alias(surface["source_exact"], policy["owner_aliases"])
+        branch_matches = _contains_alias(surface["source_exact"], policy["branch_aliases"])
+        if owner_matches:
+            expected_owner.append({**canonical_clone_v1(surface), "matched_aliases": owner_matches})
+        if branch_matches:
+            expected_branch.append(
+                {**canonical_clone_v1(surface), "matched_aliases": branch_matches}
+            )
+    if (
+        candidate["local_owner_evidence"] != expected_owner
+        or candidate["local_branch_evidence"] != expected_branch
+        or candidate["continuation"] != table.get("continuation")
+    ):
+        raise _error("normalized document-region general structural evidence drifted")
+    source_rows = table.get("rows")
+    if type(source_rows) is not list:
+        raise _error("normalized document-region general source row axis is invalid")
+    bindings = _exact_source_binding_records(
+        candidate["source_bindings"], section=section, table=table
+    )
+    expected_periods = {tuple(value) for value in document_period_axis["period_signatures"]}
+    known_roles = {compiled_specs["topology"]["parent"]["role"]} | {
+        child["role"] for child in compiled_specs["topology"]["children"]
+    }
+    role_kinds = {
+        child["role"]: child["role_kind"] for child in compiled_specs["topology"]["children"]
+    }
+    referenced: set[str] = set()
+    value_binding_use: dict[str, int] = defaultdict(int)
+    logical_ids = set()
+    logical_cell_ids = set()
+    expected_numeric_roles = set()
+    expected_blank_reasons = set()
+    logical_rows = candidate["logical_rows"]
+    prior_source_position: list[int] | None = None
+    if type(logical_rows) is not list:
+        raise _error("normalized document-region logical row axis is invalid")
+    for row in logical_rows:
+        row_fields = {
+            "cells",
+            "hierarchy_path_exact",
+            "label_exact",
+            "label_match_modes",
+            "logical_row_id",
+            "population_context_exact",
+            "population_source_binding_ids",
+            "role_source_binding_ids",
+            "row_kind",
+            "row_source_binding_ids",
+            "source_position",
+        }
+        if (
+            type(row) is not dict
+            or set(row) != row_fields
+            or type(row.get("logical_row_id")) is not str
+            or re.fullmatch(r"lr[1-9][0-9]*", row["logical_row_id"]) is None
+            or row["logical_row_id"] in logical_ids
+            or type(row.get("label_match_modes")) is not dict
+            or any(role not in known_roles for role in row["label_match_modes"])
+            or type(row.get("hierarchy_path_exact")) is not list
+            or type(row.get("population_context_exact")) is not list
+            or any(type(value) is not str or not value for value in row["population_context_exact"])
+            or type(row.get("source_position")) is not list
+            or len(row["source_position"]) != 5
+            or row["source_position"][:3]
+            != [page_record["selected_frontier_ordinal"], section_ordinal, table_ordinal]
+            or any(type(value) is not int or value < 1 for value in row["source_position"][3:])
+            or type(row.get("cells")) is not list
+            or not row["cells"]
+        ):
+            raise _error("normalized document-region logical row is invalid")
+        logical_ids.add(row["logical_row_id"])
+        if row["logical_row_id"] != f"lr{len(logical_ids)}":
+            raise _error("normalized document-region logical row order is invalid")
+        row_refs = _validate_binding_reference_ids(
+            row["row_source_binding_ids"],
+            bindings=bindings,
+            field="row-source",
+            allow_empty=False,
+        )
+        role_refs = _validate_binding_reference_ids(
+            row["role_source_binding_ids"],
+            bindings=bindings,
+            field="role-source",
+            allow_empty=not bool(row["label_match_modes"]),
+        )
+        population_refs = _validate_binding_reference_ids(
+            row["population_source_binding_ids"],
+            bindings=bindings,
+            field="population-source",
+            allow_empty=not bool(row["population_context_exact"]),
+        )
+        referenced.update([*row_refs, *role_refs, *population_refs])
+        row_strings = [
+            value
+            for binding_id in row_refs
+            for value in _binding_exact_strings(bindings[binding_id], rows=source_rows)
+        ]
+        if row["label_exact"] is not None and row["label_exact"] not in row_strings:
+            raise _error("normalized document-region logical label is synthetic-only")
+        if any(value not in row_strings for value in row["hierarchy_path_exact"] if value):
+            raise _error("normalized document-region logical hierarchy is synthetic-only")
+        population_strings = [
+            value
+            for binding_id in population_refs
+            for value in _binding_exact_strings(bindings[binding_id], rows=source_rows)
+        ]
+        if any(value not in population_strings for value in row["population_context_exact"]):
+            raise _error("normalized document-region population context is synthetic-only")
+        derived_contexts = [
+            context
+            for binding_id in row_refs
+            if (
+                context := _binding_population_context(
+                    bindings[binding_id],
+                    rows=source_rows,
+                    claimed_roles=set(row["label_match_modes"]),
+                    logical_label=row["label_exact"],
+                    compiled_specs=compiled_specs,
+                )
+            )
+            is not None
+        ]
+        normalized_declared_context = [
+            _normalized(value) for value in row["population_context_exact"]
+        ]
+        if any(
+            [_normalized(value) for value in context] != normalized_declared_context
+            for context in derived_contexts
+        ):
+            raise _error("normalized document-region population context drifted")
+        expected_logical_path = [*row["population_context_exact"]]
+        if row["label_exact"] is not None:
+            expected_logical_path.append(row["label_exact"])
+        if [_normalized(value) for value in row["hierarchy_path_exact"] if value] != [
+            _normalized(value) for value in expected_logical_path
+        ]:
+            raise _error("normalized document-region logical hierarchy path drifted")
+        matched_roles: dict[str, str] = {}
+        for binding_id in role_refs:
+            for role, mode in _general_role_matches(
+                bindings[binding_id], rows=source_rows, compiled_specs=compiled_specs
+            ).items():
+                matched_roles.setdefault(role, mode)
+        if any(matched_roles.get(role) != mode for role, mode in row["label_match_modes"].items()):
+            raise _error("normalized document-region role projection is not source-authenticated")
+        row_has_blank = False
+        row_value_refs: list[str] = []
+        for cell in row["cells"]:
+            cell_fields = {
+                "logical_cell_id",
+                "metric_signature",
+                "metric_source_binding_ids",
+                "money",
+                "period_signature",
+                "period_source_binding_ids",
+                "source_text",
+                "unit_signature",
+                "unit_source_binding_ids",
+                "value_source_binding_ids",
+            }
+            if (
+                type(cell) is not dict
+                or set(cell) != cell_fields
+                or type(cell.get("logical_cell_id")) is not str
+                or not cell["logical_cell_id"]
+                or cell["logical_cell_id"] in logical_cell_ids
+                or type(cell.get("metric_signature")) is not str
+                or not cell["metric_signature"]
+                or type(cell.get("period_signature")) is not list
+                or len(cell["period_signature"]) != 2
+                or tuple(cell["period_signature"]) not in expected_periods
+                or cell.get("unit_signature") not in policy["unit_aliases"]
+            ):
+                raise _error("normalized document-region logical cell is invalid")
+            logical_cell_ids.add(cell["logical_cell_id"])
+            value_refs = _validate_binding_reference_ids(
+                cell["value_source_binding_ids"],
+                bindings=bindings,
+                field="value-source",
+                allow_empty=False,
+            )
+            period_refs = _validate_binding_reference_ids(
+                cell["period_source_binding_ids"],
+                bindings=bindings,
+                field="period-source",
+                allow_empty=False,
+            )
+            unit_refs = _validate_binding_reference_ids(
+                cell["unit_source_binding_ids"],
+                bindings=bindings,
+                field="unit-source",
+                allow_empty=False,
+            )
+            metric_refs = _validate_binding_reference_ids(
+                cell["metric_source_binding_ids"],
+                bindings=bindings,
+                field="metric-source",
+                allow_empty=False,
+            )
+            if any(
+                bindings[binding_id]["binding_kind"] != "VALUE_CELL" for binding_id in value_refs
+            ):
+                raise _error("normalized document-region value source is not a cell")
+            for binding_id in value_refs:
+                value_binding_use[binding_id] += 1
+                row_value_refs.append(binding_id)
+            referenced.update([*value_refs, *period_refs, *unit_refs, *metric_refs])
+            period_strings = [
+                value
+                for binding_id in period_refs
+                for value in _binding_exact_strings(bindings[binding_id], rows=source_rows)
+            ]
+            if tuple(cell["period_signature"]) not in {
+                signature
+                for value in period_strings
+                if (signature := _period_signature(value)) is not None
+            }:
+                raise _error("normalized document-region period is not source-authenticated")
+            unit_strings = [
+                value
+                for binding_id in unit_refs
+                for value in _binding_exact_strings(bindings[binding_id], rows=source_rows)
+            ]
+            if not any(_contains_alias(value, [cell["unit_signature"]]) for value in unit_strings):
+                raise _error("normalized document-region unit is not source-authenticated")
+            if not all(
+                bindings[binding_id]["binding_kind"]
+                in {
+                    "COLUMN",
+                    "ROW",
+                    "ROW_BLOCK",
+                    "SECTION_NARRATIVE",
+                    "SECTION_TITLE",
+                    "TABLE_TITLE",
+                }
+                for binding_id in metric_refs
+            ):
+                raise _error("normalized document-region metric source is invalid")
+            raw_values = [bindings[binding_id]["source_text"] for binding_id in value_refs]
+            if all(value is None for value in raw_values):
+                row_has_blank = True
+                if cell["money"] is not None or cell["source_text"] is not None:
+                    raise _error("blank document-region source binding became zero")
+            elif any(value is None for value in raw_values):
+                raise _error("normalized document-region aggregate mixes blank and numeric cells")
+            else:
+                try:
+                    money_values = [_money(value) for value in raw_values]
+                except ValueError as exc:
+                    raise _error("normalized document-region source money is invalid") from exc
+                if len(money_values) == 1:
+                    expected_money = money_values[0]
+                    expected_text = raw_values[0]
+                else:
+                    expected_money = {
+                        "coefficient": sum(value["coefficient"] for value in money_values),
+                        "source_text": None,
+                        "state": "SUM_EXACT_SOURCE_CELLS",
+                    }
+                    expected_text = None
+                if cell["money"] != expected_money or cell["source_text"] != expected_text:
+                    raise _error("normalized document-region logical money drifted")
+        positional_bindings = [bindings[binding_id] for binding_id in [*row_refs, *row_value_refs]]
+        row_ordinals = []
+        column_ordinals = []
+        for binding in positional_bindings:
+            if binding["binding_kind"] in {"ROW", "VALUE_CELL"}:
+                row_ordinals.append(int(binding["row_id"][1:]))
+            elif binding["binding_kind"] == "ROW_BLOCK":
+                row_ordinals.extend(int(row_id[1:]) for row_id in binding["row_ids"])
+            if binding["binding_kind"] in {"COLUMN", "VALUE_CELL"}:
+                column_ordinals.append(int(binding["column_id"][1:]))
+        expected_position = [
+            page_record["selected_frontier_ordinal"],
+            section_ordinal,
+            table_ordinal,
+            min(row_ordinals, default=1),
+            min(column_ordinals, default=1),
+        ]
+        if row["source_position"] != expected_position:
+            raise _error("normalized document-region logical source position drifted")
+        if prior_source_position is not None and row["source_position"] <= prior_source_position:
+            raise _error("normalized document-region logical source order drifted")
+        prior_source_position = row["source_position"]
+        if row["label_match_modes"] and any(
+            role_kinds.get(role) != "STRUCTURAL_GROUP" for role in row["label_match_modes"]
+        ):
+            if row_has_blank:
+                expected_blank_reasons.add(
+                    "MAPPED_ROLE_CELL_IS_BLANK_UNKNOWN:" + row["logical_row_id"]
+                )
+            if any(cell["money"] is not None for cell in row["cells"]):
+                expected_numeric_roles.update(row["label_match_modes"])
+    if any(count != 1 for count in value_binding_use.values()):
+        raise _error("normalized document-region source cell is projected more than once")
+    if referenced != set(bindings):
+        raise _error("normalized document-region source bindings are not exhaustive")
+    if not expected_blank_reasons <= set(candidate["reasons"]):
+        raise _error("normalized document-region blank-unknown disposition drifted")
+    if candidate["numeric_roles"] != sorted(expected_numeric_roles):
+        raise _error("normalized document-region general numeric role axis drifted")
+    return canonical_clone_v1(candidate)
+
+
+def _validate_normalized_fragment_candidate(
+    candidate: Any,
+    *,
+    page_record: Mapping[str, Any],
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    if type(candidate) is not dict:
+        raise _error("normalized document-region fragment is invalid")
+    if candidate.get("binding_model") == "ROW_COLUMN_LANE_REFERENCE":
+        return _validate_row_column_lane_fragment_candidate(
+            candidate,
+            page_record=page_record,
+            document_period_axis=document_period_axis,
+            policy=policy,
+            compiled_specs=compiled_specs,
+        )
+    if candidate.get("binding_model") == "GENERAL_EXACT_SOURCE_BINDINGS":
+        return _validate_general_exact_source_binding_candidate(
+            candidate,
+            page_record=page_record,
+            document_period_axis=document_period_axis,
+            policy=policy,
+            compiled_specs=compiled_specs,
+        )
+    raise _error("normalized document-region fragment binding model is invalid")
+
+
 def _component_axis(fragments: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
+            "adapter_format_version": fragment["adapter_format_version"],
+            "adapter_identity": canonical_clone_v1(fragment["adapter_identity"]),
+            "binding_model": fragment["binding_model"],
             "candidate_id": fragment["candidate_id"],
             "page_json_sha256": fragment["page_json_sha256"],
             "page_json_version_id": fragment["page_json_version_id"],
             "physical_page": fragment["physical_page"],
+            "inventory_adapter_identity": canonical_clone_v1(
+                fragment["inventory_adapter_identity"]
+            ),
             "projection_closure_sha256": fragment["projection_closure_sha256"],
             "section_id": fragment["section_id"],
             "selected_frontier_ordinal": fragment["selected_frontier_ordinal"],
@@ -1009,6 +2021,7 @@ def _failed_composition(
     pages = _page_axis(page_records)
     identity = {
         "component_axis_sha256": canonical_json_sha256_v1(component_axis),
+        "compiled_specs_sha256": policy["compiled_specs_sha256"],
         "family_id": policy["family_id"],
         "policy_sha256": policy["policy_sha256"],
         "selected_page_json_frontier_sha256": canonical_json_sha256_v1(
@@ -1022,6 +2035,7 @@ def _failed_composition(
         "composition_receipt": {
             "component_axis": component_axis,
             "component_axis_sha256": identity["component_axis_sha256"],
+            "compiled_specs_sha256": policy["compiled_specs_sha256"],
             "format_version": RECEIPT_FORMAT_VERSION,
             "ordered_region_axis_sha256": canonical_json_sha256_v1(
                 {"components": component_axis, "pages": pages}
@@ -1210,6 +2224,9 @@ def _structural_receipt(
 
 
 def _row_population_context(row: Mapping[str, Any]) -> list[str]:
+    declared = row.get("population_context_exact")
+    if type(declared) is list:
+        return [_normalized(value) for value in declared if _normalized(value)]
     path = row.get("hierarchy_path_exact")
     if type(path) is not list:
         return []
@@ -1223,20 +2240,46 @@ def _row_population_context(row: Mapping[str, Any]) -> list[str]:
 def _source_cell_evidence(
     *, fragment: Mapping[str, Any], row: Mapping[str, Any], cell: Mapping[str, Any]
 ) -> dict[str, Any]:
-    return {
+    evidence = {
         "candidate_id": fragment["candidate_id"],
-        "column_id": cell["column_id"],
+        "column_id": cell.get("column_id"),
+        "logical_cell_id": cell.get("logical_cell_id"),
+        "logical_row_id": row.get("logical_row_id"),
         "metric_signature": cell["metric_signature"],
         "money": canonical_clone_v1(cell["money"]),
         "page_json_version_id": fragment["page_json_version_id"],
         "period_signature": canonical_clone_v1(cell["period_signature"]),
         "physical_page": fragment["physical_page"],
-        "row_id": row["row_id"],
+        "row_id": row.get("row_id"),
         "section_id": fragment["section_id"],
         "source_text": cell["source_text"],
         "table_id": fragment["table_id"],
         "unit_signature": cell["unit_signature"],
     }
+    if fragment["binding_model"] == "GENERAL_EXACT_SOURCE_BINDINGS":
+        binding_ids = sorted(
+            {
+                binding_id
+                for field in (
+                    "metric_source_binding_ids",
+                    "period_source_binding_ids",
+                    "unit_source_binding_ids",
+                    "value_source_binding_ids",
+                )
+                for binding_id in cell[field]
+            }
+        )
+        binding_by_id = {binding["binding_id"]: binding for binding in fragment["source_bindings"]}
+        evidence["exact_source_bindings"] = [
+            canonical_clone_v1(binding_by_id[binding_id]) for binding_id in binding_ids
+        ]
+    return evidence
+
+
+def _fragment_logical_rows(fragment: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if fragment["binding_model"] == "GENERAL_EXACT_SOURCE_BINDINGS":
+        return fragment["logical_rows"]
+    return [*fragment["role_rows"], *fragment["anonymous_rows"]]
 
 
 def _merge_rows(
@@ -1255,9 +2298,9 @@ def _merge_rows(
     for fragment in fragments:
         if fragment["projection_kind"] != "BALANCE_MAPPING":
             continue
-        for row in [*fragment["role_rows"], *fragment["anonymous_rows"]]:
+        for row in _fragment_logical_rows(fragment):
             roles = tuple(sorted(row["label_match_modes"]))
-            if all(cell["source_text"] is None for cell in row["cells"]):
+            if all(cell["money"] is None for cell in row["cells"]):
                 # A fully blank row is exact label/path context only.  Omitting
                 # it from the numeric projection prevents the downstream
                 # engine's conditional blank-zero representation from
@@ -1295,7 +2338,8 @@ def _merge_rows(
                     "hierarchy_path_exact": canonical_clone_v1(row["hierarchy_path_exact"]),
                     "label_exact": row["label_exact"],
                     "page_json_version_id": fragment["page_json_version_id"],
-                    "row_id": row["row_id"],
+                    "row_id": row.get("row_id"),
+                    "logical_row_id": row.get("logical_row_id"),
                     "section_id": fragment["section_id"],
                     "table_id": fragment["table_id"],
                 }
@@ -1341,7 +2385,7 @@ def _merge_rows(
                 )
                 by_period[period] = sources
                 continue
-            numeric |= any(source["source_text"] is not None for source in sources)
+            numeric |= any(source["money"] is not None for source in sources)
             by_period[period] = sources
             if len(sources) > 1:
                 duplicate_receipts.append(
@@ -1362,7 +2406,14 @@ def _merge_rows(
         values = []
         for period in expected:
             sources = by_period[period]
-            values.append(sources[0]["source_text"] if sources else None)
+            if not sources:
+                values.append(None)
+            elif sources[0]["source_text"] is not None:
+                values.append(sources[0]["source_text"])
+            elif sources[0]["money"] is not None:
+                values.append(str(sources[0]["money"]["coefficient"]))
+            else:
+                values.append(None)
         synthetic_row_id = f"r{len(synthetic_rows) + 1}"
         synthetic_rows.append(
             {
@@ -1465,6 +2516,16 @@ def compose_document_region_fragments_v1(
     compiled_policy = compile_document_region_fragment_composer_policy_v1(
         policy, compiled_specs=compiled_specs
     )
+    _assert_callable_matches_adapter_identity(
+        projection_adapter,
+        compiled_policy["projection_adapter_identity"],
+        field="projection",
+    )
+    _assert_callable_matches_adapter_identity(
+        projection_inventory_adapter,
+        compiled_policy["projection_inventory_adapter_identity"],
+        field="projection-inventory",
+    )
     records = _validate_selected_page_records(
         page_records,
         selected_page_json_version_ids=selected_page_json_version_ids,
@@ -1538,10 +2599,23 @@ def compose_document_region_fragments_v1(
     for request in fragment_requests:
         if (
             type(request) is not dict
+            or request.get("composer_policy_sha256") != compiled_policy["policy_sha256"]
             or type(request.get("page_json_version_id")) is not str
             or request["page_json_version_id"] not in by_version
             or type(request.get("section_id")) is not str
             or type(request.get("table_id")) is not str
+            or request.get("projection_adapter_id")
+            != compiled_policy["projection_adapter_identity"]["adapter_id"]
+            or request.get("projection_adapter_format_version")
+            != compiled_policy["projection_adapter_identity"]["adapter_format_version"]
+            or request.get("projection_adapter_implementation_ref_sha256")
+            != compiled_policy["projection_adapter_identity"]["implementation_ref_sha256"]
+            or request.get("projection_inventory_adapter_id")
+            != compiled_policy["projection_inventory_adapter_identity"]["adapter_id"]
+            or request.get("projection_inventory_adapter_format_version")
+            != compiled_policy["projection_inventory_adapter_identity"]["adapter_format_version"]
+            or request.get("projection_inventory_adapter_implementation_ref_sha256")
+            != compiled_policy["projection_inventory_adapter_identity"]["implementation_ref_sha256"]
         ):
             raise _error("document-region fragment locator is invalid")
         record = by_version[request["page_json_version_id"]]
@@ -1626,7 +2700,7 @@ def compose_document_region_fragments_v1(
         cell["unit_signature"]
         for fragment in fragments
         if fragment["projection_kind"] == "BALANCE_MAPPING"
-        for row in [*fragment["role_rows"], *fragment["anonymous_rows"]]
+        for row in _fragment_logical_rows(fragment)
         for cell in row["cells"]
         if cell["unit_signature"] is not None
     }
@@ -1724,6 +2798,7 @@ def compose_document_region_fragments_v1(
     receipt = {
         "component_axis": component_axis,
         "component_axis_sha256": canonical_json_sha256_v1(component_axis),
+        "compiled_specs_sha256": compiled_policy["compiled_specs_sha256"],
         "control_candidate_ids": [
             fragment["candidate_id"]
             for fragment in fragments
@@ -1748,6 +2823,7 @@ def compose_document_region_fragments_v1(
         "synthetic_projection_sha256": synthetic_page_hash,
     }
     identity = {
+        "compiled_specs_sha256": receipt["compiled_specs_sha256"],
         "family_id": compiled_policy["family_id"],
         "final_closure_sha256": receipt["final_closure_sha256"],
         "ordered_region_axis_sha256": receipt["ordered_region_axis_sha256"],
