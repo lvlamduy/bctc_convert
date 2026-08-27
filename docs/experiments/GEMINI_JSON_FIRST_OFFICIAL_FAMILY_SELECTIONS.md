@@ -115,6 +115,6 @@ Artifact OFFICIAL:
 
 ## Next gate
 
-Family 11 là `LOAN_GEOGRAPHY_CLASSIFICATION`. Preflight đã xác nhận JSON hiện
+Family 11 là `LOAN_GEOGRAPHIC_CLASSIFICATION`. Preflight đã xác nhận JSON hiện
 có đủ evidence, nhưng cần shared dual-axis graph/index để xử lý cả role ở hàng
 lẫn role ở cột và cụm period ở trang kề nhau; không được quay lại OCR cũ.
