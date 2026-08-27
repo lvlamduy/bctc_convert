@@ -20,8 +20,10 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
+    load_page_json_versions_v1,
     lookup_cached_page_json_v1,
     query_family_anchor_regions_v1,
+    query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
     selected_page_extraction_receipts_v1,
     usage_summary_v1,
@@ -297,6 +299,16 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
         )[0]["page_json_version_id"]
         == third["page_json_version_id"]
     )
+    hits = query_selected_family_anchor_hits_v1(
+        path,
+        selected_page_json_version_ids=selected,
+        anchor_aliases=["Cho vay các TCKT"],
+    )
+    assert [hit["page_json_version_id"] for hit in hits] == [
+        first["page_json_version_id"],
+        third["page_json_version_id"],
+    ]
+    assert retry["page_json_version_id"] not in {hit["page_json_version_id"] for hit in hits}
 
 
 def test_stored_document_page_image_frontier_is_exact_and_ambiguous_safe(tmp_path) -> None:
@@ -401,6 +413,15 @@ def test_selected_page_extraction_receipts_preserve_source_prompt_and_order(tmp_
     assert [receipt["prompt_variant"] for receipt in receipts] == ["simple", "scope"]
     assert [receipt["prompt_sha256"] for receipt in receipts] == ["d" * 64, "f" * 64]
     assert all(receipt["source_sha256"] == "b" * 64 for receipt in receipts)
+    loaded = load_page_json_versions_v1(
+        path,
+        page_json_version_ids=[
+            first["page_json_version_id"],
+            second["page_json_version_id"],
+        ],
+    )
+    assert [record["physical_page"] for record in loaded] == [7, 8]
+    assert all(record["page_json"] == _page() for record in loaded)
 
 
 def test_selected_family_query_fails_closed_on_invalid_frontier_or_anchor_assignment(

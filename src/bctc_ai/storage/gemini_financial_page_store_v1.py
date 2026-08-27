@@ -1261,6 +1261,56 @@ def selected_page_extraction_receipts_v1(
     return result
 
 
+def load_page_json_versions_v1(
+    path: Path,
+    *,
+    page_json_version_ids: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Load exact validated page JSON objects in the caller's selected order."""
+
+    receipts = selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=page_json_version_ids,
+    )
+    version_ids = [receipt["page_json_version_id"] for receipt in receipts]
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_page_json_load("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_page_json_load VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, s.page_json_version_id,
+                   v.canonical_json_sha256, v.canonical_json_bytes
+            FROM selected_page_json_load AS s
+            JOIN page_json_version AS v USING(page_json_version_id)
+            ORDER BY s.selection_ordinal
+            """
+        ).fetchall()
+    if len(rows) != len(version_ids):
+        raise _error("selected page JSON version is absent")
+    result = []
+    for receipt, row in zip(receipts, rows, strict=True):
+        try:
+            decoded = json.loads(row["canonical_json_bytes"])
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("selected page canonical JSON bytes are invalid") from exc
+        page_json = validate_financial_page_json_v1(decoded)
+        canonical = canonical_json_bytes_v1(page_json) + b"\n"
+        if (
+            row["page_json_version_id"] != receipt["page_json_version_id"]
+            or canonical != row["canonical_json_bytes"]
+            or sha256(canonical).hexdigest() != row["canonical_json_sha256"]
+        ):
+            raise _error("selected page canonical JSON does not replay")
+        result.append({**receipt, "page_json": page_json})
+    return result
+
+
 def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -> bool:
     """Return whether every anchor group can bind a distinct visible row."""
 
@@ -1275,6 +1325,66 @@ def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -
         )
 
     return assign(0, frozenset())
+
+
+def query_selected_family_anchor_hits_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    anchor_aliases: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Return one-anchor near evidence without granting a family match."""
+
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not selected_page_json_version_ids
+        or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+        or type(anchor_aliases) not in {list, tuple}
+        or not anchor_aliases
+    ):
+        raise _error("selected family near-anchor request is invalid")
+    folded = sorted(
+        {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in anchor_aliases}
+    )
+    if any(not alias for alias in folded):
+        raise _error("selected family near-anchor normalization is empty")
+    selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=selected_page_json_version_ids,
+    )
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_near_page("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_near_page VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        connection.execute(
+            "CREATE TEMP TABLE near_anchor_alias(label_ascii_folded TEXT PRIMARY KEY)"
+        )
+        connection.executemany(
+            "INSERT INTO near_anchor_alias VALUES (?)",
+            ((alias,) for alias in folded),
+        )
+        rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, r.page_json_version_id,
+                   d.source_logical_name, p.physical_page,
+                   r.section_id, r.table_id, r.row_id,
+                   r.source_order, r.label_exact
+            FROM row_node AS r
+            JOIN selected_near_page AS s USING(page_json_version_id)
+            JOIN near_anchor_alias AS a USING(label_ascii_folded)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
+                     r.source_order, r.row_id
+            """
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def query_selected_family_anchor_regions_v1(

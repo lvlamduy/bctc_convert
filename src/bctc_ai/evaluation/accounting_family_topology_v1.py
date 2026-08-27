@@ -40,6 +40,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION_V4",
     "AccountingFamilyTopologyV1Error",
     "build_accounting_family_topology_scan_v1",
+    "compile_accounting_family_topology_spec_v1",
     "enumerate_accounting_family_role_occurrences_v1",
     "validate_accounting_family_topology_scan_replay_v1",
 ]
@@ -443,6 +444,12 @@ def _spec(value: Any) -> dict[str, Any]:
             value["structural_reset_aliases"], "structural reset", allow_empty=True
         ),
     }
+
+
+def compile_accounting_family_topology_spec_v1(value: Any) -> dict[str, Any]:
+    """Compile one declarative family spec for shared non-geometry consumers."""
+
+    return _spec(value)
 
 
 def _pages(value: Any) -> list[dict[str, Any]]:
