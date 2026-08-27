@@ -6,9 +6,12 @@ import pytest
 
 from bctc_ai.evaluation.accounting_row_width_total_column_seal_v1 import (
     AccountingRowWidthTotalColumnSealV1Error,
+    build_accounting_equation_inventory_manifest_v1,
     build_accounting_row_width_total_column_seal_v1,
     validate_accounting_row_width_total_column_seal_replay_v1,
 )
+
+_AUTHORITY_SHA256 = "a" * 64
 
 
 def _cell(value: int | None, token: str, *, state: str | None = None) -> dict:
@@ -34,6 +37,15 @@ def _equation(identity: str, axis: str, terms: list[dict], row: str, column: str
         "result": {"column_id": column, "row_id": row},
         "terms": terms,
     }
+
+
+def _refresh_inventory(source: dict) -> None:
+    source["equation_inventory"] = build_accounting_equation_inventory_manifest_v1(
+        source["equations"],
+        authority_kind="PINNED_CONFIG",
+        authority_ref="config://fixed-asset-rollforward/equations-v1",
+        authority_sha256=_AUTHORITY_SHA256,
+    )
 
 
 def _row(identity: str, values: list[int | None], ordinal: int, *, kind: str = "DATA") -> dict:
@@ -91,7 +103,7 @@ def _shifted_table() -> dict:
             ),
         ]
     )
-    return {
+    source = {
         "columns": [
             {"column_id": column, "column_kind": kind, "column_ordinal": ordinal}
             for ordinal, (column, kind) in enumerate(
@@ -104,6 +116,8 @@ def _shifted_table() -> dict:
         "table_id": "fixed-asset-rollforward",
         "unit_id": "VND_MILLION",
     }
+    _refresh_inventory(source)
+    return source
 
 
 def test_unique_shifted_right_edge_is_sealed_without_mutating_raw_cells() -> None:
@@ -151,6 +165,7 @@ def test_relocation_is_unresolved_if_horizontal_equation_still_needs_from_cell()
         if equation["equation_id"] == "ending-horizontal"
     )
     ending["terms"].append(_term("ending", "unused"))
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 
@@ -166,6 +181,7 @@ def test_every_data_row_requires_one_authoritative_horizontal_equation() -> None
         for equation in source["equations"]
         if equation["equation_id"] != "movement-horizontal"
     ]
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 
@@ -183,11 +199,45 @@ def test_every_data_row_requires_one_authoritative_horizontal_equation() -> None
     )
     extra["equation_id"] = "movement-horizontal-duplicate"
     duplicated["equations"].append(extra)
+    _refresh_inventory(duplicated)
     duplicate_result = build_accounting_row_width_total_column_seal_v1(duplicated)
     assert duplicate_result["status"] == "UNRESOLVED"
     assert duplicate_result["unresolved_reasons"] == [
         "INCOMPLETE_AUTHORITATIVE_HORIZONTAL_EQUATION_COVERAGE"
     ]
+
+
+def test_equation_deletion_cannot_launder_an_unchanged_authoritative_inventory() -> None:
+    source = _shifted_table()
+    source["equations"] = [
+        equation
+        for equation in source["equations"]
+        if equation["equation_id"] != "total-rollforward"
+    ]
+
+    result = build_accounting_row_width_total_column_seal_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert result["unresolved_reasons"] == ["EQUATION_INVENTORY_EXACT_SET_OR_COVERAGE_MISMATCH"]
+    assert result["relocation_receipts"] == []
+
+
+def test_inventory_manifest_tamper_and_replay_are_rejected() -> None:
+    source = _shifted_table()
+    result = build_accounting_row_width_total_column_seal_v1(source)
+    assert result["safety"]["external_equation_authority_must_be_verified_by_caller"] is True
+    assert result["safety"]["self_hash_authenticates_external_equation_authority"] is False
+    assert (
+        result["relocation_receipts"][0]["equation_inventory_authority"]
+        == (source["equation_inventory"]["authority"])
+    )
+
+    tampered_source = deepcopy(source)
+    tampered_source["equation_inventory"]["authority"]["authority_ref"] += "-forged"
+    with pytest.raises(AccountingRowWidthTotalColumnSealV1Error):
+        build_accounting_row_width_total_column_seal_v1(tampered_source)
+    with pytest.raises(AccountingRowWidthTotalColumnSealV1Error):
+        validate_accounting_row_width_total_column_seal_replay_v1(result, tampered_source)
 
 
 def test_correction_without_an_affected_vertical_inventory_is_unresolved() -> None:
@@ -202,6 +252,7 @@ def test_correction_without_an_affected_vertical_inventory_is_unresolved() -> No
             "total",
         )
     ]
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 
@@ -242,6 +293,7 @@ def test_duplicate_looking_legitimate_component_is_not_removed() -> None:
             "total",
         )
     ]
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 
@@ -262,6 +314,7 @@ def test_multiple_unowned_duplicate_total_values_are_unresolved() -> None:
             "total",
         )
     ]
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 
@@ -282,6 +335,7 @@ def test_two_plausible_shifted_values_without_unique_structural_presence_are_unr
             "total",
         )
     ]
+    _refresh_inventory(source)
 
     result = build_accounting_row_width_total_column_seal_v1(source)
 

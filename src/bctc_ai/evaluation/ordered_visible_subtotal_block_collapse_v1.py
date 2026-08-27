@@ -194,6 +194,8 @@ def _raw_parent_graph_reasons(source: dict[str, Any]) -> list[str]:
             reasons.append("RAW_PARENT_SELF_REFERENCE_VETO")
             continue
         parent = rows_by_id[parent_id]
+        if not _same_context(parent, row):
+            reasons.append("RAW_PARENT_CROSS_TABLE_ROOT_PERIOD_OR_UNIT_VETO")
         if (
             parent["row_ordinal"] >= row["row_ordinal"]
             or parent["hierarchy_level"] >= row["hierarchy_level"]

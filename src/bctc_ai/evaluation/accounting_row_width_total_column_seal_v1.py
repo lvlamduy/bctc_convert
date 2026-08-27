@@ -4,7 +4,10 @@ The primitive consumes already typed exact money cells.  It never parses raw
 money text and never overwrites its source snapshot.  A shifted right-edge
 value or a duplicated total may be projected only when one and only one
 projection closes every declared horizontal equation and every affected
-vertical rollforward.  Blank cells are unknown, not zero.
+vertical rollforward.  The equation inventory is an exact binding to an
+externally pinned config/evidence authority; its self-hash detects drift but
+does not authenticate that external authority.  Blank cells are unknown, not
+zero.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "AccountingRowWidthTotalColumnSealV1Error",
+    "build_accounting_equation_inventory_manifest_v1",
     "build_accounting_row_width_total_column_seal_v1",
     "validate_accounting_row_width_total_column_seal_replay_v1",
 ]
@@ -32,24 +36,44 @@ FORMAT_VERSION = "ROW_WIDTH_TOTAL_COLUMN_SEAL_V1"
 CLAIM_BOUNDARY = (
     "EXACT_ORDERED_COLUMNS_UNIQUE_RIGHT_EDGE_TOTAL_AND_UNIQUE_ALL_EQUATION_"
     "CLOSURE_PROJECTION_ONLY_NO_RAW_CELL_MUTATION_BLANK_TO_ZERO_PERIOD_UNIT_"
-    "TABLE_ROOT_SCHEMA_OR_MAPPING_AUTHORITY"
+    "TABLE_ROOT_SCHEMA_OR_MAPPING_AUTHORITY_EXTERNAL_EQUATION_CONFIG_OR_EVIDENCE_"
+    "AUTHORITY_MUST_BE_CALLER_VERIFIED_NOT_SELF_AUTHENTICATED"
 )
 _SAFETY = {
     "blank_cell_means_zero": False,
     "dash_and_printed_zero_are_typed_exact_zero": True,
+    "external_equation_authority_must_be_verified_by_caller": True,
     "family_bank_file_or_page_routing": False,
     "raw_cells_mutated": False,
     "relocation_requires_unique_all_equation_closure": True,
     "schema_or_mapping_authority": False,
+    "self_hash_authenticates_external_equation_authority": False,
 }
 
-_INPUT_FIELDS = {"columns", "equations", "period_id", "rows", "table_id", "unit_id"}
+_INPUT_FIELDS = {
+    "columns",
+    "equation_inventory",
+    "equations",
+    "period_id",
+    "rows",
+    "table_id",
+    "unit_id",
+}
 _COLUMN_FIELDS = {"column_id", "column_kind", "column_ordinal"}
 _ROW_FIELDS = {"cells", "row_id", "row_kind", "row_ordinal"}
 _CELL_FIELDS = {"coefficient", "source_locator", "source_text", "state"}
 _EQUATION_FIELDS = {"axis", "equation_id", "result", "terms"}
 _REFERENCE_FIELDS = {"column_id", "row_id"}
 _TERM_FIELDS = {"column_id", "multiplier", "row_id"}
+_INVENTORY_FIELDS = {"authority", "equation_bindings", "manifest_sha256"}
+_AUTHORITY_FIELDS = {"authority_kind", "authority_ref", "authority_sha256"}
+_EQUATION_BINDING_FIELDS = {
+    "axis",
+    "coordinate_refs",
+    "equation_id",
+    "equation_sha256",
+}
+_COORDINATE_REF_FIELDS = {"column_id", "reference_kind", "row_id"}
 _RESULT_FIELDS = {
     "claim_boundary",
     "effective_projection",
@@ -124,6 +148,184 @@ def _reference(value: Any, rows: set[str], columns: set[str], *, label: str) -> 
     ):
         raise _error(f"{label} cell reference drifted")
     return canonical_clone_v1(value)
+
+
+def _is_sha256(value: Any) -> bool:
+    return (
+        type(value) is str
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _equation_coordinate_refs(equation: Mapping[str, Any]) -> list[dict[str, str]]:
+    refs = [
+        {
+            "column_id": equation["result"]["column_id"],
+            "reference_kind": "RESULT",
+            "row_id": equation["result"]["row_id"],
+        }
+    ]
+    refs.extend(
+        {
+            "column_id": term["column_id"],
+            "reference_kind": "TERM",
+            "row_id": term["row_id"],
+        }
+        for term in equation["terms"]
+    )
+    return sorted(
+        refs,
+        key=lambda item: (item["reference_kind"], item["row_id"], item["column_id"]),
+    )
+
+
+def _equation_binding(equation: Any) -> dict[str, Any]:
+    if (
+        type(equation) is not dict
+        or set(equation) != _EQUATION_FIELDS
+        or equation["axis"] not in {"HORIZONTAL_ROW", "VERTICAL_ROLLFORWARD"}
+        or type(equation["equation_id"]) is not str
+        or not equation["equation_id"]
+        or type(equation["result"]) is not dict
+        or set(equation["result"]) != _REFERENCE_FIELDS
+        or not all(
+            type(equation["result"][field]) is str and equation["result"][field]
+            for field in _REFERENCE_FIELDS
+        )
+        or type(equation["terms"]) is not list
+        or not equation["terms"]
+    ):
+        raise _error("equation inventory source equation drifted")
+    coordinates = {
+        (equation["result"]["row_id"], equation["result"]["column_id"]),
+    }
+    for term in equation["terms"]:
+        if (
+            type(term) is not dict
+            or set(term) != _TERM_FIELDS
+            or type(term["row_id"]) is not str
+            or not term["row_id"]
+            or type(term["column_id"]) is not str
+            or not term["column_id"]
+            or type(term["multiplier"]) is not int
+            or term["multiplier"] == 0
+            or (term["row_id"], term["column_id"]) in coordinates
+        ):
+            raise _error("equation inventory source term drifted")
+        coordinates.add((term["row_id"], term["column_id"]))
+    return {
+        "axis": equation["axis"],
+        "coordinate_refs": _equation_coordinate_refs(equation),
+        "equation_id": equation["equation_id"],
+        "equation_sha256": canonical_json_sha256_v1(equation),
+    }
+
+
+def build_accounting_equation_inventory_manifest_v1(
+    equations: Any,
+    *,
+    authority_kind: str,
+    authority_ref: str,
+    authority_sha256: str,
+) -> dict[str, Any]:
+    """Bind exact equations to a caller-verified config/evidence authority.
+
+    The returned self-hash detects manifest drift.  It does not establish the
+    authenticity of ``authority_ref`` or ``authority_sha256``; the caller must
+    verify and pin that external authority before invoking this primitive.
+    """
+
+    if (
+        authority_kind not in {"PINNED_CONFIG", "PINNED_EVIDENCE"}
+        or type(authority_ref) is not str
+        or not authority_ref
+        or not _is_sha256(authority_sha256)
+        or type(equations) is not list
+        or not equations
+    ):
+        raise _error("external equation inventory authority contract drifted")
+    bindings = sorted(
+        (_equation_binding(equation) for equation in equations),
+        key=lambda binding: binding["equation_id"],
+    )
+    equation_ids = [binding["equation_id"] for binding in bindings]
+    if len(equation_ids) != len(set(equation_ids)):
+        raise _error("equation inventory identifiers repeat")
+    material = {
+        "authority": {
+            "authority_kind": authority_kind,
+            "authority_ref": authority_ref,
+            "authority_sha256": authority_sha256,
+        },
+        "equation_bindings": bindings,
+    }
+    return {**material, "manifest_sha256": canonical_json_sha256_v1(material)}
+
+
+def _equation_inventory(value: Any, rows: set[str], columns: set[str]) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != _INVENTORY_FIELDS
+        or type(value["authority"]) is not dict
+        or set(value["authority"]) != _AUTHORITY_FIELDS
+        or value["authority"]["authority_kind"] not in {"PINNED_CONFIG", "PINNED_EVIDENCE"}
+        or type(value["authority"]["authority_ref"]) is not str
+        or not value["authority"]["authority_ref"]
+        or not _is_sha256(value["authority"]["authority_sha256"])
+        or type(value["equation_bindings"]) is not list
+        or not value["equation_bindings"]
+        or not _is_sha256(value["manifest_sha256"])
+    ):
+        raise _error("equation inventory manifest contract drifted")
+    bindings = []
+    equation_ids: set[str] = set()
+    for raw in value["equation_bindings"]:
+        if (
+            type(raw) is not dict
+            or set(raw) != _EQUATION_BINDING_FIELDS
+            or raw["axis"] not in {"HORIZONTAL_ROW", "VERTICAL_ROLLFORWARD"}
+            or type(raw["equation_id"]) is not str
+            or not raw["equation_id"]
+            or raw["equation_id"] in equation_ids
+            or not _is_sha256(raw["equation_sha256"])
+            or type(raw["coordinate_refs"]) is not list
+            or len(raw["coordinate_refs"]) < 2
+        ):
+            raise _error("equation inventory binding drifted")
+        equation_ids.add(raw["equation_id"])
+        refs = []
+        coordinate_ids: set[tuple[str, str]] = set()
+        result_count = 0
+        for ref in raw["coordinate_refs"]:
+            if (
+                type(ref) is not dict
+                or set(ref) != _COORDINATE_REF_FIELDS
+                or ref["reference_kind"] not in {"RESULT", "TERM"}
+                or ref["row_id"] not in rows
+                or ref["column_id"] not in columns
+                or (ref["row_id"], ref["column_id"]) in coordinate_ids
+            ):
+                raise _error("equation inventory coordinate coverage drifted")
+            coordinate_ids.add((ref["row_id"], ref["column_id"]))
+            result_count += ref["reference_kind"] == "RESULT"
+            refs.append(canonical_clone_v1(ref))
+        expected_refs = sorted(
+            refs,
+            key=lambda item: (item["reference_kind"], item["row_id"], item["column_id"]),
+        )
+        if result_count != 1 or not same_typed_json_v1(refs, expected_refs):
+            raise _error("equation inventory coordinate ordering or result coverage drifted")
+        bindings.append({**canonical_clone_v1(raw), "coordinate_refs": refs})
+    if bindings != sorted(bindings, key=lambda binding: binding["equation_id"]):
+        raise _error("equation inventory binding order drifted")
+    material = {
+        "authority": canonical_clone_v1(value["authority"]),
+        "equation_bindings": bindings,
+    }
+    if value["manifest_sha256"] != canonical_json_sha256_v1(material):
+        raise _error("equation inventory manifest self-hash drifted")
+    return {**material, "manifest_sha256": value["manifest_sha256"]}
 
 
 def _input(value: Any) -> dict[str, Any]:
@@ -253,14 +455,25 @@ def _input(value: Any) -> dict[str, Any]:
         for equation in equations
     ):
         raise _error("GROUP row blanks cannot participate in arithmetic equations")
+    equation_inventory = _equation_inventory(value["equation_inventory"], row_set, column_set)
     return {
         "columns": columns,
+        "equation_inventory": equation_inventory,
         "equations": equations,
         "period_id": value["period_id"],
         "rows": rows,
         "table_id": value["table_id"],
         "unit_id": value["unit_id"],
     }
+
+
+def _equation_inventory_matches(table: Mapping[str, Any]) -> bool:
+    expected = table["equation_inventory"]["equation_bindings"]
+    actual = sorted(
+        (_equation_binding(equation) for equation in table["equations"]),
+        key=lambda binding: binding["equation_id"],
+    )
+    return same_typed_json_v1(expected, actual)
 
 
 def _coordinates(table: Mapping[str, Any]) -> dict[tuple[str, str], dict[str, Any] | None]:
@@ -424,6 +637,10 @@ def _receipt(
     material = {
         "action_kind": action["action_kind"],
         "affected_equations": affected,
+        "equation_inventory_authority": canonical_clone_v1(
+            table["equation_inventory"]["authority"]
+        ),
+        "equation_inventory_manifest_sha256": table["equation_inventory"]["manifest_sha256"],
         "effective_from_cell": canonical_clone_v1(
             effective[(action["from"]["row_id"], action["from"]["column_id"])]
         ),
@@ -468,6 +685,14 @@ def build_accounting_row_width_total_column_seal_v1(value: Any) -> dict[str, Any
 
     table = _input(value)
     raw = _coordinates(table)
+    if not _equation_inventory_matches(table):
+        return _result(
+            table,
+            raw,
+            [],
+            status="UNRESOLVED",
+            unresolved_reasons=["EQUATION_INVENTORY_EXACT_SET_OR_COVERAGE_MISMATCH"],
+        )
     totals = [column for column in table["columns"] if column["column_kind"] == "TOTAL"]
     if len(totals) != 1 or totals[0]["column_ordinal"] != len(table["columns"]) - 1:
         return _result(

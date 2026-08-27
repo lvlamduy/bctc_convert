@@ -356,6 +356,33 @@ def test_raw_parent_self_cycle_and_descendant_inversion_are_vetoed(
     assert result["effective_parent_relations"] == []
 
 
+def test_resolved_raw_parent_must_share_table_root_period_and_unit_context() -> None:
+    source = _four_block_source()
+    source["rows"].insert(
+        0,
+        _row(
+            "root",
+            (0, 0),
+            0,
+            kind="PEER",
+            level=0,
+            source_parent=None,
+            period="PRIOR",
+            root="other-root",
+            table="other-table",
+            unit="VND",
+        ),
+    )
+    for ordinal, row in enumerate(source["rows"]):
+        row["row_ordinal"] = ordinal
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "RAW_PARENT_CROSS_TABLE_ROOT_PERIOD_OR_UNIT_VETO" in result["unresolved_reasons"]
+    assert result["block_receipts"] == []
+
+
 def test_mixed_direct_child_depth_two_three_two_is_unresolved() -> None:
     source = _four_block_source()
     source["rows"][2]["hierarchy_level"] = 3
