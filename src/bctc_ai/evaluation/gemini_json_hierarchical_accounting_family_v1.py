@@ -1020,7 +1020,73 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         if len(combination) not in {2, 3}:
             raise _error("Gemini JSON hierarchy anchor combination is invalid")
         anchor_groups.append([aliases_by_role[role] for role in combination])
-        query_anchor_groups.append([raw_aliases_by_role[role] for role in combination])
+        raw_children_by_role = {child["role"]: child for child in topology_spec["children"]}
+        raw_unscoped_aliases = {
+            role: sorted(
+                {
+                    alias
+                    for matcher in raw_children_by_role[role]["matchers"]
+                    if matcher["within_role"] is None and matcher.get("presence_anchor", True)
+                    for alias in matcher["aliases"]
+                }
+            )
+            for role in combination
+        }
+        raw_scoped_aliases: dict[str, dict[str, list[str]]] = {}
+        for role in combination:
+            by_owner: dict[str, set[str]] = defaultdict(set)
+            for matcher in raw_children_by_role[role]["matchers"]:
+                owner = matcher["within_role"]
+                if owner is None or not matcher.get("presence_anchor", True):
+                    continue
+                by_owner[owner].update(matcher["aliases"])
+            raw_scoped_aliases[role] = {
+                owner: sorted(aliases) for owner, aliases in by_owner.items()
+            }
+        common_scoped_owners = set.intersection(
+            *(set(raw_scoped_aliases[role]) for role in combination)
+        )
+        safe_query_groups: list[list[list[str]]] = []
+        if all(raw_unscoped_aliases[role] for role in combination):
+            safe_query_groups.append([raw_unscoped_aliases[role] for role in combination])
+        if len(combination) == 2:
+            for owner in sorted(common_scoped_owners):
+                owner_aliases = sorted(
+                    {
+                        alias
+                        for matcher in raw_children_by_role[owner]["matchers"]
+                        if matcher["within_role"] is None and matcher.get("presence_anchor", True)
+                        for alias in matcher["aliases"]
+                    }
+                )
+                if not owner_aliases:
+                    continue
+                group = [
+                    owner_aliases,
+                    *(raw_scoped_aliases[role][owner] for role in combination),
+                ]
+                if group not in safe_query_groups:
+                    safe_query_groups.append(group)
+        for owner in combination:
+            scoped_roles = [role for role in combination if role != owner]
+            if not raw_unscoped_aliases[owner] or not all(
+                owner in raw_scoped_aliases[role] for role in scoped_roles
+            ):
+                continue
+            group = [
+                raw_unscoped_aliases[owner],
+                *(raw_scoped_aliases[role][owner] for role in scoped_roles),
+            ]
+            if group not in safe_query_groups:
+                safe_query_groups.append(group)
+        if safe_query_groups:
+            # Keep qualified anchors separate from short contextual labels.
+            # Contextual query modes include their declared owner as a distinct
+            # anchor, so unrelated tables containing the same short pair do not
+            # become unresolved family candidates.
+            query_anchor_groups.extend(safe_query_groups)
+        else:
+            query_anchor_groups.append([raw_aliases_by_role[role] for role in combination])
     return {
         "aliases_by_role": aliases_by_role,
         "anchor_alias_groups": anchor_groups,

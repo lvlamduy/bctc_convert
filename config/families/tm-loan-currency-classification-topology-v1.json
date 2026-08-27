@@ -1,0 +1,65 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Cho vay khách hàng", "Các khoản cho vay khách hàng", "Dư nợ cho vay khách hàng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CORE_TOTAL_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cho vay bằng VND", "Cho vay bằng đồng Việt Nam", "Dư nợ bằng VND", "Dư nợ bằng đồng Việt Nam", "Dư nợ cho vay bằng VND", "Dư nợ cho vay bằng đồng Việt Nam"], "within_role": null},
+        {"aliases": ["Bằng VND", "Bằng đồng Việt Nam"], "within_role": "CORE_TOTAL_GROUP"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "VND_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cho vay bằng ngoại tệ", "Cho vay bằng ngoại tệ và vàng", "Cho vay bằng vàng và ngoại tệ", "Dư nợ bằng ngoại tệ", "Dư nợ bằng ngoại tệ và vàng", "Dư nợ bằng vàng và ngoại tệ", "Dư nợ cho vay bằng ngoại tệ", "Dư nợ cho vay bằng ngoại tệ và vàng", "Dư nợ cho vay bằng vàng và ngoại tệ"], "within_role": null},
+        {"aliases": ["Bằng ngoại tệ", "Bằng ngoại tệ và vàng", "Bằng vàng và ngoại tệ"], "within_role": "CORE_TOTAL_GROUP"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_CURRENCY_AND_GOLD_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024", "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 1 tháng 7 năm 2024", "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01/07/2024", "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 1/7/2024"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_LC_PRE_2024_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Bằng VND", "Bằng đồng Việt Nam"], "presence_anchor": false, "within_role": "DEFERRED_LC_PRE_2024_GROUP"}],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_LC_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Bằng ngoại tệ", "Bằng ngoại tệ và vàng", "Bằng vàng và ngoại tệ"], "presence_anchor": false, "within_role": "DEFERRED_LC_PRE_2024_GROUP"}],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_LC_FOREIGN",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng cộng", "Tổng"], "presence_anchor": false, "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_GRAND_TOTAL",
+      "role_kind": "TOTAL"
+    }
+  ],
+  "family_id": "LOAN_CURRENCY_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": ["Phân tích rủi ro tiền tệ", "Rủi ro tiền tệ", "Phân tích rủi ro lãi suất", "Rủi ro lãi suất", "Tiền gửi tại và cho vay các tổ chức tín dụng khác", "Tiền gửi và cho vay các tổ chức tín dụng khác"],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 80, "max_label_line_span": 3},
+  "parent": {
+    "aliases": ["Theo loại tiền tệ", "Theo loại hình tiền tệ", "Phân tích theo loại hình tiền tệ", "Phân tích theo loại tiền tệ", "Phân tích dư nợ theo loại hình tiền tệ", "Phân tích dư nợ theo loại tiền tệ", "Phân tích dư nợ cho vay theo loại tiền tệ", "Phân tích dư nợ theo loại tiền", "Phân loại dư nợ theo loại tiền tệ", "Phân tích cho vay theo loại tiền tệ"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "LOAN_CURRENCY_CLASSIFICATION"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["VND_LOANS", "FOREIGN_CURRENCY_AND_GOLD_LOANS"]],
+  "required_role_pools": [{"minimum_count": 2, "roles": ["VND_LOANS", "FOREIGN_CURRENCY_AND_GOLD_LOANS"]}],
+  "structural_reset_aliases": ["Phân tích dư nợ theo thời gian", "Phân tích dư nợ theo thời hạn", "Phân tích chất lượng dư nợ cho vay", "Phân tích chất lượng nợ cho vay", "Theo ngành nghề kinh doanh", "Theo ngành kinh tế", "Phân tích dư nợ theo ngành nghề kinh doanh", "Phân tích dư nợ theo ngành kinh tế", "Theo đối tượng khách hàng", "Theo loại hình doanh nghiệp", "Phân tích dư nợ theo đối tượng khách hàng", "Phân tích dư nợ theo loại hình doanh nghiệp", "Dự phòng rủi ro cho vay khách hàng"]
+}
