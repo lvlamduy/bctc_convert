@@ -57,7 +57,7 @@ _NODE = re.compile(r"^([strc])([1-9][0-9]*)$")
 _DASH = re.compile(r"^\s*[-–—_](?:\s*[-–—_])*\s*$")
 _FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL | re.IGNORECASE)
 _VISUAL_STATES = frozenset({"BLANK", "DASH", "PRINTED_ZERO", "VALUE"})
-_AFTER_POLICIES = frozenset({"SIGNED_INTEGER", "TYPED_ZERO"})
+_AFTER_POLICIES = frozenset({"DASH_ZERO", "SIGNED_INTEGER"})
 _CHANGE_POLICIES = frozenset({"MAY_CHANGE", "MUST_CHANGE"})
 _EVIDENCE_KINDS = frozenset({"ATOMIC_TABLE_COLLATERAL", "UNRESOLVED_FRONTIER"})
 _THINKING_LEVELS = ("low", "medium", "high")
@@ -119,6 +119,12 @@ _PLAN_FIELDS = {
     "target_table_refs",
     "trigger_kinds",
     "trigger_reasons",
+}
+_AUTHORITY_FIELDS = {
+    "compiled_specs",
+    "family_sweep",
+    "selected_page_json_version_ids",
+    "table_repair_specs",
 }
 
 
@@ -946,10 +952,10 @@ def build_rollforward_table_cell_repair_plans_v1(
         "collateral_cell_ids",
         "collateral_equations",
         "crop_bbox_pixels_xyxy",
+        "dash_zero_cell_ids",
         "format_version",
         "section_id",
         "table_id",
-        "typed_zero_cell_ids",
     }
     for raw in specs:
         spec = _exact_keys(raw, spec_fields, "roll-forward table repair spec")
@@ -957,14 +963,14 @@ def build_rollforward_table_cell_repair_plans_v1(
             spec["format_version"] != TABLE_SPEC_FORMAT_VERSION
             or type(spec["collateral_cell_ids"]) is not list
             or len(spec["collateral_cell_ids"]) != len(set(spec["collateral_cell_ids"]))
-            or type(spec["typed_zero_cell_ids"]) is not list
-            or len(spec["typed_zero_cell_ids"]) != len(set(spec["typed_zero_cell_ids"]))
+            or type(spec["dash_zero_cell_ids"]) is not list
+            or len(spec["dash_zero_cell_ids"]) != len(set(spec["dash_zero_cell_ids"]))
             or type(spec["collateral_equations"]) is not list
         ):
             raise _error("roll-forward table repair spec is invalid")
         _node_ordinal(spec["section_id"], "s", "table repair spec section")
         _node_ordinal(spec["table_id"], "t", "table repair spec table")
-        for cell_id in [*spec["collateral_cell_ids"], *spec["typed_zero_cell_ids"]]:
+        for cell_id in [*spec["collateral_cell_ids"], *spec["dash_zero_cell_ids"]]:
             _cell_id(cell_id)
         version_ids.append(
             _prefixed_hash(
@@ -1112,11 +1118,11 @@ def build_rollforward_table_cell_repair_plans_v1(
                 "change_policy": "MAY_CHANGE",
                 "evidence_kind": "ATOMIC_TABLE_COLLATERAL",
             }
-        typed_zero_ids = set(spec["typed_zero_cell_ids"])
-        if not typed_zero_ids <= set(primary):
-            raise _error("table repair typed-zero policy lies outside derived cells")
-        for cell_id in typed_zero_ids:
-            primary[cell_id]["after_policy"] = "TYPED_ZERO"
+        dash_zero_ids = set(spec["dash_zero_cell_ids"])
+        if not dash_zero_ids <= set(primary):
+            raise _error("table repair dash-zero policy lies outside derived cells")
+        for cell_id in dash_zero_ids:
+            primary[cell_id]["after_policy"] = "DASH_ZERO"
         collateral_equations = canonical_clone_v1(spec["collateral_equations"])
         if collateral_ids:
             checked_collateral = _equations(
@@ -1170,6 +1176,55 @@ def build_rollforward_table_cell_repair_plans_v1(
         unresolved_frontier=frontiers,
         page_json_by_version=pages,
     )
+
+
+def rollforward_table_repair_plan_authority_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Package the complete replay inputs; the package itself grants no authority."""
+
+    return {
+        "compiled_specs": canonical_clone_v1(dict(compiled_specs)),
+        "family_sweep": canonical_clone_v1(dict(family_sweep)),
+        "selected_page_json_version_ids": canonical_clone_v1(list(selected_page_json_version_ids)),
+        "table_repair_specs": canonical_clone_v1(list(table_repair_specs)),
+    }
+
+
+def _authoritative_plan_axis(
+    authority: Mapping[str, Any], *, page_store_path: Path
+) -> list[dict[str, Any]]:
+    """Rebuild the queue from the public DB/query/candidate replay at every boundary."""
+
+    checked = _exact_keys(dict(authority), _AUTHORITY_FIELDS, "table repair plan authority")
+    return build_rollforward_table_cell_repair_plans_v1(
+        compiled_specs=checked["compiled_specs"],
+        family_sweep=checked["family_sweep"],
+        page_store_path=page_store_path,
+        selected_page_json_version_ids=checked["selected_page_json_version_ids"],
+        table_repair_specs=checked["table_repair_specs"],
+    )
+
+
+def _authoritative_plan(
+    plan: Mapping[str, Any],
+    *,
+    authority: Mapping[str, Any],
+    page_store_path: Path,
+) -> dict[str, Any]:
+    checked = _validated_plan(plan)
+    matches = [
+        candidate
+        for candidate in _authoritative_plan_axis(authority, page_store_path=page_store_path)
+        if same_typed_json_v1(candidate, checked)
+    ]
+    if len(matches) != 1:
+        raise _error("table repair plan is not the exact authoritative replay")
+    return matches[0]
 
 
 def _validated_plan(plan: Any) -> dict[str, Any]:
@@ -1624,9 +1679,9 @@ def _equation_gate(
 
 def _after_policy(cell: Mapping[str, Any], policy: str) -> None:
     coefficient = _signed_integer(cell["source_text"])
-    if policy == "TYPED_ZERO":
-        if cell["visual_state"] not in {"DASH", "PRINTED_ZERO"} or coefficient != 0:
-            raise _error("roll-forward table repair expected one source-transcribed typed zero")
+    if policy == "DASH_ZERO":
+        if cell["visual_state"] != "DASH" or coefficient != 0:
+            raise _error("roll-forward table repair expected one source-transcribed dash zero")
         return
     if policy == "SIGNED_INTEGER":
         if cell["visual_state"] == "BLANK" or coefficient is None:
@@ -1641,10 +1696,15 @@ def merge_rollforward_table_repair_v1(
     plan: Mapping[str, Any],
     repair: Mapping[str, Any],
     page_store_path: Path,
+    authority: Mapping[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Atomically merge only allowlisted cells after every table/equation gate."""
 
-    checked_plan = _validated_plan(plan)
+    checked_plan = _authoritative_plan(
+        plan,
+        authority=authority,
+        page_store_path=page_store_path,
+    )
     page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
         checked_plan, page_store_path=page_store_path
     )
@@ -1757,11 +1817,19 @@ def merge_rollforward_table_repair_v1(
 
 
 def crop_rollforward_table_image_v1(
-    image_bytes: bytes, *, plan: Mapping[str, Any], page_store_path: Path
+    image_bytes: bytes,
+    *,
+    plan: Mapping[str, Any],
+    page_store_path: Path,
+    authority: Mapping[str, Any],
 ) -> tuple[bytes, dict[str, Any]]:
     """Crop one immutable image by its receipt-bound, declarative table box."""
 
-    checked_plan = _validated_plan(plan)
+    checked_plan = _authoritative_plan(
+        plan,
+        authority=authority,
+        page_store_path=page_store_path,
+    )
     validate_rollforward_table_repair_plan_page_store_v1(
         checked_plan, page_store_path=page_store_path
     )
@@ -1801,6 +1869,30 @@ def crop_rollforward_table_image_v1(
         **material,
         "crop_receipt_id": "gjfrtcv1:crop:" + canonical_json_sha256_v1(material),
     }
+
+
+def _replay_crop_artifact(
+    *,
+    plan: Mapping[str, Any],
+    crop_receipt: Mapping[str, Any],
+    source_image_bytes: bytes,
+    crop_image_bytes: bytes,
+    page_store_path: Path,
+    authority: Mapping[str, Any],
+) -> dict[str, Any]:
+    if type(crop_image_bytes) is not bytes:
+        raise _error("roll-forward table repair crop artifact bytes are invalid")
+    expected_bytes, expected_receipt = crop_rollforward_table_image_v1(
+        source_image_bytes,
+        plan=plan,
+        page_store_path=page_store_path,
+        authority=authority,
+    )
+    if crop_image_bytes != expected_bytes or not same_typed_json_v1(
+        dict(crop_receipt), expected_receipt
+    ):
+        raise _error("roll-forward table repair crop artifact does not replay source pixels")
+    return expected_receipt
 
 
 def validate_rollforward_table_repair_usage_v1(value: Any) -> dict[str, Any]:
@@ -1882,6 +1974,25 @@ def _content_ref(value: Any, label: str) -> dict[str, Any] | None:
     ):
         raise _error(f"{label} is invalid")
     return canonical_clone_v1(checked)
+
+
+def _artifact_bytes(
+    artifacts_by_sha256: Mapping[str, bytes],
+    *,
+    sha256_value: str,
+    size_bytes: int,
+    label: str,
+) -> bytes:
+    if type(artifacts_by_sha256) is not dict:
+        raise _error(f"{label} artifact frontier is invalid")
+    payload = artifacts_by_sha256.get(sha256_value)
+    if (
+        type(payload) is not bytes
+        or len(payload) != size_bytes
+        or sha256(payload).hexdigest() != sha256_value
+    ):
+        raise _error(f"{label} artifact bytes are absent or do not replay")
+    return payload
 
 
 def _validation_record(value: Any) -> dict[str, Any]:
@@ -2105,12 +2216,16 @@ def _repair_receipt_for_plan(value: Any, *, plan: Mapping[str, Any]) -> dict[str
 def build_rollforward_table_repair_attempt_v1(
     *,
     plan: Mapping[str, Any],
+    authority: Mapping[str, Any],
+    page_store_path: Path,
     prior_attempts: Sequence[Mapping[str, Any]],
     thinking_level: str,
     outcome: str,
     observed_page_json_version_id: str | None,
     repair_receipt: Mapping[str, Any] | None,
     crop_receipt: Mapping[str, Any],
+    source_image_bytes: bytes,
+    crop_image_bytes: bytes,
     response_artifact_ref: Mapping[str, Any] | None,
     raw_response_bytes: bytes | None,
     validation: Mapping[str, Any],
@@ -2120,7 +2235,11 @@ def build_rollforward_table_repair_attempt_v1(
 ) -> dict[str, Any]:
     """Append one typed low/medium/high sibling attempt ledger record."""
 
-    checked_plan = _validated_plan(plan)
+    checked_plan = _authoritative_plan(
+        plan,
+        authority=authority,
+        page_store_path=page_store_path,
+    )
     prior = [_validated_attempt(item) for item in prior_attempts]
     if any(
         item["repair_job_id"] != checked_plan["repair_job_id"]
@@ -2146,7 +2265,14 @@ def build_rollforward_table_repair_attempt_v1(
     checked_usage = validate_rollforward_table_repair_usage_v1(dict(usage))
     checked_provider = _provider(provider)
     _provider_usage_gate(checked_provider, checked_usage)
-    checked_crop = _crop_receipt(crop_receipt, plan=checked_plan)
+    checked_crop = _replay_crop_artifact(
+        plan=checked_plan,
+        crop_receipt=crop_receipt,
+        source_image_bytes=source_image_bytes,
+        crop_image_bytes=crop_image_bytes,
+        page_store_path=page_store_path,
+        authority=authority,
+    )
     if any(
         _crop_receipt(item["crop_receipt"], plan=checked_plan) != checked_crop
         or item["request_contract_sha256"]
@@ -2166,6 +2292,7 @@ def build_rollforward_table_repair_attempt_v1(
         or len(raw_response_bytes) != checked_response_ref["size_bytes"]
     ):
         raise _error("roll-forward table repair raw response bytes do not bind their ref")
+    decoded = None
     decoded_response_sha = None
     if raw_response_bytes is not None:
         try:
@@ -2196,6 +2323,7 @@ def build_rollforward_table_repair_attempt_v1(
         if (
             type(observed_page_json_version_id) is not str
             or checked_response_ref is None
+            or decoded is None
             or checked_validation != {"reason_codes": [], "status": "PASS"}
             or decoded_response_sha != checked_receipt["repair_response_sha256"]
         ):
@@ -2205,6 +2333,41 @@ def build_rollforward_table_repair_attempt_v1(
             "gfpstorev1:json:",
             "roll-forward table repair observed version",
         )
+        base_evidence = load_rollforward_table_page_evidence_v1(
+            page_store_path,
+            page_json_version_ids=[checked_plan["base_page_json_version_id"]],
+        )[0]
+        expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
+            base_evidence["page_json"],
+            plan=checked_plan,
+            repair=decoded,
+            page_store_path=page_store_path,
+            authority=authority,
+        )
+        if not same_typed_json_v1(expected_receipt, checked_receipt):
+            raise _error("resolved roll-forward table repair receipt does not exact-replay")
+        from bctc_ai.storage.gemini_financial_page_store_v1 import (
+            page_json_region_repair_lineages_v1,
+        )
+
+        lineage = page_json_region_repair_lineages_v1(
+            page_store_path,
+            observed_page_json_version_ids=[observed_page_json_version_id],
+        )[0]
+        merged_evidence = load_rollforward_table_page_evidence_v1(
+            page_store_path,
+            page_json_version_ids=[lineage["canonical_merged_page_json_version_id"]],
+        )[0]
+        if (
+            lineage["base_page_json_version_id"] != checked_plan["base_page_json_version_id"]
+            or not same_typed_json_v1(lineage["repair_receipt"], expected_receipt)
+            or lineage["repair_receipt_sha256"]
+            != sha256(canonical_json_bytes_v1(expected_receipt) + b"\n").hexdigest()
+            or merged_evidence["source_binding_without_crop"]
+            != base_evidence["source_binding_without_crop"]
+            or not same_typed_json_v1(merged_evidence["page_json"], expected_merged)
+        ):
+            raise _error("resolved roll-forward table repair stored lineage does not exact-replay")
         repair_id = checked_receipt["repair_id"]
         receipt_sha = sha256(canonical_json_bytes_v1(checked_receipt) + b"\n").hexdigest()
         next_status = "RESOLVED"
@@ -2251,6 +2414,10 @@ def build_rollforward_table_repair_overlay_v1(
     plans: Sequence[Mapping[str, Any]],
     attempts: Sequence[Mapping[str, Any]],
     page_store_path: Path,
+    authority: Mapping[str, Any],
+    source_image_artifacts_by_sha256: Mapping[str, bytes],
+    crop_image_artifacts_by_sha256: Mapping[str, bytes],
+    response_artifacts_by_sha256: Mapping[str, bytes],
 ) -> dict[str, Any]:
     """Build standard replacement rows for a later family effective frontier."""
 
@@ -2261,9 +2428,17 @@ def build_rollforward_table_repair_overlay_v1(
         checked_plans
     ):
         raise _error("roll-forward table repair overlay plan frontier is empty or duplicate")
+    rebuilt_by_job = {
+        plan["repair_job_id"]: plan
+        for plan in _authoritative_plan_axis(authority, page_store_path=page_store_path)
+    }
+    if any(
+        plan["repair_job_id"] not in rebuilt_by_job
+        or not same_typed_json_v1(plan, rebuilt_by_job[plan["repair_job_id"]])
+        for plan in checked_plans
+    ):
+        raise _error("table repair overlay plan is not the exact authoritative replay")
     plan_by_job = {plan["repair_job_id"]: plan for plan in checked_plans}
-    for plan in checked_plans:
-        validate_rollforward_table_repair_plan_page_store_v1(plan, page_store_path=page_store_path)
     if any(attempt["repair_job_id"] not in plan_by_job for attempt in checked_attempts):
         raise _error("roll-forward table repair overlay contains an unplanned attempt")
     for attempt in checked_attempts:
@@ -2274,7 +2449,35 @@ def build_rollforward_table_repair_overlay_v1(
             plan["request_contract"]
         ):
             raise _error("roll-forward table repair overlay attempt crosses one plan")
-        _crop_receipt(attempt["crop_receipt"], plan=plan)
+        source_image_bytes = _artifact_bytes(
+            source_image_artifacts_by_sha256,
+            sha256_value=plan["source_binding"]["image_sha256"],
+            size_bytes=plan["source_binding"]["image_size_bytes"],
+            label="table repair source image",
+        )
+        crop_receipt = attempt["crop_receipt"]
+        crop_image_bytes = _artifact_bytes(
+            crop_image_artifacts_by_sha256,
+            sha256_value=crop_receipt["crop_image_sha256"],
+            size_bytes=crop_receipt["crop_size_bytes"],
+            label="table repair crop image",
+        )
+        _replay_crop_artifact(
+            plan=plan,
+            crop_receipt=crop_receipt,
+            source_image_bytes=source_image_bytes,
+            crop_image_bytes=crop_image_bytes,
+            page_store_path=page_store_path,
+            authority=authority,
+        )
+        response_ref = attempt["response_artifact_ref"]
+        if response_ref is not None:
+            _artifact_bytes(
+                response_artifacts_by_sha256,
+                sha256_value=response_ref["sha256"],
+                size_bytes=response_ref["size_bytes"],
+                label="table repair response",
+            )
     resolved_attempts = [
         attempt for attempt in checked_attempts if attempt["next_status"] == "RESOLVED"
     ]
@@ -2303,7 +2506,16 @@ def build_rollforward_table_repair_overlay_v1(
             ),
             key=lambda item: item["attempt_ordinal"],
         )
-        if not job_attempts or job_attempts[-1]["next_status"] not in {"RESOLVED", "ABSTAINED"}:
+        if (
+            not job_attempts
+            or [item["attempt_ordinal"] for item in job_attempts]
+            != list(range(1, len(job_attempts) + 1))
+            or any(
+                item["next_status"] != "PENDING" or item["outcome"] == "RESOLVED"
+                for item in job_attempts[:-1]
+            )
+            or job_attempts[-1]["next_status"] not in {"RESOLVED", "ABSTAINED"}
+        ):
             raise _error("roll-forward table repair overlay contains a nonterminal job")
         terminal = job_attempts[-1]
         statuses.append(terminal["next_status"])
@@ -2319,7 +2531,45 @@ def build_rollforward_table_repair_overlay_v1(
             != terminal["decoded_response_sha256"]
         ):
             raise _error("roll-forward table repair overlay page-store lineage drifted")
-        _repair_receipt_for_plan(lineage["repair_receipt"], plan=plan)
+        response_ref = terminal["response_artifact_ref"]
+        if response_ref is None:
+            raise _error("resolved roll-forward table repair response artifact is absent")
+        raw_response = _artifact_bytes(
+            response_artifacts_by_sha256,
+            sha256_value=response_ref["sha256"],
+            size_bytes=response_ref["size_bytes"],
+            label="table repair response",
+        )
+        base_evidence = load_rollforward_table_page_evidence_v1(
+            page_store_path,
+            page_json_version_ids=[plan["base_page_json_version_id"]],
+        )[0]
+        target = rollforward_table_repair_target_v1(base_evidence["page_json"], plan=plan)
+        try:
+            decoded = decode_rollforward_table_repair_text_v1(
+                raw_response.decode("utf-8"), target=target
+            )
+        except UnicodeDecodeError as exc:
+            raise _error("resolved roll-forward response artifact is not UTF-8") from exc
+        expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
+            base_evidence["page_json"],
+            plan=plan,
+            repair=decoded,
+            page_store_path=page_store_path,
+            authority=authority,
+        )
+        merged_evidence = load_rollforward_table_page_evidence_v1(
+            page_store_path,
+            page_json_version_ids=[lineage["canonical_merged_page_json_version_id"]],
+        )[0]
+        if (
+            not same_typed_json_v1(lineage["repair_receipt"], expected_receipt)
+            or not same_typed_json_v1(merged_evidence["page_json"], expected_merged)
+            or merged_evidence["source_binding_without_crop"]
+            != base_evidence["source_binding_without_crop"]
+        ):
+            raise _error("roll-forward table repair overlay exact page diff does not replay")
+        _repair_receipt_for_plan(expected_receipt, plan=plan)
         replacements.append(
             {
                 "base_page_json_version_id": plan["base_page_json_version_id"],
