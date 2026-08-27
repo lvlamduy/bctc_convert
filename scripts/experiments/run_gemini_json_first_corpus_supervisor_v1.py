@@ -1666,12 +1666,50 @@ def _replay_selected_document_for_corpus_v1(
         source_sha256=planned["document"]["source_sha256"],
     )
     if selected is None:
+        page_prompt_variant = []
+        legacy_manifest_path = document_root / "current-document-manifest.json"
+        if legacy_manifest_path.exists():
+            legacy_manifest = _json_file(legacy_manifest_path)
+            legacy_material = {
+                key: value
+                for key, value in legacy_manifest.items()
+                if key != "document_manifest_id"
+            }
+            legacy_document = legacy_manifest.get("document")
+            legacy_pages = legacy_manifest.get("pages")
+            expected_pages = list(range(1, planned["document"]["page_count"] + 1))
+            if (
+                legacy_manifest.get("format_version") != "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+                or legacy_manifest.get("document_manifest_id")
+                != "gfdmv1:manifest:" + canonical_json_sha256_v1(legacy_material)
+                or legacy_manifest.get("page_count") != len(expected_pages)
+                or type(legacy_document) is not dict
+                or legacy_document.get("source_logical_name")
+                != planned["document"]["relative_path"]
+                or legacy_document.get("source_sha256") != planned["document"]["source_sha256"]
+                or legacy_document.get("source_size_bytes")
+                != planned["document"]["source_size_bytes"]
+                or type(legacy_pages) is not list
+                or [page.get("physical_page") for page in legacy_pages if type(page) is dict]
+                != expected_pages
+                or any(page.get("status") == "UNRESOLVED_PAGE" for page in legacy_pages)
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "legacy current document manifest identity or page frontier drifted"
+                )
+            legacy_variants = _prompt_variants_from_manifest_v1(legacy_manifest)
+            default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
+            page_prompt_variant = [
+                f"{page}={variant}"
+                for page, variant in legacy_variants.items()
+                if variant != default_variant
+            ]
         built = build_current_document_manifest(
             argparse.Namespace(
                 artifact_root=args.artifact_root,
                 database=args.database,
                 ledger=args.ledger,
-                page_prompt_variant=[],
+                page_prompt_variant=page_prompt_variant,
                 plan=args.plan,
                 source_root=args.source_root,
                 task_id=planned["tasks"][0]["task_id"],

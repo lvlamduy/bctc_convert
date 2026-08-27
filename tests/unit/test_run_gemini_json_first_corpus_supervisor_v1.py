@@ -2847,6 +2847,131 @@ def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store
         )
 
 
+def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
+    monkeypatch, tmp_path
+) -> None:
+    prompt_sha = hashlib.sha256(
+        target.build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+    ).hexdigest()
+    image_sha = "3" * 64
+    planned = {
+        "document": {
+            "page_count": 1,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "2" * 64,
+            "source_size_bytes": 200,
+        },
+        "document_plan_id": "gjfpdocv1:" + "1" * 64,
+        "tasks": [{"task_id": "task-1"}],
+    }
+    material = {
+        "document": {
+            "source_logical_name": "ACB/report.pdf",
+            "source_sha256": "2" * 64,
+            "source_size_bytes": 200,
+        },
+        "extraction_contract": {
+            "page_image_sha256s": [{"image_sha256": image_sha, "physical_page": 1}],
+            "page_prompt_sha256s": [{"physical_page": 1, "prompt_sha256": prompt_sha}],
+            "preferred_gateway_service_tiers": target._preferred_gateway_service_tiers_v1(),
+        },
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+        "page_count": 1,
+        "pages": [
+            {
+                "canonical_json_sha256": "4" * 64,
+                "physical_page": 1,
+                "provider_route": {
+                    "gateway": "OPENROUTER",
+                    "requested_service_tier": "flex",
+                    "selected_provider": "Google",
+                },
+                "selected_service_tier": "flex",
+                "status": "FINANCIAL_NOTE_CONTENT",
+            }
+        ],
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": 1},
+        "totals": {"cost_usd": "0.001000000000"},
+    }
+    manifest = {
+        **material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material),
+    }
+    document_root = tmp_path / "artifacts/documents" / ("1" * 64)
+    legacy_path = document_root / "current-document-manifest.json"
+    target._write_or_verify(legacy_path, canonical_json_bytes_v1(manifest) + b"\n")
+    manifest_relative = Path("current-document-manifests") / (
+        manifest["document_manifest_id"].split(":", 2)[2] + ".json"
+    )
+    manifest_path = document_root / manifest_relative
+    target._write_or_verify(manifest_path, canonical_json_bytes_v1(manifest) + b"\n")
+    selection = target.build_current_document_manifest_selection_v1(
+        document_plan_id=planned["document_plan_id"],
+        source_sha256="2" * 64,
+        document_manifest_id=manifest["document_manifest_id"],
+        document_manifest_ref={
+            "path": manifest_relative.as_posix(),
+            "sha256": hashlib.sha256(canonical_json_bytes_v1(manifest) + b"\n").hexdigest(),
+            "size_bytes": len(canonical_json_bytes_v1(manifest) + b"\n"),
+        },
+        page_image_frontier_sha256=canonical_json_sha256_v1(
+            [{"image_sha256": image_sha, "physical_page": 1}]
+        ),
+        page_prompt_frontier_sha256=canonical_json_sha256_v1(
+            [{"physical_page": 1, "prompt_variant": "items"}]
+        ),
+        prior_selection_ids=[],
+    )
+    selection_path = (
+        document_root
+        / "current-document-manifest-selections"
+        / (selection["selection_id"].split(":", 2)[2] + ".json")
+    )
+    target._write_or_verify(selection_path, canonical_json_bytes_v1(selection) + b"\n")
+    loads = iter([None, (selection, manifest_path)])
+    monkeypatch.setattr(
+        target,
+        "load_current_document_manifest_selection_v1",
+        lambda *_a, **_k: next(loads),
+    )
+    captured = []
+
+    def build(args):
+        captured.append(args.page_prompt_variant)
+        return {"disposition": "SUCCEEDED"}
+
+    monkeypatch.setattr(target, "build_current_document_manifest", build)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda *_a, **_k: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: image_sha},
+    )
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: manifest,
+    )
+    record = target._replay_selected_document_for_corpus_v1(
+        args=Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            ledger=tmp_path / "ledger.sqlite3",
+            plan=tmp_path / "plan.json",
+            source_root=tmp_path / "source",
+        ),
+        plan={"policy": {"dpi": 300}},
+        planned=planned,
+        task={"source_sha256": "2" * 64, "relative_path": "ACB/report.pdf"},
+    )
+    assert captured == [["1=items"]]
+    assert record["selection_id"] == selection["selection_id"]
+
+
 def test_sqlite_snapshot_is_integrity_checked_immutable_and_single_link(tmp_path) -> None:
     source = tmp_path / "source.sqlite3"
     with sqlite3.connect(source) as connection:
