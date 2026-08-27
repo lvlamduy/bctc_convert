@@ -3,6 +3,10 @@
   "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
   "format_version": "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
   "layout_spec": {
+    "aggregate_population_aliases": [
+      "Tổng cộng",
+      "Tổng"
+    ],
     "allowed_orientations": [
       "STACKED_PERIOD_BLOCKS",
       "PERIOD_TABLES_LANE_COLUMNS",
@@ -29,6 +33,7 @@
       {
         "aliases": [
           "Dự phòng cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+          "Dự phòng rủi ro cho vay giao dịch ký quỹ",
           "Dự phòng rủi ro cho vay giao dịch ký quỹ và ứng trước khách hàng",
           "Dự phòng cho vay giao dịch ký quỹ và ứng trước khách hàng",
           "Dự phòng cho vay giao dịch ký quỹ và ứng trước"
@@ -127,12 +132,61 @@
         "Thư tín dụng"
       ]
     },
+    "period_movement_context_aliases": [
+      "Biến động dự phòng",
+      "Thay đổi dự phòng"
+    ],
     "unit_aliases": [
       "Triệu đồng",
       "Tỷ đồng",
       "Nghìn đồng",
       "Đồng",
       "VND"
+    ],
+    "unit_bindings": [
+      {
+        "aliases": [
+          "Nghìn đồng",
+          "Nghìn VND",
+          "Thousand VND"
+        ],
+        "canonical_unit": "THOUSAND_VND",
+        "currency": "VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 3
+      },
+      {
+        "aliases": [
+          "Triệu đồng",
+          "Triệu VND",
+          "Million VND"
+        ],
+        "canonical_unit": "MILLION_VND",
+        "currency": "VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 6
+      },
+      {
+        "aliases": [
+          "Tỷ đồng",
+          "Tỷ VND",
+          "Billion VND"
+        ],
+        "canonical_unit": "BILLION_VND",
+        "currency": "VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 9
+      },
+      {
+        "aliases": [
+          "Đồng",
+          "VND"
+        ],
+        "canonical_unit": "VND",
+        "currency": "VND",
+        "document_consensus_eligible": false,
+        "magnitude_power10": 0
+      }
     ]
   },
   "period_semantics": "CURRENT_AND_COMPARATIVE_MOVEMENT"

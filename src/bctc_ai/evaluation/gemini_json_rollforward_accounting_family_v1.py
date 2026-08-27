@@ -53,7 +53,8 @@ CLAIM_BOUNDARY = (
     "ENDPOINT_CONTINUITY_EXACT_"
     "SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_"
     "GEOMETRY_PPOCR_VIETOCR_BANK_FILE_PAGE_NOTE_ROUTING_MULTI_UNKNOWN_ZERO_"
-    "COERCION_OR_EXPORT_AUTHORITY"
+    "COERCION_OR_EXPORT_AUTHORITY_CANONICAL_SQLITE_SELECTED_QUERY_AND_CANDIDATE_"
+    "REPLAY_REQUIRED_FOR_PERSISTENCE"
 )
 
 _ORIENTATIONS = {
@@ -159,6 +160,7 @@ def _aliases_by_role(topology: Mapping[str, Any]) -> dict[str, list[str]]:
 
 def _compile_layout(value: Any, *, family_id: str, topology_roles: set[str]) -> dict[str, Any]:
     fields = {
+        "aggregate_population_aliases",
         "allowed_orientations",
         "family_id",
         "format_version",
@@ -167,8 +169,10 @@ def _compile_layout(value: Any, *, family_id: str, topology_roles: set[str]) -> 
         "max_page_span",
         "minimum_required_lanes",
         "movement_roles",
+        "period_movement_context_aliases",
         "population_policy",
         "unit_aliases",
+        "unit_bindings",
     }
     if (
         type(value) is not dict
@@ -262,15 +266,55 @@ def _compile_layout(value: Any, *, family_id: str, topology_roles: set[str]) -> 
         "owner_page_radius": 2,
         "reset_aliases": _normalized_aliases(population["reset_aliases"], label="reset"),
     }
+    if type(value["unit_bindings"]) is not list or not value["unit_bindings"]:
+        raise _error("roll-forward money-unit bindings are invalid")
+    unit_bindings = []
+    canonical_units: set[str] = set()
+    for raw in value["unit_bindings"]:
+        if (
+            type(raw) is not dict
+            or set(raw)
+            != {
+                "aliases",
+                "canonical_unit",
+                "currency",
+                "document_consensus_eligible",
+                "magnitude_power10",
+            }
+            or type(raw["canonical_unit"]) is not str
+            or not raw["canonical_unit"]
+            or raw["canonical_unit"] in canonical_units
+            or raw["currency"] != "VND"
+            or type(raw["document_consensus_eligible"]) is not bool
+            or raw["magnitude_power10"] not in {0, 3, 6, 9}
+            or raw["document_consensus_eligible"] != (raw["magnitude_power10"] > 0)
+        ):
+            raise _error("roll-forward money-unit binding is invalid")
+        canonical_units.add(raw["canonical_unit"])
+        unit_bindings.append(
+            {
+                **canonical_clone_v1(raw),
+                "aliases": _normalized_aliases(
+                    raw["aliases"], label=f"unit-{raw['canonical_unit']}"
+                ),
+            }
+        )
     return {
+        "aggregate_population_aliases": _normalized_aliases(
+            value["aggregate_population_aliases"], label="aggregate-population"
+        ),
         "allowed_orientations": list(value["allowed_orientations"]),
         "lane_roles": lane_roles,
         "max_component_tables": 2,
         "max_page_span": 1,
         "minimum_required_lanes": 2,
         "movement_roles": movement_roles,
+        "period_movement_context_aliases": _normalized_aliases(
+            value["period_movement_context_aliases"], label="period-movement-context"
+        ),
         "population_policy": checked_population,
         "unit_aliases": _normalized_aliases(value["unit_aliases"], label="unit"),
+        "unit_bindings": unit_bindings,
     }
 
 
@@ -520,6 +564,116 @@ def solve_one_unknown_rollforward_lane_v1(
     }
 
 
+def _rebuild_rollforward_equations_from_role_vectors_v1(
+    role_vectors: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Replay the persisted equation axis from its canonical solved role vectors."""
+
+    movement_specs = compiled_specs["layout"]["movement_roles"]
+    required_movements = {item["role"] for item in movement_specs if item["required"]}
+    by_lane: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
+    for vector in role_vectors:
+        key = (vector.get("period_role"), vector.get("lane_role"))
+        movement_role = vector.get("movement_role")
+        if (
+            key[0] not in {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}
+            or type(key[1]) is not str
+            or type(movement_role) is not str
+            or type(vector.get("cell")) is not dict
+            or movement_role in by_lane.setdefault(key, {})
+        ):
+            raise _error("roll-forward role-vector equation axis is invalid")
+        by_lane[key][movement_role] = canonical_clone_v1(vector["cell"])
+    equations = []
+    for period_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+        for lane_role in sorted(lane for period, lane in by_lane if period == period_role):
+            cells = by_lane[(period_role, lane_role)]
+            if not required_movements <= set(cells):
+                continue
+            inferred_roles = [
+                role
+                for role, cell in cells.items()
+                if cell.get("state") == "INFERRED_ONE_UNKNOWN_FULL_RANK"
+            ]
+            if len(inferred_roles) > 1:
+                raise _error("roll-forward role-vector inference axis is invalid")
+            solver_cells = canonical_clone_v1(cells)
+            if inferred_roles:
+                inferred_role = inferred_roles[0]
+                solver_cells[inferred_role] = {
+                    **solver_cells[inferred_role],
+                    "coefficient": None,
+                    "state": "UNKNOWN_BLANK",
+                }
+            solution = solve_one_unknown_rollforward_lane_v1(
+                solver_cells,
+                movement_specs=movement_specs,
+            )
+            if inferred_roles and (
+                solution["status"] != "EXACT_ONE_UNKNOWN_INFERRED"
+                or solution["inferred_role"] != inferred_roles[0]
+                or solution["inferred_coefficient"] != cells[inferred_roles[0]].get("coefficient")
+            ):
+                raise _error("roll-forward inferred role vector does not replay")
+            equations.append(
+                {
+                    "equation_rank": 1,
+                    "inferred_coefficient": solution.get("inferred_coefficient"),
+                    "inferred_role": solution.get("inferred_role"),
+                    "lane_role": lane_role,
+                    "period_role": period_role,
+                    "role_coefficients": [
+                        {
+                            "coefficient": cells[item["role"]]["coefficient"],
+                            "equation_coefficient": item["equation_coefficient"],
+                            "role": item["role"],
+                            "state": cells[item["role"]]["state"],
+                        }
+                        for item in movement_specs
+                        if item["role"] in cells
+                    ],
+                    "status": solution["status"],
+                }
+            )
+    return equations
+
+
+def _rebuild_rollforward_potential_mappings_from_role_vectors_v1(
+    role_vectors: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Replay the exact schema-bound current-period mapping projection."""
+
+    bindings = compiled_specs["schema"]["bindings"]
+    mappings = []
+    for vector in role_vectors:
+        if vector.get("period_role") != "CURRENT_PERIOD":
+            continue
+        report_norm_id = bindings.get((vector.get("lane_role"), vector.get("movement_role")))
+        cell = vector.get("cell")
+        if report_norm_id is None or type(cell) is not dict or cell.get("coefficient") is None:
+            continue
+        material = {
+            **canonical_clone_v1(vector),
+            "mapping_kind": (
+                "DECLARATIVE_ONE_UNKNOWN_FULL_RANK_ROLLFORWARD_INFERENCE_PROPOSAL"
+                if cell.get("state") == "INFERRED_ONE_UNKNOWN_FULL_RANK"
+                else "DECLARATIVE_VISIBLE_ROLLFORWARD_CELL_PROPOSAL"
+            ),
+            "report_norm_id": report_norm_id,
+        }
+        mappings.append(
+            {
+                **material,
+                "item_mapping_id": "gjfrfmv1:item:" + canonical_json_sha256_v1(material),
+            }
+        )
+    return mappings
+
+
 def _node(identifier: str, *, prefix: str, values: list[Any]) -> Any:
     if type(identifier) is not str or not identifier.startswith(prefix):
         raise _error("roll-forward source node identity is invalid")
@@ -614,6 +768,177 @@ def _lane_from_header(path: Any, *, compiled_specs: Mapping[str, Any]) -> str | 
         if (role := _lane_for_surface(value, compiled_specs=compiled_specs)) is not None:
             return role
     return None
+
+
+def _projected_lane_columns_v1(
+    columns: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+    rows: Sequence[Mapping[str, Any]] | None = None,
+) -> tuple[list[str | None], dict[str, Any]]:
+    """Select one declared aggregate population when lane columns repeat.
+
+    Some schedules present geographic or branch sub-populations beside one
+    aggregate block.  A repeated lane remains ambiguous unless exactly one
+    candidate carries a declaratively named aggregate ancestor.  This does
+    not merge, sum, or prefer columns by position.
+    """
+
+    lane_by_column = [
+        _lane_from_header(column.get("header_path_exact"), compiled_specs=compiled_specs)
+        for column in columns
+    ]
+    projected = list(lane_by_column)
+    decisions = []
+    unresolved = []
+    aliases = compiled_specs["layout"]["aggregate_population_aliases"]
+
+    def duplicate_source_cell_receipts(indexes: Sequence[int]) -> list[dict[str, Any]]:
+        if rows is None:
+            return []
+        result = []
+        for block_ordinal, block in enumerate(
+            _row_blocks(list(rows), compiled_specs=compiled_specs),
+            start=1,
+        ):
+            for entry in block:
+                row_index = entry["row_index"]
+                values = rows[row_index].get("values_exact")
+                if type(values) is not list or len(values) != len(columns):
+                    raise _error("roll-forward duplicate population row axis is invalid")
+                result.append(
+                    {
+                        "block_ordinal": block_ordinal,
+                        "candidate_cells": [_money(values[index]) for index in indexes],
+                        "movement_role": entry["movement_role"],
+                        "row_id": f"r{row_index + 1}",
+                    }
+                )
+        return result
+
+    for lane_role in sorted({role for role in lane_by_column if role is not None}):
+        indexes = [index for index, role in enumerate(lane_by_column) if role == lane_role]
+        if len(indexes) == 1:
+            continue
+        aggregate_matches_by_index = {
+            index: [
+                _normalized(surface)
+                for surface in columns[index].get("header_path_exact", [])
+                if _normalized(surface) in aliases
+            ]
+            for index in indexes
+        }
+        aggregate_indexes = [index for index in indexes if aggregate_matches_by_index[index]]
+        if len(aggregate_indexes) != 1:
+            unresolved.append(
+                {
+                    "aggregate_candidate_column_ordinals": [
+                        index + 1 for index in aggregate_indexes
+                    ],
+                    "candidate_column_ordinals": [index + 1 for index in indexes],
+                    "duplicate_source_cell_receipts": duplicate_source_cell_receipts(indexes),
+                    "lane_role": lane_role,
+                }
+            )
+            continue
+        selected = aggregate_indexes[0]
+        identities = aggregate_matches_by_index[selected]
+        if len(set(identities)) != 1:
+            unresolved.append(
+                {
+                    "aggregate_candidate_column_ordinals": [selected + 1],
+                    "candidate_column_ordinals": [index + 1 for index in indexes],
+                    "duplicate_source_cell_receipts": duplicate_source_cell_receipts(indexes),
+                    "lane_role": lane_role,
+                    "reason": "AGGREGATE_HEADER_IDENTITY_AMBIGUOUS",
+                }
+            )
+            continue
+        row_sum_receipts = []
+        if rows is not None:
+            for row_index, row in enumerate(rows):
+                if _role_for_row(row, compiled_specs=compiled_specs) is None:
+                    continue
+                values = row.get("values_exact")
+                if type(values) is not list or len(values) != len(columns):
+                    raise _error("roll-forward aggregate population row axis is invalid")
+                cells = [_money(values[index]) for index in indexes]
+                if any(cell["coefficient"] is None for cell in cells):
+                    row_sum_receipts.append(
+                        {
+                            "candidate_coefficients": [cell["coefficient"] for cell in cells],
+                            "row_id": f"r{row_index + 1}",
+                            "status": "UNKNOWN_SIBLING_OR_AGGREGATE_CELL",
+                        }
+                    )
+                    continue
+                selected_offset = indexes.index(selected)
+                selected_coefficient = cells[selected_offset]["coefficient"]
+                sibling_sum = sum(
+                    cell["coefficient"]
+                    for offset, cell in enumerate(cells)
+                    if offset != selected_offset
+                )
+                row_sum_receipts.append(
+                    {
+                        "candidate_coefficients": [cell["coefficient"] for cell in cells],
+                        "row_id": f"r{row_index + 1}",
+                        "selected_coefficient": selected_coefficient,
+                        "sibling_sum": sibling_sum,
+                        "status": (
+                            "EXACT_HORIZONTAL_AGGREGATE"
+                            if selected_coefficient == sibling_sum
+                            else "HORIZONTAL_AGGREGATE_MISMATCH"
+                        ),
+                    }
+                )
+        if rows is not None and (
+            not any(item["status"] == "EXACT_HORIZONTAL_AGGREGATE" for item in row_sum_receipts)
+            or any(item["status"] == "HORIZONTAL_AGGREGATE_MISMATCH" for item in row_sum_receipts)
+        ):
+            unresolved.append(
+                {
+                    "aggregate_candidate_column_ordinals": [selected + 1],
+                    "candidate_column_ordinals": [index + 1 for index in indexes],
+                    "duplicate_source_cell_receipts": duplicate_source_cell_receipts(indexes),
+                    "lane_role": lane_role,
+                    "reason": "AGGREGATE_ROW_SUM_NOT_EXACT",
+                    "row_sum_receipts": row_sum_receipts,
+                }
+            )
+            continue
+        for index in indexes:
+            if index != selected:
+                projected[index] = None
+        decisions.append(
+            {
+                "aggregate_header_path_exact": canonical_clone_v1(
+                    columns[selected].get("header_path_exact")
+                ),
+                "aggregate_identity_normalized": identities[0],
+                "candidate_column_ordinals": [index + 1 for index in indexes],
+                "lane_role": lane_role,
+                "row_sum_receipts": row_sum_receipts,
+                "selected_column_ordinal": selected + 1,
+            }
+        )
+    return projected, {
+        "aggregate_population_aliases": list(aliases),
+        "decisions": decisions,
+        "raw_lane_roles_by_column": lane_by_column,
+        "rule": (
+            "REPEATED_LANE_REQUIRES_EXACTLY_ONE_DECLARED_AGGREGATE_ANCESTOR_"
+            "OTHERWISE_REMAINS_AMBIGUOUS"
+        ),
+        "status": (
+            "DUPLICATE_POPULATION_NOT_UNIQUELY_AGGREGATED"
+            if unresolved
+            else "UNIQUE_AGGREGATE_POPULATION_SELECTED"
+            if decisions
+            else "DIRECT_UNIQUE_LANE_COLUMNS"
+        ),
+        "unresolved_duplicate_lanes": unresolved,
+    }
 
 
 def _lane_from_table_context(
@@ -871,24 +1196,55 @@ def _explicit_continuation_evidence(
     return evidence
 
 
+def _canonical_money_units_from_surface_v1(
+    value: Any,
+    *,
+    compiled_specs: Mapping[str, Any],
+    document_consensus_only: bool = False,
+) -> set[str]:
+    folded = _normalized(value)
+    if not folded or "ty gia" in folded or "exchange rate" in folded:
+        return set()
+    matched = []
+    for binding in compiled_specs["layout"]["unit_bindings"]:
+        if document_consensus_only and not binding["document_consensus_eligible"]:
+            continue
+        if any(_matches_alias(value, [alias]) for alias in binding["aliases"]):
+            matched.append(binding)
+    magnitude_matches = [item for item in matched if item["magnitude_power10"] > 0]
+    selected = magnitude_matches or matched
+    return {item["canonical_unit"] for item in selected}
+
+
 def _bound_unit(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -> str | None:
-    surfaces = [table.get("unit_exact")]
-    for column in table.get("columns", []):
-        surfaces.extend(column.get("header_path_exact", []))
-    aliases = compiled_specs["layout"]["unit_aliases"]
-    matched = {
-        alias
-        for surface in surfaces
-        if type(surface) is str
-        for alias in aliases
-        if alias == _normalized(surface) or _normalized(surface).endswith(" " + alias)
-    }
-    if not matched:
+    table_units = _canonical_money_units_from_surface_v1(
+        table.get("unit_exact"),
+        compiled_specs=compiled_specs,
+    )
+    if len(table_units) > 1:
         return None
-    selected = max(matched, key=lambda item: (len(item.split()), len(item), item))
-    if any(selected != alias and not selected.endswith(" " + alias) for alias in matched):
-        raise _error("roll-forward table binds multiple money units")
-    return selected
+    money_column_units = []
+    for column in table.get("columns", []):
+        if column.get("value_kind") != "MONEY":
+            continue
+        column_units = {
+            unit
+            for surface in column.get("header_path_exact", [])
+            for unit in _canonical_money_units_from_surface_v1(
+                surface,
+                compiled_specs=compiled_specs,
+            )
+        }
+        money_column_units.append(column_units)
+    if table_units:
+        table_unit = next(iter(table_units))
+        if any(len(units) > 1 or (units and units != {table_unit}) for units in money_column_units):
+            return None
+        return table_unit
+    if not money_column_units or any(len(units) != 1 for units in money_column_units):
+        return None
+    uniform_units = {next(iter(units)) for units in money_column_units}
+    return next(iter(uniform_units)) if len(uniform_units) == 1 else None
 
 
 def _unit_visible(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -> bool:
@@ -917,6 +1273,51 @@ def _period_from_surfaces(values: Sequence[Any]) -> tuple[date, str] | None:
     return None
 
 
+def _period_semantics_evidence_v1(
+    period: tuple[date, str] | None,
+    *,
+    source_kind: str | None,
+    date_source_surfaces: Sequence[Any],
+    local_context_surfaces: Sequence[Any],
+    document_fiscal_close_year_binding_receipt: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    if period is None or source_kind is None:
+        return None
+    date_source_exact_axis = []
+    for value in date_source_surfaces:
+        tokens = _date_tokens(value)
+        document_year_bound = (
+            document_fiscal_close_year_binding_receipt is not None
+            and type(value) is str
+            and not (_DATE_DMY.search(_normalized(value)) or _DATE_WORDS.search(_normalized(value)))
+            and any(token[0].year == period[0].year for token in tokens)
+        )
+        if (
+            type(value) is str
+            and value
+            and (any(token[0] == period[0] for token in tokens) or document_year_bound)
+            and value not in date_source_exact_axis
+        ):
+            date_source_exact_axis.append(value)
+    if not date_source_exact_axis:
+        raise _error("roll-forward period evidence has no exact date source")
+    local_context_exact_axis = []
+    for value in local_context_surfaces:
+        if type(value) is str and value and value not in local_context_exact_axis:
+            local_context_exact_axis.append(value)
+    return {
+        "document_fiscal_close_year_binding_receipt": (
+            canonical_clone_v1(document_fiscal_close_year_binding_receipt)
+            if document_fiscal_close_year_binding_receipt is not None
+            else None
+        ),
+        "date_source_exact_axis": date_source_exact_axis,
+        "local_context_exact_axis": local_context_exact_axis,
+        "period_date": period[0].isoformat(),
+        "source_kind": source_kind,
+    }
+
+
 def classify_gemini_json_rollforward_table_v1(
     *,
     section: Mapping[str, Any],
@@ -943,10 +1344,11 @@ def classify_gemini_json_rollforward_table_v1(
     core_roles = {
         item["role"] for item in compiled_specs["layout"]["movement_roles"] if item["required"]
     }
-    lane_by_column = [
-        _lane_from_header(column.get("header_path_exact"), compiled_specs=compiled_specs)
-        for column in columns
-    ]
+    lane_by_column, lane_population_assignment_receipt = _projected_lane_columns_v1(
+        columns,
+        compiled_specs=compiled_specs,
+        rows=rows,
+    )
     column_lanes = {role for role in lane_by_column if role is not None}
     context = _lane_context_evidence(
         section,
@@ -978,6 +1380,14 @@ def classify_gemini_json_rollforward_table_v1(
         " ".join((structural_text, accepted_header_text)),
         population_policy["owner_aliases"],
     )
+    period_context_owner_visible = _matches_alias(
+        " ".join(
+            value
+            for value in [section.get("title_exact"), *section.get("narratives_exact", [])]
+            if type(value) is str
+        ),
+        population_policy["owner_aliases"],
+    )
     structural_hard_negative_visible = context["hard_negative_visible"] or _matches_alias(
         structural_text, population_policy["hard_negative_aliases"]
     )
@@ -997,8 +1407,10 @@ def classify_gemini_json_rollforward_table_v1(
         "context_lane_role": context_lane,
         "context_reset_visible": context["reset_visible"],
         "local_owner_visible": local_owner_visible,
+        "lane_population_assignment_receipt": lane_population_assignment_receipt,
         "movement_roles_in_source_order": movement_roles,
         "orientation": orientation,
+        "period_context_owner_visible": period_context_owner_visible,
         "reasons": reasons,
         "structural_hard_negative_visible": structural_hard_negative_visible,
     }
@@ -1033,11 +1445,16 @@ def _row_blocks(
         source_block_ordinal: int | None = None,
     ) -> dict[str, Any]:
         token = _date_token(rows[index].get("label_exact"))
+        hierarchy_path_exact = rows[index].get("hierarchy_path_exact")
+        if type(hierarchy_path_exact) is not list:
+            raise _error("roll-forward source row hierarchy is invalid")
         return {
             "assignment_kind": assignment_kind,
             "endpoint_date": token[0].isoformat() if token is not None else None,
             "movement_role": role,
+            "row_hierarchy_path_exact": canonical_clone_v1(hierarchy_path_exact),
             "row_index": index,
+            "row_label_exact": rows[index].get("label_exact"),
             "source_block_ordinal": source_block_ordinal,
             "source_movement_role": source_movement_role or role,
         }
@@ -1138,10 +1555,11 @@ def _period_lane_cells_from_lane_columns(
     if type(columns) is not list or not columns or type(rows) is not list or not rows:
         raise _error("roll-forward table row/column axis is incomplete")
     _checked_row_values(rows, column_count=len(columns))
-    lane_by_column = [
-        _lane_from_header(column.get("header_path_exact"), compiled_specs=compiled_specs)
-        for column in columns
-    ]
+    lane_by_column, lane_population_assignment_receipt = _projected_lane_columns_v1(
+        columns,
+        compiled_specs=compiled_specs,
+        rows=rows,
+    )
     if len({role for role in lane_by_column if role is not None}) < 2:
         return []
     blocks = _row_blocks(rows, compiled_specs=compiled_specs)
@@ -1151,16 +1569,37 @@ def _period_lane_cells_from_lane_columns(
     for block_ordinal, block in enumerate(blocks, start=1):
         block_rows = [rows[item["row_index"]] for item in block]
         closing_row = block_rows[-1]
-        period = (
-            _period_from_surfaces([closing_row.get("label_exact")])
-            or _period_from_surfaces([table.get("title_exact")])
-            or _period_from_surfaces(
-                [
-                    *section.get("narratives_exact", []),
-                    section.get("title_exact"),
-                ]
-            )
+        closing_period = _period_from_surfaces([closing_row.get("label_exact")])
+        table_period = _period_from_surfaces([table.get("title_exact")])
+        section_period = _period_from_surfaces(
+            [*section.get("narratives_exact", []), section.get("title_exact")]
         )
+        period = closing_period or table_period or section_period
+        period_assignment_source_kind = (
+            "CLOSING_ROW_LABEL"
+            if closing_period is not None
+            else "TABLE_TITLE"
+            if table_period is not None
+            else "SELECTED_SECTION_CONTEXT"
+            if section_period is not None
+            else None
+        )
+        section_period_surfaces = [
+            *section.get("narratives_exact", []),
+            section.get("title_exact"),
+        ]
+        period_date_source_surfaces = (
+            [closing_row.get("label_exact")]
+            if closing_period is not None
+            else [table.get("title_exact")]
+            if table_period is not None
+            else section_period_surfaces
+        )
+        local_period_context_surfaces = [
+            *section_period_surfaces,
+            table.get("title_exact"),
+            *(value for column in columns for value in column.get("header_path_exact", [])),
+        ]
         result.append(
             {
                 "block_ordinal": block_ordinal,
@@ -1173,7 +1612,9 @@ def _period_lane_cells_from_lane_columns(
                         "endpoint_date": entry["endpoint_date"],
                         "lane_role": lane_role,
                         "movement_role": entry["movement_role"],
+                        "row_hierarchy_path_exact": entry["row_hierarchy_path_exact"],
                         "row_id": f"r{entry['row_index'] + 1}",
+                        "row_label_exact": entry["row_label_exact"],
                         "source_block_ordinal": entry["source_block_ordinal"],
                         "source_movement_role": entry["source_movement_role"],
                     }
@@ -1182,7 +1623,18 @@ def _period_lane_cells_from_lane_columns(
                     if lane_role is not None
                 ],
                 "locator": canonical_clone_v1(locator),
+                "lane_population_assignment_receipt": canonical_clone_v1(
+                    lane_population_assignment_receipt
+                ),
                 "period": period,
+                "period_assignment_source_kind": period_assignment_source_kind,
+                "period_semantics_evidence": _period_semantics_evidence_v1(
+                    period,
+                    source_kind=period_assignment_source_kind,
+                    date_source_surfaces=period_date_source_surfaces,
+                    local_context_surfaces=local_period_context_surfaces,
+                ),
+                "period_role_hint": None,
             }
         )
     return result
@@ -1206,7 +1658,23 @@ def _period_lane_cells_from_period_columns(
     )
     if lane_role is None:
         return []
-    periods = [_period_from_surfaces(column.get("header_path_exact", [])) for column in columns]
+    period_surfaces = [column.get("header_path_exact", []) for column in columns]
+    periods = [_period_from_surfaces(surfaces) for surfaces in period_surfaces]
+    bare_year_columns = []
+    for column_index, (surfaces, period) in enumerate(zip(period_surfaces, periods, strict=True)):
+        if period is None:
+            continue
+        full_date_visible = any(
+            (_DATE_DMY.search(_normalized(surface)) or _DATE_WORDS.search(_normalized(surface)))
+            for surface in surfaces
+            if type(surface) is str
+        )
+        if not full_date_visible:
+            bare_year_columns.append(column_index)
+    if bare_year_columns:
+        years = {periods[index][0].year for index in bare_year_columns if periods[index]}
+        if len(bare_year_columns) != len(columns) or len(years) != 2:
+            raise _error("roll-forward mixed bare-year/full-date period columns are ambiguous")
     if (
         any(period is None for period in periods)
         or len({period[0] for period in periods if period}) != 2
@@ -1218,6 +1686,12 @@ def _period_lane_cells_from_period_columns(
     block = blocks[0]
     result = []
     for column_index, period in enumerate(periods):
+        local_period_context_surfaces = [
+            section.get("title_exact"),
+            *section.get("narratives_exact", []),
+            table.get("title_exact"),
+            *columns[column_index].get("header_path_exact", []),
+        ]
         result.append(
             {
                 "block_ordinal": column_index + 1,
@@ -1230,17 +1704,326 @@ def _period_lane_cells_from_period_columns(
                         "endpoint_date": entry["endpoint_date"],
                         "lane_role": lane_role,
                         "movement_role": entry["movement_role"],
+                        "row_hierarchy_path_exact": entry["row_hierarchy_path_exact"],
                         "row_id": f"r{entry['row_index'] + 1}",
+                        "row_label_exact": entry["row_label_exact"],
                         "source_block_ordinal": entry["source_block_ordinal"],
                         "source_movement_role": entry["source_movement_role"],
                     }
                     for entry in block
                 ],
                 "locator": canonical_clone_v1(locator),
+                "lane_population_assignment_receipt": None,
                 "period": period,
+                "period_assignment_source_kind": "COLUMN_HEADER_PATH",
+                "period_semantics_evidence": _period_semantics_evidence_v1(
+                    period,
+                    source_kind="COLUMN_HEADER_PATH",
+                    date_source_surfaces=columns[column_index].get("header_path_exact", []),
+                    local_context_surfaces=local_period_context_surfaces,
+                ),
+                "period_role_hint": None,
             }
         )
     return result
+
+
+def _fragments_have_same_full_rank_topology_v1(
+    fragments: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    if len(fragments) != 2:
+        return False
+    fingerprints = []
+    movement_specs = compiled_specs["layout"]["movement_roles"]
+    required_lanes = {
+        item["role"] for item in compiled_specs["layout"]["lane_roles"] if not item["optional"]
+    }
+    for fragment in fragments:
+        cells_by_key: dict[tuple[str, str], Mapping[str, Any]] = {}
+        for item in fragment["cells"]:
+            key = (item["lane_role"], item["movement_role"])
+            if key in cells_by_key:
+                return False
+            cells_by_key[key] = item["cell"]
+        lanes = {lane for lane, _movement in cells_by_key}
+        if not required_lanes <= lanes:
+            return False
+        for lane_role in lanes:
+            solution = solve_one_unknown_rollforward_lane_v1(
+                {
+                    movement: cell
+                    for (lane, movement), cell in cells_by_key.items()
+                    if lane == lane_role
+                },
+                movement_specs=movement_specs,
+            )
+            if solution["status"] not in {"EXACT", "EXACT_ONE_UNKNOWN_INFERRED"}:
+                return False
+        fingerprints.append(sorted([list(key) for key in cells_by_key]))
+    return fingerprints[0] == fingerprints[1]
+
+
+def _adjacent_distinct_component_tables_v1(fragments: Sequence[Mapping[str, Any]]) -> bool:
+    if len(fragments) != 2:
+        return False
+    first, second = (item["locator"] for item in fragments)
+    return (
+        first["page_json_version_id"] == second["page_json_version_id"]
+        and first["section_id"] == second["section_id"]
+        and int(second["table_id"][1:]) == int(first["table_id"][1:]) + 1
+        and first["table_id"] != second["table_id"]
+    )
+
+
+def _resolve_ordered_period_components_v1(
+    fragments: Sequence[dict[str, Any]],
+    *,
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    document_fiscal_close_context_evidence: Mapping[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Bind two adjacent period tables from exact ordered local context.
+
+    Two dated movement narratives form an order-preserving bijection.  With
+    only one current date, the second table remains explicitly symbolic; no
+    calendar date is fabricated.  That weaker assignment is admitted only
+    when both adjacent tables expose the same independently closing topology.
+    """
+
+    result = [dict(fragment) for fragment in fragments]
+    base_receipt = {
+        "assignments": [],
+        "movement_context_evidence": [],
+        "rule": (
+            "ORDERED_DISTINCT_MOVEMENT_DATES_TO_ADJACENT_COMPONENTS_OR_"
+            "ONE_CURRENT_DATE_PLUS_SYMBOLIC_COMPARATIVE"
+        ),
+        "status": "NOT_APPLICABLE",
+    }
+    if not _adjacent_distinct_component_tables_v1(result):
+        return result, base_receipt
+    locators = [fragment["locator"] for fragment in result]
+    version_id = locators[0]["page_json_version_id"]
+    page_json = page_json_by_version.get(version_id)
+    if not isinstance(page_json, Mapping):
+        raise _error("roll-forward period context page is absent")
+    sections = page_json.get("sections")
+    if type(sections) is not list:
+        raise _error("roll-forward period context section axis is invalid")
+    section_ordinal = int(locators[0]["section_id"][1:])
+    section = sections[section_ordinal - 1]
+    if not isinstance(section, Mapping):
+        raise _error("roll-forward period context section is invalid")
+    narratives = section.get("narratives_exact")
+    if type(narratives) is not list:
+        raise _error("roll-forward period context narrative axis is invalid")
+    movement_aliases = compiled_specs["layout"]["period_movement_context_aliases"]
+    owner_text = " ".join(
+        value for value in [section.get("title_exact"), *narratives] if type(value) is str
+    )
+    if not _matches_alias(
+        owner_text,
+        compiled_specs["layout"]["population_policy"]["owner_aliases"],
+    ):
+        return result, {**base_receipt, "status": "LOCAL_OWNER_SCOPE_NOT_VISIBLE"}
+    movement_evidence = []
+
+    def period_context_record(
+        *,
+        source_exact: Any,
+        source_kind: str,
+        narrative_ordinal: int | None,
+    ) -> dict[str, Any] | None:
+        tokens = _date_tokens(source_exact)
+        unique_dates = {token[0] for token in tokens}
+        base = {
+            "date": None,
+            "date_token": None,
+            "document_fiscal_close_year_binding_receipt": None,
+            "narrative_ordinal": narrative_ordinal,
+            "source_exact": source_exact,
+            "source_kind": source_kind,
+            "year": None,
+        }
+        if len(unique_dates) != 1:
+            return (
+                {
+                    **base,
+                    "status": "AMBIGUOUS_MULTIPLE_DATES",
+                }
+                if unique_dates
+                else None
+            )
+        selected_token = tokens[-1]
+        selected_date = selected_token[0]
+        folded = _normalized(source_exact)
+        full_date_visible = bool(
+            folded and (_DATE_DMY.search(folded) or _DATE_WORDS.search(folded))
+        )
+        if full_date_visible:
+            return {
+                **base,
+                "date": selected_date.isoformat(),
+                "date_token": selected_token[1],
+                "status": "EXACT_ONE_DATE",
+                "year": selected_date.year,
+            }
+        binding = _document_fiscal_close_year_binding_receipt_v1(
+            document_fiscal_close_context_evidence,
+            year=selected_date.year,
+        )
+        if binding is None:
+            return {
+                **base,
+                "date_token": selected_token[1],
+                "status": "EXACT_ONE_YEAR_UNBOUND",
+                "year": selected_date.year,
+            }
+        year_context = binding["year_context"]
+        bound_date = date(selected_date.year, year_context["month"], year_context["day"])
+        return {
+            **base,
+            "date": bound_date.isoformat(),
+            "date_token": selected_token[1],
+            "document_fiscal_close_year_binding_receipt": binding,
+            "status": "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT",
+            "year": selected_date.year,
+        }
+
+    for narrative_ordinal, source_exact in enumerate(narratives, start=1):
+        if not _matches_alias(source_exact, movement_aliases):
+            continue
+        record = period_context_record(
+            source_exact=source_exact,
+            source_kind="SELECTED_SECTION_MOVEMENT_NARRATIVE",
+            narrative_ordinal=narrative_ordinal,
+        )
+        if record is not None:
+            movement_evidence.append(record)
+    exact_statuses = {
+        "EXACT_ONE_DATE",
+        "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT",
+    }
+    exact_movement = [item for item in movement_evidence if item["status"] in exact_statuses]
+    if not exact_movement:
+        context_surfaces = [("SELECTED_SECTION_TITLE", section.get("title_exact"))]
+        if section_ordinal > 1:
+            previous = sections[section_ordinal - 2]
+            if isinstance(previous, Mapping):
+                context_surfaces.insert(
+                    0,
+                    ("IMMEDIATELY_PRECEDING_SECTION_TITLE", previous.get("title_exact")),
+                )
+        for source_kind, source_exact in context_surfaces:
+            record = period_context_record(
+                source_exact=source_exact,
+                source_kind=source_kind,
+                narrative_ordinal=None,
+            )
+            if record is not None and record["status"] in exact_statuses:
+                exact_movement.append(record)
+                movement_evidence.append(record)
+    receipt = {**base_receipt, "movement_context_evidence": movement_evidence}
+    if len(exact_movement) == 2 and len(movement_evidence) == 2:
+        dates = [date.fromisoformat(item["date"]) for item in exact_movement]
+        if dates[0] <= dates[1] or len(set(dates)) != 2:
+            return result, {**receipt, "status": "AMBIGUOUS_OR_REVERSED_CONTEXT_DATES"}
+        assignments = []
+        for ordinal, (fragment, period_date, evidence) in enumerate(
+            zip(result, dates, exact_movement, strict=True)
+        ):
+            if fragment["period"] is not None and fragment["period"][0] != period_date:
+                return result, {**receipt, "status": "CONFLICTING_TABLE_PERIOD_EVIDENCE"}
+            fragment["period"] = (period_date, evidence["date_token"])
+            fragment["period_semantics_evidence"] = _period_semantics_evidence_v1(
+                fragment["period"],
+                source_kind=evidence["source_kind"],
+                date_source_surfaces=[evidence["source_exact"]],
+                local_context_surfaces=[evidence["source_exact"]],
+                document_fiscal_close_year_binding_receipt=evidence[
+                    "document_fiscal_close_year_binding_receipt"
+                ],
+            )
+            fragment["period_role_hint"] = (
+                "CURRENT_PERIOD" if ordinal == 0 else "COMPARATIVE_PERIOD"
+            )
+            assignments.append(
+                {
+                    "assignment_kind": "ORDERED_MOVEMENT_NARRATIVE_TO_COMPONENT",
+                    "date": period_date.isoformat(),
+                    "document_fiscal_close_year_binding_receipt": canonical_clone_v1(
+                        evidence["document_fiscal_close_year_binding_receipt"]
+                    ),
+                    "locator": canonical_clone_v1(fragment["locator"]),
+                    "narrative_ordinal": evidence["narrative_ordinal"],
+                    "period_role": fragment["period_role_hint"],
+                    "source_exact": evidence["source_exact"],
+                    "source_kind": evidence["source_kind"],
+                }
+            )
+        return result, {
+            **receipt,
+            "assignments": assignments,
+            "status": "ORDERED_TWO_DATE_CONTEXT_BOUND",
+        }
+    if len(exact_movement) != 1 or len(movement_evidence) > 1:
+        return result, {**receipt, "status": "CONTEXT_DATE_AXIS_NOT_UNIQUE"}
+    if (
+        not _fragments_have_same_full_rank_topology_v1(result, compiled_specs=compiled_specs)
+        or len({fragment["bound_unit"] for fragment in result}) != 1
+    ):
+        return result, {**receipt, "status": "SYMBOLIC_COMPARATIVE_PRECONDITIONS_FAILED"}
+    current_date = date.fromisoformat(exact_movement[0]["date"])
+    if result[0]["period"] is not None and result[0]["period"][0] != current_date:
+        return result, {**receipt, "status": "CONFLICTING_TABLE_PERIOD_EVIDENCE"}
+    if result[1]["period"] is not None and not (
+        result[1]["period"][0] == current_date
+        and result[1]["period_assignment_source_kind"] == "SELECTED_SECTION_CONTEXT"
+    ):
+        return result, {**receipt, "status": "UNEXPECTED_SECOND_TABLE_PERIOD_EVIDENCE"}
+    result[0]["period"] = (current_date, exact_movement[0]["date_token"])
+    result[0]["period_semantics_evidence"] = _period_semantics_evidence_v1(
+        result[0]["period"],
+        source_kind=exact_movement[0]["source_kind"],
+        date_source_surfaces=[exact_movement[0]["source_exact"]],
+        local_context_surfaces=[exact_movement[0]["source_exact"]],
+        document_fiscal_close_year_binding_receipt=exact_movement[0][
+            "document_fiscal_close_year_binding_receipt"
+        ],
+    )
+    result[0]["period_role_hint"] = "CURRENT_PERIOD"
+    result[1]["period"] = None
+    result[1]["period_semantics_evidence"] = None
+    result[1]["period_role_hint"] = "COMPARATIVE_PERIOD"
+    assignments = [
+        {
+            "assignment_kind": "VISIBLE_CURRENT_CONTEXT_TO_FIRST_COMPONENT",
+            "date": current_date.isoformat(),
+            "document_fiscal_close_year_binding_receipt": canonical_clone_v1(
+                exact_movement[0]["document_fiscal_close_year_binding_receipt"]
+            ),
+            "locator": canonical_clone_v1(result[0]["locator"]),
+            "narrative_ordinal": exact_movement[0]["narrative_ordinal"],
+            "period_role": "CURRENT_PERIOD",
+            "source_exact": exact_movement[0]["source_exact"],
+            "source_kind": exact_movement[0]["source_kind"],
+        },
+        {
+            "assignment_kind": "SYMBOLIC_UNDATED_COMPARATIVE_SECOND_COMPONENT",
+            "date": None,
+            "document_fiscal_close_year_binding_receipt": None,
+            "locator": canonical_clone_v1(result[1]["locator"]),
+            "narrative_ordinal": None,
+            "period_role": "COMPARATIVE_PERIOD",
+            "source_exact": None,
+            "source_kind": "ORDERED_ADJACENT_COMPONENT_TOPOLOGY",
+        },
+    ]
+    return result, {
+        **receipt,
+        "assignments": assignments,
+        "status": "CURRENT_PLUS_SYMBOLIC_COMPARATIVE_BOUND",
+    }
 
 
 def _assign_period_column_lane_roles(
@@ -1441,6 +2224,369 @@ def _validated_region_query_receipt_v1(
     return canonical_clone_v1(expected)
 
 
+def _validated_document_unit_context_evidence_v1(
+    value: Any,
+    *,
+    document_id: str,
+    source_logical_name: str,
+    source_sha256: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    fields = {
+        "canonical_unit",
+        "canonical_units",
+        "distinct_page_count",
+        "document_id",
+        "document_ordinal",
+        "evidence",
+        "evidence_axis_sha256",
+        "minimum_distinct_page_count",
+        "rule",
+        "source_logical_name",
+        "source_sha256",
+        "status",
+    }
+    evidence_fields = {
+        "canonical_unit",
+        "column_id",
+        "currency",
+        "magnitude_power10",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "selected_page_ordinal",
+        "source_kind",
+        "table_id",
+        "text_exact",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or value.get("document_id") != document_id
+        or value.get("source_logical_name") != source_logical_name
+        or value.get("source_sha256") != source_sha256
+        or type(value.get("document_ordinal")) is not int
+        or value["document_ordinal"] <= 0
+        or type(value.get("evidence")) is not list
+        or value.get("minimum_distinct_page_count") != 2
+        or value.get("rule")
+        != (
+            "SELECTED_PAGE_VERSION_ONLY_EXPLICIT_TABLE_UNIT_MAGNITUDE_AND_"
+            "CURRENCY_TWO_PAGE_UNIQUE_CANONICAL_MONEY_UNIT_CONSENSUS"
+        )
+    ):
+        raise _error("roll-forward document-unit context identity is invalid")
+    binding_by_unit = {
+        item["canonical_unit"]: item for item in compiled_specs["layout"]["unit_bindings"]
+    }
+    evidence = value["evidence"]
+    expected_order = sorted(
+        evidence,
+        key=lambda item: (
+            item.get("selected_page_ordinal", 0),
+            int(item.get("section_id", "s0")[1:]),
+            int(item.get("table_id", "t0")[1:]),
+            item.get("source_kind", ""),
+            item.get("column_id") or "",
+            item.get("text_exact", ""),
+            item.get("canonical_unit", ""),
+        ),
+    )
+    if expected_order != evidence or len(
+        {canonical_json_sha256_v1(item) for item in evidence}
+    ) != len(evidence):
+        raise _error("roll-forward document-unit evidence axis is unordered")
+    for item in evidence:
+        binding = binding_by_unit.get(item.get("canonical_unit"))
+        if (
+            type(item) is not dict
+            or set(item) != evidence_fields
+            or binding is None
+            or not binding["document_consensus_eligible"]
+            or item.get("currency") != binding["currency"]
+            or item.get("magnitude_power10") != binding["magnitude_power10"]
+            or type(item.get("page_json_version_id")) is not str
+            or _PAGE_JSON_VERSION_ID.fullmatch(item["page_json_version_id"]) is None
+            or type(item.get("physical_page")) is not int
+            or item["physical_page"] <= 0
+            or type(item.get("section_id")) is not str
+            or not re.fullmatch(r"s[1-9][0-9]*", item["section_id"])
+            or type(item.get("table_id")) is not str
+            or not re.fullmatch(r"t[1-9][0-9]*", item["table_id"])
+            or item.get("source_kind") != "TABLE_UNIT"
+            or item.get("column_id") is not None
+            or type(item.get("text_exact")) is not str
+            or not item["text_exact"]
+            or item["canonical_unit"]
+            not in _canonical_money_units_from_surface_v1(
+                item["text_exact"],
+                compiled_specs=compiled_specs,
+                document_consensus_only=True,
+            )
+        ):
+            raise _error("roll-forward document-unit evidence is invalid")
+    canonical_units = sorted({item["canonical_unit"] for item in evidence})
+    distinct_page_count = len(
+        {(item["physical_page"], item["page_json_version_id"]) for item in evidence}
+    )
+    status = (
+        "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+        if len(canonical_units) == 1 and distinct_page_count >= 2
+        else "CONFLICTING_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+        if len(canonical_units) > 1
+        else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+    )
+    if (
+        value.get("canonical_units") != canonical_units
+        or value.get("canonical_unit")
+        != (canonical_units[0] if status.startswith("UNIQUE_") else None)
+        or value.get("distinct_page_count") != distinct_page_count
+        or value.get("status") != status
+        or value.get("evidence_axis_sha256") != canonical_json_sha256_v1(evidence)
+    ):
+        raise _error("roll-forward document-unit consensus receipt drifted")
+    return canonical_clone_v1(value)
+
+
+def _validated_document_fiscal_close_context_evidence_v1(
+    value: Any,
+    *,
+    document_id: str,
+    source_logical_name: str,
+    source_sha256: str,
+) -> dict[str, Any] | None:
+    """Validate exact-year fiscal-close carriers projected from selected JSON versions."""
+
+    if value is None:
+        return None
+    fields = {
+        "document_id",
+        "document_ordinal",
+        "rule",
+        "source_logical_name",
+        "source_sha256",
+        "year_context_axis_sha256",
+        "year_contexts",
+    }
+    year_fields = {
+        "day",
+        "distinct_page_count",
+        "evidence",
+        "evidence_axis_sha256",
+        "minimum_distinct_page_count",
+        "month",
+        "month_day_axis",
+        "status",
+        "year",
+    }
+    evidence_fields = {
+        "column_id",
+        "date",
+        "day",
+        "month",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "selected_page_ordinal",
+        "source_kind",
+        "table_id",
+        "text_exact",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or value.get("document_id") != document_id
+        or value.get("source_logical_name") != source_logical_name
+        or value.get("source_sha256") != source_sha256
+        or type(value.get("document_ordinal")) is not int
+        or value["document_ordinal"] <= 0
+        or value.get("rule")
+        != (
+            "SELECTED_PAGE_VERSION_ONLY_ANNUAL_REPORTING_TITLE_OR_BALANCE_"
+            "SHEET_COMPARATIVE_DATE_EXACT_YEAR_TWO_PAGE_UNIQUE_FISCAL_"
+            "CLOSE_MONTH_DAY_CONSENSUS"
+        )
+        or type(value.get("year_contexts")) is not list
+    ):
+        raise _error("roll-forward document fiscal-close context identity is invalid")
+    year_contexts = value["year_contexts"]
+    if any(
+        type(item) is not dict or type(item.get("year")) is not int for item in year_contexts
+    ) or [item["year"] for item in year_contexts] != sorted(
+        {item["year"] for item in year_contexts}
+    ):
+        raise _error("roll-forward document fiscal-close year axis is unordered")
+
+    def annual_reporting_surface(surface: str) -> bool:
+        folded = _normalized(surface)
+        annual = bool(
+            ("nam tai chinh" in folded and "ket thuc" in folded)
+            or re.search(r"\bnam (?:duoc )?ket thuc\b", folded)
+            or "financial year ended" in folded
+            or "year ended" in folded
+        )
+        reporting = any(
+            marker in folded
+            for marker in ("bao cao tai chinh", "thuyet minh bao cao", "financial statement")
+        )
+        return annual and (reporting or "nam tai chinh" in folded)
+
+    def annual_reporting_dates(surface: str) -> set[date]:
+        folded = _normalized(surface)
+        if not annual_reporting_surface(surface):
+            return set()
+        grammar = re.compile(
+            r"(?:nam tai chinh|nam(?: duoc)?|financial year|year)\s+"
+            r"(?:duoc\s+)?(?:ket thuc(?:\s+vao)?(?:\s+ngay)?|ended(?:\s+on)?)\s*$"
+        )
+        governed = set()
+        for match in [*_DATE_DMY.finditer(folded), *_DATE_WORDS.finditer(folded)]:
+            if grammar.search(folded[: match.start()]) is None:
+                continue
+            try:
+                governed.add(date(int(match.group(3)), int(match.group(2)), int(match.group(1))))
+            except ValueError:
+                continue
+        return governed
+
+    for year_context in year_contexts:
+        if (
+            type(year_context) is not dict
+            or set(year_context) != year_fields
+            or type(year_context.get("year")) is not int
+            or year_context["year"] < 1900
+            or type(year_context.get("evidence")) is not list
+            or year_context.get("minimum_distinct_page_count") != 2
+            or type(year_context.get("month_day_axis")) is not list
+        ):
+            raise _error("roll-forward document fiscal-close year context is invalid")
+        evidence = year_context["evidence"]
+        expected_order = sorted(
+            evidence,
+            key=lambda item: (
+                item.get("selected_page_ordinal", 0),
+                int(item.get("section_id", "s0")[1:]),
+                int(item.get("table_id", "t0")[1:]) if item.get("table_id") else 0,
+                item.get("column_id") or "",
+                item.get("source_kind", ""),
+                item.get("date", ""),
+                item.get("text_exact", ""),
+            ),
+        )
+        if expected_order != evidence or len(
+            {canonical_json_sha256_v1(item) for item in evidence}
+        ) != len(evidence):
+            raise _error("roll-forward document fiscal-close evidence axis is unordered")
+        for item in evidence:
+            if (
+                type(item) is not dict
+                or set(item) != evidence_fields
+                or type(item.get("page_json_version_id")) is not str
+                or _PAGE_JSON_VERSION_ID.fullmatch(item["page_json_version_id"]) is None
+                or type(item.get("physical_page")) is not int
+                or item["physical_page"] <= 0
+                or type(item.get("section_id")) is not str
+                or re.fullmatch(r"s[1-9][0-9]*", item["section_id"]) is None
+                or type(item.get("selected_page_ordinal")) is not int
+                or item["selected_page_ordinal"] <= 0
+                or type(item.get("text_exact")) is not str
+                or not item["text_exact"]
+                or item.get("source_kind")
+                not in {
+                    "ANNUAL_REPORTING_SECTION_TITLE",
+                    "BALANCE_SHEET_COMPARATIVE_DATE_COLUMN",
+                }
+            ):
+                raise _error("roll-forward document fiscal-close evidence is invalid")
+            try:
+                parsed = date.fromisoformat(item["date"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise _error("roll-forward document fiscal-close date is invalid") from exc
+            folded = _normalized(item["text_exact"])
+            exact_full_dates = {
+                token[0]
+                for token in _date_tokens(item["text_exact"])
+                if _DATE_DMY.search(folded) or _DATE_WORDS.search(folded)
+            }
+            if (
+                parsed.year != year_context["year"]
+                or item.get("month") != parsed.month
+                or item.get("day") != parsed.day
+                or parsed not in exact_full_dates
+                or (
+                    item["source_kind"] == "ANNUAL_REPORTING_SECTION_TITLE"
+                    and (
+                        item.get("table_id") is not None
+                        or item.get("column_id") is not None
+                        or parsed not in annual_reporting_dates(item["text_exact"])
+                    )
+                )
+                or (
+                    item["source_kind"] == "BALANCE_SHEET_COMPARATIVE_DATE_COLUMN"
+                    and (
+                        type(item.get("table_id")) is not str
+                        or re.fullmatch(r"t[1-9][0-9]*", item["table_id"]) is None
+                        or type(item.get("column_id")) is not str
+                        or re.fullmatch(r"c[1-9][0-9]*", item["column_id"]) is None
+                    )
+                )
+            ):
+                raise _error("roll-forward document fiscal-close carrier is invalid")
+        month_day_axis = sorted({(item["month"], item["day"]) for item in evidence})
+        distinct_page_count = len(
+            {(item["physical_page"], item["page_json_version_id"]) for item in evidence}
+        )
+        status = (
+            "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+            if len(month_day_axis) == 1 and distinct_page_count >= 2
+            else "CONFLICTING_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+            if len(month_day_axis) > 1
+            else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+        )
+        if (
+            year_context.get("month_day_axis")
+            != [{"day": day, "month": month} for month, day in month_day_axis]
+            or year_context.get("month")
+            != (month_day_axis[0][0] if status.startswith("UNIQUE_") else None)
+            or year_context.get("day")
+            != (month_day_axis[0][1] if status.startswith("UNIQUE_") else None)
+            or year_context.get("distinct_page_count") != distinct_page_count
+            or year_context.get("status") != status
+            or year_context.get("evidence_axis_sha256") != canonical_json_sha256_v1(evidence)
+        ):
+            raise _error("roll-forward document fiscal-close year receipt drifted")
+    if value.get("year_context_axis_sha256") != canonical_json_sha256_v1(year_contexts):
+        raise _error("roll-forward document fiscal-close context receipt drifted")
+    return canonical_clone_v1(value)
+
+
+def _document_fiscal_close_year_binding_receipt_v1(
+    context: Mapping[str, Any] | None, *, year: int
+) -> dict[str, Any] | None:
+    if context is None:
+        return None
+    year_contexts = [item for item in context["year_contexts"] if item["year"] == year]
+    if (
+        len(year_contexts) != 1
+        or year_contexts[0]["status"] != "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+    ):
+        return None
+    return {
+        "context_rule": context["rule"],
+        "document_id": context["document_id"],
+        "document_ordinal": context["document_ordinal"],
+        "rule": (
+            "EXACT_BARE_PERIOD_YEAR_BOUND_TO_AUTHENTICATED_SELECTED_VERSION_"
+            "DOCUMENT_FISCAL_CLOSE_YEAR_CONTEXT"
+        ),
+        "source_logical_name": context["source_logical_name"],
+        "source_sha256": context["source_sha256"],
+        "year_context": canonical_clone_v1(year_contexts[0]),
+    }
+
+
 def _endpoint_source_receipt(item: Mapping[str, Any]) -> dict[str, Any]:
     """Keep one endpoint's exact source and solved-cell provenance."""
 
@@ -1457,8 +2603,11 @@ def _endpoint_source_receipt(item: Mapping[str, Any]) -> dict[str, Any]:
                 "locator",
                 "movement_role",
                 "period_date",
+                "period_semantics_evidence",
                 "period_role",
+                "row_hierarchy_path_exact",
                 "row_id",
+                "row_label_exact",
                 "source_block_ordinal",
                 "source_movement_role",
             )
@@ -1471,7 +2620,7 @@ def _two_period_endpoint_continuity_v1(
     *,
     compiled_specs: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Prove endpoint direction and prior-close/current-open equality per lane."""
+    """Validate chained or parallel two-period endpoint semantics per lane."""
 
     movement_by_kind = {
         item["kind"]: item["role"] for item in compiled_specs["layout"]["movement_roles"]
@@ -1500,58 +2649,368 @@ def _two_period_endpoint_continuity_v1(
             by_key[key][0] for key in keys
         )
         try:
-            previous_period = date.fromisoformat(previous_closing["period_date"])
+            previous_period = (
+                date.fromisoformat(previous_closing["period_date"])
+                if previous_closing["period_date"] is not None
+                else None
+            )
             following_period = date.fromisoformat(following_closing["period_date"])
         except (TypeError, ValueError):
             reasons.append(f"ROLLFORWARD_ENDPOINT_PERIOD_DATE_INVALID:{lane_role}")
             continue
-
-        valid = previous_period < following_period
+        if following_period is None:
+            reasons.append(f"ROLLFORWARD_ENDPOINT_PERIOD_DATE_INVALID:{lane_role}")
+            continue
+        valid = True
         endpoints = (
             (previous_opening, previous_closing, previous_period),
             (next_opening, following_closing, following_period),
         )
+        parsed_endpoint_dates: list[tuple[date | None, date | None]] = []
         for opening, closing, period in endpoints:
-            opening_date = (
-                date.fromisoformat(opening["endpoint_date"])
-                if opening["endpoint_date"] is not None
-                else None
-            )
-            closing_date = (
-                date.fromisoformat(closing["endpoint_date"])
-                if closing["endpoint_date"] is not None
-                else None
-            )
-            if opening_date is not None and opening_date >= period:
+            try:
+                opening_date = (
+                    date.fromisoformat(opening["endpoint_date"])
+                    if opening["endpoint_date"] is not None
+                    else None
+                )
+                closing_date = (
+                    date.fromisoformat(closing["endpoint_date"])
+                    if closing["endpoint_date"] is not None
+                    else None
+                )
+            except (TypeError, ValueError):
+                opening_date = closing_date = None
                 valid = False
-            if closing_date is not None and closing_date != period:
-                valid = False
+            parsed_endpoint_dates.append((opening_date, closing_date))
+            if period is not None:
+                if opening_date is not None and opening_date >= period:
+                    valid = False
+                if closing_date is not None and closing_date != period:
+                    valid = False
             if (
                 opening_date is not None
                 and closing_date is not None
                 and opening_date >= closing_date
             ):
                 valid = False
-        previous_close_date = previous_closing["endpoint_date"]
-        next_open_date = next_opening["endpoint_date"]
-        if (
-            previous_close_date is not None
-            and next_open_date is not None
-            and date.fromisoformat(previous_close_date) > date.fromisoformat(next_open_date)
-        ):
-            valid = False
+        (
+            (previous_open_date, previous_close_date),
+            (
+                next_open_date,
+                following_close_date,
+            ),
+        ) = parsed_endpoint_dates
+        endpoint_date_alignment_receipt = None
+
+        def aligned_one_year(previous: date | None, following: date | None) -> bool:
+            return (
+                previous is not None
+                and following is not None
+                and following.year == previous.year + 1
+                and (following.month, following.day) == (previous.month, previous.day)
+            )
+
+        period_windows_aligned = previous_period is not None and aligned_one_year(
+            previous_period, following_period
+        )
+        # A closing movement row is already bound to its exact period date.
+        # When the row label itself omits a date, that authenticated period
+        # assignment is the closing endpoint; no date is fabricated for an
+        # opening row.
+        effective_previous_close_date = previous_close_date or previous_period
+        effective_following_close_date = following_close_date or following_period
+        closing_endpoints_aligned = aligned_one_year(
+            effective_previous_close_date,
+            effective_following_close_date,
+        )
+        opening_endpoints_aligned = aligned_one_year(previous_open_date, next_open_date)
+
+        def annual_or_fiscal_surface(value: Any) -> bool:
+            folded = _normalized(value)
+            return bool(
+                folded
+                and (
+                    "nam tai chinh" in folded
+                    or re.search(r"\bnam (?:duoc )?ket thuc\b", folded)
+                    or "trong nam" in folded
+                    or "dau nam" in folded
+                    or "cuoi nam" in folded
+                    or "financial year" in folded
+                    or "year ended" in folded
+                    or "during the year" in folded
+                    or "beginning of the year" in folded
+                    or "end of the year" in folded
+                    or re.search(r"\bannual\b", folded)
+                )
+            )
+
+        def valid_document_fiscal_close_year_binding(
+            evidence: Mapping[str, Any], expected: date
+        ) -> bool:
+            receipt = evidence.get("document_fiscal_close_year_binding_receipt")
+            if receipt is None:
+                return False
+            if (
+                type(receipt) is not dict
+                or set(receipt)
+                != {
+                    "context_rule",
+                    "document_id",
+                    "document_ordinal",
+                    "rule",
+                    "source_logical_name",
+                    "source_sha256",
+                    "year_context",
+                }
+                or receipt.get("rule")
+                != (
+                    "EXACT_BARE_PERIOD_YEAR_BOUND_TO_AUTHENTICATED_SELECTED_VERSION_"
+                    "DOCUMENT_FISCAL_CLOSE_YEAR_CONTEXT"
+                )
+                or type(receipt.get("year_context")) is not dict
+            ):
+                return False
+            year_context = receipt["year_context"]
+            if (
+                year_context.get("year") != expected.year
+                or year_context.get("status")
+                != "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+                or type(year_context.get("month")) is not int
+                or type(year_context.get("day")) is not int
+                or type(year_context.get("evidence")) is not list
+                or not year_context["evidence"]
+                or year_context.get("evidence_axis_sha256")
+                != canonical_json_sha256_v1(year_context["evidence"])
+                or year_context.get("distinct_page_count", 0) < 2
+            ):
+                return False
+            try:
+                if (
+                    date(
+                        expected.year,
+                        year_context["month"],
+                        year_context["day"],
+                    )
+                    != expected
+                ):
+                    return False
+            except ValueError:
+                return False
+            observed_month_days = set()
+            observed_pages = set()
+            for item in year_context["evidence"]:
+                if type(item) is not dict or type(item.get("text_exact")) is not str:
+                    return False
+                folded = _normalized(item["text_exact"])
+                if not (_DATE_DMY.search(folded) or _DATE_WORDS.search(folded)):
+                    return False
+                try:
+                    parsed = date.fromisoformat(item["date"])
+                except (KeyError, TypeError, ValueError):
+                    return False
+                if parsed.year != expected.year or not any(
+                    token[0] == parsed for token in _date_tokens(item["text_exact"])
+                ):
+                    return False
+                observed_month_days.add((parsed.month, parsed.day))
+                observed_pages.add((item.get("physical_page"), item.get("page_json_version_id")))
+            return (
+                observed_month_days == {(year_context["month"], year_context["day"])}
+                and len(observed_pages) == year_context["distinct_page_count"]
+                and len(observed_pages) >= 2
+            )
+
+        def exact_period_source_visible(item: Mapping[str, Any], expected: date) -> bool:
+            evidence = item.get("period_semantics_evidence")
+            if (
+                type(evidence) is not dict
+                or set(evidence)
+                != {
+                    "date_source_exact_axis",
+                    "document_fiscal_close_year_binding_receipt",
+                    "local_context_exact_axis",
+                    "period_date",
+                    "source_kind",
+                }
+                or evidence.get("period_date") != expected.isoformat()
+                or type(evidence.get("date_source_exact_axis")) is not list
+                or not evidence["date_source_exact_axis"]
+                or type(evidence.get("local_context_exact_axis")) is not list
+                or type(evidence.get("source_kind")) is not str
+                or not evidence["source_kind"]
+            ):
+                return False
+            document_year_bound = valid_document_fiscal_close_year_binding(evidence, expected)
+            return all(
+                type(source) is str
+                and bool(source)
+                and (
+                    any(token[0] == expected for token in _date_tokens(source))
+                    or (
+                        document_year_bound
+                        and not (
+                            _DATE_DMY.search(_normalized(source))
+                            or _DATE_WORDS.search(_normalized(source))
+                        )
+                        and any(token[0].year == expected.year for token in _date_tokens(source))
+                    )
+                )
+                for source in evidence["date_source_exact_axis"]
+            )
+
+        def authoritative_period_source_visible(item: Mapping[str, Any], expected: date) -> bool:
+            if not exact_period_source_visible(item, expected):
+                return False
+            evidence = item["period_semantics_evidence"]
+            date_sources = evidence["date_source_exact_axis"]
+            has_full_date = any(
+                _DATE_DMY.search(_normalized(source)) or _DATE_WORDS.search(_normalized(source))
+                for source in date_sources
+            )
+            return bool(
+                has_full_date or valid_document_fiscal_close_year_binding(evidence, expected)
+            )
+
+        def explicit_row_role_visible(item: Mapping[str, Any], role: str) -> bool:
+            hierarchy = item.get("row_hierarchy_path_exact")
+            return (
+                type(item.get("row_label_exact")) is str
+                and type(hierarchy) is list
+                and bool(hierarchy)
+                and _matches_alias(
+                    item["row_label_exact"],
+                    compiled_specs["aliases_by_role"][role],
+                )
+            )
+
+        def fiscal_year_end_semantics(
+            opening: Mapping[str, Any],
+            closing: Mapping[str, Any],
+            period: date,
+        ) -> dict[str, Any] | None:
+            evidence = closing.get("period_semantics_evidence")
+            if (
+                not authoritative_period_source_visible(closing, period)
+                or type(evidence) is not dict
+            ):
+                return None
+            exact_surfaces = [
+                *evidence["date_source_exact_axis"],
+                *evidence["local_context_exact_axis"],
+            ]
+            matched_surfaces = []
+            for surface in exact_surfaces:
+                if annual_or_fiscal_surface(surface):
+                    matched_surfaces.append(surface)
+            if not matched_surfaces:
+                return None
+            return {
+                "classification": "SOURCE_VISIBLE_ANNUAL_OR_FISCAL_YEAR_END",
+                "matched_source_exact_axis": list(dict.fromkeys(matched_surfaces)),
+                "period_date": period.isoformat(),
+                "period_semantics_evidence": canonical_clone_v1(evidence),
+            }
+
+        def next_fiscal_anniversary(period: date) -> date:
+            try:
+                return period.replace(year=period.year + 1)
+            except ValueError:
+                # A 29-Feb close has a 28-Feb anniversary in a non-leap fiscal cycle.
+                return date(period.year + 1, period.month, period.day - 1)
+
+        previous_fiscal_semantics = (
+            fiscal_year_end_semantics(previous_opening, previous_closing, previous_period)
+            if previous_period is not None
+            else None
+        )
+        fiscal_cycle_anniversary = (
+            next_fiscal_anniversary(previous_period) if previous_period is not None else None
+        )
+        fiscal_boundary_context = (
+            previous_period is not None
+            and previous_fiscal_semantics is not None
+            and fiscal_cycle_anniversary is not None
+            and previous_period < following_period
+            and following_period <= fiscal_cycle_anniversary
+            and previous_close_date is None
+            and next_open_date is None
+            and exact_period_source_visible(following_closing, following_period)
+            and explicit_row_role_visible(previous_opening, opening_role)
+            and explicit_row_role_visible(previous_closing, closing_role)
+            and explicit_row_role_visible(next_opening, opening_role)
+            and explicit_row_role_visible(following_closing, closing_role)
+        )
+
+        shared_opening = next_opening["assignment_kind"] == "SHARED_PREVIOUS_CLOSING_AS_OPENING"
         previous_coefficient = previous_closing["cell"]["coefficient"]
         next_coefficient = next_opening["cell"]["coefficient"]
+        chain_gap = (
+            (next_open_date - previous_close_date).days
+            if next_open_date is not None and previous_close_date is not None
+            else None
+        )
+        if previous_period is None:
+            continuity_kind = (
+                "PARALLEL_SYMBOLIC_COMPARATIVE_WINDOW"
+                if previous_closing["resolved_period"] == "COMPARATIVE_UNDATED"
+                else None
+            )
+        elif shared_opening or chain_gap in {0, 1}:
+            continuity_kind = "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN"
+        elif fiscal_boundary_context:
+            continuity_kind = "CHAINED_FISCAL_BOUNDARY_CONTEXT_PRIOR_CLOSE_TO_CURRENT_OPEN"
+        elif (
+            period_windows_aligned
+            and closing_endpoints_aligned
+            and authoritative_period_source_visible(previous_closing, previous_period)
+            and authoritative_period_source_visible(following_closing, following_period)
+        ):
+            continuity_kind = "PARALLEL_PERIOD_WINDOWS_NO_CROSS_VALUE_EQUALITY"
+        else:
+            continuity_kind = None
+        valid = valid and continuity_kind is not None
+
         if (
             previous_coefficient is None
             or next_coefficient is None
-            or previous_coefficient != next_coefficient
             or previous_closing["bound_unit"] is None
             or previous_closing["bound_unit"] != next_opening["bound_unit"]
         ):
             valid = False
-        if next_opening["assignment_kind"] == "SHARED_PREVIOUS_CLOSING_AS_OPENING" and (
-            next_opening["locator"] != previous_closing["locator"]
+        if continuity_kind in {
+            "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN",
+            "CHAINED_FISCAL_BOUNDARY_CONTEXT_PRIOR_CLOSE_TO_CURRENT_OPEN",
+        }:
+            if previous_coefficient != next_coefficient:
+                valid = False
+            if continuity_kind == "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN":
+                if previous_close_date is None or next_open_date is None:
+                    valid = False
+                if chain_gap not in {0, 1}:
+                    valid = False
+                if shared_opening and chain_gap != 0:
+                    valid = False
+        elif continuity_kind == "PARALLEL_PERIOD_WINDOWS_NO_CROSS_VALUE_EQUALITY":
+            if not (
+                period_windows_aligned
+                and closing_endpoints_aligned
+                and authoritative_period_source_visible(previous_closing, previous_period)
+                and authoritative_period_source_visible(following_closing, following_period)
+            ):
+                valid = False
+            elif not opening_endpoints_aligned:
+                # Parallel disclosure windows need not start on aligned dates.
+                # Preserve the source-visible mismatch as diagnostic evidence
+                # only after the final relation is known to be parallel.
+                endpoint_date_alignment_receipt = {
+                    "derivation_kind": ("PARALLEL_PERIOD_OPENING_WINDOW_MISMATCH_SOURCE_VISIBLE"),
+                    "following_opening": _endpoint_source_receipt(next_opening),
+                    "previous_opening": _endpoint_source_receipt(previous_opening),
+                }
+        if shared_opening and (
+            continuity_kind != "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN"
+            or next_opening["locator"] != previous_closing["locator"]
             or next_opening["row_id"] != previous_closing["row_id"]
             or next_opening["column_ordinal"] != previous_closing["column_ordinal"]
             or next_opening["source_movement_role"] != closing_role
@@ -1562,18 +3021,41 @@ def _two_period_endpoint_continuity_v1(
         if not valid:
             reasons.append(f"ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:{lane_role}")
             continue
+        boundary_semantics_receipt = (
+            {
+                "current_period_evidence": canonical_clone_v1(
+                    following_closing["period_semantics_evidence"]
+                ),
+                "current_reporting_end": following_period.isoformat(),
+                "fiscal_cycle_anniversary": fiscal_cycle_anniversary.isoformat(),
+                "previous_fiscal_close": previous_period.isoformat(),
+                "previous_fiscal_year_end_semantics": canonical_clone_v1(previous_fiscal_semantics),
+                "rule": (
+                    "SOURCE_VISIBLE_ANNUAL_OR_FISCAL_YEAR_END_TO_REPORTING_END_"
+                    "WITHIN_IMMEDIATELY_FOLLOWING_FISCAL_CYCLE_AND_EXPLICIT_"
+                    "OPEN_CLOSE_ROWS"
+                ),
+            }
+            if continuity_kind == "CHAINED_FISCAL_BOUNDARY_CONTEXT_PRIOR_CLOSE_TO_CURRENT_OPEN"
+            else None
+        )
         receipts.append(
             {
+                "boundary_semantics_receipt": boundary_semantics_receipt,
                 "following_closing": _endpoint_source_receipt(following_closing),
                 "following_period": following_period.isoformat(),
+                "continuity_kind": continuity_kind,
+                "endpoint_date_alignment_receipt": endpoint_date_alignment_receipt,
                 "lane_role": lane_role,
                 "next_opening": _endpoint_source_receipt(next_opening),
                 "previous_closing": _endpoint_source_receipt(previous_closing),
                 "previous_opening": _endpoint_source_receipt(previous_opening),
-                "previous_period": previous_period.isoformat(),
+                "previous_period": (
+                    previous_period.isoformat() if previous_period is not None else None
+                ),
                 "rule": (
-                    "SAME_DOCUMENT_LANE_UNIT_PRIOR_CLOSE_EQUALS_CURRENT_OPEN_"
-                    "STRICTLY_INCREASING_PERIOD_ENDPOINT_DIRECTION"
+                    "SAME_DOCUMENT_LANE_UNIT_EXACT_ENDPOINT_DIRECTION_CHAINED_OR_"
+                    "PARALLEL_PERIOD_WINDOW_SEMANTICS"
                 ),
             }
         )
@@ -1585,13 +3067,30 @@ def _bounded_population_reset_fence_v1(
     *,
     page_json_by_version: Mapping[str, Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    include_intervening_surfaces: bool,
 ) -> dict[str, Any]:
-    """Scan every structural surface in the complete selected-page interval."""
+    """Scan selected components and only the structural interval between them.
+
+    A containing section can hold unrelated schedules before or after the
+    selected roll-forward.  Those sibling tables are not part of a one-table
+    population interval.  Conversely, every table/section strictly between
+    two selected components remains a reset fence, including all of its row
+    labels and hierarchy paths.
+    """
 
     first_page = region_axis[0]["physical_page"]
     last_page = region_axis[-1]["physical_page"]
     lower_section = int(region_axis[0]["section_id"][1:])
     upper_section = int(region_axis[-1]["section_id"][1:])
+    selected_table_keys = {
+        (
+            item["physical_page"],
+            item["page_json_version_id"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+        )
+        for item in region_axis
+    }
     aliases = sorted(
         {
             *compiled_specs["layout"]["population_policy"]["reset_aliases"],
@@ -1611,19 +3110,27 @@ def _bounded_population_reset_fence_v1(
         sections = page_json.get("sections")
         if type(sections) is not list:
             raise _error("roll-forward page section axis is invalid")
-        start = lower_section if physical_page == first_page else 1
-        stop = upper_section if physical_page == last_page else len(sections)
-        if not 1 <= start <= stop <= len(sections):
+        selected_by_section: dict[int, list[int]] = {}
+        for item in region_axis:
+            if (
+                item["physical_page"] == physical_page
+                and item["page_json_version_id"] == version_id
+            ):
+                selected_by_section.setdefault(int(item["section_id"][1:]), []).append(
+                    int(item["table_id"][1:])
+                )
+        if include_intervening_surfaces:
+            start = lower_section if physical_page == first_page else 1
+            stop = upper_section if physical_page == last_page else len(sections)
+            section_ordinals = list(range(start, stop + 1))
+        else:
+            section_ordinals = sorted(selected_by_section)
+            start = section_ordinals[0]
+            stop = section_ordinals[-1]
+        if not section_ordinals or not 1 <= start <= stop <= len(sections):
             raise _error("roll-forward reset-fence section interval is invalid")
-        checked_pages.append(
-            {
-                "first_section_ordinal": start,
-                "last_section_ordinal": stop,
-                "page_json_version_id": version_id,
-                "physical_page": physical_page,
-            }
-        )
-        for section_ordinal in range(start, stop + 1):
+        checked_section_table_intervals = []
+        for section_ordinal in section_ordinals:
             section = sections[section_ordinal - 1]
             if not isinstance(section, Mapping):
                 raise _error("roll-forward reset-fence section is invalid")
@@ -1631,33 +3138,87 @@ def _bounded_population_reset_fence_v1(
             tables = section.get("tables")
             if type(narratives) is not list or type(tables) is not list:
                 raise _error("roll-forward reset-fence section axes are invalid")
+            if include_intervening_surfaces:
+                is_first_boundary = physical_page == first_page and section_ordinal == lower_section
+                is_last_boundary = physical_page == last_page and section_ordinal == upper_section
+                first_table = int(region_axis[0]["table_id"][1:]) if is_first_boundary else 1
+                last_table = (
+                    int(region_axis[-1]["table_id"][1:]) if is_last_boundary else len(tables)
+                )
+                table_intervals = [(first_table, last_table)]
+                if not 1 <= first_table <= last_table <= len(tables):
+                    # A strictly intervening prose-only section still forms a
+                    # reset fence even though it contributes no table surfaces.
+                    if tables or is_first_boundary or is_last_boundary:
+                        raise _error("roll-forward reset-fence table interval is invalid")
+                    table_intervals = []
+            else:
+                table_intervals = [
+                    (table_ordinal, table_ordinal)
+                    for table_ordinal in sorted(selected_by_section[section_ordinal])
+                ]
+                if any(
+                    not 1 <= first_table <= last_table <= len(tables)
+                    for first_table, last_table in table_intervals
+                ):
+                    raise _error("roll-forward reset-fence table interval is invalid")
+            checked_section_table_intervals.extend(
+                {
+                    "first_table_ordinal": first_table,
+                    "last_table_ordinal": last_table,
+                    "section_ordinal": section_ordinal,
+                }
+                for first_table, last_table in table_intervals
+            )
             surfaces = [
                 ("SECTION_TITLE", section.get("title_exact")),
                 *(("SECTION_NARRATIVE", narrative) for narrative in narratives),
             ]
-            for table in tables:
-                if not isinstance(table, Mapping):
-                    raise _error("roll-forward reset-fence table is invalid")
-                surfaces.append(("TABLE_TITLE", table.get("title_exact")))
-                columns = table.get("columns")
-                rows = table.get("rows")
-                if type(columns) is not list or type(rows) is not list:
-                    raise _error("roll-forward reset-fence table axes are invalid")
-                for column in columns:
-                    if not isinstance(column, Mapping):
-                        raise _error("roll-forward reset-fence column is invalid")
-                    header_path = column.get("header_path_exact")
-                    if type(header_path) is not list:
-                        raise _error("roll-forward reset-fence header path is invalid")
-                    surfaces.extend(("COLUMN_HEADER", value) for value in header_path)
-                for row in rows:
-                    if not isinstance(row, Mapping):
-                        raise _error("roll-forward reset-fence row is invalid")
-                    hierarchy = row.get("hierarchy_path_exact")
-                    if type(hierarchy) is not list:
-                        raise _error("roll-forward reset-fence row hierarchy is invalid")
-                    surfaces.append(("ROW_LABEL", row.get("label_exact")))
-                    surfaces.extend(("ROW_HIERARCHY", value) for value in hierarchy)
+            for first_table, last_table in table_intervals:
+                for table_ordinal in range(first_table, last_table + 1):
+                    table = tables[table_ordinal - 1]
+                    if not isinstance(table, Mapping):
+                        raise _error("roll-forward reset-fence table is invalid")
+                    surfaces.append(("TABLE_TITLE", table.get("title_exact")))
+                    columns = table.get("columns")
+                    rows = table.get("rows")
+                    if type(columns) is not list or type(rows) is not list:
+                        raise _error("roll-forward reset-fence table axes are invalid")
+                    is_selected_table = (
+                        physical_page,
+                        version_id,
+                        section_ordinal,
+                        table_ordinal,
+                    ) in selected_table_keys
+                    lane_by_column = (
+                        _projected_lane_columns_v1(
+                            columns,
+                            compiled_specs=compiled_specs,
+                        )[0]
+                        if is_selected_table
+                        else []
+                    )
+                    project_selected_lanes = (
+                        len({role for role in lane_by_column if role is not None})
+                        >= compiled_specs["layout"]["minimum_required_lanes"]
+                    )
+                    for column_ordinal, column in enumerate(columns):
+                        if not isinstance(column, Mapping):
+                            raise _error("roll-forward reset-fence column is invalid")
+                        header_path = column.get("header_path_exact")
+                        if type(header_path) is not list:
+                            raise _error("roll-forward reset-fence header path is invalid")
+                        if project_selected_lanes and lane_by_column[column_ordinal] is None:
+                            continue
+                        surfaces.extend(("COLUMN_HEADER", value) for value in header_path)
+                    for row in rows:
+                        if not isinstance(row, Mapping):
+                            raise _error("roll-forward reset-fence row is invalid")
+                        hierarchy = row.get("hierarchy_path_exact")
+                        if type(hierarchy) is not list:
+                            raise _error("roll-forward reset-fence row hierarchy is invalid")
+                        surfaces.append(("ROW_LABEL", row.get("label_exact")))
+                        surfaces.extend(("ROW_HIERARCHY", value) for value in hierarchy)
             hits.extend(
                 {
                     "page_json_version_id": version_id,
@@ -1669,8 +3230,22 @@ def _bounded_population_reset_fence_v1(
                 for source_kind, value in surfaces
                 if type(value) is str and _matches_alias(value, aliases)
             )
+        checked_pages.append(
+            {
+                "first_section_ordinal": start,
+                "last_section_ordinal": stop,
+                "page_json_version_id": version_id,
+                "physical_page": physical_page,
+                "section_table_intervals": checked_section_table_intervals,
+            }
+        )
     return {
         "checked_page_intervals": checked_pages,
+        "scope_kind": (
+            "SELECTED_COMPONENTS_AND_STRICTLY_INTERVENING_SURFACES"
+            if include_intervening_surfaces
+            else "INDEPENDENT_LOCAL_OWNER_SELECTED_COMPONENTS_ONLY"
+        ),
         "reset_hits": hits,
         "status": "RESET_FENCE_CLEAR" if not hits else "RESET_FENCE_VIOLATED",
     }
@@ -1682,6 +3257,8 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     page_json_by_version: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     query_receipt: Mapping[str, Any],
+    document_fiscal_close_context_evidence: Mapping[str, Any] | None = None,
+    document_unit_context_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Evaluate one ordered one/two-table two-period roll-forward cluster."""
 
@@ -1689,6 +3266,20 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     checked_query_receipt = _validated_region_query_receipt_v1(
         query_receipt,
         region_axis=region_axis,
+    )
+    first_region = region_axis[0]
+    checked_document_unit_context = _validated_document_unit_context_evidence_v1(
+        document_unit_context_evidence,
+        document_id=first_region["document_id"],
+        source_logical_name=first_region["source_logical_name"],
+        source_sha256=first_region["source_sha256"],
+        compiled_specs=compiled_specs,
+    )
+    checked_document_fiscal_close_context = _validated_document_fiscal_close_context_evidence_v1(
+        document_fiscal_close_context_evidence,
+        document_id=first_region["document_id"],
+        source_logical_name=first_region["source_logical_name"],
+        source_sha256=first_region["source_sha256"],
     )
     fragments = []
     period_column_records = []
@@ -1712,13 +3303,8 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             component_classifications.append(
                 {
                     "bound_unit": _bound_unit(table, compiled_specs=compiled_specs),
-                    "continuation_evidence": classification["continuation_evidence"],
-                    "context_reset_visible": classification["context_reset_visible"],
-                    "local_owner_visible": classification["local_owner_visible"],
+                    **canonical_clone_v1(classification),
                     "locator": canonical_clone_v1(locator),
-                    "structural_hard_negative_visible": classification[
-                        "structural_hard_negative_visible"
-                    ],
                 }
             )
             if (
@@ -1769,6 +3355,72 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             )
         except GeminiJsonRollforwardAccountingFamilyV1Error:
             reasons.append("ROLLFORWARD_COMPONENT_TABLE_STRUCTURE_INVALID")
+    fragments, period_assignment_receipt = _resolve_ordered_period_components_v1(
+        fragments,
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled_specs,
+        document_fiscal_close_context_evidence=(checked_document_fiscal_close_context),
+    )
+    for fragment in fragments:
+        period = fragment.get("period")
+        evidence = fragment.get("period_semantics_evidence")
+        if period is None or type(evidence) is not dict:
+            continue
+        date_sources = evidence.get("date_source_exact_axis")
+        if type(date_sources) is not list:
+            continue
+        has_full_date = any(
+            type(source) is str
+            and (_DATE_DMY.search(_normalized(source)) or _DATE_WORDS.search(_normalized(source)))
+            for source in date_sources
+        )
+        if has_full_date:
+            continue
+        year_binding = _document_fiscal_close_year_binding_receipt_v1(
+            checked_document_fiscal_close_context,
+            year=period[0].year,
+        )
+        if year_binding is None:
+            continue
+        year_context = year_binding["year_context"]
+        try:
+            bound_period = date(period[0].year, year_context["month"], year_context["day"])
+        except (TypeError, ValueError):
+            continue
+        fragment["period"] = (bound_period, period[1])
+        evidence["period_date"] = bound_period.isoformat()
+        evidence["document_fiscal_close_year_binding_receipt"] = year_binding
+    aggregate_population_axis = []
+    for fragment in fragments:
+        receipt = fragment["lane_population_assignment_receipt"]
+        if receipt is None:
+            continue
+        decision_by_lane = {item["lane_role"]: item for item in receipt["decisions"]}
+        for lane_role in sorted(
+            {role for role in receipt["raw_lane_roles_by_column"] if role is not None}
+        ):
+            if receipt["raw_lane_roles_by_column"].count(lane_role) < 2:
+                continue
+            decision = decision_by_lane.get(lane_role)
+            aggregate_population_axis.append(
+                {
+                    "aggregate_identity_normalized": (
+                        decision["aggregate_identity_normalized"] if decision else None
+                    ),
+                    "block_ordinal": fragment["block_ordinal"],
+                    "lane_role": lane_role,
+                    "locator": canonical_clone_v1(fragment["locator"]),
+                    "status": "UNIQUE_EXACT_HORIZONTAL_AGGREGATE" if decision else "UNRESOLVED",
+                }
+            )
+    for lane_role in sorted({item["lane_role"] for item in aggregate_population_axis}):
+        identities = {
+            item["aggregate_identity_normalized"]
+            for item in aggregate_population_axis
+            if item["lane_role"] == lane_role and item["aggregate_identity_normalized"] is not None
+        }
+        if len(identities) > 1:
+            reasons.append(f"ROLLFORWARD_AGGREGATE_POPULATION_MISMATCH:{lane_role}")
     owner_components = [item for item in component_classifications if item["local_owner_visible"]]
     continuation_components = [
         item for item in component_classifications if not item["local_owner_visible"]
@@ -1796,6 +3448,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         region_axis,
         page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
+        include_intervening_surfaces=bool(continuation_components),
     )
     if reset_fence_receipt["reset_hits"]:
         reasons.append("ROLLFORWARD_SELECTED_INTERVAL_POPULATION_RESET_OR_HARD_NEGATIVE_VISIBLE")
@@ -1833,14 +3486,75 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         ),
         "unbound_continuation_locators": [item["locator"] for item in unbound_continuations],
     }
+    local_unit_axis = [
+        {
+            "block_ordinal": fragment["block_ordinal"],
+            "bound_unit": fragment["bound_unit"],
+            "locator": canonical_clone_v1(fragment["locator"]),
+        }
+        for fragment in fragments
+    ]
+    local_units = [fragment["bound_unit"] for fragment in fragments]
+    if local_units and all(unit is None for unit in local_units):
+        if (
+            checked_document_unit_context is not None
+            and checked_document_unit_context["status"]
+            == "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+        ):
+            for fragment in fragments:
+                fragment["bound_unit"] = checked_document_unit_context["canonical_unit"]
+            unit_assignment_kind = "AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_INHERITED"
+        else:
+            unit_assignment_kind = "UNRESOLVED_NO_LOCAL_OR_DOCUMENT_UNIT_CONSENSUS"
+            reasons.append("ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE")
+    elif local_units and all(unit is not None for unit in local_units):
+        unit_assignment_kind = "ALL_COMPONENTS_EXPLICIT_LOCAL_CANONICAL_UNIT"
+    else:
+        unit_assignment_kind = "MIXED_LOCAL_VISIBLE_AND_MISSING_UNIT_NOT_INHERITED"
+        reasons.append("ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE")
     bound_units = [fragment["bound_unit"] for fragment in fragments]
-    if not bound_units or any(unit is None for unit in bound_units):
+    if not bound_units:
         reasons.append("ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE")
     if len({unit for unit in bound_units if unit is not None}) > 1:
         reasons.append("ROLLFORWARD_MONEY_UNIT_MISMATCH_ACROSS_PERIODS_OR_COMPONENTS")
+    # Document-wide evidence is authority-bearing only when it actually closes
+    # a locally unit-less component set.  Keeping irrelevant context out of a
+    # locally explicit candidate also makes replay invariant to unrelated unit
+    # surfaces elsewhere in the same selected document frontier.
+    receipt_document_unit_context = (
+        checked_document_unit_context
+        if unit_assignment_kind
+        in {
+            "AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_INHERITED",
+            "UNRESOLVED_NO_LOCAL_OR_DOCUMENT_UNIT_CONSENSUS",
+        }
+        else None
+    )
+    unit_provenance_receipt = {
+        "assignment_kind": unit_assignment_kind,
+        "document_unit_context_evidence": receipt_document_unit_context,
+        "local_unit_axis": local_unit_axis,
+        "resolved_canonical_unit": (
+            next(iter({unit for unit in bound_units if unit is not None}))
+            if len({unit for unit in bound_units if unit is not None}) == 1
+            else None
+        ),
+        "rule": (
+            "LOCAL_CANONICAL_UNIT_OR_SELECTED_VERSION_DOCUMENT_TWO_PAGE_"
+            "UNIQUE_MAGNITUDE_CURRENCY_CONSENSUS_NO_SCALE_CONVERSION"
+        ),
+    }
+    period_roles = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+    hinted_roles = [fragment["period_role_hint"] for fragment in fragments]
+    hint_axis_resolved = (
+        bool(fragments)
+        and all(role in period_roles for role in hinted_roles)
+        and set(hinted_roles) == set(period_roles)
+    )
     dated = [fragment for fragment in fragments if fragment["period"] is not None]
     dates = sorted({fragment["period"][0] for fragment in dated}, reverse=True)
-    if len(dates) != 2 or len(dated) != len(fragments):
+    date_axis_resolved = len(dates) == 2 and len(dated) == len(fragments)
+    if not hint_axis_resolved and not date_axis_resolved:
         reasons.append("ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED")
     period_role_by_date = {
         period: "CURRENT_PERIOD" if ordinal == 0 else "COMPARATIVE_PERIOD"
@@ -1849,9 +3563,12 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     merged: dict[tuple[str, str, str], dict[str, Any]] = {}
     duplicate_source_ambiguities = []
     for fragment in fragments:
-        if fragment["period"] is None or fragment["period"][0] not in period_role_by_date:
-            continue
-        period_role = period_role_by_date[fragment["period"][0]]
+        if hint_axis_resolved:
+            period_role = fragment["period_role_hint"]
+        else:
+            if fragment["period"] is None or fragment["period"][0] not in period_role_by_date:
+                continue
+            period_role = period_role_by_date[fragment["period"][0]]
         for item in fragment["cells"]:
             key = (period_role, item["lane_role"], item["movement_role"])
             record = {
@@ -1859,9 +3576,18 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                 "block_ordinal": fragment["block_ordinal"],
                 "bound_unit": fragment["bound_unit"],
                 "locator": canonical_clone_v1(fragment["locator"]),
-                "period_date": fragment["period"][0].isoformat(),
+                "period_date": (
+                    fragment["period"][0].isoformat() if fragment["period"] is not None else None
+                ),
+                "period_semantics_evidence": canonical_clone_v1(
+                    fragment["period_semantics_evidence"]
+                ),
                 "period_role": period_role,
-                "resolved_period": fragment["period"][1],
+                "resolved_period": (
+                    fragment["period"][1]
+                    if fragment["period"] is not None
+                    else "COMPARATIVE_UNDATED"
+                ),
             }
             previous = merged.get(key)
             if previous is None:
@@ -1893,7 +3619,6 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     }
     movement_specs = compiled_specs["layout"]["movement_roles"]
     required_movements = {item["role"] for item in movement_specs if item["required"]}
-    period_roles = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
     lanes_by_period = {
         period_role: {lane for period, lane, _movement in merged if period == period_role}
         for period_role in period_roles
@@ -1989,8 +3714,11 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                     "movement_role": movement_role,
                     "period_date": record["period_date"],
                     "period_role": period_role,
+                    "period_semantics_evidence": record["period_semantics_evidence"],
                     "resolved_period": record["resolved_period"],
+                    "row_hierarchy_path_exact": record["row_hierarchy_path_exact"],
                     "row_id": record["row_id"],
+                    "row_label_exact": record["row_label_exact"],
                     "source_block_ordinal": record["source_block_ordinal"],
                     "source_movement_role": record["source_movement_role"],
                 }
@@ -2048,7 +3776,21 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             "endpoint_continuity_receipts": endpoint_continuity_receipts,
             "equations": equations,
             "lane_assignment_receipts": lane_assignment_receipts,
+            "lane_population_assignment_receipts": [
+                {
+                    "block_ordinal": fragment["block_ordinal"],
+                    "locator": canonical_clone_v1(fragment["locator"]),
+                    "receipt": canonical_clone_v1(fragment["lane_population_assignment_receipt"]),
+                }
+                for fragment in fragments
+                if fragment["lane_population_assignment_receipt"] is not None
+            ],
+            "lane_population_continuity_receipt": {
+                "aggregate_population_axis": aggregate_population_axis,
+                "rule": "SAME_EXACT_DECLARED_AGGREGATE_IDENTITY_ACROSS_PERIOD_COMPONENTS",
+            },
             "orientation": orientation,
+            "period_assignment_receipt": period_assignment_receipt,
             "period_lane_populations": {
                 period_role: sorted(lanes_by_period[period_role]) for period_role in period_roles
             },
@@ -2058,6 +3800,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             "role_vectors": role_vectors,
             "rule": "EXACT_SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK",
             "unresolved_frontiers": unresolved_frontiers,
+            "unit_provenance_receipt": unit_provenance_receipt,
         },
         "component_regions": region_axis,
         "component_table_refs": [
@@ -2090,6 +3833,8 @@ def validate_gemini_json_rollforward_family_candidate_replay_v1(
     page_json_by_version: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     query_receipt: Mapping[str, Any],
+    document_fiscal_close_context_evidence: Mapping[str, Any] | None = None,
+    document_unit_context_evidence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Rebuild and exact-compare one candidate, including every provenance receipt."""
 
@@ -2098,6 +3843,8 @@ def validate_gemini_json_rollforward_family_candidate_replay_v1(
         page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
         query_receipt=query_receipt,
+        document_fiscal_close_context_evidence=(document_fiscal_close_context_evidence),
+        document_unit_context_evidence=document_unit_context_evidence,
     )
     if type(value) is not dict or not same_typed_json_v1(value, rebuilt):
         raise _error("roll-forward family candidate does not replay exactly")

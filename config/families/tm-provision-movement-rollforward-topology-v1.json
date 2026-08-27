@@ -32,6 +32,7 @@
         {
           "aliases": [
             "Dự phòng cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
             "Dự phòng rủi ro cho vay giao dịch ký quỹ và ứng trước khách hàng",
             "Dự phòng cho vay giao dịch ký quỹ và ứng trước khách hàng",
             "Dự phòng cho vay giao dịch ký quỹ và ứng trước"
@@ -98,13 +99,22 @@
       "matchers": [
         {
           "aliases": [
+            "Sử dụng trong kỳ",
+            "Sử dụng trong năm",
+            "Sử dụng quỹ",
             "Sử dụng dự phòng trong kỳ",
             "Sử dụng dự phòng trong năm",
+            "Sử dụng dự phòng xử lý rủi ro tín dụng và bán nợ trong kỳ",
+            "Sử dụng dự phòng xử lý rủi ro tín dụng và bán nợ trong năm",
+            "Sử dụng dự phòng xử lý rủi ro tín dụng trong kỳ",
+            "Sử dụng dự phòng xử lý rủi ro tín dụng trong năm",
+            "Sử dụng dự phòng xử lý rủi ro và bán nợ trong kỳ",
             "Sử dụng dự phòng để xử lý các khoản nợ",
             "Sử dụng dự phòng rủi ro tín dụng trong kỳ",
             "Sử dụng dự phòng rủi ro tín dụng trong năm",
             "Dự phòng đã sử dụng trong kỳ",
             "Dự phòng đã sử dụng trong năm",
+            "Số dự phòng đã sử dụng",
             "Xử lý các khoản cho vay khó thu hồi bằng nguồn dự phòng",
             "Xử lý các khoản nợ khó thu hồi bằng nguồn dự phòng",
             "Xử lý các khoản nợ xấu bằng nguồn dự phòng",
@@ -154,6 +164,7 @@
         {
           "aliases": [
             "Điều chỉnh khác",
+            "Điều chỉnh theo Kiểm toán Nhà nước",
             "Biến động khác",
             "Thay đổi khác",
             "Tăng khác",

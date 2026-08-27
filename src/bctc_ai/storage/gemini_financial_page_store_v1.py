@@ -8,6 +8,7 @@ import re
 import sqlite3
 import tempfile
 from collections.abc import Mapping, Sequence
+from datetime import date
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
@@ -1728,9 +1729,15 @@ def query_selected_rollforward_family_regions_v1(
     """
 
     from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        _DATE_DMY,
+        _DATE_WORDS,
         ENGINE_FORMAT_VERSION,
         GeminiJsonRollforwardAccountingFamilyV1Error,
+        _bounded_population_reset_fence_v1,
+        _canonical_money_units_from_surface_v1,
         _date_token,
+        _date_tokens,
+        _normalized,
         _role_for_row,
         classify_gemini_json_rollforward_table_v1,
     )
@@ -1820,6 +1827,20 @@ def query_selected_rollforward_family_regions_v1(
         ).fetchall()
         if len(selected_rows) != len(version_ids):
             raise _error("selected roll-forward page JSON version is absent")
+        canonical_page_by_version = {}
+        for row in connection.execute(
+            "SELECT page_json_version_id,canonical_json_bytes FROM page_json_version "
+            "JOIN selected_rollforward_page USING(page_json_version_id)"
+        ):
+            try:
+                page_json = json.loads(row["canonical_json_bytes"])
+            except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("selected roll-forward canonical page JSON is invalid") from exc
+            if type(page_json) is not dict:
+                raise _error("selected roll-forward canonical page JSON is invalid")
+            canonical_page_by_version[row["page_json_version_id"]] = page_json
+        if set(canonical_page_by_version) != set(version_ids):
+            raise _error("selected roll-forward canonical page frontier is incomplete")
         locations = [(row["source_logical_name"], row["physical_page"]) for row in selected_rows]
         if len(locations) != len(set(locations)) or locations != sorted(locations):
             raise _error("selected roll-forward frontier is repeated or not in corpus order")
@@ -1950,6 +1971,65 @@ def query_selected_rollforward_family_regions_v1(
                      row_node.table_id, row_node.source_order, row_node.row_id
             """
         ).fetchall()
+        document_table_unit_rows = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   table_node.section_id, table_node.table_id,
+                   NULL AS column_id, 'TABLE_UNIT' AS source_kind,
+                   table_node.unit_exact AS text_exact
+            FROM selected_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            JOIN table_node USING(page_json_version_id)
+            WHERE table_node.unit_exact IS NOT NULL
+            ORDER BY selected.selection_ordinal, table_node.section_id,
+                     table_node.table_id
+            """
+        ).fetchall()
+        document_section_title_rows = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   section_node.section_id, NULL AS table_id, NULL AS column_id,
+                   'ANNUAL_REPORTING_SECTION_TITLE' AS source_kind,
+                   section_node.title_exact AS text_exact
+            FROM selected_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            JOIN section_node USING(page_json_version_id)
+            WHERE section_node.title_exact IS NOT NULL
+            ORDER BY selected.selection_ordinal, section_node.source_order,
+                     section_node.section_id
+            """
+        ).fetchall()
+        document_balance_column_rows = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   section_node.section_id, column_node.table_id,
+                   column_node.column_id, column_node.column_ordinal,
+                   column_node.header_path_exact_json
+            FROM selected_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            JOIN section_node USING(page_json_version_id)
+            JOIN column_node USING(page_json_version_id,section_id)
+            WHERE version.page_status='PRIMARY_FINANCIAL_STATEMENT'
+              AND section_node.content_kind='PRIMARY_STATEMENT'
+              AND section_node.statement_type='BALANCE_SHEET'
+              AND column_node.value_kind='MONEY'
+            ORDER BY selected.selection_ordinal, section_node.source_order,
+                     column_node.table_id, column_node.column_ordinal,
+                     column_node.column_id
+            """
+        ).fetchall()
 
     context_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
     for row in context_rows:
@@ -2031,32 +2111,12 @@ def query_selected_rollforward_family_regions_v1(
             "selected_page_ordinal": selected["selection_ordinal"],
         }
         candidate_evidence_sha256 = canonical_json_sha256_v1(candidate_material)
-        section = {
-            "content_kind": context["content_kind"],
-            "narratives_exact": context["narratives_exact"],
-            "statement_type": context["statement_type"],
-            "title_exact": context["section_title_exact"],
-        }
-        table = {
-            "columns": [
-                {
-                    "header_path_exact": column["header_path_exact"],
-                    "value_kind": column["value_kind"],
-                }
-                for column in columns
-            ],
-            "continuation": context["continuation"],
-            "rows": [
-                {
-                    "hierarchy_path_exact": row["hierarchy_path_exact"],
-                    "label_exact": row["label_exact"],
-                    "row_kind": row["row_kind"],
-                }
-                for row in rows
-            ],
-            "title_exact": context["table_title_exact"],
-            "unit_exact": context["unit_exact"],
-        }
+        page_json = canonical_page_by_version[key[0]]
+        try:
+            section = page_json["sections"][int(key[1][1:]) - 1]
+            table = section["tables"][int(key[2][1:]) - 1]
+        except (IndexError, KeyError, TypeError) as exc:
+            raise _error("selected roll-forward canonical table locator is invalid") from exc
         classification: dict[str, Any] | None
         try:
             classification = classify_gemini_json_rollforward_table_v1(
@@ -2091,6 +2151,7 @@ def query_selected_rollforward_family_regions_v1(
             "candidate_evidence_sha256": candidate_evidence_sha256,
             "classification": canonical_clone_v1(classification),
             "column_axis_sha256": column_axis_sha256,
+            "continuation_cluster_admission": None,
             "context_axis_sha256": context_axis_sha256,
             "disposition": disposition_kind,
             "document_ordinal": selected["document_ordinal"],
@@ -2117,11 +2178,76 @@ def query_selected_rollforward_family_regions_v1(
         "PERIOD_TABLES_LANE_COLUMNS": 0,
     }
     for source in sorted(dispositions_by_source):
+        source_dispositions = dispositions_by_source[source]
         components = [
-            item
-            for item in dispositions_by_source[source]
-            if item["disposition"] == "ACCEPTED_COMPONENT"
+            item for item in source_dispositions if item["disposition"] == "ACCEPTED_COMPONENT"
         ]
+        for ordinal, continuation in enumerate(source_dispositions):
+            classification = continuation["classification"]
+            if (
+                ordinal == 0
+                or continuation["disposition"] != "LOCAL_OWNER_NOT_VISIBLE"
+                or classification is None
+                or not classification["continuation_evidence"]
+            ):
+                continue
+            owner = source_dispositions[ordinal - 1]
+            owner_classification = owner["classification"]
+            if (
+                owner not in components
+                or owner_classification is None
+                or not owner_classification["local_owner_visible"]
+                or owner_classification["orientation"] != classification["orientation"]
+                or owner_classification["movement_roles_in_source_order"]
+                != classification["movement_roles_in_source_order"]
+                or owner_classification["column_lane_roles"] != classification["column_lane_roles"]
+                or continuation["physical_page"] - owner["physical_page"] != 1
+            ):
+                continue
+            continuation_regions = [
+                {
+                    field: component[field]
+                    for field in (
+                        "document_id",
+                        "page_json_version_id",
+                        "physical_page",
+                        "section_id",
+                        "source_logical_name",
+                        "source_sha256",
+                        "table_id",
+                    )
+                }
+                for component in (owner, continuation)
+            ]
+            reset_fence = _bounded_population_reset_fence_v1(
+                continuation_regions,
+                page_json_by_version=canonical_page_by_version,
+                compiled_specs=compiled_specs,
+                include_intervening_surfaces=True,
+            )
+            continuation["continuation_cluster_admission"] = {
+                "owner_candidate_evidence_sha256": owner["candidate_evidence_sha256"],
+                "reset_fence_receipt": reset_fence,
+                "rule": (
+                    "IMMEDIATELY_PRECEDING_ACCEPTED_LOCAL_OWNER_SAME_EXACT_TOPOLOGY_"
+                    "EXPLICIT_INCOMING_CONTINUATION_ONE_PAGE_RESET_FENCED"
+                ),
+                "status": (
+                    "RESET_FENCE_VETO"
+                    if reset_fence["reset_hits"]
+                    else "ADMITTED_RESET_FENCE_CLEAR"
+                ),
+            }
+            if reset_fence["reset_hits"]:
+                continue
+            components.append(continuation)
+        components.sort(
+            key=lambda item: (
+                item["selected_page_ordinal"],
+                int(item["section_id"][1:]),
+                int(item["table_id"][1:]),
+            )
+        )
         if not components:
             continue
         orientations = {
@@ -2195,6 +2321,267 @@ def query_selected_rollforward_family_regions_v1(
             item["page_json_version_id"],
         )
     )
+    unit_binding_by_canonical = {item["canonical_unit"]: item for item in layout["unit_bindings"]}
+    unit_evidence_by_document: dict[str, list[dict[str, Any]]] = {
+        item["document_id"]: [] for item in selected_document_axis
+    }
+
+    def append_unit_evidence(row: Mapping[str, Any], *, source_exact: str) -> None:
+        canonical_units = _canonical_money_units_from_surface_v1(
+            source_exact,
+            compiled_specs=compiled_specs,
+            document_consensus_only=True,
+        )
+        for canonical_unit in sorted(canonical_units):
+            binding = unit_binding_by_canonical[canonical_unit]
+            record = {
+                "canonical_unit": canonical_unit,
+                "column_id": row["column_id"],
+                "currency": binding["currency"],
+                "magnitude_power10": binding["magnitude_power10"],
+                "page_json_version_id": row["page_json_version_id"],
+                "physical_page": row["physical_page"],
+                "section_id": row["section_id"],
+                "selected_page_ordinal": row["selection_ordinal"],
+                "source_kind": row["source_kind"],
+                "table_id": row["table_id"],
+                "text_exact": source_exact,
+            }
+            target = unit_evidence_by_document[row["document_id"]]
+            if record not in target:
+                target.append(record)
+
+    for raw in document_table_unit_rows:
+        append_unit_evidence(dict(raw), source_exact=raw["text_exact"])
+
+    document_unit_context_evidence = []
+    for document in selected_document_axis:
+        evidence = sorted(
+            unit_evidence_by_document[document["document_id"]],
+            key=lambda item: (
+                item["selected_page_ordinal"],
+                int(item["section_id"][1:]),
+                int(item["table_id"][1:]),
+                item["source_kind"],
+                item["column_id"] or "",
+                item["text_exact"],
+                item["canonical_unit"],
+            ),
+        )
+        canonical_units = sorted({item["canonical_unit"] for item in evidence})
+        distinct_page_count = len(
+            {(item["physical_page"], item["page_json_version_id"]) for item in evidence}
+        )
+        status = (
+            "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+            if len(canonical_units) == 1 and distinct_page_count >= 2
+            else "CONFLICTING_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+            if len(canonical_units) > 1
+            else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+        )
+        document_unit_context_evidence.append(
+            {
+                "canonical_unit": canonical_units[0] if status.startswith("UNIQUE_") else None,
+                "canonical_units": canonical_units,
+                "distinct_page_count": distinct_page_count,
+                "document_id": document["document_id"],
+                "document_ordinal": document["document_ordinal"],
+                "evidence": evidence,
+                "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+                "minimum_distinct_page_count": 2,
+                "rule": (
+                    "SELECTED_PAGE_VERSION_ONLY_EXPLICIT_TABLE_UNIT_MAGNITUDE_AND_"
+                    "CURRENCY_TWO_PAGE_UNIQUE_CANONICAL_MONEY_UNIT_CONSENSUS"
+                ),
+                "source_logical_name": document["source_logical_name"],
+                "source_sha256": document["source_sha256"],
+                "status": status,
+            }
+        )
+
+    fiscal_evidence_by_document: dict[str, list[dict[str, Any]]] = {
+        item["document_id"]: [] for item in selected_document_axis
+    }
+
+    def full_dates(value: Any) -> list[date]:
+        folded = _normalized(value)
+        if not folded or not (_DATE_DMY.search(folded) or _DATE_WORDS.search(folded)):
+            return []
+        return sorted({token[0] for token in _date_tokens(value)})
+
+    def annual_reporting_surface(value: Any) -> bool:
+        folded = _normalized(value)
+        if not folded:
+            return False
+        annual = bool(
+            ("nam tai chinh" in folded and "ket thuc" in folded)
+            or re.search(r"\bnam (?:duoc )?ket thuc\b", folded)
+            or "financial year ended" in folded
+            or "year ended" in folded
+        )
+        reporting = any(
+            marker in folded
+            for marker in (
+                "bao cao tai chinh",
+                "thuyet minh bao cao",
+                "financial statement",
+            )
+        )
+        return annual and (reporting or "nam tai chinh" in folded)
+
+    def annual_reporting_dates(value: Any) -> list[date]:
+        folded = _normalized(value)
+        if not folded or not annual_reporting_surface(value):
+            return []
+        governed = []
+        grammar = re.compile(
+            r"(?:nam tai chinh|nam(?: duoc)?|financial year|year)\s+"
+            r"(?:duoc\s+)?(?:ket thuc(?:\s+vao)?(?:\s+ngay)?|ended(?:\s+on)?)\s*$"
+        )
+        for match in sorted(
+            [*_DATE_DMY.finditer(folded), *_DATE_WORDS.finditer(folded)],
+            key=lambda item: (item.start(), item.end()),
+        ):
+            if grammar.search(folded[: match.start()]) is None:
+                continue
+            try:
+                parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+            except ValueError:
+                continue
+            if parsed not in governed:
+                governed.append(parsed)
+        return governed
+
+    def append_fiscal_evidence(row: Mapping[str, Any], *, parsed: date) -> None:
+        record = {
+            "column_id": row.get("column_id"),
+            "date": parsed.isoformat(),
+            "day": parsed.day,
+            "month": parsed.month,
+            "page_json_version_id": row["page_json_version_id"],
+            "physical_page": row["physical_page"],
+            "section_id": row["section_id"],
+            "selected_page_ordinal": row["selection_ordinal"],
+            "source_kind": row["source_kind"],
+            "table_id": row.get("table_id"),
+            "text_exact": row["text_exact"],
+        }
+        target = fiscal_evidence_by_document[row["document_id"]]
+        if record not in target:
+            target.append(record)
+
+    for raw in document_section_title_rows:
+        row = dict(raw)
+        for parsed in annual_reporting_dates(row["text_exact"]):
+            append_fiscal_evidence(row, parsed=parsed)
+
+    balance_by_table: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
+    for raw in document_balance_column_rows:
+        row = dict(raw)
+        row["header_path_exact"] = decode_string_axis(
+            row.pop("header_path_exact_json"), label="balance-sheet column-header"
+        )
+        balance_by_table.setdefault(
+            (
+                row["document_id"],
+                row["page_json_version_id"],
+                row["section_id"],
+                row["table_id"],
+            ),
+            [],
+        ).append(row)
+    for rows in balance_by_table.values():
+        date_sources = []
+        for row in rows:
+            for source_exact in row["header_path_exact"]:
+                for parsed in full_dates(source_exact):
+                    date_sources.append((parsed, row, source_exact))
+        distinct_dates = sorted({item[0] for item in date_sources})
+        if len(distinct_dates) != 2:
+            continue
+        previous, current = distinct_dates
+        if not (
+            previous < current
+            and current.year == previous.year + 1
+            and (current - previous).days <= 366
+        ):
+            continue
+        for parsed, raw_row, source_exact in date_sources:
+            if parsed != previous:
+                continue
+            append_fiscal_evidence(
+                {
+                    **raw_row,
+                    "source_kind": "BALANCE_SHEET_COMPARATIVE_DATE_COLUMN",
+                    "text_exact": source_exact,
+                },
+                parsed=parsed,
+            )
+
+    document_fiscal_close_context_evidence = []
+    for document in selected_document_axis:
+        all_evidence = fiscal_evidence_by_document[document["document_id"]]
+        year_contexts = []
+        for evidence_year in sorted(
+            {date.fromisoformat(item["date"]).year for item in all_evidence}
+        ):
+            evidence = sorted(
+                (
+                    item
+                    for item in all_evidence
+                    if date.fromisoformat(item["date"]).year == evidence_year
+                ),
+                key=lambda item: (
+                    item["selected_page_ordinal"],
+                    int(item["section_id"][1:]),
+                    int(item["table_id"][1:]) if item["table_id"] is not None else 0,
+                    item["column_id"] or "",
+                    item["source_kind"],
+                    item["date"],
+                    item["text_exact"],
+                ),
+            )
+            month_day_axis = sorted({(item["month"], item["day"]) for item in evidence})
+            distinct_page_count = len(
+                {(item["physical_page"], item["page_json_version_id"]) for item in evidence}
+            )
+            status = (
+                "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+                if len(month_day_axis) == 1 and distinct_page_count >= 2
+                else "CONFLICTING_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+                if len(month_day_axis) > 1
+                else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+            )
+            year_contexts.append(
+                {
+                    "day": month_day_axis[0][1] if status.startswith("UNIQUE_") else None,
+                    "distinct_page_count": distinct_page_count,
+                    "evidence": evidence,
+                    "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+                    "minimum_distinct_page_count": 2,
+                    "month": month_day_axis[0][0] if status.startswith("UNIQUE_") else None,
+                    "month_day_axis": [
+                        {"day": day, "month": month} for month, day in month_day_axis
+                    ],
+                    "status": status,
+                    "year": evidence_year,
+                }
+            )
+        document_fiscal_close_context_evidence.append(
+            {
+                "document_id": document["document_id"],
+                "document_ordinal": document["document_ordinal"],
+                "rule": (
+                    "SELECTED_PAGE_VERSION_ONLY_ANNUAL_REPORTING_TITLE_OR_BALANCE_"
+                    "SHEET_COMPARATIVE_DATE_EXACT_YEAR_TWO_PAGE_UNIQUE_FISCAL_"
+                    "CLOSE_MONTH_DAY_CONSENSUS"
+                ),
+                "source_logical_name": document["source_logical_name"],
+                "source_sha256": document["source_sha256"],
+                "year_context_axis_sha256": canonical_json_sha256_v1(year_contexts),
+                "year_contexts": year_contexts,
+            }
+        )
     accepted_sources = sorted({item["source_logical_name"] for item in accepted_regions})
     query_receipt = {
         "accepted_layout_counts": layout_counts,
@@ -2210,6 +2597,22 @@ def query_selected_rollforward_family_regions_v1(
         "endpoint_seed_row_count": len(endpoint_seed_by_identity),
         "exact_region_axis_sha256": canonical_json_sha256_v1(accepted_regions),
         "exact_region_count": len(accepted_regions),
+        "document_unit_context_axis_sha256": canonical_json_sha256_v1(
+            document_unit_context_evidence
+        ),
+        "document_unit_context_count": len(document_unit_context_evidence),
+        "document_unit_qualifying_evidence_count": sum(
+            len(item["evidence"]) for item in document_unit_context_evidence
+        ),
+        "document_fiscal_close_context_axis_sha256": canonical_json_sha256_v1(
+            document_fiscal_close_context_evidence
+        ),
+        "document_fiscal_close_context_count": len(document_fiscal_close_context_evidence),
+        "document_fiscal_close_qualifying_evidence_count": sum(
+            len(year_context["evidence"])
+            for item in document_fiscal_close_context_evidence
+            for year_context in item["year_contexts"]
+        ),
         "family_id": compiled_specs["topology"]["family_id"],
         "format_version": "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_RECEIPT_V1",
         "query_policy_sha256": query_policy_sha256,
@@ -2225,6 +2628,8 @@ def query_selected_rollforward_family_regions_v1(
     return {
         "accepted_regions": accepted_regions,
         "candidate_dispositions": candidate_dispositions,
+        "document_fiscal_close_context_evidence": (document_fiscal_close_context_evidence),
+        "document_unit_context_evidence": document_unit_context_evidence,
         "format_version": ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
         "query_receipt": query_receipt,
         "selected_document_axis": selected_document_axis,
@@ -2283,6 +2688,14 @@ def validate_selected_rollforward_family_candidate_replays_v1(
         else []
     )
     loaded_by_version = {page["page_json_version_id"]: page for page in loaded_pages}
+    unit_context_by_source = {
+        item["source_logical_name"]: item
+        for item in indexed_query_evidence["document_unit_context_evidence"]
+    }
+    fiscal_context_by_source = {
+        item["source_logical_name"]: item
+        for item in indexed_query_evidence["document_fiscal_close_context_evidence"]
+    }
     if set(loaded_by_version) != set(accepted_version_ids):
         raise _error("selected roll-forward accepted page axis does not load exactly")
     for regions in regions_by_source.values():
@@ -2311,6 +2724,12 @@ def validate_selected_rollforward_family_candidate_replays_v1(
                 },
                 compiled_specs=dict(compiled_specs),
                 query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(regions),
+                document_fiscal_close_context_evidence=fiscal_context_by_source.get(
+                    trial["source_logical_name"]
+                ),
+                document_unit_context_evidence=unit_context_by_source.get(
+                    trial["source_logical_name"]
+                ),
             )
     except (KeyError, ValueError) as exc:
         raise _error("selected roll-forward candidate does not replay from SQLite") from exc

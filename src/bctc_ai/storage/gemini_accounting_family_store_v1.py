@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import stat
 import tempfile
 from collections.abc import Mapping, Sequence
 from hashlib import sha256
@@ -19,6 +20,13 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+)
+from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (
+    validate_current_corpus_manifest_index_v1,
+)
+from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (
+    apply_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
 )
 
 FORMAT_VERSION = "GEMINI_ACCOUNTING_FAMILY_STORE_V1"
@@ -612,6 +620,179 @@ def _checked_implementation_refs(
     return sorted(checked, key=lambda reference: reference["path"])
 
 
+def _read_authenticated_file_v1(
+    path: Path,
+    reference: Mapping[str, Any],
+    *,
+    retain_payload: bool,
+) -> bytes | None:
+    checked = _checked_ref(reference)
+    if path.is_symlink() or not path.is_file():
+        raise _error("family authority content is absent, a symlink, or not a regular file")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise _error("family authority content cannot be opened without following links") from exc
+    chunks = [] if retain_payload else None
+    try:
+        with os.fdopen(descriptor, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode) or before.st_size != checked["size_bytes"]:
+                raise _error("family authority content reference does not authenticate")
+            digest = sha256()
+            while block := stream.read(1024 * 1024):
+                digest.update(block)
+                if chunks is not None:
+                    chunks.append(block)
+            after = os.fstat(stream.fileno())
+            if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+            ) or digest.hexdigest() != checked["sha256"]:
+                raise _error("family authority content reference does not authenticate")
+    except BaseException:
+        # fdopen owns and closes the descriptor after successful construction.
+        raise
+    return b"".join(chunks) if chunks is not None else None
+
+
+def _authenticate_file_ref_v1(path: Path, reference: Mapping[str, Any]) -> None:
+    _read_authenticated_file_v1(path, reference, retain_payload=False)
+
+
+def _authenticated_file_bytes_v1(path: Path, reference: Mapping[str, Any]) -> bytes:
+    payload = _read_authenticated_file_v1(path, reference, retain_payload=True)
+    assert payload is not None
+    return payload
+
+
+def _artifact_content_path_v1(
+    artifact_root: Path,
+    reference: Mapping[str, Any],
+) -> Path:
+    checked = _checked_ref(reference)
+    relative = Path(checked["path"])
+    if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+        raise _error("family authority content reference escapes its artifact root")
+    root = artifact_root.resolve()
+    candidate = root.joinpath(relative)
+    cursor = root
+    for part in relative.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise _error("family authority content path crosses a symlink")
+    try:
+        candidate.resolve().relative_to(root)
+    except ValueError as exc:
+        raise _error("family authority content reference escapes its artifact root") from exc
+    return candidate
+
+
+def _json_object_bytes_v1(payload: bytes, *, field: str) -> dict[str, Any]:
+    try:
+        value = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error(f"{field} is not valid JSON") from exc
+    if type(value) is not dict:
+        raise _error(f"{field} is not one JSON object")
+    return value
+
+
+def _selected_corpus_page_frontier_v1(
+    *,
+    corpus_index_ref: Mapping[str, Any],
+    corpus_artifact_root: Path,
+    checked_sweep: Mapping[str, Any],
+    source_page_database: Path,
+) -> list[str]:
+    checked_ref = _checked_ref(corpus_index_ref)
+    index_path = Path(checked_ref["path"])
+    if not index_path.is_absolute():
+        raise _error("roll-forward corpus index authority path must be absolute")
+    index_payload = _authenticated_file_bytes_v1(index_path, checked_ref)
+    try:
+        index = validate_current_corpus_manifest_index_v1(
+            _json_object_bytes_v1(index_payload, field="roll-forward corpus index authority")
+        )
+    except ValueError as exc:
+        raise _error("roll-forward corpus index authority does not validate") from exc
+    if index["corpus_manifest_index_id"] != checked_sweep["corpus_manifest_index_id"]:
+        raise _error("roll-forward sweep does not bind the authenticated corpus index")
+
+    root = Path(corpus_artifact_root)
+    if not root.is_absolute() or root.is_symlink() or not root.is_dir():
+        raise _error("roll-forward corpus artifact root is not an absolute regular directory")
+    root = root.resolve()
+    selected_ids: list[str] = []
+    for document in index["documents"]:
+        manifest_path = _artifact_content_path_v1(root, document["document_manifest_ref"])
+        manifest = _json_object_bytes_v1(
+            _authenticated_file_bytes_v1(manifest_path, document["document_manifest_ref"]),
+            field="selected document manifest authority",
+        )
+        material = {key: manifest[key] for key in manifest if key != "document_manifest_id"}
+        pages = manifest.get("pages")
+        source = manifest.get("document")
+        if (
+            manifest.get("document_manifest_id") != document["document_manifest_id"]
+            or manifest.get("document_manifest_id")
+            != "gfdmv1:manifest:" + canonical_json_sha256_v1(material)
+            or manifest.get("page_count") != document["page_count"]
+            or type(pages) is not list
+            or len(pages) != document["page_count"]
+            or canonical_json_sha256_v1(pages) != document["page_json_frontier_sha256"]
+            or type(source) is not dict
+            or source.get("source_logical_name") != document["relative_path"]
+            or source.get("source_sha256") != document["source_sha256"]
+        ):
+            raise _error("selected document manifest identity or page axis drifted")
+        document_ids = [page.get("page_json_version_id") for page in pages]
+        physical_pages = [page.get("physical_page") for page in pages]
+        if (
+            any(
+                type(version_id) is not str or not version_id.startswith("gfpstorev1:json:")
+                for version_id in document_ids
+            )
+            or len(set(document_ids)) != len(document_ids)
+            or any(type(page) is not int or page <= 0 for page in physical_pages)
+            or physical_pages != sorted(set(physical_pages))
+        ):
+            raise _error("selected document manifest JSON version axis is incomplete")
+        selected_ids.extend(document_ids)
+    if len(selected_ids) != index["summary"]["page_count"] or len(set(selected_ids)) != len(
+        selected_ids
+    ):
+        raise _error("selected corpus JSON version frontier is incomplete or duplicate")
+
+    expected_database_ref = index["database_ref"]
+    effective_frontier = checked_sweep.get("effective_page_frontier")
+    if effective_frontier is not None:
+        try:
+            checked_frontier, selected_ids = apply_gemini_family_effective_page_frontier_v1(
+                effective_frontier,
+                base_page_json_version_ids=selected_ids,
+            )
+        except ValueError as exc:
+            raise _error("roll-forward effective page frontier does not replay") from exc
+        if (
+            checked_frontier["base_corpus_manifest_index_id"] != index["corpus_manifest_index_id"]
+            or checked_frontier["family_id"] != checked_sweep["family_id"]
+        ):
+            raise _error("roll-forward effective page frontier binds another corpus or family")
+        expected_database_ref = effective_page_frontier_stages_v1(checked_frontier)[-1][
+            "database_ref"
+        ]
+
+    authenticated_database = _artifact_content_path_v1(root, expected_database_ref)
+    if source_page_database.resolve() != authenticated_database.resolve():
+        raise _error("roll-forward source page store differs from corpus authority")
+    _authenticate_file_ref_v1(authenticated_database, expected_database_ref)
+    return selected_ids
+
+
 def ingest_gemini_accounting_family_sweep_v1(
     path: Path,
     *,
@@ -620,6 +801,8 @@ def ingest_gemini_accounting_family_sweep_v1(
     implementation_refs: Sequence[Mapping[str, Any]],
     run_kind: str,
     source_page_database: Path | None = None,
+    selected_page_json_version_ids: Sequence[str] | None = None,
+    corpus_artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     """Store one validated sweep and every trace row in one SQLite transaction."""
 
@@ -627,10 +810,16 @@ def ingest_gemini_accounting_family_sweep_v1(
         raise _error("family run kind must be EXPERIMENTAL or OFFICIAL")
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
     if checked_sweep["format_version"] == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1":
-        if source_page_database is None:
-            raise _error("roll-forward family ingest requires its canonical page store")
+        if (
+            source_page_database is None
+            or corpus_artifact_root is None
+            or type(selected_page_json_version_ids) not in {list, tuple}
+            or not selected_page_json_version_ids
+            or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+        ):
+            raise _error("roll-forward family ingest requires its canonical selected page frontier")
         from bctc_ai.storage.gemini_financial_page_store_v1 import (
-            validate_selected_rollforward_family_candidate_replays_v1,
+            validate_selected_rollforward_family_query_evidence_v1,
         )
 
         compiled_specs = compile_gemini_json_flat_family_specs_v1(
@@ -639,14 +828,29 @@ def ingest_gemini_accounting_family_sweep_v1(
             checked_sweep["specs"]["schema_binding"]["value"],
         )
         try:
-            validate_selected_rollforward_family_candidate_replays_v1(
+            authoritative_selected_ids = _selected_corpus_page_frontier_v1(
+                corpus_index_ref=corpus_index_ref,
+                corpus_artifact_root=corpus_artifact_root,
+                checked_sweep=checked_sweep,
+                source_page_database=source_page_database,
+            )
+            if list(selected_page_json_version_ids) != authoritative_selected_ids:
+                raise _error(
+                    "roll-forward caller page frontier differs from authenticated corpus authority"
+                )
+            validate_selected_rollforward_family_query_evidence_v1(
                 source_page_database,
+                selected_page_json_version_ids=authoritative_selected_ids,
                 compiled_specs=compiled_specs,
                 indexed_query_evidence=checked_sweep["indexed_query_evidence"],
                 trials=checked_sweep["trials"],
             )
-        except RuntimeError as exc:
-            raise _error("roll-forward family candidates do not replay from page store") from exc
+        except GeminiAccountingFamilyStoreV1Error:
+            raise
+        except (RuntimeError, ValueError) as exc:
+            raise _error(
+                "roll-forward family selected query and candidates do not replay from page store"
+            ) from exc
     checked_index_ref = _checked_ref(corpus_index_ref)
     checked_implementation = _checked_implementation_refs(implementation_refs)
     if not path.exists():

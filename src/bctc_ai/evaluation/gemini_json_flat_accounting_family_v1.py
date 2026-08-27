@@ -8,6 +8,8 @@ VietOCR, bank, filename, page-number, or note-number matching path.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -1439,6 +1441,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
         != {
             "accepted_regions",
             "candidate_dispositions",
+            "document_fiscal_close_context_evidence",
+            "document_unit_context_evidence",
             "format_version",
             "query_receipt",
             "selected_document_axis",
@@ -1446,6 +1450,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
         or value.get("format_version") != ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION
         or type(value.get("accepted_regions")) is not list
         or type(value.get("candidate_dispositions")) is not list
+        or type(value.get("document_fiscal_close_context_evidence")) is not list
+        or type(value.get("document_unit_context_evidence")) is not list
         or type(value.get("query_receipt")) is not dict
         or type(value.get("selected_document_axis")) is not list
         or not value["selected_document_axis"]
@@ -1455,6 +1461,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
     dispositions = value["candidate_dispositions"]
     receipt = value["query_receipt"]
     selected_documents = value["selected_document_axis"]
+    document_fiscal_close_context = value["document_fiscal_close_context_evidence"]
+    document_unit_context = value["document_unit_context_evidence"]
     locator_fields = {
         "document_id",
         "page_json_version_id",
@@ -1468,6 +1476,7 @@ def _validate_indexed_rollforward_query_evidence_v1(
         "candidate_evidence_sha256",
         "classification",
         "column_axis_sha256",
+        "continuation_cluster_admission",
         "context_axis_sha256",
         "disposition",
         "document_ordinal",
@@ -1503,9 +1512,11 @@ def _validate_indexed_rollforward_query_evidence_v1(
         "context_lane_evidence",
         "context_lane_role",
         "context_reset_visible",
+        "lane_population_assignment_receipt",
         "local_owner_visible",
         "movement_roles_in_source_order",
         "orientation",
+        "period_context_owner_visible",
         "reasons",
         "structural_hard_negative_visible",
     }
@@ -1541,6 +1552,160 @@ def _validate_indexed_rollforward_query_evidence_v1(
         ):
             raise _error("Gemini JSON indexed roll-forward selected document axis is invalid")
         selected_document_by_source[document["source_logical_name"]] = document
+
+    from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        _canonical_money_units_from_surface_v1,
+        _validated_document_fiscal_close_context_evidence_v1,
+    )
+
+    unit_binding_by_canonical = {
+        item["canonical_unit"]: item for item in compiled_specs["layout"]["unit_bindings"]
+    }
+    unit_context_fields = {
+        "canonical_unit",
+        "canonical_units",
+        "distinct_page_count",
+        "document_id",
+        "document_ordinal",
+        "evidence",
+        "evidence_axis_sha256",
+        "minimum_distinct_page_count",
+        "rule",
+        "source_logical_name",
+        "source_sha256",
+        "status",
+    }
+    unit_evidence_fields = {
+        "canonical_unit",
+        "column_id",
+        "currency",
+        "magnitude_power10",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "selected_page_ordinal",
+        "source_kind",
+        "table_id",
+        "text_exact",
+    }
+    unit_statuses = {
+        "CONFLICTING_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE",
+        "INSUFFICIENT_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE",
+        "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS",
+    }
+    if len(document_unit_context) != len(selected_documents):
+        raise _error("Gemini JSON indexed roll-forward document-unit axis is incomplete")
+    for document, context in zip(selected_documents, document_unit_context, strict=True):
+        if (
+            type(context) is not dict
+            or set(context) != unit_context_fields
+            or any(
+                context.get(field) != document[field]
+                for field in (
+                    "document_id",
+                    "document_ordinal",
+                    "source_logical_name",
+                    "source_sha256",
+                )
+            )
+            or type(context.get("evidence")) is not list
+            or type(context.get("canonical_units")) is not list
+            or context.get("canonical_units") != sorted(set(context["canonical_units"]))
+            or context.get("minimum_distinct_page_count") != 2
+            or context.get("status") not in unit_statuses
+            or context.get("rule")
+            != (
+                "SELECTED_PAGE_VERSION_ONLY_EXPLICIT_TABLE_UNIT_MAGNITUDE_AND_"
+                "CURRENCY_TWO_PAGE_UNIQUE_CANONICAL_MONEY_UNIT_CONSENSUS"
+            )
+        ):
+            raise _error("Gemini JSON indexed roll-forward document-unit context is invalid")
+        evidence = context["evidence"]
+        expected_order = sorted(
+            evidence,
+            key=lambda item: (
+                item.get("selected_page_ordinal", 0),
+                int(item.get("section_id", "s0")[1:]),
+                int(item.get("table_id", "t0")[1:]),
+                item.get("source_kind", ""),
+                item.get("column_id") or "",
+                item.get("text_exact", ""),
+                item.get("canonical_unit", ""),
+            ),
+        )
+        if expected_order != evidence or len(
+            {canonical_json_sha256_v1(item) for item in evidence}
+        ) != len(evidence):
+            raise _error("Gemini JSON indexed roll-forward document-unit axis is unordered")
+        for item in evidence:
+            binding = unit_binding_by_canonical.get(item.get("canonical_unit"))
+            if (
+                type(item) is not dict
+                or set(item) != unit_evidence_fields
+                or binding is None
+                or not binding["document_consensus_eligible"]
+                or item.get("currency") != binding["currency"]
+                or item.get("magnitude_power10") != binding["magnitude_power10"]
+                or type(item.get("page_json_version_id")) is not str
+                or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", item["page_json_version_id"])
+                is None
+                or type(item.get("physical_page")) is not int
+                or item["physical_page"] <= 0
+                or type(item.get("section_id")) is not str
+                or re.fullmatch(r"s[1-9][0-9]*", item["section_id"]) is None
+                or type(item.get("table_id")) is not str
+                or re.fullmatch(r"t[1-9][0-9]*", item["table_id"]) is None
+                or item.get("column_id") is not None
+                or item.get("source_kind") != "TABLE_UNIT"
+                or type(item.get("text_exact")) is not str
+                or not item["text_exact"]
+                or type(item.get("selected_page_ordinal")) is not int
+                or item["selected_page_ordinal"] <= 0
+                or item["canonical_unit"]
+                not in _canonical_money_units_from_surface_v1(
+                    item["text_exact"],
+                    compiled_specs=compiled_specs,
+                    document_consensus_only=True,
+                )
+            ):
+                raise _error("Gemini JSON indexed roll-forward document-unit evidence is invalid")
+        canonical_units = sorted({item["canonical_unit"] for item in evidence})
+        distinct_page_count = len(
+            {(item["physical_page"], item["page_json_version_id"]) for item in evidence}
+        )
+        expected_status = (
+            "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+            if len(canonical_units) == 1 and distinct_page_count >= 2
+            else "CONFLICTING_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+            if len(canonical_units) > 1
+            else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+        )
+        if (
+            context["canonical_units"] != canonical_units
+            or context["canonical_unit"]
+            != (canonical_units[0] if expected_status.startswith("UNIQUE_") else None)
+            or context["distinct_page_count"] != distinct_page_count
+            or context["status"] != expected_status
+            or context["evidence_axis_sha256"] != canonical_json_sha256_v1(evidence)
+        ):
+            raise _error("Gemini JSON indexed roll-forward document-unit receipt drifted")
+
+    if len(document_fiscal_close_context) != len(selected_documents):
+        raise _error("Gemini JSON indexed roll-forward fiscal-close axis is incomplete")
+    for document, context in zip(selected_documents, document_fiscal_close_context, strict=True):
+        try:
+            checked_context = _validated_document_fiscal_close_context_evidence_v1(
+                context,
+                document_id=document["document_id"],
+                source_logical_name=document["source_logical_name"],
+                source_sha256=document["source_sha256"],
+            )
+        except Exception as exc:
+            raise _error(
+                "Gemini JSON indexed roll-forward fiscal-close context is invalid"
+            ) from exc
+        if not same_typed_json_v1(checked_context, context):
+            raise _error("Gemini JSON indexed roll-forward fiscal-close receipt drifted")
 
     def valid_locator(item: dict[str, Any]) -> bool:
         return (
@@ -1587,6 +1752,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
                 )
             )
             or disposition["query_policy_sha256"] != query_policy_sha256
+            or disposition.get("continuation_cluster_admission") is not None
+            and type(disposition["continuation_cluster_admission"]) is not dict
             or (
                 classification is None
                 and disposition["disposition"] != "LOCAL_TABLE_CLASSIFICATION_ERROR"
@@ -1619,6 +1786,7 @@ def _validate_indexed_rollforward_query_evidence_v1(
                     )
                     or classification.get("context_lane_role") not in {None, *lane_roles}
                     or type(classification.get("context_reset_visible")) is not bool
+                    or type(classification.get("lane_population_assignment_receipt")) is not dict
                     or type(classification.get("local_owner_visible")) is not bool
                     or type(classification.get("movement_roles_in_source_order")) is not list
                     or any(
@@ -1627,6 +1795,7 @@ def _validate_indexed_rollforward_query_evidence_v1(
                     )
                     or classification.get("orientation")
                     not in {None, "LANE_COLUMNS", "PERIOD_COLUMNS"}
+                    or type(classification.get("period_context_owner_visible")) is not bool
                     or type(classification.get("reasons")) is not list
                     or any(type(reason) is not str for reason in classification["reasons"])
                     or type(classification.get("structural_hard_negative_visible")) is not bool
@@ -1696,6 +1865,151 @@ def _validate_indexed_rollforward_query_evidence_v1(
             raise _error("Gemini JSON indexed roll-forward disposition axis drifted")
         disposition_by_evidence[evidence_sha256] = disposition
 
+    admitted_component_evidence = {
+        item["candidate_evidence_sha256"]
+        for item in dispositions
+        if item["disposition"] == "ACCEPTED_COMPONENT"
+    }
+    dispositions_by_source: dict[str, list[dict[str, Any]]] = {}
+    for item in dispositions:
+        dispositions_by_source.setdefault(item["source_logical_name"], []).append(item)
+    for source_dispositions in dispositions_by_source.values():
+        source_dispositions.sort(
+            key=lambda item: (
+                item["selected_page_ordinal"],
+                int(item["section_id"][1:]),
+                int(item["table_id"][1:]),
+            )
+        )
+        for ordinal, continuation in enumerate(source_dispositions):
+            classification = continuation["classification"]
+            admission = continuation["continuation_cluster_admission"]
+            if admission is None:
+                continue
+            if (
+                ordinal == 0
+                or continuation["disposition"] != "LOCAL_OWNER_NOT_VISIBLE"
+                or classification is None
+                or not classification["continuation_evidence"]
+                or set(admission)
+                != {
+                    "owner_candidate_evidence_sha256",
+                    "reset_fence_receipt",
+                    "rule",
+                    "status",
+                }
+                or admission["rule"]
+                != (
+                    "IMMEDIATELY_PRECEDING_ACCEPTED_LOCAL_OWNER_SAME_EXACT_TOPOLOGY_"
+                    "EXPLICIT_INCOMING_CONTINUATION_ONE_PAGE_RESET_FENCED"
+                )
+                or admission["status"] not in {"ADMITTED_RESET_FENCE_CLEAR", "RESET_FENCE_VETO"}
+                or type(admission["reset_fence_receipt"]) is not dict
+            ):
+                raise _error("Gemini JSON indexed continuation admission is invalid")
+            owner = source_dispositions[ordinal - 1]
+            owner_classification = owner["classification"]
+            reset_fence = admission["reset_fence_receipt"]
+            checked_pages = reset_fence.get("checked_page_intervals")
+            checked_page_fields = {
+                "first_section_ordinal",
+                "last_section_ordinal",
+                "page_json_version_id",
+                "physical_page",
+                "section_table_intervals",
+            }
+            checked_table_fields = {
+                "first_table_ordinal",
+                "last_table_ordinal",
+                "section_ordinal",
+            }
+            if (
+                type(checked_pages) is not list
+                or len(checked_pages) != 2
+                or any(
+                    type(page) is not dict
+                    or set(page) != checked_page_fields
+                    or type(page["first_section_ordinal"]) is not int
+                    or type(page["last_section_ordinal"]) is not int
+                    or not 1 <= page["first_section_ordinal"] <= page["last_section_ordinal"]
+                    or type(page["section_table_intervals"]) is not list
+                    or not page["section_table_intervals"]
+                    or any(
+                        type(interval) is not dict
+                        or set(interval) != checked_table_fields
+                        or type(interval["section_ordinal"]) is not int
+                        or not page["first_section_ordinal"]
+                        <= interval["section_ordinal"]
+                        <= page["last_section_ordinal"]
+                        or type(interval["first_table_ordinal"]) is not int
+                        or type(interval["last_table_ordinal"]) is not int
+                        or not 1
+                        <= interval["first_table_ordinal"]
+                        <= interval["last_table_ordinal"]
+                        for interval in page["section_table_intervals"]
+                    )
+                    or [interval["section_ordinal"] for interval in page["section_table_intervals"]]
+                    != sorted(
+                        {
+                            interval["section_ordinal"]
+                            for interval in page["section_table_intervals"]
+                        }
+                    )
+                    for page in checked_pages
+                )
+            ):
+                raise _error("Gemini JSON indexed continuation reset interval is invalid")
+            owner_section = int(owner["section_id"][1:])
+            owner_table = int(owner["table_id"][1:])
+            continuation_section = int(continuation["section_id"][1:])
+            continuation_table = int(continuation["table_id"][1:])
+            first_checked, last_checked = checked_pages
+            first_interval = first_checked["section_table_intervals"][0]
+            last_interval = last_checked["section_table_intervals"][-1]
+            reset_interval_bound_to_components = (
+                first_checked["page_json_version_id"] == owner["page_json_version_id"]
+                and first_checked["physical_page"] == owner["physical_page"]
+                and first_checked["first_section_ordinal"] == owner_section
+                and first_interval["section_ordinal"] == owner_section
+                and first_interval["first_table_ordinal"] == owner_table
+                and last_checked["page_json_version_id"] == continuation["page_json_version_id"]
+                and last_checked["physical_page"] == continuation["physical_page"]
+                and last_checked["first_section_ordinal"] == 1
+                and last_checked["last_section_ordinal"] == continuation_section
+                and last_interval["section_ordinal"] == continuation_section
+                and last_interval["first_table_ordinal"] == 1
+                and last_interval["last_table_ordinal"] == continuation_table
+            )
+            if (
+                owner["candidate_evidence_sha256"] not in admitted_component_evidence
+                or admission["owner_candidate_evidence_sha256"]
+                != owner["candidate_evidence_sha256"]
+                or owner_classification is None
+                or not owner_classification["local_owner_visible"]
+                or owner_classification["orientation"] != classification["orientation"]
+                or owner_classification["movement_roles_in_source_order"]
+                != classification["movement_roles_in_source_order"]
+                or owner_classification["column_lane_roles"] != classification["column_lane_roles"]
+                or continuation["physical_page"] - owner["physical_page"] != 1
+                or not reset_interval_bound_to_components
+                or set(reset_fence)
+                != {"checked_page_intervals", "reset_hits", "scope_kind", "status"}
+                or type(reset_fence["reset_hits"]) is not list
+                or reset_fence["scope_kind"]
+                != "SELECTED_COMPONENTS_AND_STRICTLY_INTERVENING_SURFACES"
+                or reset_fence["status"]
+                != ("RESET_FENCE_VIOLATED" if reset_fence["reset_hits"] else "RESET_FENCE_CLEAR")
+                or admission["status"]
+                != (
+                    "RESET_FENCE_VETO"
+                    if reset_fence["reset_hits"]
+                    else "ADMITTED_RESET_FENCE_CLEAR"
+                )
+            ):
+                raise _error("Gemini JSON indexed continuation admission drifted")
+            if admission["status"] == "ADMITTED_RESET_FENCE_CLEAR":
+                admitted_component_evidence.add(continuation["candidate_evidence_sha256"])
+
     for region in regions:
         if (
             type(region) is not dict
@@ -1725,7 +2039,7 @@ def _validate_indexed_rollforward_query_evidence_v1(
         disposition = disposition_by_evidence.get(region["candidate_evidence_sha256"])
         if (
             disposition is None
-            or disposition["disposition"] != "ACCEPTED_COMPONENT"
+            or disposition["candidate_evidence_sha256"] not in admitted_component_evidence
             or any(region[field] != disposition[field] for field in locator_fields)
             or any(
                 region[field] != disposition[field]
@@ -1741,13 +2055,8 @@ def _validate_indexed_rollforward_query_evidence_v1(
         ):
             raise _error("Gemini JSON indexed roll-forward accepted region is unbound")
 
-    accepted_disposition_evidence = {
-        item["candidate_evidence_sha256"]
-        for item in dispositions
-        if item["disposition"] == "ACCEPTED_COMPONENT"
-    }
     region_evidence = {item["candidate_evidence_sha256"] for item in regions}
-    if len(region_evidence) != len(regions) or region_evidence != accepted_disposition_evidence:
+    if len(region_evidence) != len(regions) or region_evidence != admitted_component_evidence:
         raise _error("Gemini JSON indexed roll-forward accepted component frontier drifted")
 
     ordered_regions = sorted(
@@ -1827,6 +2136,12 @@ def _validate_indexed_rollforward_query_evidence_v1(
         "endpoint_seed_row_count",
         "exact_region_axis_sha256",
         "exact_region_count",
+        "document_fiscal_close_context_axis_sha256",
+        "document_fiscal_close_context_count",
+        "document_fiscal_close_qualifying_evidence_count",
+        "document_unit_context_axis_sha256",
+        "document_unit_context_count",
+        "document_unit_qualifying_evidence_count",
         "family_id",
         "format_version",
         "query_policy_sha256",
@@ -1854,6 +2169,20 @@ def _validate_indexed_rollforward_query_evidence_v1(
         or receipt.get("context_record_count") != len(dispositions)
         or receipt.get("exact_region_axis_sha256") != canonical_json_sha256_v1(regions)
         or receipt.get("exact_region_count") != len(regions)
+        or receipt.get("document_fiscal_close_context_axis_sha256")
+        != canonical_json_sha256_v1(document_fiscal_close_context)
+        or receipt.get("document_fiscal_close_context_count") != len(document_fiscal_close_context)
+        or receipt.get("document_fiscal_close_qualifying_evidence_count")
+        != sum(
+            len(year_context["evidence"])
+            for item in document_fiscal_close_context
+            for year_context in item["year_contexts"]
+        )
+        or receipt.get("document_unit_context_axis_sha256")
+        != canonical_json_sha256_v1(document_unit_context)
+        or receipt.get("document_unit_context_count") != len(document_unit_context)
+        or receipt.get("document_unit_qualifying_evidence_count")
+        != sum(len(item["evidence"]) for item in document_unit_context)
         or receipt.get("target_document_count") != len(by_source)
         or receipt.get("selected_document_count") != len(selected_documents)
         or receipt.get("selected_document_axis_sha256")
@@ -1912,6 +2241,16 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
         raise _error("Gemini JSON roll-forward trial axis does not cover selected documents")
 
     from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        _DATE_DMY,
+        _DATE_WORDS,
+        _assign_period_column_lane_roles,
+        _date_tokens,
+        _document_fiscal_close_year_binding_receipt_v1,
+        _endpoint_source_receipt,
+        _normalized,
+        _rebuild_rollforward_equations_from_role_vectors_v1,
+        _rebuild_rollforward_potential_mappings_from_role_vectors_v1,
+        _two_period_endpoint_continuity_v1,
         build_gemini_json_rollforward_region_query_receipt_v1,
     )
 
@@ -1953,17 +2292,69 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
         "status",
         "table_id",
     }
+    closure_fields = {
+        "bound_unit",
+        "component_classifications",
+        "component_region_axis_sha256",
+        "duplicate_source_ambiguities",
+        "endpoint_continuity_receipts",
+        "equations",
+        "lane_assignment_receipts",
+        "lane_population_assignment_receipts",
+        "lane_population_continuity_receipt",
+        "orientation",
+        "period_assignment_receipt",
+        "period_lane_populations",
+        "population_receipt",
+        "potential_mapping_count",
+        "query_receipt",
+        "role_vectors",
+        "rule",
+        "unresolved_frontiers",
+        "unit_provenance_receipt",
+    }
     accepted_by_source: dict[str, list[dict[str, Any]]] = {}
+    accepted_indexed_by_source: dict[str, list[dict[str, Any]]] = {}
     for accepted in evidence["accepted_regions"]:
         accepted_by_source.setdefault(accepted["source_logical_name"], []).append(
             {field: accepted[field] for field in locator_fields}
         )
+        accepted_indexed_by_source.setdefault(accepted["source_logical_name"], []).append(accepted)
+    accepted_classification_by_locator = {
+        canonical_json_sha256_v1(
+            {field: disposition[field] for field in locator_fields}
+        ): disposition["classification"]
+        for disposition in evidence["candidate_dispositions"]
+        if disposition["disposition"] == "ACCEPTED_COMPONENT"
+        or (
+            type(disposition.get("continuation_cluster_admission")) is dict
+            and disposition["continuation_cluster_admission"].get("status")
+            == "ADMITTED_RESET_FENCE_CLEAR"
+        )
+    }
+    continuation_admission_by_locator = {
+        canonical_json_sha256_v1(
+            {field: disposition[field] for field in locator_fields}
+        ): disposition["continuation_cluster_admission"]
+        for disposition in evidence["candidate_dispositions"]
+        if type(disposition.get("continuation_cluster_admission")) is dict
+        and disposition["continuation_cluster_admission"].get("status")
+        == "ADMITTED_RESET_FENCE_CLEAR"
+    }
     near_sources = {
         disposition["source_logical_name"]
         for disposition in evidence["candidate_dispositions"]
         if type(disposition["classification"]) is dict
         and disposition["classification"]["local_owner_visible"] is True
         and disposition["classification"]["structural_hard_negative_visible"] is False
+    }
+    unit_context_by_source = {
+        context["source_logical_name"]: context
+        for context in evidence["document_unit_context_evidence"]
+    }
+    fiscal_context_by_source = {
+        context["source_logical_name"]: context
+        for context in evidence["document_fiscal_close_context_evidence"]
     }
 
     def validate_candidate(
@@ -1983,6 +2374,9 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
             or any(type(reason) is not str or not reason for reason in candidate["reasons"])
             or type(candidate.get("mappings")) is not list
             or type(candidate.get("closure_receipt")) is not dict
+            or set(candidate["closure_receipt"]) != closure_fields
+            or candidate["closure_receipt"].get("rule")
+            != "EXACT_SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK"
             or type(candidate.get("component_regions")) is not list
             or not candidate["component_regions"]
             or candidate["source_logical_name"] != document["source_logical_name"]
@@ -2019,6 +2413,1005 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
             "component_region_axis_sha256"
         ) != canonical_json_sha256_v1(accepted_regions):
             raise _error("Gemini JSON roll-forward candidate query receipt drifted")
+        unit_receipt = candidate["closure_receipt"].get("unit_provenance_receipt")
+        if type(unit_receipt) is not dict:
+            raise _error("Gemini JSON roll-forward candidate unit provenance is absent")
+        assignment_kind = unit_receipt.get("assignment_kind")
+        expected_unit_context = unit_context_by_source[document["source_logical_name"]]
+        embedded_unit_context = unit_receipt.get("document_unit_context_evidence")
+        local_unit_axis = unit_receipt.get("local_unit_axis")
+        if type(local_unit_axis) is not list or not local_unit_axis:
+            raise _error("Gemini JSON roll-forward candidate local-unit axis is invalid")
+        canonical_units = {
+            binding["canonical_unit"] for binding in compiled_specs["layout"]["unit_bindings"]
+        }
+        accepted_locator_hashes = {canonical_json_sha256_v1(region) for region in accepted_regions}
+        component_classifications = candidate["closure_receipt"].get("component_classifications")
+        if type(component_classifications) is not list or not component_classifications:
+            raise _error("Gemini JSON roll-forward component unit classification is absent")
+        classified_unit_by_locator = {}
+        expected_component_classifications = []
+        for item in component_classifications:
+            if (
+                type(item) is not dict
+                or type(item.get("locator")) is not dict
+                or canonical_json_sha256_v1(item["locator"]) not in accepted_locator_hashes
+                or item.get("bound_unit") not in {None, *canonical_units}
+            ):
+                raise _error("Gemini JSON roll-forward component unit classification is invalid")
+            locator_hash = canonical_json_sha256_v1(item["locator"])
+            if locator_hash in classified_unit_by_locator:
+                raise _error("Gemini JSON roll-forward component unit classification is duplicated")
+            classified_unit_by_locator[locator_hash] = item["bound_unit"]
+            indexed_classification = accepted_classification_by_locator.get(locator_hash)
+            if type(indexed_classification) is not dict:
+                raise _error("Gemini JSON roll-forward component classification is unindexed")
+            expected_component_classifications.append(
+                {
+                    "bound_unit": item["bound_unit"],
+                    **canonical_clone_v1(indexed_classification),
+                    "locator": canonical_clone_v1(item["locator"]),
+                }
+            )
+        if set(classified_unit_by_locator) != accepted_locator_hashes:
+            raise _error("Gemini JSON roll-forward component unit classification is incomplete")
+        if not same_typed_json_v1(
+            component_classifications,
+            expected_component_classifications,
+        ):
+            raise _error(
+                "Gemini JSON roll-forward component classification drifted from indexed evidence"
+            )
+        indexed_layout_kinds = {
+            item["layout_kind"]
+            for item in accepted_indexed_by_source[document["source_logical_name"]]
+        }
+        if len(indexed_layout_kinds) != 1 or candidate["closure_receipt"].get(
+            "orientation"
+        ) != next(iter(indexed_layout_kinds)):
+            raise _error("Gemini JSON roll-forward orientation drifted from indexed evidence")
+        period_column_records = [
+            {
+                "classification": accepted_classification_by_locator[
+                    canonical_json_sha256_v1(region)
+                ],
+                "locator": region,
+            }
+            for region in accepted_regions
+            if accepted_classification_by_locator[canonical_json_sha256_v1(region)]["orientation"]
+            == "PERIOD_COLUMNS"
+        ]
+        _lane_roles, expected_lane_assignment_receipts, lane_assignment_reasons = (
+            _assign_period_column_lane_roles(
+                period_column_records,
+                compiled_specs=compiled_specs,
+            )
+        )
+        if lane_assignment_reasons or not same_typed_json_v1(
+            candidate["closure_receipt"].get("lane_assignment_receipts"),
+            expected_lane_assignment_receipts,
+        ):
+            raise _error("Gemini JSON roll-forward lane assignment receipt drifted")
+        local_fragment_keys = []
+        for item in local_unit_axis:
+            if (
+                type(item) is not dict
+                or set(item) != {"block_ordinal", "bound_unit", "locator"}
+                or type(item.get("block_ordinal")) is not int
+                or item["block_ordinal"] <= 0
+                or type(item.get("locator")) is not dict
+                or canonical_json_sha256_v1(item["locator"]) not in accepted_locator_hashes
+                or item.get("bound_unit") not in {None, *canonical_units}
+            ):
+                raise _error("Gemini JSON roll-forward candidate local-unit axis is invalid")
+            local_fragment_keys.append(
+                (canonical_json_sha256_v1(item["locator"]), item["block_ordinal"])
+            )
+            if (
+                item["bound_unit"]
+                != classified_unit_by_locator[canonical_json_sha256_v1(item["locator"])]
+            ):
+                raise _error("Gemini JSON roll-forward local unit classification drifted")
+        if len(local_fragment_keys) != len(set(local_fragment_keys)):
+            raise _error("Gemini JSON roll-forward candidate local-unit axis is duplicated")
+        local_units = [item.get("bound_unit") for item in local_unit_axis]
+        local_non_null_units = {unit for unit in local_units if unit is not None}
+        if assignment_kind == "AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_INHERITED":
+            if (
+                any(unit is not None for unit in local_units)
+                or expected_unit_context["status"]
+                != "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+                or not same_typed_json_v1(embedded_unit_context, expected_unit_context)
+                or unit_receipt.get("resolved_canonical_unit")
+                != expected_unit_context["canonical_unit"]
+            ):
+                raise _error("Gemini JSON roll-forward inherited unit provenance drifted")
+        elif assignment_kind == "UNRESOLVED_NO_LOCAL_OR_DOCUMENT_UNIT_CONSENSUS":
+            if (
+                any(unit is not None for unit in local_units)
+                or expected_unit_context["status"]
+                == "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+                or not same_typed_json_v1(embedded_unit_context, expected_unit_context)
+                or unit_receipt.get("resolved_canonical_unit") is not None
+            ):
+                raise _error("Gemini JSON roll-forward unresolved unit provenance drifted")
+        elif assignment_kind == "ALL_COMPONENTS_EXPLICIT_LOCAL_CANONICAL_UNIT":
+            expected_resolved_unit = (
+                next(iter(local_non_null_units)) if len(local_non_null_units) == 1 else None
+            )
+            if (
+                any(unit is None for unit in local_units)
+                or embedded_unit_context is not None
+                or unit_receipt.get("resolved_canonical_unit") != expected_resolved_unit
+            ):
+                raise _error("Gemini JSON roll-forward local unit provenance drifted")
+        elif assignment_kind == "MIXED_LOCAL_VISIBLE_AND_MISSING_UNIT_NOT_INHERITED":
+            expected_resolved_unit = (
+                next(iter(local_non_null_units)) if len(local_non_null_units) == 1 else None
+            )
+            if (
+                not any(unit is None for unit in local_units)
+                or not local_non_null_units
+                or embedded_unit_context is not None
+                or unit_receipt.get("resolved_canonical_unit") != expected_resolved_unit
+            ):
+                raise _error("Gemini JSON roll-forward mixed unit provenance drifted")
+        else:
+            raise _error("Gemini JSON roll-forward unit assignment kind is invalid")
+        resolved_unit = unit_receipt.get("resolved_canonical_unit")
+        role_vectors = candidate["closure_receipt"].get("role_vectors")
+        endpoint_receipts = candidate["closure_receipt"].get("endpoint_continuity_receipts")
+        if (
+            type(role_vectors) is not list
+            or type(endpoint_receipts) is not list
+            or any(type(receipt) is not dict for receipt in endpoint_receipts)
+        ):
+            raise _error("Gemini JSON roll-forward unit-bearing closure axes are invalid")
+        expected_lane_population_assignments = []
+        for local_unit_item in local_unit_axis:
+            locator_hash = canonical_json_sha256_v1(local_unit_item["locator"])
+            indexed_classification = accepted_classification_by_locator[locator_hash]
+            if indexed_classification["orientation"] != "LANE_COLUMNS":
+                continue
+            expected_lane_population_assignments.append(
+                {
+                    "block_ordinal": local_unit_item["block_ordinal"],
+                    "locator": canonical_clone_v1(local_unit_item["locator"]),
+                    "receipt": canonical_clone_v1(
+                        indexed_classification["lane_population_assignment_receipt"]
+                    ),
+                }
+            )
+        lane_population_assignments = candidate["closure_receipt"].get(
+            "lane_population_assignment_receipts"
+        )
+        if not same_typed_json_v1(
+            lane_population_assignments,
+            expected_lane_population_assignments,
+        ):
+            raise _error("Gemini JSON roll-forward lane-population assignments drifted from index")
+        aggregate_population_axis = []
+        for wrapper in expected_lane_population_assignments:
+            receipt = wrapper["receipt"]
+            decision_by_lane = {item["lane_role"]: item for item in receipt["decisions"]}
+            for lane_role in sorted(
+                {role for role in receipt["raw_lane_roles_by_column"] if role is not None}
+            ):
+                if receipt["raw_lane_roles_by_column"].count(lane_role) < 2:
+                    continue
+                decision = decision_by_lane.get(lane_role)
+                aggregate_population_axis.append(
+                    {
+                        "aggregate_identity_normalized": (
+                            decision["aggregate_identity_normalized"] if decision else None
+                        ),
+                        "block_ordinal": wrapper["block_ordinal"],
+                        "lane_role": lane_role,
+                        "locator": canonical_clone_v1(wrapper["locator"]),
+                        "status": (
+                            "UNIQUE_EXACT_HORIZONTAL_AGGREGATE" if decision else "UNRESOLVED"
+                        ),
+                    }
+                )
+        expected_lane_population_continuity = {
+            "aggregate_population_axis": aggregate_population_axis,
+            "rule": "SAME_EXACT_DECLARED_AGGREGATE_IDENTITY_ACROSS_PERIOD_COMPONENTS",
+        }
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("lane_population_continuity_receipt"),
+            expected_lane_population_continuity,
+        ):
+            raise _error("Gemini JSON roll-forward lane-population continuity drifted")
+        expected_period_lane_populations = {
+            period_role: sorted(
+                {
+                    vector["lane_role"]
+                    for vector in role_vectors
+                    if vector["period_role"] == period_role
+                }
+            )
+            for period_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+        }
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("period_lane_populations"),
+            expected_period_lane_populations,
+        ):
+            raise _error("Gemini JSON roll-forward period-lane population axis drifted")
+
+        owner_components = [
+            item for item in component_classifications if item["local_owner_visible"]
+        ]
+        continuation_components = [
+            item for item in component_classifications if not item["local_owner_visible"]
+        ]
+
+        def locator_order(item: Mapping[str, Any]) -> tuple[int, int, int]:
+            locator = item["locator"]
+            return (
+                locator["physical_page"],
+                int(locator["section_id"][1:]),
+                int(locator["table_id"][1:]),
+            )
+
+        unbound_continuations = [
+            item
+            for item in continuation_components
+            if not any(locator_order(owner) < locator_order(item) for owner in owner_components)
+        ]
+        population_receipt = candidate["closure_receipt"].get("population_receipt")
+        if type(population_receipt) is not dict:
+            raise _error("Gemini JSON roll-forward population receipt is invalid")
+        reset_fence = population_receipt.get("reset_fence_receipt")
+        if type(reset_fence) is not dict or type(reset_fence.get("reset_hits")) is not list:
+            raise _error("Gemini JSON roll-forward reset-fence receipt is invalid")
+        if not continuation_components:
+            expected_checked_pages = []
+            page_axis: list[tuple[int, str]] = []
+            for region in accepted_regions:
+                page_key = (region["physical_page"], region["page_json_version_id"])
+                if page_key not in page_axis:
+                    page_axis.append(page_key)
+            for physical_page, version_id in page_axis:
+                page_regions = [
+                    item
+                    for item in accepted_regions
+                    if item["physical_page"] == physical_page
+                    and item["page_json_version_id"] == version_id
+                ]
+                section_ordinals = sorted({int(item["section_id"][1:]) for item in page_regions})
+                expected_checked_pages.append(
+                    {
+                        "first_section_ordinal": section_ordinals[0],
+                        "last_section_ordinal": section_ordinals[-1],
+                        "page_json_version_id": version_id,
+                        "physical_page": physical_page,
+                        "section_table_intervals": [
+                            {
+                                "first_table_ordinal": int(item["table_id"][1:]),
+                                "last_table_ordinal": int(item["table_id"][1:]),
+                                "section_ordinal": int(item["section_id"][1:]),
+                            }
+                            for item in page_regions
+                        ],
+                    }
+                )
+            expected_reset_fence = {
+                "checked_page_intervals": expected_checked_pages,
+                "reset_hits": canonical_clone_v1(reset_fence["reset_hits"]),
+                "scope_kind": "INDEPENDENT_LOCAL_OWNER_SELECTED_COMPONENTS_ONLY",
+                "status": (
+                    "RESET_FENCE_VIOLATED" if reset_fence["reset_hits"] else "RESET_FENCE_CLEAR"
+                ),
+            }
+        else:
+            continuation_admissions = [
+                continuation_admission_by_locator.get(canonical_json_sha256_v1(item["locator"]))
+                for item in continuation_components
+            ]
+            if len(continuation_admissions) != 1 or type(continuation_admissions[0]) is not dict:
+                raise _error("Gemini JSON roll-forward continuation admission is absent")
+            expected_reset_fence = canonical_clone_v1(
+                continuation_admissions[0]["reset_fence_receipt"]
+            )
+        expected_population_receipt = {
+            "binding_kind": (
+                "ALL_COMPONENTS_EXPLICIT_LOCAL_OWNER"
+                if owner_components and not continuation_components
+                else "BOUNDED_SELECTED_COMPONENT_OWNER_CONTINUATION"
+                if owner_components
+                else "UNRESOLVED_NO_LOCAL_OWNER"
+            ),
+            "continuation_component_locators": [
+                canonical_clone_v1(item["locator"]) for item in continuation_components
+            ],
+            "continuation_evidence_receipts": [
+                {
+                    "evidence": canonical_clone_v1(item["continuation_evidence"]),
+                    "locator": canonical_clone_v1(item["locator"]),
+                }
+                for item in continuation_components
+            ],
+            "max_physical_page_span": (
+                accepted_regions[-1]["physical_page"] - accepted_regions[0]["physical_page"]
+            ),
+            "owner_component_locators": [
+                canonical_clone_v1(item["locator"]) for item in owner_components
+            ],
+            "reset_fence_receipt": expected_reset_fence,
+            "reset_or_hard_negative_visible": bool(reset_fence["reset_hits"])
+            or any(
+                item["context_reset_visible"] or item["structural_hard_negative_visible"]
+                for item in component_classifications
+            ),
+            "rule": (
+                "AT_LEAST_ONE_SELECTED_COMPONENT_LOCAL_OWNER_OTHER_COMPONENTS_ONLY_"
+                "WITHIN_ORDERED_ONE_PAGE_RESET_FENCED_CLUSTER"
+            ),
+            "unbound_continuation_locators": [
+                canonical_clone_v1(item["locator"]) for item in unbound_continuations
+            ],
+        }
+        if not same_typed_json_v1(population_receipt, expected_population_receipt):
+            raise _error("Gemini JSON roll-forward population receipt drifted")
+        if unit_receipt.get("rule") != (
+            "LOCAL_CANONICAL_UNIT_OR_SELECTED_VERSION_DOCUMENT_TWO_PAGE_"
+            "UNIQUE_MAGNITUDE_CURRENCY_CONSENSUS_NO_SCALE_CONVERSION"
+        ):
+            raise _error("Gemini JSON roll-forward unit provenance rule drifted")
+        expected_fiscal_context = fiscal_context_by_source[document["source_logical_name"]]
+
+        def validate_period_fiscal_binding(period_evidence: Any) -> None:
+            if type(period_evidence) is not dict:
+                raise _error("Gemini JSON roll-forward period evidence is invalid")
+            date_sources = period_evidence.get("date_source_exact_axis")
+            if type(date_sources) is not list or not date_sources:
+                raise _error("Gemini JSON roll-forward period source axis is invalid")
+            embedded_binding = period_evidence.get("document_fiscal_close_year_binding_receipt")
+            has_full_date = any(
+                type(source) is str
+                and (
+                    _DATE_DMY.search(_normalized(source)) or _DATE_WORDS.search(_normalized(source))
+                )
+                for source in date_sources
+            )
+            try:
+                period_year = date.fromisoformat(period_evidence["period_date"]).year
+            except (KeyError, TypeError, ValueError) as exc:
+                raise _error("Gemini JSON roll-forward period date is invalid") from exc
+            expected_binding = _document_fiscal_close_year_binding_receipt_v1(
+                expected_fiscal_context,
+                year=period_year,
+            )
+            if has_full_date:
+                if embedded_binding is not None:
+                    raise _error("Gemini JSON roll-forward full-date fiscal binding drifted")
+            elif not same_typed_json_v1(embedded_binding, expected_binding):
+                raise _error("Gemini JSON roll-forward fiscal year binding drifted")
+
+        for vector in role_vectors:
+            period_evidence = vector.get("period_semantics_evidence")
+            if period_evidence is None:
+                if (
+                    vector.get("resolved_period") == "COMPARATIVE_UNDATED"
+                    and vector.get("period_date") is None
+                ):
+                    continue
+                raise _error("Gemini JSON roll-forward period evidence is invalid")
+            validate_period_fiscal_binding(period_evidence)
+        nested_axis = [candidate["closure_receipt"]]
+        while nested_axis:
+            nested = nested_axis.pop()
+            if type(nested) is dict:
+                if {
+                    "date_source_exact_axis",
+                    "document_fiscal_close_year_binding_receipt",
+                    "period_date",
+                    "source_kind",
+                } <= set(nested):
+                    validate_period_fiscal_binding(nested)
+                nested_axis.extend(nested.values())
+            elif type(nested) is list:
+                nested_axis.extend(nested)
+        role_vector_by_key = {}
+        for vector in role_vectors:
+            key = (
+                vector.get("period_role"),
+                vector.get("lane_role"),
+                vector.get("movement_role"),
+            )
+            if key in role_vector_by_key:
+                raise _error("Gemini JSON roll-forward role-vector axis is duplicated")
+            role_vector_by_key[key] = vector
+        replayed_endpoint_receipts, replayed_endpoint_reasons = _two_period_endpoint_continuity_v1(
+            role_vectors,
+            compiled_specs=compiled_specs,
+        )
+        if not same_typed_json_v1(endpoint_receipts, replayed_endpoint_receipts) or any(
+            reason not in candidate["reasons"] for reason in replayed_endpoint_reasons
+        ):
+            raise _error("Gemini JSON roll-forward endpoint continuity replay drifted")
+        replayed_equations = _rebuild_rollforward_equations_from_role_vectors_v1(
+            role_vectors,
+            compiled_specs=compiled_specs,
+        )
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("equations"), replayed_equations
+        ):
+            raise _error("Gemini JSON roll-forward equation axis replay drifted")
+        expected_unresolved_frontiers = []
+        for equation in replayed_equations:
+            if equation["status"] in {"EXACT", "EXACT_ONE_UNKNOWN_INFERRED"}:
+                continue
+            period_role = equation["period_role"]
+            lane_role = equation["lane_role"]
+            scope = lane_role if period_role == "CURRENT_PERIOD" else f"{period_role}:{lane_role}"
+            reason = f"ROLLFORWARD_LANE_EQUATION_{equation['status']}:{scope}"
+            expected_unresolved_frontiers.append(
+                {
+                    "lane_role": lane_role,
+                    "period_role": period_role,
+                    "reason": reason,
+                    "unknown_roles": [
+                        item["role"]
+                        for item in equation["role_coefficients"]
+                        if item["coefficient"] is None
+                    ],
+                    "source_records": [
+                        {
+                            "locator": canonical_clone_v1(vector["locator"]),
+                            "movement_role": vector["movement_role"],
+                            "row_id": vector["row_id"],
+                        }
+                        for vector in sorted(
+                            role_vectors,
+                            key=lambda item: (
+                                item["period_role"],
+                                item["lane_role"],
+                                item["movement_role"],
+                            ),
+                        )
+                        if vector["period_role"] == period_role and vector["lane_role"] == lane_role
+                    ],
+                }
+            )
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("unresolved_frontiers"),
+            expected_unresolved_frontiers,
+        ):
+            raise _error("Gemini JSON roll-forward unresolved frontier replay drifted")
+        expected_duplicate_ambiguities = []
+        role_vector_by_fragment_key = {
+            (
+                canonical_json_sha256_v1(vector["locator"]),
+                vector["block_ordinal"],
+                vector["lane_role"],
+                vector["movement_role"],
+            ): vector
+            for vector in role_vectors
+        }
+        for wrapper in expected_lane_population_assignments:
+            locator_hash = canonical_json_sha256_v1(wrapper["locator"])
+            block_ordinal = wrapper["block_ordinal"]
+            for unresolved in wrapper["receipt"]["unresolved_duplicate_lanes"]:
+                lane_role = unresolved["lane_role"]
+                ordinals = unresolved["candidate_column_ordinals"]
+                for source in unresolved["duplicate_source_cell_receipts"]:
+                    if source["block_ordinal"] != block_ordinal:
+                        continue
+                    vector = role_vector_by_fragment_key.get(
+                        (
+                            locator_hash,
+                            block_ordinal,
+                            lane_role,
+                            source["movement_role"],
+                        )
+                    )
+                    if vector is None or vector["column_ordinal"] not in ordinals:
+                        raise _error("Gemini JSON roll-forward duplicate-source vector is absent")
+                    first_offset = ordinals.index(vector["column_ordinal"])
+                    first_cell = source["candidate_cells"][first_offset]
+                    for offset, column_ordinal in enumerate(ordinals):
+                        if offset == first_offset:
+                            continue
+                        expected_duplicate_ambiguities.append(
+                            {
+                                "corroborated_key": [
+                                    vector["period_role"],
+                                    lane_role,
+                                    source["movement_role"],
+                                ],
+                                "disposition": (
+                                    "IDENTICAL_DUPLICATE_SOURCE_AMBIGUOUS"
+                                    if first_cell == source["candidate_cells"][offset]
+                                    else "CONFLICTING_DUPLICATE_SOURCE_AMBIGUOUS"
+                                ),
+                                "first_column_ordinal": vector["column_ordinal"],
+                                "first_locator": canonical_clone_v1(wrapper["locator"]),
+                                "second_column_ordinal": column_ordinal,
+                                "second_locator": canonical_clone_v1(wrapper["locator"]),
+                            }
+                        )
+        if not same_typed_json_v1(
+            candidate["closure_receipt"].get("duplicate_source_ambiguities"),
+            expected_duplicate_ambiguities,
+        ):
+            raise _error("Gemini JSON roll-forward duplicate-source receipt drifted")
+        replayed_potential_mappings = _rebuild_rollforward_potential_mappings_from_role_vectors_v1(
+            role_vectors,
+            compiled_specs=compiled_specs,
+        )
+        expected_candidate_mappings = (
+            replayed_potential_mappings if candidate["status"] == READY else []
+        )
+        if candidate["closure_receipt"].get("potential_mapping_count") != len(
+            replayed_potential_mappings
+        ) or not same_typed_json_v1(candidate["mappings"], expected_candidate_mappings):
+            raise _error("Gemini JSON roll-forward mapping axis replay drifted")
+        period_assignment_receipt = candidate["closure_receipt"].get("period_assignment_receipt")
+        if (
+            type(period_assignment_receipt) is not dict
+            or set(period_assignment_receipt)
+            != {"assignments", "movement_context_evidence", "rule", "status"}
+            or type(period_assignment_receipt.get("assignments")) is not list
+            or type(period_assignment_receipt.get("movement_context_evidence")) is not list
+            or period_assignment_receipt.get("rule")
+            != (
+                "ORDERED_DISTINCT_MOVEMENT_DATES_TO_ADJACENT_COMPONENTS_OR_"
+                "ONE_CURRENT_DATE_PLUS_SYMBOLIC_COMPARATIVE"
+            )
+        ):
+            raise _error("Gemini JSON roll-forward period assignment receipt is invalid")
+        assignments = period_assignment_receipt["assignments"]
+        movement_axis = period_assignment_receipt["movement_context_evidence"]
+        movement_fields = {
+            "date",
+            "date_token",
+            "document_fiscal_close_year_binding_receipt",
+            "narrative_ordinal",
+            "source_exact",
+            "source_kind",
+            "status",
+            "year",
+        }
+        source_kinds = {
+            "IMMEDIATELY_PRECEDING_SECTION_TITLE",
+            "SELECTED_SECTION_MOVEMENT_NARRATIVE",
+            "SELECTED_SECTION_TITLE",
+        }
+        for movement_evidence in movement_axis:
+            if (
+                type(movement_evidence) is not dict
+                or set(movement_evidence) != movement_fields
+                or type(movement_evidence.get("source_exact")) is not str
+                or not movement_evidence["source_exact"]
+                or movement_evidence.get("source_kind") not in source_kinds
+                or (
+                    movement_evidence["source_kind"] == "SELECTED_SECTION_MOVEMENT_NARRATIVE"
+                    and (
+                        type(movement_evidence.get("narrative_ordinal")) is not int
+                        or movement_evidence["narrative_ordinal"] <= 0
+                    )
+                )
+                or (
+                    movement_evidence["source_kind"] != "SELECTED_SECTION_MOVEMENT_NARRATIVE"
+                    and movement_evidence.get("narrative_ordinal") is not None
+                )
+            ):
+                raise _error("Gemini JSON roll-forward movement-period evidence is invalid")
+            tokens = _date_tokens(movement_evidence["source_exact"])
+            unique_dates = {token[0] for token in tokens}
+            folded = _normalized(movement_evidence["source_exact"])
+            full_date_visible = bool(
+                folded and (_DATE_DMY.search(folded) or _DATE_WORDS.search(folded))
+            )
+            status = movement_evidence.get("status")
+            embedded_binding = movement_evidence.get("document_fiscal_close_year_binding_receipt")
+            if status == "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT":
+                year = movement_evidence.get("year")
+                selected_token = tokens[-1] if len(unique_dates) == 1 else None
+                expected_binding = (
+                    _document_fiscal_close_year_binding_receipt_v1(
+                        expected_fiscal_context,
+                        year=year,
+                    )
+                    if type(year) is int
+                    else None
+                )
+                if (
+                    full_date_visible
+                    or selected_token is None
+                    or expected_binding is None
+                    or not same_typed_json_v1(embedded_binding, expected_binding)
+                    or movement_evidence.get("date_token") != selected_token[1]
+                    or movement_evidence.get("date")
+                    != date(
+                        year,
+                        expected_binding["year_context"]["month"],
+                        expected_binding["year_context"]["day"],
+                    ).isoformat()
+                ):
+                    raise _error("Gemini JSON roll-forward bound movement year drifted")
+            elif status == "EXACT_ONE_DATE":
+                selected_token = tokens[-1] if len(unique_dates) == 1 else None
+                if (
+                    not full_date_visible
+                    or selected_token is None
+                    or embedded_binding is not None
+                    or movement_evidence.get("date") != selected_token[0].isoformat()
+                    or movement_evidence.get("date_token") != selected_token[1]
+                    or movement_evidence.get("year") != selected_token[0].year
+                ):
+                    raise _error("Gemini JSON roll-forward full-date movement drifted")
+            elif status == "EXACT_ONE_YEAR_UNBOUND":
+                selected_token = tokens[-1] if len(unique_dates) == 1 else None
+                if (
+                    full_date_visible
+                    or selected_token is None
+                    or embedded_binding is not None
+                    or movement_evidence.get("date") is not None
+                    or movement_evidence.get("date_token") != selected_token[1]
+                    or movement_evidence.get("year") != selected_token[0].year
+                    or _document_fiscal_close_year_binding_receipt_v1(
+                        expected_fiscal_context,
+                        year=selected_token[0].year,
+                    )
+                    is not None
+                ):
+                    raise _error("Gemini JSON roll-forward unresolved movement date drifted")
+            elif status == "AMBIGUOUS_MULTIPLE_DATES":
+                if (
+                    len(unique_dates) <= 1
+                    or movement_evidence.get("date") is not None
+                    or movement_evidence.get("date_token") is not None
+                    or movement_evidence.get("year") is not None
+                    or embedded_binding is not None
+                ):
+                    raise _error("Gemini JSON roll-forward ambiguous movement date drifted")
+            else:
+                raise _error("Gemini JSON roll-forward movement-period status is invalid")
+        if len({canonical_json_sha256_v1(item) for item in movement_axis}) != len(movement_axis):
+            raise _error("Gemini JSON roll-forward movement-period axis is duplicated")
+
+        assignment_fields = {
+            "assignment_kind",
+            "date",
+            "document_fiscal_close_year_binding_receipt",
+            "locator",
+            "narrative_ordinal",
+            "period_role",
+            "source_exact",
+            "source_kind",
+        }
+
+        def assignment_from_evidence(
+            evidence_item: dict[str, Any],
+            *,
+            locator: dict[str, Any],
+            period_role: str,
+            assignment_kind: str,
+        ) -> dict[str, Any]:
+            return {
+                "assignment_kind": assignment_kind,
+                "date": evidence_item["date"],
+                "document_fiscal_close_year_binding_receipt": canonical_clone_v1(
+                    evidence_item["document_fiscal_close_year_binding_receipt"]
+                ),
+                "locator": canonical_clone_v1(locator),
+                "narrative_ordinal": evidence_item["narrative_ordinal"],
+                "period_role": period_role,
+                "source_exact": evidence_item["source_exact"],
+                "source_kind": evidence_item["source_kind"],
+            }
+
+        receipt_status = period_assignment_receipt["status"]
+        if receipt_status == "ORDERED_TWO_DATE_CONTEXT_BOUND":
+            if len(movement_axis) != 2 or len(accepted_regions) != 2:
+                raise _error("Gemini JSON roll-forward ordered period axis is incomplete")
+            expected_assignments = [
+                assignment_from_evidence(
+                    movement_axis[ordinal],
+                    locator=accepted_regions[ordinal],
+                    period_role="CURRENT_PERIOD" if ordinal == 0 else "COMPARATIVE_PERIOD",
+                    assignment_kind="ORDERED_MOVEMENT_NARRATIVE_TO_COMPONENT",
+                )
+                for ordinal in range(2)
+            ]
+            movement_dates = [item["date"] for item in movement_axis]
+            if (
+                any(
+                    item["status"]
+                    not in {
+                        "EXACT_ONE_DATE",
+                        "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT",
+                    }
+                    for item in movement_axis
+                )
+                or any(value is None for value in movement_dates)
+                or movement_dates[0] <= movement_dates[1]
+            ):
+                raise _error("Gemini JSON roll-forward ordered period grammar drifted")
+        elif receipt_status == "CURRENT_PLUS_SYMBOLIC_COMPARATIVE_BOUND":
+            if len(movement_axis) != 1 or len(accepted_regions) != 2:
+                raise _error("Gemini JSON roll-forward symbolic period axis is incomplete")
+            expected_assignments = [
+                assignment_from_evidence(
+                    movement_axis[0],
+                    locator=accepted_regions[0],
+                    period_role="CURRENT_PERIOD",
+                    assignment_kind="VISIBLE_CURRENT_CONTEXT_TO_FIRST_COMPONENT",
+                ),
+                {
+                    "assignment_kind": "SYMBOLIC_UNDATED_COMPARATIVE_SECOND_COMPONENT",
+                    "date": None,
+                    "document_fiscal_close_year_binding_receipt": None,
+                    "locator": canonical_clone_v1(accepted_regions[1]),
+                    "narrative_ordinal": None,
+                    "period_role": "COMPARATIVE_PERIOD",
+                    "source_exact": None,
+                    "source_kind": "ORDERED_ADJACENT_COMPONENT_TOPOLOGY",
+                },
+            ]
+            if movement_axis[0]["status"] not in {
+                "EXACT_ONE_DATE",
+                "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT",
+            }:
+                raise _error("Gemini JSON roll-forward symbolic period grammar drifted")
+        else:
+            expected_assignments = []
+            if receipt_status not in {
+                "AMBIGUOUS_OR_REVERSED_CONTEXT_DATES",
+                "CONFLICTING_TABLE_PERIOD_EVIDENCE",
+                "CONTEXT_DATE_AXIS_NOT_UNIQUE",
+                "LOCAL_OWNER_SCOPE_NOT_VISIBLE",
+                "NOT_APPLICABLE",
+                "SYMBOLIC_COMPARATIVE_PRECONDITIONS_FAILED",
+                "UNEXPECTED_SECOND_TABLE_PERIOD_EVIDENCE",
+            }:
+                raise _error("Gemini JSON roll-forward period assignment status is invalid")
+            if receipt_status in {"LOCAL_OWNER_SCOPE_NOT_VISIBLE", "NOT_APPLICABLE"} and (
+                movement_axis
+            ):
+                raise _error("Gemini JSON roll-forward inapplicable period evidence drifted")
+            adjacent_period_components = (
+                candidate["closure_receipt"]["orientation"] == "PERIOD_TABLES_LANE_COLUMNS"
+                and len(accepted_regions) == 2
+                and accepted_regions[0]["page_json_version_id"]
+                == accepted_regions[1]["page_json_version_id"]
+                and accepted_regions[0]["section_id"] == accepted_regions[1]["section_id"]
+                and int(accepted_regions[1]["table_id"][1:])
+                == int(accepted_regions[0]["table_id"][1:]) + 1
+            )
+            first_period_context_owner_visible = accepted_classification_by_locator[
+                canonical_json_sha256_v1(accepted_regions[0])
+            ]["period_context_owner_visible"]
+            if not movement_axis:
+                expected_empty_status = (
+                    "NOT_APPLICABLE"
+                    if not adjacent_period_components
+                    else "LOCAL_OWNER_SCOPE_NOT_VISIBLE"
+                    if not first_period_context_owner_visible
+                    else "CONTEXT_DATE_AXIS_NOT_UNIQUE"
+                )
+                if receipt_status != expected_empty_status:
+                    raise _error("Gemini JSON roll-forward empty period-context status drifted")
+            elif len(movement_axis) == 1 and movement_axis[0]["status"] in {
+                "EXACT_ONE_DATE",
+                "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT",
+            }:
+                movement_date = movement_axis[0]["date"]
+                component_vectors = [
+                    [
+                        vector
+                        for vector in role_vectors
+                        if same_typed_json_v1(vector.get("locator"), locator)
+                    ]
+                    for locator in accepted_regions
+                ]
+                required_lanes = {
+                    item["role"]
+                    for item in compiled_specs["layout"]["lane_roles"]
+                    if not item["optional"]
+                }
+                required_movements = {
+                    item["role"]
+                    for item in compiled_specs["layout"]["movement_roles"]
+                    if item["required"]
+                }
+                component_fingerprints = []
+                component_units = []
+                full_rank_topology = len(component_vectors) == 2
+                replayed_equation_by_key = {
+                    (equation["period_role"], equation["lane_role"]): equation
+                    for equation in replayed_equations
+                }
+                for vectors in component_vectors:
+                    keys = [
+                        (vector.get("lane_role"), vector.get("movement_role")) for vector in vectors
+                    ]
+                    lanes = {lane for lane, _movement in keys}
+                    period_roles = {vector.get("period_role") for vector in vectors}
+                    units = {vector.get("bound_unit") for vector in vectors}
+                    component_fingerprints.append(sorted([list(key) for key in keys]))
+                    component_units.append(units)
+                    if (
+                        len(keys) != len(set(keys))
+                        or not required_lanes <= lanes
+                        or len(period_roles) != 1
+                        or len(units) != 1
+                        or any(
+                            not required_movements
+                            <= {movement for lane, movement in keys if lane == lane_role}
+                            or replayed_equation_by_key.get(
+                                (next(iter(period_roles)), lane_role), {}
+                            ).get("status")
+                            not in {"EXACT", "EXACT_ONE_UNKNOWN_INFERRED"}
+                            for lane_role in lanes
+                        )
+                    ):
+                        full_rank_topology = False
+                if (
+                    len(component_fingerprints) != 2
+                    or component_fingerprints[0] != component_fingerprints[1]
+                    or len({next(iter(units)) for units in component_units if len(units) == 1}) != 1
+                ):
+                    full_rank_topology = False
+
+                first_period_axis = (
+                    {vector.get("period_date") for vector in component_vectors[0]}
+                    if len(component_vectors) == 2
+                    else set()
+                )
+                second_period_axis = (
+                    {
+                        (
+                            vector.get("period_date"),
+                            (
+                                vector["period_semantics_evidence"].get("source_kind")
+                                if type(vector.get("period_semantics_evidence")) is dict
+                                else None
+                            ),
+                        )
+                        for vector in component_vectors[1]
+                    }
+                    if len(component_vectors) == 2
+                    else set()
+                )
+                expected_single_context_status = (
+                    "SYMBOLIC_COMPARATIVE_PRECONDITIONS_FAILED"
+                    if not adjacent_period_components or not full_rank_topology
+                    else "CONFLICTING_TABLE_PERIOD_EVIDENCE"
+                    if first_period_axis != {movement_date}
+                    else "UNEXPECTED_SECOND_TABLE_PERIOD_EVIDENCE"
+                    if second_period_axis
+                    and second_period_axis != {(movement_date, "SELECTED_SECTION_CONTEXT")}
+                    else None
+                )
+                if expected_single_context_status is None:
+                    raise _error(
+                        "Gemini JSON roll-forward unresolved period status contradicts "
+                        "symbolic binding preconditions"
+                    )
+                if receipt_status != expected_single_context_status:
+                    raise _error("Gemini JSON roll-forward one-date period status drifted")
+        if any(type(item) is not dict or set(item) != assignment_fields for item in assignments):
+            raise _error("Gemini JSON roll-forward period assignment is invalid")
+        if not same_typed_json_v1(assignments, expected_assignments):
+            raise _error("Gemini JSON roll-forward period assignment axis drifted")
+        for assignment in assignments:
+            matching_vectors = [
+                vector
+                for vector in role_vectors
+                if vector.get("period_role") == assignment["period_role"]
+                and same_typed_json_v1(vector.get("locator"), assignment["locator"])
+            ]
+            if not matching_vectors:
+                raise _error("Gemini JSON roll-forward period assignment is unbound")
+            period_dates = {vector.get("period_date") for vector in matching_vectors}
+            period_evidence_axis = [
+                vector.get("period_semantics_evidence") for vector in matching_vectors
+            ]
+            if len(period_dates) != 1 or assignment["date"] != next(iter(period_dates)):
+                raise _error("Gemini JSON roll-forward period assignment date drifted")
+            if assignment["date"] is None:
+                if any(evidence is not None for evidence in period_evidence_axis):
+                    raise _error("Gemini JSON roll-forward symbolic period assignment drifted")
+                continue
+            if any(type(evidence) is not dict for evidence in period_evidence_axis):
+                raise _error("Gemini JSON roll-forward assigned period evidence is invalid")
+            period_evidence = period_evidence_axis[0]
+            if any(
+                not same_typed_json_v1(evidence, period_evidence)
+                for evidence in period_evidence_axis[1:]
+            ):
+                raise _error("Gemini JSON roll-forward assigned period evidence diverged")
+            if (
+                assignment["source_exact"] not in period_evidence["date_source_exact_axis"]
+                or assignment["source_kind"] != period_evidence["source_kind"]
+                or not same_typed_json_v1(
+                    assignment["document_fiscal_close_year_binding_receipt"],
+                    period_evidence.get("document_fiscal_close_year_binding_receipt"),
+                )
+            ):
+                raise _error("Gemini JSON roll-forward period assignment provenance drifted")
+
+        def require_endpoint_period_matches_role_vector(source: Any, *, lane_role: Any) -> None:
+            if type(source) is not dict:
+                raise _error("Gemini JSON roll-forward endpoint period receipt is invalid")
+            key = (
+                source.get("period_role"),
+                lane_role,
+                source.get("movement_role"),
+            )
+            role_vector = role_vector_by_key.get(key)
+            if role_vector is None or not same_typed_json_v1(
+                source,
+                _endpoint_source_receipt(role_vector),
+            ):
+                raise _error("Gemini JSON roll-forward endpoint period evidence drifted")
+
+        closure_unit_values = [
+            candidate["closure_receipt"].get("bound_unit"),
+            *(item.get("bound_unit") for item in component_classifications),
+            *(item.get("bound_unit") for item in local_unit_axis),
+            *(vector.get("bound_unit") for vector in role_vectors),
+            *(mapping.get("bound_unit") for mapping in candidate["mappings"]),
+        ]
+        for receipt in endpoint_receipts:
+            for endpoint in (
+                "following_closing",
+                "next_opening",
+                "previous_closing",
+                "previous_opening",
+            ):
+                source = receipt.get(endpoint)
+                if type(source) is not dict:
+                    raise _error("Gemini JSON roll-forward endpoint unit receipt is invalid")
+                require_endpoint_period_matches_role_vector(
+                    source, lane_role=receipt.get("lane_role")
+                )
+                closure_unit_values.append(source.get("bound_unit"))
+            alignment = receipt.get("endpoint_date_alignment_receipt")
+            if alignment is not None:
+                if type(alignment) is not dict:
+                    raise _error("Gemini JSON roll-forward endpoint alignment receipt is invalid")
+                for endpoint in ("following_opening", "previous_opening"):
+                    source = alignment.get(endpoint)
+                    if type(source) is not dict:
+                        raise _error("Gemini JSON roll-forward endpoint alignment unit is invalid")
+                    require_endpoint_period_matches_role_vector(
+                        source, lane_role=receipt.get("lane_role")
+                    )
+                    closure_unit_values.append(source.get("bound_unit"))
+            boundary = receipt.get("boundary_semantics_receipt")
+            if boundary is not None:
+                if (
+                    type(boundary) is not dict
+                    or not same_typed_json_v1(
+                        boundary.get("current_period_evidence"),
+                        receipt["following_closing"].get("period_semantics_evidence"),
+                    )
+                    or type(boundary.get("previous_fiscal_year_end_semantics")) is not dict
+                    or not same_typed_json_v1(
+                        boundary["previous_fiscal_year_end_semantics"].get(
+                            "period_semantics_evidence"
+                        ),
+                        receipt["previous_closing"].get("period_semantics_evidence"),
+                    )
+                ):
+                    raise _error("Gemini JSON roll-forward boundary period evidence drifted")
+        non_null_closure_units = {unit for unit in closure_unit_values if unit is not None}
+        expected_non_null_closure_units = (
+            {resolved_unit}
+            if resolved_unit is not None
+            else local_non_null_units
+            if assignment_kind == "ALL_COMPONENTS_EXPLICIT_LOCAL_CANONICAL_UNIT"
+            and len(local_non_null_units) > 1
+            else set()
+        )
+        if (
+            resolved_unit is not None and resolved_unit not in canonical_units
+        ) or non_null_closure_units != expected_non_null_closure_units:
+            raise _error("Gemini JSON roll-forward closure unit provenance drifted")
         candidate_material = {
             key: value for key, value in candidate.items() if key != "candidate_id"
         }
@@ -2028,6 +3421,13 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
             raise _error("Gemini JSON roll-forward candidate identity drifted")
         accepted_locator_hashes = {canonical_json_sha256_v1(region) for region in accepted_regions}
         for mapping in candidate["mappings"]:
+            role_vector = role_vector_by_key.get(
+                (
+                    mapping.get("period_role"),
+                    mapping.get("lane_role"),
+                    mapping.get("movement_role"),
+                )
+            )
             if (
                 type(mapping) is not dict
                 or type(mapping.get("item_mapping_id")) is not str
@@ -2038,6 +3438,12 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
                 or type(mapping.get("report_norm_id")) is not int
                 or mapping["report_norm_id"] <= 0
                 or type(mapping.get("row_id")) is not str
+                or type(mapping.get("bound_unit")) is not str
+                or role_vector is None
+                or any(
+                    not same_typed_json_v1(mapping.get(field), role_vector[field])
+                    for field in role_vector
+                )
             ):
                 raise _error("Gemini JSON roll-forward mapping is not component bound")
             mapping_material = {
@@ -2047,6 +3453,44 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
                 "gjfrfmv1:item:" + canonical_json_sha256_v1(mapping_material)
             ):
                 raise _error("Gemini JSON roll-forward mapping identity drifted")
+        if candidate["status"] == READY:
+            role_fragment_keys = (
+                {
+                    (
+                        canonical_json_sha256_v1(vector.get("locator")),
+                        vector.get("block_ordinal"),
+                    )
+                    for vector in role_vectors
+                }
+                if type(role_vectors) is list
+                else set()
+            )
+            endpoint_units = (
+                {
+                    receipt.get(endpoint, {}).get("bound_unit")
+                    for receipt in endpoint_receipts
+                    for endpoint in (
+                        "following_closing",
+                        "next_opening",
+                        "previous_closing",
+                        "previous_opening",
+                    )
+                }
+                if type(endpoint_receipts) is list
+                else set()
+            )
+            if (
+                type(resolved_unit) is not str
+                or candidate["closure_receipt"].get("bound_unit") != resolved_unit
+                or {mapping["bound_unit"] for mapping in candidate["mappings"]} != {resolved_unit}
+                or type(role_vectors) is not list
+                or not role_vectors
+                or {vector.get("bound_unit") for vector in role_vectors} != {resolved_unit}
+                or role_fragment_keys != set(local_fragment_keys)
+                or not endpoint_receipts
+                or endpoint_units != {resolved_unit}
+            ):
+                raise _error("Gemini JSON roll-forward mapped unit provenance drifted")
         if (
             candidate["status"] == READY and (candidate["reasons"] or not candidate["mappings"])
         ) or (

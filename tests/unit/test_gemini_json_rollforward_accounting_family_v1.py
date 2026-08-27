@@ -213,6 +213,8 @@ def _evaluate(
     *,
     refs: list[dict] | None = None,
     pages: dict[str, dict] | None = None,
+    document_fiscal_close_context_evidence: dict | None = None,
+    document_unit_context_evidence: dict | None = None,
 ) -> dict:
     refs = refs or [
         {
@@ -234,7 +236,178 @@ def _evaluate(
         page_json_by_version=pages or {VERSION_A: page},
         compiled_specs=_compiled(),
         query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(checked_refs),
+        document_fiscal_close_context_evidence=(document_fiscal_close_context_evidence),
+        document_unit_context_evidence=document_unit_context_evidence,
     )
+
+
+def _document_unit_context(*units: str) -> dict:
+    binding = {
+        "BILLION_VND": (9, "Tỷ đồng"),
+        "MILLION_VND": (6, "Triệu đồng"),
+        "THOUSAND_VND": (3, "Nghìn đồng"),
+    }
+
+    evidence = [
+        {
+            "canonical_unit": unit,
+            "column_id": None,
+            "currency": "VND",
+            "magnitude_power10": binding[unit][0],
+            "page_json_version_id": "gfpstorev1:json:" + f"{ordinal:x}" * 64,
+            "physical_page": ordinal,
+            "section_id": "s1",
+            "selected_page_ordinal": ordinal,
+            "source_kind": "TABLE_UNIT",
+            "table_id": "t1",
+            "text_exact": binding[unit][1],
+        }
+        for ordinal, unit in enumerate(units, start=1)
+    ]
+    canonical_units = sorted(set(units))
+    distinct_page_count = len(evidence)
+    status = (
+        "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS"
+        if len(canonical_units) == 1 and distinct_page_count >= 2
+        else "CONFLICTING_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+        if len(canonical_units) > 1
+        else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_MONEY_UNIT_EVIDENCE"
+    )
+    return {
+        "canonical_unit": canonical_units[0] if status.startswith("UNIQUE_") else None,
+        "canonical_units": canonical_units,
+        "distinct_page_count": distinct_page_count,
+        "document_id": DOCUMENT_ID,
+        "document_ordinal": 1,
+        "evidence": evidence,
+        "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+        "minimum_distinct_page_count": 2,
+        "rule": (
+            "SELECTED_PAGE_VERSION_ONLY_EXPLICIT_TABLE_UNIT_MAGNITUDE_AND_"
+            "CURRENCY_TWO_PAGE_UNIQUE_CANONICAL_MONEY_UNIT_CONSENSUS"
+        ),
+        "source_logical_name": SOURCE_LOGICAL_NAME,
+        "source_sha256": SOURCE_SHA256,
+        "status": status,
+    }
+
+
+def _document_fiscal_context(*month_days: tuple[int, int]) -> dict:
+    evidence = []
+    for ordinal, (month, day) in enumerate(month_days, start=1):
+        source_exact = (
+            f"Báo cáo tài chính cho năm tài chính kết thúc ngày {day:02d}/{month:02d}/2024"
+        )
+        evidence.append(
+            {
+                "column_id": None,
+                "date": f"2024-{month:02d}-{day:02d}",
+                "day": day,
+                "month": month,
+                "page_json_version_id": "gfpstorev1:json:" + f"{ordinal:x}" * 64,
+                "physical_page": ordinal,
+                "section_id": "s1",
+                "selected_page_ordinal": ordinal,
+                "source_kind": "ANNUAL_REPORTING_SECTION_TITLE",
+                "table_id": None,
+                "text_exact": source_exact,
+            }
+        )
+    month_day_axis = sorted(set(month_days))
+    distinct_page_count = len(evidence)
+    status = (
+        "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+        if len(month_day_axis) == 1 and distinct_page_count >= 2
+        else "CONFLICTING_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+        if len(month_day_axis) > 1
+        else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+    )
+    year_context = {
+        "day": month_day_axis[0][1] if status.startswith("UNIQUE_") else None,
+        "distinct_page_count": distinct_page_count,
+        "evidence": evidence,
+        "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+        "minimum_distinct_page_count": 2,
+        "month": month_day_axis[0][0] if status.startswith("UNIQUE_") else None,
+        "month_day_axis": [{"day": day, "month": month} for month, day in month_day_axis],
+        "status": status,
+        "year": 2024,
+    }
+    return {
+        "document_id": DOCUMENT_ID,
+        "document_ordinal": 1,
+        "rule": (
+            "SELECTED_PAGE_VERSION_ONLY_ANNUAL_REPORTING_TITLE_OR_BALANCE_"
+            "SHEET_COMPARATIVE_DATE_EXACT_YEAR_TWO_PAGE_UNIQUE_FISCAL_"
+            "CLOSE_MONTH_DAY_CONSENSUS"
+        ),
+        "source_logical_name": SOURCE_LOGICAL_NAME,
+        "source_sha256": SOURCE_SHA256,
+        "year_context_axis_sha256": canonical_json_sha256_v1([year_context]),
+        "year_contexts": [year_context],
+    }
+
+
+def _document_fiscal_context_by_year(
+    *year_month_days: tuple[int, int, int],
+) -> dict:
+    evidence_by_year: dict[int, list[dict]] = {}
+    for ordinal, (year, month, day) in enumerate(year_month_days, start=1):
+        source_exact = (
+            f"Báo cáo tài chính cho năm tài chính kết thúc ngày {day:02d}/{month:02d}/{year}"
+        )
+        evidence_by_year.setdefault(year, []).append(
+            {
+                "column_id": None,
+                "date": f"{year}-{month:02d}-{day:02d}",
+                "day": day,
+                "month": month,
+                "page_json_version_id": "gfpstorev1:json:" + f"{ordinal:x}" * 64,
+                "physical_page": ordinal,
+                "section_id": "s1",
+                "selected_page_ordinal": ordinal,
+                "source_kind": "ANNUAL_REPORTING_SECTION_TITLE",
+                "table_id": None,
+                "text_exact": source_exact,
+            }
+        )
+    year_contexts = []
+    for year, evidence in sorted(evidence_by_year.items()):
+        month_day_axis = sorted({(item["month"], item["day"]) for item in evidence})
+        distinct_page_count = len(evidence)
+        status = (
+            "UNIQUE_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_CONSENSUS"
+            if len(month_day_axis) == 1 and distinct_page_count >= 2
+            else "CONFLICTING_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+            if len(month_day_axis) > 1
+            else "INSUFFICIENT_AUTHENTICATED_DOCUMENT_FISCAL_CLOSE_EVIDENCE"
+        )
+        year_contexts.append(
+            {
+                "day": month_day_axis[0][1] if status.startswith("UNIQUE_") else None,
+                "distinct_page_count": distinct_page_count,
+                "evidence": evidence,
+                "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+                "minimum_distinct_page_count": 2,
+                "month": month_day_axis[0][0] if status.startswith("UNIQUE_") else None,
+                "month_day_axis": [{"day": day, "month": month} for month, day in month_day_axis],
+                "status": status,
+                "year": year,
+            }
+        )
+    return {
+        "document_id": DOCUMENT_ID,
+        "document_ordinal": 1,
+        "rule": (
+            "SELECTED_PAGE_VERSION_ONLY_ANNUAL_REPORTING_TITLE_OR_BALANCE_"
+            "SHEET_COMPARATIVE_DATE_EXACT_YEAR_TWO_PAGE_UNIQUE_FISCAL_"
+            "CLOSE_MONTH_DAY_CONSENSUS"
+        ),
+        "source_logical_name": SOURCE_LOGICAL_NAME,
+        "source_sha256": SOURCE_SHA256,
+        "year_context_axis_sha256": canonical_json_sha256_v1(year_contexts),
+        "year_contexts": year_contexts,
+    }
 
 
 def _source_refs(
@@ -380,6 +553,128 @@ def test_money_unit_must_match_across_both_periods() -> None:
     assert "ROLLFORWARD_MONEY_UNIT_MISMATCH_ACROSS_PERIODS_OR_COMPONENTS" in candidate["reasons"]
 
 
+def test_equivalent_vietnamese_money_unit_surfaces_bind_one_canonical_scale() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025", unit="Triệu VND"),
+            _period_table("Tại ngày 31 tháng 12 năm 2024", unit="triệu đồng"),
+        )
+    )
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["unit_provenance_receipt"]
+    assert receipt["resolved_canonical_unit"] == "MILLION_VND"
+    assert receipt["document_unit_context_evidence"] is None
+
+
+def test_selected_frontier_table_unit_consensus_inherits_only_with_two_pages() -> None:
+    page = _page(
+        _period_table("Tại ngày 31 tháng 12 năm 2025", unit=None),
+        _period_table("Tại ngày 31 tháng 12 năm 2024", unit=None),
+    )
+    unique_context = _document_unit_context("MILLION_VND", "MILLION_VND")
+
+    candidate = _evaluate(page, document_unit_context_evidence=unique_context)
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["unit_provenance_receipt"]
+    assert receipt["assignment_kind"] == ("AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_INHERITED")
+    assert receipt["document_unit_context_evidence"] == unique_context
+    assert {mapping["bound_unit"] for mapping in candidate["mappings"]} == {"MILLION_VND"}
+
+    for rejected_context in (
+        _document_unit_context("MILLION_VND"),
+        _document_unit_context("MILLION_VND", "BILLION_VND"),
+    ):
+        unresolved = _evaluate(page, document_unit_context_evidence=rejected_context)
+        assert unresolved["status"] == UNRESOLVED
+        assert unresolved["mappings"] == []
+        assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in unresolved["reasons"]
+
+
+def test_document_consensus_does_not_fill_a_mixed_local_unit_axis() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025", unit="Triệu đồng"),
+            _period_table("Tại ngày 31 tháng 12 năm 2024", unit=None),
+        ),
+        document_unit_context_evidence=_document_unit_context("MILLION_VND", "MILLION_VND"),
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in candidate["reasons"]
+    assert (
+        candidate["closure_receipt"]["unit_provenance_receipt"]["document_unit_context_evidence"]
+        is None
+    )
+
+
+def test_exchange_rate_text_is_not_a_money_scale_carrier() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025", unit="Tỷ giá VND"),
+            _period_table("Tại ngày 31 tháng 12 năm 2024", unit="Exchange rate VND"),
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in candidate["reasons"]
+
+
+def test_column_only_money_unit_requires_every_money_column_to_be_uniform() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025", unit=None)
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024", unit=None)
+    for table in (current, comparative):
+        for column in table["columns"]:
+            column["header_path_exact"].append("Triệu VND")
+
+    ready = _evaluate(_page(current, comparative))
+
+    assert ready["status"] == READY
+    assert {mapping["bound_unit"] for mapping in ready["mappings"]} == {"MILLION_VND"}
+
+    partial_current = copy.deepcopy(current)
+    partial_comparative = copy.deepcopy(comparative)
+    for table in (partial_current, partial_comparative):
+        table["columns"][1]["header_path_exact"].pop()
+    unresolved = _evaluate(_page(partial_current, partial_comparative))
+    assert unresolved["status"] == UNRESOLVED
+    assert unresolved["mappings"] == []
+    assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in unresolved["reasons"]
+
+
+def test_unrelated_nonmoney_metric_scale_cannot_bind_unitless_money_columns() -> None:
+    tables = [
+        _period_table("Tại ngày 31 tháng 12 năm 2025", unit=None),
+        _period_table("Tại ngày 31 tháng 12 năm 2024", unit=None),
+    ]
+    for table in tables:
+        table["columns"][0]["value_kind"] = "PERCENT"
+        table["columns"][0]["header_path_exact"].append("Tuyệt đối / Tỷ VNĐ")
+
+    candidate = _evaluate(_page(*tables))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in candidate["reasons"]
+
+
+def test_table_unit_conflicting_with_one_explicit_money_column_is_unresolved() -> None:
+    tables = [
+        _period_table("Tại ngày 31 tháng 12 năm 2025", unit="Triệu đồng"),
+        _period_table("Tại ngày 31 tháng 12 năm 2024", unit="Triệu đồng"),
+    ]
+    for table in tables:
+        table["columns"][0]["header_path_exact"].append("Tỷ VND")
+
+    candidate = _evaluate(_page(*tables))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE" in candidate["reasons"]
+
+
 def test_optional_lane_population_must_be_identical_across_periods() -> None:
     comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
     comparative["columns"].pop()
@@ -422,6 +717,26 @@ def test_two_unknown_margin_cells_withhold_every_authoritative_mapping() -> None
         "PROVISION_OR_REVERSAL_ROW",
         "USE_MOVEMENT_ROW",
     ]
+
+
+def test_short_declared_margin_lane_is_not_silently_projected_out() -> None:
+    current = _period_table(
+        "Tại ngày 31 tháng 12 năm 2025",
+        margin_provision=None,
+        margin_use=None,
+    )
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    for table in (current, comparative):
+        table["columns"][2]["header_path_exact"][-1] = "Dự phòng rủi ro cho vay giao dịch ký quỹ"
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        "MARGIN_ADVANCE_PROVISION_LANE" in reason and "RANK_DEFICIENT_MULTIPLE_UNKNOWNS" in reason
+        for reason in candidate["reasons"]
+    )
 
 
 def test_missing_bound_money_unit_is_unresolved_and_withholds_mappings() -> None:
@@ -975,6 +1290,77 @@ def test_reset_fence_scans_rows_even_when_every_component_has_a_local_owner() ->
         )
 
 
+def test_reset_fence_excludes_unselected_sibling_tables_before_and_after_cluster() -> None:
+    reset_sibling = {
+        "columns": [{"header_path_exact": ["Nội dung"], "value_kind": "TEXT"}],
+        "continuation": "NONE",
+        "rows": [
+            {
+                "hierarchy_path_exact": ["Thư tín dụng"],
+                "label_exact": "Thư tín dụng",
+                "row_kind": "ITEM",
+                "values_exact": ["Có"],
+            }
+        ],
+        "title_exact": "Phân tích chất lượng nợ cho vay",
+        "unit_exact": None,
+    }
+    candidate = _evaluate(
+        _page(copy.deepcopy(reset_sibling), _stacked_table(), copy.deepcopy(reset_sibling)),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t2",
+            }
+        ],
+    )
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["population_receipt"]["reset_fence_receipt"]
+    assert receipt["status"] == "RESET_FENCE_CLEAR"
+    assert receipt["checked_page_intervals"][0]["section_table_intervals"] == [
+        {
+            "first_table_ordinal": 2,
+            "last_table_ordinal": 2,
+            "section_ordinal": 1,
+        }
+    ]
+
+
+def test_reset_fence_excludes_unselected_population_columns_in_mixed_table() -> None:
+    table = _stacked_table()
+    table["columns"].append(
+        {
+            "header_path_exact": [
+                "Nghiệp vụ phát hành thư tín dụng trả chậm",
+                "Dự phòng chung",
+            ],
+            "value_kind": "MONEY",
+        }
+    )
+    for row in table["rows"]:
+        row["values_exact"].append("-")
+
+    candidate = _evaluate(
+        _page(table),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+    )
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["population_receipt"]["reset_fence_receipt"]
+    assert receipt["scope_kind"] == "INDEPENDENT_LOCAL_OWNER_SELECTED_COMPONENTS_ONLY"
+    assert receipt["reset_hits"] == []
+
+
 def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:
     candidate = _evaluate(
         _page(_stacked_table()),
@@ -1138,6 +1524,136 @@ def test_identical_duplicate_lane_columns_are_ambiguous_not_corroboration() -> N
         reason.startswith("ROLLFORWARD_DUPLICATE_ROLE_PERIOD_LANE_AMBIGUOUS:")
         for reason in candidate["reasons"]
     )
+
+
+def test_unique_declared_aggregate_population_resolves_repeated_lane_columns() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table in (current, comparative):
+        for source_index, lane in ((0, "Dự phòng chung"), (1, "Dự phòng cụ thể")):
+            table["columns"].append(
+                {
+                    "header_path_exact": ["Tổng cộng", lane],
+                    "value_kind": "MONEY",
+                }
+            )
+            for row in table["rows"]:
+                row["values_exact"].append(row["values_exact"][source_index])
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == READY
+    assert candidate["closure_receipt"]["duplicate_source_ambiguities"] == []
+    receipts = candidate["closure_receipt"]["lane_population_assignment_receipts"]
+    assert len(receipts) == 2
+    assert all(
+        item["receipt"]["status"] == "UNIQUE_AGGREGATE_POPULATION_SELECTED" for item in receipts
+    )
+    assert all(len(item["receipt"]["decisions"]) == 2 for item in receipts)
+
+
+@pytest.mark.parametrize(
+    ("aggregate_headers", "mismatch"),
+    [
+        (["Tổng nợ nhóm 5"], False),
+        (["Tổng cộng", "Tổng"], False),
+        (["Tổng cộng"], True),
+    ],
+)
+def test_repeated_lane_aggregate_projection_fails_closed(
+    aggregate_headers: list[str], mismatch: bool
+) -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table in (current, comparative):
+        for header in aggregate_headers:
+            table["columns"].append(
+                {
+                    "header_path_exact": [header, "Dự phòng chung"],
+                    "value_kind": "MONEY",
+                }
+            )
+            for row in table["rows"]:
+                row["values_exact"].append(row["values_exact"][0])
+    if mismatch:
+        current["rows"][1]["values_exact"][-1] = "21"
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason.startswith("ROLLFORWARD_DUPLICATE_ROLE_PERIOD_LANE_AMBIGUOUS:")
+        for reason in candidate["reasons"]
+    )
+
+
+def test_period_components_must_select_the_same_declared_aggregate_identity() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table, header in ((current, "Tổng cộng"), (comparative, "Tổng")):
+        table["columns"].append(
+            {
+                "header_path_exact": [header, "Dự phòng chung"],
+                "value_kind": "MONEY",
+            }
+        )
+        for row in table["rows"]:
+            row["values_exact"].append(row["values_exact"][0])
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "ROLLFORWARD_AGGREGATE_POPULATION_MISMATCH:GENERAL_PROVISION_LANE" in candidate["reasons"]
+    )
+
+
+def test_aggregate_population_allows_unprovable_rows_but_requires_one_exact_row() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table in (current, comparative):
+        table["columns"].append(
+            {
+                "header_path_exact": ["Tổng cộng", "Dự phòng chung"],
+                "value_kind": "MONEY",
+            }
+        )
+        for row in table["rows"]:
+            row["values_exact"].append(row["values_exact"][0])
+    current["rows"][1]["values_exact"][0] = None
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == READY
+    current_receipt = candidate["closure_receipt"]["lane_population_assignment_receipts"][0][
+        "receipt"
+    ]
+    assert any(
+        row["status"] == "UNKNOWN_SIBLING_OR_AGGREGATE_CELL"
+        for row in current_receipt["decisions"][0]["row_sum_receipts"]
+    )
+
+
+def test_aggregate_population_with_no_testable_row_remains_unresolved() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table in (current, comparative):
+        table["columns"].append(
+            {
+                "header_path_exact": ["Tổng cộng", "Dự phòng chung"],
+                "value_kind": "MONEY",
+            }
+        )
+        for row in table["rows"]:
+            row["values_exact"].append(row["values_exact"][0])
+            row["values_exact"][0] = None
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
 
 
 def test_partial_block_and_duplicate_endpoint_are_terminal_unknowns() -> None:
@@ -1330,3 +1846,241 @@ def test_date_style_opening_endpoint_needs_ordered_complete_topology() -> None:
         )
     )
     assert candidate["status"] == READY
+
+
+def test_parallel_yoy_windows_preserve_a_source_visible_opening_mismatch() -> None:
+    def dated(period_end: str, opening: str) -> dict:
+        table = _period_table(period_end)
+        table["rows"][0]["label_exact"] = opening
+        table["rows"][0]["hierarchy_path_exact"] = [opening]
+        table["rows"][-1]["label_exact"] = period_end
+        table["rows"][-1]["hierarchy_path_exact"] = [period_end]
+        return table
+
+    candidate = _evaluate(
+        _page(
+            dated("Số dư tại ngày 31 tháng 3 năm 2025", "Số dư tại ngày 1 tháng 1 năm 2025"),
+            dated("Số dư tại ngày 31 tháng 3 năm 2024", "Số dư tại ngày 1 tháng 1 năm 2023"),
+        )
+    )
+
+    assert candidate["status"] == READY
+    assert all(
+        receipt["continuity_kind"] == "PARALLEL_PERIOD_WINDOWS_NO_CROSS_VALUE_EQUALITY"
+        and receipt["endpoint_date_alignment_receipt"]["derivation_kind"]
+        == "PARALLEL_PERIOD_OPENING_WINDOW_MISMATCH_SOURCE_VISIBLE"
+        for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]
+    )
+
+
+def test_parallel_yoy_windows_require_exactly_aligned_closing_dates() -> None:
+    current = _period_table("Số dư tại ngày 31 tháng 3 năm 2025")
+    comparative = _period_table("Số dư tại ngày 30 tháng 3 năm 2024")
+    for table, opening in (
+        (current, "Số dư tại ngày 1 tháng 1 năm 2025"),
+        (comparative, "Số dư tại ngày 1 tháng 1 năm 2024"),
+    ):
+        table["rows"][0]["label_exact"] = opening
+        table["rows"][0]["hierarchy_path_exact"] = [opening]
+        table["rows"][-1]["label_exact"] = table["title_exact"]
+        table["rows"][-1]["hierarchy_path_exact"] = [table["title_exact"]]
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason.startswith("ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:")
+        for reason in candidate["reasons"]
+    )
+
+
+def test_fiscal_boundary_chain_is_source_bound_not_value_equality_alone() -> None:
+    fiscal = _evaluate(
+        _page(
+            _period_table("Kỳ sáu tháng kết thúc ngày 30/6/2025"),
+            _period_table("Năm kết thúc ngày 31/12/2024"),
+        )
+    )
+    coincidental_parallel = _evaluate(
+        _page(
+            _period_table("Kỳ kết thúc ngày 31/3/2025"),
+            _period_table("Kỳ kết thúc ngày 31/3/2024"),
+        )
+    )
+
+    assert fiscal["status"] == READY
+    assert all(
+        receipt["continuity_kind"] == "CHAINED_FISCAL_BOUNDARY_CONTEXT_PRIOR_CLOSE_TO_CURRENT_OPEN"
+        and receipt["boundary_semantics_receipt"] is not None
+        for receipt in fiscal["closure_receipt"]["endpoint_continuity_receipts"]
+    )
+    assert coincidental_parallel["status"] == READY
+    assert all(
+        receipt["continuity_kind"] == "PARALLEL_PERIOD_WINDOWS_NO_CROSS_VALUE_EQUALITY"
+        and receipt["boundary_semantics_receipt"] is None
+        for receipt in coincidental_parallel["closure_receipt"]["endpoint_continuity_receipts"]
+    )
+
+
+def test_non_calendar_fiscal_year_end_chains_into_its_following_cycle() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Kỳ chín tháng kết thúc ngày 31/3/2025"),
+            _period_table("Năm tài chính kết thúc ngày 30/6/2024"),
+        )
+    )
+
+    assert candidate["status"] == READY
+    receipts = candidate["closure_receipt"]["endpoint_continuity_receipts"]
+    assert all(
+        receipt["continuity_kind"] == "CHAINED_FISCAL_BOUNDARY_CONTEXT_PRIOR_CLOSE_TO_CURRENT_OPEN"
+        and receipt["boundary_semantics_receipt"]["previous_fiscal_close"] == "2024-06-30"
+        and receipt["boundary_semantics_receipt"]["fiscal_cycle_anniversary"] == "2025-06-30"
+        and receipt["boundary_semantics_receipt"]["previous_fiscal_year_end_semantics"][
+            "classification"
+        ]
+        == "SOURCE_VISIBLE_ANNUAL_OR_FISCAL_YEAR_END"
+        for receipt in receipts
+    )
+
+
+def test_bare_years_without_annual_or_fiscal_context_cannot_create_a_boundary() -> None:
+    current = _period_table("2025")
+    comparative = _period_table("2024")
+    for table in (current, comparative):
+        table["rows"][0]["label_exact"] = "Số dư đầu năm"
+        table["rows"][0]["hierarchy_path_exact"] = ["Số dư đầu năm"]
+        table["rows"][-1]["label_exact"] = "Số dư cuối năm"
+        table["rows"][-1]["hierarchy_path_exact"] = ["Số dư cuối năm"]
+    candidate = _evaluate(
+        _page(
+            current,
+            comparative,
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason.startswith("ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:")
+        for reason in candidate["reasons"]
+    )
+
+
+def test_bare_fiscal_year_binds_only_to_its_exact_authenticated_year_context() -> None:
+    context = _document_fiscal_context((6, 30), (6, 30))
+    candidate = _evaluate(
+        _page(
+            _period_table("Kỳ chín tháng kết thúc ngày 31/3/2025"),
+            _period_table("Năm tài chính 2024"),
+        ),
+        document_fiscal_close_context_evidence=context,
+    )
+
+    assert candidate["status"] == READY
+    comparative = [
+        vector
+        for vector in candidate["closure_receipt"]["role_vectors"]
+        if vector["period_role"] == "COMPARATIVE_PERIOD"
+    ]
+    assert {vector["period_date"] for vector in comparative} == {"2024-06-30"}
+    assert all(
+        vector["period_semantics_evidence"]["document_fiscal_close_year_binding_receipt"][
+            "year_context"
+        ]
+        == context["year_contexts"][0]
+        for vector in comparative
+    )
+
+
+def test_ordered_bare_year_narratives_persist_only_context_bound_fiscal_dates() -> None:
+    context = _document_fiscal_context_by_year(
+        (2024, 6, 30),
+        (2024, 6, 30),
+        (2025, 6, 30),
+        (2025, 6, 30),
+    )
+    current = _period_table("Biến động dự phòng rủi ro cho vay khách hàng")
+    current["rows"][0]["values_exact"] = ["110", "215", "110"]
+    current["rows"][3]["values_exact"] = ["120", "230", "120"]
+    page = _page(
+        current,
+        _period_table("Biến động dự phòng rủi ro cho vay khách hàng"),
+    )
+    page["sections"][0]["narratives_exact"] = [
+        "Dự phòng rủi ro cho vay khách hàng.",
+        "Thay đổi dự phòng rủi ro cho vay khách hàng trong năm 2025 như sau:",
+        "Thay đổi dự phòng rủi ro cho vay khách hàng trong năm 2024 như sau:",
+    ]
+
+    candidate = _evaluate(
+        page,
+        document_fiscal_close_context_evidence=context,
+    )
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["period_assignment_receipt"]
+    assert receipt["status"] == "ORDERED_TWO_DATE_CONTEXT_BOUND"
+    assert {item["date"] for item in receipt["assignments"]} == {
+        "2024-06-30",
+        "2025-06-30",
+    }
+    assert {item["date"] for item in receipt["movement_context_evidence"]} == {
+        "2024-06-30",
+        "2025-06-30",
+    }
+    assert all(
+        item["status"] == "EXACT_ONE_YEAR_BOUND_TO_DOCUMENT_FISCAL_CLOSE_CONTEXT"
+        and item["document_fiscal_close_year_binding_receipt"] is not None
+        for item in receipt["movement_context_evidence"]
+    )
+    assert "12-31" not in json.dumps(receipt, sort_keys=True)
+
+
+def test_bare_year_rejects_conflicting_context_and_unrelated_date_pairs() -> None:
+    page = _page(
+        _period_table("Kỳ chín tháng kết thúc ngày 31/3/2025"),
+        _period_table("Năm tài chính 2024"),
+    )
+    page["sections"][0]["narratives_exact"].extend(
+        [
+            "Quyết định ký ngày 18/01/2025.",
+            "Quyết định ký ngày 18/01/2024.",
+        ]
+    )
+
+    no_context = _evaluate(page)
+    conflicting = _evaluate(
+        page,
+        document_fiscal_close_context_evidence=_document_fiscal_context((6, 30), (12, 31)),
+    )
+
+    for candidate in (no_context, conflicting):
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+        assert any(
+            reason.startswith("ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:")
+            for reason in candidate["reasons"]
+        )
+
+
+def test_explicit_same_date_period_boundary_is_a_chained_endpoint() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table, opening, closing in (
+        (current, "Tại ngày 31 tháng 12 năm 2024", "Tại ngày 31 tháng 12 năm 2025"),
+        (comparative, "Tại ngày 1 tháng 1 năm 2024", "Tại ngày 31 tháng 12 năm 2024"),
+    ):
+        table["rows"][0]["label_exact"] = opening
+        table["rows"][0]["hierarchy_path_exact"] = [opening]
+        table["rows"][-1]["label_exact"] = closing
+        table["rows"][-1]["hierarchy_path_exact"] = [closing]
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == READY
+    assert all(
+        receipt["continuity_kind"] == "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN"
+        for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]
+    )

@@ -986,6 +986,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     title_axis_near_sources: set[str] = set()
     title_axis_query_receipt: dict[str, Any] | None = None
     indexed_query_evidence: dict[str, Any] | None = None
+    rollforward_fiscal_context_by_source: dict[str, dict[str, Any]] = {}
+    rollforward_unit_context_by_source: dict[str, dict[str, Any]] = {}
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
     if rollforward_projection:
         queried = query_selected_rollforward_family_regions_v1(
@@ -1001,6 +1003,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             compiled_specs=compiled,
             indexed_query_evidence=queried,
         )
+        rollforward_unit_context_by_source = {
+            item["source_logical_name"]: item
+            for item in indexed_query_evidence["document_unit_context_evidence"]
+        }
+        rollforward_fiscal_context_by_source = {
+            item["source_logical_name"]: item
+            for item in indexed_query_evidence["document_fiscal_close_context_evidence"]
+        }
         source_metadata = {
             document["relative_path"]: (document["source_ordinal"], document["source_sha256"])
             for document in index["documents"]
@@ -1368,6 +1378,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(
                         component_regions
                     ),
+                    document_fiscal_close_context_evidence=(
+                        rollforward_fiscal_context_by_source.get(region["source_logical_name"])
+                    ),
+                    document_unit_context_evidence=rollforward_unit_context_by_source.get(
+                        region["source_logical_name"]
+                    ),
                 )
             )
         elif dual_axis_projection:
@@ -1605,6 +1621,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
         run_kind=args.run_kind,
         source_page_database=database if rollforward_projection else None,
+        selected_page_json_version_ids=selected_ids if rollforward_projection else None,
+        corpus_artifact_root=artifact_root if rollforward_projection else None,
     )
     repair_job_ids = enqueue_gemini_family_region_repair_plans_v1(
         args.results_database,
