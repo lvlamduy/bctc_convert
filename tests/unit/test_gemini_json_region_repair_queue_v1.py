@@ -293,6 +293,54 @@ def test_stacked_presentation_failure_targets_only_the_printed_net_rows() -> Non
     assert plans[0]["target_ids"] == ["s1:t1:r7", "s1:t2:r7"]
 
 
+def test_missing_explicit_family_title_schedules_table_axis_before_row_repairs() -> None:
+    topology, evaluation, schema = _loan_type_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    page = _loan_type_page(percentage_companions=False)
+    section = page["sections"][0]
+    section["title_exact"] = "Thuyết minh báo cáo tài chính (tiếp theo)"
+    section["tables"][0]["title_exact"] = None
+    version_id = "gfpstorev1:json:" + "a" * 64
+    candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id=version_id,
+        physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    assert "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW" in candidate["reasons"]
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "b" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            {
+                "candidate_count": 1,
+                "candidates": [candidate],
+                "document_ordinal": 1,
+                "mappings": [],
+                "reasons": candidate["reasons"],
+                "selected_candidate_id": None,
+                "source_logical_name": "VPB/2025/loan-type.pdf",
+                "source_sha256": "c" * 64,
+                "status": UNRESOLVED,
+            }
+        ],
+    )
+    plans = build_family_region_repair_plans_v1(
+        sweep=sweep,
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )
+    assert len(plans) == 1
+    assert plans[0]["repair_scope"] == "TABLE_TITLE_AND_COLUMNS"
+    assert plans[0]["target_table_refs"] == [{"section_id": "s1", "table_id": "t1"}]
+    assert plans[0]["target_ids"] == ["s1:t1:r1", "s1:t1:r2", "s1:t1:r3"]
+    assert plans[0]["trigger_kinds"] == ["TABLE_EXPLICIT_FAMILY_TITLE_MISSING"]
+
+
 def test_unbound_visible_numeric_row_queues_exact_label_and_value_reread() -> None:
     topology, evaluation, schema = _loan_type_specs()
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)

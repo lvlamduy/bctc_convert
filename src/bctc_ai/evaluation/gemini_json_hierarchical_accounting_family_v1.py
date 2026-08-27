@@ -464,11 +464,18 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         alternatives = (
             equation.get("component_role_alternatives") if type(equation) is dict else None
         )
+        maximum_rounding_residual = (
+            equation.get("maximum_source_rounding_residual_coefficients", 0)
+            if type(equation) is dict
+            else None
+        )
         if (
             result not in known_roles
             or result in result_roles
             or type(alternatives) is not list
             or not alternatives
+            or type(maximum_rounding_residual) is not int
+            or not 0 <= maximum_rounding_residual <= 1
         ):
             raise _error("Gemini JSON hierarchy equation result is invalid")
         checked_alternatives = []
@@ -562,7 +569,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         ):
             raise _error("Gemini JSON hierarchy visible result roles are invalid")
         equations.append(
-            {**canonical_clone_v1(equation), "component_role_alternatives": checked_alternatives}
+            {
+                **canonical_clone_v1(equation),
+                "component_role_alternatives": checked_alternatives,
+                "maximum_source_rounding_residual_coefficients": maximum_rounding_residual,
+            }
         )
         result_roles.add(result)
     available_results: set[str] = set()
@@ -697,6 +708,7 @@ def _row_roles(
     *,
     topology: dict[str, Any],
     aliases_by_role: dict[str, list[str]],
+    fallback_within_role: str | None = None,
 ) -> list[str]:
     scoped: list[str] = []
     unscoped: list[str] = []
@@ -708,7 +720,7 @@ def _row_roles(
             within = matcher["within_role"]
             if within is None:
                 unscoped.append(role)
-            elif _path_has_role(
+            elif within == fallback_within_role or _path_has_role(
                 row.get("hierarchy_path_exact"),
                 aliases=aliases_by_role[within],
                 label_exact=row.get("label_exact"),
@@ -763,6 +775,25 @@ def _coefficients(record: dict[str, Any]) -> list[int]:
 
 def _sum(records: list[dict[str, Any]], lane_count: int) -> list[int]:
     return [sum(_coefficients(record)[lane] for record in records) for lane in range(lane_count)]
+
+
+def _source_rounding_residuals(record: dict[str, Any], component_sums: list[int]) -> list[int]:
+    return [
+        observed - computed
+        for observed, computed in zip(_coefficients(record), component_sums, strict=True)
+    ]
+
+
+def _carrier_matches_source_sum(
+    record: dict[str, Any],
+    component_sums: list[int],
+    *,
+    maximum_rounding_residual: int,
+) -> bool:
+    return all(
+        abs(residual) <= maximum_rounding_residual
+        for residual in _source_rounding_residuals(record, component_sums)
+    )
 
 
 def _solve(
@@ -820,6 +851,8 @@ def _solve(
 
     for equation in compiled["equations"]:
         result_role = equation["result_role"]
+        maximum_rounding_residual = equation["maximum_source_rounding_residual_coefficients"]
+
         component_universe = {
             role
             for alternative in equation["component_role_alternatives"]
@@ -936,14 +969,22 @@ def _solve(
             sums = _sum(components, 2)
             carriers: list[dict[str, Any]] = []
             authoritative_visible = False
-            if existing is not None and _coefficients(existing) == sums:
+            if existing is not None and _carrier_matches_source_sum(
+                existing,
+                sums,
+                maximum_rounding_residual=maximum_rounding_residual,
+            ):
                 carriers.append(existing)
             if existing is not None:
                 authoritative_visible = True
             visible_roles = set(equation["visible_result_roles"])
             for role in visible_roles - {result_role}:
                 record = resolved.get(role)
-                if record is not None and _coefficients(record) == sums:
+                if record is not None and _carrier_matches_source_sum(
+                    record,
+                    sums,
+                    maximum_rounding_residual=maximum_rounding_residual,
+                ):
                     carriers.append(record)
                 if record is not None:
                     authoritative_visible = True
@@ -966,7 +1007,11 @@ def _solve(
                         record["ordinal"] > maximum_component_ordinal
                         or record.get("presentation_shadow_for_role") == result_role
                     )
-                    and _coefficients(record) == sums
+                    and _carrier_matches_source_sum(
+                        record,
+                        sums,
+                        maximum_rounding_residual=maximum_rounding_residual,
+                    )
                     and result_role in record.get("allowed_result_roles", {result_role})
                     and record.get("owner_role") in {None, result_role, topology["parent"]["role"]}
                 ):
@@ -978,7 +1023,7 @@ def _solve(
                     for row_id, record in unique_carriers.items()
                     if row_id != existing["row_id"]
                     and record.get("owner_role") == result_role
-                    and _coefficients(record) == sums
+                    and _coefficients(record) == _coefficients(existing)
                 ]
                 if len(corroborating) == len(unique_carriers) - 1 == 1:
                     unique_carriers = {
@@ -1153,6 +1198,7 @@ def _solve(
         alternative, components, sums, carrier = alternatives[0]
         selected_roles = [component["role"] for component in components]
         if carrier is None:
+            source_rounding_residuals: list[int] = []
             result = {
                 "cells": [
                     {
@@ -1174,10 +1220,15 @@ def _solve(
             mode = "DERIVED_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
         else:
             result = {**carrier, "owner_role": None, "role": result_role}
+            source_rounding_residuals = _source_rounding_residuals(carrier, sums)
             if carrier["row_id"].startswith("r") and carrier not in base_by_role.values():
                 used_anonymous.add(carrier["row_id"])
             used_anonymous.update(result.get("corroborating_result_row_ids", []))
-            mode = "VISIBLE_RESULT_EXACTLY_CORROBORATED"
+            mode = (
+                "VISIBLE_RESULT_EXACTLY_CORROBORATED"
+                if not any(source_rounding_residuals)
+                else "VISIBLE_RESULT_CORROBORATED_WITH_BOUNDED_SOURCE_ROUNDING_RESIDUAL"
+            )
         resolved[result_role] = result
         equations_receipt.append(
             {
@@ -1188,6 +1239,11 @@ def _solve(
                 "result_coefficients": _coefficients(result),
                 "result_role": result_role,
                 "result_row_id": result["row_id"],
+                **(
+                    {"source_rounding_residual_coefficients": source_rounding_residuals}
+                    if any(source_rounding_residuals)
+                    else {}
+                ),
                 **(
                     {"equivalent_presentation_frontiers": equivalent_presentation_frontiers}
                     if equivalent_presentation_frontiers
@@ -1333,6 +1389,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     anonymous: list[dict[str, Any]] = []
     unmatched_numeric: list[int] = []
     unrelated_group_labels: set[str] = set()
+    active_structural_role: str | None = None
     for ordinal, row in rows:
         source_values = row.get("values_exact")
         if type(source_values) is not list or len(source_values) != len(columns or []):
@@ -1358,8 +1415,14 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                 reasons.append(f"ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:{ordinal}")
                 continue
         roles = _row_roles(
-            row, topology=topology, aliases_by_role=compiled_specs["aliases_by_role"]
+            row,
+            topology=topology,
+            aliases_by_role=compiled_specs["aliases_by_role"],
+            fallback_within_role=active_structural_role,
         )
+        row_structural_roles = sorted(structural_roles & set(roles))
+        if len(row_structural_roles) == 1:
+            active_structural_role = row_structural_roles[0]
         path_labels = {
             _normalized(value)
             for value in row.get("hierarchy_path_exact", [])
@@ -1377,6 +1440,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             and all(value is None for value in values)
             and _normalized(row.get("label_exact"))
         ):
+            active_structural_role = None
             unrelated_group_labels.add(_normalized(row["label_exact"]))
             continue
         owner = _nearest_owner(

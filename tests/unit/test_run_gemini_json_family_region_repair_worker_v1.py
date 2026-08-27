@@ -68,3 +68,23 @@ def test_unmatched_label_repair_is_not_accepted_while_target_row_remains_unbound
         "status": "UNRESOLVED_REQUIRES_NEW_EVIDENCE",
     }
     assert not _targeted_repair_is_accepted(plan, candidate)
+
+
+def test_table_title_repair_requires_parent_reason_removed_before_staged_followup() -> None:
+    plan = {
+        "trigger_kinds": ["TABLE_EXPLICIT_FAMILY_TITLE_MISSING"],
+        "trigger_reasons": [
+            "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW",
+            "UNBOUND_VISIBLE_NUMERIC_ROWS:2",
+        ],
+    }
+    still_missing = {
+        "reasons": plan["trigger_reasons"],
+        "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    }
+    assert not _targeted_repair_is_accepted(plan, still_missing)
+    title_fixed = {
+        "reasons": ["UNBOUND_VISIBLE_NUMERIC_ROWS:2"],
+        "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    }
+    assert _targeted_repair_is_accepted(plan, title_fixed)

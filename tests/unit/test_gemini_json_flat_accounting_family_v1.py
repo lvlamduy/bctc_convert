@@ -15,6 +15,7 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     evaluate_gemini_json_flat_family_table_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import _row_roles
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -59,6 +60,17 @@ def _loan_type_specs() -> tuple[dict, dict, dict]:
             "config/families/tm-loan-type-classification-topology-v1.json",
             "config/families/tm-loan-type-classification-evaluation-v1.json",
             "config/families/tm-loan-type-classification-schema-binding-v1.json",
+        )
+    )
+
+
+def _loan_industry_specs() -> tuple[dict, dict, dict]:
+    return tuple(
+        json.loads((ROOT / path).read_text(encoding="utf-8"))
+        for path in (
+            "config/families/tm-loan-industry-classification-topology-v1.json",
+            "config/families/tm-loan-industry-classification-evaluation-v1.json",
+            "config/families/tm-loan-industry-classification-schema-binding-v1.json",
         )
     )
 
@@ -829,6 +841,86 @@ def test_period_value_hierarchy_rejects_column_shift_bad_period_percent_and_mone
         reason.startswith("EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE")
         for reason in _evaluate_loan_type(mismatch)["reasons"]
     )
+
+
+def test_hierarchy_preserves_visible_total_with_declared_unit_rounding_residual() -> None:
+    topology, evaluation, schema = _loan_type_specs()
+    bounded = deepcopy(evaluation)
+    root_equation = next(
+        equation
+        for equation in bounded["hierarchical_closure_spec"]["equations"]
+        if equation["result_role"] == "LOAN_TYPE_CLASSIFICATION"
+    )
+    root_equation["maximum_source_rounding_residual_coefficients"] = 1
+
+    page = _loan_type_page(percentage_companions=False)
+    page["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "121"
+    result = evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id="gfpstorev1:json:" + "7" * 64,
+        physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, bounded, schema),
+    )
+    assert result["status"] == READY
+    root_mapping = next(
+        mapping for mapping in result["mappings"] if mapping["role"] == "LOAN_TYPE_CLASSIFICATION"
+    )
+    assert [value["coefficient"] for value in root_mapping["values"]] == [121, 100]
+    root_receipt = next(
+        equation
+        for equation in result["closure_receipt"]["equations"]
+        if equation["result_role"] == "LOAN_TYPE_CLASSIFICATION"
+    )
+    assert root_receipt["lane_component_sums"] == [120, 100]
+    assert root_receipt["result_coefficients"] == [121, 100]
+    assert root_receipt["source_rounding_residual_coefficients"] == [1, 0]
+    assert root_receipt["mode"] == (
+        "VISIBLE_RESULT_CORROBORATED_WITH_BOUNDED_SOURCE_ROUNDING_RESIDUAL"
+    )
+
+    over_bound = deepcopy(page)
+    over_bound["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "122"
+    over_bound_result = evaluate_gemini_json_flat_family_table_v1(
+        page_json=over_bound,
+        page_json_version_id="gfpstorev1:json:" + "8" * 64,
+        physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, bounded, schema),
+    )
+    assert over_bound_result["status"] == UNRESOLVED
+
+    invalid = deepcopy(bounded)
+    invalid["hierarchical_closure_spec"]["equations"][-1][
+        "maximum_source_rounding_residual_coefficients"
+    ] = 2
+    with pytest.raises(ValueError, match="equation result is invalid"):
+        compile_gemini_json_flat_family_specs_v1(topology, invalid, schema)
+
+
+def test_scoped_role_matcher_uses_sequential_authenticated_structural_owner_fallback() -> None:
+    topology, evaluation, schema = _loan_industry_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    row = {
+        "hierarchy_path_exact": [
+            "Nghi vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+            "Xây dựng",
+        ],
+        "label_exact": "Xây dựng",
+    }
+    assert _row_roles(
+        row,
+        topology=compiled["topology"],
+        aliases_by_role=compiled["aliases_by_role"],
+        fallback_within_role="DELAYED_LC_INDUSTRY_GROUP",
+    ) == ["DELAYED_LC_CONSTRUCTION"]
+    assert _row_roles(
+        row,
+        topology=compiled["topology"],
+        aliases_by_role=compiled["aliases_by_role"],
+    ) == ["CONSTRUCTION"]
 
 
 def test_period_value_hierarchy_accepts_reordered_optional_rows_but_rejects_duplicates_and_extra() -> (

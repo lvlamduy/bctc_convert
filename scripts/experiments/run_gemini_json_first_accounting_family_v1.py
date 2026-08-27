@@ -922,11 +922,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 table_id=region["table_id"],
                 compiled_specs=compiled,
             )
-        if any(reason.startswith("FAMILY_PARENT_NOT_VISIBLE") for reason in candidate["reasons"]):
-            # The two/three-anchor database query deliberately searches a
-            # one-page neighborhood.  A nearby table without the declarative
-            # explicit parent is near evidence, not a family candidate.
-            continue
+        # Keep a two/three-anchor table whose explicit title was omitted by the
+        # selected JSON as an unresolved candidate. It cannot map while the
+        # parent is absent, but its exact identity can drive bounded title OCR.
         candidates_by_path[region["source_logical_name"]].append(candidate)
 
     trials = []

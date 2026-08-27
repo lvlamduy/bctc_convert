@@ -20,11 +20,14 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 FORMAT_VERSION = "GEMINI_JSON_REGION_REPAIR_QUEUE_V1"
-REPAIR_CONTRACT_VERSION = "CONTEXTUAL_ROW_VALUES_SIGN_AWARE_AND_TABLE_PERIOD_AXIS_V3"
+REPAIR_CONTRACT_VERSION = "CONTEXTUAL_ROW_VALUES_AND_TABLE_TITLE_PERIOD_AXIS_V4"
 _INVALID_ROW = re.compile(r"^(?:ROW|NESTED_COMPONENT)_MONEY_CELL_IS_NOT_EXACT_INTEGER:(\d+)$")
 _INVALID_ROLE = re.compile(r"^ROLE_MONEY_CELL_IS_NOT_EXACT_INTEGER:([^:]+)$")
 _INVALID_PERCENT_ROW = re.compile(r"^ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:(\d+)$")
 _UNBOUND_VISIBLE_ROWS = re.compile(r"^UNBOUND_VISIBLE_NUMERIC_ROWS:(\d+(?:,\d+)*)$")
+_MISSING_FAMILY_PARENT = re.compile(
+    r"^FAMILY_PARENT_NOT_VISIBLE_IN_SECTION(?:_OR_TABLE_TITLE|_TABLE_OR_UNIQUE_ROW)$"
+)
 _UNSATISFIED_RESULT = re.compile(
     r"^(?:EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:([^:]+):0"
     r"|NESTED_PARENT_NOT_EXACT_CHILD_SUM:([^:]+))$"
@@ -177,6 +180,16 @@ def build_family_region_repair_plans_v1(
                         f"{section_id}:{table_id}:r{ordinal}"
                         for ordinal in range(1, len(selected_rows) + 1)
                     )
+            table_title_incomplete = any(
+                _MISSING_FAMILY_PARENT.fullmatch(reason) for reason in candidate["reasons"]
+            )
+            if table_title_incomplete:
+                trigger_kinds.add("TABLE_EXPLICIT_FAMILY_TITLE_MISSING")
+                for (section_id, table_id), selected_rows in rows_by_ref.items():
+                    target_ids.update(
+                        f"{section_id}:{table_id}:r{ordinal}"
+                        for ordinal in range(1, len(selected_rows) + 1)
+                    )
             stacked_specific_periods = {
                 match.group(1)
                 for reason in candidate["reasons"]
@@ -318,6 +331,16 @@ def build_family_region_repair_plans_v1(
                         )
                         if roles & (equation_roles | invalid_roles):
                             target_ids.add(f"{section_id}:{table_id}:r{ordinal}")
+            if table_title_incomplete:
+                # Title/header evidence is the prerequisite source boundary.
+                # Repair it first; a later family rerun may then emit a
+                # separate row/equation job without conflating evidence axes.
+                trigger_kinds = {"TABLE_EXPLICIT_FAMILY_TITLE_MISSING"}
+                target_ids = {
+                    f"{section_id}:{table_id}:r{ordinal}"
+                    for (section_id, table_id), selected_rows in rows_by_ref.items()
+                    for ordinal in range(1, len(selected_rows) + 1)
+                }
             if not target_ids:
                 continue
             target_ids = sorted(
@@ -347,7 +370,9 @@ def build_family_region_repair_plans_v1(
                 },
                 "repair_contract_version": REPAIR_CONTRACT_VERSION,
                 "repair_scope": (
-                    "TABLE_PERIOD_AXIS"
+                    "TABLE_TITLE_AND_COLUMNS"
+                    if table_title_incomplete
+                    else "TABLE_PERIOD_AXIS"
                     if period_axis_incomplete
                     else "ROW_LABEL_AND_VALUES"
                     if "UNMATCHED_SOURCE_LABEL" in trigger_kinds
@@ -359,7 +384,9 @@ def build_family_region_repair_plans_v1(
                 "sweep_id": checked["sweep_id"],
                 "table_id": candidate["table_id"],
                 "target_table_refs": (
-                    canonical_clone_v1(component_refs) if period_axis_incomplete else []
+                    canonical_clone_v1(component_refs)
+                    if period_axis_incomplete or table_title_incomplete
+                    else []
                 ),
                 "target_ids": target_ids,
                 "trigger_kinds": sorted(trigger_kinds),

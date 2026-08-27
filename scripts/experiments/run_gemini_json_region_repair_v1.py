@@ -65,7 +65,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-table-ref", action="append")
     parser.add_argument(
         "--repair-scope",
-        choices=("ROW_VALUES", "ROW_LABEL_AND_VALUES", "TABLE_PERIOD_AXIS"),
+        choices=(
+            "ROW_VALUES",
+            "ROW_LABEL_AND_VALUES",
+            "TABLE_PERIOD_AXIS",
+            "TABLE_TITLE_AND_COLUMNS",
+        ),
         default="ROW_VALUES",
     )
     parser.add_argument("--database", type=Path, required=True)
@@ -116,7 +121,7 @@ def _render(args: argparse.Namespace) -> tuple[bytes, dict[str, Any], dict[str, 
 def _repair_projection_from_cached_page(
     cached_page: dict[str, Any], *, targets: list[dict[str, Any]], repair_scope: str
 ) -> dict[str, Any]:
-    if repair_scope == "TABLE_PERIOD_AXIS":
+    if repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         tables = []
         for target in targets:
             section_id, table_id = target["target_id"].split(":")
@@ -184,7 +189,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "base page version does not bind the rendered source page"
         )
 
-    if args.repair_scope == "TABLE_PERIOD_AXIS":
+    if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         if not args.target_table_ref:
             raise RunGeminiJsonRegionRepairV1Error("table-axis target frontier is empty")
         table_refs = []
@@ -216,8 +221,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     prompt_sha = repair_prompt_sha256_v1(prompt)
     schema_sha = canonical_json_sha256_v1(schema)
     prompt_variant = (
-        "region-repair-table-period-axis"
-        if args.repair_scope == "TABLE_PERIOD_AXIS"
+        (
+            "region-repair-table-title-and-columns"
+            if args.repair_scope == "TABLE_TITLE_AND_COLUMNS"
+            else "region-repair-table-period-axis"
+        )
+        if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}
         else (
             "region-repair-row-label-and-values"
             if args.repair_scope == "ROW_LABEL_AND_VALUES"
@@ -267,7 +276,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 cached["page_json"], targets=targets, repair_scope=args.repair_scope
             )
         ).decode("utf-8")
-    if args.repair_scope == "TABLE_PERIOD_AXIS":
+    if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         repair = decode_table_axis_repair_text_v1(response_text, targets=targets)
         merged, repair_receipt = merge_table_axis_repair_v1(
             selected["page_json"],

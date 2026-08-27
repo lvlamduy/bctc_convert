@@ -141,6 +141,10 @@ def _targeted_repair_is_accepted(plan: dict[str, Any], candidate: dict[str, Any]
         for reason in after
     ):
         return False
+    if "TABLE_EXPLICIT_FAMILY_TITLE_MISSING" in plan["trigger_kinds"] and any(
+        reason.startswith("FAMILY_PARENT_NOT_VISIBLE") for reason in after
+    ):
+        return False
     return True
 
 
@@ -164,7 +168,7 @@ def _target_evidence(page_json: dict[str, Any], target_ids: list[str]) -> list[d
 def _repair_target_evidence(
     page_json: dict[str, Any], plan: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    if plan.get("repair_scope") != "TABLE_PERIOD_AXIS":
+    if plan.get("repair_scope") not in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         return _target_evidence(page_json, plan["target_ids"])
     evidence = []
     for ref in plan.get("target_table_refs", []):
