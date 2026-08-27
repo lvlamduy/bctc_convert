@@ -288,6 +288,28 @@ def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(
             trials=forged_sweep["trials"],
         )
 
+    root_drift_sweep = copy.deepcopy(sweep)
+    schema_reference = root_drift_sweep["specs"]["schema_binding"]
+    schema_reference["value"]["family_root_report_norm_id"] = 999999
+    schema_reference["sha256"] = canonical_json_sha256_v1(schema_reference["value"])
+    sweep_material = {key: value for key, value in root_drift_sweep.items() if key != "sweep_id"}
+    root_drift_sweep["sweep_id"] = "gjfafsv1:sweep:" + canonical_json_sha256_v1(sweep_material)
+    assert validate_gemini_json_flat_family_sweep_v1(root_drift_sweep) == root_drift_sweep
+    with pytest.raises(
+        runner.RunGeminiJsonDualComponentAccountingFamilyV1Error,
+        match="pinned compiled spec triplet drifted",
+    ):
+        runner.validate_dual_component_experimental_audit_replay_v1(
+            {},
+            compiled_specs=compiled,
+            database=database,
+            sweep=root_drift_sweep,
+            sweep_output=tmp_path / "root-drift-sweep.json",
+            selected_page_json_version_ids=selected_ids,
+            indexed_query_evidence=indexed,
+            trials=root_drift_sweep["trials"],
+        )
+
     drifted_schema = copy.deepcopy(schema)
     drifted_schema["family_root_report_norm_id"] = 999999
     drifted_compiled = compile_gemini_json_flat_family_specs_v1(

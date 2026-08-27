@@ -877,24 +877,34 @@ def validate_dual_component_experimental_audit_replay_v1(
 ) -> dict[str, Any]:
     """Rebuild the complete persisted audit and reject any changed byte axis."""
 
-    _validate_pinned_compiled_specs(compiled_specs)
+    checked_sweep = validate_gemini_json_flat_family_sweep_v1(sweep)
+    embedded_compiled_specs = compile_gemini_json_flat_family_specs_v1(
+        checked_sweep["specs"]["topology"]["value"],
+        checked_sweep["specs"]["evaluation"]["value"],
+        checked_sweep["specs"]["schema_binding"]["value"],
+    )
+    _validate_pinned_compiled_specs(embedded_compiled_specs)
+    if not same_typed_json_v1(compiled_specs, embedded_compiled_specs):
+        raise _error("dual-component caller/sweep compiled spec triplet drifted")
     validate_dual_component_experimental_audit_content_v1(value)
-    if not same_typed_json_v1(sweep.get("trials"), trials):
-        raise _error("dual-component audit trial/sweep axis drifted")
+    if not same_typed_json_v1(checked_sweep["trials"], trials) or not same_typed_json_v1(
+        checked_sweep.get("indexed_query_evidence"), indexed_query_evidence
+    ):
+        raise _error("dual-component audit query/trial/sweep axis drifted")
     validate_selected_dual_component_family_candidate_replays_v1(
         database,
         selected_page_json_version_ids=selected_page_json_version_ids,
-        compiled_specs=compiled_specs,
-        indexed_query_evidence=indexed_query_evidence,
-        trials=trials,
+        compiled_specs=embedded_compiled_specs,
+        indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+        trials=checked_sweep["trials"],
     )
     expected = build_dual_component_experimental_audit_v1(
         database=database,
-        sweep=sweep,
+        sweep=checked_sweep,
         sweep_output=sweep_output,
         selected_page_json_version_ids=selected_page_json_version_ids,
-        indexed_query_evidence=indexed_query_evidence,
-        trials=trials,
+        indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+        trials=checked_sweep["trials"],
     )
     if type(value) is not dict or not same_typed_json_v1(value, expected):
         raise _error("dual-component experimental audit does not replay exactly")
