@@ -1,0 +1,119 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Mua nợ bằng VND"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASE_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASE_FX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng chung",
+            "Dự phòng rủi ro",
+            "Dự phòng rủi ro hoạt động mua nợ",
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASE_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Nợ gốc đã mua"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASED_PRINCIPAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Lãi của khoản nợ đã mua",
+            "Lãi từ các khoản nợ đã mua",
+            "Lãi của khoản nợ đã mua và chênh lệch giá mua nợ",
+            "Lãi từ các khoản nợ đã mua và chênh lệch giá mua nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASED_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "PURCHASED_DEBT_ACTIVITY",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chi phí/(Hoàn nhập) dự phòng mua nợ",
+    "Chính sách dự phòng rủi ro tín dụng",
+    "Dự phòng rủi ro cho các khoản nợ đã mua",
+    "Tăng, giảm các khoản cho vay khách hàng và mua nợ"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 48,
+    "max_continuation_pages": 0,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Hoạt động mua nợ",
+      "Hoạt động mua nợ (tiếp theo)"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "PURCHASED_DEBT_ACTIVITY_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "PURCHASE_VND",
+      "PURCHASE_PROVISION",
+      "PURCHASED_PRINCIPAL"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Biến động số dư dự phòng rủi ro cho vay khách hàng",
+    "Cho vay khách hàng",
+    "Chứng khoán đầu tư",
+    "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+    "Chứng khoán đầu tư sẵn sàng để bán",
+    "Dự phòng rủi ro cho vay khách hàng",
+    "Tiền gửi của khách hàng",
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chi phí/(Hoàn nhập) dự phòng mua nợ",
+    "Chính sách dự phòng rủi ro tín dụng",
+    "Dự phòng rủi ro cho các khoản nợ đã mua",
+    "Tăng, giảm các khoản cho vay khách hàng và mua nợ"
+  ]
+}

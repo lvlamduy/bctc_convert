@@ -1,0 +1,29 @@
+{
+  "family_id": "PURCHASED_DEBT_ACTIVITY",
+  "family_root_report_norm_id": 800,
+  "format_version": "ACCOUNTING_DUAL_COMPONENT_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {
+      "report_norm_id": 801,
+      "role": "PURCHASE_VND"
+    },
+    {
+      "report_norm_id": 802,
+      "role": "PURCHASE_FX"
+    },
+    {
+      "report_norm_id": 803,
+      "role": "PURCHASE_PROVISION"
+    },
+    {
+      "report_norm_id": 5738,
+      "role": "PURCHASED_PRINCIPAL"
+    },
+    {
+      "report_norm_id": 5739,
+      "role": "PURCHASED_INTEREST"
+    }
+  ],
+  "root_mapping_policy": "STRUCTURAL_CONTEXT_ONLY",
+  "schema_period_type": "SNAPSHOT"
+}

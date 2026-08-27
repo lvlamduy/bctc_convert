@@ -1842,6 +1842,371 @@ ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
 )
 
 
+def query_selected_dual_component_family_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Coalesce exact same-page seed siblings under one owner/reset fence.
+
+    The bounded SQLite probe inventories every declared role alias while the
+    two seed roles remain the only admission anchors.  Every hit page is then
+    decoded and reclassified from its canonical JSON before a fragment can be
+    admitted.  Numeric values are not used by coalescing.
+    """
+
+    from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
+        ENGINE_FORMAT_VERSION,
+        build_gemini_json_indexed_dual_component_query_evidence_v1,
+        coalesce_gemini_json_dual_component_page_v1,
+        validate_gemini_json_indexed_dual_component_query_evidence_v1,
+    )
+
+    version_ids = list(selected_page_json_version_ids)
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not version_ids
+        or len(version_ids) != len(set(version_ids))
+        or any(
+            type(version_id) is not str
+            or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", version_id) is None
+            for version_id in version_ids
+        )
+        or type(compiled_specs) is not dict
+        or compiled_specs.get("engine_format_version") != ENGINE_FORMAT_VERSION
+        or type(compiled_specs.get("aliases_by_role")) is not dict
+        or type(compiled_specs.get("components")) is not dict
+        or type(compiled_specs.get("query_policy")) is not dict
+    ):
+        raise _error("selected dual-component family query is invalid")
+    selected_page_extraction_receipts_v1(path, page_json_version_ids=version_ids)
+    seed_role_by_component = {
+        component_role: compiled_specs["components"][component_role]["seed_role"]
+        for component_role in ("BALANCE", "DETAIL")
+    }
+    component_by_role = {
+        role: component_role
+        for component_role in ("BALANCE", "DETAIL")
+        for role in compiled_specs["components"][component_role]["required_roles"]
+        + compiled_specs["components"][component_role]["optional_roles"]
+    }
+    role_aliases = [
+        (
+            component_by_role[role],
+            1 if role == seed_role_by_component[component_by_role[role]] else 0,
+            role,
+            alias,
+        )
+        for role, aliases in compiled_specs["aliases_by_role"].items()
+        for alias in family_anchor_lookup_forms_v1(aliases)
+    ]
+    if not role_aliases or len(role_aliases) != len(set(role_aliases)):
+        raise _error("selected dual-component role alias axis is invalid")
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_dual_component_page("
+            "selected_page_ordinal INTEGER PRIMARY KEY, "
+            "page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_dual_component_page VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        connection.execute(
+            "CREATE TEMP TABLE dual_component_role_alias("
+            "component_role TEXT NOT NULL, is_seed INTEGER NOT NULL, "
+            "role TEXT NOT NULL, label_ascii_folded TEXT NOT NULL, "
+            "PRIMARY KEY(role,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO dual_component_role_alias VALUES (?,?,?,?)", role_aliases
+        )
+        selected_rows = connection.execute(
+            """
+            SELECT selected.selected_page_ordinal,
+                   selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page
+            FROM selected_dual_component_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            ORDER BY selected.selected_page_ordinal
+            """
+        ).fetchall()
+        if len(selected_rows) != len(version_ids):
+            raise _error("selected dual-component page frontier is incomplete")
+        role_rows = connection.execute(
+            """
+            SELECT selected.selected_page_ordinal,
+                   row.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   row.section_id, row.table_id, row.row_id,
+                   row.source_order, row.label_exact, alias.component_role,
+                   alias.is_seed, alias.role
+            FROM row_node AS row INDEXED BY idx_row_label_ascii
+            JOIN dual_component_role_alias AS alias
+              ON alias.label_ascii_folded=row.label_ascii_folded
+            JOIN selected_dual_component_page AS selected
+              USING(page_json_version_id)
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            ORDER BY selected.selected_page_ordinal,
+                     CAST(SUBSTR(row.section_id,2) AS INTEGER),
+                     CAST(SUBSTR(row.table_id,2) AS INTEGER),
+                     row.source_order, row.row_id,
+                     alias.component_role, alias.role
+            """
+        ).fetchall()
+        candidate_version_ids = sorted(
+            {row["page_json_version_id"] for row in role_rows},
+            key=version_ids.index,
+        )
+        canonical_page_by_version: dict[str, dict[str, Any]] = {}
+        if candidate_version_ids:
+            connection.execute(
+                "CREATE TEMP TABLE dual_component_candidate_page("
+                "candidate_ordinal INTEGER PRIMARY KEY, "
+                "page_json_version_id TEXT NOT NULL UNIQUE)"
+            )
+            connection.executemany(
+                "INSERT INTO dual_component_candidate_page VALUES (?,?)",
+                enumerate(candidate_version_ids, start=1),
+            )
+            for row in connection.execute(
+                "SELECT candidate.page_json_version_id,version.canonical_json_bytes "
+                "FROM dual_component_candidate_page AS candidate "
+                "JOIN page_json_version AS version USING(page_json_version_id) "
+                "ORDER BY candidate.candidate_ordinal"
+            ):
+                try:
+                    page_json = json.loads(row["canonical_json_bytes"])
+                except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise _error("selected dual-component canonical JSON is invalid") from exc
+                if type(page_json) is not dict:
+                    raise _error("selected dual-component canonical JSON is invalid")
+                canonical_page_by_version[row["page_json_version_id"]] = page_json
+
+    document_ordinals: dict[str, int] = {}
+    selected_document_axis = []
+    selected_by_version: dict[str, dict[str, Any]] = {}
+    for raw in selected_rows:
+        row = dict(raw)
+        document_ordinal = document_ordinals.get(row["document_id"])
+        if document_ordinal is None:
+            document_ordinal = len(document_ordinals) + 1
+            document_ordinals[row["document_id"]] = document_ordinal
+            selected_document_axis.append(
+                {
+                    "document_id": row["document_id"],
+                    "document_ordinal": document_ordinal,
+                    "source_logical_name": row["source_logical_name"],
+                    "source_sha256": row["source_sha256"],
+                }
+            )
+        selected_by_version[row["page_json_version_id"]] = {
+            **row,
+            "document_ordinal": document_ordinal,
+        }
+    if len(document_ordinals) != len(selected_document_axis):
+        raise _error("selected dual-component document axis is ambiguous")
+    indexed_role_hits = []
+    for raw in role_rows:
+        row = dict(raw)
+        metadata = selected_by_version[row["page_json_version_id"]]
+        indexed_role_hits.append(
+            {
+                "component_role": row["component_role"],
+                "document_id": row["document_id"],
+                "document_ordinal": metadata["document_ordinal"],
+                "label_exact": row["label_exact"],
+                "page_json_version_id": row["page_json_version_id"],
+                "physical_page": row["physical_page"],
+                "is_seed": bool(row["is_seed"]),
+                "role": row["role"],
+                "row_id": row["row_id"],
+                "section_id": row["section_id"],
+                "selected_page_ordinal": row["selected_page_ordinal"],
+                "source_logical_name": row["source_logical_name"],
+                "source_order": row["source_order"],
+                "source_sha256": row["source_sha256"],
+                "table_id": row["table_id"],
+            }
+        )
+    coalesced_by_document: dict[int, list[dict[str, Any]]] = {}
+    coalesced_by_version: dict[str, dict[str, Any]] = {}
+    for version_id in candidate_version_ids:
+        metadata = selected_by_version[version_id]
+        base_locator = {
+            key: metadata[key]
+            for key in (
+                "document_id",
+                "document_ordinal",
+                "page_json_version_id",
+                "physical_page",
+                "selected_page_ordinal",
+                "source_logical_name",
+                "source_sha256",
+            )
+        }
+        coalesced = coalesce_gemini_json_dual_component_page_v1(
+            page_json=canonical_page_by_version[version_id],
+            locator=base_locator,
+            compiled_specs=compiled_specs,
+        )
+        page_record = {**coalesced, "page_json_version_id": version_id}
+        coalesced_by_version[version_id] = page_record
+        coalesced_by_document.setdefault(metadata["document_ordinal"], []).append(page_record)
+    accepted_clusters = []
+    candidate_dispositions = []
+    hits_by_document: dict[int, list[dict[str, Any]]] = {}
+    for hit in indexed_role_hits:
+        hits_by_document.setdefault(hit["document_ordinal"], []).append(hit)
+    for document in selected_document_axis:
+        ordinal = document["document_ordinal"]
+        hits = hits_by_document.get(ordinal, [])
+        pages = [
+            page
+            for page in coalesced_by_document.get(ordinal, [])
+            if page["fragments"]
+            or any(
+                item["owner"] is not None
+                and item["population_disposition"] == "DECLARED_ROLE_ONLY_POPULATION"
+                for item in page["role_bearing_fragments"]
+            )
+        ]
+        reason_codes = sorted({reason for page in pages for reason in page["reasons"]})
+        accepted = [page for page in pages if page["status"] == "ACCEPTED"]
+        if not pages:
+            disposition = "NOT_OBSERVED"
+        elif len(pages) == 1 and len(accepted) == 1 and not reason_codes:
+            disposition = "ACCEPTED_CLUSTER"
+            accepted_clusters.append(
+                {
+                    "component_regions": canonical_clone_v1(accepted[0]["component_regions"]),
+                    "document_ordinal": ordinal,
+                    "owner": canonical_clone_v1(accepted[0]["owner"]),
+                }
+            )
+        else:
+            disposition = "UNRESOLVED_CLUSTER"
+            if len(pages) != 1:
+                reason_codes.append("EXACTLY_ONE_CANDIDATE_PAGE_PER_DOCUMENT_REQUIRED")
+            if len(accepted) > 1:
+                reason_codes.append("MULTIPLE_ACCEPTED_COMPONENT_CLUSTERS")
+            if not reason_codes:
+                reason_codes.append("PARTIAL_OR_AMBIGUOUS_SEED_FRONTIER")
+        consumed_locations = (
+            {
+                (
+                    item["page_json_version_id"],
+                    item["section_id"],
+                    item["table_id"],
+                )
+                for item in accepted[0]["component_regions"]
+            }
+            if disposition == "ACCEPTED_CLUSTER"
+            else set()
+        )
+        active_hits = []
+        for hit in hits:
+            page = coalesced_by_version[hit["page_json_version_id"]]
+            location = (
+                hit["page_json_version_id"],
+                hit["section_id"],
+                hit["table_id"],
+            )
+            role_fragment = next(
+                (
+                    item
+                    for item in page["role_bearing_fragments"]
+                    if item["locator"]["section_id"] == hit["section_id"]
+                    and item["locator"]["table_id"] == hit["table_id"]
+                ),
+                None,
+            )
+            hit_is_active = bool(hit["is_seed"]) or (
+                role_fragment is not None
+                and role_fragment["owner"] is not None
+                and role_fragment["population_disposition"] == "DECLARED_ROLE_ONLY_POPULATION"
+            )
+            if location in consumed_locations:
+                hit["query_disposition"] = "CONSUMED_ACCEPTED_COMPONENT_FRAGMENT"
+            elif hit_is_active:
+                hit["query_disposition"] = "UNCONSUMED_FAMILY_INTERVAL_ROLE_HIT"
+            else:
+                hit["query_disposition"] = (
+                    "INCIDENTAL_ROLE_IN_FOREIGN_POPULATION"
+                    if role_fragment is not None
+                    and role_fragment["population_disposition"]
+                    == "INCIDENTAL_ROLE_IN_FOREIGN_POPULATION"
+                    else "OUTSIDE_DECLARED_OWNER_FENCE"
+                )
+            if hit_is_active:
+                active_hits.append(hit)
+        hit_receipts = [
+            {
+                "component_role": hit["component_role"],
+                "is_seed": hit["is_seed"],
+                "page_json_version_id": hit["page_json_version_id"],
+                "query_disposition": hit["query_disposition"],
+                "role": hit["role"],
+                "row_id": hit["row_id"],
+                "section_id": hit["section_id"],
+                "table_id": hit["table_id"],
+            }
+            for hit in active_hits
+        ]
+        candidate_dispositions.append(
+            {
+                **canonical_clone_v1(document),
+                "disposition": disposition,
+                "indexed_role_hit_count": len(active_hits),
+                "indexed_role_hit_receipts": hit_receipts,
+                "reason_codes": sorted(set(reason_codes)),
+            }
+        )
+    indexed_seed_hits = [canonical_clone_v1(hit) for hit in indexed_role_hits if hit["is_seed"]]
+    evidence = build_gemini_json_indexed_dual_component_query_evidence_v1(
+        selected_document_axis=selected_document_axis,
+        indexed_role_hits=indexed_role_hits,
+        indexed_seed_hits=indexed_seed_hits,
+        accepted_clusters=accepted_clusters,
+        candidate_dispositions=candidate_dispositions,
+        selected_page_json_version_ids=version_ids,
+        query_policy_sha256=canonical_json_sha256_v1(compiled_specs["query_policy"]),
+    )
+    return validate_gemini_json_indexed_dual_component_query_evidence_v1(
+        evidence, compiled_specs=compiled_specs
+    )
+
+
+def validate_selected_dual_component_family_query_evidence_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+) -> dict[str, Any]:
+    """Replay the public SQLite projection and reject any persisted drift."""
+
+    from bctc_ai.source_structure.contracts_v1 import same_typed_json_v1
+
+    replayed = query_selected_dual_component_family_regions_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+    )
+    if type(indexed_query_evidence) is not dict or not same_typed_json_v1(
+        indexed_query_evidence, replayed
+    ):
+        raise _error("selected dual-component query evidence does not replay")
+    return replayed
+
+
 def query_selected_rollforward_family_regions_v1(
     path: Path,
     *,

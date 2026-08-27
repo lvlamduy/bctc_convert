@@ -30,6 +30,9 @@ INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_INDEXED_TITLE_AXIS_QUERY_EV
 ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
     "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_EVIDENCE_V1"
 )
+DUAL_COMPONENT_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
+    "GEMINI_JSON_INDEXED_DUAL_COMPONENT_QUERY_EVIDENCE_V1"
+)
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
@@ -64,6 +67,18 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
+    if (
+        type(evaluation_spec) is dict
+        and evaluation_spec.get("format_version")
+        == "ACCOUNTING_DUAL_COMPONENT_FAMILY_EVALUATION_SPEC_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
+            compile_gemini_json_dual_component_family_specs_v1,
+        )
+
+        return compile_gemini_json_dual_component_family_specs_v1(
+            topology_spec, evaluation_spec, schema_binding_spec
+        )
     if (
         type(evaluation_spec) is dict
         and evaluation_spec.get("format_version")
@@ -3596,6 +3611,7 @@ def build_gemini_json_flat_family_sweep_v1(
         raise _error("Gemini JSON family sweep inputs are invalid")
     compiled = _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
     indexed_query_evidence_required = compiled["evaluation"].get("format_version") in {
+        "ACCOUNTING_DUAL_COMPONENT_FAMILY_EVALUATION_SPEC_V1",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8",
         "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
     }
@@ -3603,23 +3619,51 @@ def build_gemini_json_flat_family_sweep_v1(
         raise _error("Gemini JSON sweep and indexed query evidence presence do not agree")
     checked_indexed_query_evidence = None
     if indexed_query_evidence is not None:
-        checked_indexed_query_evidence = (
-            _validate_indexed_rollforward_query_evidence_v1(
+        if (
+            compiled.get("engine_format_version")
+            == "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1"
+        ):
+            from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
+                validate_gemini_json_indexed_dual_component_query_evidence_v1,
+            )
+
+            checked_indexed_query_evidence = (
+                validate_gemini_json_indexed_dual_component_query_evidence_v1(
+                    indexed_query_evidence,
+                    compiled_specs=compiled,
+                )
+            )
+        elif (
+            compiled.get("engine_format_version") == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
+        ):
+            checked_indexed_query_evidence = _validate_indexed_rollforward_query_evidence_v1(
                 indexed_query_evidence,
                 compiled_specs=compiled,
             )
-            if compiled.get("engine_format_version")
-            == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
-            else _validate_indexed_query_evidence_v1(
+        else:
+            checked_indexed_query_evidence = _validate_indexed_query_evidence_v1(
                 indexed_query_evidence,
                 compiled_specs=compiled,
             )
-        )
     if (
         checked_indexed_query_evidence is not None
         and compiled.get("engine_format_version") == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
     ):
         trials = validate_gemini_json_rollforward_sweep_query_bindings_v1(
+            trials=trials,
+            indexed_query_evidence=checked_indexed_query_evidence,
+            compiled_specs=compiled,
+        )
+    if (
+        checked_indexed_query_evidence is not None
+        and compiled.get("engine_format_version")
+        == "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
+            validate_gemini_json_dual_component_sweep_query_bindings_v1,
+        )
+
+        trials = validate_gemini_json_dual_component_sweep_query_bindings_v1(
             trials=trials,
             indexed_query_evidence=checked_indexed_query_evidence,
             compiled_specs=compiled,

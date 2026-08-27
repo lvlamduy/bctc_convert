@@ -1,0 +1,100 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_INDEPENDENT_DUAL_COMPONENT_ALL_LANES",
+  "coalescing_policy": {
+    "component_order": [
+      "BALANCE",
+      "DETAIL"
+    ],
+    "hard_negative_aliases": [
+      "Chi phí dự phòng rủi ro tín dụng",
+      "Chi phí/(Hoàn nhập) dự phòng mua nợ",
+      "Chính sách dự phòng rủi ro tín dụng",
+      "Dự phòng rủi ro cho các khoản nợ đã mua",
+      "Tăng, giảm các khoản cho vay khách hàng và mua nợ"
+    ],
+    "max_page_span": 0,
+    "owner_aliases": [
+      "Hoạt động mua nợ",
+      "Hoạt động mua nợ (tiếp theo)"
+    ],
+    "reset_aliases": [
+      "Biến động số dư dự phòng rủi ro cho vay khách hàng",
+      "Cho vay khách hàng",
+      "Chứng khoán đầu tư",
+      "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+      "Chứng khoán đầu tư sẵn sàng để bán",
+      "Dự phòng rủi ro cho vay khách hàng",
+      "Tiền gửi của khách hàng"
+    ]
+  },
+  "component_specs": [
+    {
+      "component_role": "BALANCE",
+      "optional_roles": [
+        "PURCHASE_FX"
+      ],
+      "required_roles": [
+        "PURCHASE_VND",
+        "PURCHASE_PROVISION"
+      ],
+      "seed_role": "PURCHASE_VND",
+      "total_policy": "REQUIRE_EXACTLY_ONE_VISIBLE_TOTAL"
+    },
+    {
+      "component_role": "DETAIL",
+      "optional_roles": [
+        "PURCHASED_INTEREST"
+      ],
+      "required_roles": [
+        "PURCHASED_PRINCIPAL"
+      ],
+      "seed_role": "PURCHASED_PRINCIPAL",
+      "total_policy": "VISIBLE_TOTAL_OR_UNIQUE_BALANCE_GROSS_WHEN_ABSENT"
+    }
+  ],
+  "family_id": "PURCHASED_DEBT_ACTIVITY",
+  "format_version": "ACCOUNTING_DUAL_COMPONENT_FAMILY_EVALUATION_SPEC_V1",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": [
+        "Triệu đồng",
+        "Triệu VND",
+        "Million VND"
+      ],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": false,
+      "aliases": [
+        "Nghìn đồng",
+        "Nghìn VND",
+        "Thousand VND"
+      ],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": false,
+      "aliases": [
+        "Tỷ đồng",
+        "Tỷ VND",
+        "Billion VND"
+      ],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": [
+        "Đồng",
+        "VND"
+      ],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ]
+}
