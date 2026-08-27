@@ -680,11 +680,63 @@ def test_structured_previous_page_continuation_is_explicit_evidence() -> None:
     ]
 
 
-def test_forward_only_continuation_markers_cannot_bind_from_previous_owner() -> None:
+def test_incoming_continuation_grammar_accepts_explicit_previous_page_variants() -> None:
+    for title in (
+        "Continued from previous page",
+        "Continued from the preceding page",
+        "Continued from a prior page",
+        "Tiếp theo trang trước",
+        "Tiếp theo từ trang trước",
+    ):
+        current = _page(_period_table("31/12/2025"))
+        comparative = _page(_period_table("31/12/2024"))
+        target = comparative["sections"][0]
+        target["title_exact"] = title
+        target["narratives_exact"] = []
+        for column in target["tables"][0]["columns"]:
+            column["header_path_exact"] = [column["header_path_exact"][-1]]
+        refs = [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_B,
+                "physical_page": 8,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+        ]
+
+        candidate = _evaluate(
+            current,
+            refs=refs,
+            pages={VERSION_A: current, VERSION_B: comparative},
+        )
+
+        assert candidate["status"] == READY
+        evidence = candidate["closure_receipt"]["population_receipt"][
+            "continuation_evidence_receipts"
+        ]
+        assert evidence[0]["evidence"] == [{"source_exact": title, "source_kind": "SECTION_TITLE"}]
+
+
+def test_nonincoming_continuation_grammar_cannot_bind_from_previous_owner() -> None:
     for title, continuation in (
         ("Bảng số liệu tổng hợp", "CONTINUES_ON_NEXT_PAGE"),
         ("Continued on next page", "NONE"),
+        ("Continued to next page", "NONE"),
+        ("Continued overleaf", "NONE"),
+        ("Continued onto the next page", "NONE"),
         ("Tiếp theo trang sau", "NONE"),
+        ("Tiếp theo ở trang kế tiếp", "NONE"),
+        ("Tiếp theo sang trang kế tiếp", "NONE"),
+        ("Not continued from previous page", "NONE"),
+        ("Không tiếp theo trang trước", "NONE"),
+        ("Continued", "NONE"),
+        ("Tiếp theo", "NONE"),
         ("Continued on next page", "CONTINUES_ON_NEXT_PAGE"),
     ):
         current = _page(_period_table("31/12/2025"))

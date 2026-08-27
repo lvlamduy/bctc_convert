@@ -85,19 +85,12 @@ _DASHES = {"-", "–", "—", "_"}
 _PAGE_JSON_VERSION_ID = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
 _SOURCE_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
-_CONTINUATION_MARKER_ALIASES = ("tiep theo", "continued")
-_FORWARD_CONTINUATION_ALIASES = (
-    "con tiep o trang sau",
-    "con tiep trang sau",
-    "continued on following page",
-    "continued on next page",
-    "continued on the following page",
-    "continued on the next page",
-    "tiep theo o trang sau",
-    "tiep theo trang sau",
-    "tiep tuc o trang sau",
-    "tiep tuc tren trang sau",
+_CONTINUATION_NEGATION_TOKENS = frozenset(
+    {"chang", "chua", "isn", "isnt", "khong", "never", "no", "not", "without"}
 )
+_ENGLISH_PREVIOUS_TOKENS = frozenset({"preceding", "previous", "prior"})
+_ENGLISH_OUTGOING_PREPOSITIONS = frozenset({"on", "onto", "to"})
+_ENGLISH_NEXT_TOKENS = frozenset({"following", "next", "subsequent"})
 _CONTINUES_FROM_PREVIOUS = {"BOTH", "CONTINUES_FROM_PREVIOUS_PAGE"}
 _CONTINUATION_KINDS = {
     "BOTH",
@@ -106,6 +99,12 @@ _CONTINUATION_KINDS = {
     "NONE",
     "UNKNOWN",
 }
+_CONTINUATION_FROM_PREVIOUS = "FROM_PREVIOUS_PAGE"
+_CONTINUATION_TO_NEXT = "TO_NEXT_PAGE"
+_CONTINUATION_NEGATED = "NEGATED"
+_CONTINUATION_AMBIGUOUS = "AMBIGUOUS"
+_CONTINUATION_CONFLICT = "CONFLICT"
+_CONTINUATION_NONE = "NONE"
 
 
 class GeminiJsonRollforwardAccountingFamilyV1Error(ValueError):
@@ -682,6 +681,87 @@ def _lane_context_evidence(
     }
 
 
+def _sequence_positions(tokens: Sequence[str], sequence: Sequence[str]) -> list[int]:
+    width = len(sequence)
+    return [
+        index
+        for index in range(len(tokens) - width + 1)
+        if tuple(tokens[index : index + width]) == tuple(sequence)
+    ]
+
+
+def _continuation_surface_direction(value: Any) -> str:
+    """Parse one English/Vietnamese continuation marker fail-closed."""
+
+    tokens = tuple(_normalized(value).split())
+    if not tokens:
+        return _CONTINUATION_NONE
+    markers = [
+        *(("ENGLISH", index) for index, token in enumerate(tokens) if token == "continued"),
+        *(
+            ("VIETNAMESE", index + 1)
+            for sequence in (("con", "tiep"), ("tiep", "theo"), ("tiep", "tuc"))
+            for index in _sequence_positions(tokens, sequence)
+        ),
+    ]
+    if not markers:
+        return _CONTINUATION_NONE
+    if any(token in _CONTINUATION_NEGATION_TOKENS for token in tokens):
+        return _CONTINUATION_NEGATED
+
+    incoming = False
+    outgoing = False
+    for language, marker in markers:
+        suffix = tokens[marker + 1 :]
+        if language == "ENGLISH":
+            incoming = incoming or any(
+                token == "from"
+                and any(
+                    candidate in _ENGLISH_PREVIOUS_TOKENS
+                    for candidate in suffix[index + 1 : index + 4]
+                )
+                for index, token in enumerate(suffix)
+            )
+            outgoing = (
+                outgoing
+                or "overleaf" in suffix
+                or any(
+                    token in _ENGLISH_OUTGOING_PREPOSITIONS
+                    and (
+                        "page" in suffix[index + 1 : index + 5]
+                        or any(
+                            candidate in _ENGLISH_NEXT_TOKENS
+                            for candidate in suffix[index + 1 : index + 4]
+                        )
+                    )
+                    for index, token in enumerate(suffix)
+                )
+            )
+            outgoing = outgoing or (
+                "page" in suffix and any(token in _ENGLISH_NEXT_TOKENS for token in suffix)
+            )
+            continue
+
+        page_positions = [index for index, token in enumerate(suffix) if token == "trang"]
+        for page_index in page_positions:
+            direction = suffix[page_index + 1 : page_index + 4]
+            incoming = incoming or "truoc" in direction
+            outgoing = outgoing or "sau" in direction
+            outgoing = outgoing or (
+                len(direction) >= 2 and direction[0] == "ke" and direction[1] == "tiep"
+            )
+            outgoing = outgoing or (
+                len(direction) >= 2 and direction[0] == "tiep" and direction[1] == "theo"
+            )
+    if incoming and not outgoing:
+        return _CONTINUATION_FROM_PREVIOUS
+    if outgoing and not incoming:
+        return _CONTINUATION_TO_NEXT
+    if incoming and outgoing:
+        return _CONTINUATION_CONFLICT
+    return _CONTINUATION_AMBIGUOUS
+
+
 def _explicit_continuation_evidence(
     section: Mapping[str, Any], table: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -696,16 +776,32 @@ def _explicit_continuation_evidence(
         ("SECTION_TITLE", section.get("title_exact")),
         *(("SECTION_NARRATIVE", value) for value in narratives),
     ]
-    forward_surfaces = [
-        {"source_exact": value, "source_kind": source_kind}
+    directional_surfaces = [
+        {
+            "direction": direction,
+            "source_exact": value,
+            "source_kind": source_kind,
+        }
         for source_kind, value in surfaces
-        if type(value) is str and _matches_alias(value, _FORWARD_CONTINUATION_ALIASES)
+        if (direction := _continuation_surface_direction(value)) != _CONTINUATION_NONE
     ]
     # A forward-only marker belongs to the page that precedes a continuation;
     # it can never authenticate that this table continues from an owner above.
     if continuation == "CONTINUES_ON_NEXT_PAGE":
         return []
-    if forward_surfaces and continuation == "CONTINUES_FROM_PREVIOUS_PAGE":
+    contradictory = {
+        _CONTINUATION_CONFLICT,
+        _CONTINUATION_NEGATED,
+        _CONTINUATION_TO_NEXT,
+    }
+    if continuation == "CONTINUES_FROM_PREVIOUS_PAGE" and any(
+        item["direction"] in contradictory for item in directional_surfaces
+    ):
+        raise _error("roll-forward continuation directions conflict")
+    if continuation == "BOTH" and any(
+        item["direction"] in {_CONTINUATION_CONFLICT, _CONTINUATION_NEGATED}
+        for item in directional_surfaces
+    ):
         raise _error("roll-forward continuation directions conflict")
     evidence = (
         [
@@ -718,12 +814,17 @@ def _explicit_continuation_evidence(
         else []
     )
     evidence.extend(
-        {"source_exact": value, "source_kind": source_kind}
-        for source_kind, value in surfaces
-        if type(value) is str
-        and not _matches_alias(value, _FORWARD_CONTINUATION_ALIASES)
-        and _matches_alias(value, _CONTINUATION_MARKER_ALIASES)
+        {
+            "source_exact": item["source_exact"],
+            "source_kind": item["source_kind"],
+        }
+        for item in directional_surfaces
+        if item["direction"] == _CONTINUATION_FROM_PREVIOUS
     )
+    if continuation not in _CONTINUES_FROM_PREVIOUS and any(
+        item["direction"] in contradictory for item in directional_surfaces
+    ):
+        return []
     return evidence
 
 
