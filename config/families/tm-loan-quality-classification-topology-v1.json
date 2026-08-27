@@ -1,9 +1,15 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Nợ đủ tiêu chuẩn", "Nhóm 1 Nợ đủ tiêu chuẩn", "Nợ nhóm 1"], "within_role": null}],
+      "matchers": [{"aliases": ["Tổng nợ đủ tiêu chuẩn", "Nợ đủ tiêu chuẩn bao gồm các cấu phần khác"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "STANDARD",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ đủ tiêu chuẩn", "Nhóm 1 Nợ đủ tiêu chuẩn", "Nợ nhóm 1"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STANDARD_CORE",
       "role_kind": "STRUCTURAL_GROUP"
     },
     {
@@ -31,13 +37,28 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Trong đó Các khoản cho vay tại MBS", "Trong đó Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "presence_anchor": false, "within_role": "STANDARD"}],
+      "matchers": [{"aliases": ["Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Trong đó Các khoản cho vay tại MBS", "Trong đó Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "presence_anchor": false, "within_role": "STANDARD_CORE"}],
       "presence": "OPTIONAL",
       "role": "INCLUDED_MARGIN_SOURCE_DISCLOSURE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null}],
+      "matchers": [{"aliases": ["Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024", "Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DELAYED_LC_QUALITY_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Nợ đủ tiêu chuẩn"], "presence_anchor": false, "within_role": "DELAYED_LC_QUALITY_GROUP"},
+        {"aliases": ["Nợ đủ tiêu chuẩn - Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024", "Nợ đủ tiêu chuẩn - Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024"], "presence_anchor": false, "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "DELAYED_LC_STANDARD",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại MBS - Nợ đủ tiêu chuẩn"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
       "role_kind": "ADDITIVE_CHILD"
@@ -45,7 +66,7 @@
   ],
   "family_id": "LOAN_QUALITY_CLASSIFICATION",
   "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
-  "hard_negative_aliases": ["Phân tích chất lượng tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng dư nợ tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng hoạt động mua nợ", "Phân tích chất lượng chứng khoán đầu tư"],
+  "hard_negative_aliases": ["Phân tích chất lượng tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng dư nợ tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng hoạt động mua nợ", "Phân tích chất lượng chứng khoán đầu tư", "Phân tích chất lượng dư nợ chứng khoán kinh doanh", "Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng"],
   "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 40, "max_label_line_span": 4},
   "parent": {
     "aliases": ["Phân tích chất lượng nợ cho vay", "Phân tích chất lượng dư nợ cho vay khách hàng", "Phân tích chất lượng dư nợ cho vay", "Phân tích dư nợ cho vay theo chất lượng nợ", "Phân tích dư nợ theo chất lượng nợ cho vay", "Phân tích dư nợ theo chất lượng nợ", "Theo chất lượng nợ cho vay", "Theo chất lượng dư nợ cho vay", "Phân loại chất lượng tài sản có rủi ro tín dụng", "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau", "Cho vay khách hàng"],
@@ -54,11 +75,11 @@
   },
   "presence_evidence_mode": "GLOBAL_CORE_HITS",
   "required_role_combinations": [
-    ["STANDARD", "SPECIAL_MENTION"],
-    ["STANDARD", "SUBSTANDARD"],
+    ["STANDARD_CORE", "SPECIAL_MENTION"],
+    ["STANDARD_CORE", "SUBSTANDARD"],
     ["SPECIAL_MENTION", "DOUBTFUL"],
     ["SUBSTANDARD", "LOSS"]
   ],
-  "required_role_pools": [{"minimum_count": 5, "roles": ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS"]}],
+  "required_role_pools": [{"minimum_count": 5, "roles": ["STANDARD_CORE", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS"]}],
   "structural_reset_aliases": ["Phân tích theo loại hình cho vay", "Phân tích dư nợ theo thời gian", "Phân tích dư nợ theo thời gian đáo hạn", "Phân tích dư nợ theo ngành", "Phân tích dư nợ theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp", "Dự phòng rủi ro cho vay khách hàng"]
 }

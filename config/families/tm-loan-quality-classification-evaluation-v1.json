@@ -9,6 +9,19 @@
       {
         "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
         "component_role_alternatives": [{
+          "component_roles": ["STANDARD_CORE", "DELAYED_LC_STANDARD"],
+          "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+          "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+        }],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "STANDARD",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": ["STANDARD"],
+        "visible_source_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [{
           "component_roles": ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS", "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"],
           "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
           "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
@@ -23,7 +36,7 @@
     ],
     "family_id": "LOAN_QUALITY_CLASSIFICATION",
     "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4",
-    "repeated_role_policy": {"aggregate_roles": [], "local_subtotal_roles": []},
+    "repeated_role_policy": {"aggregate_roles": [], "local_subtotal_roles": ["STANDARD"]},
     "rounding_lane_unit_kind_alternatives": [["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"]],
     "source_role_policy": {"one_edit_role_or_scope_match_policy": "VETO", "source_only_veto_roles": []}
   },

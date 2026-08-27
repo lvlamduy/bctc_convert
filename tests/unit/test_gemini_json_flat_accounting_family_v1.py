@@ -1124,12 +1124,100 @@ def test_loan_quality_standalone_margin_is_one_direct_component() -> None:
     ]
 
 
+def test_loan_quality_derives_multilevel_standard_and_consumes_each_component_once() -> None:
+    page = _loan_quality_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows.extend(
+        [
+            {
+                "hierarchy_path_exact": [None],
+                "label_exact": None,
+                "row_kind": "SUBTOTAL",
+                "values_exact": ["130", "107"],
+            },
+            {
+                "hierarchy_path_exact": [
+                    "Nợ đủ tiêu chuẩn - Nghiệp vụ phát hành thư tín dụng trả chậm "
+                    "có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"
+                ],
+                "label_exact": (
+                    "Nợ đủ tiêu chuẩn - Nghiệp vụ phát hành thư tín dụng trả chậm "
+                    "có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"
+                ),
+                "row_kind": "ITEM",
+                "values_exact": ["7", "6"],
+            },
+            {
+                "hierarchy_path_exact": [None],
+                "label_exact": None,
+                "row_kind": "TOTAL",
+                "values_exact": ["137", "113"],
+            },
+        ]
+    )
+    result = _evaluate_loan_quality(page)
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [107, 96]
+    assert [equation["component_roles"] for equation in result["closure_receipt"]["equations"]] == [
+        ["STANDARD_CORE", "DELAYED_LC_STANDARD"],
+        ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS"],
+    ]
+
+    duplicate = deepcopy(page)
+    duplicate["sections"][0]["tables"][0]["rows"].insert(-1, deepcopy(rows[-2]))
+    assert _evaluate_loan_quality(duplicate)["status"] == UNRESOLVED
+
+    mismatch = deepcopy(page)
+    mismatch["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "140"
+    assert _evaluate_loan_quality(mismatch)["status"] == UNRESOLVED
+
+
+def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() -> None:
+    page = _loan_quality_page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"].extend(
+        [
+            {
+                "hierarchy_path_exact": [
+                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng "
+                    "giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn"
+                ],
+                "label_exact": (
+                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng "
+                    "giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn"
+                ),
+                "row_kind": "ITEM",
+                "values_exact": ["7", "6"],
+            },
+            {
+                "hierarchy_path_exact": [None],
+                "label_exact": None,
+                "row_kind": "TOTAL",
+                "values_exact": ["137", "113"],
+            },
+        ]
+    )
+    result = _evaluate_loan_quality(page)
+    assert result["status"] == READY
+    root_equation = result["closure_receipt"]["equations"][-1]
+    assert root_equation["component_roles"][-1] == "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
+    assert root_equation["component_row_ids"].count("r6") == 1
+
+
 def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> None:
     wrong_family = _loan_quality_page()
     wrong_family["sections"][0]["tables"][0]["title_exact"] = (
         "Phân tích chất lượng tiền gửi và cho vay các TCTD khác"
     )
     assert _evaluate_loan_quality(wrong_family)["status"] == UNRESOLVED
+
+    securities = _loan_quality_page()
+    securities["sections"][0]["tables"][0]["title_exact"] = (
+        "Phân tích chất lượng dư nợ chứng khoán kinh doanh được phân loại là tài sản có rủi ro tín dụng"
+    )
+    assert _evaluate_loan_quality(securities)["status"] == UNRESOLVED
 
     partial = _loan_quality_page()
     partial["sections"][0]["tables"][0]["rows"].pop()
@@ -1210,6 +1298,39 @@ def test_loan_quality_projects_two_exact_period_tables_to_one_asset_axis() -> No
     assert (
         evaluate_gemini_json_hierarchical_period_table_pair_v1(
             page_json=mismatched,
+            page_json_version_id="gfpstorev1:json:" + "8" * 64,
+            physical_page=68,
+            section_id="s1",
+            table_ids=["t1", "t2"],
+            compiled_specs=compiled,
+        )
+        is None
+    )
+
+    inherited = deepcopy(source)
+    inherited["sections"][0]["tables"][0]["title_exact"] = None
+    inherited["sections"][0]["title_exact"] = (
+        "THUYẾT MINH BÁO CÁO TÀI CHÍNH tại ngày 31 tháng 12 năm 2025"
+    )
+    inherited_result = evaluate_gemini_json_hierarchical_period_table_pair_v1(
+        page_json=inherited,
+        page_json_version_id="gfpstorev1:json:" + "8" * 64,
+        physical_page=68,
+        section_id="s1",
+        table_ids=["t1", "t2"],
+        compiled_specs=compiled,
+    )
+    assert inherited_result is not None
+    assert inherited_result["period_table_projection_receipt"]["period_date_sources"] == [
+        "SECTION_TITLE_UNIQUE_MISSING_PERIOD",
+        "TABLE_TITLE",
+    ]
+
+    ambiguous_inherited = deepcopy(inherited)
+    ambiguous_inherited["sections"][0]["title_exact"] += " và ngày 31 tháng 12 năm 2023"
+    assert (
+        evaluate_gemini_json_hierarchical_period_table_pair_v1(
+            page_json=ambiguous_inherited,
             page_json_version_id="gfpstorev1:json:" + "8" * 64,
             physical_page=68,
             section_id="s1",

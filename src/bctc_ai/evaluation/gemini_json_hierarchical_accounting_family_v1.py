@@ -256,6 +256,17 @@ def _header_date(value: str) -> date | None:
         return None
 
 
+def _header_dates(value: str) -> set[date]:
+    parsed: set[date] = set()
+    for pattern in (_DATE_DMY, _DATE_WORDS):
+        for match in pattern.finditer(value):
+            try:
+                parsed.add(date(int(match.group(3)), int(match.group(2)), int(match.group(1))))
+            except ValueError:
+                continue
+    return parsed
+
+
 def _period_alias_role(value: str) -> str | None:
     folded = _normalized(value)
     current = any(
@@ -1385,15 +1396,24 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise _error("Gemini JSON projected period table identity is invalid") from exc
     table_dates = [_header_date(str(table.get("title_exact") or "")) for table in source_tables]
+    table_date_sources = ["TABLE_TITLE" if value is not None else None for value in table_dates]
+    missing_date_indices = [index for index, value in enumerate(table_dates) if value is None]
+    if len(missing_date_indices) == 1:
+        section_dates = _header_dates(str(section.get("title_exact") or ""))
+        missing_candidates = section_dates - {value for value in table_dates if value is not None}
+        if len(missing_candidates) == 1:
+            missing_index = missing_date_indices[0]
+            table_dates[missing_index] = next(iter(missing_candidates))
+            table_date_sources[missing_index] = "SECTION_TITLE_UNIQUE_MISSING_PERIOD"
     if any(value is None for value in table_dates) or len(set(table_dates)) != 2:
         return None
     ordered = sorted(
-        zip(table_dates, table_ids, source_tables, strict=True),
+        zip(table_dates, table_date_sources, table_ids, source_tables, strict=True),
         key=lambda item: item[0],
         reverse=True,
     )
     projected_by_period: list[dict[str, Any]] = []
-    for period_date, source_table_id, table in ordered:
+    for period_date, date_source, source_table_id, table in ordered:
         target_index = _projected_target_column_index(
             table,
             target_column_aliases=policy["target_column_aliases"],
@@ -1415,11 +1435,11 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
                 aliases_by_role=compiled_specs["aliases_by_role"],
             )
             visible_value = values[target_index]
-            if len(roles) == 1 and visible_value is not None:
+            if roles and visible_value is not None:
                 records.append(
                     {
                         "ordinal": ordinal,
-                        "role": roles[0],
+                        "roles": roles,
                         "row": row,
                         "source_value": visible_value,
                     }
@@ -1428,8 +1448,14 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
                 total_rows.append((ordinal, row, visible_value))
             elif visible_value is not None:
                 unmatched_valued.append(ordinal)
-        roles = [record["role"] for record in records]
-        if unmatched_valued or not roles or len(roles) != len(set(roles)) or len(total_rows) > 1:
+        role_signatures = [tuple(record["roles"]) for record in records]
+        flattened_roles = [role for signature in role_signatures for role in signature]
+        if (
+            unmatched_valued
+            or not role_signatures
+            or len(flattened_roles) != len(set(flattened_roles))
+            or len(total_rows) > 1
+        ):
             return None
         try:
             component_sum = sum(_money(record["source_value"])["coefficient"] for record in records)
@@ -1441,8 +1467,12 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
             {
                 "column": columns[target_index],
                 "date": period_date,
+                "date_source": date_source,
                 "records": records,
-                "roles": roles,
+                "roles": [
+                    signature[0] if len(signature) == 1 else list(signature)
+                    for signature in role_signatures
+                ],
                 "source_table_id": source_table_id,
                 "target_column_index": target_index,
                 "total_row": total_rows[0] if total_rows else None,
@@ -1482,7 +1512,10 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
         "columns": [
             {
                 "header_path_exact": [
-                    source_tables[table_ids.index(period["source_table_id"])].get("title_exact"),
+                    (
+                        source_tables[table_ids.index(period["source_table_id"])].get("title_exact")
+                        or period["date"].strftime("%d.%m.%Y")
+                    ),
                     *canonical_clone_v1(period["column"]["header_path_exact"]),
                 ],
                 "value_kind": "MONEY",
@@ -1516,6 +1549,7 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
     )
     receipt = {
         "period_signatures": [period["date"].isoformat() for period in projected_by_period],
+        "period_date_sources": [period["date_source"] for period in projected_by_period],
         "population_roles": projected_by_period[0]["roles"],
         "rule": policy["population_policy"],
         "source_table_ids": [period["source_table_id"] for period in projected_by_period],
@@ -1535,6 +1569,9 @@ def evaluate_gemini_json_hierarchical_period_table_pair_v1(
         }
     )
     result["period_table_projection_receipt"] = receipt
+    result["parent_binding_kind"] = (
+        "PERIOD_TABLE_TARGET_COLUMN_AND_" + result["parent_binding_kind"]
+    )
     result["source_table_ids"] = receipt["source_table_ids"]
     if result.get("closure_receipt") is not None:
         result["closure_receipt"]["period_table_projection"] = canonical_clone_v1(receipt)
@@ -1955,6 +1992,13 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         section_id=section_id,
         table_id=table_id,
         reasons=reasons,
+    )
+    result["parent_binding_kind"] = (
+        "EXPLICIT_SECTION_OR_TABLE_TITLE"
+        if parent_in_title
+        else "EXPLICIT_PARENT_ROW"
+        if len(parent_row_ordinals) == 1
+        else "UNIQUE_REQUIRED_CHILD_CLUSTER"
     )
     if reasons:
         return result

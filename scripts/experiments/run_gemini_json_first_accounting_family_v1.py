@@ -472,6 +472,29 @@ def _selected_ready_candidate(
     if not ready:
         return None
 
+    parent_binding_ranks = {
+        "UNIQUE_REQUIRED_CHILD_CLUSTER": 1,
+        "EXPLICIT_PARENT_ROW": 2,
+        "EXPLICIT_SECTION_OR_TABLE_TITLE": 2,
+    }
+
+    def parent_binding_rank(candidate: dict[str, Any]) -> int | None:
+        binding = candidate.get("parent_binding_kind")
+        if type(binding) is not str:
+            return None
+        if binding.startswith("PERIOD_TABLE_TARGET_COLUMN_AND_"):
+            binding = binding.removeprefix("PERIOD_TABLE_TARGET_COLUMN_AND_")
+        return parent_binding_ranks.get(binding)
+
+    binding_ranks = [parent_binding_rank(candidate) for candidate in ready]
+    if all(rank is not None for rank in binding_ranks):
+        maximum_binding_rank = max(binding_ranks)
+        binding_winners = [
+            index for index, rank in enumerate(binding_ranks) if rank == maximum_binding_rank
+        ]
+        if len(binding_winners) == 1 and any(rank < maximum_binding_rank for rank in binding_ranks):
+            return ready[binding_winners[0]]
+
     def root_signature(candidate: dict[str, Any]) -> tuple[Any, ...] | None:
         roots = [
             mapping

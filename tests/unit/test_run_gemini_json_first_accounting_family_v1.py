@@ -107,6 +107,27 @@ def test_candidate_selection_rejects_root_drift_and_equal_detail_ambiguity() -> 
     assert target._selected_ready_candidate([first, second], compiled_specs=_compiled()) is None
 
 
+def test_explicit_parent_binding_uniquely_supersedes_shape_only_child_cluster() -> None:
+    roles = [
+        ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+        ("INTERBANK_DEPOSIT_GROUP", 576),
+        ("INTERBANK_LOAN_GROUP", 585),
+    ]
+    explicit = _candidate("explicit", roles)
+    explicit["parent_binding_kind"] = "EXPLICIT_SECTION_OR_TABLE_TITLE"
+    implied = _candidate("implied", roles)
+    implied["parent_binding_kind"] = "UNIQUE_REQUIRED_CHILD_CLUSTER"
+    implied["mappings"][0]["values"][0]["coefficient"] += 1
+    assert (
+        target._selected_ready_candidate([implied, explicit], compiled_specs=_compiled())
+        == explicit
+    )
+
+    peer = _candidate("peer", roles)
+    peer["parent_binding_kind"] = "EXPLICIT_PARENT_ROW"
+    assert target._selected_ready_candidate([explicit, peer], compiled_specs=_compiled()) is None
+
+
 def test_stacked_regions_are_derived_from_one_hit_frontier_with_punctuation_variants() -> None:
     parent = "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác"
     hit = {
