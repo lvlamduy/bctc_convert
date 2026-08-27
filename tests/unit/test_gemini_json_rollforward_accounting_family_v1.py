@@ -296,6 +296,78 @@ def test_one_unknown_table_cell_is_inferred_and_ready() -> None:
     assert inferred[0]["cell"]["state"] == "INFERRED_ONE_UNKNOWN_FULL_RANK"
 
 
+def test_comparative_multiple_unknowns_veto_every_mapping() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025"),
+            _period_table(
+                "Tại ngày 31 tháng 12 năm 2024",
+                margin_provision=None,
+                margin_use=None,
+            ),
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason == "ROLLFORWARD_LANE_EQUATION_RANK_DEFICIENT_MULTIPLE_UNKNOWNS:"
+        "COMPARATIVE_PERIOD:MARGIN_ADVANCE_PROVISION_LANE"
+        for reason in candidate["reasons"]
+    )
+    assert {vector["period_role"] for vector in candidate["closure_receipt"]["role_vectors"]} == {
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    }
+
+
+def test_comparative_equation_mismatch_vetoes_current_period_mappings() -> None:
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    comparative["rows"][-1]["values_exact"][0] = "111"
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025"),
+            comparative,
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "ROLLFORWARD_LANE_EQUATION_MISMATCH:COMPARATIVE_PERIOD:GENERAL_PROVISION_LANE"
+    ) in candidate["reasons"]
+
+
+def test_money_unit_must_match_across_both_periods() -> None:
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025", unit="Triệu đồng"),
+            _period_table("Tại ngày 31 tháng 12 năm 2024", unit="Tỷ đồng"),
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_MONEY_UNIT_MISMATCH_ACROSS_PERIODS_OR_COMPONENTS" in candidate["reasons"]
+
+
+def test_optional_lane_population_must_be_identical_across_periods() -> None:
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    comparative["columns"].pop()
+    for row in comparative["rows"]:
+        row["values_exact"].pop()
+    candidate = _evaluate(
+        _page(
+            _period_table("Tại ngày 31 tháng 12 năm 2025"),
+            comparative,
+        )
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_LANE_POPULATION_MISMATCH_ACROSS_PERIODS" in candidate["reasons"]
+
+
 def test_two_unknown_margin_cells_withhold_every_authoritative_mapping() -> None:
     candidate = _evaluate(
         _page(
@@ -387,6 +459,85 @@ def test_reset_fence_blocks_narrative_lane_carry() -> None:
     assert candidate["mappings"] == []
 
 
+def test_adjacent_component_can_inherit_one_bounded_reset_fenced_owner_context() -> None:
+    current = _page(_period_table("31/12/2025"))
+    comparative = _page(_period_table("31/12/2024"))
+    comparative_section = comparative["sections"][0]
+    comparative_section["title_exact"] = "Bảng biến động dự phòng (tiếp theo)"
+    comparative_section["narratives_exact"] = ["Tiếp theo trang trước"]
+    for column in comparative_section["tables"][0]["columns"]:
+        column["header_path_exact"] = [column["header_path_exact"][-1]]
+    refs = [
+        {
+            "page_json_version_id": VERSION_A,
+            "physical_page": 7,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": VERSION_B,
+            "physical_page": 8,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    ]
+
+    candidate = _evaluate(
+        current,
+        refs=refs,
+        pages={VERSION_A: current, VERSION_B: comparative},
+    )
+
+    assert candidate["status"] == READY
+    population = candidate["closure_receipt"]["population_receipt"]
+    assert population["binding_kind"] == "BOUNDED_SELECTED_COMPONENT_OWNER_CONTINUATION"
+    assert population["reset_fence_receipt"]["status"] == "RESET_FENCE_CLEAR"
+
+
+def test_bounded_owner_continuation_stops_at_an_intervening_reset() -> None:
+    current = _page(_period_table("31/12/2025"))
+    comparative = _page(_period_table("31/12/2024"))
+    target = comparative["sections"][0]
+    target["title_exact"] = "Bảng biến động dự phòng (tiếp theo)"
+    target["narratives_exact"] = ["Tiếp theo trang trước"]
+    for column in target["tables"][0]["columns"]:
+        column["header_path_exact"] = [column["header_path_exact"][-1]]
+    comparative["sections"].insert(
+        0,
+        {
+            "content_kind": "FINANCIAL_NOTE",
+            "narratives_exact": ["Thư tín dụng"],
+            "statement_type": "NOT_APPLICABLE",
+            "tables": [],
+            "title_exact": "Nghiệp vụ phát hành thư tín dụng",
+        },
+    )
+    refs = [
+        {
+            "page_json_version_id": VERSION_A,
+            "physical_page": 7,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": VERSION_B,
+            "physical_page": 8,
+            "section_id": "s2",
+            "table_id": "t1",
+        },
+    ]
+
+    candidate = _evaluate(
+        current,
+        refs=refs,
+        pages={VERSION_A: current, VERSION_B: comparative},
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_RESET_FENCE_VIOLATED" in candidate["reasons"]
+
+
 def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:
     candidate = _evaluate(
         _page(_stacked_table()),
@@ -402,6 +553,39 @@ def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:
 
     assert candidate["status"] == READY
     assert candidate["closure_receipt"]["orientation"] == "STACKED_PERIOD_BLOCKS"
+    assert len(candidate["closure_receipt"]["endpoint_continuity_receipts"]) == 3
+    for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]:
+        assert receipt["previous_closing"]["locator"]
+        assert receipt["next_opening"]["locator"]
+        assert receipt["previous_closing"]["cell"] == receipt["next_opening"]["cell"]
+
+
+def test_shared_endpoint_stacked_blocks_cannot_run_backwards() -> None:
+    table = _stacked_table()
+    for row_index, period in (
+        (2, "Tại ngày 31 tháng 12 năm 2025"),
+        (4, "Tại ngày 31 tháng 12 năm 2024"),
+    ):
+        table["rows"][row_index]["label_exact"] = period
+        table["rows"][row_index]["hierarchy_path_exact"] = [period]
+    candidate = _evaluate(
+        _page(table),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason.startswith("ROLLFORWARD_SHARED_ENDPOINT_CONTINUITY_INVALID:")
+        for reason in candidate["reasons"]
+    )
 
 
 def test_partial_block_and_duplicate_endpoint_are_terminal_unknowns() -> None:

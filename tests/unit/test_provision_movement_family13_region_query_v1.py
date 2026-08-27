@@ -585,7 +585,7 @@ def test_literal_refs_query_id_reorder_and_dependency_tamper(tmp_path: Path) -> 
     adapter_path = _PROJECT_ROOT / adapter_ref["path"]
 
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
-        "fffrrv2:query:1185d8795c06df09728ea769d8b912e0184b6c986ea0af186302c1441f8bd57d"
+        "fffrrv2:query:ccf735c71ee985c31effb84602fcb26a74b35264402135d3e9bb10c2473af6c6"
     )
     assert adapter_ref["size_bytes"] == adapter_path.stat().st_size
     assert adapter_ref["sha256"] == hashlib.sha256(adapter_path.read_bytes()).hexdigest()

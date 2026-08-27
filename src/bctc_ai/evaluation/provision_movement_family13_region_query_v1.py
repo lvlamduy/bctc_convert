@@ -79,8 +79,8 @@ PROVISION_MOVEMENT_FAMILY13_REGION_QUERY_TRUST_CLOSURE_V1 = {
     },
     "shared_topology_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
-        "sha256": "409cd254f7a43f641f3f3728b05e45ba79d9fe607bcd0837984575b09642b5c0",
-        "size_bytes": 79_501,
+        "sha256": "7d7846e1a8b15379a1489fce01e1f59a88b9ec0aa7e5ea54e506280fa90758ae",
+        "size_bytes": 82_226,
     },
 }
 
