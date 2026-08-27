@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""Re-OCR exact Gemini JSON rows and append one source-bound page version."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from hashlib import sha256
+from pathlib import Path
+from typing import Any
+
+import fitz
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
+)
+from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    GOOGLE_MODEL,
+    OPENROUTER_SERVICE_TIER,
+    call_gemini_json_first_v1,
+    load_openrouter_api_key_v1,
+)
+from bctc_ai.evaluation.gemini_json_region_repair_v1 import (  # noqa: E402
+    build_region_repair_prompt_v1,
+    decode_region_repair_text_v1,
+    merge_region_repair_v1,
+    region_repair_response_schema_v1,
+    region_repair_targets_v1,
+    repair_prompt_sha256_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
+from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    ingest_financial_page_extraction_v1,
+    load_page_json_versions_v1,
+    record_page_json_region_repair_v1,
+)
+
+
+class RunGeminiJsonRegionRepairV1Error(RuntimeError):
+    pass
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pdf", type=Path, required=True)
+    parser.add_argument("--source-logical-name", required=True)
+    parser.add_argument("--physical-page", type=int, required=True)
+    parser.add_argument("--base-page-json-version-id", required=True)
+    parser.add_argument("--target-id", action="append", required=True)
+    parser.add_argument("--database", type=Path, required=True)
+    parser.add_argument("--artifact-dir", type=Path, required=True)
+    parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
+    parser.add_argument(
+        "--openrouter-key-file",
+        type=Path,
+        default=ROOT / "docs/experiments/openrouter",
+    )
+    parser.add_argument("--timeout-seconds", type=int, default=900)
+    parser.add_argument(
+        "--thinking-level",
+        choices=("low", "medium", "high"),
+        default="low",
+    )
+    parser.add_argument("--openrouter-retries", type=int, default=3)
+    parser.add_argument("--retry-delay-seconds", type=float, default=5.0)
+    return parser
+
+
+def _write(path: Path, value: bytes) -> None:
+    if path.exists():
+        raise RunGeminiJsonRegionRepairV1Error(f"refusing to overwrite {path}")
+    path.write_bytes(value)
+
+
+def _render(args: argparse.Namespace) -> tuple[bytes, dict[str, Any], dict[str, Any]]:
+    source = args.pdf.read_bytes()
+    source_sha = sha256(source).hexdigest()
+    with fitz.open(args.pdf) as document:
+        if args.physical_page <= 0 or args.physical_page > document.page_count:
+            raise RunGeminiJsonRegionRepairV1Error("physical page lies outside PDF")
+        rendered = render_full_pdf_page_v1(
+            document.load_page(args.physical_page - 1),
+            physical_page=args.physical_page,
+            dpi=args.dpi,
+            source_sha256=source_sha,
+        )
+    document_record = {
+        "source_logical_name": args.source_logical_name,
+        "source_sha256": source_sha,
+        "source_size_bytes": len(source),
+    }
+    return rendered.image, document_record, rendered.page
+
+
+def run(args: argparse.Namespace) -> dict[str, Any]:
+    """Execute one immutable row repair request and return its observation."""
+
+    if not args.database.is_file():
+        raise RunGeminiJsonRegionRepairV1Error("Gemini page database is absent")
+    if args.artifact_dir.exists():
+        if any(args.artifact_dir.iterdir()):
+            raise RunGeminiJsonRegionRepairV1Error("artifact directory must be empty")
+    else:
+        args.artifact_dir.mkdir(parents=True)
+
+    selected = load_page_json_versions_v1(
+        args.database,
+        page_json_version_ids=[args.base_page_json_version_id],
+    )[0]
+    image, document, page = _render(args)
+    if (
+        selected["source_sha256"] != document["source_sha256"]
+        or selected["source_logical_name"] != document["source_logical_name"]
+        or selected["physical_page"] != args.physical_page
+        or selected["render_dpi"] != args.dpi
+        or selected["image_sha256"] != page["image_sha256"]
+    ):
+        raise RunGeminiJsonRegionRepairV1Error(
+            "base page version does not bind the rendered source page"
+        )
+
+    targets = region_repair_targets_v1(
+        selected["page_json"],
+        target_ids=args.target_id,
+        context_radius={"low": 1, "medium": 2, "high": 3}[args.thinking_level],
+    )
+    prompt = build_region_repair_prompt_v1(
+        base_page_json_version_id=args.base_page_json_version_id,
+        targets=targets,
+    )
+    schema = region_repair_response_schema_v1()
+    prompt_sha = repair_prompt_sha256_v1(prompt)
+    schema_sha = canonical_json_sha256_v1(schema)
+    _write(args.artifact_dir / "prompt.txt", prompt.encode("utf-8"))
+    _write(
+        args.artifact_dir / "response-schema.json",
+        canonical_json_bytes_v1(schema) + b"\n",
+    )
+    _write(args.artifact_dir / "targets.json", canonical_json_bytes_v1(targets) + b"\n")
+
+    result = call_gemini_json_first_v1(
+        google_api_keys=None,
+        openrouter_api_key=load_openrouter_api_key_v1(args.openrouter_key_file),
+        image=image,
+        media_type="image/png",
+        prompt=prompt,
+        response_schema=schema,
+        output_contract_mode="JSON_SCHEMA",
+        execution_policy="OPENROUTER_PILOT",
+        timeout_seconds=args.timeout_seconds,
+        openrouter_retries=args.openrouter_retries,
+        retry_delay_seconds=args.retry_delay_seconds,
+        thinking_level=args.thinking_level,
+    )
+    repair = decode_region_repair_text_v1(result.output_text, targets=targets)
+    merged, repair_receipt = merge_region_repair_v1(
+        selected["page_json"],
+        base_page_json_version_id=args.base_page_json_version_id,
+        targets=targets,
+        repair=repair,
+    )
+    identities = ingest_financial_page_extraction_v1(
+        args.database,
+        document=document,
+        page=page,
+        prompt_variant="region-repair",
+        output_contract_mode="JSON_SCHEMA",
+        prompt_sha256=prompt_sha,
+        response_schema_sha256=schema_sha,
+        requested_model=GOOGLE_MODEL,
+        requested_service_tier=OPENROUTER_SERVICE_TIER,
+        thinking_level=args.thinking_level,
+        provider_result=result,
+        page_json=merged,
+    )
+    lineage = record_page_json_region_repair_v1(
+        args.database,
+        merged_page_json_version_id=identities["page_json_version_id"],
+        receipt=repair_receipt,
+    )
+    raw = result.raw_response_bytes
+    if not raw.endswith(b"\n"):
+        raw += b"\n"
+    _write(args.artifact_dir / "raw-response.json", raw)
+    _write(args.artifact_dir / "repair.json", canonical_json_bytes_v1(repair) + b"\n")
+    _write(args.artifact_dir / "merged-page.json", canonical_json_bytes_v1(merged) + b"\n")
+    _write(
+        args.artifact_dir / "repair-receipt.json",
+        canonical_json_bytes_v1(repair_receipt) + b"\n",
+    )
+    observation = {
+        "attempts": list(result.attempts),
+        "database_identities": identities,
+        "format_version": "GEMINI_JSON_REGION_REPAIR_RUN_V1",
+        "lineage": lineage,
+        "provider": {
+            "model": result.provider_model,
+            "name": result.provider_name,
+            "response_id_sha256": result.response_id_sha256,
+            "service_tier": result.service_tier,
+        },
+        "source": {
+            **document,
+            "image_sha256": page["image_sha256"],
+            "physical_page": args.physical_page,
+            "render_dpi": args.dpi,
+            "thinking_level": args.thinking_level,
+        },
+        "usage": result.usage,
+    }
+    observation["observation_id"] = "gjfrrunv1:observation:" + canonical_json_sha256_v1(observation)
+    _write(
+        args.artifact_dir / "observation.json",
+        canonical_json_bytes_v1(observation) + b"\n",
+    )
+    return observation
+
+
+def main() -> int:
+    print(json.dumps(run(_parser().parse_args()), ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -276,6 +276,30 @@ def test_openrouter_pilot_skips_google_and_pins_google_vertex_flex() -> None:
     assert calls[-1][2]["usage"] == {"include": True}
     assert calls[-1][2]["seed"] == 0
     assert calls[-1][2]["max_tokens"] == 65536
+    assert calls[-1][2]["reasoning"] == {"effort": "low"}
+
+
+@pytest.mark.parametrize("thinking_level", ["medium", "high"])
+def test_openrouter_pilot_forwards_explicit_thinking_escalation(thinking_level: str) -> None:
+    calls = []
+
+    def transport(url, headers, body, timeout):
+        calls.append(body)
+        return _openrouter_response()
+
+    call_gemini_json_first_v1(
+        google_api_keys=None,
+        openrouter_api_key="c" * 30,
+        image=b"png",
+        media_type="image/png",
+        prompt="prompt",
+        response_schema={"type": "object"},
+        thinking_level=thinking_level,
+        transport=transport,
+        sleep=lambda _: None,
+    )
+    assert len(calls) == 1
+    assert calls[0]["reasoning"] == {"effort": thinking_level}
 
 
 def test_google_diagnostic_nonquota_error_never_triggers_openrouter() -> None:

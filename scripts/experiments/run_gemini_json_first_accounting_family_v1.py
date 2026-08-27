@@ -28,12 +28,16 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     evaluate_gemini_json_flat_family_table_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.evaluation.gemini_json_region_repair_queue_v1 import (  # noqa: E402
+    build_family_region_repair_plans_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
+    enqueue_gemini_family_region_repair_plans_v1,
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
     record_gemini_accounting_family_export_v1,
@@ -745,10 +749,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         trials=trials,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
+    repair_plans = build_family_region_repair_plans_v1(
+        sweep=sweep,
+        page_json_by_version={
+            version_id: page["page_json"] for version_id, page in page_by_version.items()
+        },
+        compiled_specs=compiled,
+    )
     implementation_paths = (
         ROOT / "scripts/experiments/run_gemini_json_first_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_hierarchical_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_queue_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
     )
     stored = ingest_gemini_accounting_family_sweep_v1(
@@ -757,6 +769,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         corpus_index_ref=_file_ref(args.corpus_index),
         implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
         run_kind=args.run_kind,
+    )
+    repair_job_ids = enqueue_gemini_family_region_repair_plans_v1(
+        args.results_database,
+        family_run_id=stored["family_run_id"],
+        plans=repair_plans,
     )
     # The database is the system of record.  The JSON file is materialized
     # only by loading the just-committed canonical sweep back from SQLite.
@@ -777,6 +794,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "results_database": str(args.results_database),
         "family_run_id": stored["family_run_id"],
         "run_kind": args.run_kind,
+        "pending_region_repair_job_count": len(repair_job_ids),
         "sweep_id": sweep["sweep_id"],
     }
 

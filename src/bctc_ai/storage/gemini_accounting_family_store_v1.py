@@ -138,6 +138,36 @@ CREATE INDEX idx_family_mapping_role
   ON family_mapping(report_norm_id, role, family_run_id, document_ordinal);
 """
 
+_REGION_REPAIR_QUEUE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS family_region_repair_job (
+  repair_job_id TEXT PRIMARY KEY,
+  family_run_id TEXT NOT NULL REFERENCES family_run(family_run_id),
+  document_ordinal INTEGER NOT NULL CHECK(document_ordinal > 0),
+  candidate_id TEXT NOT NULL,
+  base_page_json_version_id TEXT NOT NULL,
+  physical_page INTEGER NOT NULL CHECK(physical_page > 0),
+  status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','RESOLVED','ABSTAINED')),
+  plan_sha256 TEXT NOT NULL,
+  plan_bytes BLOB NOT NULL,
+  selected_page_json_version_id TEXT,
+  created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE(family_run_id, candidate_id, base_page_json_version_id)
+) STRICT;
+CREATE TABLE IF NOT EXISTS family_region_repair_attempt (
+  repair_job_id TEXT NOT NULL REFERENCES family_region_repair_job(repair_job_id),
+  attempt_ordinal INTEGER NOT NULL CHECK(attempt_ordinal > 0),
+  thinking_level TEXT NOT NULL CHECK(thinking_level IN ('low','medium','high')),
+  outcome TEXT NOT NULL,
+  page_json_version_id TEXT,
+  usage_json BLOB,
+  reason_json BLOB NOT NULL,
+  recorded_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY(repair_job_id, attempt_ordinal)
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_family_region_repair_status
+  ON family_region_repair_job(status, family_run_id, document_ordinal);
+"""
+
 
 def initialize_gemini_accounting_family_store_v1(path: Path) -> None:
     """Create a derived-family store atomically without replacing an existing file."""
@@ -176,6 +206,229 @@ def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
         connection.close()
         raise _error("Gemini family store identity drifted")
     return connection
+
+
+def enqueue_gemini_family_region_repair_plans_v1(
+    path: Path,
+    *,
+    family_run_id: str,
+    plans: Sequence[Mapping[str, Any]],
+) -> list[str]:
+    """Append deterministic pending repair jobs emitted by one stored family run."""
+
+    checked = [dict(plan) for plan in plans]
+    if any(
+        plan.get("format_version") != "GEMINI_JSON_REGION_REPAIR_QUEUE_V1"
+        or type(plan.get("repair_job_id")) is not str
+        or not plan["repair_job_id"].startswith("gjfrrqv1:job:")
+        or type(plan.get("document_ordinal")) is not int
+        or plan["document_ordinal"] <= 0
+        or type(plan.get("candidate_id")) is not str
+        or type(plan.get("base_page_json_version_id")) is not str
+        or type(plan.get("physical_page")) is not int
+        or plan["physical_page"] <= 0
+        or type(plan.get("target_ids")) is not list
+        or not plan["target_ids"]
+        for plan in checked
+    ):
+        raise _error("family region repair plan is invalid")
+    with _connect(path) as connection:
+        connection.executescript(_REGION_REPAIR_QUEUE_SCHEMA)
+        run = connection.execute(
+            "SELECT family_id FROM family_run WHERE family_run_id=?", (family_run_id,)
+        ).fetchone()
+        if run is None:
+            raise _error("family region repair run is absent")
+        for plan in checked:
+            if plan.get("family_id") != run["family_id"]:
+                raise _error("family region repair plan family does not replay")
+            candidate = connection.execute(
+                "SELECT c.page_json_version_id,c.physical_page,c.section_id,c.table_id,"
+                "c.status,t.source_logical_name,t.source_sha256 "
+                "FROM family_candidate AS c JOIN family_trial AS t "
+                "ON t.family_run_id=c.family_run_id "
+                "AND t.document_ordinal=c.document_ordinal "
+                "WHERE c.family_run_id=? AND c.document_ordinal=? AND c.candidate_id=?",
+                (family_run_id, plan["document_ordinal"], plan["candidate_id"]),
+            ).fetchone()
+            expected_candidate = (
+                plan["base_page_json_version_id"],
+                plan["physical_page"],
+                plan.get("section_id"),
+                plan.get("table_id"),
+                "UNRESOLVED_GEMINI_JSON_FAMILY",
+                plan.get("source_logical_name"),
+                plan.get("source_sha256"),
+            )
+            if candidate is None or tuple(candidate) != expected_candidate:
+                raise _error("family region repair candidate does not replay")
+            material = {key: plan[key] for key in plan if key != "repair_job_id"}
+            if plan["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material):
+                raise _error("family region repair plan ID does not replay")
+            plan_bytes = canonical_json_bytes_v1(plan) + b"\n"
+            values = (
+                plan["repair_job_id"],
+                family_run_id,
+                plan["document_ordinal"],
+                plan["candidate_id"],
+                plan["base_page_json_version_id"],
+                plan["physical_page"],
+                "PENDING",
+                sha256(plan_bytes).hexdigest(),
+                plan_bytes,
+                None,
+            )
+            existing = connection.execute(
+                "SELECT repair_job_id, family_run_id, document_ordinal, candidate_id, "
+                "base_page_json_version_id, physical_page, status, plan_sha256, "
+                "plan_bytes, selected_page_json_version_id "
+                "FROM family_region_repair_job WHERE repair_job_id=?",
+                (plan["repair_job_id"],),
+            ).fetchone()
+            if existing is None:
+                connection.execute(
+                    "INSERT INTO family_region_repair_job("
+                    "repair_job_id,family_run_id,document_ordinal,candidate_id,"
+                    "base_page_json_version_id,physical_page,status,plan_sha256,"
+                    "plan_bytes,selected_page_json_version_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    values,
+                )
+            elif tuple(existing) != values:
+                raise _error("family region repair job is already bound differently")
+        connection.commit()
+    return [plan["repair_job_id"] for plan in checked]
+
+
+def pending_gemini_family_region_repair_plans_v1(
+    path: Path, *, family_run_id: str | None = None
+) -> list[dict[str, Any]]:
+    """Read pending jobs in stable family/document order for an automated worker."""
+
+    with _connect(path) as connection:
+        connection.executescript(_REGION_REPAIR_QUEUE_SCHEMA)
+        where = "WHERE j.status='PENDING'"
+        parameters: tuple[Any, ...] = ()
+        if family_run_id is not None:
+            where += " AND j.family_run_id=?"
+            parameters = (family_run_id,)
+        rows = connection.execute(
+            "SELECT j.repair_job_id,j.family_run_id,j.plan_sha256,j.plan_bytes,"
+            "(SELECT COUNT(*) FROM family_region_repair_attempt AS a "
+            " WHERE a.repair_job_id=j.repair_job_id) AS attempt_count "
+            "FROM family_region_repair_job AS j JOIN family_run AS r USING(family_run_id) "
+            f"{where} ORDER BY r.family_id,j.document_ordinal,j.repair_job_id",
+            parameters,
+        ).fetchall()
+    result = []
+    for row in rows:
+        if sha256(row["plan_bytes"]).hexdigest() != row["plan_sha256"]:
+            raise _error("family region repair plan bytes do not replay")
+        try:
+            plan = json.loads(row["plan_bytes"])
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("family region repair plan JSON is invalid") from exc
+        result.append(
+            {
+                "attempt_count": row["attempt_count"],
+                "family_run_id": row["family_run_id"],
+                "next_thinking_level": [
+                    plan["repair_policy"]["initial_thinking_level"],
+                    *plan["repair_policy"]["thinking_escalation"],
+                ][row["attempt_count"]],
+                "plan": plan,
+                "repair_job_id": row["repair_job_id"],
+            }
+        )
+    return result
+
+
+def record_gemini_family_region_repair_attempt_v1(
+    path: Path,
+    *,
+    repair_job_id: str,
+    thinking_level: str,
+    outcome: str,
+    page_json_version_id: str | None,
+    usage: Mapping[str, Any] | None,
+    reasons: Sequence[str],
+) -> dict[str, Any]:
+    """Append one repair attempt and atomically advance its bounded state machine."""
+
+    allowed_outcomes = {
+        "PROVIDER_OR_VALIDATION_FAILURE",
+        "RESOLVED",
+        "RETRYABLE_VALIDATION_FAILURE",
+        "STABLE_SOURCE_EVIDENCE",
+    }
+    if (
+        thinking_level not in {"low", "medium", "high"}
+        or outcome not in allowed_outcomes
+        or type(reasons) not in {list, tuple}
+        or any(type(reason) is not str or not reason for reason in reasons)
+        or (outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}) != (page_json_version_id is not None)
+        or (usage is not None and type(usage) is not dict)
+    ):
+        raise _error("family region repair attempt is invalid")
+    with _connect(path) as connection:
+        connection.executescript(_REGION_REPAIR_QUEUE_SCHEMA)
+        connection.execute("BEGIN IMMEDIATE")
+        job = connection.execute(
+            "SELECT status,plan_bytes FROM family_region_repair_job WHERE repair_job_id=?",
+            (repair_job_id,),
+        ).fetchone()
+        if job is None or job["status"] not in {"PENDING", "RUNNING"}:
+            raise _error("family region repair job is absent or terminal")
+        plan = json.loads(job["plan_bytes"])
+        levels = [
+            plan["repair_policy"]["initial_thinking_level"],
+            *plan["repair_policy"]["thinking_escalation"],
+        ][: plan["repair_policy"]["max_attempts"]]
+        ordinal = (
+            connection.execute(
+                "SELECT COUNT(*) FROM family_region_repair_attempt WHERE repair_job_id=?",
+                (repair_job_id,),
+            ).fetchone()[0]
+            + 1
+        )
+        if ordinal > len(levels) or thinking_level != levels[ordinal - 1]:
+            raise _error("family region repair thinking escalation does not replay")
+        terminal = outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"} or ordinal == len(levels)
+        next_status = (
+            "RESOLVED"
+            if outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}
+            else ("ABSTAINED" if terminal else "PENDING")
+        )
+        connection.execute(
+            "INSERT INTO family_region_repair_attempt("
+            "repair_job_id,attempt_ordinal,thinking_level,outcome,page_json_version_id,"
+            "usage_json,reason_json) VALUES (?,?,?,?,?,?,?)",
+            (
+                repair_job_id,
+                ordinal,
+                thinking_level,
+                outcome,
+                page_json_version_id,
+                None if usage is None else canonical_json_bytes_v1(dict(usage)),
+                canonical_json_bytes_v1(list(reasons)),
+            ),
+        )
+        connection.execute(
+            "UPDATE family_region_repair_job SET status=?,selected_page_json_version_id=? "
+            "WHERE repair_job_id=?",
+            (
+                next_status,
+                page_json_version_id if outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"} else None,
+                repair_job_id,
+            ),
+        )
+        connection.commit()
+    return {
+        "attempt_ordinal": ordinal,
+        "next_status": next_status,
+        "outcome": outcome,
+        "repair_job_id": repair_job_id,
+        "thinking_level": thinking_level,
+    }
 
 
 def _checked_ref(reference: Mapping[str, Any]) -> dict[str, Any]:

@@ -30,6 +30,7 @@ GOOGLE_SERVICE_TIER = "flex"
 GOOGLE_STANDARD_SERVICE_TIER = "standard"
 GOOGLE_BATCH_SERVICE_TIER = "batch"
 GOOGLE_OUTPUT_CONTRACT_MODES = frozenset({"JSON_SCHEMA", "PROMPT_JSON"})
+GOOGLE_THINKING_LEVELS = frozenset({"low", "medium", "high"})
 EXECUTION_POLICIES = frozenset(
     {"OPENROUTER_PILOT", "GOOGLE_DIRECT_DIAGNOSTIC", "GOOGLE_DIRECT_STANDARD"}
 )
@@ -417,9 +418,10 @@ def _google_body_v1(
     response_schema: dict[str, Any],
     output_contract_mode: str,
     service_tier: str,
+    thinking_level: str,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
-        "generation_config": {"thinking_level": "low"},
+        "generation_config": {"thinking_level": thinking_level},
         "input": [
             {"type": "text", "text": prompt},
             {
@@ -451,6 +453,7 @@ def _google_generate_content_body_v1(
     prompt: str,
     response_schema: dict[str, Any],
     output_contract_mode: str,
+    thinking_level: str,
     file_uri: str | None = None,
 ) -> dict[str, Any]:
     if (image is None) == (file_uri is None):
@@ -463,7 +466,7 @@ def _google_generate_content_body_v1(
         "maxOutputTokens": 65536,
         "responseMimeType": "application/json",
         "temperature": 0,
-        "thinkingConfig": {"thinkingLevel": "LOW"},
+        "thinkingConfig": {"thinkingLevel": thinking_level.upper()},
     }
     if output_contract_mode == "JSON_SCHEMA":
         generation_config["responseJsonSchema"] = response_schema
@@ -496,6 +499,7 @@ def _openrouter_body_v1(
     prompt: str,
     response_schema: dict[str, Any],
     output_contract_mode: str,
+    thinking_level: str,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "max_tokens": 65536,
@@ -523,7 +527,7 @@ def _openrouter_body_v1(
             "only": [OPENROUTER_PROVIDER],
             "require_parameters": True,
         },
-        "reasoning": {"effort": "low"},
+        "reasoning": {"effort": thinking_level},
         "seed": 0,
         "usage": {"include": True},
     }
@@ -575,6 +579,7 @@ def call_gemini_json_first_v1(
     flex_retries_per_slot: int = 2,
     openrouter_retries: int = 2,
     retry_delay_seconds: float = 5.0,
+    thinking_level: str = "low",
     transport: Callable[[str, dict[str, str], dict[str, Any], int], bytes] = _post_json_v1,
     sleep: Callable[[float], None] = time.sleep,
     on_attempt: Callable[[dict[str, Any]], None] | None = None,
@@ -589,6 +594,8 @@ def call_gemini_json_first_v1(
         raise GeminiJsonFirstProviderV1Error("prompt must be nonempty")
     if output_contract_mode not in GOOGLE_OUTPUT_CONTRACT_MODES:
         raise GeminiJsonFirstProviderV1Error("output contract mode is invalid")
+    if thinking_level not in GOOGLE_THINKING_LEVELS:
+        raise GeminiJsonFirstProviderV1Error("thinking level is invalid")
     if (
         timeout_seconds < 60
         or flex_retries_per_slot < 1
@@ -631,6 +638,7 @@ def call_gemini_json_first_v1(
                 prompt=prompt,
                 response_schema=response_schema,
                 output_contract_mode=output_contract_mode,
+                thinking_level=thinking_level,
             )
             google_url = (
                 "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -645,6 +653,7 @@ def call_gemini_json_first_v1(
                 response_schema=response_schema,
                 output_contract_mode=output_contract_mode,
                 service_tier=google_service_tier,
+                thinking_level=thinking_level,
             )
             google_url = "https://generativelanguage.googleapis.com/v1beta/interactions"
         for api_key, credential_slot in zip(google_api_keys, google_credential_slots, strict=True):
@@ -773,6 +782,7 @@ def call_gemini_json_first_v1(
         prompt=prompt,
         response_schema=response_schema,
         output_contract_mode=output_contract_mode,
+        thinking_level=thinking_level,
     )
     for retry_index in range(openrouter_retries):
         started = time.perf_counter()

@@ -206,6 +206,61 @@ def _evaluate_trading(page: dict) -> dict:
     )
 
 
+def _lane_specific_trading_page() -> dict:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán vốn"],
+            "label_exact": "Chứng khoán vốn",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["50", "70"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán vốn",
+                "Chứng khoán vốn do các TCTD trong nước phát hành",
+            ],
+            "label_exact": "Chứng khoán vốn do các TCTD trong nước phát hành",
+            "row_kind": "ITEM",
+            "values_exact": ["20", "30"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán vốn",
+                "Chứng khoán vốn do các TCKT trong nước phát hành",
+            ],
+            "label_exact": "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "row_kind": "ITEM",
+            "values_exact": ["30", "35"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán kinh doanh khác"],
+            "label_exact": "Chứng khoán kinh doanh khác",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["5", "5"],
+        },
+        {
+            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["(10)", "(10)"],
+        },
+        {
+            "hierarchy_path_exact": ["Giá trị thuần"],
+            "label_exact": "Giá trị thuần",
+            "row_kind": "TOTAL",
+            "values_exact": ["145", "150"],
+        },
+    ]
+    return page
+
+
 def _hierarchical_page() -> dict:
     page = _page()
     section = page["sections"][0]
@@ -843,6 +898,97 @@ def test_v3_root_prefers_exact_maximum_frontier_and_consumes_zero_provision_once
     )
 
 
+def test_v3_visible_subtotals_allow_one_exact_direct_frontier_per_lane() -> None:
+    candidate = _evaluate_trading(_lane_specific_trading_page())
+    assert candidate["status"] == READY
+    equations = {
+        equation["result_role"]: equation for equation in candidate["closure_receipt"]["equations"]
+    }
+    assert equations["EQUITY_SECURITIES_GROUP"] == {
+        "component_roles": [
+            "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+            "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+            "OTHER_TRADING_SECURITIES_GROUP",
+        ],
+        "component_roles_by_lane": [
+            [
+                "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+                "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+            ],
+            [
+                "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+                "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+                "OTHER_TRADING_SECURITIES_GROUP",
+            ],
+        ],
+        "component_row_ids_by_lane": [["r3", "r4"], ["r3", "r4", "r5"]],
+        "lane_component_sums": [50, 70],
+        "mode": "VISIBLE_RESULT_EXACTLY_CORROBORATED_BY_LANE_SPECIFIC_FRONTIERS",
+        "result_coefficients": [50, 70],
+        "result_role": "EQUITY_SECURITIES_GROUP",
+        "result_row_id": "r2",
+    }
+    assert equations["EXPLICIT_NET_TOTAL"]["component_roles_by_lane"] == [
+        [
+            "DEBT_SECURITIES_GROUP",
+            "EQUITY_SECURITIES_GROUP",
+            "OTHER_TRADING_SECURITIES_GROUP",
+            "TRADING_SECURITIES_PROVISION_GROUP",
+        ],
+        [
+            "DEBT_SECURITIES_GROUP",
+            "EQUITY_SECURITIES_GROUP",
+            "TRADING_SECURITIES_PROVISION_GROUP",
+        ],
+    ]
+    lane_use_counts: dict[tuple[str, int], int] = {}
+    for equation in equations.values():
+        roles_by_lane = equation.get("component_roles_by_lane")
+        if roles_by_lane is None:
+            roles_by_lane = [equation.get("component_roles", []) for _lane in range(2)]
+        for lane, roles in enumerate(roles_by_lane):
+            for role in roles:
+                key = (role, lane)
+                lane_use_counts[key] = lane_use_counts.get(key, 0) + 1
+    assert max(lane_use_counts.values()) == 1
+
+
+def test_v3_lane_specific_frontier_rejects_mismatch_and_duplicate_result_carrier() -> None:
+    mismatch = _lane_specific_trading_page()
+    mismatch["sections"][0]["tables"][0]["rows"][-1]["values_exact"][1] = "151"
+    candidate = _evaluate_trading(mismatch)
+    assert candidate["status"] == UNRESOLVED
+    assert (
+        "EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:EXPLICIT_NET_TOTAL:0" in candidate["reasons"]
+    )
+
+    duplicate = _lane_specific_trading_page()
+    duplicate["sections"][0]["tables"][0]["rows"].append(
+        {
+            "hierarchy_path_exact": ["Giá trị còn lại"],
+            "label_exact": "Giá trị còn lại",
+            "row_kind": "TOTAL",
+            "values_exact": ["145", "150"],
+        }
+    )
+    candidate = _evaluate_trading(duplicate)
+    assert candidate["status"] == UNRESOLVED
+    assert "ROLE_OCCURRENCE_COUNT_ABOVE_ONE:EXPLICIT_NET_TOTAL:2" in candidate["reasons"]
+
+
+def test_v3_lane_specific_frontier_rejects_same_role_consumed_twice_in_one_lane() -> None:
+    page = _lane_specific_trading_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[1]["values_exact"] = ["55", "70"]
+    rows[-1]["values_exact"] = ["150", "155"]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == UNRESOLVED
+    assert {
+        "COMPONENT_ROLE_LANE_USE_COUNT_ABOVE_ONE:OTHER_TRADING_SECURITIES_GROUP:0:2",
+        "COMPONENT_ROLE_LANE_USE_COUNT_ABOVE_ONE:OTHER_TRADING_SECURITIES_GROUP:1:2",
+    } <= set(candidate["reasons"])
+
+
 def test_v3_root_raw_subset_requires_one_additive_child_not_provision_alone() -> None:
     candidate = _evaluate_trading(_trading_page(provision_only=True))
     assert candidate["status"] == UNRESOLVED
@@ -1150,3 +1296,82 @@ def test_v3_concatenated_hierarchy_path_still_binds_generic_listing_children() -
         "DEBT_LISTED",
         "DEBT_UNLISTED",
     }
+
+
+def _trading_presentation_shadow_page() -> dict:
+    page = _trading_page()
+    disclosure = "Thuyết minh về tình trạng niêm yết của các chứng khoán kinh doanh"
+    other = "Chứng khoán kinh doanh khác"
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": [other],
+            "label_exact": other,
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["50", "40"],
+        },
+        {
+            "hierarchy_path_exact": [disclosure],
+            "label_exact": disclosure,
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "hierarchy_path_exact": [disclosure, other],
+            "label_exact": other,
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["50", "40"],
+        },
+        {
+            "hierarchy_path_exact": [disclosure, other, "+ Đã niêm yết"],
+            "label_exact": "+ Đã niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["20", "10"],
+        },
+        {
+            "hierarchy_path_exact": [disclosure, other, "+ Chưa niêm yết"],
+            "label_exact": "+ Chưa niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["30", "30"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["150", "130"],
+        },
+    ]
+    return page
+
+
+def test_v3_exact_nested_presentation_shadow_corroborates_primary_group() -> None:
+    candidate = _evaluate_trading(_trading_presentation_shadow_page())
+    assert candidate["status"] == READY
+    equation = next(
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] == "OTHER_TRADING_SECURITIES_GROUP"
+    )
+    assert equation["component_roles"] == ["OTHER_LISTED", "OTHER_UNLISTED"]
+    assert equation["result_row_id"] == "r2"
+    assert equation["corroborating_result_row_ids"] == ["r4"]
+
+
+@pytest.mark.parametrize("mutation", ["SHADOW_MISMATCH", "CHILD_MISMATCH"])
+def test_v3_nested_presentation_shadow_fails_closed_unless_exact(mutation: str) -> None:
+    page = _trading_presentation_shadow_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    if mutation == "SHADOW_MISMATCH":
+        rows[3]["values_exact"][0] = "51"
+    else:
+        rows[5]["values_exact"][0] = "29"
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == UNRESOLVED
+    assert (
+        "ROLE_OCCURRENCE_COUNT_ABOVE_ONE:OTHER_TRADING_SECURITIES_GROUP:2" in candidate["reasons"]
+    )

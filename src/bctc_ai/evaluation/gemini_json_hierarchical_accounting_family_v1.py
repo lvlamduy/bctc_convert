@@ -256,6 +256,9 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         for alternative in alternatives:
             roles = alternative.get("component_roles") if type(alternative) is dict else None
             coverage = alternative.get("coverage_policy") if type(alternative) is dict else None
+            lane_specific_only = (
+                alternative.get("lane_specific_only", False) if type(alternative) is dict else None
+            )
             if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4":
                 minimum = len(roles) if type(roles) is list else None
                 minimum_additive = 0
@@ -290,6 +293,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                 or len(roles) != len(set(roles))
                 or result in roles
                 or any(role not in known_roles for role in roles)
+                or type(lane_specific_only) is not bool
+                or (
+                    lane_specific_only
+                    and evaluation_format != "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
+                )
                 or not valid_policy
             ):
                 raise _error("Gemini JSON hierarchy equation alternative is invalid")
@@ -299,6 +307,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                     "derivation_policy": derivation,
                     "minimum_additive_child_count": minimum_additive,
                     "minimum_component_count": minimum,
+                    "lane_specific_only": lane_specific_only,
                     "variable_component_subset": (
                         evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
                     ),
@@ -562,7 +571,13 @@ def _solve(
             for alternative in equation["component_role_alternatives"]
             for role in alternative["component_roles"]
         }
-        direct_visible = set()
+        regular_component_universe = {
+            role
+            for alternative in equation["component_role_alternatives"]
+            if not alternative["lane_specific_only"]
+            for role in alternative["component_roles"]
+        }
+        lane_direct_visible = set()
         for role in component_universe & set(resolved):
             record = resolved[role]
             owner = record.get("owner_role")
@@ -574,7 +589,8 @@ def _solve(
                 and owner != result_role
             ):
                 continue
-            direct_visible.add(role)
+            lane_direct_visible.add(role)
+        direct_visible = lane_direct_visible & regular_component_universe
         role_kinds = {child["role"]: child["role_kind"] for child in topology["children"]}
         for total_role in sorted(
             role for role in direct_visible if role_kinds.get(role) == "TOTAL"
@@ -609,6 +625,18 @@ def _solve(
                 )
                 direct_visible -= {record["role"] for record in subtotal_components}
         existing = resolved.get(result_role)
+        declared_result_carriers: dict[str, dict[str, Any]] = {}
+        if existing is not None:
+            declared_result_carriers[existing["row_id"]] = existing
+        for visible_role in set(equation["visible_result_roles"]) - {result_role}:
+            visible = resolved.get(visible_role)
+            if visible is not None:
+                declared_result_carriers[visible["row_id"]] = visible
+        for record in anonymous:
+            if record.get("owner_role") == result_role or result_role in record.get(
+                "allowed_result_roles", set()
+            ):
+                declared_result_carriers[record["row_id"]] = record
         if not direct_visible:
             if existing is not None:
                 equations_receipt.append(
@@ -623,6 +651,8 @@ def _solve(
             continue
         eligible = []
         for alternative in equation["component_role_alternatives"]:
+            if alternative["lane_specific_only"]:
+                continue
             declared = set(alternative["component_roles"])
             if alternative["variable_component_subset"]:
                 selected_declared = direct_visible & declared
@@ -640,7 +670,7 @@ def _solve(
                 )
             if matches:
                 eligible.append(alternative)
-        if not eligible:
+        if not eligible and not declared_result_carriers:
             reasons.append(f"NO_EXHAUSTIVE_DIRECT_FRONTIER:{result_role}")
             continue
         alternatives = []
@@ -665,11 +695,16 @@ def _solve(
                     authoritative_visible = True
             maximum_component_ordinal = max(component["ordinal"] for component in components)
             for record in anonymous:
-                if record.get("owner_role") == result_role and "allowed_result_roles" not in record:
+                if record.get("owner_role") == result_role or result_role in record.get(
+                    "allowed_result_roles", set()
+                ):
                     authoritative_visible = True
                 if (
                     record["row_id"] not in used_anonymous
-                    and record["ordinal"] > maximum_component_ordinal
+                    and (
+                        record["ordinal"] > maximum_component_ordinal
+                        or record.get("presentation_shadow_for_role") == result_role
+                    )
                     and _coefficients(record) == sums
                     and result_role in record.get("allowed_result_roles", {result_role})
                     and record.get("owner_role") in {None, result_role, topology["parent"]["role"]}
@@ -762,11 +797,84 @@ def _solve(
                     for _alternative, components, _sums, _carrier in alternatives
                 ]
                 alternatives = alternatives[:1]
+        lane_specific_frontiers = []
+        lane_carrier = (
+            next(iter(declared_result_carriers.values()))
+            if len(declared_result_carriers) == 1
+            else None
+        )
+        if len(alternatives) != 1 and lane_carrier is not None:
+            for lane in range(2):
+                lane_candidates = {}
+                for alternative in equation["component_role_alternatives"]:
+                    declared = set(alternative["component_roles"])
+                    lane_roles = [
+                        role
+                        for role in alternative["component_roles"]
+                        if role in lane_direct_visible
+                    ]
+                    if (
+                        len(lane_roles) < alternative["minimum_component_count"]
+                        or sum(role_kinds.get(role) == "ADDITIVE_CHILD" for role in lane_roles)
+                        < alternative["minimum_additive_child_count"]
+                        or not set(lane_roles) <= declared
+                    ):
+                        continue
+                    lane_components = [resolved[role] for role in lane_roles]
+                    if (
+                        lane_carrier not in base_by_role.values()
+                        and lane_components
+                        and lane_carrier["ordinal"]
+                        <= max(component["ordinal"] for component in lane_components)
+                    ):
+                        continue
+                    if (
+                        sum(
+                            component["cells"][lane]["coefficient"] for component in lane_components
+                        )
+                        != lane_carrier["cells"][lane]["coefficient"]
+                    ):
+                        continue
+                    key = (
+                        tuple(lane_roles),
+                        tuple(component["row_id"] for component in lane_components),
+                    )
+                    lane_candidates[key] = (lane_roles, lane_components)
+                if len(lane_candidates) != 1:
+                    lane_specific_frontiers = []
+                    break
+                lane_specific_frontiers.append(next(iter(lane_candidates.values())))
+        if len(lane_specific_frontiers) == 2:
+            selected_roles_by_lane = [roles for roles, _components in lane_specific_frontiers]
+            components_by_lane = [components for _roles, components in lane_specific_frontiers]
+            resolved[result_role] = {**lane_carrier, "owner_role": None, "role": result_role}
+            if lane_carrier["row_id"].startswith("r") and lane_carrier not in base_by_role.values():
+                used_anonymous.add(lane_carrier["row_id"])
+            equations_receipt.append(
+                {
+                    "component_roles": sorted(
+                        set().union(*(set(roles) for roles in selected_roles_by_lane))
+                    ),
+                    "component_roles_by_lane": selected_roles_by_lane,
+                    "component_row_ids_by_lane": [
+                        [component["row_id"] for component in components]
+                        for components in components_by_lane
+                    ],
+                    "lane_component_sums": _coefficients(lane_carrier),
+                    "mode": "VISIBLE_RESULT_EXACTLY_CORROBORATED_BY_LANE_SPECIFIC_FRONTIERS",
+                    "result_coefficients": _coefficients(lane_carrier),
+                    "result_role": result_role,
+                    "result_row_id": lane_carrier["row_id"],
+                }
+            )
+            continue
         if len(alternatives) != 1:
             result_is_visibly_declared = existing is not None or any(
                 record.get("owner_role") == result_role for record in anonymous
             )
-            if (
+            if not eligible:
+                reasons.append(f"NO_EXHAUSTIVE_DIRECT_FRONTIER:{result_role}")
+            elif (
                 not alternatives
                 and not result_is_visibly_declared
                 and eligible
@@ -782,6 +890,7 @@ def _solve(
                 )
             continue
         alternative, components, sums, carrier = alternatives[0]
+        selected_roles = [component["role"] for component in components]
         if carrier is None:
             result = {
                 "cells": [
@@ -845,6 +954,17 @@ def _solve(
     for result_role, roles in deferred_visible_only_frontiers:
         if any(component_use_counts[role] != 1 for role in roles):
             reasons.append(f"UNRESOLVED_VISIBLE_ONLY_FRONTIER:{result_role}")
+    lane_use_counts: dict[tuple[str, int], int] = defaultdict(int)
+    for receipt in equations_receipt:
+        roles_by_lane = receipt.get("component_roles_by_lane")
+        if roles_by_lane is None:
+            roles_by_lane = [receipt.get("component_roles", []) for _lane in range(2)]
+        for lane, roles in enumerate(roles_by_lane):
+            for role in roles:
+                lane_use_counts[(role, lane)] += 1
+    for (role, lane), use_count in sorted(lane_use_counts.items()):
+        if use_count > 1:
+            reasons.append(f"COMPONENT_ROLE_LANE_USE_COUNT_ABOVE_ONE:{role}:{lane}:{use_count}")
     if family_result_role not in resolved:
         reasons.append("FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED")
     return resolved, equations_receipt, reasons, used_anonymous
@@ -1022,6 +1142,69 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             continue
         else:
             unmatched_numeric.append(ordinal)
+    # A later presentation view may repeat one structural subtotal beneath an
+    # untyped, label-only group (for example a listed/unlisted disclosure).
+    # Keep the primary occurrence and bind the repeated subtotal as a
+    # corroborating result only when its own typed children exhaustively replay
+    # the same two-lane value.  Any partial, mismatched, or peer duplicate stays
+    # on the ordinary fail-closed occurrence-count path.
+    for role in sorted(structural_roles & set(records_by_role)):
+        occurrences = records_by_role[role]
+        if len(occurrences) != 2:
+            continue
+
+        def has_untyped_group_ancestor(record: dict[str, Any]) -> bool:
+            path_labels = {_normalized(value) for value in record["path"] if _normalized(value)}
+            for ancestor_ordinal, ancestor in enumerate(source_rows, start=1):
+                if ancestor_ordinal >= record["ordinal"] or ancestor.get("row_kind") != "GROUP":
+                    continue
+                ancestor_values = ancestor.get("values_exact")
+                ancestor_label = _normalized(ancestor.get("label_exact"))
+                if (
+                    type(ancestor_values) is list
+                    and len(ancestor_values) == len(columns or [])
+                    and all(ancestor_values[index] is None for index in money_indices)
+                    and ancestor_label in path_labels
+                    and not _row_roles(
+                        ancestor,
+                        topology=topology,
+                        aliases_by_role=compiled_specs["aliases_by_role"],
+                    )
+                ):
+                    return True
+            return False
+
+        primary = [record for record in occurrences if not has_untyped_group_ancestor(record)]
+        shadows = [record for record in occurrences if has_untyped_group_ancestor(record)]
+        if len(primary) != 1 or len(shadows) != 1:
+            continue
+        shadow = shadows[0]
+        shadow_label = _normalized(shadow["label_exact"])
+        descendants = [
+            record
+            for records in records_by_role.values()
+            for record in records
+            if record["role"] != role
+            and record.get("owner_role") == role
+            and record["ordinal"] > shadow["ordinal"]
+            and shadow_label
+            in {_normalized(value) for value in record["path"] if _normalized(value)}
+        ]
+        if (
+            _coefficients(primary[0]) != _coefficients(shadow)
+            or not descendants
+            or _sum(descendants, 2) != _coefficients(shadow)
+        ):
+            continue
+        records_by_role[role] = primary
+        anonymous.append(
+            {
+                **shadow,
+                "allowed_result_roles": {role},
+                "owner_role": role,
+                "presentation_shadow_for_role": role,
+            }
+        )
     for role, records in records_by_role.items():
         if len(records) > 1:
             reasons.append(f"ROLE_OCCURRENCE_COUNT_ABOVE_ONE:{role}:{len(records)}")

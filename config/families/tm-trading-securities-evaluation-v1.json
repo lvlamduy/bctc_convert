@@ -51,6 +51,19 @@
           },
           {
             "component_roles": [
+              "EQUITY_GOVERNMENT",
+              "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+              "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_OTHER",
+              "OTHER_TRADING_SECURITIES_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "lane_specific_only": true,
+            "minimum_component_count": 2
+          },
+          {
+            "component_roles": [
               "EQUITY_LISTED",
               "EQUITY_UNLISTED"
             ],
@@ -143,6 +156,16 @@
               "TRADING_SECURITIES_PROVISION_GROUP"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          },
+          {
+            "component_roles": [
+              "DEBT_SECURITIES_GROUP",
+              "EQUITY_SECURITIES_GROUP",
+              "TRADING_SECURITIES_PROVISION_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "lane_specific_only": true,
             "minimum_component_count": 2
           },
           {

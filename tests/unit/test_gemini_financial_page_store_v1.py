@@ -10,6 +10,10 @@ import pytest
 from test_gemini_financial_page_json_v1 import _page
 
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
+from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
+    merge_region_repair_v1,
+    region_repair_targets_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     _family_anchor_lookup_forms_v1,
@@ -21,14 +25,66 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
+    initialize_region_repair_extension_v1,
     load_page_json_versions_v1,
     lookup_cached_page_json_v1,
     query_family_anchor_regions_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
+    record_page_json_region_repair_v1,
     selected_page_extraction_receipts_v1,
     usage_summary_v1,
 )
+
+
+def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    base = _ingest(path)
+    page = _page()
+    targets = region_repair_targets_v1(page, target_ids=["s1:t1:r2"])
+    merged, receipt = merge_region_repair_v1(
+        page,
+        base_page_json_version_id=base["page_json_version_id"],
+        targets=targets,
+        repair={
+            "all_targets_transcribed": True,
+            "rows": [
+                {
+                    "label_exact": targets[0]["label_exact"],
+                    "target_id": "s1:t1:r2",
+                    "values_exact": ["21", "11"],
+                }
+            ],
+            "uncertainty_exact": [],
+        },
+    )
+    repaired = _ingest(
+        path,
+        prompt_sha256="f" * 64,
+        prompt_variant="region-repair",
+        page_json=merged,
+    )
+    initialize_region_repair_extension_v1(path)
+    lineage = record_page_json_region_repair_v1(
+        path,
+        merged_page_json_version_id=repaired["page_json_version_id"],
+        receipt=receipt,
+    )
+    assert lineage["base_page_json_version_id"] == base["page_json_version_id"]
+    assert (
+        record_page_json_region_repair_v1(
+            path,
+            merged_page_json_version_id=repaired["page_json_version_id"],
+            receipt=receipt,
+        )
+        == lineage
+    )
+    loaded = load_page_json_versions_v1(
+        path,
+        page_json_version_ids=[repaired["page_json_version_id"]],
+    )
+    assert loaded[0]["page_json"] == merged
 
 
 def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation() -> None:

@@ -249,6 +249,26 @@ CREATE INDEX idx_batch_event_state ON batch_event(state, batch_job_id, event_ord
 CREATE INDEX idx_batch_result_disposition ON batch_request_result(disposition, batch_job_id);
 """
 
+_REGION_REPAIR_EXTENSION_SCHEMA = """
+CREATE TABLE IF NOT EXISTS page_json_region_repair (
+    repair_id TEXT PRIMARY KEY,
+    base_page_json_version_id TEXT NOT NULL
+      REFERENCES page_json_version(page_json_version_id),
+    merged_page_json_version_id TEXT NOT NULL UNIQUE
+      REFERENCES page_json_version(page_json_version_id),
+    receipt_sha256 TEXT NOT NULL UNIQUE,
+    receipt_json BLOB NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS idx_region_repair_base
+  ON page_json_region_repair(base_page_json_version_id, repair_id);
+CREATE TABLE IF NOT EXISTS page_json_region_repair_observation (
+    repair_id TEXT NOT NULL REFERENCES page_json_region_repair(repair_id),
+    merged_page_json_version_id TEXT NOT NULL UNIQUE
+      REFERENCES page_json_version(page_json_version_id),
+    PRIMARY KEY(repair_id, merged_page_json_version_id)
+) STRICT;
+"""
+
 
 def initialize_gemini_financial_page_store_v1(path: Path) -> None:
     """Create a new store atomically; refuse replacement of any existing path."""
@@ -291,6 +311,113 @@ def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
         connection.close()
         raise _error("Gemini page store identity drifted")
     return connection
+
+
+def initialize_region_repair_extension_v1(path: Path) -> None:
+    """Enable immutable base-to-repaired-version lineage in one writable V9 store."""
+
+    with _connect(path) as connection:
+        connection.executescript(_REGION_REPAIR_EXTENSION_SCHEMA)
+        connection.commit()
+
+
+def record_page_json_region_repair_v1(
+    path: Path,
+    *,
+    merged_page_json_version_id: str,
+    receipt: Mapping[str, Any],
+) -> dict[str, str]:
+    """Persist and replay one exact region-only repair lineage receipt."""
+
+    required = {
+        "base_page_json_sha256",
+        "base_page_json_version_id",
+        "changes",
+        "format_version",
+        "merged_page_json_sha256",
+        "repair_id",
+        "repair_response_sha256",
+    }
+    if (
+        type(receipt) is not dict
+        or set(receipt) != required
+        or receipt.get("format_version") != "GEMINI_JSON_REGION_REPAIR_V1"
+        or type(merged_page_json_version_id) is not str
+        or not merged_page_json_version_id.startswith("gfpstorev1:json:")
+        or receipt.get("repair_id")
+        != "gjfrrv1:repair:"
+        + canonical_json_sha256_v1({key: receipt[key] for key in required - {"repair_id"}})
+    ):
+        raise _error("region repair lineage receipt is invalid")
+    receipt_bytes = canonical_json_bytes_v1(receipt) + b"\n"
+    receipt_sha = sha256(receipt_bytes).hexdigest()
+    base_id = receipt["base_page_json_version_id"]
+    with _connect(path) as connection:
+        connection.executescript(_REGION_REPAIR_EXTENSION_SCHEMA)
+        rows = connection.execute(
+            "SELECT page_json_version_id, page_id, canonical_json_bytes "
+            "FROM page_json_version WHERE page_json_version_id IN (?,?) "
+            "ORDER BY page_json_version_id",
+            (base_id, merged_page_json_version_id),
+        ).fetchall()
+        by_id = {row["page_json_version_id"]: row for row in rows}
+        if set(by_id) != {base_id, merged_page_json_version_id}:
+            raise _error("region repair base or merged page version is absent")
+        if by_id[base_id]["page_id"] != by_id[merged_page_json_version_id]["page_id"]:
+            raise _error("region repair versions do not belong to the same page")
+        try:
+            base_json = validate_financial_page_json_v1(
+                json.loads(by_id[base_id]["canonical_json_bytes"])
+            )
+            merged_json = validate_financial_page_json_v1(
+                json.loads(by_id[merged_page_json_version_id]["canonical_json_bytes"])
+            )
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("region repair page JSON does not replay") from exc
+        if receipt["base_page_json_sha256"] != canonical_json_sha256_v1(base_json) or receipt[
+            "merged_page_json_sha256"
+        ] != canonical_json_sha256_v1(merged_json):
+            raise _error("region repair page content hash does not replay")
+        existing = connection.execute(
+            "SELECT * FROM page_json_region_repair WHERE repair_id=?",
+            (receipt["repair_id"],),
+        ).fetchone()
+        expected = (
+            receipt["repair_id"],
+            base_id,
+            merged_page_json_version_id,
+            receipt_sha,
+            receipt_bytes,
+        )
+        if existing is not None:
+            if (
+                existing["repair_id"] != receipt["repair_id"]
+                or existing["base_page_json_version_id"] != base_id
+                or existing["receipt_sha256"] != receipt_sha
+                or existing["receipt_json"] != receipt_bytes
+            ):
+                raise _error("region repair ID is already bound to different content")
+        else:
+            connection.execute(
+                "INSERT INTO page_json_region_repair VALUES (?,?,?,?,?)",
+                expected,
+            )
+            existing = connection.execute(
+                "SELECT * FROM page_json_region_repair WHERE repair_id=?",
+                (receipt["repair_id"],),
+            ).fetchone()
+        connection.execute(
+            "INSERT OR IGNORE INTO page_json_region_repair_observation VALUES (?,?)",
+            (receipt["repair_id"], merged_page_json_version_id),
+        )
+        connection.commit()
+    return {
+        "base_page_json_version_id": base_id,
+        "merged_page_json_version_id": existing["merged_page_json_version_id"],
+        "observed_page_json_version_id": merged_page_json_version_id,
+        "repair_id": receipt["repair_id"],
+        "repair_receipt_sha256": receipt_sha,
+    }
 
 
 def extraction_cache_key_v1(
@@ -1184,7 +1311,14 @@ def document_page_extraction_frontier_v1(
             (source_sha256, source_logical_name, render_dpi),
         ).fetchall()
     grouped: dict[int, list[dict[str, str]]] = {}
-    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    allowed_variants = {
+        "balanced",
+        "compact",
+        "items",
+        "region-repair",
+        "scope",
+        "simple",
+    }
     for row in rows:
         if row["prompt_variant"] not in allowed_variants:
             raise _error("stored document extraction prompt variant is invalid")
@@ -1248,7 +1382,14 @@ def selected_page_extraction_receipts_v1(
         ).fetchall()
     if len(rows) != len(version_ids):
         raise _error("selected page extraction receipt is absent")
-    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    allowed_variants = {
+        "balanced",
+        "compact",
+        "items",
+        "region-repair",
+        "scope",
+        "simple",
+    }
     result = []
     for ordinal, row in enumerate(rows, start=1):
         if (
