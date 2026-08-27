@@ -10,10 +10,13 @@ from bctc_ai.evaluation.document_region_fragment_composer_v1 import (
     POLICY_FORMAT_VERSION,
     DocumentRegionFragmentComposerV1Error,
     build_normalized_document_region_fragment_candidate_v1,
+    compile_document_region_fragment_composer_policy_v1,
     compose_document_region_fragments_v1,
     document_region_fragment_adapter_identity_v1,
     inventory_column_lane_document_region_fragment_v1,
+    inventory_exact_axis_document_region_fragment_v1,
     project_column_lane_document_region_fragment_v1,
+    project_exact_axis_document_region_fragment_v1,
     validate_document_region_fragment_composition_replay_v1,
     validate_document_region_fragment_composition_store_replay_v1,
 )
@@ -109,6 +112,14 @@ def _policy(
         "hard_negative_aliases": ["Phân tích rủi ro tiền tệ"],
         "maximum_components": 8,
         "maximum_page_span": 4,
+        "metric_projection_rules": [
+            {
+                "header_aliases": [],
+                "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+                "rule": "EXACT_MONEY_COLUMN_UNQUALIFIED",
+                "source_value_kind": "MONEY",
+            }
+        ],
         "minimum_distinctive_child_roles": 2,
         "owner_aliases": ["Theo loại tiền tệ"],
         "period_axis_cardinality": 2,
@@ -260,10 +271,10 @@ def _basic_pages() -> tuple[list[dict], list[dict]]:
     return pages, [_request(ids[0], 1), _request(ids[1], 1)]
 
 
-GENERAL_ADAPTER_ID = "DOCUMENT_REGION_GENERAL_LAYOUT_PROJECTION"
-GENERAL_ADAPTER_VERSION = "DOCUMENT_REGION_GENERAL_LAYOUT_ADAPTER_V1"
-GENERAL_INVENTORY_ID = "DOCUMENT_REGION_GENERAL_LAYOUT_INVENTORY"
-GENERAL_INVENTORY_VERSION = "DOCUMENT_REGION_GENERAL_LAYOUT_INVENTORY_V1"
+GENERAL_ADAPTER_ID = "DOCUMENT_REGION_EXACT_AXIS_PROJECTION"
+GENERAL_ADAPTER_VERSION = "DOCUMENT_REGION_EXACT_AXIS_ADAPTER_V1"
+GENERAL_INVENTORY_ID = "DOCUMENT_REGION_EXACT_AXIS_INVENTORY"
+GENERAL_INVENTORY_VERSION = "DOCUMENT_REGION_EXACT_AXIS_INVENTORY_V1"
 
 
 def _coherent_period_swapping_column_adapter(**kwargs: object) -> dict:
@@ -650,18 +661,104 @@ def _transposed_table(*, title: str = "TRANSPOSED") -> dict:
     }
 
 
-def _compose_general(table: dict) -> dict:
+def _compose_general(table: dict, *, mutation: str | None = None) -> dict:
     pages = [_page([table], title="Theo loại tiền tệ")]
-    ids, _ = _records(pages)
-    return _compose(
-        pages,
-        [_general_request(ids[0], layout_kind=table["title_exact"])],
-        projection_adapter=_general_layout_projection_adapter,
-        projection_inventory_adapter=_general_layout_inventory_adapter,
+    ids, records = _records(pages)
+    compiled_specs = _compiled()
+    raw_policy = _policy(
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
         projection_adapter_id=GENERAL_ADAPTER_ID,
         projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
         projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
         projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+    )
+    compiled_policy = compile_document_region_fragment_composer_policy_v1(
+        raw_policy, compiled_specs=compiled_specs
+    )
+    request = inventory_exact_axis_document_region_fragment_v1(
+        page_record=records[0],
+        section_id="s1",
+        table_id="t1",
+        document_period_axis=_axis(),
+        policy=compiled_policy,
+        compiled_specs=compiled_specs,
+    )
+    assert request is not None
+    if mutation == "FORGED_VALUE":
+        next(
+            binding
+            for binding in request["source_bindings"]
+            if binding["binding_kind"] == "VALUE_CELL"
+        )["source_text"] = "999"
+    elif mutation == "MISSING_REF":
+        request["logical_rows"][0]["cells"][0]["value_source_binding_ids"] = ["b999"]
+    elif mutation == "DUPLICATE_BINDING":
+        request["source_bindings"].append(copy.deepcopy(request["source_bindings"][0]))
+    elif mutation == "UNUSED_BINDING":
+        request["source_bindings"].append(
+            {
+                "binding_id": f"b{len(request['source_bindings']) + 1}",
+                "binding_kind": "SECTION_TITLE",
+                "title_exact": "Theo loại tiền tệ",
+            }
+        )
+    elif mutation == "SWAPPED_PERIOD":
+        cells = request["logical_rows"][0]["cells"]
+        cells[0]["period_signature"], cells[1]["period_signature"] = (
+            cells[1]["period_signature"],
+            cells[0]["period_signature"],
+        )
+    elif mutation == "FORGED_ROLE":
+        request["logical_rows"][0]["label_match_modes"] = {
+            "FOREIGN_CURRENCY_AND_GOLD_LOANS": "EXACT_NORMALIZED"
+        }
+    elif mutation == "STRIPPED_CONTEXT":
+        row = request["logical_rows"][0]
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+        row["population_context_exact"] = []
+        row["population_source_binding_ids"] = []
+    elif mutation == "SWAPPED_LOGICAL_ORDER":
+        request["logical_rows"].reverse()
+        for ordinal, row in enumerate(request["logical_rows"], start=1):
+            row["logical_row_id"] = f"lr{ordinal}"
+    elif mutation == "FORGED_METRIC":
+        request["logical_rows"][0]["cells"][0]["metric_signature"] = "FORGED_METRIC"
+    elif mutation == "FORGED_ROW_KIND":
+        request["logical_rows"][0]["row_kind"] = "TOTAL"
+    elif mutation == "HIDDEN_VALUE_REF":
+        hidden_row = len(table["rows"])
+        binding_id = f"b{len(request['source_bindings']) + 1}"
+        request["source_bindings"].append(
+            {
+                "binding_id": binding_id,
+                "binding_kind": "VALUE_CELL",
+                "column_id": "c1",
+                "row_id": f"r{hidden_row}",
+                "source_text": table["rows"][hidden_row - 1]["values_exact"][0],
+            }
+        )
+        request["logical_rows"][0]["row_source_binding_ids"].append(binding_id)
+    elif mutation == "COORDINATE_REBIND":
+        cells = request["logical_rows"][0]["cells"]
+        source_binding_id = cells[1]["value_source_binding_ids"][0]
+        source_binding = next(
+            binding
+            for binding in request["source_bindings"]
+            if binding["binding_id"] == source_binding_id
+        )
+        cells[0]["value_source_binding_ids"] = [source_binding_id]
+        cells[0]["source_text"] = source_binding["source_text"]
+        cells[0]["money"] = _money_receipt(source_binding["source_text"])
+    return compose_document_region_fragments_v1(
+        selected_page_json_version_ids=ids,
+        page_records=records,
+        fragment_requests=[request],
+        document_period_axis=_axis(),
+        policy=raw_policy,
+        compiled_specs=compiled_specs,
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
     )
 
 
@@ -895,7 +992,7 @@ def test_general_adapter_preserves_exact_parent_population_context() -> None:
     stripped = copy.deepcopy(table)
     stripped["title_exact"] = "STACKED_STRIPPED_CONTEXT"
     with pytest.raises(DocumentRegionFragmentComposerV1Error, match="population context"):
-        _compose_general(stripped)
+        _compose_general(stripped, mutation="STRIPPED_CONTEXT")
 
 
 @pytest.mark.parametrize(
@@ -908,13 +1005,26 @@ def test_general_adapter_preserves_exact_parent_population_context() -> None:
         ("SWAPPED_PERIOD", "period is not source-authenticated"),
         ("FORGED_ROLE", "role projection is not source-authenticated"),
         ("SWAPPED_LOGICAL_ORDER", "logical source order"),
+        ("FORGED_METRIC", "metric is not source-authenticated"),
+        ("FORGED_ROW_KIND", "source row_kind drifted"),
+        ("COORDINATE_REBIND", "stacked coordinate relation"),
     ],
 )
 def test_general_adapter_rejects_forged_missing_duplicate_or_semantic_rebinding(
     suffix: str, match: str
 ) -> None:
     with pytest.raises(DocumentRegionFragmentComposerV1Error, match=match):
-        _compose_general(_stacked_table(title=f"STACKED_{suffix}"))
+        _compose_general(_stacked_table(), mutation=suffix)
+
+
+def test_general_adapter_rejects_hidden_numeric_value_cell_as_row_evidence() -> None:
+    table = _stacked_table()
+    table["rows"].append(_row("Không liên quan", ["999"]))
+    with pytest.raises(
+        DocumentRegionFragmentComposerV1Error,
+        match="VALUE_CELL binding is outside value_source_binding_ids",
+    ):
+        _compose_general(table, mutation="HIDDEN_VALUE_REF")
 
 
 def test_blank_structural_group_is_context_only_not_visible_zero_carrier() -> None:
@@ -1005,29 +1115,11 @@ def test_pure_replay_rejects_composition_receipt_or_source_tamper() -> None:
 
 
 def test_source_header_period_binding_rejects_a_coherent_period_swapping_adapter() -> None:
-    pages, _ = _basic_pages()
-    ids, _ = _records(pages)
-    adapter_id = "DOCUMENT_REGION_COHERENT_PERIOD_SWAP_ATTACK"
-    requests = [
-        _request(
-            ids[0],
-            1,
-            projection_adapter_id=adapter_id,
-            projection_adapter=_coherent_period_swapping_column_adapter,
-        ),
-        _request(
-            ids[1],
-            1,
-            projection_adapter_id=adapter_id,
-            projection_adapter=_coherent_period_swapping_column_adapter,
-        ),
-    ]
-    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="source axis binding"):
-        _compose(
-            pages,
-            requests,
-            projection_adapter=_coherent_period_swapping_column_adapter,
-            projection_adapter_id=adapter_id,
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="trusted registry"):
+        document_region_fragment_adapter_identity_v1(
+            _coherent_period_swapping_column_adapter,
+            adapter_id="DOCUMENT_REGION_COHERENT_PERIOD_SWAP_ATTACK",
+            adapter_format_version="DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
         )
 
 
@@ -1150,30 +1242,22 @@ def test_public_store_replay_reloads_canonical_selected_json_and_rejects_tamper(
             path, **kwargs, composition=tampered
         )
     malicious_kwargs = {**kwargs, "projection_adapter": _coherent_period_swapping_column_adapter}
-    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="implementation pin drifted"):
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="trusted registry"):
         validate_document_region_fragment_composition_store_replay_v1(
             path, **malicious_kwargs, composition=result
         )
     attack_id = "DOCUMENT_REGION_COHERENT_PERIOD_SWAP_ATTACK"
-    attack_requests = [
-        _request(
-            version_ids[0],
-            1,
-            projection_adapter_id=attack_id,
-            projection_adapter=_coherent_period_swapping_column_adapter,
-        ),
-        _request(
-            version_ids[1],
-            1,
-            projection_adapter_id=attack_id,
-            projection_adapter=_coherent_period_swapping_column_adapter,
-        ),
-    ]
-    attack_policy = _policy(
-        projection_adapter=_coherent_period_swapping_column_adapter,
-        projection_adapter_id=attack_id,
-    )
-    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="source axis binding"):
+    attack_policy = copy.deepcopy(kwargs["policy"])
+    forged_identity = copy.deepcopy(attack_policy["projection_adapter_identity"])
+    forged_identity["adapter_id"] = attack_id
+    forged_identity["implementation_ref_sha256"] = "9" * 64
+    attack_policy["projection_adapter_identity"] = forged_identity
+    attack_requests = copy.deepcopy(requests)
+    for request in attack_requests:
+        request["composer_policy_sha256"] = canonical_json_sha256_v1(attack_policy)
+        request["projection_adapter_id"] = attack_id
+        request["projection_adapter_implementation_ref_sha256"] = "9" * 64
+    with pytest.raises(DocumentRegionFragmentComposerV1Error, match="not registered"):
         validate_document_region_fragment_composition_store_replay_v1(
             path,
             selected_page_json_version_ids=version_ids,

@@ -62,36 +62,53 @@ def _error(message: str) -> DocumentRegionFragmentComposerV1Error:
 def document_region_fragment_adapter_identity_v1(
     adapter: Callable[..., Any], *, adapter_id: str, adapter_format_version: str
 ) -> dict[str, Any]:
-    """Return a reproducible source pin for one trusted adapter."""
+    """Return the sealed implementation/dependency pin for a registered adapter."""
 
+    registry = _trusted_adapter_registry_v1()
+    registered = registry.get(adapter_id)
     if (
         not inspect.isfunction(adapter)
+        or registered is None
+        or registered["callable"] is not adapter
+        or registered["adapter_format_version"] != adapter_format_version
         or type(adapter_id) is not str
         or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", adapter_id) is None
         or type(adapter_format_version) is not str
         or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", adapter_format_version) is None
         or adapter.__closure__ is not None
     ):
-        raise _error("document-region adapter implementation is not pinnable")
-    source_file = inspect.getsourcefile(adapter)
-    if source_file is None:
-        raise _error("document-region adapter source module is unavailable")
-    try:
-        callable_source = inspect.getsource(adapter).encode("utf-8")
-        module_source = Path(source_file).read_bytes()
-    except (OSError, TypeError) as exc:
-        raise _error("document-region adapter source module is unavailable") from exc
+        raise _error("document-region adapter is not in the trusted registry")
+    dependency_manifest = []
+    for dependency in registered["dependencies"]:
+        dependency = inspect.unwrap(dependency)
+        source_file = inspect.getsourcefile(dependency)
+        if source_file is None:
+            raise _error("document-region adapter dependency source is unavailable")
+        try:
+            callable_source = inspect.getsource(dependency).encode("utf-8")
+            module_source = Path(source_file).read_bytes()
+        except (OSError, TypeError) as exc:
+            raise _error("document-region adapter dependency source is unavailable") from exc
+        dependency_manifest.append(
+            {
+                "callable_module": dependency.__module__,
+                "callable_qualname": dependency.__qualname__,
+                "callable_source_sha256": hashlib.sha256(callable_source).hexdigest(),
+                "module_source_sha256": hashlib.sha256(module_source).hexdigest(),
+            }
+        )
     material = {
-        "callable_module": adapter.__module__,
-        "callable_qualname": adapter.__qualname__,
-        "callable_source_sha256": hashlib.sha256(callable_source).hexdigest(),
-        "module_source_sha256": hashlib.sha256(module_source).hexdigest(),
+        "adapter_format_version": adapter_format_version,
+        "adapter_id": adapter_id,
+        "adapter_kind": registered["adapter_kind"],
+        "dependency_manifest": dependency_manifest,
     }
     return {
         "adapter_format_version": adapter_format_version,
         "adapter_id": adapter_id,
-        "callable_module": material["callable_module"],
-        "callable_qualname": material["callable_qualname"],
+        "adapter_kind": registered["adapter_kind"],
+        "dependency_manifest": dependency_manifest,
+        "dependency_manifest_sha256": canonical_json_sha256_v1(dependency_manifest),
         "format_version": ADAPTER_IDENTITY_FORMAT_VERSION,
         "implementation_ref_sha256": canonical_json_sha256_v1(material),
     }
@@ -101,8 +118,9 @@ def _validate_adapter_identity(value: Any, *, field: str) -> dict[str, Any]:
     required = {
         "adapter_format_version",
         "adapter_id",
-        "callable_module",
-        "callable_qualname",
+        "adapter_kind",
+        "dependency_manifest",
+        "dependency_manifest_sha256",
         "format_version",
         "implementation_ref_sha256",
     }
@@ -114,14 +132,29 @@ def _validate_adapter_identity(value: Any, *, field: str) -> dict[str, Any]:
         or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", value["adapter_id"]) is None
         or type(value.get("adapter_format_version")) is not str
         or re.fullmatch(r"[A-Z][A-Z0-9_]{2,127}", value["adapter_format_version"]) is None
-        or type(value.get("callable_module")) is not str
-        or not value["callable_module"]
-        or type(value.get("callable_qualname")) is not str
-        or not value["callable_qualname"]
+        or value.get("adapter_kind") not in {"INVENTORY", "PROJECTION"}
+        or type(value.get("dependency_manifest")) is not list
+        or not value["dependency_manifest"]
+        or value.get("dependency_manifest_sha256")
+        != canonical_json_sha256_v1(value.get("dependency_manifest"))
         or type(value.get("implementation_ref_sha256")) is not str
         or _SHA256.fullmatch(value["implementation_ref_sha256"]) is None
     ):
         raise _error(f"document-region {field} adapter identity is invalid")
+    registry = _trusted_adapter_registry_v1()
+    registered = registry.get(value["adapter_id"])
+    if registered is None:
+        raise _error(f"document-region {field} adapter is not registered")
+    expected = document_region_fragment_adapter_identity_v1(
+        registered["callable"],
+        adapter_id=value["adapter_id"],
+        adapter_format_version=value["adapter_format_version"],
+    )
+    if expected != value:
+        raise _error(f"document-region {field} registered adapter pin drifted")
+    expected_kind = "INVENTORY" if field == "projection-inventory" else "PROJECTION"
+    if value["adapter_kind"] != expected_kind:
+        raise _error(f"document-region {field} adapter kind drifted")
     return canonical_clone_v1(value)
 
 
@@ -135,6 +168,57 @@ def _assert_callable_matches_adapter_identity(
     )
     if expected != identity:
         raise _error(f"document-region {field} adapter implementation pin drifted")
+
+
+def _trusted_adapter_registry_v1() -> dict[str, dict[str, Any]]:
+    """Return the code-owned, non-policy-extensible adapter allowlist."""
+
+    shared_dependencies = (
+        _money,
+        _normalized,
+        _period_signature,
+        _row_role_match_modes,
+        canonical_json_sha256_v1,
+    )
+    return {
+        "DOCUMENT_REGION_COLUMN_LANE_PROJECTION": {
+            "adapter_format_version": "DOCUMENT_REGION_COLUMN_LANE_ADAPTER_V1",
+            "adapter_kind": "PROJECTION",
+            "callable": project_column_lane_document_region_fragment_v1,
+            "dependencies": (
+                project_column_lane_document_region_fragment_v1,
+                *shared_dependencies,
+            ),
+        },
+        "DOCUMENT_REGION_COLUMN_LANE_INVENTORY": {
+            "adapter_format_version": "DOCUMENT_REGION_COLUMN_LANE_INVENTORY_V1",
+            "adapter_kind": "INVENTORY",
+            "callable": inventory_column_lane_document_region_fragment_v1,
+            "dependencies": (
+                inventory_column_lane_document_region_fragment_v1,
+                *shared_dependencies,
+            ),
+        },
+        "DOCUMENT_REGION_EXACT_AXIS_PROJECTION": {
+            "adapter_format_version": "DOCUMENT_REGION_EXACT_AXIS_ADAPTER_V1",
+            "adapter_kind": "PROJECTION",
+            "callable": project_exact_axis_document_region_fragment_v1,
+            "dependencies": (
+                project_exact_axis_document_region_fragment_v1,
+                build_normalized_document_region_fragment_candidate_v1,
+                *shared_dependencies,
+            ),
+        },
+        "DOCUMENT_REGION_EXACT_AXIS_INVENTORY": {
+            "adapter_format_version": "DOCUMENT_REGION_EXACT_AXIS_INVENTORY_V1",
+            "adapter_kind": "INVENTORY",
+            "callable": inventory_exact_axis_document_region_fragment_v1,
+            "dependencies": (
+                inventory_exact_axis_document_region_fragment_v1,
+                *shared_dependencies,
+            ),
+        },
+    }
 
 
 def _node_index(identifier: Any, prefix: str, limit: int) -> int:
@@ -204,6 +288,7 @@ def compile_document_region_fragment_composer_policy_v1(
         "hard_negative_aliases",
         "maximum_components",
         "maximum_page_span",
+        "metric_projection_rules",
         "minimum_distinctive_child_roles",
         "owner_aliases",
         "period_axis_cardinality",
@@ -275,6 +360,39 @@ def compile_document_region_fragment_composer_policy_v1(
     compiled["projection_inventory_adapter_identity"] = _validate_adapter_identity(
         policy["projection_inventory_adapter_identity"], field="projection-inventory"
     )
+    metric_rules = policy["metric_projection_rules"]
+    allowed_metric_rules = {
+        "CARRYING_AMOUNT": "EXACT_MONEY_COLUMN_HEADER_ALIAS",
+        "COST_AMOUNT": "EXACT_MONEY_COLUMN_HEADER_ALIAS",
+        "PERCENTAGE": "EXACT_PERCENT_COLUMN_HEADER_ALIAS",
+        "UNQUALIFIED_BALANCE_AMOUNT": "EXACT_MONEY_COLUMN_UNQUALIFIED",
+    }
+    if type(metric_rules) is not list or not metric_rules:
+        raise _error("document-region metric projection rules are invalid")
+    compiled_metric_rules = {}
+    for rule in metric_rules:
+        if (
+            type(rule) is not dict
+            or set(rule) != {"header_aliases", "metric_signature", "rule", "source_value_kind"}
+            or rule.get("metric_signature") not in allowed_metric_rules
+            or rule.get("rule") != allowed_metric_rules[rule["metric_signature"]]
+            or rule.get("source_value_kind")
+            != ("PERCENT" if rule["metric_signature"] == "PERCENTAGE" else "MONEY")
+            or rule["metric_signature"] in compiled_metric_rules
+        ):
+            raise _error("document-region metric projection rules are invalid")
+        aliases = _compile_aliases(
+            rule.get("header_aliases"),
+            field="metric-header",
+            allow_empty=rule["metric_signature"] == "UNQUALIFIED_BALANCE_AMOUNT",
+        )
+        if (rule["metric_signature"] == "UNQUALIFIED_BALANCE_AMOUNT") != (not aliases):
+            raise _error("document-region metric header aliases are invalid")
+        compiled_metric_rules[rule["metric_signature"]] = {
+            **canonical_clone_v1(rule),
+            "header_aliases": aliases,
+        }
+    compiled["metric_projection_rules"] = compiled_metric_rules
     compiled["compiled_specs_sha256"] = canonical_json_sha256_v1(
         {
             "evaluation": compiled_specs.get("evaluation"),
@@ -908,6 +1026,486 @@ def inventory_column_lane_document_region_fragment_v1(
     }
 
 
+_DECLARED_TOTAL_HEADER_ALIASES = {"cong", "tong", "tong cong", "total"}
+
+
+def _registered_request_trust_axis(policy: Mapping[str, Any]) -> dict[str, Any]:
+    projection = policy["projection_adapter_identity"]
+    inventory = policy["projection_inventory_adapter_identity"]
+    return {
+        "composer_policy_sha256": policy["policy_sha256"],
+        "projection_adapter_format_version": projection["adapter_format_version"],
+        "projection_adapter_id": projection["adapter_id"],
+        "projection_adapter_implementation_ref_sha256": projection["implementation_ref_sha256"],
+        "projection_inventory_adapter_format_version": inventory["adapter_format_version"],
+        "projection_inventory_adapter_id": inventory["adapter_id"],
+        "projection_inventory_adapter_implementation_ref_sha256": inventory[
+            "implementation_ref_sha256"
+        ],
+    }
+
+
+def _exact_axis_header_role_modes(
+    column: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[str | None, dict[str, str]]:
+    enabled = (
+        compiled_specs["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+    )
+    candidates = [
+        value for value in column.get("header_path_exact", []) if type(value) is str and value
+    ]
+    matched: dict[str, str] = {}
+    matched_label = None
+    for value in candidates:
+        try:
+            modes = _row_role_match_modes(
+                {
+                    "hierarchy_path_exact": [value],
+                    "label_exact": value,
+                    "row_kind": "ITEM",
+                },
+                topology=compiled_specs["topology"],
+                aliases_by_role=compiled_specs["aliases_by_role"],
+                enable_declared_equivalences=enabled,
+            )
+        except ValueError as exc:
+            raise _error("exact-axis column role header is ambiguous") from exc
+        if modes:
+            if matched and modes != matched:
+                raise _error("exact-axis column exposes multiple role headers")
+            matched = modes
+            matched_label = value
+    return matched_label, matched
+
+
+def _exact_axis_money(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    try:
+        return _money(value)
+    except ValueError as exc:
+        raise _error("exact-axis source money is invalid") from exc
+
+
+def _build_exact_axis_inventory_payload_v1(
+    *,
+    page_record: Mapping[str, Any],
+    section_id: str,
+    table_id: str,
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    _section, table, section_ordinal, table_ordinal = _source_nodes(
+        page_record["page_json"], section_id=section_id, table_id=table_id
+    )
+    columns = table.get("columns")
+    rows = table.get("rows")
+    if type(columns) is not list or type(rows) is not list:
+        return None
+    expected_periods = [tuple(value) for value in document_period_axis["period_signatures"]]
+    expected_set = set(expected_periods)
+    unit_signature = _normalized(table.get("unit_exact"))
+    if unit_signature not in policy["unit_aliases"]:
+        return None
+    if "UNQUALIFIED_BALANCE_AMOUNT" not in policy["metric_projection_rules"]:
+        return None
+    bindings: list[dict[str, Any]] = []
+
+    def add(kind: str, **fields: Any) -> str:
+        binding_id = f"b{len(bindings) + 1}"
+        bindings.append({"binding_id": binding_id, "binding_kind": kind, **fields})
+        return binding_id
+
+    unit_id = add("TABLE_UNIT", unit_exact=table.get("unit_exact"))
+    enabled = (
+        compiled_specs["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+    )
+    header_roles = []
+    for column_ordinal, column in enumerate(columns, start=1):
+        if type(column) is not dict or column.get("value_kind") != "MONEY":
+            continue
+        label, modes = _exact_axis_header_role_modes(column, compiled_specs=compiled_specs)
+        header = [
+            value for value in column.get("header_path_exact", []) if type(value) is str and value
+        ]
+        total_label = next(
+            (value for value in header if _normalized(value) in _DECLARED_TOTAL_HEADER_ALIASES),
+            None,
+        )
+        if modes or total_label is not None:
+            header_roles.append((column_ordinal, column, label or total_label, modes))
+    row_periods = []
+    for row_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            continue
+        signature = _period_signature(row.get("label_exact"))
+        if signature in expected_set:
+            row_periods.append((row_ordinal, row, signature))
+    logical_rows = []
+    layout_kind = None
+    if len(header_roles) >= 2 and {period for _, _, period in row_periods} == expected_set:
+        layout_kind = "TRANSPOSED_PERIOD_ROW_ROLE_COLUMN"
+        column_binding_ids = {
+            ordinal: add(
+                "COLUMN",
+                column_id=f"c{ordinal}",
+                header_path_exact=column.get("header_path_exact"),
+                value_kind=column.get("value_kind"),
+            )
+            for ordinal, column, _label, _modes in header_roles
+        }
+        period_binding_ids = {
+            period: add(
+                "ROW",
+                row_id=f"r{ordinal}",
+                label_exact=row.get("label_exact"),
+                hierarchy_path_exact=row.get("hierarchy_path_exact"),
+                row_kind=row.get("row_kind"),
+            )
+            for ordinal, row, period in row_periods
+        }
+        row_by_period = {period: (ordinal, row) for ordinal, row, period in row_periods}
+        for logical_ordinal, (column_ordinal, column, label, modes) in enumerate(
+            header_roles, start=1
+        ):
+            header = [
+                value
+                for value in column.get("header_path_exact", [])
+                if type(value) is str and value
+            ]
+            label_index = header.index(label)
+            population = header[:label_index]
+            cells = []
+            for cell_ordinal, period in enumerate(expected_periods, start=1):
+                row_ordinal, row = row_by_period[period]
+                values = row.get("values_exact")
+                if type(values) is not list or len(values) != len(columns):
+                    raise _error("exact-axis transposed value vector drifted")
+                raw = values[column_ordinal - 1]
+                value_id = add(
+                    "VALUE_CELL",
+                    row_id=f"r{row_ordinal}",
+                    column_id=f"c{column_ordinal}",
+                    source_text=raw,
+                )
+                cells.append(
+                    {
+                        "layout_relation": {
+                            "metric_axis_binding_id": column_binding_ids[column_ordinal],
+                            "period_axis_binding_id": period_binding_ids[period],
+                            "relation_kind": "TRANSPOSED_PERIOD_ROW_ROLE_COLUMN",
+                            "role_axis_binding_id": column_binding_ids[column_ordinal],
+                            "unit_axis_binding_id": unit_id,
+                        },
+                        "logical_cell_id": f"lc{logical_ordinal}_{cell_ordinal}",
+                        "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+                        "metric_source_binding_ids": [column_binding_ids[column_ordinal]],
+                        "money": _exact_axis_money(raw),
+                        "period_signature": list(period),
+                        "period_source_binding_ids": [period_binding_ids[period]],
+                        "source_text": raw,
+                        "unit_signature": unit_signature,
+                        "unit_source_binding_ids": [unit_id],
+                        "value_source_binding_ids": [value_id],
+                    }
+                )
+            logical_rows.append(
+                {
+                    "cells": cells,
+                    "hierarchy_path_exact": [*population, label],
+                    "label_exact": label,
+                    "label_match_modes": modes,
+                    "logical_row_id": f"lr{logical_ordinal}",
+                    "population_context_exact": population,
+                    "population_source_binding_ids": (
+                        [column_binding_ids[column_ordinal]] if population else []
+                    ),
+                    "role_source_binding_ids": (
+                        [column_binding_ids[column_ordinal]] if modes else []
+                    ),
+                    "row_kind": "ITEM" if modes else "TOTAL",
+                    "row_kind_derivation": (
+                        "DECLARED_ROLE_HEADER_ITEM" if modes else "DECLARED_TOTAL_HEADER"
+                    ),
+                    "row_source_binding_ids": [column_binding_ids[column_ordinal]],
+                    "source_position": [
+                        page_record["selected_frontier_ordinal"],
+                        section_ordinal,
+                        table_ordinal,
+                        min(ordinal for ordinal, _row, _period in row_periods),
+                        column_ordinal,
+                    ],
+                }
+            )
+    else:
+        money_columns = [
+            (ordinal, column)
+            for ordinal, column in enumerate(columns, start=1)
+            if type(column) is dict and column.get("value_kind") == "MONEY"
+        ]
+        period_headers = [
+            (ordinal, row, _period_signature(row.get("label_exact")))
+            for ordinal, row in enumerate(rows, start=1)
+            if type(row) is dict and _period_signature(row.get("label_exact")) in expected_set
+        ]
+        if len(money_columns) != 1 or {period for _, _, period in period_headers} != expected_set:
+            return None
+        layout_kind = "STACKED_PERIOD_ROW_BLOCK"
+        column_ordinal, column = money_columns[0]
+        metric_id = add(
+            "COLUMN",
+            column_id=f"c{column_ordinal}",
+            header_path_exact=column.get("header_path_exact"),
+            value_kind=column.get("value_kind"),
+        )
+        period_headers.sort()
+        period_rows = {}
+        role_rows_by_period: dict[tuple[str, str], dict[str, tuple[int, dict[str, Any]]]] = {}
+        totals_by_period = {}
+        period_binding_ids = {}
+        block_binding_ids = {}
+        row_binding_ids = {}
+        for block_index, (period_row_ordinal, period_row, period) in enumerate(period_headers):
+            boundary = (
+                period_headers[block_index + 1][0]
+                if block_index + 1 < len(period_headers)
+                else len(rows) + 1
+            )
+            block_ordinals = list(range(period_row_ordinal, boundary))
+            period_binding_ids[period] = add(
+                "ROW",
+                row_id=f"r{period_row_ordinal}",
+                label_exact=period_row.get("label_exact"),
+                hierarchy_path_exact=period_row.get("hierarchy_path_exact"),
+                row_kind=period_row.get("row_kind"),
+            )
+            block_binding_ids[period] = add(
+                "ROW_BLOCK", row_ids=[f"r{ordinal}" for ordinal in block_ordinals]
+            )
+            period_rows[period] = (period_row_ordinal, period_row)
+            roles_for_period = {}
+            total_for_period = None
+            for row_ordinal in block_ordinals[1:]:
+                row = rows[row_ordinal - 1]
+                if type(row) is not dict:
+                    continue
+                try:
+                    modes = _row_role_match_modes(
+                        row,
+                        topology=compiled_specs["topology"],
+                        aliases_by_role=compiled_specs["aliases_by_role"],
+                        enable_declared_equivalences=enabled,
+                    )
+                except ValueError as exc:
+                    raise _error("exact-axis stacked role row is ambiguous") from exc
+                is_total = (
+                    row.get("row_kind") == "TOTAL"
+                    or _normalized(row.get("label_exact")) in _DECLARED_TOTAL_HEADER_ALIASES
+                )
+                if not modes and not is_total:
+                    continue
+                row_id = add(
+                    "ROW",
+                    row_id=f"r{row_ordinal}",
+                    label_exact=row.get("label_exact"),
+                    hierarchy_path_exact=row.get("hierarchy_path_exact"),
+                    row_kind=row.get("row_kind"),
+                )
+                row_binding_ids[(period, row_ordinal)] = row_id
+                if modes:
+                    for role in modes:
+                        if role in roles_for_period:
+                            raise _error("exact-axis stacked role repeats inside a period block")
+                    roles_for_period.update(
+                        {role: (row_ordinal, row, modes, row_id) for role in modes}
+                    )
+                elif is_total:
+                    if total_for_period is not None:
+                        raise _error("exact-axis stacked total repeats inside a period block")
+                    total_for_period = (row_ordinal, row, row_id)
+            role_rows_by_period[period] = roles_for_period
+            totals_by_period[period] = total_for_period
+        common_roles = set.intersection(
+            *(set(role_rows_by_period[period]) for period in expected_periods)
+        )
+        first_period = expected_periods[0]
+        ordered_entries = [
+            (
+                role_rows_by_period[first_period][role][0],
+                role,
+                role_rows_by_period[first_period][role][1].get("label_exact"),
+                role_rows_by_period[first_period][role][2],
+                role_rows_by_period[first_period][role][1].get("row_kind"),
+            )
+            for role in common_roles
+        ]
+        if all(totals_by_period.get(period) is not None for period in expected_periods):
+            total = totals_by_period[first_period]
+            ordered_entries.append((total[0], None, total[1].get("label_exact"), {}, "TOTAL"))
+        ordered_entries.sort()
+        if len(common_roles) < 2 or not ordered_entries:
+            return None
+        for logical_ordinal, (_position, role, label, modes, row_kind) in enumerate(
+            ordered_entries, start=1
+        ):
+            source_rows_for_logical = []
+            source_row_ordinals_for_logical = []
+            cells = []
+            contexts = []
+            for cell_ordinal, period in enumerate(expected_periods, start=1):
+                if role is None:
+                    row_ordinal, row, row_id = totals_by_period[period]
+                else:
+                    row_ordinal, row, _modes, row_id = role_rows_by_period[period][role]
+                source_rows_for_logical.append(row_id)
+                source_row_ordinals_for_logical.append(row_ordinal)
+                path = [
+                    value
+                    for value in row.get("hierarchy_path_exact", [])
+                    if type(value) is str and value
+                ]
+                context = path[:-1] if path and _normalized(path[-1]) == _normalized(label) else []
+                contexts.append(context)
+                values = row.get("values_exact")
+                if type(values) is not list or len(values) != len(columns):
+                    raise _error("exact-axis stacked value vector drifted")
+                raw = values[column_ordinal - 1]
+                value_id = add(
+                    "VALUE_CELL",
+                    row_id=f"r{row_ordinal}",
+                    column_id=f"c{column_ordinal}",
+                    source_text=raw,
+                )
+                cells.append(
+                    {
+                        "layout_relation": {
+                            "metric_axis_binding_id": metric_id,
+                            "period_axis_binding_id": period_binding_ids[period],
+                            "period_block_binding_id": block_binding_ids[period],
+                            "relation_kind": "STACKED_PERIOD_ROW_BLOCK",
+                            "role_axis_binding_id": row_id,
+                            "unit_axis_binding_id": unit_id,
+                        },
+                        "logical_cell_id": f"lc{logical_ordinal}_{cell_ordinal}",
+                        "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+                        "metric_source_binding_ids": [metric_id],
+                        "money": _exact_axis_money(raw),
+                        "period_signature": list(period),
+                        "period_source_binding_ids": [
+                            period_binding_ids[period],
+                            block_binding_ids[period],
+                        ],
+                        "source_text": raw,
+                        "unit_signature": unit_signature,
+                        "unit_source_binding_ids": [unit_id],
+                        "value_source_binding_ids": [value_id],
+                    }
+                )
+            if any(context != contexts[0] for context in contexts):
+                raise _error("exact-axis stacked role population context drifted across periods")
+            logical_rows.append(
+                {
+                    "cells": cells,
+                    "hierarchy_path_exact": [*contexts[0], label],
+                    "label_exact": label,
+                    "label_match_modes": modes,
+                    "logical_row_id": f"lr{logical_ordinal}",
+                    "population_context_exact": contexts[0],
+                    "population_source_binding_ids": (
+                        source_rows_for_logical if contexts[0] else []
+                    ),
+                    "role_source_binding_ids": source_rows_for_logical if modes else [],
+                    "row_kind": row_kind,
+                    "row_kind_derivation": "EXACT_SOURCE_ROW_KIND",
+                    "row_source_binding_ids": source_rows_for_logical,
+                    "source_position": [
+                        page_record["selected_frontier_ordinal"],
+                        section_ordinal,
+                        table_ordinal,
+                        min(source_row_ordinals_for_logical),
+                        column_ordinal,
+                    ],
+                }
+            )
+    return {
+        **_registered_request_trust_axis(policy),
+        "adapter_projection_receipt": {
+            "layout_kind": layout_kind,
+            "metric_signature": "UNQUALIFIED_BALANCE_AMOUNT",
+            "period_signatures": [list(period) for period in expected_periods],
+            "rule": "EXACT_SOURCE_AXIS_LAYOUT_RELATION_V1",
+        },
+        "logical_rows": logical_rows,
+        "page_json_version_id": page_record["page_json_version_id"],
+        "projection_kind": "BALANCE_MAPPING",
+        "projection_reasons": [],
+        "section_id": section_id,
+        "source_bindings": bindings,
+        "table_id": table_id,
+    }
+
+
+def inventory_exact_axis_document_region_fragment_v1(
+    *,
+    page_record: Mapping[str, Any],
+    section_id: str,
+    table_id: str,
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Inventory one trusted stacked/transposed exact-axis projection."""
+
+    return _build_exact_axis_inventory_payload_v1(
+        page_record=page_record,
+        section_id=section_id,
+        table_id=table_id,
+        document_period_axis=document_period_axis,
+        policy=policy,
+        compiled_specs=compiled_specs,
+    )
+
+
+def project_exact_axis_document_region_fragment_v1(
+    *,
+    page_record: Mapping[str, Any],
+    request: Mapping[str, Any],
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build a candidate from the trusted inventory's exact-axis payload."""
+
+    del document_period_axis
+    required = {
+        *set(_registered_request_trust_axis(policy)),
+        "adapter_projection_receipt",
+        "logical_rows",
+        "page_json_version_id",
+        "projection_kind",
+        "projection_reasons",
+        "section_id",
+        "source_bindings",
+        "table_id",
+    }
+    if type(request) is not dict or set(request) != required:
+        raise _error("exact-axis fragment request contract drifted")
+    return build_normalized_document_region_fragment_candidate_v1(
+        page_record=page_record,
+        section_id=request["section_id"],
+        table_id=request["table_id"],
+        adapter_format_version=policy["projection_adapter_identity"]["adapter_format_version"],
+        projection_kind=request["projection_kind"],
+        source_bindings=request["source_bindings"],
+        logical_rows=request["logical_rows"],
+        adapter_projection_receipt=request["adapter_projection_receipt"],
+        reasons=request["projection_reasons"],
+        policy=policy,
+        compiled_specs=compiled_specs,
+    )
+
+
 def build_normalized_document_region_fragment_candidate_v1(
     *,
     page_record: Mapping[str, Any],
@@ -1175,7 +1773,8 @@ def _validate_row_column_lane_fragment_candidate(
     known_roles = {compiled_specs["topology"]["parent"]["role"]} | {
         child["role"] for child in compiled_specs["topology"]["children"]
     }
-    expected_periods = {tuple(value) for value in document_period_axis["period_signatures"]}
+    expected_period_axis = [tuple(value) for value in document_period_axis["period_signatures"]]
+    expected_periods = set(expected_period_axis)
     mapping_by_column_id = {
         record["column_id"]: record for record in candidate["mapping_column_axis"]
     }
@@ -1655,7 +2254,8 @@ def _validate_general_exact_source_binding_candidate(
     bindings = _exact_source_binding_records(
         candidate["source_bindings"], section=section, table=table
     )
-    expected_periods = {tuple(value) for value in document_period_axis["period_signatures"]}
+    expected_period_axis = [tuple(value) for value in document_period_axis["period_signatures"]]
+    expected_periods = set(expected_period_axis)
     known_roles = {compiled_specs["topology"]["parent"]["role"]} | {
         child["role"] for child in compiled_specs["topology"]["children"]
     }
@@ -1683,6 +2283,7 @@ def _validate_general_exact_source_binding_candidate(
             "population_source_binding_ids",
             "role_source_binding_ids",
             "row_kind",
+            "row_kind_derivation",
             "row_source_binding_ids",
             "source_position",
         }
@@ -1728,6 +2329,11 @@ def _validate_general_exact_source_binding_candidate(
             allow_empty=not bool(row["population_context_exact"]),
         )
         referenced.update([*row_refs, *role_refs, *population_refs])
+        if any(
+            bindings[binding_id]["binding_kind"] == "VALUE_CELL"
+            for binding_id in [*row_refs, *role_refs, *population_refs]
+        ):
+            raise _error("VALUE_CELL binding is outside value_source_binding_ids")
         row_strings = [
             value
             for binding_id in row_refs
@@ -1781,10 +2387,42 @@ def _validate_general_exact_source_binding_candidate(
                 matched_roles.setdefault(role, mode)
         if any(matched_roles.get(role) != mode for role, mode in row["label_match_modes"].items()):
             raise _error("normalized document-region role projection is not source-authenticated")
+        row_kind_derivation = row.get("row_kind_derivation")
+        if row_kind_derivation == "EXACT_SOURCE_ROW_KIND":
+            source_row_kinds = {
+                bindings[binding_id]["row_kind"]
+                for binding_id in row_refs
+                if bindings[binding_id]["binding_kind"] == "ROW"
+            }
+            if (
+                not source_row_kinds
+                or source_row_kinds != {row.get("row_kind")}
+                or any(bindings[binding_id]["binding_kind"] != "ROW" for binding_id in row_refs)
+            ):
+                raise _error("normalized document-region source row_kind drifted")
+        elif row_kind_derivation == "DECLARED_ROLE_HEADER_ITEM":
+            if (
+                row.get("row_kind") != "ITEM"
+                or not row["label_match_modes"]
+                or any(bindings[binding_id]["binding_kind"] != "COLUMN" for binding_id in row_refs)
+            ):
+                raise _error("normalized document-region role-header row_kind drifted")
+        elif row_kind_derivation == "DECLARED_TOTAL_HEADER":
+            if (
+                row.get("row_kind") != "TOTAL"
+                or row["label_match_modes"]
+                or _normalized(row.get("label_exact")) not in _DECLARED_TOTAL_HEADER_ALIASES
+                or any(bindings[binding_id]["binding_kind"] != "COLUMN" for binding_id in row_refs)
+            ):
+                raise _error("normalized document-region total-header row_kind drifted")
+        else:
+            raise _error("normalized document-region row_kind derivation is invalid")
         row_has_blank = False
         row_value_refs: list[str] = []
+        row_period_ordinals: list[int] = []
         for cell in row["cells"]:
             cell_fields = {
+                "layout_relation",
                 "logical_cell_id",
                 "metric_signature",
                 "metric_source_binding_ids",
@@ -1810,6 +2448,7 @@ def _validate_general_exact_source_binding_candidate(
                 or cell.get("unit_signature") not in policy["unit_aliases"]
             ):
                 raise _error("normalized document-region logical cell is invalid")
+            row_period_ordinals.append(expected_period_axis.index(tuple(cell["period_signature"])))
             logical_cell_ids.add(cell["logical_cell_id"])
             value_refs = _validate_binding_reference_ids(
                 cell["value_source_binding_ids"],
@@ -1839,6 +2478,11 @@ def _validate_general_exact_source_binding_candidate(
                 bindings[binding_id]["binding_kind"] != "VALUE_CELL" for binding_id in value_refs
             ):
                 raise _error("normalized document-region value source is not a cell")
+            if any(
+                bindings[binding_id]["binding_kind"] == "VALUE_CELL"
+                for binding_id in [*period_refs, *unit_refs, *metric_refs]
+            ):
+                raise _error("VALUE_CELL binding is outside value_source_binding_ids")
             for binding_id in value_refs:
                 value_binding_use[binding_id] += 1
                 row_value_refs.append(binding_id)
@@ -1861,19 +2505,121 @@ def _validate_general_exact_source_binding_candidate(
             ]
             if not any(_contains_alias(value, [cell["unit_signature"]]) for value in unit_strings):
                 raise _error("normalized document-region unit is not source-authenticated")
-            if not all(
-                bindings[binding_id]["binding_kind"]
-                in {
-                    "COLUMN",
-                    "ROW",
-                    "ROW_BLOCK",
-                    "SECTION_NARRATIVE",
-                    "SECTION_TITLE",
-                    "TABLE_TITLE",
-                }
+            metric_rule = policy["metric_projection_rules"].get(cell["metric_signature"])
+            metric_columns = [
+                bindings[binding_id]
                 for binding_id in metric_refs
+                if bindings[binding_id]["binding_kind"] == "COLUMN"
+            ]
+            if (
+                metric_rule is None
+                or not metric_columns
+                or any(
+                    column["value_kind"] != metric_rule["source_value_kind"]
+                    for column in metric_columns
+                )
             ):
-                raise _error("normalized document-region metric source is invalid")
+                raise _error("normalized document-region metric is not source-authenticated")
+            if metric_rule["rule"].endswith("HEADER_ALIAS") and not any(
+                _contains_alias(value, metric_rule["header_aliases"])
+                for column in metric_columns
+                for value in column["header_path_exact"]
+            ):
+                raise _error("normalized document-region metric header rule failed")
+            if metric_rule["rule"].endswith("UNQUALIFIED"):
+                other_aliases = [
+                    alias
+                    for signature, rule in policy["metric_projection_rules"].items()
+                    if signature != cell["metric_signature"]
+                    for alias in rule["header_aliases"]
+                ]
+                if any(
+                    _contains_alias(value, other_aliases)
+                    for column in metric_columns
+                    for value in column["header_path_exact"]
+                ):
+                    raise _error("normalized document-region unqualified metric is qualified")
+            relation = cell["layout_relation"]
+            if type(relation) is not dict:
+                raise _error("normalized document-region layout relation is invalid")
+            if relation.get("relation_kind") == "STACKED_PERIOD_ROW_BLOCK":
+                relation_fields = {
+                    "metric_axis_binding_id",
+                    "period_axis_binding_id",
+                    "period_block_binding_id",
+                    "relation_kind",
+                    "role_axis_binding_id",
+                    "unit_axis_binding_id",
+                }
+                if set(relation) != relation_fields:
+                    raise _error("normalized document-region stacked layout relation drifted")
+                period_axis = bindings.get(relation["period_axis_binding_id"])
+                period_block = bindings.get(relation["period_block_binding_id"])
+                role_axis = bindings.get(relation["role_axis_binding_id"])
+                metric_axis = bindings.get(relation["metric_axis_binding_id"])
+                unit_axis = bindings.get(relation["unit_axis_binding_id"])
+                if (
+                    period_axis is None
+                    or period_axis["binding_kind"] != "ROW"
+                    or period_block is None
+                    or period_block["binding_kind"] != "ROW_BLOCK"
+                    or role_axis is None
+                    or role_axis["binding_kind"] != "ROW"
+                    or metric_axis is None
+                    or metric_axis["binding_kind"] != "COLUMN"
+                    or unit_axis is None
+                    or unit_axis["binding_kind"] != "TABLE_UNIT"
+                    or relation["period_axis_binding_id"] not in period_refs
+                    or relation["period_block_binding_id"] not in period_refs
+                    or relation["role_axis_binding_id"] not in row_refs
+                    or relation["metric_axis_binding_id"] not in metric_refs
+                    or relation["unit_axis_binding_id"] not in unit_refs
+                    or period_axis["row_id"] not in period_block["row_ids"]
+                    or role_axis["row_id"] not in period_block["row_ids"]
+                    or any(
+                        bindings[binding_id]["row_id"] != role_axis["row_id"]
+                        or bindings[binding_id]["column_id"] != metric_axis["column_id"]
+                        for binding_id in value_refs
+                    )
+                ):
+                    raise _error("normalized document-region stacked coordinate relation failed")
+            elif relation.get("relation_kind") == "TRANSPOSED_PERIOD_ROW_ROLE_COLUMN":
+                relation_fields = {
+                    "metric_axis_binding_id",
+                    "period_axis_binding_id",
+                    "relation_kind",
+                    "role_axis_binding_id",
+                    "unit_axis_binding_id",
+                }
+                if set(relation) != relation_fields:
+                    raise _error("normalized document-region transposed layout relation drifted")
+                period_axis = bindings.get(relation["period_axis_binding_id"])
+                role_axis = bindings.get(relation["role_axis_binding_id"])
+                metric_axis = bindings.get(relation["metric_axis_binding_id"])
+                unit_axis = bindings.get(relation["unit_axis_binding_id"])
+                if (
+                    period_axis is None
+                    or period_axis["binding_kind"] != "ROW"
+                    or role_axis is None
+                    or role_axis["binding_kind"] != "COLUMN"
+                    or metric_axis is None
+                    or metric_axis["binding_kind"] != "COLUMN"
+                    or unit_axis is None
+                    or unit_axis["binding_kind"] != "TABLE_UNIT"
+                    or relation["period_axis_binding_id"] not in period_refs
+                    or relation["role_axis_binding_id"] not in row_refs
+                    or relation["metric_axis_binding_id"] not in metric_refs
+                    or relation["unit_axis_binding_id"] not in unit_refs
+                    or any(
+                        bindings[binding_id]["row_id"] != period_axis["row_id"]
+                        or bindings[binding_id]["column_id"] != role_axis["column_id"]
+                        or bindings[binding_id]["column_id"] != metric_axis["column_id"]
+                        for binding_id in value_refs
+                    )
+                ):
+                    raise _error("normalized document-region transposed coordinate relation failed")
+            else:
+                raise _error("normalized document-region layout relation kind is invalid")
             raw_values = [bindings[binding_id]["source_text"] for binding_id in value_refs]
             if all(value is None for value in raw_values):
                 row_has_blank = True
@@ -1898,6 +2644,8 @@ def _validate_general_exact_source_binding_candidate(
                     expected_text = None
                 if cell["money"] != expected_money or cell["source_text"] != expected_text:
                     raise _error("normalized document-region logical money drifted")
+        if row_period_ordinals != sorted(set(row_period_ordinals)):
+            raise _error("normalized document-region logical period order drifted")
         positional_bindings = [bindings[binding_id] for binding_id in [*row_refs, *row_value_refs]]
         row_ordinals = []
         column_ordinals = []
@@ -1929,7 +2677,14 @@ def _validate_general_exact_source_binding_candidate(
                 )
             if any(cell["money"] is not None for cell in row["cells"]):
                 expected_numeric_roles.update(row["label_match_modes"])
-    if any(count != 1 for count in value_binding_use.values()):
+    all_value_binding_ids = {
+        binding_id
+        for binding_id, binding in bindings.items()
+        if binding["binding_kind"] == "VALUE_CELL"
+    }
+    if set(value_binding_use) != all_value_binding_ids or any(
+        count != 1 for count in value_binding_use.values()
+    ):
         raise _error("normalized document-region source cell is projected more than once")
     if referenced != set(bindings):
         raise _error("normalized document-region source bindings are not exhaustive")
