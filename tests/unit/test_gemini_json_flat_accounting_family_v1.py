@@ -1095,6 +1095,12 @@ def test_loan_quality_family_derives_exact_five_grade_root_without_geometry() ->
         107,
     ]
 
+    punctuated = _loan_quality_page()
+    for group, row in enumerate(punctuated["sections"][0]["tables"][0]["rows"], start=1):
+        row["label_exact"] = f"Nhóm {group} - {row['label_exact']}"
+        row["hierarchy_path_exact"][-1] = row["label_exact"]
+    assert _evaluate_loan_quality(punctuated)["status"] == READY
+
 
 def test_loan_quality_nested_margin_is_source_bound_but_not_double_counted() -> None:
     result = _evaluate_loan_quality(_loan_quality_page(included_margin=True))

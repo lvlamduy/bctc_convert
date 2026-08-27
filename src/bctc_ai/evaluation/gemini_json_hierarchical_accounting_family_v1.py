@@ -79,6 +79,7 @@ def _error(message: str) -> ValueError:
 @lru_cache(maxsize=16384)
 def _normalized(value: Any) -> str:
     folded = normalize_vietnamese_anchor_v1(value) if type(value) is str else ""
+    folded = " ".join(re.sub(r"[^a-z0-9%]+", " ", folded).split())
     for expanded, acronym in (
         ("to chuc kinh te", "tckt"),
         ("to chuc tin dung", "tctd"),
@@ -114,6 +115,7 @@ def _without_leading_ordinal(folded: str) -> str:
 
 def _matches(value: Any, alias: str) -> bool:
     folded = _normalized(value)
+    alias = _normalized(alias)
     forms = {folded, _without_leading_ordinal(folded)}
     forms |= {
         form.removeprefix(prefix).strip()
@@ -152,7 +154,7 @@ def _matches(value: Any, alias: str) -> bool:
 
 def _matcher_matches(value: Any, matcher: dict[str, Any]) -> bool:
     mode = matcher.get("match_mode", "EXACT_NORMALIZED")
-    aliases = matcher["aliases"]
+    aliases = [_normalized(alias) for alias in matcher["aliases"]]
     if mode == "EXACT_NORMALIZED":
         return any(_matches(value, alias) for alias in aliases)
     folded = _normalized(value)
@@ -186,6 +188,7 @@ def _matcher_matches(value: Any, matcher: dict[str, Any]) -> bool:
 
 
 def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
+    alias = _normalized(alias)
     stripped = _without_leading_ordinal(folded)
     if _matches(stripped, alias):
         return True
@@ -1763,9 +1766,11 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         if type(value) is str and value
     )
     title_folded = _normalized(title)
-    if any(alias in title_folded for alias in topology["hard_negative_aliases"]):
+    if any(_normalized(alias) in title_folded for alias in topology["hard_negative_aliases"]):
         reasons.append("HARD_NEGATIVE_FAMILY_TITLE_PRESENT")
-    parent_in_title = any(alias in title_folded for alias in topology["parent"]["aliases"])
+    parent_in_title = any(
+        _normalized(alias) in title_folded for alias in topology["parent"]["aliases"]
+    )
     columns = table.get("columns")
     period_value_axis_receipt = None
     percent_indices: list[int] = []

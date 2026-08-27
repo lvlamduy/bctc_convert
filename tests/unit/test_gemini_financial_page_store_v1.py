@@ -128,6 +128,7 @@ def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation()
     assert "7. cho vay cac tctd khac bang vnd" in forms
     assert "chung khoan chinh phu, chinh quyen dia phuong" in forms
     assert "cho vay cac to chuc kinh te, ca nhan trong nuoc(*)" in forms
+    assert "cho vay cac to chuc - kinh te ca nhan trong nuoc" in forms
 
 
 @pytest.mark.parametrize("source", ["-", "–", "—", "_", " _ "])

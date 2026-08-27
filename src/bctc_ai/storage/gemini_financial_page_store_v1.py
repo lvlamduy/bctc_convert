@@ -1593,11 +1593,19 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
         for tokens in [alias.split()]
         for ordinal in range(1, len(tokens))
     }
+    internal_separator_forms = {
+        " ".join(tokens[:ordinal]) + f" {separator} " + " ".join(tokens[ordinal:])
+        for alias in folded
+        for tokens in [alias.split()]
+        for ordinal in range(1, len(tokens))
+        for separator in ("-", "–", "—", "•")
+    }
     punctuation_forms = (
         set(folded)
         | {alias + ":" for alias in folded}
         | {alias + " (*)" for alias in folded}
         | comma_forms
+        | internal_separator_forms
     )
     combined_comma_footnote_forms = {
         alias + separator + marker
