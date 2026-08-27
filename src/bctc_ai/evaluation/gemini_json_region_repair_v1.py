@@ -162,6 +162,8 @@ def build_table_axis_repair_prompt_v1(
         "Đọc trực tiếp ảnh nguyên trang báo cáo tài chính. Chỉ chép lại tiêu đề bảng và "
         "header cột của từng target_table; không chép lại các dòng số. Phải giữ đầy đủ mọi "
         "ngày/kỳ, đơn vị và nhãn cột nhìn thấy, đúng thứ tự từ header ngoài đến header trong. "
+        "Một tiêu đề tiểu mục có đánh số (ví dụ '10.4 Phân tích ...') nằm ngay phía trên "
+        "header cột chính là table_title_exact; không trả null chỉ vì đó là tiêu đề tiểu mục. "
         "section_title_exact, header cũ và row_labels_context_exact chỉ giúp định vị đúng bảng, "
         "không phải đáp án. Không suy ra ngày từ tên file hay phép tính. Mỗi target_id xuất hiện "
         "đúng một lần và số cột phải giữ nguyên. Nếu một tiêu đề bảng thực sự không có thì trả "
