@@ -712,6 +712,17 @@ def ingest_gemini_accounting_family_sweep_v1(
                     )
                 for mapping_ordinal, mapping in enumerate(trial["mappings"], start=1):
                     mapping_bytes = canonical_json_bytes_v1(mapping)
+                    mapping_role = mapping.get("role", mapping.get("movement_role"))
+                    if (
+                        type(mapping_role) is not str
+                        or not mapping_role
+                        or (
+                            "role" in mapping
+                            and "movement_role" in mapping
+                            and mapping["role"] != mapping["movement_role"]
+                        )
+                    ):
+                        raise _error("family mapping has no typed role identity")
                     connection.execute(
                         "INSERT INTO family_mapping VALUES (?,?,?,?,?,?,?,?)",
                         (
@@ -719,7 +730,7 @@ def ingest_gemini_accounting_family_sweep_v1(
                             ordinal,
                             mapping_ordinal,
                             mapping["report_norm_id"],
-                            mapping["role"],
+                            mapping_role,
                             mapping["row_id"],
                             sha256(mapping_bytes).hexdigest(),
                             mapping_bytes,

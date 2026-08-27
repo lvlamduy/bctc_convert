@@ -24,6 +24,9 @@ from bctc_ai.source_structure.contracts_v1 import (
 FORMAT_VERSION = "GEMINI_JSON_FLAT_ACCOUNTING_FAMILY_SWEEP_V1"
 HIERARCHICAL_FORMAT_VERSION = "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V2"
 INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_INDEXED_TITLE_AXIS_QUERY_EVIDENCE_V1"
+ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
+    "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_EVIDENCE_V1"
+)
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
@@ -58,6 +61,18 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
+    if (
+        type(evaluation_spec) is dict
+        and evaluation_spec.get("format_version")
+        == "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+            compile_gemini_json_rollforward_family_specs_v1,
+        )
+
+        return compile_gemini_json_rollforward_family_specs_v1(
+            topology_spec, evaluation_spec, schema_binding_spec
+        )
     if (
         type(evaluation_spec) is dict
         and evaluation_spec.get("format_version")
@@ -1404,6 +1419,434 @@ def _validate_indexed_query_evidence_v1(
     return canonical_clone_v1(value)
 
 
+def _validate_indexed_rollforward_query_evidence_v1(
+    value: Any, *, compiled_specs: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate the persisted projection envelope without reopening SQLite.
+
+    The runner performs the stronger public database replay first.  This replay
+    binds every accepted locator back to one typed disposition and recomputes
+    all source-axis hashes and aggregate counts so persisted bytes cannot drift
+    coherently after ingestion.
+    """
+
+    if (
+        compiled_specs.get("engine_format_version")
+        != "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
+        or type(value) is not dict
+        or set(value)
+        != {"accepted_regions", "candidate_dispositions", "format_version", "query_receipt"}
+        or value.get("format_version") != ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION
+        or type(value.get("accepted_regions")) is not list
+        or type(value.get("candidate_dispositions")) is not list
+        or type(value.get("query_receipt")) is not dict
+    ):
+        raise _error("Gemini JSON indexed roll-forward query evidence is invalid")
+    regions = value["accepted_regions"]
+    dispositions = value["candidate_dispositions"]
+    receipt = value["query_receipt"]
+    locator_fields = {
+        "document_id",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "source_logical_name",
+        "source_sha256",
+        "table_id",
+    }
+    disposition_fields = locator_fields | {
+        "candidate_evidence_sha256",
+        "classification",
+        "column_axis_sha256",
+        "context_axis_sha256",
+        "disposition",
+        "document_ordinal",
+        "query_policy_sha256",
+        "reason_codes",
+        "row_axis_sha256",
+        "selected_page_ordinal",
+    }
+    region_fields = locator_fields | {
+        "candidate_evidence_sha256",
+        "column_axis_sha256",
+        "context_axis_sha256",
+        "document_ordinal",
+        "layout_kind",
+        "orientation",
+        "row_axis_sha256",
+        "selected_page_ordinal",
+    }
+    disposition_kinds = {
+        "ACCEPTED_COMPONENT",
+        "CORE_MOVEMENT_TOPOLOGY_INCOMPLETE",
+        "DOCUMENT_CLUSTER_AMBIGUOUS",
+        "LANE_OR_PERIOD_AXIS_UNCLASSIFIED",
+        "LOCAL_OWNER_NOT_VISIBLE",
+        "LOCAL_TABLE_CLASSIFICATION_ERROR",
+        "RESET_OR_HARD_NEGATIVE_VETO",
+    }
+    classification_fields = {
+        "column_lane_roles",
+        "continuation_evidence",
+        "context_lane_assignment_source_kind",
+        "context_lane_candidates_in_source_order",
+        "context_lane_evidence",
+        "context_lane_role",
+        "context_reset_visible",
+        "local_owner_visible",
+        "movement_roles_in_source_order",
+        "orientation",
+        "reasons",
+        "structural_hard_negative_visible",
+    }
+    lane_roles = {item["role"] for item in compiled_specs["layout"]["lane_roles"]}
+    movement_roles = {item["role"] for item in compiled_specs["layout"]["movement_roles"]}
+    query_policy = {
+        "aliases_by_role": compiled_specs["aliases_by_role"],
+        "engine_format_version": compiled_specs["engine_format_version"],
+        "family_id": compiled_specs["topology"]["family_id"],
+        "layout": compiled_specs["layout"],
+    }
+    query_policy_sha256 = canonical_json_sha256_v1(query_policy)
+
+    def valid_locator(item: dict[str, Any]) -> bool:
+        return (
+            type(item.get("document_id")) is str
+            and re.fullmatch(r"gfpstorev1:document:[0-9a-f]{64}", item["document_id"]) is not None
+            and type(item.get("page_json_version_id")) is str
+            and re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", item["page_json_version_id"])
+            is not None
+            and type(item.get("physical_page")) is int
+            and item["physical_page"] > 0
+            and type(item.get("section_id")) is str
+            and re.fullmatch(r"s[1-9][0-9]*", item["section_id"]) is not None
+            and type(item.get("table_id")) is str
+            and re.fullmatch(r"t[1-9][0-9]*", item["table_id"]) is not None
+            and type(item.get("source_logical_name")) is str
+            and bool(item["source_logical_name"])
+            and type(item.get("source_sha256")) is str
+            and re.fullmatch(r"[0-9a-f]{64}", item["source_sha256"]) is not None
+        )
+
+    disposition_by_evidence: dict[str, dict[str, Any]] = {}
+    for disposition in dispositions:
+        classification = disposition.get("classification")
+        if (
+            type(disposition) is not dict
+            or set(disposition) != disposition_fields
+            or not valid_locator(disposition)
+            or disposition.get("disposition") not in disposition_kinds
+            or type(disposition.get("document_ordinal")) is not int
+            or disposition["document_ordinal"] <= 0
+            or type(disposition.get("selected_page_ordinal")) is not int
+            or disposition["selected_page_ordinal"] <= 0
+            or type(disposition.get("reason_codes")) is not list
+            or any(type(reason) is not str or not reason for reason in disposition["reason_codes"])
+            or any(
+                type(disposition.get(field)) is not str
+                or re.fullmatch(r"[0-9a-f]{64}", disposition[field]) is None
+                for field in (
+                    "candidate_evidence_sha256",
+                    "column_axis_sha256",
+                    "context_axis_sha256",
+                    "query_policy_sha256",
+                    "row_axis_sha256",
+                )
+            )
+            or disposition["query_policy_sha256"] != query_policy_sha256
+            or (
+                classification is None
+                and disposition["disposition"] != "LOCAL_TABLE_CLASSIFICATION_ERROR"
+            )
+            or (
+                classification is not None
+                and (
+                    type(classification) is not dict
+                    or set(classification) != classification_fields
+                    or type(classification.get("column_lane_roles")) is not list
+                    or any(
+                        role is not None and role not in lane_roles
+                        for role in classification["column_lane_roles"]
+                    )
+                    or type(classification.get("continuation_evidence")) is not list
+                    or any(
+                        type(item) is not dict for item in classification["continuation_evidence"]
+                    )
+                    or classification.get("context_lane_assignment_source_kind")
+                    not in {None, "SECTION_TITLE", "SINGLE_NARRATIVE", "TABLE_TITLE"}
+                    or type(classification.get("context_lane_candidates_in_source_order"))
+                    is not list
+                    or any(
+                        role not in lane_roles
+                        for role in classification["context_lane_candidates_in_source_order"]
+                    )
+                    or type(classification.get("context_lane_evidence")) is not list
+                    or any(
+                        type(item) is not dict for item in classification["context_lane_evidence"]
+                    )
+                    or classification.get("context_lane_role") not in {None, *lane_roles}
+                    or type(classification.get("context_reset_visible")) is not bool
+                    or type(classification.get("local_owner_visible")) is not bool
+                    or type(classification.get("movement_roles_in_source_order")) is not list
+                    or any(
+                        role not in movement_roles
+                        for role in classification["movement_roles_in_source_order"]
+                    )
+                    or classification.get("orientation")
+                    not in {None, "LANE_COLUMNS", "PERIOD_COLUMNS"}
+                    or type(classification.get("reasons")) is not list
+                    or any(type(reason) is not str for reason in classification["reasons"])
+                    or type(classification.get("structural_hard_negative_visible")) is not bool
+                )
+            )
+        ):
+            raise _error("Gemini JSON indexed roll-forward disposition is invalid")
+        if classification is None:
+            expected_disposition = "LOCAL_TABLE_CLASSIFICATION_ERROR"
+            expected_reasons = ["ROLLFORWARD_LOCAL_TABLE_CLASSIFICATION_ERROR"]
+        else:
+            expected_reasons = list(classification["reasons"])
+            if (
+                classification["context_reset_visible"]
+                or classification["structural_hard_negative_visible"]
+            ):
+                expected_disposition = "RESET_OR_HARD_NEGATIVE_VETO"
+            elif expected_reasons:
+                expected_disposition = (
+                    "CORE_MOVEMENT_TOPOLOGY_INCOMPLETE"
+                    if "ROLLFORWARD_CORE_MOVEMENT_ROLES_INCOMPLETE" in expected_reasons
+                    else "LANE_OR_PERIOD_AXIS_UNCLASSIFIED"
+                )
+            elif not classification["local_owner_visible"]:
+                expected_disposition = "LOCAL_OWNER_NOT_VISIBLE"
+            else:
+                expected_disposition = "ACCEPTED_COMPONENT"
+        cluster_ambiguous = disposition["disposition"] == "DOCUMENT_CLUSTER_AMBIGUOUS"
+        if (
+            cluster_ambiguous
+            and (
+                expected_disposition != "ACCEPTED_COMPONENT"
+                or disposition["reason_codes"]
+                != [*expected_reasons, "ROLLFORWARD_DOCUMENT_CLUSTER_AMBIGUOUS"]
+            )
+        ) or (
+            not cluster_ambiguous
+            and (
+                disposition["disposition"] != expected_disposition
+                or disposition["reason_codes"] != expected_reasons
+            )
+        ):
+            raise _error("Gemini JSON indexed roll-forward disposition semantics drifted")
+        locator = {field: disposition[field] for field in locator_fields}
+        material = {
+            "column_axis_sha256": disposition["column_axis_sha256"],
+            "context_axis_sha256": disposition["context_axis_sha256"],
+            "document_ordinal": disposition["document_ordinal"],
+            "locator": locator,
+            "query_policy_sha256": query_policy_sha256,
+            "row_axis_sha256": disposition["row_axis_sha256"],
+            "selected_page_ordinal": disposition["selected_page_ordinal"],
+        }
+        evidence_sha256 = canonical_json_sha256_v1(material)
+        if (
+            evidence_sha256 != disposition["candidate_evidence_sha256"]
+            or evidence_sha256 in disposition_by_evidence
+        ):
+            raise _error("Gemini JSON indexed roll-forward disposition axis drifted")
+        disposition_by_evidence[evidence_sha256] = disposition
+
+    for region in regions:
+        if (
+            type(region) is not dict
+            or set(region) != region_fields
+            or not valid_locator(region)
+            or region.get("layout_kind")
+            not in {
+                "LANE_TABLES_PERIOD_COLUMNS",
+                "PERIOD_TABLES_LANE_COLUMNS",
+                "STACKED_PERIOD_BLOCKS",
+            }
+            or region.get("orientation") not in {"LANE_COLUMNS", "PERIOD_COLUMNS"}
+            or type(region.get("document_ordinal")) is not int
+            or type(region.get("selected_page_ordinal")) is not int
+            or any(
+                type(region.get(field)) is not str
+                or re.fullmatch(r"[0-9a-f]{64}", region[field]) is None
+                for field in (
+                    "candidate_evidence_sha256",
+                    "column_axis_sha256",
+                    "context_axis_sha256",
+                    "row_axis_sha256",
+                )
+            )
+        ):
+            raise _error("Gemini JSON indexed roll-forward accepted region is invalid")
+        disposition = disposition_by_evidence.get(region["candidate_evidence_sha256"])
+        if (
+            disposition is None
+            or disposition["disposition"] != "ACCEPTED_COMPONENT"
+            or any(region[field] != disposition[field] for field in locator_fields)
+            or any(
+                region[field] != disposition[field]
+                for field in (
+                    "column_axis_sha256",
+                    "context_axis_sha256",
+                    "document_ordinal",
+                    "row_axis_sha256",
+                    "selected_page_ordinal",
+                )
+            )
+            or region["orientation"] != disposition["classification"].get("orientation")
+        ):
+            raise _error("Gemini JSON indexed roll-forward accepted region is unbound")
+
+    accepted_disposition_evidence = {
+        item["candidate_evidence_sha256"]
+        for item in dispositions
+        if item["disposition"] == "ACCEPTED_COMPONENT"
+    }
+    region_evidence = {item["candidate_evidence_sha256"] for item in regions}
+    if len(region_evidence) != len(regions) or region_evidence != accepted_disposition_evidence:
+        raise _error("Gemini JSON indexed roll-forward accepted component frontier drifted")
+
+    ordered_regions = sorted(
+        regions,
+        key=lambda item: (
+            item["document_ordinal"],
+            item["physical_page"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+            item["page_json_version_id"],
+        ),
+    )
+    ordered_dispositions = sorted(
+        dispositions,
+        key=lambda item: (
+            item["selected_page_ordinal"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+            item["page_json_version_id"],
+        ),
+    )
+    disposition_counts = {
+        kind: sum(item["disposition"] == kind for item in dispositions)
+        for kind in sorted({item["disposition"] for item in dispositions})
+    }
+    layout_counts = {
+        "LANE_TABLES_PERIOD_COLUMNS": 0,
+        "PERIOD_TABLES_LANE_COLUMNS": 0,
+        "STACKED_PERIOD_BLOCKS": 0,
+    }
+    same_counts = {"LANE_TABLES_PERIOD_COLUMNS": 0, "PERIOD_TABLES_LANE_COLUMNS": 0}
+    adjacent_counts = {"LANE_TABLES_PERIOD_COLUMNS": 0, "PERIOD_TABLES_LANE_COLUMNS": 0}
+    by_source: dict[str, list[dict[str, Any]]] = {}
+    for region in regions:
+        by_source.setdefault(region["source_logical_name"], []).append(region)
+    for source_regions in by_source.values():
+        kinds = {region["layout_kind"] for region in source_regions}
+        orientations = {region["orientation"] for region in source_regions}
+        source_identities = {
+            (region["document_id"], region["source_sha256"], region["document_ordinal"])
+            for region in source_regions
+        }
+        pages = {region["physical_page"] for region in source_regions}
+        if len(kinds) != 1 or len(source_identities) != 1 or max(pages) - min(pages) > 1:
+            raise _error("Gemini JSON indexed roll-forward document layout is ambiguous")
+        kind = next(iter(kinds))
+        if (
+            (
+                kind == "STACKED_PERIOD_BLOCKS"
+                and (len(source_regions) != 1 or orientations != {"LANE_COLUMNS"})
+            )
+            or (
+                kind == "PERIOD_TABLES_LANE_COLUMNS"
+                and (len(source_regions) != 2 or orientations != {"LANE_COLUMNS"})
+            )
+            or (
+                kind == "LANE_TABLES_PERIOD_COLUMNS"
+                and (len(source_regions) != 2 or orientations != {"PERIOD_COLUMNS"})
+            )
+        ):
+            raise _error("Gemini JSON indexed roll-forward layout semantics drifted")
+        layout_counts[kind] += 1
+        if len(source_regions) == 2:
+            (same_counts if len(pages) == 1 else adjacent_counts)[kind] += 1
+
+    receipt_fields = {
+        "accepted_layout_adjacent_page_counts",
+        "accepted_layout_counts",
+        "accepted_layout_same_page_counts",
+        "candidate_disposition_axis_sha256",
+        "candidate_disposition_count",
+        "candidate_disposition_counts",
+        "candidate_table_count",
+        "column_record_count",
+        "context_record_count",
+        "endpoint_prefixes",
+        "endpoint_seed_row_count",
+        "exact_region_axis_sha256",
+        "exact_region_count",
+        "family_id",
+        "format_version",
+        "query_policy_sha256",
+        "row_record_count",
+        "selected_page_json_frontier_sha256",
+        "selected_page_json_version_count",
+        "selected_source_axis_sha256",
+        "target_document_count",
+        "target_page_count",
+    }
+    if (
+        set(receipt) != receipt_fields
+        or ordered_regions != regions
+        or ordered_dispositions != dispositions
+        or receipt.get("format_version") != "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_RECEIPT_V1"
+        or receipt.get("family_id") != compiled_specs["topology"]["family_id"]
+        or receipt.get("query_policy_sha256") != query_policy_sha256
+        or receipt.get("candidate_disposition_axis_sha256")
+        != canonical_json_sha256_v1(dispositions)
+        or receipt.get("candidate_disposition_count") != len(dispositions)
+        or receipt.get("candidate_disposition_counts") != disposition_counts
+        or receipt.get("candidate_table_count") != len(dispositions)
+        or receipt.get("context_record_count") != len(dispositions)
+        or receipt.get("exact_region_axis_sha256") != canonical_json_sha256_v1(regions)
+        or receipt.get("exact_region_count") != len(regions)
+        or receipt.get("target_document_count") != len(by_source)
+        or receipt.get("target_page_count")
+        != len({region["page_json_version_id"] for region in regions})
+        or receipt.get("accepted_layout_counts") != layout_counts
+        or receipt.get("accepted_layout_same_page_counts") != same_counts
+        or receipt.get("accepted_layout_adjacent_page_counts") != adjacent_counts
+        or type(receipt.get("selected_page_json_version_count")) is not int
+        or receipt["selected_page_json_version_count"] <= 0
+        or any(
+            item["selected_page_ordinal"] > receipt["selected_page_json_version_count"]
+            for item in dispositions
+        )
+        or any(
+            type(receipt.get(field)) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", receipt[field]) is None
+            for field in (
+                "selected_page_json_frontier_sha256",
+                "selected_source_axis_sha256",
+            )
+        )
+        or type(receipt.get("endpoint_prefixes")) is not list
+        or receipt["endpoint_prefixes"] != sorted(set(receipt["endpoint_prefixes"]))
+        or any(
+            type(receipt.get(field)) is not int or receipt[field] < 0
+            for field in (
+                "column_record_count",
+                "endpoint_seed_row_count",
+                "row_record_count",
+            )
+        )
+        or receipt["endpoint_seed_row_count"] < len(dispositions)
+    ):
+        raise _error("Gemini JSON indexed roll-forward query evidence does not replay")
+    return canonical_clone_v1(value)
+
+
 def build_gemini_json_flat_family_sweep_v1(
     *,
     corpus_manifest_index_id: str,
@@ -1424,19 +1867,26 @@ def build_gemini_json_flat_family_sweep_v1(
     ):
         raise _error("Gemini JSON family sweep inputs are invalid")
     compiled = _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
-    indexed_query_evidence_required = (
-        compiled["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
-    )
+    indexed_query_evidence_required = compiled["evaluation"].get("format_version") in {
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8",
+        "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
+    }
     if indexed_query_evidence_required != (indexed_query_evidence is not None):
-        raise _error("Gemini JSON V8 sweep and indexed query evidence presence do not agree")
-    checked_indexed_query_evidence = (
-        _validate_indexed_query_evidence_v1(
-            indexed_query_evidence,
-            compiled_specs=compiled,
+        raise _error("Gemini JSON sweep and indexed query evidence presence do not agree")
+    checked_indexed_query_evidence = None
+    if indexed_query_evidence is not None:
+        checked_indexed_query_evidence = (
+            _validate_indexed_rollforward_query_evidence_v1(
+                indexed_query_evidence,
+                compiled_specs=compiled,
+            )
+            if compiled.get("engine_format_version")
+            == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
+            else _validate_indexed_query_evidence_v1(
+                indexed_query_evidence,
+                compiled_specs=compiled,
+            )
         )
-        if indexed_query_evidence is not None
-        else None
-    )
     checked_effective_frontier = None
     if effective_page_frontier is not None:
         from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (

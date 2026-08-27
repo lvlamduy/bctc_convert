@@ -23,6 +23,7 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
     NOT_OBSERVED,
     READY,
+    ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
     UNRESOLVED,
     build_gemini_json_flat_family_sweep_v1,
     compile_gemini_json_flat_family_specs_v1,
@@ -58,7 +59,9 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
     query_selected_hierarchical_title_axis_family_regions_v1,
+    query_selected_rollforward_family_regions_v1,
     validate_selected_hierarchical_title_axis_query_evidence_v1,
+    validate_selected_rollforward_family_query_evidence_v1,
 )
 
 
@@ -974,6 +977,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     period_table_projection = compiled.get("period_table_projection_policy") is not None
     dual_axis_projection = compiled.get("dual_axis_projection_policy") is not None
     title_axis_projection = compiled.get("title_axis_projection_policy") is not None
+    rollforward_projection = compiled.get("rollforward_projection_policy") is not None
     query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
     near_hits: list[dict[str, Any]] = []
     dual_axis_document_context: dict[str, dict[str, Any]] = {}
@@ -982,7 +986,50 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     title_axis_query_receipt: dict[str, Any] | None = None
     indexed_query_evidence: dict[str, Any] | None = None
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
-    if title_axis_projection:
+    if rollforward_projection:
+        queried = query_selected_rollforward_family_regions_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+        )
+        if queried.get("format_version") != ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION:
+            raise _error("roll-forward indexed query evidence format drifted")
+        indexed_query_evidence = validate_selected_rollforward_family_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=queried,
+        )
+        source_metadata = {
+            document["relative_path"]: (document["source_ordinal"], document["source_sha256"])
+            for document in index["documents"]
+        }
+        if any(
+            item["source_logical_name"] not in source_metadata
+            or source_metadata[item["source_logical_name"]]
+            != (item["document_ordinal"], item["source_sha256"])
+            for item in indexed_query_evidence["candidate_dispositions"]
+        ):
+            raise _error("roll-forward indexed query source axis differs from the corpus index")
+        engine_locator_fields = (
+            "document_id",
+            "page_json_version_id",
+            "physical_page",
+            "section_id",
+            "source_logical_name",
+            "source_sha256",
+            "table_id",
+        )
+        for accepted in indexed_query_evidence["accepted_regions"]:
+            region = {field: accepted[field] for field in engine_locator_fields}
+            key = (
+                region["source_logical_name"],
+                region["physical_page"],
+                region["section_id"],
+                region["table_id"],
+            )
+            regions_by_key[key] = region
+    elif title_axis_projection:
         title_policy = compiled["title_axis_projection_policy"]
         branch_role = title_policy["structural_branch_role"]
         queried = query_selected_hierarchical_title_axis_family_regions_v1(
@@ -1162,7 +1209,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    elif not title_axis_projection:
+    elif not title_axis_projection and not rollforward_projection:
         near_aliases = _near_anchor_aliases_v1(compiled, stacked=stacked)
         near_hits = query_selected_family_anchor_hits_v1(
             database,
@@ -1186,7 +1233,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    elif not dual_axis_projection and not title_axis_projection:
+    elif not dual_axis_projection and not title_axis_projection and not rollforward_projection:
         for anchor_groups in query_anchor_groups:
             regions = query_selected_family_anchor_regions_v1(
                 database,
@@ -1219,7 +1266,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 disposition["page_json_version_id"]
                 for disposition in indexed_query_evidence["candidate_dispositions"]
             }
-            if indexed_query_evidence is not None
+            if indexed_query_evidence is not None and not rollforward_projection
             else set()
         )
     )
@@ -1248,11 +1295,26 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             )
         }
     )
+    if rollforward_projection:
+        if indexed_query_evidence is None:
+            raise _error("roll-forward indexed query evidence is absent")
+        near_paths = {
+            disposition["source_logical_name"]
+            for disposition in indexed_query_evidence["candidate_dispositions"]
+            if type(disposition.get("classification")) is dict
+            and disposition["classification"].get("local_owner_visible") is True
+            and disposition["classification"].get("structural_hard_negative_visible") is False
+        }
     if title_axis_projection:
         near_paths = title_axis_near_sources
     candidates_by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
     grouped_region_keys: list[list[tuple[str, int, str, str]]] = []
-    if dual_axis_projection:
+    if rollforward_projection:
+        by_source: dict[str, list[tuple[str, int, str, str]]] = defaultdict(list)
+        for key in sorted(regions_by_key):
+            by_source[key[0]].append(key)
+        grouped_region_keys = list(by_source.values())
+    elif dual_axis_projection:
         by_source: dict[str, list[tuple[str, int, str, str]]] = defaultdict(list)
         for key in sorted(regions_by_key):
             by_source[key[0]].append(key)
@@ -1287,7 +1349,27 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             # context, not a competing accounting-value population.
             continue
         evaluated_candidates = []
-        if dual_axis_projection:
+        if rollforward_projection:
+            from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+                build_gemini_json_rollforward_region_query_receipt_v1,
+                evaluate_gemini_json_rollforward_family_cluster_v1,
+            )
+
+            component_regions = [regions_by_key[key] for key in grouped_keys]
+            evaluated_candidates.append(
+                evaluate_gemini_json_rollforward_family_cluster_v1(
+                    regions=component_regions,
+                    page_json_by_version={
+                        version_id: record["page_json"]
+                        for version_id, record in page_by_version.items()
+                    },
+                    compiled_specs=compiled,
+                    query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(
+                        component_regions
+                    ),
+                )
+            )
+        elif dual_axis_projection:
             from bctc_ai.evaluation.gemini_json_dual_axis_accounting_family_v1 import (
                 evaluate_gemini_json_dual_axis_family_cluster_v1,
             )
@@ -1396,7 +1478,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        if dual_axis_projection or title_axis_projection:
+        if rollforward_projection or dual_axis_projection or title_axis_projection:
             candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
         else:
             candidates_by_path[region["source_logical_name"]].extend(
@@ -1469,12 +1551,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         indexed_query_evidence=indexed_query_evidence,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
-    repair_plans = build_family_region_repair_plans_v1(
-        sweep=sweep,
-        page_json_by_version={
-            version_id: page["page_json"] for version_id, page in page_by_version.items()
-        },
-        compiled_specs=compiled,
+    repair_plans = (
+        []
+        if rollforward_projection
+        else build_family_region_repair_plans_v1(
+            sweep=sweep,
+            page_json_by_version={
+                version_id: page["page_json"] for version_id, page in page_by_version.items()
+            },
+            compiled_specs=compiled,
+        )
     )
     implementation_paths = (
         ROOT / "scripts/experiments/run_gemini_json_first_accounting_family_v1.py",
@@ -1492,6 +1578,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         implementation_paths = (
             *implementation_paths,
             ROOT / "src/bctc_ai/evaluation/gemini_json_dual_axis_accounting_family_v1.py",
+        )
+    if rollforward_projection:
+        implementation_paths = (
+            *implementation_paths,
+            ROOT / "src/bctc_ai/evaluation/gemini_json_rollforward_accounting_family_v1.py",
         )
     stored = ingest_gemini_accounting_family_sweep_v1(
         args.results_database,

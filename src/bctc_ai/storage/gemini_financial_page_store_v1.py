@@ -35,6 +35,7 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 
 FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V9"
@@ -1703,6 +1704,532 @@ def _declared_surface_alias_match_v1(value: Any, aliases: Sequence[str]) -> str 
     """Return the unique longest declared phrase on one authenticated surface."""
 
     return declared_surface_alias_match_v1(value, aliases)
+
+
+ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
+    "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_EVIDENCE_V1"
+)
+
+
+def query_selected_rollforward_family_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Project exact roll-forward components from one selected SQLite frontier.
+
+    Endpoint rows are the only broad indexed probe.  The query then reconstructs
+    the candidate-local section title/narratives, table title, column-header and
+    complete row-hierarchy axes needed by the public roll-forward classifier.
+    Values are deliberately not read here: numeric authority remains with the
+    later exact-page evaluator.  No source name, bank, page number, note number,
+    or geometry participates in admission.
+    """
+
+    from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        ENGINE_FORMAT_VERSION,
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        _date_token,
+        _role_for_row,
+        classify_gemini_json_rollforward_table_v1,
+    )
+
+    version_ids = list(selected_page_json_version_ids)
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not version_ids
+        or len(version_ids) != len(set(version_ids))
+        or any(
+            type(version_id) is not str
+            or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", version_id) is None
+            for version_id in version_ids
+        )
+        or type(compiled_specs) is not dict
+        or compiled_specs.get("engine_format_version") != ENGINE_FORMAT_VERSION
+        or type(compiled_specs.get("aliases_by_role")) is not dict
+        or type(compiled_specs.get("layout")) is not dict
+        or type(compiled_specs.get("topology")) is not dict
+    ):
+        raise _error("selected roll-forward family query is invalid")
+
+    layout = compiled_specs["layout"]
+    movement_specs = layout.get("movement_roles")
+    if type(movement_specs) is not list:
+        raise _error("selected roll-forward movement axis is invalid")
+    endpoint_roles = {
+        item["role"]
+        for item in movement_specs
+        if type(item) is dict and item.get("kind") in {"OPENING", "CLOSING"}
+    }
+    if len(endpoint_roles) != 2:
+        raise _error("selected roll-forward endpoint axis is invalid")
+    endpoint_prefixes = sorted(
+        {
+            "ngay",
+            "tai",
+            *(
+                alias.split()[0]
+                for role in endpoint_roles
+                for alias in compiled_specs["aliases_by_role"].get(role, [])
+                if type(alias) is str and alias.split()
+            ),
+        }
+    )
+    if any(not re.fullmatch(r"[a-z0-9]+", prefix) for prefix in endpoint_prefixes):
+        raise _error("selected roll-forward endpoint prefix axis is invalid")
+
+    query_policy = {
+        "aliases_by_role": compiled_specs["aliases_by_role"],
+        "engine_format_version": ENGINE_FORMAT_VERSION,
+        "family_id": compiled_specs["topology"]["family_id"],
+        "layout": layout,
+    }
+    query_policy_sha256 = canonical_json_sha256_v1(query_policy)
+    selected_page_extraction_receipts_v1(path, page_json_version_ids=version_ids)
+
+    def decode_string_axis(raw: Any, *, label: str) -> list[Any]:
+        try:
+            value = json.loads(raw)
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error(f"selected roll-forward {label} axis is invalid") from exc
+        if type(value) is not list:
+            raise _error(f"selected roll-forward {label} axis is invalid")
+        return value
+
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_rollforward_page("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_rollforward_page VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        selected_rows = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page
+            FROM selected_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            ORDER BY selected.selection_ordinal
+            """
+        ).fetchall()
+        if len(selected_rows) != len(version_ids):
+            raise _error("selected roll-forward page JSON version is absent")
+        locations = [(row["source_logical_name"], row["physical_page"]) for row in selected_rows]
+        if len(locations) != len(set(locations)) or locations != sorted(locations):
+            raise _error("selected roll-forward frontier is repeated or not in corpus order")
+
+        document_ordinals: dict[str, int] = {}
+        selected_by_version: dict[str, dict[str, Any]] = {}
+        selected_source_axis = []
+        for row in selected_rows:
+            record = dict(row)
+            ordinal = document_ordinals.setdefault(
+                record["document_id"], len(document_ordinals) + 1
+            )
+            record["document_ordinal"] = ordinal
+            selected_by_version[record["page_json_version_id"]] = record
+            selected_source_axis.append(record)
+
+        endpoint_seed_by_identity: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+        for prefix in endpoint_prefixes:
+            for row in connection.execute(
+                """
+                SELECT selected.selection_ordinal, rn.page_json_version_id,
+                       rn.section_id, rn.table_id, rn.row_id, rn.source_order,
+                       rn.label_exact, rn.hierarchy_path_exact_json, rn.row_kind,
+                       rn.parent_row_id, rn.previous_row_id, rn.next_row_id
+                FROM row_node AS rn INDEXED BY idx_row_label_ascii
+                JOIN selected_rollforward_page AS selected USING(page_json_version_id)
+                WHERE rn.label_ascii_folded GLOB ?
+                ORDER BY selected.selection_ordinal, rn.section_id, rn.table_id,
+                         rn.source_order, rn.row_id
+                """,
+                (prefix + "*",),
+            ):
+                record = dict(row)
+                try:
+                    role = _role_for_row(record, compiled_specs=compiled_specs)
+                except GeminiJsonRollforwardAccountingFamilyV1Error:
+                    role = "AMBIGUOUS_ENDPOINT_SEED"
+                if (
+                    role not in endpoint_roles | {"AMBIGUOUS_ENDPOINT_SEED"}
+                    and _date_token(record.get("label_exact")) is None
+                ):
+                    continue
+                identity = (
+                    record["page_json_version_id"],
+                    record["section_id"],
+                    record["table_id"],
+                    record["row_id"],
+                )
+                endpoint_seed_by_identity[identity] = record
+
+        candidate_keys = sorted(
+            {identity[:3] for identity in endpoint_seed_by_identity},
+            key=lambda key: (
+                selected_by_version[key[0]]["selection_ordinal"],
+                int(key[1][1:]),
+                int(key[2][1:]),
+            ),
+        )
+        connection.execute(
+            "CREATE TEMP TABLE rollforward_candidate_table("
+            "page_json_version_id TEXT NOT NULL, section_id TEXT NOT NULL, "
+            "table_id TEXT NOT NULL, PRIMARY KEY(page_json_version_id,section_id,table_id))"
+        )
+        connection.executemany(
+            "INSERT INTO rollforward_candidate_table VALUES (?,?,?)",
+            candidate_keys,
+        )
+        context_rows = connection.execute(
+            """
+            SELECT candidate.page_json_version_id, candidate.section_id,
+                   candidate.table_id, section.source_order AS section_source_order,
+                   section.content_kind, section.statement_type,
+                   section.title_exact AS section_title_exact,
+                   section.narratives_json,
+                   table_node.source_order AS table_source_order,
+                   table_node.title_exact AS table_title_exact,
+                   table_node.unit_exact, table_node.continuation
+            FROM rollforward_candidate_table AS candidate
+            JOIN section_node AS section
+              USING(page_json_version_id,section_id)
+            JOIN table_node
+              USING(page_json_version_id,section_id,table_id)
+            ORDER BY candidate.page_json_version_id, section.source_order,
+                     table_node.source_order, candidate.section_id, candidate.table_id
+            """
+        ).fetchall()
+        column_rows = connection.execute(
+            """
+            SELECT column_node.page_json_version_id, column_node.section_id,
+                   column_node.table_id, column_node.column_id,
+                   column_node.column_ordinal, column_node.header_path_exact_json,
+                   column_node.value_kind
+            FROM column_node
+            JOIN rollforward_candidate_table
+              USING(page_json_version_id,section_id,table_id)
+            ORDER BY column_node.page_json_version_id, column_node.section_id,
+                     column_node.table_id, column_node.column_ordinal, column_node.column_id
+            """
+        ).fetchall()
+        full_row_rows = connection.execute(
+            """
+            SELECT row_node.page_json_version_id, row_node.section_id,
+                   row_node.table_id, row_node.row_id, row_node.source_order,
+                   row_node.label_exact, row_node.hierarchy_path_exact_json,
+                   row_node.row_kind, row_node.parent_row_id,
+                   row_node.previous_row_id, row_node.next_row_id
+            FROM row_node
+            JOIN rollforward_candidate_table
+              USING(page_json_version_id,section_id,table_id)
+            ORDER BY row_node.page_json_version_id, row_node.section_id,
+                     row_node.table_id, row_node.source_order, row_node.row_id
+            """
+        ).fetchall()
+
+    context_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in context_rows:
+        record = dict(row)
+        record["narratives_exact"] = decode_string_axis(
+            record.pop("narratives_json"), label="narrative"
+        )
+        if any(type(value) is not str for value in record["narratives_exact"]):
+            raise _error("selected roll-forward narrative axis is invalid")
+        key = (record["page_json_version_id"], record["section_id"], record["table_id"])
+        context_by_key[key] = record
+    columns_by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in column_rows:
+        record = dict(row)
+        record["header_path_exact"] = decode_string_axis(
+            record.pop("header_path_exact_json"), label="column-header"
+        )
+        if any(
+            value is not None and type(value) is not str for value in record["header_path_exact"]
+        ):
+            raise _error("selected roll-forward column-header axis is invalid")
+        key = (record.pop("page_json_version_id"), record.pop("section_id"), record.pop("table_id"))
+        columns_by_key.setdefault(key, []).append(record)
+    rows_by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in full_row_rows:
+        record = dict(row)
+        record["hierarchy_path_exact"] = decode_string_axis(
+            record.pop("hierarchy_path_exact_json"), label="row-hierarchy"
+        )
+        if any(
+            value is not None and type(value) is not str for value in record["hierarchy_path_exact"]
+        ):
+            raise _error("selected roll-forward row-hierarchy axis is invalid")
+        key = (record.pop("page_json_version_id"), record.pop("section_id"), record.pop("table_id"))
+        rows_by_key.setdefault(key, []).append(record)
+
+    candidate_dispositions: list[dict[str, Any]] = []
+    dispositions_by_source: dict[str, list[dict[str, Any]]] = {}
+    for key in candidate_keys:
+        selected = selected_by_version[key[0]]
+        context = context_by_key.get(key)
+        columns = columns_by_key.get(key, [])
+        rows = rows_by_key.get(key, [])
+        if context is None:
+            raise _error("selected roll-forward candidate context is absent")
+        context_axis = {
+            field: context[field]
+            for field in (
+                "content_kind",
+                "continuation",
+                "narratives_exact",
+                "section_source_order",
+                "section_title_exact",
+                "statement_type",
+                "table_source_order",
+                "table_title_exact",
+                "unit_exact",
+            )
+        }
+        locator = {
+            "document_id": selected["document_id"],
+            "page_json_version_id": key[0],
+            "physical_page": selected["physical_page"],
+            "section_id": key[1],
+            "source_logical_name": selected["source_logical_name"],
+            "source_sha256": selected["source_sha256"],
+            "table_id": key[2],
+        }
+        context_axis_sha256 = canonical_json_sha256_v1(context_axis)
+        column_axis_sha256 = canonical_json_sha256_v1(columns)
+        row_axis_sha256 = canonical_json_sha256_v1(rows)
+        candidate_material = {
+            "column_axis_sha256": column_axis_sha256,
+            "context_axis_sha256": context_axis_sha256,
+            "document_ordinal": selected["document_ordinal"],
+            "locator": locator,
+            "query_policy_sha256": query_policy_sha256,
+            "row_axis_sha256": row_axis_sha256,
+            "selected_page_ordinal": selected["selection_ordinal"],
+        }
+        candidate_evidence_sha256 = canonical_json_sha256_v1(candidate_material)
+        section = {
+            "content_kind": context["content_kind"],
+            "narratives_exact": context["narratives_exact"],
+            "statement_type": context["statement_type"],
+            "title_exact": context["section_title_exact"],
+        }
+        table = {
+            "columns": [
+                {
+                    "header_path_exact": column["header_path_exact"],
+                    "value_kind": column["value_kind"],
+                }
+                for column in columns
+            ],
+            "continuation": context["continuation"],
+            "rows": [
+                {
+                    "hierarchy_path_exact": row["hierarchy_path_exact"],
+                    "label_exact": row["label_exact"],
+                    "row_kind": row["row_kind"],
+                }
+                for row in rows
+            ],
+            "title_exact": context["table_title_exact"],
+            "unit_exact": context["unit_exact"],
+        }
+        classification: dict[str, Any] | None
+        try:
+            classification = classify_gemini_json_rollforward_table_v1(
+                section=section,
+                table=table,
+                compiled_specs=compiled_specs,
+            )
+        except GeminiJsonRollforwardAccountingFamilyV1Error:
+            classification = None
+        if classification is None:
+            disposition_kind = "LOCAL_TABLE_CLASSIFICATION_ERROR"
+            reason_codes = ["ROLLFORWARD_LOCAL_TABLE_CLASSIFICATION_ERROR"]
+        else:
+            reason_codes = list(classification["reasons"])
+            if (
+                classification["context_reset_visible"]
+                or classification["structural_hard_negative_visible"]
+            ):
+                disposition_kind = "RESET_OR_HARD_NEGATIVE_VETO"
+            elif reason_codes:
+                disposition_kind = (
+                    "CORE_MOVEMENT_TOPOLOGY_INCOMPLETE"
+                    if "ROLLFORWARD_CORE_MOVEMENT_ROLES_INCOMPLETE" in reason_codes
+                    else "LANE_OR_PERIOD_AXIS_UNCLASSIFIED"
+                )
+            elif not classification["local_owner_visible"]:
+                disposition_kind = "LOCAL_OWNER_NOT_VISIBLE"
+            else:
+                disposition_kind = "ACCEPTED_COMPONENT"
+        disposition = {
+            **locator,
+            "candidate_evidence_sha256": candidate_evidence_sha256,
+            "classification": canonical_clone_v1(classification),
+            "column_axis_sha256": column_axis_sha256,
+            "context_axis_sha256": context_axis_sha256,
+            "disposition": disposition_kind,
+            "document_ordinal": selected["document_ordinal"],
+            "query_policy_sha256": query_policy_sha256,
+            "reason_codes": reason_codes,
+            "row_axis_sha256": row_axis_sha256,
+            "selected_page_ordinal": selected["selection_ordinal"],
+        }
+        candidate_dispositions.append(disposition)
+        dispositions_by_source.setdefault(locator["source_logical_name"], []).append(disposition)
+
+    accepted_regions: list[dict[str, Any]] = []
+    layout_counts = {
+        "LANE_TABLES_PERIOD_COLUMNS": 0,
+        "PERIOD_TABLES_LANE_COLUMNS": 0,
+        "STACKED_PERIOD_BLOCKS": 0,
+    }
+    same_page_layout_counts = {
+        "LANE_TABLES_PERIOD_COLUMNS": 0,
+        "PERIOD_TABLES_LANE_COLUMNS": 0,
+    }
+    adjacent_page_layout_counts = {
+        "LANE_TABLES_PERIOD_COLUMNS": 0,
+        "PERIOD_TABLES_LANE_COLUMNS": 0,
+    }
+    for source in sorted(dispositions_by_source):
+        components = [
+            item
+            for item in dispositions_by_source[source]
+            if item["disposition"] == "ACCEPTED_COMPONENT"
+        ]
+        if not components:
+            continue
+        orientations = {
+            item["classification"]["orientation"]
+            for item in components
+            if item["classification"] is not None
+        }
+        pages = {item["physical_page"] for item in components}
+        if len(components) == 1 and orientations == {"LANE_COLUMNS"}:
+            layout_kind = "STACKED_PERIOD_BLOCKS"
+        elif len(components) == 2 and orientations == {"LANE_COLUMNS"}:
+            layout_kind = "PERIOD_TABLES_LANE_COLUMNS"
+        elif len(components) == 2 and orientations == {"PERIOD_COLUMNS"}:
+            layout_kind = "LANE_TABLES_PERIOD_COLUMNS"
+        else:
+            layout_kind = None
+        if (
+            layout_kind is None
+            or max(pages) - min(pages) > layout["max_page_span"]
+            or len(components) > layout["max_component_tables"]
+        ):
+            for component in components:
+                component["disposition"] = "DOCUMENT_CLUSTER_AMBIGUOUS"
+                component["reason_codes"] = [
+                    *component["reason_codes"],
+                    "ROLLFORWARD_DOCUMENT_CLUSTER_AMBIGUOUS",
+                ]
+            continue
+        layout_counts[layout_kind] += 1
+        if len(components) == 2:
+            page_kind_counts = (
+                same_page_layout_counts if len(pages) == 1 else adjacent_page_layout_counts
+            )
+            page_kind_counts[layout_kind] += 1
+        for component in components:
+            accepted_regions.append(
+                {
+                    **{
+                        field: component[field]
+                        for field in (
+                            "document_id",
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "source_logical_name",
+                            "source_sha256",
+                            "table_id",
+                        )
+                    },
+                    "candidate_evidence_sha256": component["candidate_evidence_sha256"],
+                    "column_axis_sha256": component["column_axis_sha256"],
+                    "context_axis_sha256": component["context_axis_sha256"],
+                    "document_ordinal": component["document_ordinal"],
+                    "layout_kind": layout_kind,
+                    "orientation": component["classification"]["orientation"],
+                    "row_axis_sha256": component["row_axis_sha256"],
+                    "selected_page_ordinal": component["selected_page_ordinal"],
+                }
+            )
+
+    disposition_counts = {
+        kind: sum(item["disposition"] == kind for item in candidate_dispositions)
+        for kind in sorted({item["disposition"] for item in candidate_dispositions})
+    }
+    accepted_regions.sort(
+        key=lambda item: (
+            item["document_ordinal"],
+            item["physical_page"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+            item["page_json_version_id"],
+        )
+    )
+    accepted_sources = sorted({item["source_logical_name"] for item in accepted_regions})
+    query_receipt = {
+        "accepted_layout_counts": layout_counts,
+        "accepted_layout_same_page_counts": same_page_layout_counts,
+        "accepted_layout_adjacent_page_counts": adjacent_page_layout_counts,
+        "candidate_disposition_axis_sha256": canonical_json_sha256_v1(candidate_dispositions),
+        "candidate_disposition_count": len(candidate_dispositions),
+        "candidate_disposition_counts": disposition_counts,
+        "candidate_table_count": len(candidate_keys),
+        "column_record_count": len(column_rows),
+        "context_record_count": len(context_rows),
+        "endpoint_prefixes": endpoint_prefixes,
+        "endpoint_seed_row_count": len(endpoint_seed_by_identity),
+        "exact_region_axis_sha256": canonical_json_sha256_v1(accepted_regions),
+        "exact_region_count": len(accepted_regions),
+        "family_id": compiled_specs["topology"]["family_id"],
+        "format_version": "GEMINI_JSON_INDEXED_ROLLFORWARD_QUERY_RECEIPT_V1",
+        "query_policy_sha256": query_policy_sha256,
+        "row_record_count": len(full_row_rows),
+        "selected_page_json_frontier_sha256": canonical_json_sha256_v1(version_ids),
+        "selected_page_json_version_count": len(version_ids),
+        "selected_source_axis_sha256": canonical_json_sha256_v1(selected_source_axis),
+        "target_document_count": len(accepted_sources),
+        "target_page_count": len({item["page_json_version_id"] for item in accepted_regions}),
+    }
+    return {
+        "accepted_regions": accepted_regions,
+        "candidate_dispositions": candidate_dispositions,
+        "format_version": ROLLFORWARD_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
+        "query_receipt": query_receipt,
+    }
+
+
+def validate_selected_rollforward_family_query_evidence_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+) -> dict[str, Any]:
+    """Rederive and exact-compare one public selected-frontier projection."""
+
+    replayed = query_selected_rollforward_family_regions_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+    )
+    if type(indexed_query_evidence) is not dict or not same_typed_json_v1(
+        indexed_query_evidence, replayed
+    ):
+        raise _error("selected roll-forward query evidence does not replay exactly")
+    return canonical_clone_v1(replayed)
 
 
 def query_selected_hierarchical_title_axis_family_regions_v1(
