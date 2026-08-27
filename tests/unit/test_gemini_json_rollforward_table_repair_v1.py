@@ -485,7 +485,11 @@ def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
         table_repair_specs=specs,
     )
     authority = subject.rollforward_table_repair_plan_authority_v1(
-        compiled_specs=compiled,
+        compiled_spec_sources={
+            "evaluation": sweep["specs"]["evaluation"]["value"],
+            "schema_binding": sweep["specs"]["schema_binding"]["value"],
+            "topology": sweep["specs"]["topology"]["value"],
+        },
         family_sweep=sweep,
         selected_page_json_version_ids=[item["base_page_json_version_id"] for item in evidence],
         table_repair_specs=specs,
@@ -499,6 +503,8 @@ def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
         ),
         source_image_resolver_implementation_sha256="8" * 64,
         source_image_resolver_implementation_size_bytes=123,
+        source_image_resolver_mupdf_version="1.29.0",
+        source_image_resolver_pymupdf_version="1.28.0",
         table_repair_specs=specs,
         plans=plans,
     )
@@ -1348,8 +1354,11 @@ def test_audit_overlay_rejects_high_only_noncontiguous_ledger(corpus: dict) -> N
 
 
 def _rebuild_plans_from_replay_bundle(corpus: dict, replay_bundle: dict) -> list[dict]:
+    sources = replay_bundle["compiled_spec_sources"]
     return build_rollforward_table_cell_repair_plans_v1(
-        compiled_specs=replay_bundle["compiled_specs"],
+        compiled_specs=subject.compile_gemini_json_flat_family_specs_v1(
+            sources["topology"], sources["evaluation"], sources["schema_binding"]
+        ),
         family_sweep=replay_bundle["family_sweep"],
         page_store_path=corpus["store"],
         selected_page_json_version_ids=replay_bundle["selected_page_json_version_ids"],
@@ -1456,6 +1465,8 @@ def test_external_spec_authority_rejects_joint_ctg_collateral_equation_bundle_an
 
 
 def test_source_image_resolver_executes_the_exact_manifest_pinned_module() -> None:
+    import fitz
+
     from bctc_ai.evaluation import gemini_json_first_page_render_v1 as renderer_module
 
     root = Path(subject.__file__).resolve().parents[3]
@@ -1465,6 +1476,8 @@ def test_source_image_resolver_executes_the_exact_manifest_pinned_module() -> No
         "implementation_path": implementation.relative_to(root).as_posix(),
         "implementation_sha256": sha256(payload).hexdigest(),
         "implementation_size_bytes": len(payload),
+        "mupdf_version": fitz.mupdf_version,
+        "pymupdf_version": fitz.__version__,
     }
     assert (
         subject.validate_rollforward_source_image_resolver_implementation_v1(
@@ -1472,11 +1485,22 @@ def test_source_image_resolver_executes_the_exact_manifest_pinned_module() -> No
         )
         == resolver
     )
+    drifted_runtime = deepcopy(resolver)
+    drifted_runtime["pymupdf_version"] += "-drift"
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error,
+        match="runtime pin drifted",
+    ):
+        subject.validate_rollforward_source_image_resolver_implementation_v1(
+            root, resolver=drifted_runtime
+        )
 
 
 def test_source_image_resolver_rejects_cross_root_manifest_pinned_shadow_module(
     tmp_path: Path,
 ) -> None:
+    import fitz
+
     from bctc_ai.evaluation import gemini_json_first_page_render_v1 as renderer_module
 
     real_root = Path(subject.__file__).resolve().parents[3]
@@ -1490,6 +1514,8 @@ def test_source_image_resolver_rejects_cross_root_manifest_pinned_shadow_module(
         "implementation_path": relative.as_posix(),
         "implementation_sha256": sha256(shadow_bytes).hexdigest(),
         "implementation_size_bytes": len(shadow_bytes),
+        "mupdf_version": fitz.mupdf_version,
+        "pymupdf_version": fitz.__version__,
     }
     with pytest.raises(
         GeminiJsonRollforwardTableRepairV1Error,

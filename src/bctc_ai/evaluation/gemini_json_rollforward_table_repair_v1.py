@@ -96,7 +96,7 @@ _PLAN_FIELDS = {
     "candidate_id",
     "candidate_semantic_replay_sha256",
     "cell_allowlist",
-    "compiled_specs_sha256",
+    "compiled_spec_sources_sha256",
     "component_table_refs",
     "document_ordinal",
     "equation_inventory",
@@ -126,7 +126,7 @@ _PLAN_FIELDS = {
     "trigger_reasons",
 }
 _AUTHORITY_FIELDS = {
-    "compiled_specs",
+    "compiled_spec_sources",
     "family_sweep",
     "selected_page_json_version_ids",
     "table_repair_specs",
@@ -147,6 +147,8 @@ _SOURCE_IMAGE_RESOLVER_FIELDS = {
     "implementation_path",
     "implementation_sha256",
     "implementation_size_bytes",
+    "mupdf_version",
+    "pymupdf_version",
 }
 _AUTHENTICITY_BOUNDARY = {
     "caller_must_verify_and_pin_external_authority": True,
@@ -624,7 +626,7 @@ def _build_rollforward_table_cell_repair_plans_v1(
                 "candidate_id",
                 "candidate_semantic_replay_sha256",
                 "cell_allowlist",
-                "compiled_specs_sha256",
+                "compiled_spec_sources_sha256",
                 "document_ordinal",
                 "equations",
                 "family_id",
@@ -709,7 +711,7 @@ def _build_rollforward_table_cell_repair_plans_v1(
             "candidate_id": frontier["candidate_id"],
             "candidate_semantic_replay_sha256": frontier["candidate_semantic_replay_sha256"],
             "cell_allowlist": allowlist,
-            "compiled_specs_sha256": frontier["compiled_specs_sha256"],
+            "compiled_spec_sources_sha256": frontier["compiled_spec_sources_sha256"],
             "component_table_refs": [
                 {"section_id": frontier["section_id"], "table_id": frontier["table_id"]}
             ],
@@ -935,13 +937,15 @@ def build_rollforward_table_cell_repair_plans_v1(
     """
 
     sweep = validate_gemini_json_flat_family_sweep_v1(family_sweep)
-    topology = sweep["specs"]["topology"]["value"]
-    evaluation = sweep["specs"]["evaluation"]["value"]
-    schema_binding = sweep["specs"]["schema_binding"]["value"]
+    compiled_spec_sources = {
+        "evaluation": canonical_clone_v1(sweep["specs"]["evaluation"]["value"]),
+        "schema_binding": canonical_clone_v1(sweep["specs"]["schema_binding"]["value"]),
+        "topology": canonical_clone_v1(sweep["specs"]["topology"]["value"]),
+    }
     rebuilt_specs = compile_gemini_json_flat_family_specs_v1(
-        topology,
-        evaluation,
-        schema_binding,
+        compiled_spec_sources["topology"],
+        compiled_spec_sources["evaluation"],
+        compiled_spec_sources["schema_binding"],
     )
     if not same_typed_json_v1(dict(compiled_specs), rebuilt_specs):
         raise _error("roll-forward table repair compiled specs do not replay the sweep")
@@ -1182,7 +1186,7 @@ def build_rollforward_table_cell_repair_plans_v1(
                 "cell_allowlist": sorted(
                     primary.values(), key=lambda item: _cell_id(item["cell_id"])
                 ),
-                "compiled_specs_sha256": canonical_json_sha256_v1(rebuilt_specs),
+                "compiled_spec_sources_sha256": canonical_json_sha256_v1(compiled_spec_sources),
                 "document_ordinal": trial["document_ordinal"],
                 "equations": equations,
                 "family_id": sweep["family_id"],
@@ -1207,15 +1211,28 @@ def build_rollforward_table_cell_repair_plans_v1(
 
 def rollforward_table_repair_plan_authority_v1(
     *,
-    compiled_specs: Mapping[str, Any],
+    compiled_spec_sources: Mapping[str, Any],
     family_sweep: Mapping[str, Any],
     selected_page_json_version_ids: Sequence[str],
     table_repair_specs: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     """Package the complete replay inputs; the package itself grants no authority."""
 
+    checked_sources = _exact_keys(
+        dict(compiled_spec_sources),
+        {"evaluation", "schema_binding", "topology"},
+        "table repair compiled-spec sources",
+    )
+    sweep = validate_gemini_json_flat_family_sweep_v1(family_sweep)
+    expected_sources = {
+        "evaluation": sweep["specs"]["evaluation"]["value"],
+        "schema_binding": sweep["specs"]["schema_binding"]["value"],
+        "topology": sweep["specs"]["topology"]["value"],
+    }
+    if not same_typed_json_v1(checked_sources, expected_sources):
+        raise _error("table repair compiled-spec sources do not replay the family sweep")
     return {
-        "compiled_specs": canonical_clone_v1(dict(compiled_specs)),
+        "compiled_spec_sources": canonical_clone_v1(checked_sources),
         "family_sweep": canonical_clone_v1(dict(family_sweep)),
         "selected_page_json_version_ids": canonical_clone_v1(list(selected_page_json_version_ids)),
         "table_repair_specs": canonical_clone_v1(list(table_repair_specs)),
@@ -1252,6 +1269,8 @@ def build_rollforward_table_repair_spec_authority_v1(
     source_image_resolver_implementation_path: str,
     source_image_resolver_implementation_sha256: str,
     source_image_resolver_implementation_size_bytes: int,
+    source_image_resolver_mupdf_version: str,
+    source_image_resolver_pymupdf_version: str,
     table_repair_specs: Sequence[Mapping[str, Any]],
     plans: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
@@ -1278,6 +1297,10 @@ def build_rollforward_table_repair_spec_authority_v1(
         != source_image_resolver_implementation_sha256
         or type(source_image_resolver_implementation_size_bytes) is not int
         or source_image_resolver_implementation_size_bytes <= 0
+        or type(source_image_resolver_mupdf_version) is not str
+        or not source_image_resolver_mupdf_version
+        or type(source_image_resolver_pymupdf_version) is not str
+        or not source_image_resolver_pymupdf_version
         or not table_repair_specs
         or not plans
     ):
@@ -1299,6 +1322,8 @@ def build_rollforward_table_repair_spec_authority_v1(
             "implementation_path": source_image_resolver_implementation_path,
             "implementation_sha256": source_image_resolver_implementation_sha256,
             "implementation_size_bytes": source_image_resolver_implementation_size_bytes,
+            "mupdf_version": source_image_resolver_mupdf_version,
+            "pymupdf_version": source_image_resolver_pymupdf_version,
         },
     }
     return {**material, "manifest_sha256": canonical_json_sha256_v1(material)}
@@ -1346,6 +1371,10 @@ def _repair_spec_authority(
         != resolver["implementation_sha256"]
         or type(resolver["implementation_size_bytes"]) is not int
         or resolver["implementation_size_bytes"] <= 0
+        or type(resolver["mupdf_version"]) is not str
+        or not resolver["mupdf_version"]
+        or type(resolver["pymupdf_version"]) is not str
+        or not resolver["pymupdf_version"]
         or checked["repair_spec_axis_sha256"] != canonical_json_sha256_v1(list(table_repair_specs))
         or checked["plan_axis_sha256"] != canonical_json_sha256_v1(list(plans))
         or checked["source_image_bindings"] != source_image_bindings
@@ -1366,9 +1395,27 @@ def _authoritative_plan_axis(
     """Rebuild the queue from the public DB/query/candidate replay at every boundary."""
 
     checked = _exact_keys(dict(authority), _AUTHORITY_FIELDS, "table repair plan authority")
+    sources = _exact_keys(
+        checked["compiled_spec_sources"],
+        {"evaluation", "schema_binding", "topology"},
+        "table repair compiled-spec sources",
+    )
+    checked_sweep = validate_gemini_json_flat_family_sweep_v1(checked["family_sweep"])
+    sweep_sources = {
+        "evaluation": checked_sweep["specs"]["evaluation"]["value"],
+        "schema_binding": checked_sweep["specs"]["schema_binding"]["value"],
+        "topology": checked_sweep["specs"]["topology"]["value"],
+    }
+    if not same_typed_json_v1(sources, sweep_sources):
+        raise _error("table repair compiled-spec sources drifted from the family sweep")
+    compiled_specs = compile_gemini_json_flat_family_specs_v1(
+        sources["topology"],
+        sources["evaluation"],
+        sources["schema_binding"],
+    )
     plans = build_rollforward_table_cell_repair_plans_v1(
-        compiled_specs=checked["compiled_specs"],
-        family_sweep=checked["family_sweep"],
+        compiled_specs=compiled_specs,
+        family_sweep=checked_sweep,
         page_store_path=page_store_path,
         selected_page_json_version_ids=checked["selected_page_json_version_ids"],
         table_repair_specs=checked["table_repair_specs"],
@@ -1444,6 +1491,13 @@ def _pinned_source_image_renderer_v1(
         or len(executed_bytes) != checked["implementation_size_bytes"]
     ):
         raise _error("roll-forward source-image executed implementation pin drifted")
+    import fitz
+
+    if (
+        getattr(fitz, "__version__", None) != checked["pymupdf_version"]
+        or getattr(fitz, "mupdf_version", None) != checked["mupdf_version"]
+    ):
+        raise _error("roll-forward source-image PyMuPDF or MuPDF runtime pin drifted")
     return renderer_module, canonical_clone_v1(checked)
 
 
@@ -1585,7 +1639,10 @@ def _validated_plan(plan: Any) -> dict[str, Any]:
         plan.get("candidate_semantic_replay_sha256"),
         "table repair semantic candidate SHA-256",
     )
-    _hash(plan.get("compiled_specs_sha256"), "table repair compiled specs SHA-256")
+    _hash(
+        plan.get("compiled_spec_sources_sha256"),
+        "table repair compiled-spec sources SHA-256",
+    )
     _hash(
         plan.get("indexed_query_evidence_sha256"),
         "table repair indexed query evidence SHA-256",
