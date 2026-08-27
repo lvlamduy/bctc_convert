@@ -431,6 +431,91 @@ def record_gemini_family_region_repair_attempt_v1(
     }
 
 
+def resolved_gemini_family_region_repair_overlay_v1(
+    path: Path, *, family_run_id: str
+) -> dict[str, Any]:
+    """Load one terminal, traceable repair frontier for a later family rerun."""
+
+    if type(family_run_id) is not str or not family_run_id.startswith("gjfafstorev1:run:"):
+        raise _error("family repair overlay run identity is invalid")
+    with _connect(path, readonly=True) as connection:
+        try:
+            run = connection.execute(
+                "SELECT family_id FROM family_run WHERE family_run_id=?", (family_run_id,)
+            ).fetchone()
+            jobs = connection.execute(
+                "SELECT repair_job_id,document_ordinal,candidate_id,base_page_json_version_id,"
+                "physical_page,status,plan_sha256,plan_bytes,selected_page_json_version_id "
+                "FROM family_region_repair_job WHERE family_run_id=? "
+                "ORDER BY document_ordinal,physical_page,repair_job_id",
+                (family_run_id,),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            raise _error("family repair overlay tables are absent") from exc
+        if run is None or not jobs:
+            raise _error("family repair overlay run or job frontier is absent")
+        if any(job["status"] not in {"RESOLVED", "ABSTAINED"} for job in jobs):
+            raise _error("family repair overlay job frontier is not terminal")
+        replacements = []
+        for job in jobs:
+            plan_bytes = job["plan_bytes"]
+            if sha256(plan_bytes).hexdigest() != job["plan_sha256"]:
+                raise _error("family repair overlay plan bytes do not replay")
+            try:
+                plan = json.loads(plan_bytes)
+            except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("family repair overlay plan JSON is invalid") from exc
+            material = {key: plan[key] for key in plan if key != "repair_job_id"}
+            if (
+                plan.get("repair_job_id") != job["repair_job_id"]
+                or job["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material)
+                or plan.get("document_ordinal") != job["document_ordinal"]
+                or plan.get("candidate_id") != job["candidate_id"]
+                or plan.get("base_page_json_version_id") != job["base_page_json_version_id"]
+                or plan.get("physical_page") != job["physical_page"]
+            ):
+                raise _error("family repair overlay plan identity does not replay")
+            if job["status"] == "ABSTAINED":
+                if job["selected_page_json_version_id"] is not None:
+                    raise _error("abstained family repair unexpectedly selected a page version")
+                continue
+            selected = job["selected_page_json_version_id"]
+            attempt = connection.execute(
+                "SELECT outcome,page_json_version_id FROM family_region_repair_attempt "
+                "WHERE repair_job_id=? ORDER BY attempt_ordinal DESC LIMIT 1",
+                (job["repair_job_id"],),
+            ).fetchone()
+            if (
+                type(selected) is not str
+                or not selected.startswith("gfpstorev1:json:")
+                or attempt is None
+                or attempt["outcome"] not in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}
+                or attempt["page_json_version_id"] != selected
+            ):
+                raise _error("resolved family repair selected version does not replay")
+            replacements.append(
+                {
+                    "base_page_json_version_id": job["base_page_json_version_id"],
+                    "candidate_id": job["candidate_id"],
+                    "document_ordinal": job["document_ordinal"],
+                    "physical_page": job["physical_page"],
+                    "repair_job_id": job["repair_job_id"],
+                    "selected_page_json_version_id": selected,
+                }
+            )
+    if len({item["base_page_json_version_id"] for item in replacements}) != len(replacements):
+        raise _error("family repair overlay replaces one base page more than once")
+    return {
+        "family_id": run["family_id"],
+        "job_status_counts": {
+            status: sum(job["status"] == status for job in jobs)
+            for status in ("ABSTAINED", "RESOLVED")
+        },
+        "repair_source_family_run_id": family_run_id,
+        "replacements": replacements,
+    }
+
+
 def _checked_ref(reference: Mapping[str, Any]) -> dict[str, Any]:
     checked = dict(reference)
     if set(checked) != {"path", "sha256", "size_bytes"}:

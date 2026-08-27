@@ -28,6 +28,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     initialize_region_repair_extension_v1,
     load_page_json_versions_v1,
     lookup_cached_page_json_v1,
+    page_json_region_repair_lineages_v1,
     query_family_anchor_regions_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
@@ -85,6 +86,19 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> Non
         page_json_version_ids=[repaired["page_json_version_id"]],
     )
     assert loaded[0]["page_json"] == merged
+    replayed = page_json_region_repair_lineages_v1(
+        path, observed_page_json_version_ids=[repaired["page_json_version_id"]]
+    )
+    assert replayed == [
+        {
+            "base_page_json_version_id": base["page_json_version_id"],
+            "canonical_merged_page_json_version_id": repaired["page_json_version_id"],
+            "observed_page_json_version_id": repaired["page_json_version_id"],
+            "repair_id": receipt["repair_id"],
+            "repair_receipt": receipt,
+            "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+        }
+    ]
 
 
 def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation() -> None:

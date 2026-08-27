@@ -18,6 +18,7 @@ from bctc_ai.storage.gemini_accounting_family_store_v1 import (
     ingest_gemini_accounting_family_sweep_v1,
     pending_gemini_family_region_repair_plans_v1,
     record_gemini_family_region_repair_attempt_v1,
+    resolved_gemini_family_region_repair_overlay_v1,
 )
 
 
@@ -111,3 +112,28 @@ def test_invalid_money_cell_becomes_database_pending_region_job(tmp_path) -> Non
     escalated = pending_gemini_family_region_repair_plans_v1(database)
     assert escalated[0]["attempt_count"] == 1
     assert escalated[0]["next_thinking_level"] == "medium"
+    selected_version_id = "gfpstorev1:json:" + "6" * 64
+    second = record_gemini_family_region_repair_attempt_v1(
+        database,
+        repair_job_id=plans[0]["repair_job_id"],
+        thinking_level="medium",
+        outcome="RESOLVED",
+        page_json_version_id=selected_version_id,
+        usage={"thought_tokens": 24},
+        reasons=[],
+    )
+    assert second["next_status"] == "RESOLVED"
+    overlay = resolved_gemini_family_region_repair_overlay_v1(
+        database, family_run_id=stored["family_run_id"]
+    )
+    assert overlay["job_status_counts"] == {"ABSTAINED": 0, "RESOLVED": 1}
+    assert overlay["replacements"] == [
+        {
+            "base_page_json_version_id": version_id,
+            "candidate_id": candidate["candidate_id"],
+            "document_ordinal": 1,
+            "physical_page": 7,
+            "repair_job_id": plans[0]["repair_job_id"],
+            "selected_page_json_version_id": selected_version_id,
+        }
+    ]

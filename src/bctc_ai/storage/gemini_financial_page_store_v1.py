@@ -420,6 +420,74 @@ def record_page_json_region_repair_v1(
     }
 
 
+def page_json_region_repair_lineages_v1(
+    path: Path, *, observed_page_json_version_ids: Sequence[str]
+) -> list[dict[str, Any]]:
+    """Replay exact base-to-observed repair lineage in caller-selected order."""
+
+    version_ids = list(observed_page_json_version_ids)
+    if (
+        not version_ids
+        or len(version_ids) != len(set(version_ids))
+        or any(
+            type(version_id) is not str or not version_id.startswith("gfpstorev1:json:")
+            for version_id in version_ids
+        )
+    ):
+        raise _error("region repair lineage version frontier is invalid")
+    with _connect(path, readonly=True) as connection:
+        try:
+            connection.execute(
+                "CREATE TEMP TABLE selected_region_repair_lineage("
+                "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+            )
+            connection.executemany(
+                "INSERT INTO selected_region_repair_lineage VALUES (?,?)",
+                enumerate(version_ids, start=1),
+            )
+            rows = connection.execute(
+                "SELECT s.selection_ordinal,o.merged_page_json_version_id AS observed_id,"
+                "r.repair_id,r.base_page_json_version_id,r.merged_page_json_version_id,"
+                "r.receipt_sha256,r.receipt_json "
+                "FROM selected_region_repair_lineage AS s "
+                "JOIN page_json_region_repair_observation AS o "
+                "ON o.merged_page_json_version_id=s.page_json_version_id "
+                "JOIN page_json_region_repair AS r USING(repair_id) "
+                "ORDER BY s.selection_ordinal"
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            raise _error("region repair lineage tables are absent") from exc
+    if len(rows) != len(version_ids):
+        raise _error("region repair lineage is absent for a selected page version")
+    result = []
+    for expected, row in zip(version_ids, rows, strict=True):
+        try:
+            receipt = json.loads(row["receipt_json"])
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("region repair lineage receipt JSON is invalid") from exc
+        receipt_bytes = canonical_json_bytes_v1(receipt) + b"\n"
+        material = {key: receipt[key] for key in receipt if key != "repair_id"}
+        if (
+            row["observed_id"] != expected
+            or sha256(receipt_bytes).hexdigest() != row["receipt_sha256"]
+            or receipt.get("repair_id") != row["repair_id"]
+            or receipt.get("repair_id") != "gjfrrv1:repair:" + canonical_json_sha256_v1(material)
+            or receipt.get("base_page_json_version_id") != row["base_page_json_version_id"]
+        ):
+            raise _error("region repair lineage receipt does not replay")
+        result.append(
+            {
+                "base_page_json_version_id": row["base_page_json_version_id"],
+                "canonical_merged_page_json_version_id": row["merged_page_json_version_id"],
+                "observed_page_json_version_id": expected,
+                "repair_id": row["repair_id"],
+                "repair_receipt": receipt,
+                "repair_receipt_sha256": row["receipt_sha256"],
+            }
+        )
+    return result
+
+
 def extraction_cache_key_v1(
     *,
     source_sha256: str,

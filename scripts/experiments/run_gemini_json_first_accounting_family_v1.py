@@ -41,12 +41,17 @@ from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
     record_gemini_accounting_family_export_v1,
+    resolved_gemini_family_region_repair_overlay_v1,
 )
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
+from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: E402
+    apply_gemini_family_effective_page_frontier_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
+    page_json_region_repair_lineages_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
 )
@@ -569,6 +574,11 @@ def _write_once(path: Path, value: dict[str, Any]) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus-index", type=Path, required=True)
+    parser.add_argument(
+        "--effective-page-frontier",
+        type=Path,
+        help="Optional immutable repair overlay; never mutates the frozen base corpus index.",
+    )
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)
@@ -615,6 +625,56 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         selected_ids
     ):
         raise _error("selected corpus JSON version frontier is incomplete or duplicate")
+    effective_page_frontier = None
+    effective_page_frontier_path = getattr(args, "effective_page_frontier", None)
+    if effective_page_frontier_path is not None:
+        effective_page_frontier, selected_ids = apply_gemini_family_effective_page_frontier_v1(
+            _json(effective_page_frontier_path),
+            base_page_json_version_ids=selected_ids,
+        )
+        if (
+            effective_page_frontier["base_corpus_manifest_index_id"]
+            != index["corpus_manifest_index_id"]
+            or effective_page_frontier["family_id"] != compiled["topology"]["family_id"]
+        ):
+            raise _error("effective page frontier does not bind this corpus and family")
+        database = _content_ref(artifact_root, effective_page_frontier["database_ref"])
+        repair_results_database = _content_ref(
+            artifact_root, effective_page_frontier["results_database_ref"]
+        )
+        source_overlay = resolved_gemini_family_region_repair_overlay_v1(
+            repair_results_database,
+            family_run_id=effective_page_frontier["repair_source_family_run_id"],
+        )
+        if (
+            source_overlay["family_id"] != effective_page_frontier["family_id"]
+            or source_overlay["job_status_counts"] != effective_page_frontier["job_status_counts"]
+        ):
+            raise _error("effective page frontier source family jobs do not replay")
+        lineages = page_json_region_repair_lineages_v1(
+            database,
+            observed_page_json_version_ids=[
+                replacement["selected_page_json_version_id"]
+                for replacement in source_overlay["replacements"]
+            ],
+        )
+        replacements = []
+        for replacement, lineage in zip(source_overlay["replacements"], lineages, strict=True):
+            if (
+                lineage["base_page_json_version_id"] != replacement["base_page_json_version_id"]
+                or lineage["observed_page_json_version_id"]
+                != replacement["selected_page_json_version_id"]
+            ):
+                raise _error("effective page frontier repair lineage does not replay")
+            replacements.append(
+                {
+                    **replacement,
+                    "repair_id": lineage["repair_id"],
+                    "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+                }
+            )
+        if replacements != effective_page_frontier["replacements"]:
+            raise _error("effective page frontier replacement evidence drifted")
 
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
     for anchor_groups in compiled["anchor_alias_groups"]:
@@ -747,6 +807,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         evaluation_spec=evaluation,
         schema_binding_spec=schema,
         trials=trials,
+        effective_page_frontier=effective_page_frontier,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
     repair_plans = build_family_region_repair_plans_v1(
@@ -761,7 +822,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_hierarchical_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_queue_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
     stored = ingest_gemini_accounting_family_sweep_v1(
         args.results_database,
@@ -793,6 +856,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "output_ref": export_ref,
         "results_database": str(args.results_database),
         "family_run_id": stored["family_run_id"],
+        "effective_page_frontier_id": (
+            None
+            if effective_page_frontier is None
+            else effective_page_frontier["effective_page_frontier_id"]
+        ),
         "run_kind": args.run_kind,
         "pending_region_repair_job_count": len(repair_job_ids),
         "sweep_id": sweep["sweep_id"],

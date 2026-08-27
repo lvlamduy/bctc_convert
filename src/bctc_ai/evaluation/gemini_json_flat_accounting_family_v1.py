@@ -892,6 +892,7 @@ def build_gemini_json_flat_family_sweep_v1(
     evaluation_spec: Any,
     schema_binding_spec: Any,
     trials: list[dict[str, Any]],
+    effective_page_frontier: Any | None = None,
 ) -> dict[str, Any]:
     """Seal a complete ordered document disposition axis."""
 
@@ -903,6 +904,20 @@ def build_gemini_json_flat_family_sweep_v1(
     ):
         raise _error("Gemini JSON family sweep inputs are invalid")
     compiled = _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
+    checked_effective_frontier = None
+    if effective_page_frontier is not None:
+        from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (
+            validate_gemini_family_effective_page_frontier_v1,
+        )
+
+        checked_effective_frontier = validate_gemini_family_effective_page_frontier_v1(
+            effective_page_frontier
+        )
+        if (
+            checked_effective_frontier["base_corpus_manifest_index_id"] != corpus_manifest_index_id
+            or checked_effective_frontier["family_id"] != compiled["topology"]["family_id"]
+        ):
+            raise _error("effective page frontier does not bind the family sweep")
     statuses = {READY, NOT_OBSERVED, UNRESOLVED}
     mapping_count = 0
     for ordinal, trial in enumerate(trials, start=1):
@@ -944,6 +959,11 @@ def build_gemini_json_flat_family_sweep_v1(
         },
         "state": "COMPLETE_DOCUMENT_GEMINI_JSON_FAMILY_SWEEP_PROPOSAL_ONLY",
         "trials": canonical_clone_v1(trials),
+        **(
+            {"effective_page_frontier": checked_effective_frontier}
+            if checked_effective_frontier is not None
+            else {}
+        ),
     }
     return {
         **material,
@@ -957,17 +977,31 @@ def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
         or set(value)
-        != {
-            "claim_boundary",
-            "corpus_manifest_index_id",
-            "family_id",
-            "format_version",
-            "metrics",
-            "specs",
-            "state",
-            "sweep_id",
-            "trials",
-        }
+        not in (
+            {
+                "claim_boundary",
+                "corpus_manifest_index_id",
+                "family_id",
+                "format_version",
+                "metrics",
+                "specs",
+                "state",
+                "sweep_id",
+                "trials",
+            },
+            {
+                "claim_boundary",
+                "corpus_manifest_index_id",
+                "effective_page_frontier",
+                "family_id",
+                "format_version",
+                "metrics",
+                "specs",
+                "state",
+                "sweep_id",
+                "trials",
+            },
+        )
         or type(value.get("specs")) is not dict
         or set(value["specs"]) != {"evaluation", "schema_binding", "topology"}
         or any(
@@ -984,6 +1018,7 @@ def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
         evaluation_spec=value["specs"]["evaluation"]["value"],
         schema_binding_spec=value["specs"]["schema_binding"]["value"],
         trials=value["trials"],
+        effective_page_frontier=value.get("effective_page_frontier"),
     )
     if rebuilt != value:
         raise _error("Gemini JSON family sweep does not replay exactly")
