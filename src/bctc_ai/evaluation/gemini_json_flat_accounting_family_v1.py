@@ -57,6 +57,18 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
+    if (
+        type(evaluation_spec) is dict
+        and evaluation_spec.get("format_version")
+        == "ACCOUNTING_STACKED_PERIOD_FAMILY_EVALUATION_SPEC_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
+            compile_gemini_json_stacked_period_family_specs_v1,
+        )
+
+        return compile_gemini_json_stacked_period_family_specs_v1(
+            topology_spec, evaluation_spec, schema_binding_spec
+        )
     if type(evaluation_spec) is dict and evaluation_spec.get("format_version") in {
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",

@@ -153,6 +153,114 @@ def _hit_has_explicit_parent(
     )
 
 
+def _anchor_label_matches_v1(label: Any, aliases: list[str]) -> bool:
+    """Match one stored row without making JSON punctuation authoritative."""
+
+    if type(label) is not str or not label:
+        return False
+    folded = normalize_vietnamese_anchor_v1(label)
+    alias_set = {normalize_vietnamese_anchor_v1(alias) for alias in aliases}
+    if folded in alias_set:
+        return True
+    tokens = folded.split()
+    list_markers = {
+        *(str(value) for value in range(1, 21)),
+        "i",
+        "ii",
+        "iii",
+        "iv",
+        "v",
+        "vi",
+        "vii",
+        "viii",
+        "ix",
+        "x",
+        "xi",
+        "xii",
+        "xiii",
+        "xiv",
+        "xv",
+    }
+    return len(tokens) > 1 and tokens[0] in list_markers and " ".join(tokens[1:]) in alias_set
+
+
+def _distinct_hit_assignment_exists_v1(hit_groups: list[list[str]]) -> bool:
+    ordered = sorted((tuple(group) for group in hit_groups), key=lambda group: (len(group), group))
+
+    def assign(ordinal: int, used: frozenset[str]) -> bool:
+        if ordinal == len(ordered):
+            return True
+        return any(
+            row_id not in used and assign(ordinal + 1, used | {row_id})
+            for row_id in ordered[ordinal]
+        )
+
+    return assign(0, frozenset())
+
+
+def _stacked_candidate_regions_from_hits_v1(
+    hits: list[dict[str, Any]],
+    *,
+    anchor_alias_groups: list[list[list[str]]],
+    parent_aliases: list[str],
+) -> list[dict[str, Any]]:
+    """Derive stacked-family regions from one indexed evidence query.
+
+    Gemini punctuation and list numbering are presentation evidence.  Candidate
+    authority still requires a distinct visible row for every non-title anchor
+    and an explicit parent in the same stored table region.
+    """
+
+    grouped: dict[tuple[str, int, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for hit in hits:
+        key = (
+            hit["source_logical_name"],
+            hit["physical_page"],
+            hit["section_id"],
+            hit["table_id"],
+        )
+        grouped[key].append(hit)
+    normalized_parents = {normalize_vietnamese_anchor_v1(alias) for alias in parent_aliases}
+    result = []
+    for key in sorted(grouped):
+        region_hits = grouped[key]
+        representative = region_hits[0]
+        explicit_parent = _hit_has_explicit_parent(
+            representative,
+            allow_row_parent=False,
+            parent_aliases=sorted(normalized_parents),
+        )
+        matched = False
+        for anchor_groups in anchor_alias_groups:
+            hit_groups = []
+            for aliases in anchor_groups:
+                normalized_aliases = {normalize_vietnamese_anchor_v1(alias) for alias in aliases}
+                is_parent_anchor = bool(normalized_aliases & normalized_parents)
+                row_ids = {
+                    hit["row_id"]
+                    for hit in region_hits
+                    if _anchor_label_matches_v1(hit.get("label_exact"), aliases)
+                }
+                if is_parent_anchor and explicit_parent:
+                    row_ids.add("__EXPLICIT_PARENT_TITLE__")
+                hit_groups.append(sorted(row_ids))
+            if all(hit_groups) and _distinct_hit_assignment_exists_v1(hit_groups):
+                matched = True
+                break
+        if not matched:
+            continue
+        result.append(
+            {
+                "page_json_version_id": representative["page_json_version_id"],
+                "physical_page": representative["physical_page"],
+                "section_id": representative["section_id"],
+                "source_logical_name": representative["source_logical_name"],
+                "table_id": representative["table_id"],
+            }
+        )
+    return result
+
+
 def _normalized_column_axis(mapping: dict[str, Any]) -> tuple[tuple[str, str], ...] | None:
     columns = mapping.get("columns")
     if type(columns) is not list or not columns:
@@ -345,6 +453,18 @@ def _selected_ready_candidate(
     compiled_specs: dict[str, Any],
 ) -> dict[str, Any] | None:
     """Prefer one exact role-rich detail over its exact JSON summary."""
+
+    if (
+        compiled_specs.get("engine_format_version")
+        == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
+            select_gemini_json_stacked_period_ready_candidate_v1,
+        )
+
+        return select_gemini_json_stacked_period_ready_candidate_v1(
+            ready, compiled_specs=compiled_specs
+        )
 
     if len(ready) == 1:
         return ready[0]
@@ -676,14 +796,37 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if replacements != effective_page_frontier["replacements"]:
             raise _error("effective page frontier replacement evidence drifted")
 
+    stacked = (
+        compiled.get("engine_format_version") == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
+    )
+    required_roles = {
+        role
+        for combination in compiled["topology"]["required_role_combinations"]
+        for role in combination
+    }
+    query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
+    if stacked:
+        near_aliases = sorted(
+            {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
+        )
+    else:
+        near_aliases = sorted(
+            {alias for role in required_roles for alias in compiled["aliases_by_role"][role]}
+        )
+    near_hits = query_selected_family_anchor_hits_v1(
+        database,
+        selected_page_json_version_ids=selected_ids,
+        anchor_aliases=near_aliases,
+        explicit_parent_aliases=compiled.get(
+            "query_parent_aliases", compiled["topology"]["parent"]["aliases"]
+        ),
+    )
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
-    for anchor_groups in compiled["anchor_alias_groups"]:
-        regions = query_selected_family_anchor_regions_v1(
-            database,
-            selected_page_json_version_ids=selected_ids,
-            anchor_aliases=anchor_groups,
-            title_anchor_aliases=compiled["topology"]["parent"]["aliases"],
-            adjacent_page_radius=1,
+    if stacked:
+        regions = _stacked_candidate_regions_from_hits_v1(
+            near_hits,
+            anchor_alias_groups=query_anchor_groups,
+            parent_aliases=compiled["topology"]["parent"]["aliases"],
         )
         for region in regions:
             key = (
@@ -693,20 +836,25 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    required_roles = {
-        role
-        for combination in compiled["topology"]["required_role_combinations"]
-        for role in combination
-    }
-    near_aliases = sorted(
-        {alias for role in required_roles for alias in compiled["aliases_by_role"][role]}
-    )
-    near_hits = query_selected_family_anchor_hits_v1(
-        database,
-        selected_page_json_version_ids=selected_ids,
-        anchor_aliases=near_aliases,
-        explicit_parent_aliases=compiled["topology"]["parent"]["aliases"],
-    )
+    else:
+        for anchor_groups in query_anchor_groups:
+            regions = query_selected_family_anchor_regions_v1(
+                database,
+                selected_page_json_version_ids=selected_ids,
+                anchor_aliases=anchor_groups,
+                title_anchor_aliases=compiled.get(
+                    "query_parent_aliases", compiled["topology"]["parent"]["aliases"]
+                ),
+                adjacent_page_radius=1,
+            )
+            for region in regions:
+                key = (
+                    region["source_logical_name"],
+                    region["physical_page"],
+                    region["section_id"],
+                    region["table_id"],
+                )
+                regions_by_key[key] = region
     candidate_version_ids = sorted(
         {region["page_json_version_id"] for region in regions_by_key.values()}
     )
@@ -728,8 +876,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         )
     }
     candidates_by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for key in sorted(regions_by_key):
-        region = regions_by_key[key]
+    grouped_region_keys: list[list[tuple[str, int, str, str]]] = []
+    if stacked:
+        by_page: dict[tuple[str, int], list[tuple[str, int, str, str]]] = defaultdict(list)
+        for key in sorted(regions_by_key):
+            by_page[key[:2]].append(key)
+        grouped_region_keys = list(by_page.values())
+    else:
+        grouped_region_keys = [[key] for key in sorted(regions_by_key)]
+    for grouped_keys in grouped_region_keys:
+        region = regions_by_key[grouped_keys[0]]
         page = page_by_version[region["page_json_version_id"]]
         table = _region_table(page["page_json"], region)
         columns = table.get("columns")
@@ -742,14 +898,30 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             # under the family heading.  Its declared non-money axis makes it
             # context, not a competing accounting-value population.
             continue
-        candidate = evaluate_gemini_json_flat_family_table_v1(
-            page_json=page["page_json"],
-            page_json_version_id=region["page_json_version_id"],
-            physical_page=region["physical_page"],
-            section_id=region["section_id"],
-            table_id=region["table_id"],
-            compiled_specs=compiled,
-        )
+        if stacked:
+            from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
+                evaluate_gemini_json_stacked_period_family_region_v1,
+            )
+
+            candidate = evaluate_gemini_json_stacked_period_family_region_v1(
+                page_json=page["page_json"],
+                page_json_version_id=region["page_json_version_id"],
+                physical_page=region["physical_page"],
+                table_refs=[
+                    (regions_by_key[key]["section_id"], regions_by_key[key]["table_id"])
+                    for key in grouped_keys
+                ],
+                compiled_specs=compiled,
+            )
+        else:
+            candidate = evaluate_gemini_json_flat_family_table_v1(
+                page_json=page["page_json"],
+                page_json_version_id=region["page_json_version_id"],
+                physical_page=region["physical_page"],
+                section_id=region["section_id"],
+                table_id=region["table_id"],
+                compiled_specs=compiled,
+            )
         if any(reason.startswith("FAMILY_PARENT_NOT_VISIBLE") for reason in candidate["reasons"]):
             # The two/three-anchor database query deliberately searches a
             # one-page neighborhood.  A nearby table without the declarative
@@ -821,6 +993,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         ROOT / "scripts/experiments/run_gemini_json_first_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_hierarchical_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_stacked_period_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_queue_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",

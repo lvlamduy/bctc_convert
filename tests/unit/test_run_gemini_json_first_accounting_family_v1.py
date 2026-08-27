@@ -103,9 +103,65 @@ def test_candidate_selection_rejects_root_drift_and_equal_detail_ambiguity() -> 
     first = _candidate("first", roles)
     second = _candidate("second", roles)
     assert target._selected_ready_candidate([first, second], compiled_specs=_compiled()) is None
-
     second["mappings"][0]["values"][0]["coefficient"] += 1
     assert target._selected_ready_candidate([first, second], compiled_specs=_compiled()) is None
+
+
+def test_stacked_regions_are_derived_from_one_hit_frontier_with_punctuation_variants() -> None:
+    parent = "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác"
+    hit = {
+        "hierarchy_path_exact": [],
+        "label_exact": "I. Giao dịch kỳ hạn tiền tệ",
+        "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+        "physical_page": 38,
+        "row_id": "r2",
+        "section_id": "s2",
+        "section_title_exact": (
+            "8. CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH VÀ CÁC TÀI SẢN/(KHOẢN NỢ) TÀI CHÍNH KHÁC"
+        ),
+        "source_logical_name": "VIB/report.pdf",
+        "table_has_explicit_parent_row": 0,
+        "table_id": "t1",
+        "table_title_exact": None,
+    }
+    regions = target._stacked_candidate_regions_from_hits_v1(
+        [hit],
+        anchor_alias_groups=[[[parent], ["Giao dịch kỳ hạn tiền tệ"]]],
+        parent_aliases=[target.normalize_vietnamese_anchor_v1(parent)],
+    )
+    assert regions == [
+        {
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "physical_page": 38,
+            "section_id": "s2",
+            "source_logical_name": "VIB/report.pdf",
+            "table_id": "t1",
+        }
+    ]
+
+
+def test_stacked_regions_require_distinct_rows_for_child_child_anchor() -> None:
+    hit = {
+        "hierarchy_path_exact": [],
+        "label_exact": "Giao dịch hoán đổi tiền tệ",
+        "page_json_version_id": "gfpstorev1:json:" + "2" * 64,
+        "physical_page": 7,
+        "row_id": "r1",
+        "section_id": "s1",
+        "section_title_exact": "Công cụ tài chính phái sinh",
+        "source_logical_name": "bank/report.pdf",
+        "table_has_explicit_parent_row": 0,
+        "table_id": "t1",
+        "table_title_exact": None,
+    }
+    assert (
+        target._stacked_candidate_regions_from_hits_v1(
+            [hit],
+            anchor_alias_groups=[[["Giao dịch hoán đổi tiền tệ"], ["Giao dịch hoán đổi tiền tệ"]]],
+            parent_aliases=["cong cu tai chinh phai sinh"],
+        )
+        == []
+    )
 
 
 def test_row_level_parent_authority_is_opt_in_for_recursive_json_engine() -> None:

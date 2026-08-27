@@ -91,8 +91,12 @@ def _repair_args(
         pdf=args.pdf_root / plan["source_logical_name"],
         physical_page=plan["physical_page"],
         retry_delay_seconds=args.retry_delay_seconds,
+        repair_scope=plan.get("repair_scope", "ROW_VALUES"),
         source_logical_name=plan["source_logical_name"],
         target_id=plan["target_ids"],
+        target_table_ref=[
+            f"{ref['section_id']}:{ref['table_id']}" for ref in plan.get("target_table_refs", [])
+        ],
         thinking_level=thinking_level,
         timeout_seconds=args.timeout_seconds,
     )
@@ -106,12 +110,26 @@ def _targeted_repair_is_accepted(plan: dict[str, Any], candidate: dict[str, Any]
     if not after <= before:
         return False
     if "INVALID_MONEY_CELL" in plan["trigger_kinds"] and any(
-        "MONEY_CELL_IS_NOT_EXACT_INTEGER" in reason for reason in after
+        "MONEY_CELL_IS_NOT_EXACT_INTEGER" in reason
+        or reason.startswith("ROW_CELL_ERROR:")
+        or reason.startswith("ROW_VALUE_AXIS_INCOMPLETE:")
+        for reason in after
     ):
         return False
     if "UNSATISFIED_EXACT_EQUATION" in plan["trigger_kinds"] and any(
         reason.startswith("EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:")
         or reason.startswith("NESTED_PARENT_NOT_EXACT_CHILD_SUM:")
+        or reason.startswith("VISIBLE_LANE_EQUATION_NOT_EXACT:")
+        or reason.startswith("STRUCTURAL_SUBTOTAL_NOT_EXACT:")
+        or reason.startswith("VISIBLE_FAMILY_TOTAL_NOT_EXACT_DIRECT_FRONTIER:")
+        or reason.startswith("PRESENTATION_NET_ROW_NOT_ONE_EXACT_LANE_EQUATION:")
+        for reason in after
+    ):
+        return False
+    if "TABLE_PERIOD_AXIS_INCOMPLETE" in plan["trigger_kinds"] and any(
+        reason == "Gemini JSON stacked-period region does not expose exactly two periods"
+        or reason.startswith("PERIOD_HAS_NO_DECLARED_ROLE:")
+        or "no exact period carrier" in reason
         for reason in after
     ):
         return False
@@ -133,6 +151,45 @@ def _target_evidence(page_json: dict[str, Any], target_ids: list[str]) -> list[d
             }
         )
     return evidence
+
+
+def _repair_target_evidence(
+    page_json: dict[str, Any], plan: dict[str, Any]
+) -> list[dict[str, Any]]:
+    if plan.get("repair_scope") != "TABLE_PERIOD_AXIS":
+        return _target_evidence(page_json, plan["target_ids"])
+    evidence = []
+    for ref in plan.get("target_table_refs", []):
+        table = page_json["sections"][int(ref["section_id"][1:]) - 1]["tables"][
+            int(ref["table_id"][1:]) - 1
+        ]
+        evidence.append(
+            {
+                "columns_header_path_exact": [
+                    column["header_path_exact"] for column in table["columns"]
+                ],
+                "table_title_exact": table["title_exact"],
+            }
+        )
+    return evidence
+
+
+def _repair_attempt_outcome_v1(*, resolved: bool, stable_source: bool, thinking_level: str) -> str:
+    """Keep unchanged evidence retryable until the bounded final source read."""
+
+    if (
+        type(resolved) is not bool
+        or type(stable_source) is not bool
+        or thinking_level not in {"low", "medium", "high"}
+    ):
+        raise RunGeminiJsonFamilyRegionRepairWorkerV1Error(
+            "repair attempt outcome input is invalid"
+        )
+    if resolved:
+        return "RESOLVED"
+    if stable_source and thinking_level == "high":
+        return "STABLE_SOURCE_EVIDENCE"
+    return "RETRYABLE_VALIDATION_FAILURE"
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -193,35 +250,61 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     args.page_database,
                     page_json_version_ids=[plan["base_page_json_version_id"]],
                 )[0]["page_json"]
-                candidate = evaluate_gemini_json_flat_family_table_v1(
-                    page_json=repaired_page,
-                    page_json_version_id=version_id,
-                    physical_page=plan["physical_page"],
-                    section_id=plan["section_id"],
-                    table_id=plan["table_id"],
-                    compiled_specs=compiled,
-                )
+                if (
+                    compiled.get("engine_format_version")
+                    == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
+                ):
+                    from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
+                        evaluate_gemini_json_stacked_period_family_region_v1,
+                    )
+
+                    candidate = evaluate_gemini_json_stacked_period_family_region_v1(
+                        page_json=repaired_page,
+                        page_json_version_id=version_id,
+                        physical_page=plan["physical_page"],
+                        table_refs=[
+                            (ref["section_id"], ref["table_id"])
+                            for ref in plan["component_table_refs"]
+                        ],
+                        compiled_specs=compiled,
+                    )
+                else:
+                    candidate = evaluate_gemini_json_flat_family_table_v1(
+                        page_json=repaired_page,
+                        page_json_version_id=version_id,
+                        physical_page=plan["physical_page"],
+                        section_id=plan["section_id"],
+                        table_id=plan["table_id"],
+                        compiled_specs=compiled,
+                    )
                 resolved = _targeted_repair_is_accepted(plan, candidate)
                 stable_source = (
                     not resolved
-                    and "UNSATISFIED_EXACT_EQUATION" in plan["trigger_kinds"]
-                    and _target_evidence(base_page, plan["target_ids"])
-                    == _target_evidence(repaired_page, plan["target_ids"])
+                    and (
+                        "UNSATISFIED_EXACT_EQUATION" in plan["trigger_kinds"]
+                        or "TABLE_PERIOD_AXIS_INCOMPLETE" in plan["trigger_kinds"]
+                    )
+                    and _repair_target_evidence(base_page, plan)
+                    == _repair_target_evidence(repaired_page, plan)
+                )
+                # An unchanged low/medium reread is not proof that the source is
+                # inconsistent.  A detached sign, dense header, or small glyph can
+                # require the wider context and stronger reasoning of the next
+                # bounded pass.  Only the final high pass may seal unchanged source
+                # evidence; graph/arithmetic validation remains the acceptance gate.
+                outcome = _repair_attempt_outcome_v1(
+                    resolved=resolved,
+                    stable_source=stable_source,
+                    thinking_level=thinking_level,
                 )
                 state = record_gemini_family_region_repair_attempt_v1(
                     args.results_database,
                     repair_job_id=plan["repair_job_id"],
                     thinking_level=thinking_level,
-                    outcome=(
-                        "RESOLVED"
-                        if resolved
-                        else (
-                            "STABLE_SOURCE_EVIDENCE"
-                            if stable_source
-                            else "RETRYABLE_VALIDATION_FAILURE"
-                        )
+                    outcome=outcome,
+                    page_json_version_id=(
+                        version_id if outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"} else None
                     ),
-                    page_json_version_id=version_id if resolved or stable_source else None,
                     usage=observation["usage"],
                     reasons=candidate["reasons"],
                 )

@@ -27,6 +27,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     initialize_gemini_financial_page_store_v1,
     initialize_region_repair_extension_v1,
     load_page_json_versions_v1,
+    lookup_cached_page_extraction_v1,
     lookup_cached_page_json_v1,
     page_json_region_repair_lineages_v1,
     query_family_anchor_regions_v1,
@@ -63,7 +64,7 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> Non
     repaired = _ingest(
         path,
         prompt_sha256="f" * 64,
-        prompt_variant="region-repair",
+        prompt_variant="region-repair-row-values",
         page_json=merged,
     )
     initialize_region_repair_extension_v1(path)
@@ -85,6 +86,10 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> Non
         path,
         page_json_version_ids=[repaired["page_json_version_id"]],
     )
+    cached = lookup_cached_page_extraction_v1(path, repaired["cache_key"])
+    assert cached is not None
+    assert cached["database_identities"]["page_json_version_id"] == repaired["page_json_version_id"]
+    assert cached["page_json"] == merged
     assert loaded[0]["page_json"] == merged
     replayed = page_json_region_repair_lineages_v1(
         path, observed_page_json_version_ids=[repaired["page_json_version_id"]]
@@ -449,6 +454,27 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
         ["__TITLE_ANCHOR__:1"],
         ["r1"],
     ]
+    punctuation_parent_page = deepcopy(parent_title_page)
+    punctuation_parent_page["sections"][0]["title_exact"] = (
+        "8. Các công cụ tài chính phái sinh và các tài sản/(khoản nợ) tài chính khác"
+    )
+    punctuation_parent = _ingest(
+        path,
+        physical_page=13,
+        image_sha256="6" * 64,
+        page_json=punctuation_parent_page,
+    )
+    assert query_selected_family_anchor_regions_v1(
+        path,
+        selected_page_json_version_ids=[punctuation_parent["page_json_version_id"]],
+        anchor_aliases=[
+            ["Các công cụ tài chính phái sinh và các tài sản/(khoản nợ) tài chính khác"],
+            [punctuation_parent_page["sections"][0]["tables"][0]["rows"][0]["label_exact"]],
+        ],
+        title_anchor_aliases=[
+            "Các công cụ tài chính phái sinh và các tài sản/(khoản nợ) tài chính khác"
+        ],
+    )[0]["anchor_row_ids"] == [["__TITLE_ANCHOR__:1"], ["r1"]]
     hits = query_selected_family_anchor_hits_v1(
         path,
         selected_page_json_version_ids=selected,

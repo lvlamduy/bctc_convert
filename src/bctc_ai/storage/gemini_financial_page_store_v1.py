@@ -588,6 +588,55 @@ def lookup_cached_page_json_v1(path: Path, cache_key: str) -> dict[str, Any] | N
     return validate_financial_page_json_v1(json.loads(bytes(row[0])))
 
 
+def lookup_cached_page_extraction_v1(path: Path, cache_key: str) -> dict[str, Any] | None:
+    """Return exact cached identities and JSON without issuing another provider call."""
+
+    with _connect(path, readonly=True) as connection:
+        row = connection.execute(
+            """
+            SELECT r.cache_key,r.extraction_run_id,r.page_id,
+                   r.selected_provider,r.selected_model,r.selected_service_tier,
+                   r.response_id_sha256,r.input_tokens,r.output_tokens,
+                   r.thought_tokens,r.cached_input_tokens,r.total_tokens,
+                   r.cost_usd,r.cost_disposition,
+                   p.document_id,j.page_json_version_id,j.canonical_json_bytes
+            FROM extraction_run AS r
+            JOIN page AS p USING(page_id)
+            JOIN page_json_version AS j USING(extraction_run_id)
+            WHERE r.cache_key=? AND r.status='COMPLETE'
+            """,
+            (cache_key,),
+        ).fetchone()
+    if row is None:
+        return None
+    page_json = validate_financial_page_json_v1(json.loads(bytes(row["canonical_json_bytes"])))
+    return {
+        "database_identities": {
+            "cache_key": row["cache_key"],
+            "document_id": row["document_id"],
+            "extraction_run_id": row["extraction_run_id"],
+            "page_id": row["page_id"],
+            "page_json_version_id": row["page_json_version_id"],
+        },
+        "page_json": page_json,
+        "provider": {
+            "model": row["selected_model"],
+            "name": row["selected_provider"],
+            "response_id_sha256": row["response_id_sha256"],
+            "service_tier": row["selected_service_tier"],
+        },
+        "source_usage": {
+            "actual_cost_usd": row["cost_usd"],
+            "cached_input_tokens": row["cached_input_tokens"],
+            "cost_disposition": row["cost_disposition"],
+            "input_tokens": row["input_tokens"],
+            "output_tokens": row["output_tokens"],
+            "thought_tokens": row["thought_tokens"],
+            "total_tokens": row["total_tokens"],
+        },
+    }
+
+
 def _text_projection(value: str | None) -> tuple[str | None, str | None]:
     if value is None:
         return None, None
@@ -1384,6 +1433,8 @@ def document_page_extraction_frontier_v1(
         "compact",
         "items",
         "region-repair",
+        "region-repair-row-values",
+        "region-repair-table-period-axis",
         "scope",
         "simple",
     }
@@ -1455,6 +1506,8 @@ def selected_page_extraction_receipts_v1(
         "compact",
         "items",
         "region-repair",
+        "region-repair-row-values",
+        "region-repair-table-period-axis",
         "scope",
         "simple",
     }

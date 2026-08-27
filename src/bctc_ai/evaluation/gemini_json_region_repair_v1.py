@@ -65,8 +65,10 @@ def region_repair_targets_v1(
             row = table["rows"][row_index]
         except (IndexError, KeyError, TypeError) as exc:
             raise _error("region repair target lies outside the page JSON") from exc
-        if type(row["label_exact"]) is not str or not row["label_exact"].strip():
-            raise _error("region repair target must bind one labeled row")
+        if row["label_exact"] is not None and (
+            type(row["label_exact"]) is not str or not row["label_exact"].strip()
+        ):
+            raise _error("region repair target label is invalid")
         context_rows = []
         for context_index in range(
             max(0, row_index - context_radius),
@@ -93,6 +95,222 @@ def region_repair_targets_v1(
             }
         )
     return result
+
+
+def table_axis_repair_targets_v1(
+    page_json: Any, *, table_refs: Sequence[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """Resolve exact tables whose printed period/header axis needs rereading."""
+
+    checked = validate_financial_page_json_v1(page_json)
+    if (
+        type(table_refs) not in {list, tuple}
+        or not table_refs
+        or any(
+            type(ref) is not dict or set(ref) != {"section_id", "table_id"} for ref in table_refs
+        )
+    ):
+        raise _error("table-axis repair frontier is invalid")
+    result = []
+    seen = set()
+    for ref in table_refs:
+        target_id = f"{ref['section_id']}:{ref['table_id']}"
+        if target_id in seen:
+            raise _error("table-axis repair frontier is duplicate")
+        seen.add(target_id)
+        section_index = int(ref["section_id"].removeprefix("s")) - 1
+        table_index = int(ref["table_id"].removeprefix("t")) - 1
+        try:
+            section = checked["sections"][section_index]
+            table = section["tables"][table_index]
+        except (IndexError, KeyError, TypeError, ValueError) as exc:
+            raise _error("table-axis repair target lies outside the page JSON") from exc
+        if ref["section_id"] != f"s{section_index + 1}" or ref["table_id"] != f"t{table_index + 1}":
+            raise _error("table-axis repair target ID is invalid")
+        labels = [row["label_exact"] for row in table["rows"] if row["label_exact"] is not None]
+        result.append(
+            {
+                "columns_before_exact": [
+                    canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
+                ],
+                "row_labels_context_exact": labels[:3] + labels[-2:] if len(labels) > 5 else labels,
+                "section_title_exact": section["title_exact"],
+                "table_title_before_exact": table["title_exact"],
+                "target_id": target_id,
+            }
+        )
+    return result
+
+
+def build_table_axis_repair_prompt_v1(
+    *, base_page_json_version_id: str, targets: Sequence[dict[str, Any]]
+) -> str:
+    if (
+        type(base_page_json_version_id) is not str
+        or not base_page_json_version_id.startswith("gfpstorev1:json:")
+        or type(targets) not in {list, tuple}
+        or not targets
+    ):
+        raise _error("table-axis repair prompt input is invalid")
+    return (
+        "Đọc trực tiếp ảnh nguyên trang báo cáo tài chính. Chỉ chép lại tiêu đề bảng và "
+        "header cột của từng target_table; không chép lại các dòng số. Phải giữ đầy đủ mọi "
+        "ngày/kỳ, đơn vị và nhãn cột nhìn thấy, đúng thứ tự từ header ngoài đến header trong. "
+        "section_title_exact, header cũ và row_labels_context_exact chỉ giúp định vị đúng bảng, "
+        "không phải đáp án. Không suy ra ngày từ tên file hay phép tính. Mỗi target_id xuất hiện "
+        "đúng một lần và số cột phải giữ nguyên. Nếu một tiêu đề bảng thực sự không có thì trả "
+        "null; nếu không đọc chắc thì ghi uncertainty_exact. Trả đúng JSON theo schema.\n"
+        "base_page_json_version_id="
+        + base_page_json_version_id
+        + "\ntarget_tables="
+        + canonical_json_bytes_v1(list(targets)).decode("utf-8")
+    )
+
+
+def table_axis_repair_response_schema_v1() -> dict[str, Any]:
+    nullable_string = {"type": ["string", "null"]}
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": False,
+        "properties": {
+            "all_targets_transcribed": {"type": "boolean"},
+            "tables": {
+                "items": {
+                    "additionalProperties": False,
+                    "properties": {
+                        "columns_header_path_exact": {
+                            "items": {
+                                "items": nullable_string,
+                                "minItems": 1,
+                                "type": "array",
+                            },
+                            "type": "array",
+                        },
+                        "table_title_exact": nullable_string,
+                        "target_id": {"type": "string"},
+                    },
+                    "required": [
+                        "columns_header_path_exact",
+                        "table_title_exact",
+                        "target_id",
+                    ],
+                    "type": "object",
+                },
+                "type": "array",
+            },
+            "uncertainty_exact": {"items": {"type": "string"}, "type": "array"},
+        },
+        "required": ["all_targets_transcribed", "tables", "uncertainty_exact"],
+        "type": "object",
+    }
+
+
+def decode_table_axis_repair_text_v1(
+    text: str, *, targets: Sequence[dict[str, Any]]
+) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise _error("table-axis repair response is not JSON") from exc
+    if type(value) is not dict or set(value) != {
+        "all_targets_transcribed",
+        "tables",
+        "uncertainty_exact",
+    }:
+        raise _error("table-axis repair response fields drifted")
+    if (
+        type(value["all_targets_transcribed"]) is not bool
+        or type(value["uncertainty_exact"]) is not list
+    ):
+        raise _error("table-axis repair completion evidence is invalid")
+    if any(type(item) is not str or not item for item in value["uncertainty_exact"]):
+        raise _error("table-axis repair uncertainty frontier is invalid")
+    tables = value["tables"]
+    expected_ids = [target["target_id"] for target in targets]
+    if type(tables) is not list or [table.get("target_id") for table in tables] != expected_ids:
+        raise _error("table-axis repair order or identity drifted")
+    checked_tables = []
+    for table, target in zip(tables, targets, strict=True):
+        if type(table) is not dict or set(table) != {
+            "columns_header_path_exact",
+            "table_title_exact",
+            "target_id",
+        }:
+            raise _error("table-axis repair table fields drifted")
+        columns = table["columns_header_path_exact"]
+        if (
+            type(table["table_title_exact"]) not in {str, type(None)}
+            or type(columns) is not list
+            or len(columns) != len(target["columns_before_exact"])
+            or any(
+                type(path) is not list
+                or not path
+                or any(type(item) not in {str, type(None)} for item in path)
+                for path in columns
+            )
+        ):
+            raise _error("table-axis repair title or column axis is invalid")
+        checked_tables.append(canonical_clone_v1(table))
+    return {
+        "all_targets_transcribed": value["all_targets_transcribed"],
+        "tables": checked_tables,
+        "uncertainty_exact": list(value["uncertainty_exact"]),
+    }
+
+
+def merge_table_axis_repair_v1(
+    page_json: Any,
+    *,
+    base_page_json_version_id: str,
+    targets: Sequence[dict[str, Any]],
+    repair: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    checked = validate_financial_page_json_v1(page_json)
+    decoded = decode_table_axis_repair_text_v1(
+        canonical_json_bytes_v1(repair).decode("utf-8"), targets=targets
+    )
+    if not decoded["all_targets_transcribed"] or decoded["uncertainty_exact"]:
+        raise _error("table-axis repair is incomplete or uncertain")
+    merged = canonical_clone_v1(checked)
+    before_sha = canonical_json_sha256_v1(checked)
+    changes = []
+    for target, table_repair in zip(targets, decoded["tables"], strict=True):
+        section_id, table_id = target["target_id"].split(":")
+        table = merged["sections"][int(section_id[1:]) - 1]["tables"][int(table_id[1:]) - 1]
+        before = {
+            "columns_header_path_exact": [
+                canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
+            ],
+            "table_title_exact": table["title_exact"],
+        }
+        table["title_exact"] = table_repair["table_title_exact"]
+        for column, header in zip(
+            table["columns"], table_repair["columns_header_path_exact"], strict=True
+        ):
+            column["header_path_exact"] = canonical_clone_v1(header)
+        changes.append(
+            {
+                "axis_after_exact": {
+                    "columns_header_path_exact": table_repair["columns_header_path_exact"],
+                    "table_title_exact": table_repair["table_title_exact"],
+                },
+                "axis_before_exact": before,
+                "target_id": target["target_id"],
+            }
+        )
+    merged = validate_financial_page_json_v1(merged)
+    receipt_material = {
+        "base_page_json_sha256": before_sha,
+        "base_page_json_version_id": base_page_json_version_id,
+        "changes": changes,
+        "format_version": FORMAT_VERSION,
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "repair_response_sha256": canonical_json_sha256_v1(decoded),
+    }
+    return merged, {
+        **receipt_material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(receipt_material),
+    }
 
 
 def build_region_repair_prompt_v1(
@@ -122,7 +340,10 @@ def build_region_repair_prompt_v1(
         "target_rows bên dưới; không trả nội dung khác. context_rows_exact là các dòng trước/sau "
         "để định vị đúng block và hiểu header/cha-con, không phải đáp án để sao chép. Giữ đúng, "
         "đủ nhãn và từng giá trị theo "
-        "thứ tự cột. Không dùng tổng để suy ra hoặc sửa số. Ô trống trả null; dấu gạch ngang có "
+        "thứ tự cột. Kiểm tra kỹ dấu âm, ngoặc đơn hoặc dấu gạch có thể nằm lệch về "
+        "bên trái/phải của con số nhưng vẫn thuộc cùng ô; phải chép cả dấu và số. "
+        "Header và các dòng lân cận chỉ dùng để gán đúng cột. Không dùng tổng để suy ra "
+        "hoặc sửa số, và không dùng phép tính để đoán nội dung ô. Ô trống trả null; dấu gạch ngang độc lập có "
         "thể trả '-' hoặc '0'. Mỗi target_id phải xuất hiện đúng một lần. Nếu không đọc chắc một "
         "ô, vẫn giữ target nhưng ghi null và mô tả ngắn trong uncertainty_exact. Trả đúng JSON "
         "theo schema.\nbase_page_json_version_id="
@@ -142,7 +363,7 @@ def region_repair_response_schema_v1() -> dict[str, Any]:
                 "items": {
                     "additionalProperties": False,
                     "properties": {
-                        "label_exact": {"type": "string"},
+                        "label_exact": {"type": ["string", "null"]},
                         "target_id": {"type": "string"},
                         "values_exact": {
                             "items": {"type": ["string", "null"]},
@@ -196,15 +417,20 @@ def decode_region_repair_text_v1(text: str, *, targets: Sequence[dict[str, Any]]
         target = targets_by_id[row["target_id"]]
         values = row["values_exact"]
         if (
-            type(row["label_exact"]) is not str
+            type(row["label_exact"]) not in {str, type(None)}
             or type(values) is not list
             or len(values) != target["value_count"]
             or any(type(item) not in {str, type(None)} for item in values)
         ):
             raise _error("region repair label or value axis is invalid")
-        expected_label = normalize_search_text_v1(target["label_exact"])["text_ascii_folded"]
-        observed_label = normalize_search_text_v1(row["label_exact"])["text_ascii_folded"]
-        if expected_label != observed_label:
+        expected_label = target["label_exact"]
+        observed_label = row["label_exact"]
+        if (expected_label is None) != (observed_label is None):
+            raise _error("region repair label does not bind the requested row")
+        if expected_label is not None and (
+            normalize_search_text_v1(expected_label)["text_ascii_folded"]
+            != normalize_search_text_v1(observed_label)["text_ascii_folded"]
+        ):
             raise _error("region repair label does not bind the requested row")
         checked_rows.append(canonical_clone_v1(row))
     return {
