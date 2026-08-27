@@ -2091,6 +2091,8 @@ def validate_gemini_json_rollforward_sweep_query_bindings_v1(
             )
             for candidate in trial["candidates"]
         ]
+        if accepted_regions and len(candidates) != 1:
+            raise _error("Gemini JSON roll-forward accepted source must have exactly one candidate")
         if candidates and not accepted_regions:
             raise _error("Gemini JSON roll-forward candidate has no accepted source regions")
         candidate = candidates[0] if candidates else None

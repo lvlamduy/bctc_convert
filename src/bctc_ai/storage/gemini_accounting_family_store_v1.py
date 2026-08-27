@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+    compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
@@ -618,12 +619,34 @@ def ingest_gemini_accounting_family_sweep_v1(
     corpus_index_ref: Mapping[str, Any],
     implementation_refs: Sequence[Mapping[str, Any]],
     run_kind: str,
+    source_page_database: Path | None = None,
 ) -> dict[str, Any]:
     """Store one validated sweep and every trace row in one SQLite transaction."""
 
     if run_kind not in {"EXPERIMENTAL", "OFFICIAL"}:
         raise _error("family run kind must be EXPERIMENTAL or OFFICIAL")
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
+    if checked_sweep["format_version"] == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1":
+        if source_page_database is None:
+            raise _error("roll-forward family ingest requires its canonical page store")
+        from bctc_ai.storage.gemini_financial_page_store_v1 import (
+            validate_selected_rollforward_family_candidate_replays_v1,
+        )
+
+        compiled_specs = compile_gemini_json_flat_family_specs_v1(
+            checked_sweep["specs"]["topology"]["value"],
+            checked_sweep["specs"]["evaluation"]["value"],
+            checked_sweep["specs"]["schema_binding"]["value"],
+        )
+        try:
+            validate_selected_rollforward_family_candidate_replays_v1(
+                source_page_database,
+                compiled_specs=compiled_specs,
+                indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                trials=checked_sweep["trials"],
+            )
+        except RuntimeError as exc:
+            raise _error("roll-forward family candidates do not replay from page store") from exc
     checked_index_ref = _checked_ref(corpus_index_ref)
     checked_implementation = _checked_implementation_refs(implementation_refs)
     if not path.exists():

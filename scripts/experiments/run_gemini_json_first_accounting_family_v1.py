@@ -1604,6 +1604,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         corpus_index_ref=_file_ref(args.corpus_index),
         implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
         run_kind=args.run_kind,
+        source_page_database=database if rollforward_projection else None,
     )
     repair_job_ids = enqueue_gemini_family_region_repair_plans_v1(
         args.results_database,

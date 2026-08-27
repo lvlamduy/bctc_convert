@@ -2231,6 +2231,92 @@ def query_selected_rollforward_family_regions_v1(
     }
 
 
+def validate_selected_rollforward_family_candidate_replays_v1(
+    path: Path,
+    *,
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+    trials: Any,
+) -> list[dict[str, Any]]:
+    """Replay every accepted-source candidate from exact canonical page JSON."""
+
+    from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+        validate_gemini_json_rollforward_sweep_query_bindings_v1,
+    )
+    from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
+        build_gemini_json_rollforward_region_query_receipt_v1,
+        validate_gemini_json_rollforward_family_candidate_replay_v1,
+    )
+
+    try:
+        checked_trials = validate_gemini_json_rollforward_sweep_query_bindings_v1(
+            trials=trials,
+            indexed_query_evidence=indexed_query_evidence,
+            compiled_specs=dict(compiled_specs),
+        )
+    except ValueError as exc:
+        raise _error("selected roll-forward sweep bindings do not replay exactly") from exc
+
+    locator_fields = (
+        "document_id",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "source_logical_name",
+        "source_sha256",
+        "table_id",
+    )
+    regions_by_source: dict[str, list[dict[str, Any]]] = {}
+    accepted_version_ids: list[str] = []
+    seen_version_ids: set[str] = set()
+    for accepted in indexed_query_evidence["accepted_regions"]:
+        regions_by_source.setdefault(accepted["source_logical_name"], []).append(
+            {field: accepted[field] for field in locator_fields}
+        )
+        version_id = accepted["page_json_version_id"]
+        if version_id not in seen_version_ids:
+            seen_version_ids.add(version_id)
+            accepted_version_ids.append(version_id)
+    loaded_pages = (
+        load_page_json_versions_v1(path, page_json_version_ids=accepted_version_ids)
+        if accepted_version_ids
+        else []
+    )
+    loaded_by_version = {page["page_json_version_id"]: page for page in loaded_pages}
+    if set(loaded_by_version) != set(accepted_version_ids):
+        raise _error("selected roll-forward accepted page axis does not load exactly")
+    for regions in regions_by_source.values():
+        for region in regions:
+            page = loaded_by_version.get(region["page_json_version_id"])
+            if (
+                page is None
+                or page["physical_page"] != region["physical_page"]
+                or page["source_logical_name"] != region["source_logical_name"]
+                or page["source_sha256"] != region["source_sha256"]
+            ):
+                raise _error("selected roll-forward accepted page provenance drifted")
+    try:
+        for trial in checked_trials:
+            if not trial["candidates"]:
+                continue
+            regions = regions_by_source[trial["source_logical_name"]]
+            validate_gemini_json_rollforward_family_candidate_replay_v1(
+                trial["candidates"][0],
+                regions=regions,
+                page_json_by_version={
+                    region["page_json_version_id"]: loaded_by_version[
+                        region["page_json_version_id"]
+                    ]["page_json"]
+                    for region in regions
+                },
+                compiled_specs=dict(compiled_specs),
+                query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(regions),
+            )
+    except (KeyError, ValueError) as exc:
+        raise _error("selected roll-forward candidate does not replay from SQLite") from exc
+    return canonical_clone_v1(checked_trials)
+
+
 def validate_selected_rollforward_family_query_evidence_v1(
     path: Path,
     *,
@@ -2251,18 +2337,12 @@ def validate_selected_rollforward_family_query_evidence_v1(
     ):
         raise _error("selected roll-forward query evidence does not replay exactly")
     if trials is not None:
-        from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
-            validate_gemini_json_rollforward_sweep_query_bindings_v1,
+        validate_selected_rollforward_family_candidate_replays_v1(
+            path,
+            compiled_specs=compiled_specs,
+            indexed_query_evidence=replayed,
+            trials=trials,
         )
-
-        try:
-            validate_gemini_json_rollforward_sweep_query_bindings_v1(
-                trials=trials,
-                indexed_query_evidence=replayed,
-                compiled_specs=dict(compiled_specs),
-            )
-        except ValueError as exc:
-            raise _error("selected roll-forward sweep bindings do not replay exactly") from exc
     return canonical_clone_v1(replayed)
 
 

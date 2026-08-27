@@ -30,6 +30,7 @@ from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (
+    GeminiAccountingFamilyStoreV1Error,
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
 )
@@ -265,11 +266,147 @@ def test_rollforward_sweep_replays_and_store_dispatches_movement_roles(
         corpus_index_ref={"path": "index.json", "sha256": "4" * 64, "size_bytes": 1},
         implementation_refs=[{"path": "engine.py", "sha256": "5" * 64, "size_bytes": 1}],
         run_kind="EXPERIMENTAL",
+        source_page_database=page_database,
     )
     assert load_gemini_accounting_family_sweep_v1(family_database, stored["family_run_id"]) == sweep
     with sqlite3.connect(family_database) as connection:
         roles = {row[0] for row in connection.execute("SELECT role FROM family_mapping").fetchall()}
     assert roles == {mapping["movement_role"] for mapping in candidate["mappings"]}
+
+
+def test_sqlite_replay_and_store_reject_coherently_rehashed_mapping_values(
+    tmp_path: Path,
+) -> None:
+    page_database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(page_database)
+    page_json = _page(_stacked_table())
+    selected = _ingest(page_database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        page_database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "3" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            _trial(
+                ordinal=1,
+                source="report.pdf",
+                source_sha256="b" * 64,
+                status=READY,
+                candidate=candidate,
+            )
+        ],
+        indexed_query_evidence=indexed,
+    )
+
+    attacked = deepcopy(sweep)
+    attacked_candidate = attacked["trials"][0]["candidates"][0]
+    attacked_mapping = next(
+        mapping for mapping in attacked_candidate["mappings"] if mapping["report_norm_id"] == 791
+    )
+    assert attacked_mapping["cell"]["coefficient"] == 110
+    attacked_mapping["report_norm_id"] = 999999
+    attacked_mapping["cell"]["coefficient"] = 123566
+    mapping_material = {
+        key: value for key, value in attacked_mapping.items() if key != "item_mapping_id"
+    }
+    attacked_mapping["item_mapping_id"] = "gjfrfmv1:item:" + canonical_json_sha256_v1(
+        mapping_material
+    )
+    candidate_material = {
+        key: value for key, value in attacked_candidate.items() if key != "candidate_id"
+    }
+    attacked_candidate["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(
+        candidate_material
+    )
+    attacked_trial = attacked["trials"][0]
+    attacked_trial["mappings"] = deepcopy(attacked_candidate["mappings"])
+    attacked_trial["selected_candidate_id"] = attacked_candidate["candidate_id"]
+    attacked_material = {key: value for key, value in attacked.items() if key != "sweep_id"}
+    attacked["sweep_id"] = "gjfafsv1:sweep:" + canonical_json_sha256_v1(attacked_material)
+
+    # Envelope hashes and every evidence locator are coherent; only canonical
+    # SQLite page replay can prove that the RNID and coefficient were forged.
+    assert validate_gemini_json_flat_family_sweep_v1(attacked) == attacked
+    with pytest.raises(
+        GeminiFinancialPageStoreV1Error,
+        match="candidate does not replay from SQLite",
+    ):
+        validate_selected_rollforward_family_query_evidence_v1(
+            page_database,
+            selected_page_json_version_ids=[selected["page_json_version_id"]],
+            compiled_specs=compiled,
+            indexed_query_evidence=indexed,
+            trials=attacked["trials"],
+        )
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="candidates do not replay from page store",
+    ):
+        ingest_gemini_accounting_family_sweep_v1(
+            tmp_path / "attacked-values.sqlite3",
+            sweep=attacked,
+            corpus_index_ref={
+                "path": "index.json",
+                "sha256": "4" * 64,
+                "size_bytes": 1,
+            },
+            implementation_refs=[{"path": "engine.py", "sha256": "5" * 64, "size_bytes": 1}],
+            run_kind="EXPERIMENTAL",
+            source_page_database=page_database,
+        )
+
+
+def test_accepted_source_cannot_delete_its_candidate_and_downgrade_to_near_only(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page_json = _page(_stacked_table())
+    selected = _ingest(database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    trial = _trial(
+        ordinal=1,
+        source="report.pdf",
+        source_sha256="b" * 64,
+        status=READY,
+        candidate=candidate,
+    )
+    attacked_trial = deepcopy(trial)
+    attacked_trial.update(
+        {
+            "candidate_count": 0,
+            "candidates": [],
+            "mappings": [],
+            "reasons": ["PARTIAL_REQUIRED_ANCHOR_FRONTIER_ONLY"],
+            "selected_candidate_id": None,
+            "status": UNRESOLVED,
+        }
+    )
+    with pytest.raises(
+        GeminiJsonFlatAccountingFamilyV1Error,
+        match="accepted source must have exactly one candidate",
+    ):
+        build_gemini_json_flat_family_sweep_v1(
+            corpus_manifest_index_id="gjfccmiv1:index:" + "3" * 64,
+            topology_spec=topology,
+            evaluation_spec=evaluation,
+            schema_binding_spec=schema,
+            trials=[attacked_trial],
+            indexed_query_evidence=indexed,
+        )
 
 
 def test_cross_document_ready_candidate_cannot_replace_a_near_only_trial(
@@ -385,6 +522,7 @@ def test_cross_document_ready_candidate_cannot_replace_a_near_only_trial(
             },
             implementation_refs=[{"path": "engine.py", "sha256": "5" * 64, "size_bytes": 1}],
             run_kind="EXPERIMENTAL",
+            source_page_database=database,
         )
 
 
