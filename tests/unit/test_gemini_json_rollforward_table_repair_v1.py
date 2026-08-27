@@ -1453,3 +1453,48 @@ def test_external_spec_authority_rejects_joint_ctg_collateral_equation_bundle_an
             authority=replay,
             repair_spec_authority=corpus["repair_spec_authority"],
         )
+
+
+def test_source_image_resolver_executes_the_exact_manifest_pinned_module() -> None:
+    from bctc_ai.evaluation import gemini_json_first_page_render_v1 as renderer_module
+
+    root = Path(subject.__file__).resolve().parents[3]
+    implementation = Path(renderer_module.__file__).resolve()
+    payload = implementation.read_bytes()
+    resolver = {
+        "implementation_path": implementation.relative_to(root).as_posix(),
+        "implementation_sha256": sha256(payload).hexdigest(),
+        "implementation_size_bytes": len(payload),
+    }
+    assert (
+        subject.validate_rollforward_source_image_resolver_implementation_v1(
+            root, resolver=resolver
+        )
+        == resolver
+    )
+
+
+def test_source_image_resolver_rejects_cross_root_manifest_pinned_shadow_module(
+    tmp_path: Path,
+) -> None:
+    from bctc_ai.evaluation import gemini_json_first_page_render_v1 as renderer_module
+
+    real_root = Path(subject.__file__).resolve().parents[3]
+    real_path = Path(renderer_module.__file__).resolve()
+    relative = real_path.relative_to(real_root)
+    shadow_path = tmp_path / relative
+    shadow_path.parent.mkdir(parents=True)
+    shadow_bytes = real_path.read_bytes() + b"\n# coherent pinned shadow module\n"
+    shadow_path.write_bytes(shadow_bytes)
+    resolver = {
+        "implementation_path": relative.as_posix(),
+        "implementation_sha256": sha256(shadow_bytes).hexdigest(),
+        "implementation_size_bytes": len(shadow_bytes),
+    }
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error,
+        match="executed module differs from the pinned file",
+    ):
+        subject.validate_rollforward_source_image_resolver_implementation_v1(
+            tmp_path, resolver=resolver
+        )

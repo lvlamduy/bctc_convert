@@ -1400,6 +1400,62 @@ def _authoritative_plan(
     return matches[0], external
 
 
+def _pinned_source_image_renderer_v1(
+    workspace_root: Path, *, resolver: Mapping[str, Any]
+) -> tuple[Any, dict[str, Any]]:
+    checked = _exact_keys(
+        dict(resolver),
+        _SOURCE_IMAGE_RESOLVER_FIELDS,
+        "source-image resolver implementation authority",
+    )
+    root_input = Path(workspace_root)
+    root = root_input.resolve()
+    if root_input.is_symlink() or not root.is_dir():
+        raise _error("roll-forward source-image workspace root is not trusted or present")
+    relative = PurePosixPath(checked["implementation_path"])
+    if (
+        relative.is_absolute()
+        or not relative.parts
+        or ".." in relative.parts
+        or _hash(
+            checked["implementation_sha256"],
+            "source-image resolver implementation SHA-256",
+        )
+        != checked["implementation_sha256"]
+        or type(checked["implementation_size_bytes"]) is not int
+        or checked["implementation_size_bytes"] <= 0
+    ):
+        raise _error("roll-forward source-image resolver implementation pin is invalid")
+    pinned_path = root.joinpath(*relative.parts).resolve()
+    if (
+        not pinned_path.is_relative_to(root)
+        or pinned_path.is_symlink()
+        or not pinned_path.is_file()
+    ):
+        raise _error("roll-forward source-image resolver implementation is absent")
+    from bctc_ai.evaluation import gemini_json_first_page_render_v1 as renderer_module
+
+    module_file = getattr(renderer_module, "__file__", None)
+    if type(module_file) is not str or Path(module_file).resolve() != pinned_path:
+        raise _error("roll-forward source-image executed module differs from the pinned file")
+    executed_bytes = pinned_path.read_bytes()
+    if (
+        sha256(executed_bytes).hexdigest() != checked["implementation_sha256"]
+        or len(executed_bytes) != checked["implementation_size_bytes"]
+    ):
+        raise _error("roll-forward source-image executed implementation pin drifted")
+    return renderer_module, canonical_clone_v1(checked)
+
+
+def validate_rollforward_source_image_resolver_implementation_v1(
+    workspace_root: Path, *, resolver: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Verify that the manifest-pinned file is the module Python will execute."""
+
+    _module, checked = _pinned_source_image_renderer_v1(workspace_root, resolver=resolver)
+    return checked
+
+
 def resolve_rollforward_table_source_image_v1(
     workspace_root: Path,
     *,
@@ -1437,21 +1493,10 @@ def resolve_rollforward_table_source_image_v1(
         or not source_path.is_file()
     ):
         raise _error("roll-forward source PDF is absent or crosses the workspace root")
-    resolver = checked_external["source_image_resolver"]
-    implementation_path = root.joinpath(*PurePosixPath(resolver["implementation_path"]).parts)
-    implementation_path = implementation_path.resolve()
-    if (
-        not implementation_path.is_relative_to(root)
-        or implementation_path.is_symlink()
-        or not implementation_path.is_file()
-    ):
-        raise _error("roll-forward source-image resolver implementation is absent")
-    implementation_bytes = implementation_path.read_bytes()
-    if (
-        sha256(implementation_bytes).hexdigest() != resolver["implementation_sha256"]
-        or len(implementation_bytes) != resolver["implementation_size_bytes"]
-    ):
-        raise _error("roll-forward source-image resolver implementation pin drifted")
+    renderer_module, resolver = _pinned_source_image_renderer_v1(
+        root,
+        resolver=checked_external["source_image_resolver"],
+    )
     source_bytes = source_path.read_bytes()
     binding = checked_plan["source_binding"]
     if (
@@ -1462,14 +1507,10 @@ def resolve_rollforward_table_source_image_v1(
     try:
         import fitz
 
-        from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (
-            render_full_pdf_page_v1,
-        )
-
         with fitz.open(stream=source_bytes, filetype="pdf") as document:
             if binding["physical_page"] > document.page_count:
                 raise _error("roll-forward source PDF physical page is absent")
-            rendered = render_full_pdf_page_v1(
+            rendered = renderer_module.render_full_pdf_page_v1(
                 document[binding["physical_page"] - 1],
                 physical_page=binding["physical_page"],
                 dpi=binding["render_dpi"],
