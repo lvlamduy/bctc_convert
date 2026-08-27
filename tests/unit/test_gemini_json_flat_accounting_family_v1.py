@@ -861,6 +861,28 @@ def test_period_value_hierarchy_accepts_reordered_optional_rows_but_rejects_dupl
     assert "UNBOUND_VISIBLE_NUMERIC_ROWS:3" in _evaluate_loan_type(extra)["reasons"]
 
 
+@pytest.mark.parametrize(
+    ("source_label", "expected_role"),
+    [
+        (
+            "Cho vay chiết khấu công cụ chuyển nhượng và các",
+            "DISCOUNT_INSTRUMENTS",
+        ),
+        ("Cho vay bằng vốn tài trợ, ủy thác", "ENTRUSTED_OR_SPONSORED_CAPITAL"),
+    ],
+)
+def test_loan_type_graph_accepts_source_printed_short_label_variants(
+    source_label: str, expected_role: str
+) -> None:
+    page = _loan_type_page(percentage_companions=False)
+    row = page["sections"][0]["tables"][0]["rows"][1]
+    row["label_exact"] = source_label
+    row["hierarchy_path_exact"][-1] = source_label
+    result = _evaluate_loan_type(page)
+    assert result["status"] == READY
+    assert expected_role in {mapping["role"] for mapping in result["mappings"]}
+
+
 def test_recursive_family_closes_multilevel_subtotals_and_infers_provision_once() -> None:
     result = _evaluate_recursive(_recursive_page())
     assert result["status"] == READY

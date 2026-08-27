@@ -32,6 +32,19 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V9"
 DEFAULT_DATABASE_PATH = Path("data/local/gemini_financial_page_store_v1.sqlite3")
+_SELECTABLE_PROMPT_VARIANTS = frozenset(
+    {
+        "balanced",
+        "compact",
+        "items",
+        "region-repair",
+        "region-repair-row-label-and-values",
+        "region-repair-row-values",
+        "region-repair-table-period-axis",
+        "scope",
+        "simple",
+    }
+)
 
 
 class GeminiFinancialPageStoreV1Error(RuntimeError):
@@ -1428,18 +1441,8 @@ def document_page_extraction_frontier_v1(
             (source_sha256, source_logical_name, render_dpi),
         ).fetchall()
     grouped: dict[int, list[dict[str, str]]] = {}
-    allowed_variants = {
-        "balanced",
-        "compact",
-        "items",
-        "region-repair",
-        "region-repair-row-values",
-        "region-repair-table-period-axis",
-        "scope",
-        "simple",
-    }
     for row in rows:
-        if row["prompt_variant"] not in allowed_variants:
+        if row["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS:
             raise _error("stored document extraction prompt variant is invalid")
         grouped.setdefault(row["physical_page"], []).append(
             {
@@ -1501,22 +1504,12 @@ def selected_page_extraction_receipts_v1(
         ).fetchall()
     if len(rows) != len(version_ids):
         raise _error("selected page extraction receipt is absent")
-    allowed_variants = {
-        "balanced",
-        "compact",
-        "items",
-        "region-repair",
-        "region-repair-row-values",
-        "region-repair-table-period-axis",
-        "scope",
-        "simple",
-    }
     result = []
     for ordinal, row in enumerate(rows, start=1):
         if (
             row["selection_ordinal"] != ordinal
             or row["page_json_version_id"] != version_ids[ordinal - 1]
-            or row["prompt_variant"] not in allowed_variants
+            or row["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
         ):
             raise _error("selected page extraction receipt order or prompt is invalid")
         result.append(dict(row))

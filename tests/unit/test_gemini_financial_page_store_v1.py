@@ -39,7 +39,13 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
 )
 
 
-def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> None:
+@pytest.mark.parametrize(
+    "prompt_variant",
+    ["region-repair-row-values", "region-repair-row-label-and-values"],
+)
+def test_region_repair_lineage_is_database_bound_and_idempotent(
+    tmp_path, prompt_variant: str
+) -> None:
     path = tmp_path / "store.sqlite3"
     initialize_gemini_financial_page_store_v1(path)
     base = _ingest(path)
@@ -64,7 +70,7 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(tmp_path) -> Non
     repaired = _ingest(
         path,
         prompt_sha256="f" * 64,
-        prompt_variant="region-repair-row-values",
+        prompt_variant=prompt_variant,
         page_json=merged,
     )
     initialize_region_repair_extension_v1(path)

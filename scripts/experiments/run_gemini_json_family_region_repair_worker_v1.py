@@ -286,15 +286,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         compiled_specs=compiled,
                     )
                 resolved = _targeted_repair_is_accepted(plan, candidate)
-                stable_source = (
-                    not resolved
-                    and (
-                        "UNSATISFIED_EXACT_EQUATION" in plan["trigger_kinds"]
-                        or "TABLE_PERIOD_AXIS_INCOMPLETE" in plan["trigger_kinds"]
-                    )
-                    and _repair_target_evidence(base_page, plan)
-                    == _repair_target_evidence(repaired_page, plan)
-                )
+                stable_source = not resolved and _repair_target_evidence(
+                    base_page, plan
+                ) == _repair_target_evidence(repaired_page, plan)
                 # An unchanged low/medium reread is not proof that the source is
                 # inconsistent.  A detached sign, dense header, or small glyph can
                 # require the wider context and stronger reasoning of the next

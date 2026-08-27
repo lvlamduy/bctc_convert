@@ -21,7 +21,7 @@
       "presence": "OPTIONAL", "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các"], "within_role": null}],
       "presence": "OPTIONAL", "role": "DISCOUNT_INSTRUMENTS", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -33,7 +33,7 @@
       "presence": "OPTIONAL", "role": "FROZEN_OR_PENDING_LOANS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay bằng vốn tài trợ, ủy thác đầu tư"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay bằng vốn tài trợ, ủy thác đầu tư", "Cho vay bằng vốn tài trợ, ủy thác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "role_kind": "ADDITIVE_CHILD"
     },
     {

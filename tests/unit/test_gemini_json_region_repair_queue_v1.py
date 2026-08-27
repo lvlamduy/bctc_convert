@@ -298,7 +298,7 @@ def test_unbound_visible_numeric_row_queues_exact_label_and_value_reread() -> No
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
     page = _loan_type_page(percentage_companions=False)
     row = page["sections"][0]["tables"][0]["rows"][1]
-    row["label_exact"] = "Cho vay chiết khấu công cụ chuyển nhượng và các"
+    row["label_exact"] = "Cho vay chiết khấu công cụ chuyển"
     row["hierarchy_path_exact"][-1] = row["label_exact"]
     version_id = "gfpstorev1:json:" + "d" * 64
     candidate = evaluate_gemini_json_flat_family_table_v1(
