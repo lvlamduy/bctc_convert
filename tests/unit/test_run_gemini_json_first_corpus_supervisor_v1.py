@@ -2475,21 +2475,31 @@ def test_all_pending_google_documents_are_smallest_first_and_require_complete_fr
         "documents": [
             {
                 "document": {"page_count": 50, "relative_path": "B/large.pdf"},
+                "document_plan_id": "document-large",
                 "route": target.GOOGLE_ROUTE,
                 "tasks": [{"task_id": "large-1"}, {"task_id": "large-2"}],
             },
             {
                 "document": {"page_count": 20, "relative_path": "A/small.pdf"},
+                "document_plan_id": "document-small",
                 "route": target.GOOGLE_ROUTE,
                 "tasks": [{"task_id": "small-1"}],
             },
             {
                 "document": {"page_count": 30, "relative_path": "A/mixed.pdf"},
+                "document_plan_id": "document-mixed",
                 "route": target.GOOGLE_ROUTE,
                 "tasks": [{"task_id": "mixed-1"}, {"task_id": "mixed-2"}],
             },
             {
+                "document": {"page_count": 25, "relative_path": "A/resume.pdf"},
+                "document_plan_id": "document-resume",
+                "route": target.GOOGLE_ROUTE,
+                "tasks": [{"task_id": "resume-1"}, {"task_id": "resume-2"}],
+            },
+            {
                 "document": {"page_count": 10, "relative_path": "C/openrouter.pdf"},
+                "document_plan_id": "document-openrouter",
                 "route": target.OPENROUTER_ROUTE,
                 "tasks": [{"task_id": "openrouter-1"}],
             },
@@ -2504,17 +2514,27 @@ def test_all_pending_google_documents_are_smallest_first_and_require_complete_fr
             {"state": "NEEDS_RETRY", "task_id": "small-1"},
             {"state": "NEEDS_RETRY", "task_id": "mixed-1"},
             {"state": "SUCCEEDED", "task_id": "mixed-2"},
+            {"state": "RUNNING", "task_id": "resume-1"},
+            {"state": "SUCCEEDED", "task_id": "resume-2"},
         ],
     )
     assert target._all_pending_google_documents_v1(
         plan=plan, ledger=tmp_path / "ledger.sqlite3"
     ) == [
         {
+            "document_plan_id": "document-small",
             "document_page_count": 20,
             "relative_path": "A/small.pdf",
             "task_id": "small-1",
         },
         {
+            "document_plan_id": "document-resume",
+            "document_page_count": 25,
+            "relative_path": "A/resume.pdf",
+            "task_id": "resume-1",
+        },
+        {
+            "document_plan_id": "document-mixed",
             "document_page_count": 30,
             "relative_path": "A/mixed.pdf",
             "task_id": "mixed-1",
@@ -2558,6 +2578,46 @@ def test_accelerate_pending_google_documents_refreshes_after_each_document(
     assert result["race_count"] == 0
     assert calls == ["task-a", "task-b"]
     assert [item["task_id"] for item in result["completed_documents"]] == calls
+
+
+def test_accelerate_pending_google_documents_retries_one_claim_before_advancing(
+    monkeypatch, tmp_path
+) -> None:
+    args = Namespace(
+        ledger=tmp_path / "ledger.sqlite3",
+        max_documents=1,
+        plan=tmp_path / "plan.json",
+    )
+    monkeypatch.setattr(target, "_plan", lambda _path: {"documents": []})
+    candidate = {
+        "document_plan_id": "document-a",
+        "document_page_count": 20,
+        "relative_path": "a.pdf",
+        "task_id": "task-a",
+    }
+    frontiers = iter([[candidate], [candidate], []])
+    monkeypatch.setattr(
+        target, "_all_pending_google_documents_v1", lambda **_kwargs: next(frontiers)
+    )
+    calls = []
+
+    def accelerate(document_args):
+        calls.append(document_args.task_id)
+        if len(calls) == 1:
+            return {"disposition": "NEEDS_RETRY"}
+        return {
+            "disposition": "SUCCEEDED",
+            "document_manifest_id": "manifest-a",
+            "selection_id": "selection-a",
+        }
+
+    monkeypatch.setattr(target, "accelerate_google_document", accelerate)
+    monkeypatch.setattr(target, "corpus_ledger_summary_v1", lambda _path: {"progress": []})
+    result = target.accelerate_pending_google_documents(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["retry_count"] == 1
+    assert calls == ["task-a", "task-a"]
+    assert [item["task_id"] for item in result["completed_documents"]] == ["task-a"]
 
 
 @pytest.mark.parametrize("current_mode", ["accelerated", "revalidated"])

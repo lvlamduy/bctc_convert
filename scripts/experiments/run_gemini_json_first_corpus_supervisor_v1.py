@@ -989,34 +989,8 @@ def _missing_current_default_pages_v1(
                     financial_page_json_response_schema_v1()
                 ),
                 requested_model=GOOGLE_MODEL,
-                allowed_gateway_service_tiers=[
-                    {
-                        "gateway": "GOOGLE_GEMINI_API",
-                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-                    },
-                    {
-                        "gateway": "GOOGLE_GEMINI_BATCH_API",
-                        "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-                    },
-                    {
-                        "gateway": "OPENROUTER",
-                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
-                    },
-                ],
-                preferred_gateway_service_tiers=[
-                    {
-                        "gateway": "OPENROUTER",
-                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
-                    },
-                    {
-                        "gateway": "GOOGLE_GEMINI_BATCH_API",
-                        "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-                    },
-                    {
-                        "gateway": "GOOGLE_GEMINI_API",
-                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-                    },
-                ],
+                allowed_gateway_service_tiers=_allowed_gateway_service_tiers_v1(),
+                preferred_gateway_service_tiers=_preferred_gateway_service_tiers_v1(),
             )
         except GeminiFinancialPageStoreV1Error as exc:
             if str(exc) != "document manifest page frontier is incomplete":
@@ -2215,34 +2189,8 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
         prompt_sha256=prompt_sha256s,
         response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
         requested_model=GOOGLE_MODEL,
-        allowed_gateway_service_tiers=[
-            {
-                "gateway": "GOOGLE_GEMINI_API",
-                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_BATCH_API",
-                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-            },
-            {
-                "gateway": "OPENROUTER",
-                "requested_service_tier": OPENROUTER_SERVICE_TIER,
-            },
-        ],
-        preferred_gateway_service_tiers=[
-            {
-                "gateway": "OPENROUTER",
-                "requested_service_tier": OPENROUTER_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_BATCH_API",
-                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_API",
-                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-            },
-        ],
+        allowed_gateway_service_tiers=_allowed_gateway_service_tiers_v1(),
+        preferred_gateway_service_tiers=_preferred_gateway_service_tiers_v1(),
     )
     unresolved_pages = [
         page["physical_page"] for page in manifest["pages"] if page["status"] == "UNRESOLVED_PAGE"
@@ -2306,7 +2254,7 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _all_pending_google_documents_v1(*, plan: dict[str, Any], ledger: Path) -> list[dict[str, Any]]:
-    """Return smallest-first documents whose complete Google task frontier is pending."""
+    """Return retryable or crash-resumable Google documents, smallest first."""
 
     rows = list_corpus_tasks_v1(ledger, route=GOOGLE_ROUTE)
     row_by_task_id = {row["task_id"]: row for row in rows}
@@ -2325,13 +2273,20 @@ def _all_pending_google_documents_v1(*, plan: dict[str, Any], ledger: Path) -> l
                 "Google acceleration plan and ledger task frontiers differ"
             )
         retryable_states = {"PENDING", "NEEDS_RETRY"}
-        if (
+        retryable = (
             document_rows
             and any(row["state"] in retryable_states for row in document_rows)
             and all(row["state"] in retryable_states | {"SUCCEEDED"} for row in document_rows)
-        ):
+        )
+        resumable = (
+            document_rows
+            and any(row["state"] == "RUNNING" for row in document_rows)
+            and all(row["state"] in {"RUNNING", "SUCCEEDED"} for row in document_rows)
+        )
+        if retryable or resumable:
             candidates.append(
                 {
+                    "document_plan_id": document["document_plan_id"],
                     "document_page_count": document["document"]["page_count"],
                     "relative_path": document["document"]["relative_path"],
                     "task_id": task_ids[0],
@@ -2357,6 +2312,7 @@ def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, A
     plan = _plan(args.plan)
     completed: list[dict[str, Any]] = []
     race_count = 0
+    retry_count = 0
     while len(completed) < args.max_documents:
         candidates = _all_pending_google_documents_v1(plan=plan, ledger=args.ledger)
         if not candidates:
@@ -2371,7 +2327,30 @@ def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, A
                     raise
                 race_count += 1
                 continue
+            except RunGeminiJsonFirstCorpusSupervisorV1Error as exc:
+                if str(exc) != "OpenRouter acceleration attempt bound is exhausted":
+                    raise
+                return {
+                    "completed_documents": completed
+                    + [
+                        {
+                            "disposition": "NEEDS_RETRY",
+                            "document_manifest_id": None,
+                            "document_page_count": candidate["document_page_count"],
+                            "relative_path": candidate["relative_path"],
+                            "selection_id": None,
+                            "task_id": candidate["task_id"],
+                        }
+                    ],
+                    "disposition": "NEEDS_RETRY",
+                    "ledger": corpus_ledger_summary_v1(args.ledger),
+                    "race_count": race_count,
+                    "retry_count": retry_count,
+                }
             claimed = True
+            if result["disposition"] == "NEEDS_RETRY":
+                retry_count += 1
+                break
             completed.append(
                 {
                     "disposition": result["disposition"],
@@ -2382,13 +2361,6 @@ def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, A
                     "task_id": candidate["task_id"],
                 }
             )
-            if result["disposition"] == "NEEDS_RETRY":
-                return {
-                    "completed_documents": completed,
-                    "disposition": "NEEDS_RETRY",
-                    "ledger": corpus_ledger_summary_v1(args.ledger),
-                    "race_count": race_count,
-                }
             break
         if not claimed:
             # Google may have claimed every candidate between the read and write locks.
@@ -2402,6 +2374,7 @@ def accelerate_pending_google_documents(args: argparse.Namespace) -> dict[str, A
         "disposition": "SUCCEEDED",
         "ledger": corpus_ledger_summary_v1(args.ledger),
         "race_count": race_count,
+        "retry_count": retry_count,
     }
 
 
