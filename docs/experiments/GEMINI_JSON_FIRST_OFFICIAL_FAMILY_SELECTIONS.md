@@ -28,9 +28,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 6 | `LOAN_TYPE_CLASSIFICATION` | 140 | 0 | 0 | 861 | `gjfafstorev1:run:44d54904bab4d0a5aefdf9cb42c7804dd53b9e87bf34b0453024b143e4fd923d` |
 | 7 | `LOAN_INDUSTRY_CLASSIFICATION` | 98 | 42 | 0 | 1.618 | `gjfafstorev1:run:c48c3c9d742a15bba9a04b3ad0c2805ba219845ff5b4435cdc6daacefdcbb724` |
 | 8 | `LOAN_QUALITY_CLASSIFICATION` | 140 | 0 | 0 | 867 | `gjfafstorev1:run:49b58fd099a2a7e45e145f0485def1736a472f12e415af7d78166e6f38ad41d3` |
+| 9 | `LOAN_MATURITY_BUCKETS` | 140 | 0 | 0 | 438 | `gjfafstorev1:run:fddb4e5c2e7ee969d20c226edd2eca640fdd001ee27f0cfd09c03d6f962f80d1` |
 
-Tại checkpoint này database có đủ đúng tám current selection liên tục từ
-Family 1 đến Family 8. Family 9 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng chín current selection liên tục từ
+Family 1 đến Family 9. Family 10 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -63,11 +64,29 @@ READY còn phải được corroborate bởi parent/child/sibling/order/context 
 accounting graph. Fuzzy one-character match chỉ là proposal và không thể tự
 phát mapping.
 
+## Family 9 closure
+
+Artifact OFFICIAL:
+`/tmp/gemini-json-family9-official-bcd1d1d.json`, SHA-256
+`80b46c1516aadcdef23c4731cdf3eb08caa4ca28d3db29898bb2d882a648ef89`,
+770.264 byte, sweep
+`gjfafsv1:sweep:0e266152006a98ecb3729364086a01fba1c926a6eb6078d64a475933cc39c29f`.
+
+- Kết quả: `READY=140`, `UNRESOLVED=0`, `NOT_OBSERVED=0`, 438 mappings và
+  không tạo repair job.
+- Raw punctuation aliases chỉ dùng cho indexed shortlist; semantic matching
+  vẫn dùng normalized roles và near-path chỉ đọc đúng required child roles.
+- Header `12/31/2024` chỉ được đọc MDY vì cách DMY bất khả thi; ngày mơ hồ vẫn
+  giữ DMY authority.
+- RNID 752 là context-only: root equation vẫn bắt buộc khép nhưng chỉ phát
+  753/754/755 và optional 5747.
+- Đối chiếu độc lập với formal cũ: 140/140 source, 438/438 vectors, 876/876
+  cells, không thiếu/thừa, không lệch value hay period. Fingerprint vector là
+  `f13d3a61addc97be1d341c5cffd2005b890851ee634dc8050aecb50a27b631c4`.
+- Gate code tại `bcd1d1d`: 103/103 test, Ruff/format xanh; Family 4 control
+  giữ nguyên 140/140 status, mappings và reasons.
+
 ## Next gate
 
-Family 9 là `LOAN_MATURITY_BUCKETS`. Preflight database tìm được đúng một bảng
-trong 140/140 hồ sơ và khớp 438/438 vector số với formal cũ. Trước khi chạy
-OFFICIAL cần hoàn tất ba primitive generic: giữ raw punctuation aliases cho
-indexed shortlist, hỗ trợ MDY rõ nghĩa khi DMY bất khả thi, và kiểm tra family
-root context-only mà không phát mapping root. Mục tiêu đo được là
-`READY=140`, `UNRESOLVED=0`, `mapping_count=438`, không reOCR.
+Family 10 là `LOAN_CURRENCY_CLASSIFICATION`. Phải preflight từ indexed Gemini
+JSON và chỉ promote sau khi Family 9 current selection đã replay đúng như trên.
