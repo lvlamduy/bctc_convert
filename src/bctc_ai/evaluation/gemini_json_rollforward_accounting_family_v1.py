@@ -86,8 +86,22 @@ _PAGE_JSON_VERSION_ID = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
 _SOURCE_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _CONTINUATION_NEGATION_TOKENS = frozenset(
-    {"chang", "chua", "isn", "isnt", "khong", "never", "no", "not", "without"}
+    {
+        "chang",
+        "chua",
+        "isn",
+        "isnt",
+        "khong",
+        "neither",
+        "never",
+        "no",
+        "nor",
+        "not",
+        "without",
+    }
 )
+_ENGLISH_CONTINUATION_DETERMINERS = frozenset({"a", "an", "the"})
+_ENGLISH_CONTINUATION_MODIFIERS = frozenset({"directly", "immediately", "just"})
 _ENGLISH_PREVIOUS_TOKENS = frozenset({"preceding", "previous", "prior"})
 _ENGLISH_OUTGOING_PREPOSITIONS = frozenset({"on", "onto", "to"})
 _ENGLISH_NEXT_TOKENS = frozenset({"following", "next", "subsequent"})
@@ -690,6 +704,42 @@ def _sequence_positions(tokens: Sequence[str], sequence: Sequence[str]) -> list[
     ]
 
 
+def _english_from_previous_page_grammar(tokens: Sequence[str]) -> bool:
+    """Accept only bounded ``from`` + explicit prior-page token productions."""
+
+    if not tokens or tokens[0] != "from":
+        return False
+    tail = list(tokens[1:8])
+    if tail and tail[0] in _ENGLISH_CONTINUATION_DETERMINERS:
+        tail.pop(0)
+    if not tail:
+        return False
+
+    # adjective-first: ``from the immediately preceding page``
+    adjective_first = list(tail)
+    if adjective_first and adjective_first[0] in _ENGLISH_CONTINUATION_MODIFIERS:
+        adjective_first.pop(0)
+    if adjective_first and adjective_first[0] in _ENGLISH_PREVIOUS_TOKENS:
+        adjective_first.pop(0)
+        if adjective_first and adjective_first[0] in _ENGLISH_CONTINUATION_MODIFIERS:
+            adjective_first.pop(0)
+        if adjective_first and adjective_first[0] == "page":
+            return True
+
+    # noun-first: ``from the page immediately preceding this one``
+    noun_first = list(tail)
+    if not noun_first or noun_first.pop(0) != "page":
+        return False
+    if noun_first and noun_first[0] in _ENGLISH_CONTINUATION_MODIFIERS:
+        noun_first.pop(0)
+    if not noun_first or noun_first.pop(0) not in _ENGLISH_PREVIOUS_TOKENS:
+        return False
+    # The optional deictic tail is deliberately closed: an arbitrary noun such
+    # as ``note`` or ``accounting period`` must not inherit the preceding-page
+    # meaning merely because ``page`` and ``prior`` both appeared earlier.
+    return tuple(noun_first) in {(), ("this", "one"), ("to", "this", "one")}
+
+
 def _continuation_surface_direction(value: Any) -> str:
     """Parse one English/Vietnamese continuation marker fail-closed."""
 
@@ -714,14 +764,7 @@ def _continuation_surface_direction(value: Any) -> str:
     for language, marker in markers:
         suffix = tokens[marker + 1 :]
         if language == "ENGLISH":
-            incoming = incoming or any(
-                token == "from"
-                and any(
-                    candidate in _ENGLISH_PREVIOUS_TOKENS
-                    for candidate in suffix[index + 1 : index + 4]
-                )
-                for index, token in enumerate(suffix)
-            )
+            incoming = incoming or _english_from_previous_page_grammar(suffix)
             outgoing = (
                 outgoing
                 or "overleaf" in suffix

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from bctc_ai.evaluation import gemini_json_rollforward_accounting_family_v1 as subject
 from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
     READY,
     UNRESOLVED,
@@ -685,6 +686,10 @@ def test_incoming_continuation_grammar_accepts_explicit_previous_page_variants()
         "Continued from previous page",
         "Continued from the preceding page",
         "Continued from a prior page",
+        "Continued from the immediately preceding page",
+        "Continued from the page immediately preceding this one",
+        "Continued from page directly prior",
+        "Continued from the page directly prior",
         "Tiếp theo trang trước",
         "Tiếp theo từ trang trước",
     ):
@@ -726,6 +731,7 @@ def test_incoming_continuation_grammar_accepts_explicit_previous_page_variants()
 def test_nonincoming_continuation_grammar_cannot_bind_from_previous_owner() -> None:
     for title, continuation in (
         ("Bảng số liệu tổng hợp", "CONTINUES_ON_NEXT_PAGE"),
+        ("Continued from previous page", "CONTINUES_ON_NEXT_PAGE"),
         ("Continued on next page", "NONE"),
         ("Continued to next page", "NONE"),
         ("Continued overleaf", "NONE"),
@@ -734,7 +740,15 @@ def test_nonincoming_continuation_grammar_cannot_bind_from_previous_owner() -> N
         ("Tiếp theo ở trang kế tiếp", "NONE"),
         ("Tiếp theo sang trang kế tiếp", "NONE"),
         ("Not continued from previous page", "NONE"),
+        ("Neither continued from previous page nor restated", "NONE"),
+        ("Continued neither from previous page nor current page", "NONE"),
         ("Không tiếp theo trang trước", "NONE"),
+        ("Chẳng tiếp theo trang trước", "NONE"),
+        ("Continued from previous year", "NONE"),
+        ("Continued from prior accounting period", "NONE"),
+        ("Continued from preceding note", "NONE"),
+        ("Continued from the page immediately preceding note 7", "NONE"),
+        ("Continued from page prior to the accounting period", "NONE"),
         ("Continued", "NONE"),
         ("Tiếp theo", "NONE"),
         ("Continued on next page", "CONTINUES_ON_NEXT_PAGE"),
@@ -771,6 +785,50 @@ def test_nonincoming_continuation_grammar_cannot_bind_from_previous_owner() -> N
         assert candidate["status"] == UNRESOLVED
         assert candidate["mappings"] == []
         assert "ROLLFORWARD_EXPLICIT_CONTINUATION_EVIDENCE_NOT_VISIBLE" in candidate["reasons"]
+
+
+def test_continuation_token_grammar_permutation_and_fuzz_table() -> None:
+    incoming = subject._CONTINUATION_FROM_PREVIOUS
+    for determiner in ("", "the", "a"):
+        for modifier in ("", "directly", "immediately", "just"):
+            for previous in ("previous", "prior", "preceding"):
+                prefix = " ".join(value for value in (determiner, modifier) if value)
+                adjective_first = " ".join(
+                    value for value in ("Continued from", prefix, previous, "page") if value
+                )
+                noun_first = " ".join(
+                    value
+                    for value in (
+                        "Continued from",
+                        determiner,
+                        "page",
+                        modifier,
+                        previous,
+                        "this one",
+                    )
+                    if value
+                )
+                assert subject._continuation_surface_direction(adjective_first) == incoming
+                assert subject._continuation_surface_direction(noun_first) == incoming
+
+    for wrong_noun in ("year", "accounting period", "note", "section", "table"):
+        for previous in ("previous", "prior", "preceding"):
+            surface = f"Continued from the {previous} {wrong_noun}"
+            assert subject._continuation_surface_direction(surface) != incoming
+            # An arbitrary unapproved token cannot bridge the adjective to page.
+            bridged = f"Continued from the {previous} audited {wrong_noun} page"
+            assert subject._continuation_surface_direction(bridged) != incoming
+
+    for ambiguous_tail in (
+        "Continued from the page immediately preceding note 7",
+        "Continued from page prior to the accounting period",
+        "Continued from page preceding section 4",
+    ):
+        assert subject._continuation_surface_direction(ambiguous_tail) != incoming
+
+    for negator in ("neither", "never", "no", "nor", "not", "without"):
+        surface = f"{negator} continued from the previous page"
+        assert subject._continuation_surface_direction(surface) == subject._CONTINUATION_NEGATED
 
 
 def test_bounded_owner_continuation_stops_at_an_intervening_reset() -> None:
