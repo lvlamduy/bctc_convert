@@ -148,6 +148,207 @@ def table_axis_repair_targets_v1(
     return result
 
 
+def structural_context_repair_targets_v1(
+    page_json: Any, *, table_refs: Sequence[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """Resolve exact candidate-local title and narrative surfaces for rereading."""
+
+    checked = validate_financial_page_json_v1(page_json)
+    if (
+        type(table_refs) not in {list, tuple}
+        or not table_refs
+        or any(
+            type(ref) is not dict or set(ref) != {"section_id", "table_id"} for ref in table_refs
+        )
+    ):
+        raise _error("structural-context repair frontier is invalid")
+    result = []
+    seen = set()
+    for ref in table_refs:
+        target_id = f"{ref['section_id']}:{ref['table_id']}"
+        if target_id in seen:
+            raise _error("structural-context repair frontier is duplicate")
+        seen.add(target_id)
+        try:
+            section_index = int(ref["section_id"].removeprefix("s")) - 1
+            table_index = int(ref["table_id"].removeprefix("t")) - 1
+            section = checked["sections"][section_index]
+            table = section["tables"][table_index]
+        except (IndexError, KeyError, TypeError, ValueError) as exc:
+            raise _error("structural-context repair target lies outside page JSON") from exc
+        if ref["section_id"] != f"s{section_index + 1}" or ref["table_id"] != f"t{table_index + 1}":
+            raise _error("structural-context repair target ID is invalid")
+        labels = [row["label_exact"] for row in table["rows"] if row["label_exact"]]
+        result.append(
+            {
+                "narratives_before_exact": canonical_clone_v1(section["narratives_exact"]),
+                "row_labels_context_exact": labels[:3] + labels[-2:] if len(labels) > 5 else labels,
+                "section_title_before_exact": section["title_exact"],
+                "table_title_before_exact": table["title_exact"],
+                "target_id": target_id,
+            }
+        )
+    return result
+
+
+def build_structural_context_repair_prompt_v1(
+    *, base_page_json_version_id: str, targets: Sequence[dict[str, Any]]
+) -> str:
+    if (
+        type(base_page_json_version_id) is not str
+        or not base_page_json_version_id.startswith("gfpstorev1:json:")
+        or type(targets) not in {list, tuple}
+        or not targets
+    ):
+        raise _error("structural-context repair prompt input is invalid")
+    return (
+        "Đọc trực tiếp ảnh nguyên trang báo cáo tài chính. Với mỗi target_table, chép lại "
+        "đồng thời và đầy đủ đúng ba trục cấu trúc dùng để xác định ngữ cảnh bảng: "
+        "section_title_exact, table_title_exact và toàn bộ narratives_exact của section theo "
+        "thứ tự xuất hiện. Không chép lại các ô số hoặc tự suy luận tiêu đề từ nhãn dòng. "
+        "Các giá trị *_before_exact và row_labels_context_exact chỉ để định vị, không phải "
+        "đáp án. Giữ nguyên chính tả, dấu câu, số thứ tự và ký hiệu chú thích. Nếu một tiêu "
+        "đề thực sự không có thì trả null; nếu section không có narrative thì trả mảng rỗng. "
+        "Nếu không đọc chắc bất kỳ trục nào thì ghi uncertainty_exact. Mỗi target_id đúng một "
+        "lần. Trả đúng JSON theo schema.\nbase_page_json_version_id="
+        + base_page_json_version_id
+        + "\ntarget_tables="
+        + canonical_json_bytes_v1(list(targets)).decode("utf-8")
+    )
+
+
+def structural_context_repair_response_schema_v1() -> dict[str, Any]:
+    nullable_string = {"type": ["string", "null"]}
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": False,
+        "properties": {
+            "all_targets_transcribed": {"type": "boolean"},
+            "targets": {
+                "items": {
+                    "additionalProperties": False,
+                    "properties": {
+                        "narratives_exact": {"items": {"type": "string"}, "type": "array"},
+                        "section_title_exact": nullable_string,
+                        "table_title_exact": nullable_string,
+                        "target_id": {"type": "string"},
+                    },
+                    "required": [
+                        "narratives_exact",
+                        "section_title_exact",
+                        "table_title_exact",
+                        "target_id",
+                    ],
+                    "type": "object",
+                },
+                "type": "array",
+            },
+            "uncertainty_exact": {"items": {"type": "string"}, "type": "array"},
+        },
+        "required": ["all_targets_transcribed", "targets", "uncertainty_exact"],
+        "type": "object",
+    }
+
+
+def decode_structural_context_repair_text_v1(
+    text: str, *, targets: Sequence[dict[str, Any]]
+) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise _error("structural-context repair response is not JSON") from exc
+    if type(value) is not dict or set(value) != {
+        "all_targets_transcribed",
+        "targets",
+        "uncertainty_exact",
+    }:
+        raise _error("structural-context repair response fields drifted")
+    expected_ids = [target["target_id"] for target in targets]
+    repaired = value["targets"]
+    if (
+        type(value["all_targets_transcribed"]) is not bool
+        or type(value["uncertainty_exact"]) is not list
+        or any(type(item) is not str or not item for item in value["uncertainty_exact"])
+        or type(repaired) is not list
+        or [item.get("target_id") for item in repaired] != expected_ids
+    ):
+        raise _error("structural-context repair completion or identity is invalid")
+    for item in repaired:
+        if (
+            type(item) is not dict
+            or set(item)
+            != {
+                "narratives_exact",
+                "section_title_exact",
+                "table_title_exact",
+                "target_id",
+            }
+            or type(item["section_title_exact"]) not in {str, type(None)}
+            or type(item["table_title_exact"]) not in {str, type(None)}
+            or type(item["narratives_exact"]) is not list
+            or any(
+                type(narrative) is not str or not narrative.strip()
+                for narrative in item["narratives_exact"]
+            )
+        ):
+            raise _error("structural-context repair target is invalid")
+    return canonical_clone_v1(value)
+
+
+def merge_structural_context_repair_v1(
+    page_json: Any,
+    *,
+    base_page_json_version_id: str,
+    targets: Sequence[dict[str, Any]],
+    repair: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    checked = validate_financial_page_json_v1(page_json)
+    decoded = decode_structural_context_repair_text_v1(
+        canonical_json_bytes_v1(repair).decode("utf-8"), targets=targets
+    )
+    if not decoded["all_targets_transcribed"] or decoded["uncertainty_exact"]:
+        raise _error("structural-context repair is incomplete or uncertain")
+    merged = canonical_clone_v1(checked)
+    before_sha = canonical_json_sha256_v1(checked)
+    changes = []
+    for target, repaired in zip(targets, decoded["targets"], strict=True):
+        section_id, table_id = target["target_id"].split(":")
+        section = merged["sections"][int(section_id[1:]) - 1]
+        table = section["tables"][int(table_id[1:]) - 1]
+        before = {
+            "narratives_exact": canonical_clone_v1(section["narratives_exact"]),
+            "section_title_exact": section["title_exact"],
+            "table_title_exact": table["title_exact"],
+        }
+        section["title_exact"] = repaired["section_title_exact"]
+        section["narratives_exact"] = canonical_clone_v1(repaired["narratives_exact"])
+        table["title_exact"] = repaired["table_title_exact"]
+        changes.append(
+            {
+                "axis_after_exact": {
+                    "narratives_exact": repaired["narratives_exact"],
+                    "section_title_exact": repaired["section_title_exact"],
+                    "table_title_exact": repaired["table_title_exact"],
+                },
+                "axis_before_exact": before,
+                "target_id": target["target_id"],
+            }
+        )
+    merged = validate_financial_page_json_v1(merged)
+    receipt_material = {
+        "base_page_json_sha256": before_sha,
+        "base_page_json_version_id": base_page_json_version_id,
+        "changes": changes,
+        "format_version": FORMAT_VERSION,
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "repair_response_sha256": canonical_json_sha256_v1(decoded),
+    }
+    return merged, {
+        **receipt_material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(receipt_material),
+    }
+
+
 def build_table_axis_repair_prompt_v1(
     *, base_page_json_version_id: str, targets: Sequence[dict[str, Any]]
 ) -> str:

@@ -28,18 +28,23 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (  # noqa: E402
     build_region_repair_prompt_v1,
     build_section_narrative_repair_prompt_v1,
+    build_structural_context_repair_prompt_v1,
     build_table_axis_repair_prompt_v1,
     decode_region_repair_text_v1,
     decode_section_narrative_repair_text_v1,
+    decode_structural_context_repair_text_v1,
     decode_table_axis_repair_text_v1,
     merge_region_repair_v1,
     merge_section_narrative_repair_v1,
+    merge_structural_context_repair_v1,
     merge_table_axis_repair_v1,
     region_repair_response_schema_v1,
     region_repair_targets_v1,
     repair_prompt_sha256_v1,
     section_narrative_repair_response_schema_v1,
     section_narrative_repair_targets_v1,
+    structural_context_repair_response_schema_v1,
+    structural_context_repair_targets_v1,
     table_axis_repair_response_schema_v1,
     table_axis_repair_targets_v1,
 )
@@ -74,6 +79,7 @@ def _parser() -> argparse.ArgumentParser:
             "ROW_VALUES",
             "ROW_LABEL_AND_VALUES",
             "SECTION_NARRATIVES",
+            "STRUCTURAL_CONTEXT_SURFACES",
             "TABLE_PERIOD_AXIS",
             "TABLE_TITLE_AND_COLUMNS",
         ),
@@ -135,6 +141,26 @@ def _repair_projection_from_cached_page(
                     "narratives_exact": cached_page["sections"][int(target["target_id"][1:]) - 1][
                         "narratives_exact"
                     ],
+                    "target_id": target["target_id"],
+                }
+                for target in targets
+            ],
+            "uncertainty_exact": [],
+        }
+    if repair_scope == "STRUCTURAL_CONTEXT_SURFACES":
+        return {
+            "all_targets_transcribed": True,
+            "targets": [
+                {
+                    "narratives_exact": cached_page["sections"][
+                        int(target["target_id"].split(":")[0][1:]) - 1
+                    ]["narratives_exact"],
+                    "section_title_exact": cached_page["sections"][
+                        int(target["target_id"].split(":")[0][1:]) - 1
+                    ]["title_exact"],
+                    "table_title_exact": cached_page["sections"][
+                        int(target["target_id"].split(":")[0][1:]) - 1
+                    ]["tables"][int(target["target_id"].split(":")[1][1:]) - 1]["title_exact"],
                     "target_id": target["target_id"],
                 }
                 for target in targets
@@ -211,6 +237,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     if args.repair_scope in {
         "SECTION_NARRATIVES",
+        "STRUCTURAL_CONTEXT_SURFACES",
         "TABLE_PERIOD_AXIS",
         "TABLE_TITLE_AND_COLUMNS",
     }:
@@ -231,6 +258,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 targets=targets,
             )
             schema = section_narrative_repair_response_schema_v1()
+        elif args.repair_scope == "STRUCTURAL_CONTEXT_SURFACES":
+            targets = structural_context_repair_targets_v1(
+                selected["page_json"], table_refs=table_refs
+            )
+            prompt = build_structural_context_repair_prompt_v1(
+                base_page_json_version_id=args.base_page_json_version_id,
+                targets=targets,
+            )
+            schema = structural_context_repair_response_schema_v1()
         else:
             targets = table_axis_repair_targets_v1(selected["page_json"], table_refs=table_refs)
             prompt = build_table_axis_repair_prompt_v1(
@@ -258,6 +294,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "ROW_LABEL_AND_VALUES": "region-repair-row-label-and-values",
         "ROW_VALUES": "region-repair-row-values",
         "SECTION_NARRATIVES": "region-repair-section-narratives",
+        "STRUCTURAL_CONTEXT_SURFACES": "region-repair-structural-context-surfaces",
         "TABLE_PERIOD_AXIS": "region-repair-table-period-axis",
         "TABLE_TITLE_AND_COLUMNS": "region-repair-table-title-and-columns",
     }[args.repair_scope]
@@ -307,6 +344,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if args.repair_scope == "SECTION_NARRATIVES":
         repair = decode_section_narrative_repair_text_v1(response_text, targets=targets)
         merged, repair_receipt = merge_section_narrative_repair_v1(
+            selected["page_json"],
+            base_page_json_version_id=args.base_page_json_version_id,
+            targets=targets,
+            repair=repair,
+        )
+    elif args.repair_scope == "STRUCTURAL_CONTEXT_SURFACES":
+        repair = decode_structural_context_repair_text_v1(response_text, targets=targets)
+        merged, repair_receipt = merge_structural_context_repair_v1(
             selected["page_json"],
             base_page_json_version_id=args.base_page_json_version_id,
             targets=targets,

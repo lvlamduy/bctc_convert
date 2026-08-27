@@ -1,0 +1,127 @@
+{
+  "family_id": "LOAN_ENTERPRISE_FAMILY12",
+  "family_owner_report_norm_id": 716,
+  "family_report_norm_id": 766,
+  "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "ignored_roles": [
+    "ENTERPRISE_TYPE_BRANCH",
+    "LOAN_TYPE_PRESENTATION_BRANCH",
+    "LOAN_QUALITY_PRESENTATION_BRANCH",
+    "LOAN_MATURITY_PRESENTATION_BRANCH",
+    "LOAN_ORIGINAL_TERM_PRESENTATION_BRANCH",
+    "LOAN_INDUSTRY_PRESENTATION_BRANCH",
+    "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+    "INDIVIDUAL_LOANS_GROUP",
+    "OTHER_CUSTOMER_LOANS_GROUP",
+    "JOINT_STOCK_COMPANY_LOANS_GROUP",
+    "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+    "EXPLICIT_LOAN_ENTERPRISE_TOTAL",
+    "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+    "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+    "SOURCE_ONLY_PERSON_LOANS",
+    "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+    "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+    "FOREIGN_BRANCH_INDIVIDUAL_LOANS",
+    "DEFERRED_LETTER_OF_CREDIT_LOANS_GROUP",
+    "SOURCE_ONLY_DEFERRED_LC_JOINT_STOCK_COMPANY_LOANS",
+    "SOURCE_ONLY_DEFERRED_LC_LIMITED_LIABILITY_COMPANY_LOANS"
+  ],
+  "role_bindings": [
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 767,
+      "role": "STATE_ENTERPRISE_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 768,
+      "role": "LIMITED_LIABILITY_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 769,
+      "role": "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 770,
+      "role": "STATE_MAJORITY_LLC_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 771,
+      "role": "OTHER_LLC_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 772,
+      "role": "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 773,
+      "role": "OTHER_JOINT_STOCK_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 774,
+      "role": "PRIVATE_ENTERPRISE_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 775,
+      "role": "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 776,
+      "role": "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 6074,
+      "role": "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 777,
+      "role": "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 778,
+      "role": "PARTNERSHIP_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 779,
+      "role": "FOREIGN_INVESTED_COMPANY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 780,
+      "role": "HOUSEHOLD_AND_INDIVIDUAL_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 781,
+      "role": "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 782,
+      "role": "OTHER_ENTERPRISE_LOANS"
+    },
+    {
+      "parent_report_norm_id": 727,
+      "report_norm_id": 6058,
+      "role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+    },
+    {
+      "parent_report_norm_id": 766,
+      "report_norm_id": 5748,
+      "role": "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    }
+  ]
+}

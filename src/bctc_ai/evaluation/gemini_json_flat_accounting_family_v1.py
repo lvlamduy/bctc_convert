@@ -23,6 +23,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 FORMAT_VERSION = "GEMINI_JSON_FLAT_ACCOUNTING_FAMILY_SWEEP_V1"
 HIERARCHICAL_FORMAT_VERSION = "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V2"
+INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_INDEXED_TITLE_AXIS_QUERY_EVIDENCE_V1"
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
@@ -75,6 +76,7 @@ def _compile_specs(
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8",
     }:
         from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
             compile_gemini_json_hierarchical_family_specs_v1,
@@ -900,6 +902,508 @@ def evaluate_gemini_json_flat_family_table_v1(
     return result
 
 
+def _validate_indexed_query_evidence_v1(
+    value: Any, *, compiled_specs: dict[str, Any]
+) -> dict[str, Any]:
+    if (
+        compiled_specs["evaluation"].get("format_version") != "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+        or type(value) is not dict
+        or set(value)
+        != {
+            "accepted_regions",
+            "candidate_dispositions",
+            "format_version",
+            "query_receipt",
+        }
+        or value.get("format_version") != INDEXED_QUERY_EVIDENCE_FORMAT_VERSION
+        or type(value.get("query_receipt")) is not dict
+        or type(value.get("candidate_dispositions")) is not list
+        or type(value.get("accepted_regions")) is not list
+    ):
+        raise _error("Gemini JSON indexed query evidence is invalid")
+    receipt = value["query_receipt"]
+    dispositions = value["candidate_dispositions"]
+    regions = value["accepted_regions"]
+    policy = compiled_specs["title_axis_projection_policy"]
+    required_child_roles = set(policy["required_child_roles"])
+    minimum_child_roles = policy["minimum_distinct_child_roles"]
+    locator_base_keys = {
+        "alias",
+        "page_json_version_id",
+        "physical_page",
+        "section_id",
+        "source_exact",
+        "source_kind",
+        "table_id",
+    }
+
+    def valid_locator(locator: Any) -> bool:
+        if locator is None:
+            return True
+        if type(locator) is not dict:
+            return False
+        optional_keys = set(locator) - locator_base_keys
+        if optional_keys not in (set(), {"narrative_ordinal"}, {"row_id"}):
+            return False
+        return (
+            locator_base_keys <= set(locator)
+            and type(locator["alias"]) is str
+            and bool(locator["alias"].strip())
+            and type(locator["source_exact"]) is str
+            and bool(locator["source_exact"].strip())
+            and locator["source_kind"]
+            in {"ROW_LABEL", "SECTION_NARRATIVE", "SECTION_TITLE", "TABLE_TITLE"}
+            and type(locator["physical_page"]) is int
+            and locator["physical_page"] >= 1
+            and type(locator["page_json_version_id"]) is str
+            and re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", locator["page_json_version_id"])
+            is not None
+            and type(locator["section_id"]) is str
+            and re.fullmatch(r"s[1-9][0-9]*", locator["section_id"]) is not None
+            and type(locator["table_id"]) is str
+            and re.fullmatch(r"t[1-9][0-9]*", locator["table_id"]) is not None
+            and (
+                "narrative_ordinal" not in locator
+                or (
+                    locator["source_kind"] == "SECTION_NARRATIVE"
+                    and type(locator["narrative_ordinal"]) is int
+                    and locator["narrative_ordinal"] >= 1
+                )
+            )
+            and (
+                "row_id" not in locator
+                or (
+                    locator["source_kind"] == "ROW_LABEL"
+                    and type(locator["row_id"]) is str
+                    and re.fullmatch(r"r[1-9][0-9]*", locator["row_id"]) is not None
+                )
+            )
+        )
+
+    disposition_counts: dict[str, int] = {}
+    disposition_keys = []
+    disposition_order = []
+    for disposition in dispositions:
+        if (
+            type(disposition) is not dict
+            or set(disposition)
+            != {
+                "branch_evidence",
+                "child_role_row_assignment",
+                "context_pages",
+                "disposition",
+                "hard_negative_evidence",
+                "owner_evidence",
+                "owner_failure_reason",
+                "owner_mode",
+                "page_json_version_id",
+                "physical_page",
+                "reset_evidence",
+                "section_id",
+                "selected_page_ordinal",
+                "source_logical_name",
+                "source_sha256",
+                "table_id",
+            }
+            or type(disposition.get("disposition")) is not str
+            or disposition["disposition"]
+            not in {
+                "ACCEPTED",
+                "BRANCH_ABSENT",
+                "HARD_NEGATIVE_VETO",
+                "INSUFFICIENT_DISTINCT_CHILD_ROLES",
+                "OWNER_ABSENT_OR_AMBIGUOUS",
+            }
+            or type(disposition.get("selected_page_ordinal")) is not int
+            or disposition["selected_page_ordinal"] <= 0
+            or type(disposition.get("physical_page")) is not int
+            or disposition["physical_page"] <= 0
+            or type(disposition.get("source_logical_name")) is not str
+            or not disposition["source_logical_name"]
+            or type(disposition.get("source_sha256")) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", disposition["source_sha256"]) is None
+            or type(disposition.get("page_json_version_id")) is not str
+            or re.fullmatch(
+                r"gfpstorev1:json:[0-9a-f]{64}",
+                disposition["page_json_version_id"],
+            )
+            is None
+            or type(disposition.get("section_id")) is not str
+            or re.fullmatch(r"s[1-9][0-9]*", disposition["section_id"]) is None
+            or type(disposition.get("table_id")) is not str
+            or re.fullmatch(r"t[1-9][0-9]*", disposition["table_id"]) is None
+            or type(disposition.get("child_role_row_assignment")) is not list
+            or not disposition["child_role_row_assignment"]
+            or any(
+                type(item) is not dict
+                or set(item) != {"role", "row_id"}
+                or item["role"] not in required_child_roles
+                or type(item["row_id"]) is not str
+                or re.fullmatch(r"r[1-9][0-9]*", item["row_id"]) is None
+                for item in disposition["child_role_row_assignment"]
+            )
+            or [item["role"] for item in disposition["child_role_row_assignment"]]
+            != sorted(item["role"] for item in disposition["child_role_row_assignment"])
+            or len({item["role"] for item in disposition["child_role_row_assignment"]})
+            != len(disposition["child_role_row_assignment"])
+            or type(disposition.get("context_pages")) is not list
+            or not disposition["context_pages"]
+            or disposition["context_pages"]
+            != sorted(
+                disposition["context_pages"],
+                key=lambda item: item.get("physical_page", -1) if type(item) is dict else -1,
+            )
+            or any(
+                type(context) is not dict
+                or set(context) != {"page_json_version_id", "physical_page"}
+                or type(context["physical_page"]) is not int
+                or context["physical_page"] <= 0
+                or type(context["page_json_version_id"]) is not str
+                or re.fullmatch(
+                    r"gfpstorev1:json:[0-9a-f]{64}",
+                    context["page_json_version_id"],
+                )
+                is None
+                for context in disposition["context_pages"]
+            )
+            or len({context["physical_page"] for context in disposition["context_pages"]})
+            != len(disposition["context_pages"])
+            or {
+                "page_json_version_id": disposition["page_json_version_id"],
+                "physical_page": disposition["physical_page"],
+            }
+            not in disposition["context_pages"]
+            or len({item["row_id"] for item in disposition["child_role_row_assignment"]})
+            != len(disposition["child_role_row_assignment"])
+            or not all(
+                valid_locator(disposition[key])
+                for key in (
+                    "branch_evidence",
+                    "hard_negative_evidence",
+                    "owner_evidence",
+                    "reset_evidence",
+                )
+            )
+            or disposition.get("owner_mode")
+            not in {
+                None,
+                "BOUNDED_PRECEDING_SELECTED_PAGE_OWNER_CARRY",
+                "LOCAL_EXPLICIT_OWNER",
+            }
+            or (
+                disposition.get("owner_failure_reason") is not None
+                and type(disposition["owner_failure_reason"]) is not str
+            )
+        ):
+            raise _error("Gemini JSON indexed candidate disposition is invalid")
+        assignment_count = len(disposition["child_role_row_assignment"])
+        if (
+            (
+                disposition["disposition"] == "ACCEPTED"
+                and (
+                    assignment_count < minimum_child_roles
+                    or disposition["branch_evidence"] is None
+                    or disposition["owner_evidence"] is None
+                    or disposition["hard_negative_evidence"] is not None
+                    or disposition["owner_mode"] is None
+                )
+            )
+            or (
+                disposition["disposition"] == "INSUFFICIENT_DISTINCT_CHILD_ROLES"
+                and (
+                    assignment_count >= minimum_child_roles
+                    or disposition["branch_evidence"] is None
+                    or disposition["owner_evidence"] is None
+                    or disposition["hard_negative_evidence"] is not None
+                )
+            )
+            or (
+                disposition["disposition"] == "HARD_NEGATIVE_VETO"
+                and disposition["hard_negative_evidence"] is None
+            )
+            or (
+                disposition["disposition"] == "BRANCH_ABSENT"
+                and (
+                    disposition["branch_evidence"] is not None
+                    or disposition["hard_negative_evidence"] is not None
+                )
+            )
+            or (
+                disposition["disposition"] == "OWNER_ABSENT_OR_AMBIGUOUS"
+                and (
+                    disposition["branch_evidence"] is None
+                    or disposition["owner_evidence"] is not None
+                    or disposition["hard_negative_evidence"] is not None
+                    or disposition["owner_failure_reason"] is None
+                )
+            )
+        ):
+            raise _error("Gemini JSON indexed candidate disposition is incoherent")
+        disposition_counts[disposition["disposition"]] = (
+            disposition_counts.get(disposition["disposition"], 0) + 1
+        )
+        disposition_keys.append(
+            tuple(
+                disposition.get(key)
+                for key in (
+                    "source_logical_name",
+                    "source_sha256",
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                )
+            )
+        )
+        disposition_order.append(
+            (
+                disposition["selected_page_ordinal"],
+                int(disposition["section_id"][1:]),
+                int(disposition["table_id"][1:]),
+            )
+        )
+    if len(disposition_keys) != len(set(disposition_keys)):
+        raise _error("Gemini JSON indexed candidate disposition axis repeats a table")
+    if disposition_order != sorted(disposition_order) or len(disposition_order) != len(
+        set(disposition_order)
+    ):
+        raise _error("Gemini JSON indexed candidate disposition axis is not ordered")
+    path_axis = []
+    ordinal_axis = []
+    region_keys = []
+    query_receipt_sha256 = canonical_json_sha256_v1(receipt)
+    accepted_dispositions = [
+        disposition for disposition in dispositions if disposition["disposition"] == "ACCEPTED"
+    ]
+    if len(regions) != len(accepted_dispositions):
+        raise _error("Gemini JSON indexed accepted region count is invalid")
+    for region, disposition in zip(regions, accepted_dispositions, strict=True):
+        structural_receipt = region.get("structural_context_receipt")
+        if (
+            type(region) is not dict
+            or set(region)
+            != {
+                "context_pages",
+                "document_id",
+                "document_ordinal",
+                "matched_child_roles",
+                "page_json_version_id",
+                "physical_page",
+                "section_id",
+                "source_logical_name",
+                "source_sha256",
+                "structural_context_receipt",
+                "table_id",
+            }
+            or type(region.get("document_ordinal")) is not int
+            or region["document_ordinal"] <= 0
+            or type(region.get("document_id")) is not str
+            or not region["document_id"]
+            or type(region.get("context_pages")) is not list
+            or not region["context_pages"]
+            or any(
+                type(context) is not dict
+                or set(context) != {"page_json_version_id", "physical_page"}
+                or type(context["physical_page"]) is not int
+                or context["physical_page"] <= 0
+                or type(context["page_json_version_id"]) is not str
+                or re.fullmatch(
+                    r"gfpstorev1:json:[0-9a-f]{64}",
+                    context["page_json_version_id"],
+                )
+                is None
+                for context in region["context_pages"]
+            )
+            or region["context_pages"] != disposition["context_pages"]
+            or region["context_pages"]
+            != sorted(region["context_pages"], key=lambda item: item["physical_page"])
+            or len({item["physical_page"] for item in region["context_pages"]})
+            != len(region["context_pages"])
+            or {
+                "page_json_version_id": region["page_json_version_id"],
+                "physical_page": region["physical_page"],
+            }
+            not in region["context_pages"]
+            or type(region.get("matched_child_roles")) is not list
+            or region["matched_child_roles"]
+            != [item["role"] for item in disposition["child_role_row_assignment"]]
+            or type(structural_receipt) is not dict
+            or set(structural_receipt)
+            != {
+                "branch_evidence",
+                "branch_role",
+                "candidate_page_json_version_id",
+                "candidate_section_id",
+                "candidate_table_id",
+                "context_page_axis_sha256",
+                "owner_evidence",
+                "owner_mode",
+                "owner_role",
+                "rule",
+                "title_axis_query_receipt_sha256",
+            }
+            or structural_receipt.get("branch_evidence") != disposition["branch_evidence"]
+            or structural_receipt.get("owner_evidence") != disposition["owner_evidence"]
+            or structural_receipt.get("owner_mode") != disposition["owner_mode"]
+            or structural_receipt.get("candidate_page_json_version_id")
+            != region["page_json_version_id"]
+            or structural_receipt.get("candidate_section_id") != region["section_id"]
+            or structural_receipt.get("candidate_table_id") != region["table_id"]
+            or structural_receipt.get("title_axis_query_receipt_sha256") != query_receipt_sha256
+            or any(
+                region[key] != disposition[key]
+                for key in (
+                    "page_json_version_id",
+                    "physical_page",
+                    "section_id",
+                    "source_logical_name",
+                    "source_sha256",
+                    "table_id",
+                )
+            )
+        ):
+            raise _error("Gemini JSON indexed accepted region is invalid")
+        path_axis.append(
+            {
+                key: region[key]
+                for key in (
+                    "source_logical_name",
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                )
+            }
+        )
+        ordinal_axis.append(
+            {
+                "document_ordinal": region["document_ordinal"],
+                "source_sha256": region["source_sha256"],
+                **{
+                    key: region[key]
+                    for key in (
+                        "physical_page",
+                        "page_json_version_id",
+                        "section_id",
+                        "table_id",
+                    )
+                },
+            }
+        )
+        region_keys.append(
+            tuple(
+                region[key]
+                for key in (
+                    "source_logical_name",
+                    "source_sha256",
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                )
+            )
+        )
+    accepted_disposition_keys = [
+        key
+        for disposition, key in zip(dispositions, disposition_keys, strict=True)
+        if disposition["disposition"] == "ACCEPTED"
+    ]
+    expected_disposition_counts = [
+        {"count": disposition_counts[item], "disposition": item}
+        for item in sorted(disposition_counts)
+    ]
+    group_receipt = compiled_specs.get("query_group_compilation_receipt")
+    fixed_receipt_keys = {
+        "candidate_disposition_axis_sha256",
+        "candidate_disposition_count",
+        "candidate_disposition_counts",
+        "candidate_surface_decode_count",
+        "candidate_table_count_before_structural_axis",
+        "context_page_json_decode_count",
+        "context_page_title_scan_count",
+        "exact_region_count",
+        "exact_region_ordinal_source_axis_sha256",
+        "exact_region_path_axis_sha256",
+        "indexed_row_hit_count",
+        "indexed_row_hit_table_count",
+        "minimum_distinct_child_roles",
+        "near_structural_evidence_document_count",
+        "owner_mode_counts",
+        "selected_page_json_frontier_sha256",
+        "selected_page_json_version_count",
+        "structural_surface_kinds",
+        "target_document_count",
+    }
+    expected_owner_mode_counts = []
+    owner_mode_counts: dict[str, int] = {}
+    for disposition in dispositions:
+        if disposition["disposition"] == "ACCEPTED":
+            mode = disposition["owner_mode"]
+            owner_mode_counts[mode] = owner_mode_counts.get(mode, 0) + 1
+    expected_owner_mode_counts = [
+        {"count": owner_mode_counts[mode], "mode": mode} for mode in sorted(owner_mode_counts)
+    ]
+    expected_near_sources = {
+        disposition["source_logical_name"]
+        for disposition in dispositions
+        if disposition["hard_negative_evidence"] is None
+        and (
+            disposition["branch_evidence"] is not None or disposition["owner_evidence"] is not None
+        )
+    }
+    if (
+        type(group_receipt) is not dict
+        or set(receipt) != fixed_receipt_keys | set(group_receipt)
+        or len(region_keys) != len(set(region_keys))
+        or region_keys != accepted_disposition_keys
+        or ordinal_axis
+        != sorted(
+            ordinal_axis,
+            key=lambda item: (
+                item["document_ordinal"],
+                item["physical_page"],
+                item["section_id"],
+                item["table_id"],
+                item["page_json_version_id"],
+            ),
+        )
+        or receipt.get("candidate_disposition_axis_sha256")
+        != canonical_json_sha256_v1(dispositions)
+        or receipt.get("candidate_disposition_count") != len(dispositions)
+        or receipt.get("candidate_disposition_counts") != expected_disposition_counts
+        or receipt.get("candidate_surface_decode_count") != len(dispositions)
+        or receipt.get("candidate_table_count_before_structural_axis") != len(dispositions)
+        or receipt.get("indexed_row_hit_table_count") != len(dispositions)
+        or type(receipt.get("indexed_row_hit_count")) is not int
+        or receipt["indexed_row_hit_count"] < len(dispositions)
+        or receipt.get("minimum_distinct_child_roles") != minimum_child_roles
+        or receipt.get("near_structural_evidence_document_count") != len(expected_near_sources)
+        or receipt.get("owner_mode_counts") != expected_owner_mode_counts
+        or receipt.get("structural_surface_kinds") != policy["structural_surface_kinds"]
+        or receipt.get("exact_region_count") != len(regions)
+        or receipt.get("exact_region_path_axis_sha256") != canonical_json_sha256_v1(path_axis)
+        or receipt.get("exact_region_ordinal_source_axis_sha256")
+        != canonical_json_sha256_v1(ordinal_axis)
+        or receipt.get("target_document_count")
+        != len({region["source_logical_name"] for region in regions})
+        or type(receipt.get("selected_page_json_version_count")) is not int
+        or receipt["selected_page_json_version_count"] <= 0
+        or any(
+            disposition["selected_page_ordinal"] > receipt["selected_page_json_version_count"]
+            for disposition in dispositions
+        )
+        or type(receipt.get("selected_page_json_frontier_sha256")) is not str
+        or len(receipt["selected_page_json_frontier_sha256"]) != 64
+        or type(receipt.get("context_page_json_decode_count")) is not int
+        or receipt["context_page_json_decode_count"] < len(regions)
+        or receipt.get("context_page_title_scan_count")
+        != receipt.get("context_page_json_decode_count")
+        or any(receipt.get(key) != item for key, item in group_receipt.items())
+    ):
+        raise _error("Gemini JSON indexed query evidence does not replay")
+    return canonical_clone_v1(value)
+
+
 def build_gemini_json_flat_family_sweep_v1(
     *,
     corpus_manifest_index_id: str,
@@ -908,6 +1412,7 @@ def build_gemini_json_flat_family_sweep_v1(
     schema_binding_spec: Any,
     trials: list[dict[str, Any]],
     effective_page_frontier: Any | None = None,
+    indexed_query_evidence: Any | None = None,
 ) -> dict[str, Any]:
     """Seal a complete ordered document disposition axis."""
 
@@ -919,6 +1424,19 @@ def build_gemini_json_flat_family_sweep_v1(
     ):
         raise _error("Gemini JSON family sweep inputs are invalid")
     compiled = _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
+    indexed_query_evidence_required = (
+        compiled["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+    )
+    if indexed_query_evidence_required != (indexed_query_evidence is not None):
+        raise _error("Gemini JSON V8 sweep and indexed query evidence presence do not agree")
+    checked_indexed_query_evidence = (
+        _validate_indexed_query_evidence_v1(
+            indexed_query_evidence,
+            compiled_specs=compiled,
+        )
+        if indexed_query_evidence is not None
+        else None
+    )
     checked_effective_frontier = None
     if effective_page_frontier is not None:
         from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (
@@ -975,6 +1493,11 @@ def build_gemini_json_flat_family_sweep_v1(
         "state": "COMPLETE_DOCUMENT_GEMINI_JSON_FAMILY_SWEEP_PROPOSAL_ONLY",
         "trials": canonical_clone_v1(trials),
         **(
+            {"indexed_query_evidence": checked_indexed_query_evidence}
+            if checked_indexed_query_evidence is not None
+            else {}
+        ),
+        **(
             {"effective_page_frontier": checked_effective_frontier}
             if checked_effective_frontier is not None
             else {}
@@ -998,6 +1521,31 @@ def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
                 "corpus_manifest_index_id",
                 "family_id",
                 "format_version",
+                "metrics",
+                "specs",
+                "state",
+                "sweep_id",
+                "trials",
+            },
+            {
+                "claim_boundary",
+                "corpus_manifest_index_id",
+                "family_id",
+                "format_version",
+                "indexed_query_evidence",
+                "metrics",
+                "specs",
+                "state",
+                "sweep_id",
+                "trials",
+            },
+            {
+                "claim_boundary",
+                "corpus_manifest_index_id",
+                "effective_page_frontier",
+                "family_id",
+                "format_version",
+                "indexed_query_evidence",
                 "metrics",
                 "specs",
                 "state",
@@ -1034,6 +1582,7 @@ def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
         schema_binding_spec=value["specs"]["schema_binding"]["value"],
         trials=value["trials"],
         effective_page_frontier=value.get("effective_page_frontier"),
+        indexed_query_evidence=value.get("indexed_query_evidence"),
     )
     if rebuilt != value:
         raise _error("Gemini JSON family sweep does not replay exactly")

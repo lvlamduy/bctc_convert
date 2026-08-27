@@ -235,10 +235,18 @@ def enqueue_gemini_family_region_repair_plans_v1(
     with _connect(path) as connection:
         connection.executescript(_REGION_REPAIR_QUEUE_SCHEMA)
         run = connection.execute(
-            "SELECT family_id FROM family_run WHERE family_run_id=?", (family_run_id,)
+            "SELECT family_id,sweep_sha256,sweep_bytes FROM family_run WHERE family_run_id=?",
+            (family_run_id,),
         ).fetchone()
         if run is None:
             raise _error("family region repair run is absent")
+        sweep_payload = bytes(run["sweep_bytes"])
+        if sha256(sweep_payload).hexdigest() != run["sweep_sha256"]:
+            raise _error("family region repair source sweep bytes drifted")
+        try:
+            stored_sweep = validate_gemini_json_flat_family_sweep_v1(json.loads(sweep_payload))
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            raise _error("family region repair source sweep is invalid") from exc
         for plan in checked:
             if plan.get("family_id") != run["family_id"]:
                 raise _error("family region repair plan family does not replay")
@@ -260,7 +268,69 @@ def enqueue_gemini_family_region_repair_plans_v1(
                 plan.get("source_logical_name"),
                 plan.get("source_sha256"),
             )
-            if candidate is None or tuple(candidate) != expected_candidate:
+            if candidate is None:
+                disposition_sha256 = plan.get("query_disposition_sha256")
+                evidence = stored_sweep.get("indexed_query_evidence")
+                matching_dispositions = (
+                    [
+                        disposition
+                        for disposition in evidence["candidate_dispositions"]
+                        if disposition["source_logical_name"] == plan.get("source_logical_name")
+                        and disposition["source_sha256"] == plan.get("source_sha256")
+                        and disposition["page_json_version_id"] == plan["base_page_json_version_id"]
+                        and disposition["physical_page"] == plan["physical_page"]
+                        and disposition["section_id"] == plan.get("section_id")
+                        and disposition["table_id"] == plan.get("table_id")
+                    ]
+                    if type(evidence) is dict
+                    else []
+                )
+                trial = connection.execute(
+                    "SELECT source_logical_name,source_sha256,status "
+                    "FROM family_trial WHERE family_run_id=? AND document_ordinal=?",
+                    (family_run_id, plan["document_ordinal"]),
+                ).fetchone()
+                if len(matching_dispositions) != 1 or trial is None:
+                    raise _error("family indexed repair disposition does not replay")
+                disposition = matching_dispositions[0]
+                disposition_hash = canonical_json_sha256_v1(disposition)
+                candidate_material = {
+                    "disposition_sha256": disposition_hash,
+                    "family_id": run["family_id"],
+                    "page_json_version_id": disposition["page_json_version_id"],
+                    "section_id": disposition["section_id"],
+                    "table_id": disposition["table_id"],
+                }
+                if (
+                    disposition_sha256 != disposition_hash
+                    or plan["candidate_id"]
+                    != "gjfafcv1:query-disposition:" + canonical_json_sha256_v1(candidate_material)
+                    or disposition["disposition"]
+                    not in {
+                        "BRANCH_ABSENT",
+                        "INSUFFICIENT_DISTINCT_CHILD_ROLES",
+                    }
+                    or disposition["hard_negative_evidence"] is not None
+                    or (
+                        disposition["branch_evidence"] is None
+                        and disposition["owner_evidence"] is None
+                    )
+                    or tuple(trial)
+                    != (
+                        plan.get("source_logical_name"),
+                        plan.get("source_sha256"),
+                        "UNRESOLVED_GEMINI_JSON_FAMILY",
+                    )
+                    or plan.get("structural_context_pages") != disposition["context_pages"]
+                    or plan.get("repair_scope")
+                    != (
+                        "ROW_LABEL_AND_VALUES"
+                        if disposition["disposition"] == "INSUFFICIENT_DISTINCT_CHILD_ROLES"
+                        else "STRUCTURAL_CONTEXT_SURFACES"
+                    )
+                ):
+                    raise _error("family indexed repair disposition identity drifted")
+            elif tuple(candidate) != expected_candidate:
                 raise _error("family region repair candidate does not replay")
             material = {key: plan[key] for key in plan if key != "repair_job_id"}
             if plan["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material):

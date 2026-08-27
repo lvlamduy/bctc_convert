@@ -26,7 +26,13 @@ from bctc_ai.evaluation.gemini_json_first_batch_v1 import (
     summarize_google_batch_operation_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
+from bctc_ai.evaluation.gemini_json_structural_context_v1 import (
+    declared_surface_alias_match_v1,
+    family_anchor_lookup_forms_v1,
+    resolve_candidate_structural_context_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
+    canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
@@ -42,6 +48,7 @@ _SELECTABLE_PROMPT_VARIANTS = frozenset(
         "region-repair-row-label-and-values",
         "region-repair-row-values",
         "region-repair-section-narratives",
+        "region-repair-structural-context-surfaces",
         "region-repair-table-period-axis",
         "region-repair-table-title-and-columns",
         "scope",
@@ -1588,84 +1595,7 @@ def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -
 def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
     """Bind semantic aliases to exact labels with harmless list markers."""
 
-    folded = {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases}
-    comma_forms = {
-        " ".join(tokens[:ordinal]) + ", " + " ".join(tokens[ordinal:])
-        for alias in folded
-        for tokens in [alias.split()]
-        for ordinal in range(1, len(tokens))
-    }
-    internal_separator_forms = {
-        " ".join(tokens[:ordinal]) + f" {separator} " + " ".join(tokens[ordinal:])
-        for alias in folded
-        for tokens in [alias.split()]
-        for ordinal in range(1, len(tokens))
-        for separator in ("-", "–", "—", "•")
-    }
-    punctuation_forms = (
-        set(folded)
-        | {alias + ":" for alias in folded}
-        | {alias + " (*)" for alias in folded}
-        | comma_forms
-        | internal_separator_forms
-    )
-    combined_comma_footnote_forms = {
-        alias + separator + marker
-        for alias in comma_forms
-        for separator in ("", " ")
-        for marker in ("(*)", "(**)", "(***)")
-    }
-    punctuation_forms |= {
-        alias + separator + marker
-        for alias in folded
-        for separator in ("", " ")
-        for marker in ("(*)", "(**)", "(***)")
-    }
-    punctuation_forms |= {
-        alias.replace("tien vang ", "tien, vang ", 1)
-        for alias in punctuation_forms
-        if alias.startswith("tien vang ")
-    }
-    punctuation_forms |= {
-        alias.replace(" tctd ", marker, 1)
-        for alias in punctuation_forms
-        if " tctd " in alias
-        for marker in (' ("tctd") ', " (“tctd”) ", " (tctd) ")
-    }
-    for alias in folded:
-        stem, separator, suffix = alias.rpartition(" ")
-        if separator and (suffix.isdigit() or suffix in {"i", "ii", "iii", "iv", "v"}):
-            punctuation_forms.add(f"{stem} ({suffix})")
-        if " bang " in alias:
-            prefix, value_kind = alias.rsplit(" bang ", maxsplit=1)
-            punctuation_forms.update(
-                f"{prefix} {marker} bang {value_kind}" for marker in ("-", "–", "—", "•")
-            )
-    ordinal_prefixes = {
-        *(str(value) for value in range(1, 21)),
-        "i",
-        "ii",
-        "iii",
-        "iv",
-        "v",
-        "vi",
-        "vii",
-        "viii",
-        "ix",
-        "x",
-        "xi",
-        "xii",
-        "xiii",
-        "xiv",
-        "xv",
-    }
-    return sorted(
-        punctuation_forms
-        | combined_comma_footnote_forms
-        | {marker + alias for alias in punctuation_forms for marker in ("- ", "– ", "— ", "• ")}
-        | {prefix + " " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
-        | {prefix + ". " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
-    )
+    return family_anchor_lookup_forms_v1(aliases)
 
 
 def query_selected_family_anchor_hits_v1(
@@ -1767,6 +1697,505 @@ def query_selected_family_anchor_hits_v1(
         record["hierarchy_path_exact"] = hierarchy_path
         result.append(record)
     return result
+
+
+def _declared_surface_alias_match_v1(value: Any, aliases: Sequence[str]) -> str | None:
+    """Return the unique longest declared phrase on one authenticated surface."""
+
+    return declared_surface_alias_match_v1(value, aliases)
+
+
+def query_selected_hierarchical_title_axis_family_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    query_aliases_by_role: Mapping[str, Sequence[str]],
+    required_child_roles: Sequence[str],
+    minimum_distinct_child_roles: int,
+    structural_branch_role: str,
+    structural_branch_aliases: Sequence[str],
+    structural_surface_kinds: Sequence[str],
+    explicit_parent_role: str,
+    explicit_parent_aliases: Sequence[str],
+    hard_negative_aliases: Sequence[str],
+    owner_reset_aliases: Sequence[str],
+    adjacent_page_radius: int = 2,
+    query_group_receipt: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return row-qualified tables under one bounded title/narrative owner axis.
+
+    The indexed row lookup is performed once over the caller's immutable
+    selected-version allowlist.  Titles and section narratives can authenticate
+    only a table that already has the declared minimum of distinct child roles;
+    they are never promoted page-globally.  Parent carry is preceding-only and
+    bounded to the current page plus two selected physical pages.
+    """
+
+    role_aliases_valid = (
+        type(query_aliases_by_role) is dict
+        and query_aliases_by_role
+        and all(
+            type(role) is str
+            and role
+            and type(aliases) in {list, tuple}
+            and aliases
+            and all(type(alias) is str and alias.strip() for alias in aliases)
+            for role, aliases in query_aliases_by_role.items()
+        )
+    )
+    required = list(required_child_roles) if type(required_child_roles) in {list, tuple} else []
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not selected_page_json_version_ids
+        or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+        or not role_aliases_valid
+        or not required
+        or len(required) != len(set(required))
+        or any(role not in query_aliases_by_role for role in required)
+        or type(structural_branch_role) is not str
+        or not structural_branch_role
+        or type(minimum_distinct_child_roles) is not int
+        or not 2 <= minimum_distinct_child_roles <= len(required)
+        or type(structural_branch_aliases) not in {list, tuple}
+        or not structural_branch_aliases
+        or tuple(structural_surface_kinds) not in {("TITLE",), ("TITLE", "SECTION_NARRATIVE")}
+        or type(explicit_parent_role) is not str
+        or not explicit_parent_role
+        or type(explicit_parent_aliases) not in {list, tuple}
+        or not explicit_parent_aliases
+        or type(hard_negative_aliases) not in {list, tuple}
+        or type(owner_reset_aliases) not in {list, tuple}
+        or type(adjacent_page_radius) is not int
+        or not 0 <= adjacent_page_radius <= 2
+        or (query_group_receipt is not None and type(query_group_receipt) is not dict)
+    ):
+        raise _error("selected hierarchical title-axis query is invalid")
+
+    selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=selected_page_json_version_ids,
+    )
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_title_axis_page("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_title_axis_page VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        selected_rows = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page
+            FROM selected_title_axis_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            ORDER BY selected.selection_ordinal
+            """
+        ).fetchall()
+        if len(selected_rows) != len(selected_page_json_version_ids):
+            raise _error("selected hierarchical title-axis page is absent")
+        locations = [(row["source_logical_name"], row["physical_page"]) for row in selected_rows]
+        if len(set(locations)) != len(locations):
+            raise _error("selected hierarchical title-axis frontier repeats a page")
+        if locations != sorted(locations):
+            raise _error("selected hierarchical title-axis frontier is not in corpus order")
+
+        connection.execute(
+            "CREATE TEMP TABLE title_axis_role_alias("
+            "role TEXT NOT NULL, label_ascii_folded TEXT NOT NULL,"
+            "PRIMARY KEY(role,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO title_axis_role_alias VALUES (?,?)",
+            (
+                (role, alias)
+                for role, aliases in sorted(query_aliases_by_role.items())
+                for alias in _family_anchor_lookup_forms_v1(aliases)
+            ),
+        )
+        role_hits = connection.execute(
+            """
+            SELECT selected.selection_ordinal, rn.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   rn.section_id, rn.table_id, rn.row_id, rn.source_order,
+                   rn.label_exact, alias.role,
+                   sn.source_order AS section_source_order,
+                   tn.source_order AS table_source_order
+            FROM row_node AS rn INDEXED BY idx_row_label_ascii
+            JOIN title_axis_role_alias AS alias
+              ON alias.label_ascii_folded=rn.label_ascii_folded
+            JOIN selected_title_axis_page AS selected USING(page_json_version_id)
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            JOIN section_node AS sn
+              ON sn.page_json_version_id=rn.page_json_version_id
+             AND sn.section_id=rn.section_id
+            JOIN table_node AS tn
+              ON tn.page_json_version_id=rn.page_json_version_id
+             AND tn.section_id=rn.section_id AND tn.table_id=rn.table_id
+            ORDER BY selected.selection_ordinal, sn.source_order,
+                     tn.source_order, rn.source_order, rn.row_id, alias.role
+            """
+        ).fetchall()
+
+        hits_by_table: dict[tuple[str, str, str], list[sqlite3.Row]] = {}
+        for hit in role_hits:
+            hits_by_table.setdefault(
+                (hit["page_json_version_id"], hit["section_id"], hit["table_id"]), []
+            ).append(hit)
+
+        def distinct_child_assignment(hits: list[sqlite3.Row]) -> dict[str, str]:
+            """Return one deterministic maximum role-to-distinct-row matching."""
+
+            rows_by_role = {
+                role: sorted({hit["row_id"] for hit in hits if hit["role"] == role})
+                for role in required
+                if any(hit["role"] == role for hit in hits)
+            }
+            ordered_roles = sorted(rows_by_role, key=lambda role: (len(rows_by_role[role]), role))
+            role_by_row: dict[str, str] = {}
+
+            def augment(role: str, visited_rows: set[str]) -> bool:
+                for row_id in rows_by_role[role]:
+                    if row_id in visited_rows:
+                        continue
+                    visited_rows.add(row_id)
+                    prior_role = role_by_row.get(row_id)
+                    if prior_role is None or augment(prior_role, visited_rows):
+                        role_by_row[row_id] = role
+                        return True
+                return False
+
+            for role in ordered_roles:
+                augment(role, set())
+            return {role: row_id for row_id, role in sorted(role_by_row.items())}
+
+        candidate_keys = []
+        child_assignment_by_key: dict[tuple[str, str, str], dict[str, str]] = {}
+        for key, hits in hits_by_table.items():
+            assignment = distinct_child_assignment(hits)
+            candidate_keys.append(key)
+            child_assignment_by_key[key] = assignment
+
+        candidate_document_pages = {
+            (hits_by_table[key][0]["document_id"], hits_by_table[key][0]["physical_page"])
+            for key in candidate_keys
+        }
+        context_version_ids = {
+            row["page_json_version_id"]
+            for row in selected_rows
+            if any(
+                row["document_id"] == document_id
+                and 0 <= candidate_page - row["physical_page"] <= adjacent_page_radius
+                for document_id, candidate_page in candidate_document_pages
+            )
+        }
+
+    selected_by_version = {row["page_json_version_id"]: dict(row) for row in selected_rows}
+    ordered_context_version_ids = [
+        version_id
+        for version_id in selected_page_json_version_ids
+        if version_id in context_version_ids
+    ]
+    loaded_context_pages = (
+        load_page_json_versions_v1(path, page_json_version_ids=ordered_context_version_ids)
+        if ordered_context_version_ids
+        else []
+    )
+    context_by_document: dict[str, list[dict[str, Any]]] = {}
+    for loaded_page in loaded_context_pages:
+        selected = selected_by_version[loaded_page["page_json_version_id"]]
+        context_by_document.setdefault(selected["document_id"], []).append(
+            {**loaded_page, "document_id": selected["document_id"]}
+        )
+
+    regions = []
+    candidate_dispositions = []
+    near_parent_sources: set[str] = set()
+    for key in sorted(
+        candidate_keys,
+        key=lambda item: (
+            hits_by_table[item][0]["selection_ordinal"],
+            hits_by_table[item][0]["section_source_order"],
+            hits_by_table[item][0]["table_source_order"],
+            item,
+        ),
+    ):
+        representative = hits_by_table[key][0]
+        context_records = [
+            record
+            for record in context_by_document[representative["document_id"]]
+            if 0
+            <= representative["physical_page"] - record["physical_page"]
+            <= adjacent_page_radius
+        ]
+        resolution = resolve_candidate_structural_context_v1(
+            candidate_document_id=representative["document_id"],
+            candidate_source_logical_name=representative["source_logical_name"],
+            candidate_source_sha256=representative["source_sha256"],
+            candidate_page_json_version_id=representative["page_json_version_id"],
+            candidate_page_json=next(
+                record["page_json"]
+                for record in context_records
+                if record["page_json_version_id"] == representative["page_json_version_id"]
+            ),
+            candidate_physical_page=representative["physical_page"],
+            candidate_section_id=representative["section_id"],
+            candidate_table_id=representative["table_id"],
+            context_page_records=context_records,
+            structural_branch_role=structural_branch_role,
+            structural_branch_aliases=structural_branch_aliases,
+            structural_surface_kinds=structural_surface_kinds,
+            explicit_parent_role=explicit_parent_role,
+            explicit_parent_aliases=explicit_parent_aliases,
+            hard_negative_aliases=hard_negative_aliases,
+            owner_reset_aliases=owner_reset_aliases,
+            adjacent_page_radius=adjacent_page_radius,
+        )
+        child_assignment = child_assignment_by_key[key]
+        disposition_kind = resolution["disposition"]
+        if disposition_kind == "ACCEPTED" and len(child_assignment) < minimum_distinct_child_roles:
+            disposition_kind = "INSUFFICIENT_DISTINCT_CHILD_ROLES"
+        disposition = {
+            "branch_evidence": resolution["branch_evidence"],
+            "child_role_row_assignment": [
+                {"role": role, "row_id": child_assignment[role]}
+                for role in sorted(child_assignment)
+            ],
+            "context_pages": [
+                {
+                    "page_json_version_id": record["page_json_version_id"],
+                    "physical_page": record["physical_page"],
+                }
+                for record in context_records
+            ],
+            "disposition": disposition_kind,
+            "hard_negative_evidence": resolution["hard_negative_evidence"],
+            "owner_evidence": resolution["owner_evidence"],
+            "owner_failure_reason": resolution["owner_failure_reason"],
+            "owner_mode": resolution["owner_mode"],
+            "page_json_version_id": representative["page_json_version_id"],
+            "physical_page": representative["physical_page"],
+            "reset_evidence": resolution["reset_evidence"],
+            "selected_page_ordinal": representative["selection_ordinal"],
+            "section_id": representative["section_id"],
+            "source_logical_name": representative["source_logical_name"],
+            "source_sha256": representative["source_sha256"],
+            "table_id": representative["table_id"],
+        }
+        candidate_dispositions.append(disposition)
+        if resolution["hard_negative_evidence"] is None and (
+            resolution["branch_evidence"] is not None or resolution["owner_evidence"] is not None
+        ):
+            near_parent_sources.add(representative["source_logical_name"])
+        if disposition_kind != "ACCEPTED":
+            continue
+        context_pages = [
+            {
+                "physical_page": record["physical_page"],
+                "page_json_version_id": record["page_json_version_id"],
+            }
+            for record in context_records
+        ]
+        regions.append(
+            {
+                "context_pages": context_pages,
+                "document_id": representative["document_id"],
+                "matched_child_roles": sorted(child_assignment),
+                "page_json_version_id": representative["page_json_version_id"],
+                "physical_page": representative["physical_page"],
+                "section_id": representative["section_id"],
+                "source_logical_name": representative["source_logical_name"],
+                "source_sha256": representative["source_sha256"],
+                "structural_context_receipt": resolution["structural_context_receipt"],
+                "table_id": representative["table_id"],
+            }
+        )
+
+    ordered_path_axis = [
+        {
+            key: region[key]
+            for key in (
+                "source_logical_name",
+                "physical_page",
+                "page_json_version_id",
+                "section_id",
+                "table_id",
+            )
+        }
+        for region in regions
+    ]
+    unique_indexed_hits = {
+        (hit["page_json_version_id"], hit["section_id"], hit["table_id"], hit["row_id"])
+        for hit in role_hits
+    }
+    query_receipt_value = canonical_clone_v1(query_group_receipt or {})
+    owner_mode_counts: dict[str, int] = {}
+    for region in regions:
+        mode = region["structural_context_receipt"]["owner_mode"]
+        owner_mode_counts[mode] = owner_mode_counts.get(mode, 0) + 1
+    disposition_counts: dict[str, int] = {}
+    for disposition in candidate_dispositions:
+        value = disposition["disposition"]
+        disposition_counts[value] = disposition_counts.get(value, 0) + 1
+    query_receipt_value.update(
+        {
+            "candidate_disposition_axis_sha256": canonical_json_sha256_v1(candidate_dispositions),
+            "candidate_disposition_count": len(candidate_dispositions),
+            "candidate_disposition_counts": [
+                {"count": disposition_counts[value], "disposition": value}
+                for value in sorted(disposition_counts)
+            ],
+            "candidate_surface_decode_count": len(candidate_keys),
+            "candidate_table_count_before_structural_axis": len(candidate_keys),
+            "context_page_json_decode_count": len(loaded_context_pages),
+            "context_page_title_scan_count": len(context_version_ids),
+            "exact_region_path_axis_sha256": canonical_json_sha256_v1(ordered_path_axis),
+            "exact_region_count": len(regions),
+            "indexed_row_hit_count": len(unique_indexed_hits),
+            "indexed_row_hit_table_count": len(hits_by_table),
+            "minimum_distinct_child_roles": minimum_distinct_child_roles,
+            "near_structural_evidence_document_count": len(near_parent_sources),
+            "owner_mode_counts": [
+                {"count": owner_mode_counts[mode], "mode": mode}
+                for mode in sorted(owner_mode_counts)
+            ],
+            "selected_page_json_frontier_sha256": canonical_json_sha256_v1(
+                list(selected_page_json_version_ids)
+            ),
+            "selected_page_json_version_count": len(selected_page_json_version_ids),
+            "structural_surface_kinds": list(structural_surface_kinds),
+            "target_document_count": len({region["source_logical_name"] for region in regions}),
+        }
+    )
+    return {
+        "candidate_dispositions": candidate_dispositions,
+        "near_parent_sources": sorted(near_parent_sources),
+        "query_receipt": query_receipt_value,
+        "regions": regions,
+    }
+
+
+def validate_selected_hierarchical_title_axis_query_evidence_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    source_ordinal_and_sha256_by_logical_name: Mapping[str, tuple[int, str]],
+    indexed_query_evidence: Any,
+) -> dict[str, Any]:
+    """Replay one persisted V8 title-axis query against the selected SQLite frontier."""
+
+    from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+        INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
+        _validate_indexed_query_evidence_v1,
+    )
+
+    if (
+        type(compiled_specs) is not dict
+        or type(source_ordinal_and_sha256_by_logical_name) is not dict
+        or not source_ordinal_and_sha256_by_logical_name
+        or any(
+            type(source) is not str
+            or not source
+            or type(identity) is not tuple
+            or len(identity) != 2
+            or type(identity[0]) is not int
+            or identity[0] <= 0
+            or type(identity[1]) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", identity[1]) is None
+            for source, identity in source_ordinal_and_sha256_by_logical_name.items()
+        )
+    ):
+        raise _error("selected title-axis evidence replay identity is invalid")
+    policy = compiled_specs.get("title_axis_projection_policy")
+    topology = compiled_specs.get("topology")
+    if type(policy) is not dict or type(topology) is not dict:
+        raise _error("selected title-axis evidence replay specs are invalid")
+    branch_role = policy["structural_branch_role"]
+    replayed = query_selected_hierarchical_title_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        query_aliases_by_role={
+            role: compiled_specs["query_presence_aliases_by_role"][role]
+            for role in policy["required_child_roles"]
+        },
+        required_child_roles=policy["required_child_roles"],
+        minimum_distinct_child_roles=policy["minimum_distinct_child_roles"],
+        structural_branch_role=branch_role,
+        structural_branch_aliases=compiled_specs["query_presence_aliases_by_role"][branch_role],
+        structural_surface_kinds=policy["structural_surface_kinds"],
+        explicit_parent_role=topology["parent"]["role"],
+        explicit_parent_aliases=compiled_specs["query_parent_aliases"],
+        hard_negative_aliases=topology["hard_negative_aliases"],
+        owner_reset_aliases=policy["owner_reset_aliases"],
+        adjacent_page_radius=policy["owner_page_radius"],
+        query_group_receipt=compiled_specs["query_group_compilation_receipt"],
+    )
+    ordinal_axis = []
+    for region in replayed["regions"]:
+        identity = source_ordinal_and_sha256_by_logical_name.get(region["source_logical_name"])
+        if identity is None or identity[1] != region["source_sha256"]:
+            raise _error("selected title-axis evidence source identity drifted")
+        ordinal_axis.append(
+            {
+                "document_ordinal": identity[0],
+                "source_sha256": identity[1],
+                **{
+                    key: region[key]
+                    for key in (
+                        "physical_page",
+                        "page_json_version_id",
+                        "section_id",
+                        "table_id",
+                    )
+                },
+            }
+        )
+    ordinal_axis.sort(
+        key=lambda item: (
+            item["document_ordinal"],
+            item["physical_page"],
+            item["section_id"],
+            item["table_id"],
+            item["page_json_version_id"],
+        )
+    )
+    replayed["query_receipt"]["exact_region_ordinal_source_axis_sha256"] = canonical_json_sha256_v1(
+        ordinal_axis
+    )
+    receipt_sha256 = canonical_json_sha256_v1(replayed["query_receipt"])
+    expected = {
+        "accepted_regions": [
+            {
+                **canonical_clone_v1(region),
+                "document_ordinal": source_ordinal_and_sha256_by_logical_name[
+                    region["source_logical_name"]
+                ][0],
+                "structural_context_receipt": {
+                    **canonical_clone_v1(region["structural_context_receipt"]),
+                    "title_axis_query_receipt_sha256": receipt_sha256,
+                },
+            }
+            for region in replayed["regions"]
+        ],
+        "candidate_dispositions": canonical_clone_v1(replayed["candidate_dispositions"]),
+        "format_version": INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
+        "query_receipt": canonical_clone_v1(replayed["query_receipt"]),
+    }
+    checked = _validate_indexed_query_evidence_v1(
+        indexed_query_evidence,
+        compiled_specs=dict(compiled_specs),
+    )
+    if checked != expected:
+        raise _error("selected title-axis indexed query evidence drifted from SQLite")
+    return canonical_clone_v1(checked)
 
 
 def query_selected_family_anchor_regions_v1(

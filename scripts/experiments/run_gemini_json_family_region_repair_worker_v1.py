@@ -17,8 +17,15 @@ if str(ROOT / "src") not in sys.path:
 
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
     READY,
+    UNRESOLVED,
     compile_gemini_json_flat_family_specs_v1,
     evaluate_gemini_json_flat_family_table_v1,
+)
+from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (  # noqa: E402
+    evaluate_gemini_json_hierarchical_family_table_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_json_sha256_v1,
 )
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     pending_gemini_family_region_repair_plans_v1,
@@ -26,6 +33,7 @@ from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
+    query_selected_hierarchical_title_axis_family_regions_v1,
 )
 from scripts.experiments.run_gemini_json_region_repair_v1 import (  # noqa: E402
     run as run_region_repair_v1,
@@ -172,6 +180,19 @@ def _target_evidence(page_json: dict[str, Any], target_ids: list[str]) -> list[d
 def _repair_target_evidence(
     page_json: dict[str, Any], plan: dict[str, Any]
 ) -> list[dict[str, Any]]:
+    if plan.get("repair_scope") == "STRUCTURAL_CONTEXT_SURFACES":
+        evidence = []
+        for ref in plan.get("target_table_refs", []):
+            section = page_json["sections"][int(ref["section_id"][1:]) - 1]
+            table = section["tables"][int(ref["table_id"][1:]) - 1]
+            evidence.append(
+                {
+                    "narratives_exact": section["narratives_exact"],
+                    "section_title_exact": section["title_exact"],
+                    "table_title_exact": table["title_exact"],
+                }
+            )
+        return evidence
     if plan.get("repair_scope") == "SECTION_NARRATIVES":
         return [
             {
@@ -216,6 +237,134 @@ def _repair_attempt_outcome_v1(*, resolved: bool, stable_source: bool, thinking_
     if stable_source and thinking_level == "high":
         return "STABLE_SOURCE_EVIDENCE"
     return "RETRYABLE_VALIDATION_FAILURE"
+
+
+def _evaluate_indexed_query_disposition_repair_v1(
+    *,
+    plan: dict[str, Any],
+    repaired_page_json_version_id: str,
+    compiled_specs: dict[str, Any],
+    page_database: Path,
+) -> dict[str, Any]:
+    """Requery and authenticate repaired V8 structural context before evaluation."""
+
+    context_pages = plan.get("structural_context_pages")
+    if type(context_pages) is not list or not context_pages:
+        raise RunGeminiJsonFamilyRegionRepairWorkerV1Error(
+            "indexed repair structural context frontier is absent"
+        )
+    selected_ids = [
+        (
+            repaired_page_json_version_id
+            if context["page_json_version_id"] == plan["base_page_json_version_id"]
+            else context["page_json_version_id"]
+        )
+        for context in context_pages
+    ]
+    if selected_ids.count(repaired_page_json_version_id) != 1:
+        raise RunGeminiJsonFamilyRegionRepairWorkerV1Error(
+            "indexed repair candidate replacement does not bind context frontier"
+        )
+    policy = compiled_specs.get("title_axis_projection_policy")
+    if type(policy) is not dict:
+        raise RunGeminiJsonFamilyRegionRepairWorkerV1Error(
+            "indexed repair requires title-axis projection policy"
+        )
+    branch_role = policy["structural_branch_role"]
+    queried = query_selected_hierarchical_title_axis_family_regions_v1(
+        page_database,
+        selected_page_json_version_ids=selected_ids,
+        query_aliases_by_role={
+            role: compiled_specs["query_presence_aliases_by_role"][role]
+            for role in policy["required_child_roles"]
+        },
+        required_child_roles=policy["required_child_roles"],
+        minimum_distinct_child_roles=policy["minimum_distinct_child_roles"],
+        structural_branch_role=branch_role,
+        structural_branch_aliases=compiled_specs["query_presence_aliases_by_role"][branch_role],
+        structural_surface_kinds=policy["structural_surface_kinds"],
+        explicit_parent_role=compiled_specs["topology"]["parent"]["role"],
+        explicit_parent_aliases=compiled_specs["query_parent_aliases"],
+        hard_negative_aliases=compiled_specs["topology"]["hard_negative_aliases"],
+        owner_reset_aliases=policy["owner_reset_aliases"],
+        adjacent_page_radius=policy["owner_page_radius"],
+        query_group_receipt=compiled_specs["query_group_compilation_receipt"],
+    )
+    matching_regions = [
+        region
+        for region in queried["regions"]
+        if region["page_json_version_id"] == repaired_page_json_version_id
+        and region["physical_page"] == plan["physical_page"]
+        and region["section_id"] == plan["section_id"]
+        and region["table_id"] == plan["table_id"]
+        and region["source_logical_name"] == plan["source_logical_name"]
+        and region["source_sha256"] == plan["source_sha256"]
+    ]
+    if len(matching_regions) != 1:
+        matching_dispositions = [
+            disposition
+            for disposition in queried["candidate_dispositions"]
+            if disposition["page_json_version_id"] == repaired_page_json_version_id
+            and disposition["physical_page"] == plan["physical_page"]
+            and disposition["section_id"] == plan["section_id"]
+            and disposition["table_id"] == plan["table_id"]
+        ]
+        reason = (
+            matching_dispositions[0]["disposition"]
+            if len(matching_dispositions) == 1
+            else "REPAIRED_TITLE_AXIS_REGION_COUNT_NOT_ONE"
+        )
+        return {"reasons": [f"TITLE_AXIS_QUERY_DISPOSITION:{reason}"], "status": UNRESOLVED}
+    region = matching_regions[0]
+    ordinal_axis = [
+        {
+            "document_ordinal": plan["document_ordinal"],
+            "source_sha256": item["source_sha256"],
+            **{
+                key: item[key]
+                for key in (
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                )
+            },
+        }
+        for item in queried["regions"]
+    ]
+    queried["query_receipt"]["exact_region_ordinal_source_axis_sha256"] = canonical_json_sha256_v1(
+        ordinal_axis
+    )
+    receipt_sha256 = canonical_json_sha256_v1(queried["query_receipt"])
+    loaded = {
+        item["page_json_version_id"]: item
+        for item in load_page_json_versions_v1(
+            page_database,
+            page_json_version_ids=[
+                context["page_json_version_id"] for context in region["context_pages"]
+            ],
+        )
+    }
+    return evaluate_gemini_json_hierarchical_family_table_v1(
+        page_json=loaded[repaired_page_json_version_id]["page_json"],
+        page_json_version_id=repaired_page_json_version_id,
+        physical_page=region["physical_page"],
+        section_id=region["section_id"],
+        table_id=region["table_id"],
+        compiled_specs=compiled_specs,
+        external_context_receipt={
+            **region["structural_context_receipt"],
+            "title_axis_query_receipt_sha256": receipt_sha256,
+        },
+        external_context_pages=[
+            {**loaded[context["page_json_version_id"]], "document_id": region["document_id"]}
+            for context in region["context_pages"]
+        ],
+        external_document_id=region["document_id"],
+        external_source_logical_name=region["source_logical_name"],
+        external_source_sha256=region["source_sha256"],
+        title_axis_query_receipt=queried["query_receipt"],
+    )
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -276,7 +425,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     args.page_database,
                     page_json_version_ids=[plan["base_page_json_version_id"]],
                 )[0]["page_json"]
-                if (
+                if plan.get("query_disposition_sha256") is not None:
+                    candidate = _evaluate_indexed_query_disposition_repair_v1(
+                        plan=plan,
+                        repaired_page_json_version_id=version_id,
+                        compiled_specs=compiled,
+                        page_database=args.page_database,
+                    )
+                elif (
                     compiled.get("engine_format_version")
                     == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
                 ):

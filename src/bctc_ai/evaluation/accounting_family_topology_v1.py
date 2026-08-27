@@ -238,7 +238,9 @@ def _spec(value: Any) -> dict[str, Any]:
             if type(raw_matchers) is not list or not raw_matchers:
                 raise _error("contextual accounting family role needs at least one matcher")
             matchers = []
-            seen_matchers: set[tuple[tuple[str, ...], str | None, bool, bool, str]] = set()
+            seen_matchers: set[tuple[tuple[str, ...], str | None, bool, bool, bool, bool, str]] = (
+                set()
+            )
             for raw_matcher in raw_matchers:
                 matcher_fields = set(raw_matcher) if type(raw_matcher) is dict else set()
                 match_mode = (
@@ -252,8 +254,10 @@ def _spec(value: Any) -> dict[str, Any]:
                     or not matcher_fields
                     <= {
                         "aliases",
+                        "allow_decorative_parenthetical_removal",
                         "allow_trailing_organization_qualifier",
                         "match_mode",
+                        "normalize_single_member_abbreviations",
                         "presence_anchor",
                         "within_role",
                     }
@@ -267,6 +271,10 @@ def _spec(value: Any) -> dict[str, Any]:
                     or type(raw_matcher.get("presence_anchor", True)) is not bool
                     or match_mode not in _MATCH_MODES
                     or type(raw_matcher.get("allow_trailing_organization_qualifier", False))
+                    is not bool
+                    or type(raw_matcher.get("allow_decorative_parenthetical_removal", False))
+                    is not bool
+                    or type(raw_matcher.get("normalize_single_member_abbreviations", False))
                     is not bool
                     or (
                         raw_matcher.get("allow_trailing_organization_qualifier", False)
@@ -299,11 +307,19 @@ def _spec(value: Any) -> dict[str, Any]:
                 allow_trailing_organization_qualifier = raw_matcher.get(
                     "allow_trailing_organization_qualifier", False
                 )
+                allow_decorative_parenthetical_removal = raw_matcher.get(
+                    "allow_decorative_parenthetical_removal", False
+                )
+                normalize_single_member_abbreviations = raw_matcher.get(
+                    "normalize_single_member_abbreviations", False
+                )
                 signature = (
                     tuple(matcher_aliases),
                     raw_matcher["within_role"],
                     presence_anchor,
+                    allow_decorative_parenthetical_removal,
                     allow_trailing_organization_qualifier,
+                    normalize_single_member_abbreviations,
                     match_mode,
                 )
                 if signature in seen_matchers:
@@ -316,6 +332,10 @@ def _spec(value: Any) -> dict[str, Any]:
                 }
                 if allow_trailing_organization_qualifier:
                     matcher["allow_trailing_organization_qualifier"] = True
+                if allow_decorative_parenthetical_removal:
+                    matcher["allow_decorative_parenthetical_removal"] = True
+                if normalize_single_member_abbreviations:
+                    matcher["normalize_single_member_abbreviations"] = True
                 if match_mode != "EXACT_NORMALIZED":
                     matcher["match_mode"] = match_mode
                 matchers.append(matcher)

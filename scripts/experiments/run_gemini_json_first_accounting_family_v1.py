@@ -20,6 +20,7 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (  # noqa: E40
     normalize_vietnamese_anchor_v1,
 )
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
+    INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
     NOT_OBSERVED,
     READY,
     UNRESOLVED,
@@ -56,6 +57,8 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     query_selected_dual_axis_family_regions_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
+    query_selected_hierarchical_title_axis_family_regions_v1,
+    validate_selected_hierarchical_title_axis_query_evidence_v1,
 )
 
 
@@ -970,12 +973,141 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     period_table_projection = compiled.get("period_table_projection_policy") is not None
     dual_axis_projection = compiled.get("dual_axis_projection_policy") is not None
+    title_axis_projection = compiled.get("title_axis_projection_policy") is not None
     query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
     near_hits: list[dict[str, Any]] = []
     dual_axis_document_context: dict[str, dict[str, Any]] = {}
     dual_axis_query_receipt: dict[str, Any] | None = None
+    title_axis_near_sources: set[str] = set()
+    title_axis_query_receipt: dict[str, Any] | None = None
+    indexed_query_evidence: dict[str, Any] | None = None
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
-    if dual_axis_projection:
+    if title_axis_projection:
+        title_policy = compiled["title_axis_projection_policy"]
+        branch_role = title_policy["structural_branch_role"]
+        queried = query_selected_hierarchical_title_axis_family_regions_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            query_aliases_by_role={
+                role: compiled["query_presence_aliases_by_role"][role]
+                for role in title_policy["required_child_roles"]
+            },
+            required_child_roles=title_policy["required_child_roles"],
+            minimum_distinct_child_roles=title_policy["minimum_distinct_child_roles"],
+            structural_branch_role=branch_role,
+            structural_branch_aliases=compiled["query_presence_aliases_by_role"][branch_role],
+            structural_surface_kinds=title_policy["structural_surface_kinds"],
+            explicit_parent_role=compiled["topology"]["parent"]["role"],
+            explicit_parent_aliases=compiled["query_parent_aliases"],
+            hard_negative_aliases=compiled["topology"]["hard_negative_aliases"],
+            owner_reset_aliases=title_policy["owner_reset_aliases"],
+            adjacent_page_radius=title_policy["owner_page_radius"],
+            query_group_receipt=compiled["query_group_compilation_receipt"],
+        )
+        title_axis_near_sources = set(queried["near_parent_sources"])
+        title_axis_query_receipt = queried["query_receipt"]
+        ordered_path_axis = [
+            {
+                key: region[key]
+                for key in (
+                    "source_logical_name",
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                )
+            }
+            for region in queried["regions"]
+        ]
+        source_metadata = {
+            document["relative_path"]: (
+                document["source_ordinal"],
+                document["source_sha256"],
+            )
+            for document in index["documents"]
+        }
+        ordered_ordinal_axis = sorted(
+            (
+                {
+                    "document_ordinal": source_metadata[region["source_logical_name"]][0],
+                    "source_sha256": source_metadata[region["source_logical_name"]][1],
+                    **{
+                        key: region[key]
+                        for key in (
+                            "physical_page",
+                            "page_json_version_id",
+                            "section_id",
+                            "table_id",
+                        )
+                    },
+                }
+                for region in queried["regions"]
+            ),
+            key=lambda item: (
+                item["document_ordinal"],
+                item["physical_page"],
+                item["section_id"],
+                item["table_id"],
+                item["page_json_version_id"],
+            ),
+        )
+        if title_axis_query_receipt["exact_region_count"] != len(
+            queried["regions"]
+        ) or title_axis_query_receipt["exact_region_path_axis_sha256"] != canonical_json_sha256_v1(
+            ordered_path_axis
+        ):
+            raise _error("title-axis query receipt does not replay its exact path axis")
+        title_axis_query_receipt["exact_region_ordinal_source_axis_sha256"] = (
+            canonical_json_sha256_v1(ordered_ordinal_axis)
+        )
+        region_table_keys = [
+            (
+                region["source_logical_name"],
+                region["physical_page"],
+                region["section_id"],
+                region["table_id"],
+                region["page_json_version_id"],
+            )
+            for region in queried["regions"]
+        ]
+        if len(region_table_keys) != len(set(region_table_keys)) or any(
+            region["source_sha256"] != source_metadata[region["source_logical_name"]][1]
+            for region in queried["regions"]
+        ):
+            raise _error("title-axis query region source identity is invalid")
+        title_axis_query_receipt_sha256 = canonical_json_sha256_v1(title_axis_query_receipt)
+        for region in queried["regions"]:
+            region["structural_context_receipt"] = {
+                **region["structural_context_receipt"],
+                "title_axis_query_receipt_sha256": title_axis_query_receipt_sha256,
+            }
+            key = (
+                region["source_logical_name"],
+                region["physical_page"],
+                region["section_id"],
+                region["table_id"],
+            )
+            regions_by_key[key] = region
+        indexed_query_evidence = {
+            "accepted_regions": [
+                {
+                    **canonical_clone_v1(region),
+                    "document_ordinal": source_metadata[region["source_logical_name"]][0],
+                }
+                for region in queried["regions"]
+            ],
+            "candidate_dispositions": canonical_clone_v1(queried["candidate_dispositions"]),
+            "format_version": INDEXED_QUERY_EVIDENCE_FORMAT_VERSION,
+            "query_receipt": canonical_clone_v1(title_axis_query_receipt),
+        }
+        indexed_query_evidence = validate_selected_hierarchical_title_axis_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            source_ordinal_and_sha256_by_logical_name=source_metadata,
+            indexed_query_evidence=indexed_query_evidence,
+        )
+    elif dual_axis_projection:
         dual_policy = compiled["dual_axis_projection_policy"]
         queried = query_selected_dual_axis_family_regions_v1(
             database,
@@ -1030,7 +1162,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    else:
+    elif not title_axis_projection:
         near_aliases = _near_anchor_aliases_v1(compiled, stacked=stacked)
         near_hits = query_selected_family_anchor_hits_v1(
             database,
@@ -1054,7 +1186,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    elif not dual_axis_projection:
+    elif not dual_axis_projection and not title_axis_projection:
         for anchor_groups in query_anchor_groups:
             regions = query_selected_family_anchor_regions_v1(
                 database,
@@ -1082,6 +1214,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 *(page["page_json_version_id"] for page in region.get("context_pages", [])),
             ]
         }
+        | (
+            {
+                disposition["page_json_version_id"]
+                for disposition in indexed_query_evidence["candidate_dispositions"]
+            }
+            if indexed_query_evidence is not None
+            else set()
+        )
     )
     loaded = (
         load_page_json_versions_v1(
@@ -1108,6 +1248,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             )
         }
     )
+    if title_axis_projection:
+        near_paths = title_axis_near_sources
     candidates_by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
     grouped_region_keys: list[list[tuple[str, int, str, str]]] = []
     if dual_axis_projection:
@@ -1165,6 +1307,36 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     query_receipt=dual_axis_query_receipt,
                 )
             )
+        elif title_axis_projection:
+            from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+                evaluate_gemini_json_hierarchical_family_table_v1,
+            )
+
+            candidate = evaluate_gemini_json_hierarchical_family_table_v1(
+                page_json=page["page_json"],
+                page_json_version_id=region["page_json_version_id"],
+                physical_page=region["physical_page"],
+                section_id=region["section_id"],
+                table_id=region["table_id"],
+                compiled_specs=compiled,
+                external_context_receipt=region["structural_context_receipt"],
+                external_context_pages=[
+                    {
+                        **page_by_version[context["page_json_version_id"]],
+                        "document_id": region["document_id"],
+                    }
+                    for context in region["context_pages"]
+                ],
+                external_document_id=region["document_id"],
+                external_source_logical_name=region["source_logical_name"],
+                external_source_sha256=region["source_sha256"],
+                title_axis_query_receipt=title_axis_query_receipt,
+            )
+            if candidate.get("closure_receipt") is not None:
+                candidate["closure_receipt"]["title_axis_query"] = canonical_clone_v1(
+                    title_axis_query_receipt
+                )
+            evaluated_candidates.append(candidate)
         elif stacked:
             from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
                 evaluate_gemini_json_stacked_period_family_region_v1,
@@ -1224,7 +1396,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        if dual_axis_projection:
+        if dual_axis_projection or title_axis_projection:
             candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
         else:
             candidates_by_path[region["source_logical_name"]].extend(
@@ -1294,6 +1466,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         schema_binding_spec=schema,
         trials=trials,
         effective_page_frontier=effective_page_frontier,
+        indexed_query_evidence=indexed_query_evidence,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
     repair_plans = build_family_region_repair_plans_v1(
@@ -1306,7 +1479,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     implementation_paths = (
         ROOT / "scripts/experiments/run_gemini_json_first_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_hierarchical_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_structural_context_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_stacked_period_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_queue_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",

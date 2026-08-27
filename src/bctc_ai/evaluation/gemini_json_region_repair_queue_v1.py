@@ -356,6 +356,10 @@ def build_family_region_repair_plans_v1(
                                     row,
                                     topology=compiled_specs["topology"],
                                     aliases_by_role=aliases_by_role,
+                                    enable_declared_equivalences=(
+                                        compiled_specs.get("evaluation", {}).get("format_version")
+                                        == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+                                    ),
                                 )
                             )
                             if compiled_specs.get("engine_format_version")
@@ -432,6 +436,132 @@ def build_family_region_repair_plans_v1(
                 "target_ids": target_ids,
                 "trigger_kinds": sorted(trigger_kinds),
                 "trigger_reasons": canonical_clone_v1(candidate["reasons"]),
+            }
+            plans.append(
+                {
+                    **material,
+                    "repair_job_id": "gjfrrqv1:job:" + canonical_json_sha256_v1(material),
+                }
+            )
+
+    # Indexed title-axis candidates that fail before table evaluation are not
+    # family_candidate rows.  Their authenticated disposition locators still
+    # define a bounded repair region and must remain actionable without a
+    # whole-document rerun.
+    indexed_evidence = checked.get("indexed_query_evidence")
+    if indexed_evidence is not None:
+        accepted_sources = {
+            disposition["source_logical_name"]
+            for disposition in indexed_evidence["candidate_dispositions"]
+            if disposition["disposition"] == "ACCEPTED"
+        }
+        trials_by_source = {trial["source_logical_name"]: trial for trial in checked["trials"]}
+        for disposition in indexed_evidence["candidate_dispositions"]:
+            disposition_kind = disposition["disposition"]
+            if disposition["source_logical_name"] in accepted_sources:
+                continue
+            if disposition["hard_negative_evidence"] is not None or disposition_kind not in {
+                "BRANCH_ABSENT",
+                "INSUFFICIENT_DISTINCT_CHILD_ROLES",
+            }:
+                continue
+            has_structural_near_evidence = (
+                disposition["branch_evidence"] is not None
+                or disposition["owner_evidence"] is not None
+            )
+            if not has_structural_near_evidence:
+                continue
+            trial = trials_by_source.get(disposition["source_logical_name"])
+            if trial is None or trial["status"] != UNRESOLVED:
+                continue
+            version_id = disposition["page_json_version_id"]
+            page_json = page_json_by_version.get(version_id)
+            if type(page_json) is not dict:
+                raise _error("indexed repair disposition page JSON is absent")
+            sections = page_json.get("sections")
+            if type(sections) is not list:
+                raise _error("indexed repair disposition section axis is invalid")
+            section_index = _node_index(disposition["section_id"], prefix="s", limit=len(sections))
+            tables = sections[section_index].get("tables")
+            if type(tables) is not list:
+                raise _error("indexed repair disposition table axis is invalid")
+            table_index = _node_index(disposition["table_id"], prefix="t", limit=len(tables))
+            rows = tables[table_index].get("rows")
+            if type(rows) is not list or not rows:
+                raise _error("indexed repair disposition row axis is invalid")
+            target_ids = [
+                f"{disposition['section_id']}:{disposition['table_id']}:r{ordinal}"
+                for ordinal in range(1, len(rows) + 1)
+            ]
+            trigger_by_disposition = {
+                "BRANCH_ABSENT": "TITLE_AXIS_STRUCTURAL_BRANCH_ABSENT",
+                "INSUFFICIENT_DISTINCT_CHILD_ROLES": (
+                    "TITLE_AXIS_INSUFFICIENT_DISTINCT_CHILD_ROLES"
+                ),
+                "OWNER_ABSENT_OR_AMBIGUOUS": ("TITLE_AXIS_FAMILY_OWNER_ABSENT_OR_AMBIGUOUS"),
+            }
+            disposition_sha256 = canonical_json_sha256_v1(disposition)
+            candidate_material = {
+                "disposition_sha256": disposition_sha256,
+                "family_id": checked["family_id"],
+                "page_json_version_id": version_id,
+                "section_id": disposition["section_id"],
+                "table_id": disposition["table_id"],
+            }
+            candidate_id = "gjfafcv1:query-disposition:" + canonical_json_sha256_v1(
+                candidate_material
+            )
+            component_refs = [
+                {
+                    "section_id": disposition["section_id"],
+                    "table_id": disposition["table_id"],
+                }
+            ]
+            material = {
+                "acceptance_policy": {
+                    "candidate_identity_must_replay": True,
+                    "forbid_arithmetic_backsolve": True,
+                    "forbid_new_unresolved_reasons": True,
+                    "promote_when_targeted_ocr_reason_is_removed": True,
+                    "require_candidate_status": ("READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"),
+                },
+                "base_page_json_version_id": version_id,
+                "candidate_id": candidate_id,
+                "component_table_refs": component_refs,
+                "document_ordinal": trial["document_ordinal"],
+                "family_id": checked["family_id"],
+                "format_version": FORMAT_VERSION,
+                "physical_page": disposition["physical_page"],
+                "query_disposition_sha256": disposition_sha256,
+                "repair_policy": {
+                    "context_radius_by_thinking_level": {"high": 3, "low": 1, "medium": 2},
+                    "initial_thinking_level": "low",
+                    "max_attempts": 3,
+                    "thinking_escalation": ["medium", "high"],
+                },
+                "repair_contract_version": REPAIR_CONTRACT_VERSION,
+                "repair_scope": (
+                    "ROW_LABEL_AND_VALUES"
+                    if disposition_kind == "INSUFFICIENT_DISTINCT_CHILD_ROLES"
+                    else "STRUCTURAL_CONTEXT_SURFACES"
+                ),
+                "section_id": disposition["section_id"],
+                "source_logical_name": trial["source_logical_name"],
+                "source_sha256": trial["source_sha256"],
+                "sweep_id": checked["sweep_id"],
+                "structural_context_pages": canonical_clone_v1(disposition["context_pages"]),
+                "table_id": disposition["table_id"],
+                "target_table_refs": component_refs,
+                "target_ids": target_ids,
+                "trigger_kinds": [trigger_by_disposition[disposition_kind]],
+                "trigger_reasons": [
+                    disposition_kind,
+                    *(
+                        [disposition["owner_failure_reason"]]
+                        if disposition["owner_failure_reason"] is not None
+                        else []
+                    ),
+                ],
             }
             plans.append(
                 {

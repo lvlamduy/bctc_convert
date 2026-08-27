@@ -1,0 +1,985 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân tích theo loại hình doanh nghiệp",
+            "Theo loại hình doanh nghiệp",
+            "Loại hình doanh nghiệp",
+            "Phân loại dư nợ cho vay theo loại hình doanh nghiệp",
+            "Phân tích dư nợ theo loại hình doanh nghiệp",
+            "Phân tích dư nợ theo loại hình doanh nghiệp như sau",
+            "Phân tích cho vay khách hàng theo loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay theo loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay theo đối tượng khách hàng và loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng và loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp như sau",
+            "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
+            "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
+            "Theo đối tượng khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ENTERPRISE_TYPE_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Theo loại hình cho vay"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_TYPE_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Theo chất lượng nợ cho vay",
+            "Theo chất lượng nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_QUALITY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Theo kỳ hạn",
+            "Theo thời hạn cho vay"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_MATURITY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân tích dư nợ theo thời gian cho vay gốc"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_ORIGINAL_TERM_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân tích dư nợ theo ngành nghề kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LOAN_INDUSTRY_PRESENTATION_BRANCH",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay các TCKT",
+            "Cho vay các tổ chức kinh tế",
+            "Cho vay doanh nghiệp"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ECONOMIC_ORGANIZATION_LOANS_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay cá nhân"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INDIVIDUAL_LOANS_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_CUSTOMER_LOANS_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng dư nợ cho vay theo loại hình doanh nghiệp",
+            "Tổng dư nợ cho vay khách hàng theo loại hình doanh nghiệp"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CORE_LOAN_ENTERPRISE_SUBTOTAL",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng cộng",
+            "Tổng dư nợ cho vay khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_LOAN_ENTERPRISE_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Doanh nghiệp nhà nước",
+            "Công ty nhà nước"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Doanh nghiệp nhà nước",
+            "Công ty nhà nước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "STATE_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty TNHH",
+            "Công ty trách nhiệm hữu hạn",
+            "Doanh nghiệp TNHH"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty TNHH",
+            "Công ty trách nhiệm hữu hạn",
+            "Doanh nghiệp TNHH"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LIMITED_LIABILITY_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty TNHH MTV vốn nhà nước 100%",
+            "Công ty TNHH một thành viên vốn nhà nước 100%",
+            "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
+          ],
+          "normalize_single_member_abbreviations": true,
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty TNHH MTV vốn nhà nước 100%",
+            "Công ty TNHH một thành viên vốn nhà nước 100%",
+            "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
+          ],
+          "normalize_single_member_abbreviations": true,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
+            "Công ty TNHH MTV vốn nhà nước trên 50%",
+            "Công ty TNHH MTV với vốn Nhà nước trên 50%",
+            "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
+            "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
+            "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
+            "Công ty TNHH có vốn nhà nước trên 50%",
+            "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
+            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
+          ],
+          "normalize_single_member_abbreviations": true,
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
+            "Công ty TNHH MTV vốn nhà nước trên 50%",
+            "Công ty TNHH MTV với vốn Nhà nước trên 50%",
+            "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
+            "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
+            "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
+            "Công ty TNHH có vốn nhà nước trên 50%",
+            "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
+            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
+          ],
+          "normalize_single_member_abbreviations": true,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "STATE_MAJORITY_LLC_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty TNHH khác",
+            "Công ty trách nhiệm hữu hạn khác"
+          ],
+          "allow_decorative_parenthetical_removal": true,
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty TNHH khác",
+            "Công ty trách nhiệm hữu hạn khác"
+          ],
+          "allow_decorative_parenthetical_removal": true,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_LLC_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần có vốn nhà nước trên 50%",
+            "Công ty cổ phần vốn nhà nước trên 50%",
+            "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
+            "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
+            "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty cổ phần có vốn nhà nước trên 50%",
+            "Công ty cổ phần vốn nhà nước trên 50%",
+            "Công ty cổ phần vốn nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
+            "Công ty cổ phần có trên 50% vốn điều lệ do Nhà nước sở hữu",
+            "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần khác",
+            "Công ty CP khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty cổ phần khác",
+            "Công ty CP khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_JOINT_STOCK_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần",
+            "Công ty CP"
+          ],
+          "presence_anchor": false,
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty cổ phần",
+            "Công ty CP"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "JOINT_STOCK_COMPANY_LOANS_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Doanh nghiệp tư nhân",
+            "DN tư nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Doanh nghiệp tư nhân",
+            "DN tư nhân"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PRIVATE_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty CP, TNHH, DN tư nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty CP, TNHH, DN tư nhân"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hợp tác xã và liên hợp tác xã",
+            "Hợp tác xã và liên hiệp hợp tác xã",
+            "Hợp tác xã và liên hiệp HTX"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Hợp tác xã và liên hợp tác xã",
+            "Hợp tác xã và liên hiệp hợp tác xã",
+            "Hợp tác xã và liên hiệp HTX"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hợp tác xã và công ty tư nhân",
+            "Hợp tác xã và doanh nghiệp tư nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Hợp tác xã và công ty tư nhân",
+            "Hợp tác xã và doanh nghiệp tư nhân"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty liên doanh, hợp doanh"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty liên doanh, hợp doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty hợp danh"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty hợp danh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PARTNERSHIP_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty vốn nước ngoài",
+            "Doanh nghiệp có vốn đầu tư nước ngoài",
+            "Doanh nghiệp vốn đầu tư nước ngoài",
+            "Doanh nghiệp có vốn nước ngoài"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty vốn nước ngoài",
+            "Doanh nghiệp có vốn đầu tư nước ngoài",
+            "Doanh nghiệp vốn đầu tư nước ngoài",
+            "Doanh nghiệp có vốn nước ngoài"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_INVESTED_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hộ kinh doanh, cá nhân",
+            "Cá nhân và hộ kinh doanh cá thể",
+            "Hộ kinh doanh và cá nhân",
+            "Hộ gia đình và cá nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Hộ kinh doanh, cá nhân",
+            "Cá nhân và hộ kinh doanh cá thể",
+            "Hộ kinh doanh và cá nhân",
+            "Hộ gia đình và cá nhân"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "HOUSEHOLD_AND_INDIVIDUAL_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
+          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
+          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Thành phần kinh tế khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Thành phần kinh tế khác"
+          ],
+          "within_role": null
+        },
+        {
+          "aliases": [
+            "Khác"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay tại Chi nhánh nước ngoài",
+            "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh nước ngoài",
+            "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
+            "Chi nhánh và ngân hàng con tại nước ngoài",
+            "Chi nhánh và công ty con tại nước ngoài",
+            "Chi nhánh và công ty con ở nước ngoài"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Cho vay tại Chi nhánh nước ngoài",
+            "Cho vay tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh nước ngoài",
+            "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+            "Dư nợ tại chi nhánh ngân hàng con ở nước ngoài",
+            "Chi nhánh và ngân hàng con tại nước ngoài",
+            "Chi nhánh và công ty con tại nước ngoài",
+            "Chi nhánh và công ty con ở nước ngoài"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+            "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
+            "Cho vay giao dịch ký quỹ",
+            "Ứng trước tiền bán chứng khoán",
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
+          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
+          ],
+          "allow_trailing_organization_qualifier": true,
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+            "Cho vay ký quỹ và ứng trước tiền bán chứng khoán",
+            "Cho vay giao dịch ký quỹ",
+            "Ứng trước tiền bán chứng khoán",
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+          "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
+          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, TNHH và doanh nghiệp khác",
+            "Công ty CP, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hợp tác xã",
+            "HTX"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cá nhân"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_PERSON_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các đối tượng khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay Doanh nghiệp"
+          ],
+          "within_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_BRANCH_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cho vay cá nhân"
+          ],
+          "within_role": "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_BRANCH_INDIVIDUAL_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+            "Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_LETTER_OF_CREDIT_LOANS_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần khác"
+          ],
+          "presence_anchor": false,
+          "within_role": "DEFERRED_LETTER_OF_CREDIT_LOANS_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_DEFERRED_LC_JOINT_STOCK_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty TNHH khác",
+            "Công ty trách nhiệm hữu hạn khác"
+          ],
+          "allow_decorative_parenthetical_removal": true,
+          "presence_anchor": false,
+          "within_role": "DEFERRED_LETTER_OF_CREDIT_LOANS_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_DEFERRED_LC_LIMITED_LIABILITY_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_ENTERPRISE_FAMILY12",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": [
+    "Tiền gửi của khách hàng",
+    "Tiền gửi khách hàng",
+    "Theo loại hình doanh nghiệp tiền gửi",
+    "Phân tích tiền gửi khách hàng theo loại hình doanh nghiệp",
+    "Phân tích tiền gửi khách hàng theo đối tượng khách hàng",
+    "IV. Một số thông tin khác",
+    "Một số thông tin khác",
+    "Giao dịch với các bên liên quan",
+    "Các giao dịch với bên liên quan",
+    "Các giao dịch với các bên liên quan",
+    "Giao dịch tiền gửi tại MB",
+    "Giao dịch tiền gửi với MB"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 256,
+    "max_continuation_pages": 1,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Cho vay khách hàng",
+      "Cho vay khách hàng (tiếp theo)",
+      "Các khoản cho vay khách hàng",
+      "Dư nợ cho vay khách hàng",
+      "Dư nợ cho vay khách hàng của Ngân hàng"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "LOAN_ENTERPRISE_FAMILY12"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "STATE_ENTERPRISE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "LIMITED_LIABILITY_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "STATE_MAJORITY_LLC_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "OTHER_LLC_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "OTHER_JOINT_STOCK_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "PRIVATE_ENTERPRISE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "PARTNERSHIP_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "FOREIGN_INVESTED_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "HOUSEHOLD_AND_INDIVIDUAL_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "OTHER_ENTERPRISE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_PERSON_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
+    ]
+  ],
+  "required_role_pools": [
+    {
+      "minimum_count": 2,
+      "roles": [
+        "STATE_ENTERPRISE_LOANS",
+        "LIMITED_LIABILITY_COMPANY_LOANS",
+        "WHOLLY_STATE_OWNED_SINGLE_MEMBER_LLC_LOANS",
+        "STATE_MAJORITY_LLC_LOANS",
+        "OTHER_LLC_LOANS",
+        "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
+        "OTHER_JOINT_STOCK_COMPANY_LOANS",
+        "PRIVATE_ENTERPRISE_LOANS",
+        "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+        "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+        "COOPERATIVE_AND_PRIVATE_COMPANY_LOANS",
+        "JOINT_VENTURE_AND_BUSINESS_COOPERATION_LOANS",
+        "PARTNERSHIP_COMPANY_LOANS",
+        "FOREIGN_INVESTED_COMPANY_LOANS",
+        "HOUSEHOLD_AND_INDIVIDUAL_LOANS",
+        "PUBLIC_SERVICE_PARTY_MASS_ASSOCIATION_LOANS",
+        "OTHER_ENTERPRISE_LOANS",
+        "FOREIGN_BRANCH_OR_SUBSIDIARY_LOANS",
+        "MARGIN_AND_SECURITIES_SALE_ADVANCE_LOANS",
+        "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
+        "SOURCE_ONLY_PERSON_LOANS",
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
+      ]
+    }
+  ],
+  "structural_reset_aliases": [
+    "Tiền gửi của khách hàng",
+    "Theo tiền tệ và loại tiền gửi",
+    "Giao dịch với các bên liên quan",
+    "Giao dịch tiền gửi tại MB",
+    "IV. Một số thông tin khác",
+    "Một số thông tin khác",
+    "Chứng khoán đầu tư",
+    "Tài sản cố định",
+    "Các khoản đầu tư dài hạn khác",
+    "Nghiệp vụ phát hành thư tín dụng trả chậm",
+    "Dự phòng rủi ro cho vay khách hàng",
+    "Biến động số dư dự phòng rủi ro cho vay khách hàng",
+    "Phân tích theo loại hình cho vay",
+    "Phân tích theo ngành nghề kinh doanh",
+    "Phân tích theo loại hình tiền tệ",
+    "Phân tích chất lượng nợ cho vay",
+    "Phân tích dư nợ theo thời gian đáo hạn",
+    "Phân tích dư nợ theo ngành kinh tế",
+    "Phân tích dư nợ theo khu vực địa lý",
+    "Phân tích dư nợ theo loại tiền tệ"
+  ]
+}
