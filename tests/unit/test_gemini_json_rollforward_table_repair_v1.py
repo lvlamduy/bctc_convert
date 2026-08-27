@@ -490,6 +490,18 @@ def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
         selected_page_json_version_ids=[item["base_page_json_version_id"] for item in evidence],
         table_repair_specs=specs,
     )
+    repair_spec_authority = subject.build_rollforward_table_repair_spec_authority_v1(
+        authority_kind="PINNED_CONFIG",
+        authority_ref="config://family13/rollforward-table-repairs-v1",
+        authority_sha256="7" * 64,
+        source_image_resolver_implementation_path=(
+            "src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py"
+        ),
+        source_image_resolver_implementation_sha256="8" * 64,
+        source_image_resolver_implementation_size_bytes=123,
+        table_repair_specs=specs,
+        plans=plans,
+    )
     return {
         "authority": authority,
         "evidence": evidence,
@@ -497,6 +509,7 @@ def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
         "images": images,
         "pages": pages,
         "plans": plans,
+        "repair_spec_authority": repair_spec_authority,
         "specs": specs,
         "store": store,
         "sweep": sweep,
@@ -541,6 +554,7 @@ def _raw_ref(payload: bytes, name: str = "response.json") -> dict:
 def _attempt_context(corpus: dict, plan: dict, crop: bytes) -> dict:
     return {
         "authority": corpus["authority"],
+        "repair_spec_authority": corpus["repair_spec_authority"],
         "crop_image_bytes": crop,
         "page_store_path": corpus["store"],
         "source_image_bytes": corpus["images"][plan["base_page_json_version_id"]],
@@ -663,6 +677,7 @@ def test_acb_dash_and_ctg_shifted_total_merge_only_exact_changed_cells(corpus: d
             repair=repair,
             page_store_path=corpus["store"],
             authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
         )
         change = receipt["changes"][0]
         changed_ids = [item["cell_id"] for item in change["cell_changes"]]
@@ -725,6 +740,7 @@ def test_atomic_validator_rejects_incomplete_inferred_or_outside_drift(
             repair=repair,
             page_store_path=corpus["store"],
             authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
         )
 
 
@@ -742,6 +758,7 @@ def test_shifted_total_must_close_both_lane_and_row_equations(corpus: dict) -> N
             repair=repair,
             page_store_path=corpus["store"],
             authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
         )
 
 
@@ -753,6 +770,7 @@ def test_crop_and_page_store_replay_reject_cross_page_same_shape_source(corpus: 
         plan=plan,
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     assert sha256(crop).hexdigest() == receipt["crop_image_sha256"]
     assert receipt["prompt_sha256"] == plan["request_contract"]["prompt_sha256"]
@@ -762,6 +780,7 @@ def test_crop_and_page_store_replay_reject_cross_page_same_shape_source(corpus: 
             plan=plan,
             page_store_path=corpus["store"],
             authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
         )
     attacked = deepcopy(plan)
     attacked["source_binding"] = deepcopy(corpus["plans"][1]["source_binding"])
@@ -803,6 +822,7 @@ def _resolved_lineage(corpus: dict, plan: dict) -> tuple[dict, dict, bytes, dict
         repair=repair,
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     raw = canonical_json_bytes_v1(repair) + b"\n"
     binding = plan["source_binding"]
@@ -842,6 +862,7 @@ def _resolved_lineage(corpus: dict, plan: dict) -> tuple[dict, dict, bytes, dict
         plan=plan,
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     return receipt, lineage, raw, crop_receipt, crop
 
@@ -875,6 +896,7 @@ def _reseal_attempt(attempt: dict) -> None:
 def _overlay_artifacts(corpus: dict, plan: dict, crop: bytes, *responses: bytes) -> dict:
     return {
         "authority": corpus["authority"],
+        "repair_spec_authority": corpus["repair_spec_authority"],
         "source_image_artifacts_by_sha256": _artifact_map(
             corpus["images"][plan["base_page_json_version_id"]]
         ),
@@ -951,6 +973,7 @@ def test_retry_tiers_are_siblings_and_preserve_raw_usage_cost_and_validation(cor
         attempts=[low, medium, high],
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
         source_image_artifacts_by_sha256=_artifact_map(
             corpus["images"][plan["base_page_json_version_id"]]
         ),
@@ -1014,6 +1037,7 @@ def test_failed_tier_cannot_chain_from_a_different_job_or_crop(corpus: dict) -> 
         plan=first,
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     bad = b"not json"
     low = build_rollforward_table_repair_attempt_v1(
@@ -1058,6 +1082,7 @@ def test_attempt_rejects_incoherent_token_or_cache_accounting(corpus: dict) -> N
         plan=plan,
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     raw = b"not json"
     for field, value, match in (
@@ -1111,6 +1136,7 @@ def test_audit_dash_zero_policy_rejects_printed_zero_for_all_21_cells(corpus: di
                 repair=repair,
                 page_store_path=corpus["store"],
                 authority=corpus["authority"],
+                repair_spec_authority=corpus["repair_spec_authority"],
             )
 
 
@@ -1127,6 +1153,7 @@ def test_audit_crop_rejects_coherent_crop_and_spec_self_reseal(corpus: dict) -> 
             plan=plan,
             page_store_path=corpus["store"],
             authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
         )
 
 
@@ -1154,6 +1181,7 @@ def test_audit_merge_rejects_partial_allowlist_and_cross_candidate_self_reseal(
                 repair=repair,
                 page_store_path=corpus["store"],
                 authority=corpus["authority"],
+                repair_spec_authority=corpus["repair_spec_authority"],
             )
 
 
@@ -1242,6 +1270,7 @@ def test_audit_overlay_recomputes_stored_page_and_rejects_outside_r1c1(corpus: d
         repair=_response(page, plan),
         page_store_path=corpus["store"],
         authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
     )
     malicious = deepcopy(legitimate)
     table = malicious["sections"][int(plan["section_id"][1:]) - 1]["tables"][
@@ -1315,4 +1344,112 @@ def test_audit_overlay_rejects_high_only_noncontiguous_ledger(corpus: dict) -> N
             attempts=[high_only],
             page_store_path=corpus["store"],
             **_overlay_artifacts(corpus, plan, crop, raw),
+        )
+
+
+def _rebuild_plans_from_replay_bundle(corpus: dict, replay_bundle: dict) -> list[dict]:
+    return build_rollforward_table_cell_repair_plans_v1(
+        compiled_specs=replay_bundle["compiled_specs"],
+        family_sweep=replay_bundle["family_sweep"],
+        page_store_path=corpus["store"],
+        selected_page_json_version_ids=replay_bundle["selected_page_json_version_ids"],
+        table_repair_specs=replay_bundle["table_repair_specs"],
+    )
+
+
+def test_external_spec_authority_rejects_joint_bbox_bundle_and_plan_tamper(corpus: dict) -> None:
+    replay = deepcopy(corpus["authority"])
+    replay["table_repair_specs"][0]["crop_bbox_pixels_xyxy"][0] += 1
+    attacked = _rebuild_plans_from_replay_bundle(corpus, replay)[0]
+    external = corpus["repair_spec_authority"]
+    assert external["authenticity"] == {
+        "caller_must_verify_and_pin_external_authority": True,
+        "caller_must_verify_source_root_and_files": True,
+        "self_hash_authenticates_external_authority": False,
+    }
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="external repair-spec"):
+        crop_rollforward_table_image_v1(
+            corpus["images"][attacked["base_page_json_version_id"]],
+            plan=attacked,
+            page_store_path=corpus["store"],
+            authority=replay,
+            repair_spec_authority=external,
+        )
+    for field, value in (
+        ("source_logical_name", "forged/source.pdf"),
+        ("physical_page", 99),
+        ("image_sha256", "f" * 64),
+    ):
+        forged_external = deepcopy(external)
+        forged_external["source_image_bindings"][0][field] = value
+        forged_external["source_image_bindings_sha256"] = canonical_json_sha256_v1(
+            forged_external["source_image_bindings"]
+        )
+        material = {
+            key: forged_external[key] for key in forged_external if key != "manifest_sha256"
+        }
+        forged_external["manifest_sha256"] = canonical_json_sha256_v1(material)
+        with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="external repair-spec"):
+            crop_rollforward_table_image_v1(
+                corpus["images"][corpus["plans"][0]["base_page_json_version_id"]],
+                plan=corpus["plans"][0],
+                page_store_path=corpus["store"],
+                authority=corpus["authority"],
+                repair_spec_authority=forged_external,
+            )
+    forged_resolver = deepcopy(external)
+    forged_resolver["source_image_resolver"]["implementation_path"] = "forged/renderer.py"
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="external repair-spec"):
+        crop_rollforward_table_image_v1(
+            corpus["images"][corpus["plans"][0]["base_page_json_version_id"]],
+            plan=corpus["plans"][0],
+            page_store_path=corpus["store"],
+            authority=corpus["authority"],
+            repair_spec_authority=forged_resolver,
+        )
+
+
+def test_external_spec_authority_rejects_joint_dash_policy_bundle_and_plan_tamper(
+    corpus: dict,
+) -> None:
+    replay = deepcopy(corpus["authority"])
+    replay["table_repair_specs"][0]["dash_zero_cell_ids"].remove("r2:c3")
+    attacked = _rebuild_plans_from_replay_bundle(corpus, replay)[0]
+    assert (
+        next(item for item in attacked["cell_allowlist"] if item["cell_id"] == "r2:c3")[
+            "after_policy"
+        ]
+        == "SIGNED_INTEGER"
+    )
+    page = corpus["pages"][attacked["base_page_json_version_id"]]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="external repair-spec"):
+        merge_rollforward_table_repair_v1(
+            page,
+            plan=attacked,
+            repair=_response(page, attacked),
+            page_store_path=corpus["store"],
+            authority=replay,
+            repair_spec_authority=corpus["repair_spec_authority"],
+        )
+
+
+def test_external_spec_authority_rejects_joint_ctg_collateral_equation_bundle_and_plan_tamper(
+    corpus: dict,
+) -> None:
+    replay = deepcopy(corpus["authority"])
+    ctg_spec = replay["table_repair_specs"][-1]
+    ctg_spec["collateral_cell_ids"] = []
+    ctg_spec["collateral_equations"] = []
+    attacked = _rebuild_plans_from_replay_bundle(corpus, replay)[-1]
+    assert "r3:c3" not in {item["cell_id"] for item in attacked["cell_allowlist"]}
+    assert len(attacked["equation_inventory"]) == 1
+    page = corpus["pages"][attacked["base_page_json_version_id"]]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="external repair-spec"):
+        merge_rollforward_table_repair_v1(
+            page,
+            plan=attacked,
+            repair=_response(page, attacked),
+            page_store_path=corpus["store"],
+            authority=replay,
+            repair_spec_authority=corpus["repair_spec_authority"],
         )

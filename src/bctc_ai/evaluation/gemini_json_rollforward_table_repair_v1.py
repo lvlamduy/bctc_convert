@@ -5,6 +5,9 @@ declarative unresolved frontier into immutable sibling repair jobs, validates
 one complete table transcription, and emits a region-repair receipt that can
 be stored by the existing page/family stores.  It never calls a model, mutates
 the base page, back-solves an OCR cell, or selects an OFFICIAL family run.
+Every mutation boundary also requires an externally pinned repair-spec
+authority.  Its self-hash detects drift but cannot authenticate the external
+config/ref/SHA; that verification remains an explicit caller responsibility.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from hashlib import sha256
 from io import BytesIO
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from PIL import Image
@@ -50,6 +53,8 @@ OVERLAY_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_OVERLAY_V1"
 CROP_RECEIPT_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_CROP_RECEIPT_V1"
 PAGE_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_PAGE_EVIDENCE_V1"
 TABLE_SPEC_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1"
+REPAIR_SPEC_AUTHORITY_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_REPAIR_SPEC_AUTHORITY_V1"
+SOURCE_IMAGE_RESOLUTION_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_SOURCE_IMAGE_RESOLUTION_V1"
 REPAIR_SCOPE = "TABLE_ROLLFORWARD_CELLS"
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -125,6 +130,28 @@ _AUTHORITY_FIELDS = {
     "family_sweep",
     "selected_page_json_version_ids",
     "table_repair_specs",
+}
+_REPAIR_SPEC_AUTHORITY_FIELDS = {
+    "authority",
+    "authenticity",
+    "format_version",
+    "manifest_sha256",
+    "plan_axis_sha256",
+    "repair_spec_axis_sha256",
+    "source_image_bindings",
+    "source_image_bindings_sha256",
+    "source_image_resolver",
+}
+_EXTERNAL_AUTHORITY_FIELDS = {"authority_kind", "authority_ref", "authority_sha256"}
+_SOURCE_IMAGE_RESOLVER_FIELDS = {
+    "implementation_path",
+    "implementation_sha256",
+    "implementation_size_bytes",
+}
+_AUTHENTICITY_BOUNDARY = {
+    "caller_must_verify_and_pin_external_authority": True,
+    "caller_must_verify_source_root_and_files": True,
+    "self_hash_authenticates_external_authority": False,
 }
 
 
@@ -1195,36 +1222,295 @@ def rollforward_table_repair_plan_authority_v1(
     }
 
 
+def _source_image_binding_axis(plans: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+    for plan in plans:
+        binding = plan["source_binding"]
+        result.append(
+            {
+                "image_sha256": binding["image_sha256"],
+                "image_size_bytes": binding["image_size_bytes"],
+                "media_type": binding["media_type"],
+                "physical_page": binding["physical_page"],
+                "pixel_height": binding["pixel_height"],
+                "pixel_width": binding["pixel_width"],
+                "render_dpi": binding["render_dpi"],
+                "repair_job_id": plan["repair_job_id"],
+                "source_logical_name": binding["source_logical_name"],
+                "source_sha256": binding["source_sha256"],
+                "source_size_bytes": binding["source_size_bytes"],
+            }
+        )
+    return result
+
+
+def build_rollforward_table_repair_spec_authority_v1(
+    *,
+    authority_kind: str,
+    authority_ref: str,
+    authority_sha256: str,
+    source_image_resolver_implementation_path: str,
+    source_image_resolver_implementation_sha256: str,
+    source_image_resolver_implementation_size_bytes: int,
+    table_repair_specs: Sequence[Mapping[str, Any]],
+    plans: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Bind spec/plan axes to an external authority verified by the caller.
+
+    The manifest self-hash detects drift only.  This library cannot authenticate
+    ``authority_ref`` or ``authority_sha256``; a production runner must verify and
+    pin that external config/evidence artifact before calling any repair boundary.
+    """
+
+    if (
+        authority_kind not in {"PINNED_CONFIG", "PINNED_EVIDENCE"}
+        or type(authority_ref) is not str
+        or not authority_ref
+        or _hash(authority_sha256, "external repair-spec authority SHA-256") != authority_sha256
+        or type(source_image_resolver_implementation_path) is not str
+        or not source_image_resolver_implementation_path
+        or source_image_resolver_implementation_path.startswith("/")
+        or ".." in PurePosixPath(source_image_resolver_implementation_path).parts
+        or _hash(
+            source_image_resolver_implementation_sha256,
+            "source-image resolver implementation SHA-256",
+        )
+        != source_image_resolver_implementation_sha256
+        or type(source_image_resolver_implementation_size_bytes) is not int
+        or source_image_resolver_implementation_size_bytes <= 0
+        or not table_repair_specs
+        or not plans
+    ):
+        raise _error("external repair-spec authority contract drifted")
+    source_image_bindings = _source_image_binding_axis(plans)
+    material = {
+        "authority": {
+            "authority_kind": authority_kind,
+            "authority_ref": authority_ref,
+            "authority_sha256": authority_sha256,
+        },
+        "authenticity": canonical_clone_v1(_AUTHENTICITY_BOUNDARY),
+        "format_version": REPAIR_SPEC_AUTHORITY_FORMAT_VERSION,
+        "plan_axis_sha256": canonical_json_sha256_v1(list(plans)),
+        "repair_spec_axis_sha256": canonical_json_sha256_v1(list(table_repair_specs)),
+        "source_image_bindings": source_image_bindings,
+        "source_image_bindings_sha256": canonical_json_sha256_v1(source_image_bindings),
+        "source_image_resolver": {
+            "implementation_path": source_image_resolver_implementation_path,
+            "implementation_sha256": source_image_resolver_implementation_sha256,
+            "implementation_size_bytes": source_image_resolver_implementation_size_bytes,
+        },
+    }
+    return {**material, "manifest_sha256": canonical_json_sha256_v1(material)}
+
+
+def _repair_spec_authority(
+    value: Any,
+    *,
+    table_repair_specs: Sequence[Mapping[str, Any]],
+    plans: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    checked = _exact_keys(
+        value,
+        _REPAIR_SPEC_AUTHORITY_FIELDS,
+        "external repair-spec authority manifest",
+    )
+    external = _exact_keys(
+        checked["authority"],
+        _EXTERNAL_AUTHORITY_FIELDS,
+        "external repair-spec authority",
+    )
+    resolver = _exact_keys(
+        checked["source_image_resolver"],
+        _SOURCE_IMAGE_RESOLVER_FIELDS,
+        "source-image resolver implementation authority",
+    )
+    source_image_bindings = _source_image_binding_axis(plans)
+    material = {key: checked[key] for key in checked if key != "manifest_sha256"}
+    if (
+        checked["format_version"] != REPAIR_SPEC_AUTHORITY_FORMAT_VERSION
+        or external["authority_kind"] not in {"PINNED_CONFIG", "PINNED_EVIDENCE"}
+        or type(external["authority_ref"]) is not str
+        or not external["authority_ref"]
+        or _hash(external["authority_sha256"], "external repair-spec authority SHA-256")
+        != external["authority_sha256"]
+        or checked["authenticity"] != _AUTHENTICITY_BOUNDARY
+        or type(resolver["implementation_path"]) is not str
+        or not resolver["implementation_path"]
+        or resolver["implementation_path"].startswith("/")
+        or ".." in PurePosixPath(resolver["implementation_path"]).parts
+        or _hash(
+            resolver["implementation_sha256"],
+            "source-image resolver implementation SHA-256",
+        )
+        != resolver["implementation_sha256"]
+        or type(resolver["implementation_size_bytes"]) is not int
+        or resolver["implementation_size_bytes"] <= 0
+        or checked["repair_spec_axis_sha256"] != canonical_json_sha256_v1(list(table_repair_specs))
+        or checked["plan_axis_sha256"] != canonical_json_sha256_v1(list(plans))
+        or checked["source_image_bindings"] != source_image_bindings
+        or checked["source_image_bindings_sha256"]
+        != canonical_json_sha256_v1(source_image_bindings)
+        or checked["manifest_sha256"] != canonical_json_sha256_v1(material)
+    ):
+        raise _error("external repair-spec authority does not bind exact spec/plan axes")
+    return canonical_clone_v1(checked)
+
+
 def _authoritative_plan_axis(
-    authority: Mapping[str, Any], *, page_store_path: Path
-) -> list[dict[str, Any]]:
+    authority: Mapping[str, Any],
+    *,
+    repair_spec_authority: Mapping[str, Any],
+    page_store_path: Path,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Rebuild the queue from the public DB/query/candidate replay at every boundary."""
 
     checked = _exact_keys(dict(authority), _AUTHORITY_FIELDS, "table repair plan authority")
-    return build_rollforward_table_cell_repair_plans_v1(
+    plans = build_rollforward_table_cell_repair_plans_v1(
         compiled_specs=checked["compiled_specs"],
         family_sweep=checked["family_sweep"],
         page_store_path=page_store_path,
         selected_page_json_version_ids=checked["selected_page_json_version_ids"],
         table_repair_specs=checked["table_repair_specs"],
     )
+    external = _repair_spec_authority(
+        repair_spec_authority,
+        table_repair_specs=checked["table_repair_specs"],
+        plans=plans,
+    )
+    return plans, external
 
 
 def _authoritative_plan(
     plan: Mapping[str, Any],
     *,
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
     page_store_path: Path,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     checked = _validated_plan(plan)
-    matches = [
-        candidate
-        for candidate in _authoritative_plan_axis(authority, page_store_path=page_store_path)
-        if same_typed_json_v1(candidate, checked)
-    ]
+    plans, external = _authoritative_plan_axis(
+        authority,
+        repair_spec_authority=repair_spec_authority,
+        page_store_path=page_store_path,
+    )
+    matches = [candidate for candidate in plans if same_typed_json_v1(candidate, checked)]
     if len(matches) != 1:
         raise _error("table repair plan is not the exact authoritative replay")
-    return matches[0]
+    return matches[0], external
+
+
+def resolve_rollforward_table_source_image_v1(
+    workspace_root: Path,
+    *,
+    plan: Mapping[str, Any],
+    authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
+    page_store_path: Path,
+) -> tuple[bytes, dict[str, Any]]:
+    """Render the exact source PDF page declared by one authenticated plan.
+
+    The caller remains responsible for authenticating ``workspace_root`` and the
+    externally pinned resolver/config authority.  This function verifies their
+    bytes against the manifest before rendering and exact-compares the PNG to the
+    frozen page-store binding.
+    """
+
+    checked_plan, checked_external = _authoritative_plan(
+        plan,
+        authority=authority,
+        repair_spec_authority=repair_spec_authority,
+        page_store_path=page_store_path,
+    )
+    root_input = Path(workspace_root)
+    root = root_input.resolve()
+    if root_input.is_symlink() or not root.is_dir():
+        raise _error("roll-forward source-image workspace root is not trusted or present")
+    logical_name = checked_plan["source_binding"]["source_logical_name"]
+    logical = PurePosixPath(logical_name)
+    if logical.is_absolute() or not logical.parts or ".." in logical.parts:
+        raise _error("roll-forward source-image logical path is invalid")
+    source_path = root.joinpath(*logical.parts).resolve()
+    if (
+        not source_path.is_relative_to(root)
+        or source_path.is_symlink()
+        or not source_path.is_file()
+    ):
+        raise _error("roll-forward source PDF is absent or crosses the workspace root")
+    resolver = checked_external["source_image_resolver"]
+    implementation_path = root.joinpath(*PurePosixPath(resolver["implementation_path"]).parts)
+    implementation_path = implementation_path.resolve()
+    if (
+        not implementation_path.is_relative_to(root)
+        or implementation_path.is_symlink()
+        or not implementation_path.is_file()
+    ):
+        raise _error("roll-forward source-image resolver implementation is absent")
+    implementation_bytes = implementation_path.read_bytes()
+    if (
+        sha256(implementation_bytes).hexdigest() != resolver["implementation_sha256"]
+        or len(implementation_bytes) != resolver["implementation_size_bytes"]
+    ):
+        raise _error("roll-forward source-image resolver implementation pin drifted")
+    source_bytes = source_path.read_bytes()
+    binding = checked_plan["source_binding"]
+    if (
+        sha256(source_bytes).hexdigest() != binding["source_sha256"]
+        or len(source_bytes) != binding["source_size_bytes"]
+    ):
+        raise _error("roll-forward source PDF bytes do not bind the page store")
+    try:
+        import fitz
+
+        from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (
+            render_full_pdf_page_v1,
+        )
+
+        with fitz.open(stream=source_bytes, filetype="pdf") as document:
+            if binding["physical_page"] > document.page_count:
+                raise _error("roll-forward source PDF physical page is absent")
+            rendered = render_full_pdf_page_v1(
+                document[binding["physical_page"] - 1],
+                physical_page=binding["physical_page"],
+                dpi=binding["render_dpi"],
+                source_sha256=binding["source_sha256"],
+            )
+    except GeminiJsonRollforwardTableRepairV1Error:
+        raise
+    except Exception as exc:
+        raise _error("roll-forward source PDF page cannot be rendered") from exc
+    expected_page = {
+        "physical_page": binding["physical_page"],
+        "image_sha256": binding["image_sha256"],
+        "image_size_bytes": binding["image_size_bytes"],
+        "pixel_width": binding["pixel_width"],
+        "pixel_height": binding["pixel_height"],
+        "render_dpi": binding["render_dpi"],
+        "media_type": binding["media_type"],
+    }
+    if (
+        rendered.page != expected_page
+        or sha256(rendered.image).hexdigest() != binding["image_sha256"]
+    ):
+        raise _error("roll-forward rendered source image does not bind the frozen page")
+    material = {
+        "format_version": SOURCE_IMAGE_RESOLUTION_FORMAT_VERSION,
+        "render_receipt": rendered.receipt,
+        "render_receipt_sha256": canonical_json_sha256_v1(rendered.receipt),
+        "repair_job_id": checked_plan["repair_job_id"],
+        "repair_spec_authority_manifest_sha256": checked_external["manifest_sha256"],
+        "resolver_implementation": canonical_clone_v1(resolver),
+        "source_artifact_ref": {
+            "path": logical.as_posix(),
+            "sha256": binding["source_sha256"],
+            "size_bytes": binding["source_size_bytes"],
+        },
+        "source_image": canonical_clone_v1(expected_page),
+    }
+    return rendered.image, {
+        **material,
+        "resolution_receipt_id": "gjfrsirv1:resolution:" + canonical_json_sha256_v1(material),
+    }
 
 
 def _validated_plan(plan: Any) -> dict[str, Any]:
@@ -1697,12 +1983,14 @@ def merge_rollforward_table_repair_v1(
     repair: Mapping[str, Any],
     page_store_path: Path,
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Atomically merge only allowlisted cells after every table/equation gate."""
 
-    checked_plan = _authoritative_plan(
+    checked_plan, checked_spec_authority = _authoritative_plan(
         plan,
         authority=authority,
+        repair_spec_authority=repair_spec_authority,
         page_store_path=page_store_path,
     )
     page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
@@ -1797,6 +2085,7 @@ def merge_rollforward_table_repair_v1(
         "equation_inventory_sha256": checked_plan["equation_inventory_sha256"],
         "merged_table_sha256": canonical_json_sha256_v1(merged_table),
         "repair_scope": REPAIR_SCOPE,
+        "repair_spec_authority_manifest_sha256": checked_spec_authority["manifest_sha256"],
         "shape_gate": canonical_clone_v1(checked_plan["shape_gate"]),
         "source_binding": canonical_clone_v1(checked_plan["source_binding"]),
         "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
@@ -1822,12 +2111,14 @@ def crop_rollforward_table_image_v1(
     plan: Mapping[str, Any],
     page_store_path: Path,
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
 ) -> tuple[bytes, dict[str, Any]]:
     """Crop one immutable image by its receipt-bound, declarative table box."""
 
-    checked_plan = _authoritative_plan(
+    checked_plan, checked_spec_authority = _authoritative_plan(
         plan,
         authority=authority,
+        repair_spec_authority=repair_spec_authority,
         page_store_path=page_store_path,
     )
     validate_rollforward_table_repair_plan_page_store_v1(
@@ -1862,6 +2153,7 @@ def crop_rollforward_table_image_v1(
         "page_id": binding["page_id"],
         "prompt_sha256": checked_plan["request_contract"]["prompt_sha256"],
         "repair_job_id": checked_plan["repair_job_id"],
+        "repair_spec_authority_manifest_sha256": checked_spec_authority["manifest_sha256"],
         "response_schema_sha256": checked_plan["request_contract"]["response_schema_sha256"],
         "source_binding_sha256": canonical_json_sha256_v1(binding),
     }
@@ -1879,6 +2171,7 @@ def _replay_crop_artifact(
     crop_image_bytes: bytes,
     page_store_path: Path,
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
 ) -> dict[str, Any]:
     if type(crop_image_bytes) is not bytes:
         raise _error("roll-forward table repair crop artifact bytes are invalid")
@@ -1887,6 +2180,7 @@ def _replay_crop_artifact(
         plan=plan,
         page_store_path=page_store_path,
         authority=authority,
+        repair_spec_authority=repair_spec_authority,
     )
     if crop_image_bytes != expected_bytes or not same_typed_json_v1(
         dict(crop_receipt), expected_receipt
@@ -1931,6 +2225,7 @@ def _crop_receipt(value: Any, *, plan: Mapping[str, Any]) -> dict[str, Any]:
         "page_id",
         "prompt_sha256",
         "repair_job_id",
+        "repair_spec_authority_manifest_sha256",
         "response_schema_sha256",
         "source_binding_sha256",
     }
@@ -1942,6 +2237,11 @@ def _crop_receipt(value: Any, *, plan: Mapping[str, Any]) -> dict[str, Any]:
         checked["format_version"] != CROP_RECEIPT_FORMAT_VERSION
         or checked["crop_receipt_id"] != "gjfrtcv1:crop:" + canonical_json_sha256_v1(material)
         or checked["repair_job_id"] != plan["repair_job_id"]
+        or _hash(
+            checked["repair_spec_authority_manifest_sha256"],
+            "table repair crop repair-spec authority manifest SHA-256",
+        )
+        != checked["repair_spec_authority_manifest_sha256"]
         or checked["page_id"] != binding["page_id"]
         or checked["full_image_sha256"] != binding["image_sha256"]
         or checked["source_binding_sha256"] != canonical_json_sha256_v1(binding)
@@ -2057,6 +2357,7 @@ def _validated_attempt(value: Any) -> dict[str, Any]:
         "repair_id",
         "repair_job_id",
         "repair_receipt_sha256",
+        "repair_spec_authority_manifest_sha256",
         "request_contract_sha256",
         "response_artifact_ref",
         "sibling_base_page_json_version_id",
@@ -2092,6 +2393,10 @@ def _validated_attempt(value: Any) -> dict[str, Any]:
             "table repair attempt observed version",
         )
     _hash(checked["request_contract_sha256"], "table repair request contract SHA-256")
+    _hash(
+        checked["repair_spec_authority_manifest_sha256"],
+        "table repair attempt repair-spec authority manifest SHA-256",
+    )
     if checked["decoded_response_sha256"] is not None:
         _hash(
             checked["decoded_response_sha256"],
@@ -2146,7 +2451,12 @@ def _validated_attempt(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(checked)
 
 
-def _repair_receipt_for_plan(value: Any, *, plan: Mapping[str, Any]) -> dict[str, Any]:
+def _repair_receipt_for_plan(
+    value: Any,
+    *,
+    plan: Mapping[str, Any],
+    repair_spec_authority_manifest_sha256: str,
+) -> dict[str, Any]:
     fields = {
         "base_page_json_sha256",
         "base_page_json_version_id",
@@ -2179,6 +2489,7 @@ def _repair_receipt_for_plan(value: Any, *, plan: Mapping[str, Any]) -> dict[str
         "equation_inventory_sha256",
         "merged_table_sha256",
         "repair_scope",
+        "repair_spec_authority_manifest_sha256",
         "shape_gate",
         "source_binding",
         "target_id",
@@ -2189,6 +2500,7 @@ def _repair_receipt_for_plan(value: Any, *, plan: Mapping[str, Any]) -> dict[str
         or set(change) != required_change_fields
         or change["all_other_cells_byte_equal"] is not True
         or change["repair_scope"] != REPAIR_SCOPE
+        or change["repair_spec_authority_manifest_sha256"] != repair_spec_authority_manifest_sha256
         or change["base_table_sha256"] != plan["shape_gate"]["base_table_sha256"]
         or change["shape_gate"] != plan["shape_gate"]
         or change["source_binding"] != plan["source_binding"]
@@ -2217,6 +2529,7 @@ def build_rollforward_table_repair_attempt_v1(
     *,
     plan: Mapping[str, Any],
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
     page_store_path: Path,
     prior_attempts: Sequence[Mapping[str, Any]],
     thinking_level: str,
@@ -2235,9 +2548,10 @@ def build_rollforward_table_repair_attempt_v1(
 ) -> dict[str, Any]:
     """Append one typed low/medium/high sibling attempt ledger record."""
 
-    checked_plan = _authoritative_plan(
+    checked_plan, checked_spec_authority = _authoritative_plan(
         plan,
         authority=authority,
+        repair_spec_authority=repair_spec_authority,
         page_store_path=page_store_path,
     )
     prior = [_validated_attempt(item) for item in prior_attempts]
@@ -2272,9 +2586,12 @@ def build_rollforward_table_repair_attempt_v1(
         crop_image_bytes=crop_image_bytes,
         page_store_path=page_store_path,
         authority=authority,
+        repair_spec_authority=repair_spec_authority,
     )
     if any(
         _crop_receipt(item["crop_receipt"], plan=checked_plan) != checked_crop
+        or item["repair_spec_authority_manifest_sha256"]
+        != checked_spec_authority["manifest_sha256"]
         or item["request_contract_sha256"]
         != canonical_json_sha256_v1(checked_plan["request_contract"])
         for item in prior
@@ -2319,7 +2636,11 @@ def build_rollforward_table_repair_attempt_v1(
     checked_validation = _validation_record(validation)
     resolved = outcome == "RESOLVED"
     if resolved:
-        checked_receipt = _repair_receipt_for_plan(repair_receipt, plan=checked_plan)
+        checked_receipt = _repair_receipt_for_plan(
+            repair_receipt,
+            plan=checked_plan,
+            repair_spec_authority_manifest_sha256=checked_spec_authority["manifest_sha256"],
+        )
         if (
             type(observed_page_json_version_id) is not str
             or checked_response_ref is None
@@ -2343,6 +2664,7 @@ def build_rollforward_table_repair_attempt_v1(
             repair=decoded,
             page_store_path=page_store_path,
             authority=authority,
+            repair_spec_authority=repair_spec_authority,
         )
         if not same_typed_json_v1(expected_receipt, checked_receipt):
             raise _error("resolved roll-forward table repair receipt does not exact-replay")
@@ -2395,6 +2717,7 @@ def build_rollforward_table_repair_attempt_v1(
         "repair_id": repair_id,
         "repair_job_id": checked_plan["repair_job_id"],
         "repair_receipt_sha256": receipt_sha,
+        "repair_spec_authority_manifest_sha256": checked_spec_authority["manifest_sha256"],
         "request_contract_sha256": canonical_json_sha256_v1(checked_plan["request_contract"]),
         "response_artifact_ref": checked_response_ref,
         "sibling_base_page_json_version_id": checked_plan["base_page_json_version_id"],
@@ -2415,6 +2738,7 @@ def build_rollforward_table_repair_overlay_v1(
     attempts: Sequence[Mapping[str, Any]],
     page_store_path: Path,
     authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
     source_image_artifacts_by_sha256: Mapping[str, bytes],
     crop_image_artifacts_by_sha256: Mapping[str, bytes],
     response_artifacts_by_sha256: Mapping[str, bytes],
@@ -2428,10 +2752,12 @@ def build_rollforward_table_repair_overlay_v1(
         checked_plans
     ):
         raise _error("roll-forward table repair overlay plan frontier is empty or duplicate")
-    rebuilt_by_job = {
-        plan["repair_job_id"]: plan
-        for plan in _authoritative_plan_axis(authority, page_store_path=page_store_path)
-    }
+    rebuilt_plans, checked_spec_authority = _authoritative_plan_axis(
+        authority,
+        repair_spec_authority=repair_spec_authority,
+        page_store_path=page_store_path,
+    )
+    rebuilt_by_job = {plan["repair_job_id"]: plan for plan in rebuilt_plans}
     if any(
         plan["repair_job_id"] not in rebuilt_by_job
         or not same_typed_json_v1(plan, rebuilt_by_job[plan["repair_job_id"]])
@@ -2443,10 +2769,12 @@ def build_rollforward_table_repair_overlay_v1(
         raise _error("roll-forward table repair overlay contains an unplanned attempt")
     for attempt in checked_attempts:
         plan = plan_by_job[attempt["repair_job_id"]]
-        if attempt["sibling_base_page_json_version_id"] != plan[
-            "base_page_json_version_id"
-        ] or attempt["request_contract_sha256"] != canonical_json_sha256_v1(
-            plan["request_contract"]
+        if (
+            attempt["sibling_base_page_json_version_id"] != plan["base_page_json_version_id"]
+            or attempt["request_contract_sha256"]
+            != canonical_json_sha256_v1(plan["request_contract"])
+            or attempt["repair_spec_authority_manifest_sha256"]
+            != checked_spec_authority["manifest_sha256"]
         ):
             raise _error("roll-forward table repair overlay attempt crosses one plan")
         source_image_bytes = _artifact_bytes(
@@ -2469,6 +2797,7 @@ def build_rollforward_table_repair_overlay_v1(
             crop_image_bytes=crop_image_bytes,
             page_store_path=page_store_path,
             authority=authority,
+            repair_spec_authority=repair_spec_authority,
         )
         response_ref = attempt["response_artifact_ref"]
         if response_ref is not None:
@@ -2557,6 +2886,7 @@ def build_rollforward_table_repair_overlay_v1(
             repair=decoded,
             page_store_path=page_store_path,
             authority=authority,
+            repair_spec_authority=repair_spec_authority,
         )
         merged_evidence = load_rollforward_table_page_evidence_v1(
             page_store_path,
@@ -2569,7 +2899,11 @@ def build_rollforward_table_repair_overlay_v1(
             != base_evidence["source_binding_without_crop"]
         ):
             raise _error("roll-forward table repair overlay exact page diff does not replay")
-        _repair_receipt_for_plan(expected_receipt, plan=plan)
+        _repair_receipt_for_plan(
+            expected_receipt,
+            plan=plan,
+            repair_spec_authority_manifest_sha256=checked_spec_authority["manifest_sha256"],
+        )
         replacements.append(
             {
                 "base_page_json_version_id": plan["base_page_json_version_id"],
@@ -2595,6 +2929,7 @@ def build_rollforward_table_repair_overlay_v1(
             "RESOLVED": statuses.count("RESOLVED"),
         },
         "repair_source_family_run_id": family_run_id,
+        "repair_spec_authority": checked_spec_authority,
         "replacements": sorted(
             replacements,
             key=lambda item: (item["document_ordinal"], item["physical_page"]),
