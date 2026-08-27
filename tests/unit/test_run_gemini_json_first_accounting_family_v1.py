@@ -143,6 +143,25 @@ def test_decisive_hard_negative_candidate_is_removed_from_family_disposition() -
     assert not target._candidate_is_decisive_hard_negative(candidate)
 
 
+def test_near_aliases_exclude_query_only_parent_and_owner_anchors() -> None:
+    compiled = {
+        "aliases_by_role": {"CHILD": ["child-normalized"]},
+        "anchor_alias_groups": [["owner-normalized"], ["child-normalized"]],
+        "query_aliases_by_role": {"CHILD": ["Child (raw punctuation)"]},
+        "query_anchor_alias_groups": [
+            [["Owner raw"], ["Child (raw punctuation)"]],
+            [["Parent raw"], ["Child (raw punctuation)"]],
+        ],
+        "topology": {"required_role_combinations": [["CHILD"]]},
+    }
+    assert target._near_anchor_aliases_v1(compiled, stacked=False) == ["Child (raw punctuation)"]
+    assert target._near_anchor_aliases_v1(compiled, stacked=True) == [
+        "Child (raw punctuation)",
+        "Owner raw",
+        "Parent raw",
+    ]
+
+
 def test_generic_continuation_binds_only_one_adjacent_explicit_negative_family() -> None:
     current_id = "gfpstorev1:json:" + "1" * 64
     before_id = "gfpstorev1:json:" + "2" * 64

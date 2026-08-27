@@ -199,6 +199,23 @@ def _distinct_hit_assignment_exists_v1(hit_groups: list[list[str]]) -> bool:
     return assign(0, frozenset())
 
 
+def _near_anchor_aliases_v1(compiled: dict[str, Any], *, stacked: bool) -> list[str]:
+    """Keep near-path evidence limited to declared required child roles."""
+
+    query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
+    if stacked:
+        return sorted(
+            {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
+        )
+    required_roles = {
+        role
+        for combination in compiled["topology"]["required_role_combinations"]
+        for role in combination
+    }
+    query_aliases_by_role = compiled.get("query_aliases_by_role", compiled["aliases_by_role"])
+    return sorted({alias for role in required_roles for alias in query_aliases_by_role[role]})
+
+
 def _stacked_candidate_regions_from_hits_v1(
     hits: list[dict[str, Any]],
     *,
@@ -952,9 +969,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     period_table_projection = compiled.get("period_table_projection_policy") is not None
     query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
-    near_aliases = sorted(
-        {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
-    )
+    near_aliases = _near_anchor_aliases_v1(compiled, stacked=stacked)
     near_hits = query_selected_family_anchor_hits_v1(
         database,
         selected_page_json_version_ids=selected_ids,

@@ -1033,6 +1033,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "ignored_roles": sorted(ignored),
         "footnote_narrative_mapping_transforms": footnote_narrative_mapping_transforms,
         "period_table_projection_policy": period_table_projection_policy,
+        "query_aliases_by_role": canonical_clone_v1(raw_aliases_by_role),
         "query_anchor_alias_groups": canonical_clone_v1(query_anchor_groups),
         "query_parent_aliases": canonical_clone_v1(topology_spec["parent"]["aliases"]),
         "schema": canonical_clone_v1(schema_spec),

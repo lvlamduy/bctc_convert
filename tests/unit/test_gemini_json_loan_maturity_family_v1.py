@@ -202,6 +202,8 @@ def test_compiler_keeps_raw_punctuation_for_database_query_only() -> None:
     assert "Nợ ngắn hạn (đến 01 năm)" not in compiled["aliases_by_role"]["SHORT_TERM"]
     assert "no ngan han den 01 nam" in compiled["aliases_by_role"]["SHORT_TERM"]
     assert "Phân tích dư nợ theo thời gian" in compiled["query_parent_aliases"]
+    assert "Nợ ngắn hạn (đến 01 năm)" in compiled["query_aliases_by_role"]["SHORT_TERM"]
+    assert "Cho vay khách hàng" not in compiled["query_aliases_by_role"]["SHORT_TERM"]
 
 
 def test_unambiguous_mdy_fallback_does_not_change_ambiguous_dmy_authority() -> None:
