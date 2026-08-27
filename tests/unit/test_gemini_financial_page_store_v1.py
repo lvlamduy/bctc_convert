@@ -15,6 +15,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     _parents,
     _visual_state,
     build_financial_document_manifest_v1,
+    document_page_image_frontier_v1,
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
@@ -83,6 +84,7 @@ def _ingest(
     *,
     physical_page: int = 7,
     image_sha256: str = "c" * 64,
+    render_dpi: int = 200,
     source_logical_name: str = "report.pdf",
     source_sha256: str = "b" * 64,
     prompt_sha256: str = "d" * 64,
@@ -103,7 +105,7 @@ def _ingest(
             "image_size_bytes": 456,
             "pixel_width": 1654,
             "pixel_height": 2339,
-            "render_dpi": 200,
+            "render_dpi": render_dpi,
             "media_type": "image/png",
         },
         prompt_variant=prompt_variant,
@@ -293,6 +295,36 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
         )[0]["page_json_version_id"]
         == third["page_json_version_id"]
     )
+
+
+def test_stored_document_page_image_frontier_is_exact_and_ambiguous_safe(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    _ingest(path, render_dpi=300)
+    _ingest(path, physical_page=8, image_sha256="1" * 64, render_dpi=300)
+    assert document_page_image_frontier_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        expected_physical_pages=[7, 8],
+        render_dpi=300,
+    ) == {7: "c" * 64, 8: "1" * 64}
+
+    _ingest(
+        path,
+        physical_page=8,
+        image_sha256="2" * 64,
+        prompt_sha256="e" * 64,
+        render_dpi=300,
+    )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="incomplete or ambiguous"):
+        document_page_image_frontier_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            render_dpi=300,
+        )
 
 
 def test_selected_family_query_fails_closed_on_invalid_frontier_or_anchor_assignment(

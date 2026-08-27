@@ -69,6 +69,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     batch_finalized_requests_v1,
     batch_progress_v1,
     build_financial_document_manifest_v1,
+    document_page_image_frontier_v1,
     usage_summary_v1,
 )
 
@@ -1158,6 +1159,57 @@ def _summary_page_image_sha256s_v1(
     return result
 
 
+def _manifest_page_image_sha256s_v1(
+    manifest: dict[str, Any],
+    *,
+    expected_pages: list[int],
+    dpi: int,
+) -> dict[int, str]:
+    """Recover the exact image receipt already bound to every selected JSON."""
+
+    pages = manifest.get("pages")
+    if (
+        type(pages) is not list
+        or [page.get("physical_page") for page in pages if type(page) is dict] != expected_pages
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected document page image receipt frontier is invalid"
+        )
+    frontier = []
+    for page in pages:
+        image = page.get("image")
+        if (
+            type(image) is not dict
+            or set(image)
+            != {
+                "height",
+                "media_type",
+                "render_dpi",
+                "sha256",
+                "size_bytes",
+                "width",
+            }
+            or image["render_dpi"] != dpi
+            or image["media_type"] not in {"image/png", "image/jpeg"}
+            or any(
+                type(image[field]) is not int or image[field] <= 0
+                for field in ("height", "size_bytes", "width")
+            )
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected document page image receipt is invalid"
+            )
+        frontier.append({"image_sha256": image["sha256"], "physical_page": page["physical_page"]})
+    result = _summary_page_image_sha256s_v1(frontier, allowed_pages=expected_pages)
+    contract = manifest.get("extraction_contract")
+    contract_frontier = contract.get("page_image_sha256s") if type(contract) is dict else None
+    if contract_frontier is not None and contract_frontier != frontier:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected document image receipt differs from extraction contract"
+        )
+    return result
+
+
 def _current_page_image_sha256s_v1(
     *,
     task: dict[str, Any],
@@ -1179,6 +1231,25 @@ def _current_page_image_sha256s_v1(
             )
             result[physical_page] = rendered.page["image_sha256"]
     return result
+
+
+def _stored_page_image_sha256s_v1(
+    *,
+    database: Path,
+    task: dict[str, Any],
+    source_root: Path,
+    dpi: int,
+) -> dict[int, str]:
+    """Replay the already-ingested image frontier without rendering it again."""
+
+    _source(task, source_root)
+    return document_page_image_frontier_v1(
+        database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=range(1, task["document_page_count"] + 1),
+        render_dpi=dpi,
+    )
 
 
 def _page_prompt_variants_v1(
@@ -1457,11 +1528,26 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         ).hexdigest()
         for page, variant in variants.items()
     }
-    page_images = _current_page_image_sha256s_v1(
-        task=task,
-        source_root=args.source_root,
-        dpi=plan["policy"]["dpi"],
-    )
+    stored_page_images = getattr(args, "stored_page_images", None)
+    if stored_page_images is not None:
+        _source(task, args.source_root)
+        page_images = _summary_page_image_sha256s_v1(
+            stored_page_images,
+            allowed_pages=expected_pages,
+        )
+    elif getattr(args, "reuse_stored_page_images", False):
+        page_images = _stored_page_image_sha256s_v1(
+            database=args.database,
+            task=task,
+            source_root=args.source_root,
+            dpi=plan["policy"]["dpi"],
+        )
+    else:
+        page_images = _current_page_image_sha256s_v1(
+            task=task,
+            source_root=args.source_root,
+            dpi=plan["policy"]["dpi"],
+        )
     manifest = build_financial_document_manifest_v1(
         args.database,
         source_sha256=task["source_sha256"],
@@ -1753,6 +1839,7 @@ def _replay_selected_document_for_corpus_v1(
     )
     if selected is None:
         page_prompt_variant = []
+        stored_page_images = None
         legacy_manifest_path = document_root / "current-document-manifest.json"
         legacy_manifest = (
             _json_file(legacy_manifest_path)
@@ -1795,6 +1882,18 @@ def _replay_selected_document_for_corpus_v1(
                     "legacy current document manifest identity or page frontier drifted"
                 )
             legacy_variants = _prompt_variants_from_manifest_v1(legacy_manifest)
+            legacy_page_images = _manifest_page_image_sha256s_v1(
+                legacy_manifest,
+                expected_pages=expected_pages,
+                dpi=plan["policy"]["dpi"],
+            )
+            stored_page_images = [
+                {
+                    "image_sha256": legacy_page_images[page],
+                    "physical_page": page,
+                }
+                for page in expected_pages
+            ]
             default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
             page_prompt_variant = [
                 f"{page}={variant}"
@@ -1808,7 +1907,9 @@ def _replay_selected_document_for_corpus_v1(
                 ledger=args.ledger,
                 page_prompt_variant=page_prompt_variant,
                 plan=args.plan,
+                reuse_stored_page_images=True,
                 source_root=args.source_root,
+                stored_page_images=stored_page_images,
                 task_id=planned["tasks"][0]["task_id"],
             )
         )
@@ -1855,9 +1956,10 @@ def _replay_selected_document_for_corpus_v1(
         ).hexdigest()
         for page in expected_pages
     }
-    page_images = _current_page_image_sha256s_v1(
-        task=task,
-        source_root=args.source_root,
+    _source(task, args.source_root)
+    page_images = _manifest_page_image_sha256s_v1(
+        manifest,
+        expected_pages=expected_pages,
         dpi=plan["policy"]["dpi"],
     )
     rebuilt = build_financial_document_manifest_v1(

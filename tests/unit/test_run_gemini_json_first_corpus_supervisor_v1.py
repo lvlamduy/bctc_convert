@@ -2707,6 +2707,14 @@ def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store
     image_sha = "3" * 64
     page = {
         "canonical_json_sha256": "4" * 64,
+        "image": {
+            "height": 3508,
+            "media_type": "image/png",
+            "render_dpi": 300,
+            "sha256": image_sha,
+            "size_bytes": 1234,
+            "width": 2480,
+        },
         "physical_page": 1,
         "provider_route": {
             "gateway": "OPENROUTER",
@@ -2793,9 +2801,15 @@ def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store
     )
     monkeypatch.setattr(
         target,
-        "_current_page_image_sha256s_v1",
+        "_stored_page_image_sha256s_v1",
         lambda **_kwargs: {1: image_sha},
     )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: pytest.fail("corpus freeze must not render stored pages again"),
+    )
+    monkeypatch.setattr(target, "_source", lambda *_args, **_kwargs: tmp_path / "source.pdf")
     monkeypatch.setattr(
         target,
         "build_financial_document_manifest_v1",
@@ -2824,10 +2838,21 @@ def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store
             "selected_service_tier": "flex",
         }
     ]
+    drifted_material = {
+        **rebuilt_material,
+        "extraction_contract": {
+            **rebuilt_material["extraction_contract"],
+            "page_image_sha256s": [{"image_sha256": "9" * 64, "physical_page": 1}],
+        },
+    }
+    drifted = {
+        **drifted_material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(drifted_material),
+    }
     monkeypatch.setattr(
         target,
-        "_current_page_image_sha256s_v1",
-        lambda **_kwargs: {1: "9" * 64},
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: drifted,
     )
     with pytest.raises(
         target.RunGeminiJsonFirstCorpusSupervisorV1Error,
@@ -2880,6 +2905,14 @@ def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
         "pages": [
             {
                 "canonical_json_sha256": "4" * 64,
+                "image": {
+                    "height": 3508,
+                    "media_type": "image/png",
+                    "render_dpi": 300,
+                    "sha256": image_sha,
+                    "size_bytes": 1234,
+                    "width": 2480,
+                },
                 "physical_page": 1,
                 "provider_route": {
                     "gateway": "OPENROUTER",
@@ -2956,9 +2989,15 @@ def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
     )
     monkeypatch.setattr(
         target,
-        "_current_page_image_sha256s_v1",
+        "_stored_page_image_sha256s_v1",
         lambda **_kwargs: {1: image_sha},
     )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: pytest.fail("corpus freeze must not render stored pages again"),
+    )
+    monkeypatch.setattr(target, "_source", lambda *_args, **_kwargs: tmp_path / "source.pdf")
     monkeypatch.setattr(
         target,
         "build_financial_document_manifest_v1",

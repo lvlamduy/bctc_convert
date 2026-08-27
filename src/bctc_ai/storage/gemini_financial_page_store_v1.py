@@ -1088,6 +1088,65 @@ def query_family_anchor_regions_v1(
     return result
 
 
+def document_page_image_frontier_v1(
+    path: Path,
+    *,
+    source_sha256: str,
+    source_logical_name: str,
+    expected_physical_pages: Sequence[int],
+    render_dpi: int,
+) -> dict[int, str]:
+    """Return the unique stored image axis for one content-bound document.
+
+    Corpus freezing uses this immutable ingestion receipt instead of rendering
+    every PDF page a second time.  The caller still authenticates the source
+    PDF bytes; this query proves which exact 300-DPI image each successful JSON
+    version was derived from and refuses ambiguous re-renders.
+    """
+
+    pages = list(expected_physical_pages)
+    if (
+        type(source_sha256) is not str
+        or len(source_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in source_sha256)
+        or type(source_logical_name) is not str
+        or not source_logical_name
+        or not pages
+        or pages != sorted(set(pages))
+        or any(type(page) is not int or page <= 0 for page in pages)
+        or render_dpi not in {200, 300}
+    ):
+        raise _error("stored document page image frontier request is invalid")
+    with _connect(path, readonly=True) as connection:
+        documents = connection.execute(
+            """
+            SELECT document_id FROM document
+            WHERE source_sha256=? AND source_logical_name=?
+            ORDER BY document_id
+            """,
+            (source_sha256, source_logical_name),
+        ).fetchall()
+        if len(documents) != 1:
+            raise _error("stored document identity is absent or ambiguous")
+        rows = connection.execute(
+            """
+            SELECT physical_page, image_sha256
+            FROM page
+            WHERE document_id=? AND render_dpi=?
+            ORDER BY physical_page, image_sha256
+            """,
+            (documents[0]["document_id"], render_dpi),
+        ).fetchall()
+    grouped: dict[int, list[str]] = {}
+    for row in rows:
+        grouped.setdefault(row["physical_page"], []).append(row["image_sha256"])
+    if set(grouped) != set(pages) or any(
+        len(image_sha256s) != 1 for image_sha256s in grouped.values()
+    ):
+        raise _error("stored document page image frontier is incomplete or ambiguous")
+    return {page: grouped[page][0] for page in pages}
+
+
 def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -> bool:
     """Return whether every anchor group can bind a distinct visible row."""
 
