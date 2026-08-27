@@ -1872,6 +1872,30 @@ def test_v3_root_prefers_exact_maximum_frontier_and_consumes_zero_provision_once
     )
 
 
+def test_v3_one_edit_parent_title_requires_one_exact_accounting_graph() -> None:
+    page = _trading_page()
+    page["sections"][0]["title_exact"] = "V. THÔNG TIN BỔ SUNG\n1. CHỨNG KHOÁN KINH DOAN"
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    assert candidate["parent_binding_kind"] == (
+        "ONE_EDIT_SECTION_OR_TABLE_PARENT_TITLE_WITH_EXACT_GRAPH"
+    )
+    assert candidate["closure_receipt"]["parent_label_match"] == {
+        "alias": "chung khoan kinh doanh",
+        "match_mode": "ONE_EDIT_PARENT_PHRASE_IN_EXACT_ACCOUNTING_GRAPH",
+        "normalized_surface": "chung khoan kinh doan",
+        "source_title_exact": "V. THÔNG TIN BỔ SUNG\n1. CHỨNG KHOÁN KINH DOAN",
+    }
+
+    two_edits = deepcopy(page)
+    two_edits["sections"][0]["title_exact"] = "1. CHỨNG KHOÁN KINH DO"
+    assert _evaluate_trading(two_edits)["status"] == UNRESOLVED
+
+    nonexact_graph = deepcopy(page)
+    nonexact_graph["sections"][0]["tables"][0]["rows"][-1]["values_exact"] = ["151", "130"]
+    assert _evaluate_trading(nonexact_graph)["status"] == UNRESOLVED
+
+
 def test_v3_visible_subtotals_allow_one_exact_direct_frontier_per_lane() -> None:
     candidate = _evaluate_trading(_lane_specific_trading_page())
     assert candidate["status"] == READY

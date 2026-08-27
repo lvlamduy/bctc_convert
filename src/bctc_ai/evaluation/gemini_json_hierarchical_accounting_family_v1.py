@@ -18,6 +18,7 @@ from bctc_ai.evaluation.accounting_family_topology_v1 import (
     compile_accounting_family_topology_spec_v1,
 )
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    match_vietnamese_anchor_alias_v1,
     normalize_vietnamese_anchor_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_clone_v1, canonical_json_sha256_v1
@@ -194,6 +195,40 @@ def _matcher_matches(value: Any, matcher: dict[str, Any]) -> bool:
                 return True
         return False
     raise _error("Gemini JSON hierarchy matcher mode is invalid")
+
+
+def _bounded_one_character_parent_title_match(
+    title: str,
+    aliases: list[str],
+) -> dict[str, str] | None:
+    """Return one unique one-edit parent phrase proposal inside a full title.
+
+    This is deliberately only a proposal.  The caller still requires the
+    complete local hierarchy and one exact all-lane accounting solution before
+    it can produce a READY candidate.
+    """
+
+    title_tokens = _normalized(title).split()
+    proposals: list[dict[str, str]] = []
+    for raw_alias in aliases:
+        alias = _normalized(raw_alias)
+        alias_tokens = alias.split()
+        if len(alias_tokens) < 3 or len(alias.replace(" ", "")) < 12:
+            continue
+        for start in range(len(title_tokens) - len(alias_tokens) + 1):
+            surface = " ".join(title_tokens[start : start + len(alias_tokens)])
+            match_kind = match_vietnamese_anchor_alias_v1(surface, [alias])
+            if match_kind != "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY":
+                continue
+            proposal = {
+                "alias": raw_alias,
+                "match_mode": "ONE_EDIT_PARENT_PHRASE_IN_EXACT_ACCOUNTING_GRAPH",
+                "normalized_surface": surface,
+                "source_title_exact": title,
+            }
+            if proposal not in proposals:
+                proposals.append(proposal)
+    return proposals[0] if len(proposals) == 1 else None
 
 
 def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
@@ -2096,6 +2131,11 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     parent_in_title = any(
         _normalized(alias) in title_folded for alias in topology["parent"]["aliases"]
     )
+    parent_title_match = (
+        None
+        if parent_in_title
+        else _bounded_one_character_parent_title_match(title, topology["parent"]["aliases"])
+    )
     columns = table.get("columns")
     period_value_axis_receipt = None
     percent_indices: list[int] = []
@@ -2167,7 +2207,9 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         for ordinal, row in enumerate(source_rows, start=1)
         if any(_matches(row.get("label_exact"), alias) for alias in topology["parent"]["aliases"])
     ]
-    explicit_parent_visible = parent_in_title or len(parent_row_ordinals) == 1
+    explicit_parent_visible = (
+        parent_in_title or parent_title_match is not None or len(parent_row_ordinals) == 1
+    )
     if not parent_in_title and len(parent_row_ordinals) == 1:
         parent_ordinal = parent_row_ordinals[0]
         rows = [
@@ -2514,6 +2556,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     result["parent_binding_kind"] = (
         "EXPLICIT_SECTION_OR_TABLE_TITLE"
         if parent_in_title
+        else "ONE_EDIT_SECTION_OR_TABLE_PARENT_TITLE_WITH_EXACT_GRAPH"
+        if parent_title_match is not None
         else "EXPLICIT_PARENT_ROW"
         if len(parent_row_ordinals) == 1
         else "UNIQUE_REQUIRED_CHILD_CLUSTER"
@@ -2603,6 +2647,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         "rule": "EXACT_EXHAUSTIVE_GEMINI_JSON_RECURSIVE_DIRECT_FRONTIER_ALL_LANES",
         "used_anonymous_result_row_ids": sorted(used_anonymous),
     }
+    if parent_title_match is not None:
+        closure_receipt["parent_label_match"] = parent_title_match
     if mapping_normalization_receipts:
         closure_receipt["mapping_normalizations"] = mapping_normalization_receipts
     if source_role_label_matches:

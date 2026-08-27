@@ -143,6 +143,120 @@ def test_decisive_hard_negative_candidate_is_removed_from_family_disposition() -
     assert not target._candidate_is_decisive_hard_negative(candidate)
 
 
+def test_generic_continuation_binds_only_one_adjacent_explicit_negative_family() -> None:
+    current_id = "gfpstorev1:json:" + "1" * 64
+    before_id = "gfpstorev1:json:" + "2" * 64
+    after_id = "gfpstorev1:json:" + "3" * 64
+
+    def page(title: str) -> dict:
+        return {
+            "page_json": {
+                "sections": [
+                    {
+                        "tables": [],
+                        "title_exact": title,
+                    }
+                ]
+            }
+        }
+
+    candidate = {
+        "candidate_id": "candidate",
+        "reasons": [
+            "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW",
+            "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0",
+        ],
+        "status": target.UNRESOLVED,
+    }
+    region = {
+        "context_pages": [
+            {"page_json_version_id": before_id, "physical_page": 38},
+            {"page_json_version_id": current_id, "physical_page": 39},
+            {"page_json_version_id": after_id, "physical_page": 40},
+        ],
+        "page_json_version_id": current_id,
+        "physical_page": 39,
+    }
+    pages = {
+        before_id: page("11. HOẠT ĐỘNG MUA NỢ"),
+        current_id: page("THUYẾT MINH BÁO CÁO TÀI CHÍNH (tiếp theo)"),
+        after_id: page(
+            "12. CHỨNG KHOÁN ĐẦU TƯ (tiếp theo) - Chứng khoán đầu tư giữ đến ngày đáo hạn"
+        ),
+    }
+    result = target._with_adjacent_continuation_hard_negative_v1(
+        candidate,
+        region=region,
+        page_by_version=pages,
+        parent_aliases=["Chứng khoán kinh doanh"],
+        hard_negative_aliases=[
+            "Chứng khoán đầu tư",
+            "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+        ],
+    )
+    assert result["reasons"] == [
+        "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW",
+        "HARD_NEGATIVE_FAMILY_TITLE_PRESENT",
+        "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0",
+    ]
+    assert result["continuation_hard_negative_receipt"] == {
+        "candidate_page_json_version_id": current_id,
+        "candidate_physical_page": 39,
+        "context_match": {
+            "hard_negative_alias": "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+            "page_json_version_id": after_id,
+            "physical_page": 40,
+            "source_title_exact": (
+                "12. CHỨNG KHOÁN ĐẦU TƯ (tiếp theo) - Chứng khoán đầu tư giữ đến ngày đáo hạn"
+            ),
+        },
+        "rule": ("GENERIC_CONTINUATION_BOUND_TO_ONE_ADJACENT_EXPLICIT_HARD_NEGATIVE_CONTINUATION"),
+    }
+    assert candidate["reasons"] == [
+        "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW",
+        "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0",
+    ]
+
+    no_continuation = json.loads(json.dumps(pages))
+    no_continuation[current_id] = page("THUYẾT MINH BÁO CÁO TÀI CHÍNH")
+    assert (
+        target._with_adjacent_continuation_hard_negative_v1(
+            candidate,
+            region=region,
+            page_by_version=no_continuation,
+            parent_aliases=["Chứng khoán kinh doanh"],
+            hard_negative_aliases=["Chứng khoán đầu tư"],
+        )
+        == candidate
+    )
+
+    adjacent_parent = json.loads(json.dumps(pages))
+    adjacent_parent[before_id] = page("7. Chứng khoán kinh doanh (tiếp theo)")
+    assert (
+        target._with_adjacent_continuation_hard_negative_v1(
+            candidate,
+            region=region,
+            page_by_version=adjacent_parent,
+            parent_aliases=["Chứng khoán kinh doanh"],
+            hard_negative_aliases=["Chứng khoán đầu tư"],
+        )
+        == candidate
+    )
+
+    two_negative_pages = json.loads(json.dumps(pages))
+    two_negative_pages[before_id] = page("Chứng khoán đầu tư (tiếp theo)")
+    assert (
+        target._with_adjacent_continuation_hard_negative_v1(
+            candidate,
+            region=region,
+            page_by_version=two_negative_pages,
+            parent_aliases=["Chứng khoán kinh doanh"],
+            hard_negative_aliases=["Chứng khoán đầu tư"],
+        )
+        == candidate
+    )
+
+
 def test_stacked_regions_are_derived_from_one_hit_frontier_with_punctuation_variants() -> None:
     parent = "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác"
     hit = {

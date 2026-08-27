@@ -693,6 +693,124 @@ def _candidate_is_decisive_hard_negative(candidate: dict[str, Any]) -> bool:
     )
 
 
+def _page_title_axis_v1(page_json: Any) -> list[str]:
+    """Return the exact nonempty section/table titles in source order."""
+
+    if type(page_json) is not dict or type(page_json.get("sections")) is not list:
+        raise _error("Gemini JSON continuation context page is invalid")
+    titles = []
+    for section in page_json["sections"]:
+        if type(section) is not dict or type(section.get("tables")) is not list:
+            raise _error("Gemini JSON continuation context section is invalid")
+        if type(section.get("title_exact")) is str and section["title_exact"]:
+            titles.append(section["title_exact"])
+        for table in section["tables"]:
+            if type(table) is not dict:
+                raise _error("Gemini JSON continuation context table is invalid")
+            if type(table.get("title_exact")) is str and table["title_exact"]:
+                titles.append(table["title_exact"])
+    return titles
+
+
+def _with_adjacent_continuation_hard_negative_v1(
+    candidate: dict[str, Any],
+    *,
+    region: dict[str, Any],
+    page_by_version: dict[str, dict[str, Any]],
+    parent_aliases: list[str],
+    hard_negative_aliases: list[str],
+) -> dict[str, Any]:
+    """Bind a titleless continuation to one adjacent explicit negative family.
+
+    A generic report-level ``(tiếp theo)`` heading is not enough on its own.
+    The candidate page must have no family/negative title, and exactly one
+    adjacent context page must explicitly name a configured hard-negative
+    family *and* mark that title as a continuation.  This only removes an
+    already-unresolved candidate; it never creates mappings.
+    """
+
+    reasons = candidate.get("reasons")
+    if (
+        candidate.get("status") != UNRESOLVED
+        or type(reasons) is not list
+        or "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW" not in reasons
+        or "HARD_NEGATIVE_FAMILY_TITLE_PRESENT" in reasons
+        or type(region.get("context_pages")) is not list
+    ):
+        return candidate
+    current_page = page_by_version.get(region.get("page_json_version_id"))
+    if current_page is None:
+        raise _error("Gemini JSON continuation candidate page is absent")
+    current_titles = _page_title_axis_v1(current_page["page_json"])
+    current_folded = [normalize_vietnamese_anchor_v1(title) for title in current_titles]
+    normalized_parents = [normalize_vietnamese_anchor_v1(alias) for alias in parent_aliases]
+    normalized_negatives = [
+        normalize_vietnamese_anchor_v1(alias) for alias in hard_negative_aliases
+    ]
+    if (
+        not any("tiep theo" in title for title in current_folded)
+        or any(alias in title for title in current_folded for alias in normalized_parents)
+        or any(alias in title for title in current_folded for alias in normalized_negatives)
+    ):
+        return candidate
+    matches = []
+    adjacent_parent_visible = False
+    for context in region["context_pages"]:
+        if (
+            type(context) is not dict
+            or set(context) != {"physical_page", "page_json_version_id"}
+            or type(context.get("physical_page")) is not int
+            or type(context.get("page_json_version_id")) is not str
+        ):
+            raise _error("Gemini JSON continuation context reference is invalid")
+        if abs(context["physical_page"] - region["physical_page"]) != 1:
+            continue
+        page = page_by_version.get(context["page_json_version_id"])
+        if page is None:
+            raise _error("Gemini JSON continuation context page is absent")
+        for title in _page_title_axis_v1(page["page_json"]):
+            folded = normalize_vietnamese_anchor_v1(title)
+            if any(alias in folded for alias in normalized_parents):
+                adjacent_parent_visible = True
+            if "tiep theo" not in folded:
+                continue
+            title_aliases = [
+                (raw_alias, alias)
+                for raw_alias, alias in zip(
+                    hard_negative_aliases, normalized_negatives, strict=True
+                )
+                if alias in folded
+            ]
+            if not title_aliases:
+                continue
+            longest = max(len(alias) for _, alias in title_aliases)
+            most_specific = [pair for pair in title_aliases if len(pair[1]) == longest]
+            if len(most_specific) != 1:
+                continue
+            matches.append(
+                {
+                    "hard_negative_alias": most_specific[0][0],
+                    "physical_page": context["physical_page"],
+                    "source_title_exact": title,
+                    "page_json_version_id": context["page_json_version_id"],
+                }
+            )
+    if adjacent_parent_visible:
+        return candidate
+    unique_matches = {canonical_json_sha256_v1(match): match for match in matches}
+    if len(unique_matches) != 1:
+        return candidate
+    result = canonical_clone_v1(candidate)
+    result["reasons"] = sorted({*reasons, "HARD_NEGATIVE_FAMILY_TITLE_PRESENT"})
+    result["continuation_hard_negative_receipt"] = {
+        "candidate_page_json_version_id": region["page_json_version_id"],
+        "candidate_physical_page": region["physical_page"],
+        "context_match": next(iter(unique_matches.values())),
+        "rule": "GENERIC_CONTINUATION_BOUND_TO_ONE_ADJACENT_EXPLICIT_HARD_NEGATIVE_CONTINUATION",
+    }
+    return result
+
+
 def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str, Any]:
     sections = page_json.get("sections")
     if type(sections) is not list:
@@ -890,7 +1008,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
                 regions_by_key[key] = region
     candidate_version_ids = sorted(
-        {region["page_json_version_id"] for region in regions_by_key.values()}
+        {
+            version_id
+            for region in regions_by_key.values()
+            for version_id in [
+                region["page_json_version_id"],
+                *(page["page_json_version_id"] for page in region.get("context_pages", [])),
+            ]
+        }
     )
     loaded = load_page_json_versions_v1(
         database,
@@ -999,7 +1124,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
+        candidates_by_path[region["source_logical_name"]].extend(
+            _with_adjacent_continuation_hard_negative_v1(
+                candidate,
+                region=region,
+                page_by_version=page_by_version,
+                parent_aliases=compiled["topology"]["parent"]["aliases"],
+                hard_negative_aliases=compiled["topology"]["hard_negative_aliases"],
+            )
+            for candidate in evaluated_candidates
+        )
 
     trials = []
     for document in index["documents"]:
