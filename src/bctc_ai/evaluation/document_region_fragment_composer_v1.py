@@ -1087,7 +1087,108 @@ def _exact_axis_money(value: Any) -> dict[str, Any] | None:
         raise _error("exact-axis source money is invalid") from exc
 
 
-def _build_exact_axis_inventory_payload_v1(
+def _exact_axis_period_signature(value: Any) -> tuple[str, str] | None:
+    if type(value) is not str or not value:
+        return None
+    return _period_signature(value)
+
+
+def _exact_axis_declared_role_inventory_v1(
+    *, table: Mapping[str, Any], compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Return exact row/header locators that make a table family-role-bearing."""
+
+    enabled = (
+        compiled_specs["evaluation"].get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8"
+    )
+    inventory = []
+    rows = table.get("rows")
+    if type(rows) is list:
+        for row_ordinal, row in enumerate(rows, start=1):
+            if type(row) is not dict:
+                continue
+            try:
+                modes = _row_role_match_modes(
+                    row,
+                    topology=compiled_specs["topology"],
+                    aliases_by_role=compiled_specs["aliases_by_role"],
+                    enable_declared_equivalences=enabled,
+                )
+            except (TypeError, ValueError):
+                inventory.append(
+                    {
+                        "evidence_kind": "AMBIGUOUS_ROLE_ROW",
+                        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+                        "label_exact": row.get("label_exact"),
+                        "row_id": f"r{row_ordinal}",
+                    }
+                )
+                continue
+            if modes:
+                inventory.append(
+                    {
+                        "evidence_kind": "DECLARED_ROLE_ROW",
+                        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+                        "label_exact": row.get("label_exact"),
+                        "role_match_modes": canonical_clone_v1(modes),
+                        "row_id": f"r{row_ordinal}",
+                    }
+                )
+    columns = table.get("columns")
+    if type(columns) is list:
+        for column_ordinal, column in enumerate(columns, start=1):
+            if type(column) is not dict:
+                continue
+            try:
+                label, modes = _exact_axis_header_role_modes(column, compiled_specs=compiled_specs)
+            except DocumentRegionFragmentComposerV1Error:
+                inventory.append(
+                    {
+                        "column_id": f"c{column_ordinal}",
+                        "evidence_kind": "AMBIGUOUS_ROLE_COLUMN_HEADER",
+                        "header_path_exact": canonical_clone_v1(column.get("header_path_exact")),
+                    }
+                )
+                continue
+            if modes:
+                inventory.append(
+                    {
+                        "column_id": f"c{column_ordinal}",
+                        "evidence_kind": "DECLARED_ROLE_COLUMN_HEADER",
+                        "header_path_exact": canonical_clone_v1(column.get("header_path_exact")),
+                        "label_exact": label,
+                        "role_match_modes": canonical_clone_v1(modes),
+                    }
+                )
+    return inventory
+
+
+def _unsupported_exact_axis_inventory_payload_v1(
+    *,
+    page_record: Mapping[str, Any],
+    section_id: str,
+    table_id: str,
+    policy: Mapping[str, Any],
+    role_inventory: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    return {
+        **_registered_request_trust_axis(policy),
+        "adapter_projection_receipt": {
+            "layout_kind": "UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT",
+            "role_inventory": canonical_clone_v1(list(role_inventory)),
+            "rule": "EXHAUSTIVE_ROLE_BEARING_TABLE_FAILS_CLOSED_V1",
+        },
+        "logical_rows": [],
+        "page_json_version_id": page_record["page_json_version_id"],
+        "projection_kind": "BALANCE_MAPPING",
+        "projection_reasons": ["UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT"],
+        "section_id": section_id,
+        "source_bindings": [],
+        "table_id": table_id,
+    }
+
+
+def _build_supported_exact_axis_inventory_payload_v1(
     *,
     page_record: Mapping[str, Any],
     section_id: str,
@@ -1139,7 +1240,7 @@ def _build_exact_axis_inventory_payload_v1(
     for row_ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
             continue
-        signature = _period_signature(row.get("label_exact"))
+        signature = _exact_axis_period_signature(row.get("label_exact"))
         if signature in expected_set:
             row_periods.append((row_ordinal, row, signature))
     logical_rows = []
@@ -1245,9 +1346,10 @@ def _build_exact_axis_inventory_payload_v1(
             if type(column) is dict and column.get("value_kind") == "MONEY"
         ]
         period_headers = [
-            (ordinal, row, _period_signature(row.get("label_exact")))
+            (ordinal, row, _exact_axis_period_signature(row.get("label_exact")))
             for ordinal, row in enumerate(rows, start=1)
-            if type(row) is dict and _period_signature(row.get("label_exact")) in expected_set
+            if type(row) is dict
+            and _exact_axis_period_signature(row.get("label_exact")) in expected_set
         ]
         if len(money_columns) != 1 or {period for _, _, period in period_headers} != expected_set:
             return None
@@ -1444,6 +1546,45 @@ def _build_exact_axis_inventory_payload_v1(
         "source_bindings": bindings,
         "table_id": table_id,
     }
+
+
+def _build_exact_axis_inventory_payload_v1(
+    *,
+    page_record: Mapping[str, Any],
+    section_id: str,
+    table_id: str,
+    document_period_axis: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    _section, table, _section_ordinal, _table_ordinal = _source_nodes(
+        page_record["page_json"], section_id=section_id, table_id=table_id
+    )
+    role_inventory = _exact_axis_declared_role_inventory_v1(
+        table=table, compiled_specs=compiled_specs
+    )
+    if not role_inventory:
+        return None
+    try:
+        supported = _build_supported_exact_axis_inventory_payload_v1(
+            page_record=page_record,
+            section_id=section_id,
+            table_id=table_id,
+            document_period_axis=document_period_axis,
+            policy=policy,
+            compiled_specs=compiled_specs,
+        )
+    except DocumentRegionFragmentComposerV1Error:
+        supported = None
+    if supported is not None:
+        return supported
+    return _unsupported_exact_axis_inventory_payload_v1(
+        page_record=page_record,
+        section_id=section_id,
+        table_id=table_id,
+        policy=policy,
+        role_inventory=role_inventory,
+    )
 
 
 def inventory_exact_axis_document_region_fragment_v1(

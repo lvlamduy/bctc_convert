@@ -977,6 +977,83 @@ def test_general_adapter_composes_true_stacked_and_transposed_period_axes(table:
     assert fragment["adapter_identity"]["implementation_ref_sha256"]
 
 
+def test_exact_axis_inventory_fails_closed_on_conflicting_unsupported_role_table() -> None:
+    page = _page(
+        [
+            _stacked_table(),
+            _table([_row("Cho vay bằng VND", ["999", "998"])]),
+        ],
+        title="Theo loại tiền tệ",
+    )
+    version_ids, records = _records([page])
+    compiled_specs = _compiled()
+    raw_policy = _policy(
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+        projection_adapter_id=GENERAL_ADAPTER_ID,
+        projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+        projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+        projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+    )
+    policy = compile_document_region_fragment_composer_policy_v1(
+        raw_policy, compiled_specs=compiled_specs
+    )
+    requests = [
+        inventory_exact_axis_document_region_fragment_v1(
+            page_record=records[0],
+            section_id="s1",
+            table_id=f"t{table_ordinal}",
+            document_period_axis=_axis(),
+            policy=policy,
+            compiled_specs=compiled_specs,
+        )
+        for table_ordinal in (1, 2)
+    ]
+    assert all(request is not None for request in requests)
+    assert requests[1]["projection_reasons"] == ["UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT"]
+    result = compose_document_region_fragments_v1(
+        selected_page_json_version_ids=version_ids,
+        page_records=records,
+        fragment_requests=requests,
+        document_period_axis=_axis(),
+        policy=raw_policy,
+        compiled_specs=compiled_specs,
+        projection_adapter=project_exact_axis_document_region_fragment_v1,
+        projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+    )
+    assert result["status"] == UNRESOLVED
+    assert "UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT" in result["reasons"]
+
+
+def test_exact_axis_inventory_handles_null_period_row_as_typed_unsupported() -> None:
+    table = _transposed_table()
+    table["rows"][0]["label_exact"] = None
+    table["rows"][0]["hierarchy_path_exact"] = []
+    _ids, records = _records([_page([table], title="Theo loại tiền tệ")])
+    compiled_specs = _compiled()
+    policy = compile_document_region_fragment_composer_policy_v1(
+        _policy(
+            projection_adapter=project_exact_axis_document_region_fragment_v1,
+            projection_inventory_adapter=inventory_exact_axis_document_region_fragment_v1,
+            projection_adapter_id=GENERAL_ADAPTER_ID,
+            projection_adapter_format_version=GENERAL_ADAPTER_VERSION,
+            projection_inventory_adapter_id=GENERAL_INVENTORY_ID,
+            projection_inventory_adapter_format_version=GENERAL_INVENTORY_VERSION,
+        ),
+        compiled_specs=compiled_specs,
+    )
+    request = inventory_exact_axis_document_region_fragment_v1(
+        page_record=records[0],
+        section_id="s1",
+        table_id="t1",
+        document_period_axis=_axis(),
+        policy=policy,
+        compiled_specs=compiled_specs,
+    )
+    assert request is not None
+    assert request["projection_reasons"] == ["UNSUPPORTED_ROLE_BEARING_EXACT_AXIS_LAYOUT"]
+
+
 def test_general_adapter_preserves_exact_parent_population_context() -> None:
     table = _stacked_table()
     for ordinal in (2, 3, 4, 6, 7, 8):
