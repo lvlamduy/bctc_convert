@@ -1408,6 +1408,107 @@ def _solve(
     return resolved, equations_receipt, reasons, used_anonymous
 
 
+def _intermediate_parent_subtotal_receipts(
+    *,
+    candidates: list[dict[str, Any]],
+    records_by_role: dict[str, list[dict[str, Any]]],
+    anonymous: list[dict[str, Any]],
+    source_rows: list[dict[str, Any]],
+    topology: dict[str, Any],
+    unmatched_numeric_ordinals: set[int],
+) -> list[dict[str, Any]]:
+    """Corroborate one visible parent subtotal without promoting it to the root.
+
+    Some source tables print the family label twice at different accounting
+    levels: first as the subtotal of one contiguous direct-child block, then
+    as an unlabeled grand total after a second structural group.  The first
+    row is presentation evidence, not another component and not the family
+    root.  This primitive consumes it only when the local source interval is
+    exhaustive and every money lane sums exactly.
+    """
+
+    if len(candidates) != 1:
+        return []
+    candidate = candidates[0]
+    parent_role = topology["parent"]["role"]
+    role_kinds = {child["role"]: child["role_kind"] for child in topology["children"]}
+    records_by_ordinal: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for role_records in records_by_role.values():
+        for record in role_records:
+            records_by_ordinal[record["ordinal"]].append(record)
+
+    boundary = None
+    for ordinal in range(candidate["ordinal"] + 1, len(source_rows) + 1):
+        row = source_rows[ordinal - 1]
+        ordinal_records = records_by_ordinal.get(ordinal, [])
+        if row.get("row_kind") == "GROUP" and any(
+            role_kinds.get(record["role"]) == "STRUCTURAL_GROUP" for record in ordinal_records
+        ):
+            boundary = ordinal
+            break
+    if boundary is None or not any(
+        record["ordinal"] > boundary
+        and (
+            parent_role in record.get("authoritative_result_roles", set())
+            or (
+                record.get("owner_role") == parent_role
+                and source_rows[record["ordinal"] - 1].get("row_kind") == "TOTAL"
+                and not _normalized(source_rows[record["ordinal"] - 1].get("label_exact"))
+            )
+        )
+        for record in anonymous
+    ):
+        return []
+
+    components: list[dict[str, Any]] = []
+    nested_nonadditive: list[dict[str, Any]] = []
+    for ordinal in range(candidate["ordinal"] + 1, boundary):
+        if ordinal in unmatched_numeric_ordinals:
+            return []
+        source_row = source_rows[ordinal - 1]
+        ordinal_records = records_by_ordinal.get(ordinal, [])
+        direct = [
+            record
+            for record in ordinal_records
+            if role_kinds.get(record["role"]) in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+            and record.get("owner_role") == parent_role
+        ]
+        nonadditive = [
+            record
+            for record in ordinal_records
+            if role_kinds.get(record["role"]) == "NONADDITIVE_CHILD"
+        ]
+        if len(direct) > 1 or (ordinal_records and not direct and not nonadditive):
+            return []
+        if not ordinal_records and (
+            source_row.get("row_kind") == "GROUP" or _normalized(source_row.get("label_exact"))
+        ):
+            return []
+        if direct:
+            components.append(direct[0])
+        nested_nonadditive.extend(nonadditive)
+    component_roles = [record["role"] for record in components]
+    if (
+        len(components) < 2
+        or len(component_roles) != len(set(component_roles))
+        or any(record.get("owner_role") not in component_roles for record in nested_nonadditive)
+        or _sum(components, 2) != _coefficients(candidate)
+    ):
+        return []
+    return [
+        {
+            "component_roles": component_roles,
+            "component_row_ids": [record["row_id"] for record in components],
+            "lane_component_sums": _coefficients(candidate),
+            "mode": "VISIBLE_INTERMEDIATE_PARENT_SUBTOTAL_EXACTLY_CORROBORATED_BY_CONTIGUOUS_DIRECT_CHILDREN",
+            "result_coefficients": _coefficients(candidate),
+            "result_role": parent_role,
+            "result_row_id": candidate["row_id"],
+            "source_interval_ordinals": [candidate["ordinal"], boundary - 1],
+        }
+    ]
+
+
 def _projected_target_column_index(
     table: dict[str, Any], *, target_column_aliases: list[str]
 ) -> int | None:
@@ -1749,6 +1850,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     }
     records_by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
     anonymous: list[dict[str, Any]] = []
+    intermediate_parent_subtotal_candidates: list[dict[str, Any]] = []
     unmatched_numeric: list[int] = []
     unrelated_group_labels: set[str] = set()
     active_structural_role: str | None = None
@@ -1881,6 +1983,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                     if equation["result_role"] != compiled_specs["family_result_role"]
                 }
             anonymous.append(record)
+        elif ordinal in parent_row_ordinals and row.get("row_kind") == "GROUP":
+            intermediate_parent_subtotal_candidates.append(record)
         elif all(value is None for value in values):
             continue
         else:
@@ -1970,6 +2074,18 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         if len(records) > 1:
             reasons.append(f"ROLE_OCCURRENCE_COUNT_ABOVE_ONE:{role}:{len(records)}")
     base = {role: records[0] for role, records in records_by_role.items() if len(records) == 1}
+    intermediate_parent_receipts = _intermediate_parent_subtotal_receipts(
+        candidates=intermediate_parent_subtotal_candidates,
+        records_by_role=records_by_role,
+        anonymous=anonymous,
+        source_rows=source_rows,
+        topology=topology,
+        unmatched_numeric_ordinals=set(unmatched_numeric),
+    )
+    if intermediate_parent_subtotal_candidates and not intermediate_parent_receipts:
+        unmatched_numeric.extend(
+            record["ordinal"] for record in intermediate_parent_subtotal_candidates
+        )
     ambiguous = "INTERBANK_PROVISION_AMBIGUOUS" in base
     targets = [None]
     if ambiguous:
@@ -2047,7 +2163,9 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         if not solutions:
             reasons.extend(solution_failures)
     if unmatched_numeric:
-        reasons.append("UNBOUND_VISIBLE_NUMERIC_ROWS:" + ",".join(map(str, unmatched_numeric)))
+        reasons.append(
+            "UNBOUND_VISIBLE_NUMERIC_ROWS:" + ",".join(map(str, sorted(set(unmatched_numeric))))
+        )
     result = _candidate_result(
         topology=topology,
         page_json_version_id=page_json_version_id,
@@ -2066,6 +2184,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     if reasons:
         return result
     resolved, receipts, used_anonymous, inferred_target = solutions[0]
+    receipts = [*intermediate_parent_receipts, *receipts]
     root_role = topology["parent"]["role"]
     family_result_role = compiled_specs["family_result_role"]
     mapping_roles = [root_role] + [

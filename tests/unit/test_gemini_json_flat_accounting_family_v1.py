@@ -1174,6 +1174,152 @@ def test_loan_quality_derives_multilevel_standard_and_consumes_each_component_on
     assert _evaluate_loan_quality(mismatch)["status"] == UNRESOLVED
 
 
+def _loan_quality_intermediate_parent_subtotal_page() -> dict:
+    page = _loan_quality_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows.insert(
+        0,
+        {
+            "hierarchy_path_exact": ["Cho vay khách hàng"],
+            "label_exact": "Cho vay khách hàng",
+            "row_kind": "GROUP",
+            "values_exact": ["130", "107"],
+        },
+    )
+    rows.extend(
+        [
+            {
+                "hierarchy_path_exact": [
+                    "Phân tích chất lượng nợ cho vay",
+                    "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+                ],
+                "label_exact": (
+                    "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024"
+                ),
+                "row_kind": "GROUP",
+                "values_exact": ["7", "6"],
+            },
+            {
+                "hierarchy_path_exact": [
+                    "Phân tích chất lượng nợ cho vay",
+                    "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+                    "Nợ đủ tiêu chuẩn",
+                ],
+                "label_exact": "Nợ đủ tiêu chuẩn",
+                "row_kind": "ITEM",
+                "values_exact": ["7", "6"],
+            },
+            {
+                "hierarchy_path_exact": ["Phân tích chất lượng nợ cho vay"],
+                "label_exact": None,
+                "row_kind": "TOTAL",
+                "values_exact": ["137", "113"],
+            },
+        ]
+    )
+    return page
+
+
+def test_loan_quality_corroborates_contiguous_intermediate_parent_subtotal() -> None:
+    result = _evaluate_loan_quality(_loan_quality_intermediate_parent_subtotal_page())
+    assert result["status"] == READY
+    receipt = result["closure_receipt"]["equations"][0]
+    assert receipt == {
+        "component_roles": [
+            "STANDARD_CORE",
+            "SPECIAL_MENTION",
+            "SUBSTANDARD",
+            "DOUBTFUL",
+            "LOSS",
+        ],
+        "component_row_ids": ["r2", "r3", "r4", "r5", "r6"],
+        "lane_component_sums": [130, 107],
+        "mode": (
+            "VISIBLE_INTERMEDIATE_PARENT_SUBTOTAL_EXACTLY_CORROBORATED_BY_"
+            "CONTIGUOUS_DIRECT_CHILDREN"
+        ),
+        "result_coefficients": [130, 107],
+        "result_role": "LOAN_QUALITY_CLASSIFICATION",
+        "result_row_id": "r1",
+        "source_interval_ordinals": [1, 6],
+    }
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [107, 96]
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        137,
+        113,
+    ]
+
+    nested_nonadditive = _loan_quality_intermediate_parent_subtotal_page()
+    nested_nonadditive["sections"][0]["tables"][0]["rows"].insert(
+        2,
+        {
+            "hierarchy_path_exact": [
+                "Phân tích chất lượng nợ cho vay",
+                "Nợ đủ tiêu chuẩn",
+                "Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+            ],
+            "label_exact": ("Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"),
+            "row_kind": "ITEM",
+            "values_exact": ["7", "6"],
+        },
+    )
+    assert _evaluate_loan_quality(nested_nonadditive)["status"] == READY
+
+
+def test_loan_quality_intermediate_parent_subtotal_fails_closed() -> None:
+    mismatch = _loan_quality_intermediate_parent_subtotal_page()
+    mismatch["sections"][0]["tables"][0]["rows"][0]["values_exact"][0] = "131"
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:1" in _evaluate_loan_quality(mismatch)["reasons"]
+
+    no_grand_total = _loan_quality_intermediate_parent_subtotal_page()
+    no_grand_total["sections"][0]["tables"][0]["rows"].pop()
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:1" in _evaluate_loan_quality(no_grand_total)["reasons"]
+
+    intervening = _loan_quality_intermediate_parent_subtotal_page()
+    intervening["sections"][0]["tables"][0]["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Phân tích chất lượng nợ cho vay", "Ngoài frontier"],
+            "label_exact": "Ngoài frontier",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "1"],
+        },
+    )
+    result = _evaluate_loan_quality(intervening)
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:1,4" in result["reasons"]
+
+    label_reset = _loan_quality_intermediate_parent_subtotal_page()
+    label_reset["sections"][0]["tables"][0]["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Phân tích chất lượng nợ cho vay", "Nhóm khác"],
+            "label_exact": "Nhóm khác",
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+    )
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:1" in _evaluate_loan_quality(label_reset)["reasons"]
+
+
+def test_loan_quality_intermediate_parent_subtotal_receipt_replays_publicly() -> None:
+    topology, evaluation, schema = _loan_quality_specs()
+    ready = _evaluate_loan_quality(_loan_quality_intermediate_parent_subtotal_page())
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "8" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[{"document_ordinal": 1, **ready}],
+    )
+    assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+
+    tampered = deepcopy(sweep)
+    tampered["trials"][0]["closure_receipt"]["equations"][0]["source_interval_ordinals"] = [1, 5]
+    with pytest.raises(ValueError, match="does not replay exactly"):
+        validate_gemini_json_flat_family_sweep_v1(tampered)
+
+
 def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() -> None:
     page = _loan_quality_page()
     table = page["sections"][0]["tables"][0]
