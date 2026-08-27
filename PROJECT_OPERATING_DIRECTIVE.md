@@ -5,6 +5,64 @@
 > Read it together with `PROJECT_GOAL.md`; where older queues conflict, this
 > directive controls current execution.
 
+## 0. Current binding amendment: Gemini JSON-first, database-first
+
+This section supersedes any legacy instruction below that requires PPOCR,
+VietOCR, word-box geometry, or geometry-derived table reconstruction in the
+production mapping path. Those older sections remain historical design context,
+not current implementation authority.
+
+The binding production flow is:
+
+```text
+source PDF pages
+→ Gemini hierarchical JSON extraction
+→ immutable raw + canonical evidence versions in the database
+→ indexed page/region/section/table/row/cell retrieval
+→ shared variant graph + accounting/equation engines
+→ family configuration and schema mapping
+→ database-backed dispositions, mappings, exports, and provenance
+```
+
+Operational requirements:
+
+1. Graph, accounting-relation, arithmetic, schema, and export stages query the
+   selected Gemini JSON from the database. They must not depend on loose JSON
+   files or re-run OCR during ordinary family evaluation.
+2. Optimize indexes, covering queries, cache keys, materialized summaries, and
+   evidence partitioning so each operation reads only the necessary page,
+   region, row, or cell. Record query count, rows/bytes read, cache hit rate, and
+   per-stage latency in the run manifest.
+3. A bad OCR result, coordinate, row, cell, or local hierarchy triggers a bounded
+   region retry only. Store the result as a new immutable evidence version,
+   atomically select it after validation, invalidate only its dependency closure,
+   and reject stale/cross-version graph or mapping receipts. Do not rerun an
+   entire file when a bounded repair is sufficient.
+4. The generic graph engine must enumerate declared variants for reordered or
+   partially renamed labels, optional/extra/missing rows, headers, parent/child,
+   child/child, sibling, neighbor, continuation, and nested subtotal structures.
+   It must preserve exact period/unit/value columns and exhaustive use-once
+   accounting equations.
+5. Prefer structure, context, hierarchy, adjacency, continuation, and typed
+   accounting relations over literal label equality. Names and no-diacritic
+   aliases are indexed retrieval aids, not final mapping authority; retain the
+   original Vietnamese text as canonical evidence.
+6. Families with the same mechanism share one primitive/engine and differ through
+   declarative roles, aliases, graph alternatives, and equations. No bank/page/
+   document/value routing and no independent parser per family unless a new
+   cross-family primitive is justified and tested.
+7. The production target is unattended automatic mapping from Family 1 through
+   the final family across every bank. A family is not productionized if it still
+   needs a source-code edit for each new filing or manual repair by the agent.
+8. Continuously profile the current bottleneck. Improve shared query, index,
+   cache, scheduling, invalidation, and graph architecture before scaling a slow
+   path. The system must add banks, periods, report types, and families without
+   recomputing unaffected evidence from scratch.
+
+The source PDF remains ultimate authority. Gemini output becomes usable evidence
+only after canonical parsing, completeness/column/hierarchy validation, and
+accounting checks; uncertainty remains fail-closed and traceable.
+
 ## 1. Mục tiêu cuối cùng của project
 
 Mục tiêu không phải:
