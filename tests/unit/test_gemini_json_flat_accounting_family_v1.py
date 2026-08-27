@@ -861,14 +861,14 @@ def test_v3_label_only_groups_derive_from_complete_optional_children() -> None:
     page = _trading_page()
     page["sections"][0]["tables"][0]["rows"] = [
         {
-            "hierarchy_path_exact": ["Chứng khoán nợ"],
-            "label_exact": "Chứng khoán nợ",
+            "hierarchy_path_exact": ["1.1. Chứng khoán nợ"],
+            "label_exact": "1.1. Chứng khoán nợ",
             "row_kind": "GROUP",
             "values_exact": [None, None],
         },
         {
             "hierarchy_path_exact": [
-                "Chứng khoán nợ",
+                "1.1. Chứng khoán nợ",
                 "Chứng khoán nợ do các TCTD khác trong nước phát hành (i) (ii)",
             ],
             "label_exact": "Chứng khoán nợ do các TCTD khác trong nước phát hành (i) (ii)",
@@ -980,14 +980,23 @@ def test_v3_expanded_tckt_annotation_and_short_other_label_are_structural() -> N
             "values_exact": ["150", "130"],
         },
         {
-            "hierarchy_path_exact": ["Chứng khoán khác"],
-            "label_exact": "Chứng khoán khác",
+            "hierarchy_path_exact": ["1.3. Chứng khoán khác"],
+            "label_exact": "1.3. Chứng khoán khác",
             "row_kind": "ITEM",
             "values_exact": ["50", "40"],
         },
         {
-            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
-            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "hierarchy_path_exact": ["1.5. Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "1.5. Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "1.5. Dự phòng rủi ro chứng khoán kinh doanh",
+                "Trong đó: - Dự phòng giảm giá",
+            ],
+            "label_exact": "Trong đó: - Dự phòng giảm giá",
             "row_kind": "ITEM",
             "values_exact": ["(10)", "(5)"],
         },
@@ -1010,3 +1019,134 @@ def test_v3_expanded_tckt_annotation_and_short_other_label_are_structural() -> N
         if equation["result_role"] == "EXPLICIT_NET_TOTAL"
     )
     assert "OTHER_TRADING_SECURITIES_GROUP" in root_equation["component_roles"]
+
+
+def test_v3_zero_equivalent_frontiers_prefer_the_direct_structural_parent() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "GROUP",
+            "values_exact": ["-", "-"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ", "Trái phiếu Chính phủ"],
+            "label_exact": "Trái phiếu Chính phủ",
+            "row_kind": "ITEM",
+            "values_exact": ["-", "-"],
+        },
+        {
+            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["-", "-"],
+        },
+        {
+            "hierarchy_path_exact": ["Giá trị thuần"],
+            "label_exact": "Giá trị thuần",
+            "row_kind": "TOTAL",
+            "values_exact": ["-", "-"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    equations = {
+        equation["result_role"]: equation for equation in candidate["closure_receipt"]["equations"]
+    }
+    assert equations["DEBT_SECURITIES_GROUP"]["component_roles"] == ["DEBT_GOVERNMENT"]
+    assert equations["EXPLICIT_NET_TOTAL"]["component_roles"] == [
+        "DEBT_SECURITIES_GROUP",
+        "TRADING_SECURITIES_PROVISION_GROUP",
+    ]
+
+
+def test_v3_single_child_database_anchor_supports_group_or_family_parent() -> None:
+    topology, evaluation, schema = _trading_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    government_aliases = compiled["aliases_by_role"]["DEBT_GOVERNMENT"]
+    assert [
+        compiled["aliases_by_role"]["DEBT_SECURITIES_GROUP"],
+        government_aliases,
+    ] in compiled["anchor_alias_groups"]
+    assert [compiled["topology"]["parent"]["aliases"], government_aliases] in compiled[
+        "anchor_alias_groups"
+    ]
+
+
+def test_v3_flat_listing_view_keeps_typed_roles_and_note_reference_suffix() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Trái phiếu đã niêm yết"],
+            "label_exact": "Trái phiếu đã niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": ["Trái phiếu chưa niêm yết (Thuyết minh 8.3)"],
+            "label_exact": "Trái phiếu chưa niêm yết (Thuyết minh 8.3)",
+            "row_kind": "ITEM",
+            "values_exact": ["20", "10"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán vốn đã niêm yết"],
+            "label_exact": "Chứng khoán vốn đã niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["5", "4"],
+        },
+        {
+            "hierarchy_path_exact": ["Giấy tờ có giá khác chưa niêm yết"],
+            "label_exact": "Giấy tờ có giá khác chưa niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["2", "1"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["127", "105"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} >= {
+        "DEBT_LISTED",
+        "DEBT_UNLISTED",
+        "EQUITY_LISTED",
+        "OTHER_UNLISTED",
+    }
+
+
+def test_v3_concatenated_hierarchy_path_still_binds_generic_listing_children() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": [
+                "1.6 Thuyết minh tình trạng niêm yết Chứng khoán Nợ:+ Đã niêm yết"
+            ],
+            "label_exact": "+ Đã niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "1.6 Thuyết minh tình trạng niêm yết Chứng khoán Nợ:+ Chưa niêm yết"
+            ],
+            "label_exact": "+ Chưa niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["20", "10"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["120", "100"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} >= {
+        "DEBT_LISTED",
+        "DEBT_UNLISTED",
+    }

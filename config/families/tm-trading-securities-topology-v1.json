@@ -95,6 +95,21 @@
             "Trái phiếu do các tổ chức kinh tế trong nước phát hành"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán do các TCKT trong nước phát hành",
+            "Chứng khoán do các TCKT khác phát hành",
+            "Chứng khoán do các TCKT khác trong nước phát hành",
+            "Chứng khoán do các tổ chức kinh tế trong nước phát hành",
+            "Chứng khoán nợ do các TCKT trong nước phát hành",
+            "Chứng khoán nợ do các TCKT khác phát hành",
+            "Chứng khoán nợ do các TCKT khác trong nước phát hành",
+            "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành",
+            "Trái phiếu do các TCKT trong nước phát hành",
+            "Trái phiếu do các tổ chức kinh tế trong nước phát hành"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -136,9 +151,17 @@
         {
           "aliases": [
             "Đã niêm yết",
-            "Chứng khoán nợ đã niêm yết"
+            "Chứng khoán nợ đã niêm yết",
+            "Trái phiếu đã niêm yết"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán nợ đã niêm yết",
+            "Trái phiếu đã niêm yết"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -150,9 +173,19 @@
         {
           "aliases": [
             "Chưa niêm yết",
-            "Chứng khoán nợ chưa niêm yết"
+            "Chứng khoán nợ chưa niêm yết",
+            "Trái phiếu chưa niêm yết",
+            "Chứng chỉ tiền gửi chưa niêm yết"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán nợ chưa niêm yết",
+            "Trái phiếu chưa niêm yết",
+            "Chứng chỉ tiền gửi chưa niêm yết"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -219,6 +252,20 @@
             "Chứng khoán vốn do các tổ chức kinh tế trong nước phát hành"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các TCKT khác phát hành",
+            "Chứng khoán vốn do các TCKT khác trong nước phát hành",
+            "Chứng khoán do các TCKT trong nước phát hành",
+            "Cổ phiếu do các TCKT khác phát hành",
+            "Cổ phiếu do các TCKT khác trong nước phát hành",
+            "Cổ phiếu do các TCKT trong nước phát hành",
+            "Cổ phiếu do các tổ chức kinh tế trong nước phát hành",
+            "Chứng khoán vốn do các tổ chức kinh tế trong nước phát hành"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -260,9 +307,17 @@
         {
           "aliases": [
             "Đã niêm yết",
-            "Chứng khoán vốn đã niêm yết"
+            "Chứng khoán vốn đã niêm yết",
+            "Cổ phiếu đã niêm yết"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán vốn đã niêm yết",
+            "Cổ phiếu đã niêm yết"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -274,9 +329,17 @@
         {
           "aliases": [
             "Chưa niêm yết",
-            "Chứng khoán vốn chưa niêm yết"
+            "Chứng khoán vốn chưa niêm yết",
+            "Cổ phiếu chưa niêm yết"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán vốn chưa niêm yết",
+            "Cổ phiếu chưa niêm yết"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -367,9 +430,16 @@
       "matchers": [
         {
           "aliases": [
-            "Chưa niêm yết"
+            "Chưa niêm yết",
+            "Giấy tờ có giá khác chưa niêm yết"
           ],
           "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Giấy tờ có giá khác chưa niêm yết"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -426,7 +496,8 @@
       "matchers": [
         {
           "aliases": [
-            "Dự phòng chung"
+            "Dự phòng chung",
+            "Dự phòng rủi ro tín dụng chung"
           ],
           "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
         }

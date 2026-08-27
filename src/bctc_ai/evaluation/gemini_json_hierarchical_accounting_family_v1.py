@@ -58,35 +58,38 @@ def _normalized(value: Any) -> str:
 
 
 def _without_leading_ordinal(folded: str) -> str:
-    prefix, separator, remainder = folded.partition(" ")
-    if separator and (
-        prefix.isdigit()
-        or prefix
-        in {
-            "i",
-            "ii",
-            "iii",
-            "iv",
-            "v",
-            "vi",
-            "vii",
-            "viii",
-            "ix",
-            "x",
-            "xi",
-            "xii",
-            "xiii",
-            "xiv",
-            "xv",
-        }
-    ):
-        return remainder
-    return folded
+    tokens = folded.split()
+    ordinal_tokens = {
+        "i",
+        "ii",
+        "iii",
+        "iv",
+        "v",
+        "vi",
+        "vii",
+        "viii",
+        "ix",
+        "x",
+        "xi",
+        "xii",
+        "xiii",
+        "xiv",
+        "xv",
+    }
+    while len(tokens) > 1 and (tokens[0].isdigit() or tokens[0] in ordinal_tokens):
+        tokens.pop(0)
+    return " ".join(tokens)
 
 
 def _matches(value: Any, alias: str) -> bool:
     folded = _normalized(value)
     forms = {folded, _without_leading_ordinal(folded)}
+    forms |= {
+        form.removeprefix(prefix).strip()
+        for form in tuple(forms)
+        for prefix in ("trong do ", "bao gom ")
+        if form.startswith(prefix)
+    }
     if alias in forms:
         return True
     suffixes = {form.removeprefix(alias).strip() for form in forms if form.startswith(alias + " ")}
@@ -103,19 +106,33 @@ def _matches(value: Any, alias: str) -> bool:
         "v",
     }
     return bool(suffixes) and all(
-        suffix and all(token in allowed_suffix_tokens for token in suffix.split())
+        suffix
+        and (
+            all(token in allowed_suffix_tokens for token in suffix.split())
+            or (
+                suffix.split()[:2] == ["thuyet", "minh"]
+                and len(suffix.split()) > 2
+                and all(token.isdigit() for token in suffix.split()[2:])
+            )
+        )
         for suffix in suffixes
     )
 
 
 def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
     stripped = _without_leading_ordinal(folded)
-    middle = (
-        stripped[len(alias) : len(stripped) - len(label)].strip()
-        if label and stripped.startswith(alias + " ") and stripped.endswith(" " + label)
-        else None
+    if _matches(stripped, alias):
+        return True
+    if not label or not stripped.endswith(" " + label):
+        return False
+    ancestor_prefix = stripped[: -len(label)].strip()
+    return (
+        ancestor_prefix == alias
+        or ancestor_prefix.startswith(alias + " ")
+        or ancestor_prefix.endswith(alias)
+        or ancestor_prefix.endswith(" " + alias)
+        or f" {alias} " in f" {ancestor_prefix} "
     )
-    return _matches(stripped, alias) or (middle is not None and middle not in {"va", "and"})
 
 
 def _path_has_role(
@@ -382,7 +399,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             }
             if len(owners) != 1:
                 raise _error("Gemini JSON hierarchy single-role anchor has no unique owner")
-            combination = [next(iter(owners)), role]
+            owner = next(iter(owners))
+            anchor_groups.append([aliases_by_role[owner], aliases_by_role[role]])
+            anchor_groups.append([topology["parent"]["aliases"], aliases_by_role[role]])
+            continue
         if len(combination) not in {2, 3}:
             raise _error("Gemini JSON hierarchy anchor combination is invalid")
         anchor_groups.append([aliases_by_role[role] for role in combination])
@@ -501,6 +521,19 @@ def _solve(
         for alternative in equation["component_role_alternatives"]:
             for role in alternative["component_roles"]:
                 component_parents[role].add(equation["result_role"])
+    component_ancestors: dict[str, set[str]] = {
+        role: set(parents) for role, parents in component_parents.items()
+    }
+    changed = True
+    while changed:
+        changed = False
+        for _role, ancestors in component_ancestors.items():
+            transitive = set().union(
+                *(component_ancestors.get(ancestor, set()) for ancestor in ancestors)
+            )
+            if not transitive <= ancestors:
+                ancestors.update(transitive)
+                changed = True
     if "INTERBANK_PROVISION_AMBIGUOUS" in resolved:
         ambiguous = resolved.pop("INTERBANK_PROVISION_AMBIGUOUS")
         if ambiguous_provision_target is None or ambiguous_provision_target in resolved:
@@ -692,12 +725,24 @@ def _solve(
                 {record["role"] for record in components}
                 for _alternative, components, _sums, _carrier in alternatives
             ]
+
+            def structurally_covers(left: set[str], right: set[str]) -> bool:
+                return all(
+                    role in left or bool(left & component_ancestors.get(role, set()))
+                    for role in right
+                )
+
             maximum_frontiers = [
                 index
                 for index, roles in enumerate(role_sets)
                 if all(
-                    index == other or roles > other_roles
+                    index == other or structurally_covers(roles, other_roles)
                     for other, other_roles in enumerate(role_sets)
+                )
+                and any(
+                    not structurally_covers(other_roles, roles)
+                    for other, other_roles in enumerate(role_sets)
+                    if index != other
                 )
             ]
             if len(maximum_frontiers) == 1:
@@ -910,7 +955,11 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             for value in row.get("hierarchy_path_exact", [])
             if _normalized(value)
         }
-        if not roles and path_labels & unrelated_group_labels:
+        if not roles and any(
+            path_label == unrelated or path_label.startswith(unrelated)
+            for path_label in path_labels
+            for unrelated in unrelated_group_labels
+        ):
             continue
         if (
             not roles

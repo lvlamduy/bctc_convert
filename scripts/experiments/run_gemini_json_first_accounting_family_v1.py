@@ -153,7 +153,13 @@ def _normalized_column_axis(mapping: dict[str, Any]) -> tuple[tuple[str, str], .
         if type(column) is not dict or type(column.get("header_path_exact")) is not list:
             return None
         header = " ".join(value for value in column["header_path_exact"] if type(value) is str)
-        result.append((column.get("value_kind"), normalize_vietnamese_anchor_v1(header)))
+        normalized_header = normalize_vietnamese_anchor_v1(header)
+        if column.get("value_kind") == "MONEY":
+            for unit_suffix in (" trieu dong", " nghin dong", " dong", " vnd"):
+                if normalized_header.endswith(unit_suffix):
+                    normalized_header = normalized_header.removesuffix(unit_suffix).strip()
+                    break
+        result.append((column.get("value_kind"), normalized_header))
     return tuple(result)
 
 
@@ -408,8 +414,25 @@ def _selected_ready_candidate(
         )
         for candidate in ready
     }
+    component_locations = [
+        (
+            candidate["page_json_version_id"],
+            candidate["physical_page"],
+            candidate["section_id"],
+            candidate["table_id"],
+        )
+        for candidate in ready
+    ]
     table_ids = [candidate["table_id"] for candidate in ready]
-    if len(scopes) != 1 or len(set(table_ids)) != len(table_ids):
+    same_section = len(scopes) == 1 and len(set(table_ids)) == len(table_ids)
+    physical_pages = {candidate["physical_page"] for candidate in ready}
+    adjacent_continuation = (
+        len(set(component_locations)) == len(component_locations)
+        and len({candidate["page_json_version_id"] for candidate in ready}) == len(ready)
+        and len(physical_pages) == len(ready) == 2
+        and max(physical_pages) - min(physical_pages) == 1
+    )
+    if not same_section and not adjacent_continuation:
         return None
     root_role = compiled_specs["topology"]["parent"]["role"]
     roots = []
@@ -426,11 +449,16 @@ def _selected_ready_candidate(
         )
 
     def comparable_root(mapping: dict[str, Any]) -> dict[str, Any]:
+        normalized_axis = _normalized_column_axis(mapping)
         return {
-            "columns": mapping["columns"],
+            "columns": (
+                [list(column) for column in normalized_axis]
+                if normalized_axis is not None
+                else mapping["columns"]
+            ),
             "report_norm_id": mapping["report_norm_id"],
             "role": mapping["role"],
-            "values": mapping["values"],
+            "values": [value["coefficient"] for value in mapping["values"]],
         }
 
     if len({canonical_json_sha256_v1(comparable_root(root)) for root in roots}) != 1:
@@ -445,19 +473,48 @@ def _selected_ready_candidate(
         )
     ):
         return None
-    page_version_id, physical_page, section_id = next(iter(scopes))
+    ordered_ready = (
+        sorted(
+            ready,
+            key=lambda candidate: (
+                candidate["physical_page"],
+                candidate["section_id"],
+                candidate["table_id"],
+                candidate["candidate_id"],
+            ),
+        )
+        if adjacent_continuation
+        else ready
+    )
+    selected_scope = ordered_ready[0]
+    page_version_id = selected_scope["page_json_version_id"]
+    physical_page = selected_scope["physical_page"]
+    section_id = selected_scope["section_id"]
     mappings = [canonical_clone_v1(roots[0])]
-    for axis in nonroot_axes:
+    axes_by_candidate_id = {
+        candidate["candidate_id"]: axis for candidate, axis in zip(ready, nonroot_axes, strict=True)
+    }
+    for candidate in ordered_ready:
+        axis = axes_by_candidate_id[candidate["candidate_id"]]
         mappings.extend(canonical_clone_v1(axis))
     material = {
         "closure_receipt": {
-            "component_candidate_ids": [candidate["candidate_id"] for candidate in ready],
+            "component_candidate_ids": [candidate["candidate_id"] for candidate in ordered_ready],
             "component_closure_receipt_sha256": [
-                canonical_json_sha256_v1(candidate["closure_receipt"]) for candidate in ready
+                canonical_json_sha256_v1(candidate["closure_receipt"])
+                for candidate in ordered_ready
             ],
-            "rule": "EQUIVALENT_DISJOINT_PRESENTATION_AXES_SHARE_ONE_EXACT_VISIBLE_ROOT",
+            "rule": (
+                "ADJACENT_CONTINUATION_EQUIVALENT_DISJOINT_PRESENTATION_AXES_"
+                "SHARE_ONE_EXACT_VISIBLE_ROOT"
+                if adjacent_continuation
+                else "EQUIVALENT_DISJOINT_PRESENTATION_AXES_SHARE_ONE_EXACT_VISIBLE_ROOT"
+            ),
         },
-        "component_table_ids": table_ids,
+        "component_page_json_version_ids": [
+            candidate["page_json_version_id"] for candidate in ordered_ready
+        ],
+        "component_table_ids": [candidate["table_id"] for candidate in ordered_ready],
         "family_id": ready[0].get("family_id"),
         "mappings": mappings,
         "page_json_version_id": page_version_id,
@@ -465,7 +522,7 @@ def _selected_ready_candidate(
         "reasons": [],
         "section_id": section_id,
         "status": READY,
-        "table_id": table_ids[0],
+        "table_id": selected_scope["table_id"],
     }
     return {
         "candidate_id": "gjfafcv1:candidate:" + canonical_json_sha256_v1(material),
@@ -561,6 +618,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             database,
             selected_page_json_version_ids=selected_ids,
             anchor_aliases=anchor_groups,
+            title_anchor_aliases=compiled["topology"]["parent"]["aliases"],
             adjacent_page_radius=1,
         )
         for region in regions:

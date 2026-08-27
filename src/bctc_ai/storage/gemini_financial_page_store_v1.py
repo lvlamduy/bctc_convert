@@ -1495,6 +1495,7 @@ def query_selected_family_anchor_regions_v1(
     *,
     selected_page_json_version_ids: Sequence[str],
     anchor_aliases: Sequence[Sequence[str]],
+    title_anchor_aliases: Sequence[str] = (),
     adjacent_page_radius: int = 1,
 ) -> list[dict[str, Any]]:
     """Shortlist local tables only within one manifest-selected page frontier.
@@ -1525,9 +1526,11 @@ def query_selected_family_anchor_regions_v1(
         or any(not aliases for aliases in anchor_aliases)
         or type(adjacent_page_radius) is not int
         or not 0 <= adjacent_page_radius <= 2
+        or type(title_anchor_aliases) not in {list, tuple}
     ):
         raise _error("selected family query anchors or page radius are invalid")
     folded_sets = [_family_anchor_lookup_forms_v1(aliases) for aliases in anchor_aliases]
+    folded_title_aliases = set(_family_anchor_lookup_forms_v1(title_anchor_aliases))
     if any(not aliases or any(not alias for alias in aliases) for aliases in folded_sets):
         raise _error("selected family query normalized anchor set is empty")
 
@@ -1571,55 +1574,104 @@ def query_selected_family_anchor_regions_v1(
                 for alias in aliases
             ),
         )
+        connection.execute(
+            "CREATE TEMP TABLE title_anchor_alias("
+            "anchor_ordinal INTEGER NOT NULL, label_ascii_folded TEXT NOT NULL, "
+            "PRIMARY KEY(anchor_ordinal,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO title_anchor_alias VALUES (?,?)",
+            (
+                (anchor_ordinal, alias)
+                for anchor_ordinal, aliases in enumerate(folded_sets, start=1)
+                for alias in aliases
+                if alias in folded_title_aliases
+            ),
+        )
         candidates = connection.execute(
             """
-            SELECT r.page_json_version_id, r.section_id, r.table_id,
+            WITH anchor_hit AS (
+              SELECT r.page_json_version_id, r.section_id, r.table_id,
+                     a.anchor_ordinal, r.row_id, r.source_order
+              FROM row_node AS r
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
+              UNION ALL
+              SELECT t.page_json_version_id, t.section_id, t.table_id,
+                     a.anchor_ordinal,
+                     '__TITLE_ANCHOR__:' || a.anchor_ordinal,
+                     0
+              FROM table_node AS t
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN section_node AS sn
+                ON sn.page_json_version_id=t.page_json_version_id
+               AND sn.section_id=t.section_id
+              JOIN title_anchor_alias AS a
+                ON instr(COALESCE(sn.title_ascii_folded,''),a.label_ascii_folded)>0
+                OR instr(COALESCE(t.title_ascii_folded,''),a.label_ascii_folded)>0
+            )
+            SELECT h.page_json_version_id, h.section_id, h.table_id,
                    s.selection_ordinal, d.document_id, d.source_logical_name,
                    p.physical_page, sn.source_order AS section_source_order,
                    t.source_order AS table_source_order
-            FROM row_node AS r
+            FROM anchor_hit AS h
             JOIN selected_page_version AS s USING(page_json_version_id)
-            JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
             JOIN page_json_version AS v USING(page_json_version_id)
             JOIN page AS p USING(page_id)
             JOIN document AS d USING(document_id)
             JOIN section_node AS sn
-              ON sn.page_json_version_id=r.page_json_version_id
-             AND sn.section_id=r.section_id
+              ON sn.page_json_version_id=h.page_json_version_id
+             AND sn.section_id=h.section_id
             JOIN table_node AS t
-              ON t.page_json_version_id=r.page_json_version_id
-             AND t.section_id=r.section_id AND t.table_id=r.table_id
-            GROUP BY r.page_json_version_id, r.section_id, r.table_id,
+              ON t.page_json_version_id=h.page_json_version_id
+             AND t.section_id=h.section_id AND t.table_id=h.table_id
+            GROUP BY h.page_json_version_id, h.section_id, h.table_id,
                      s.selection_ordinal, d.document_id, d.source_logical_name,
                      p.physical_page, sn.source_order, t.source_order
-            HAVING COUNT(DISTINCT a.anchor_ordinal)=?
+            HAVING COUNT(DISTINCT h.anchor_ordinal)=?
             ORDER BY s.selection_ordinal, sn.source_order, t.source_order,
-                     r.section_id, r.table_id
+                     h.section_id, h.table_id
             """,
             (len(folded_sets),),
         ).fetchall()
         matched_rows = connection.execute(
             """
-            SELECT r.page_json_version_id, r.section_id, r.table_id,
-                   a.anchor_ordinal, r.row_id, r.source_order
-            FROM row_node AS r
-            JOIN selected_page_version AS s USING(page_json_version_id)
-            JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
-            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
-                     a.anchor_ordinal, r.source_order, r.row_id
+            SELECT * FROM (
+              SELECT r.page_json_version_id, r.section_id, r.table_id,
+                     a.anchor_ordinal, r.row_id, r.source_order,
+                     s.selection_ordinal
+              FROM row_node AS r
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
+              UNION ALL
+              SELECT t.page_json_version_id, t.section_id, t.table_id,
+                     a.anchor_ordinal,
+                     '__TITLE_ANCHOR__:' || a.anchor_ordinal,
+                     0, s.selection_ordinal
+              FROM table_node AS t
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN section_node AS sn
+                ON sn.page_json_version_id=t.page_json_version_id
+               AND sn.section_id=t.section_id
+              JOIN title_anchor_alias AS a
+                ON instr(COALESCE(sn.title_ascii_folded,''),a.label_ascii_folded)>0
+                OR instr(COALESCE(t.title_ascii_folded,''),a.label_ascii_folded)>0
+            )
+            ORDER BY selection_ordinal, section_id, table_id,
+                     anchor_ordinal, source_order, row_id
             """
         ).fetchall()
         hits_by_region_and_anchor: dict[tuple[str, str, str, int], list[str]] = {}
         for row in matched_rows:
-            hits_by_region_and_anchor.setdefault(
-                (
-                    row["page_json_version_id"],
-                    row["section_id"],
-                    row["table_id"],
-                    row["anchor_ordinal"],
-                ),
-                [],
-            ).append(row["row_id"])
+            key = (
+                row["page_json_version_id"],
+                row["section_id"],
+                row["table_id"],
+                row["anchor_ordinal"],
+            )
+            hits = hits_by_region_and_anchor.setdefault(key, [])
+            if row["row_id"] not in hits:
+                hits.append(row["row_id"])
         selected_pages_by_document: dict[str, list[dict[str, Any]]] = {}
         for row in selected_rows:
             selected_pages_by_document.setdefault(row["document_id"], []).append(

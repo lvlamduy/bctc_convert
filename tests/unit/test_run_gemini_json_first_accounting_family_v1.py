@@ -171,6 +171,27 @@ def test_disjoint_equivalent_table_presentations_are_composed_without_double_cou
     currency["section_id"] = "s2"
     assert target._selected_ready_candidate([issuer, currency], compiled_specs=_compiled()) is None
 
+    currency["page_json_version_id"] = "gfpstorev1:json:" + "2" * 64
+    currency["physical_page"] = 8
+    issuer["mappings"][0]["columns"] = [
+        {"header_path_exact": ["2025", "Triệu đồng"], "value_kind": "MONEY"},
+        {"header_path_exact": ["2024", "Triệu đồng"], "value_kind": "MONEY"},
+    ]
+    currency["mappings"][0]["columns"] = [
+        {"header_path_exact": ["2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["2024"], "value_kind": "MONEY"},
+    ]
+    adjacent = target._selected_ready_candidate([currency, issuer], compiled_specs=_compiled())
+    assert adjacent is not None
+    assert adjacent["component_page_json_version_ids"] == [
+        issuer["page_json_version_id"],
+        currency["page_json_version_id"],
+    ]
+    assert adjacent["closure_receipt"]["rule"].startswith("ADJACENT_CONTINUATION_")
+
+    currency["physical_page"] = 9
+    assert target._selected_ready_candidate([issuer, currency], compiled_specs=_compiled()) is None
+
 
 def test_net_adjusted_table_supersedes_adjacent_gross_view_and_keeps_both_axes() -> None:
     net = _traceable_candidate(
@@ -194,7 +215,10 @@ def test_net_adjusted_table_supersedes_adjacent_gross_view_and_keeps_both_axes()
         {"header_path_exact": ["2024", "Triệu đồng"], "value_kind": "MONEY"},
     ]
     net["mappings"][0]["columns"] = columns
-    gross["mappings"][0]["columns"] = columns
+    gross["mappings"][0]["columns"] = [
+        {"header_path_exact": ["2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["2024"], "value_kind": "MONEY"},
+    ]
     for value, coefficient in zip(net["mappings"][0]["values"], (90, 80), strict=True):
         value["coefficient"] = coefficient
         value["source_text"] = str(coefficient)

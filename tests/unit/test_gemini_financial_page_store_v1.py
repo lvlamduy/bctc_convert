@@ -356,6 +356,29 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
         )[0]["page_json_version_id"]
         == third["page_json_version_id"]
     )
+    parent_title_page = deepcopy(_page())
+    parent_title_page["sections"][0]["title_exact"] = "8.1 Chứng khoán kinh doanh"
+    parent_title_page["sections"][0]["tables"][0]["rows"] = [
+        parent_title_page["sections"][0]["tables"][0]["rows"][0]
+    ]
+    parent_title = _ingest(
+        path,
+        physical_page=12,
+        image_sha256="5" * 64,
+        page_json=parent_title_page,
+    )
+    assert query_selected_family_anchor_regions_v1(
+        path,
+        selected_page_json_version_ids=[parent_title["page_json_version_id"]],
+        anchor_aliases=[
+            ["Chứng khoán kinh doanh"],
+            [parent_title_page["sections"][0]["tables"][0]["rows"][0]["label_exact"]],
+        ],
+        title_anchor_aliases=["Chứng khoán kinh doanh"],
+    )[0]["anchor_row_ids"] == [
+        ["__TITLE_ANCHOR__:1"],
+        ["r1"],
+    ]
     hits = query_selected_family_anchor_hits_v1(
         path,
         selected_page_json_version_ids=selected,
