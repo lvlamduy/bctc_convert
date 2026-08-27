@@ -1327,6 +1327,26 @@ def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -
     return assign(0, frozenset())
 
 
+def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
+    """Bind semantic aliases to exact labels with harmless list markers."""
+
+    folded = {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases}
+    punctuation_forms = set(folded) | {alias + ":" for alias in folded}
+    for alias in folded:
+        stem, separator, suffix = alias.rpartition(" ")
+        if separator and (suffix.isdigit() or suffix in {"i", "ii", "iii", "iv", "v"}):
+            punctuation_forms.add(f"{stem} ({suffix})")
+        if " bang " in alias:
+            prefix, value_kind = alias.rsplit(" bang ", maxsplit=1)
+            punctuation_forms.update(
+                f"{prefix} {marker} bang {value_kind}" for marker in ("-", "–", "—", "•")
+            )
+    return sorted(
+        punctuation_forms
+        | {marker + alias for alias in punctuation_forms for marker in ("- ", "– ", "— ", "• ")}
+    )
+
+
 def query_selected_family_anchor_hits_v1(
     path: Path,
     *,
@@ -1343,9 +1363,7 @@ def query_selected_family_anchor_hits_v1(
         or not anchor_aliases
     ):
         raise _error("selected family near-anchor request is invalid")
-    folded = sorted(
-        {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in anchor_aliases}
-    )
+    folded = _family_anchor_lookup_forms_v1(anchor_aliases)
     if any(not alias for alias in folded):
         raise _error("selected family near-anchor normalization is empty")
     selected_page_extraction_receipts_v1(
@@ -1424,10 +1442,7 @@ def query_selected_family_anchor_regions_v1(
         or not 0 <= adjacent_page_radius <= 2
     ):
         raise _error("selected family query anchors or page radius are invalid")
-    folded_sets = [
-        sorted({normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases})
-        for aliases in anchor_aliases
-    ]
+    folded_sets = [_family_anchor_lookup_forms_v1(aliases) for aliases in anchor_aliases]
     if any(not aliases or any(not alias for alias in aliases) for aliases in folded_sets):
         raise _error("selected family query normalized anchor set is empty")
 

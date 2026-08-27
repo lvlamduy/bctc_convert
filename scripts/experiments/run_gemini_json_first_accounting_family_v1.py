@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (  # noqa: E402
+    normalize_vietnamese_anchor_v1,
+)
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
     NOT_OBSERVED,
     READY,
@@ -23,6 +26,7 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     build_gemini_json_flat_family_sweep_v1,
     compile_gemini_json_flat_family_specs_v1,
     evaluate_gemini_json_flat_family_table_v1,
+    validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
@@ -78,6 +82,55 @@ def _content_ref(root: Path, reference: dict[str, Any]) -> Path:
     ):
         raise _error("frozen corpus content reference does not authenticate")
     return path
+
+
+def _node_index(identifier: Any, prefix: str, limit: int) -> int:
+    if type(identifier) is not str or not identifier.startswith(prefix):
+        raise _error("Gemini JSON query node ID is invalid")
+    suffix = identifier.removeprefix(prefix)
+    if not suffix.isdigit() or suffix.startswith("0"):
+        raise _error("Gemini JSON query node ID is invalid")
+    index = int(suffix) - 1
+    if not 0 <= index < limit:
+        raise _error("Gemini JSON query node ID is out of range")
+    return index
+
+
+def _hit_has_explicit_parent(
+    hit: dict[str, Any],
+    *,
+    page_json: dict[str, Any],
+    parent_aliases: list[str],
+) -> bool:
+    sections = page_json.get("sections")
+    if type(sections) is not list:
+        raise _error("Gemini JSON near-hit page has no section axis")
+    section = sections[_node_index(hit["section_id"], "s", len(sections))]
+    tables = section.get("tables")
+    if type(tables) is not list:
+        raise _error("Gemini JSON near-hit section has no table axis")
+    table = tables[_node_index(hit["table_id"], "t", len(tables))]
+    title = " ".join(
+        value
+        for value in (section.get("title_exact"), table.get("title_exact"))
+        if type(value) is str and value
+    )
+    folded = normalize_vietnamese_anchor_v1(title)
+    return any(alias in folded for alias in parent_aliases)
+
+
+def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str, Any]:
+    sections = page_json.get("sections")
+    if type(sections) is not list:
+        raise _error("Gemini JSON candidate page has no section axis")
+    section = sections[_node_index(region["section_id"], "s", len(sections))]
+    tables = section.get("tables")
+    if type(tables) is not list:
+        raise _error("Gemini JSON candidate section has no table axis")
+    table = tables[_node_index(region["table_id"], "t", len(tables))]
+    if type(table) is not dict:
+        raise _error("Gemini JSON candidate table is invalid")
+    return table
 
 
 def _write_once(path: Path, value: dict[str, Any]) -> None:
@@ -165,20 +218,39 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         selected_page_json_version_ids=selected_ids,
         anchor_aliases=near_aliases,
     )
-    near_paths = {hit["source_logical_name"] for hit in near_hits}
-
     candidate_version_ids = sorted(
         {region["page_json_version_id"] for region in regions_by_key.values()}
     )
+    near_version_ids = sorted({hit["page_json_version_id"] for hit in near_hits})
     loaded = load_page_json_versions_v1(
         database,
-        page_json_version_ids=candidate_version_ids,
+        page_json_version_ids=sorted(set(candidate_version_ids) | set(near_version_ids)),
     )
     page_by_version = {record["page_json_version_id"]: record for record in loaded}
+    near_paths = {
+        hit["source_logical_name"]
+        for hit in near_hits
+        if _hit_has_explicit_parent(
+            hit,
+            page_json=page_by_version[hit["page_json_version_id"]]["page_json"],
+            parent_aliases=compiled["topology"]["parent"]["aliases"],
+        )
+    }
     candidates_by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for key in sorted(regions_by_key):
         region = regions_by_key[key]
         page = page_by_version[region["page_json_version_id"]]
+        table = _region_table(page["page_json"], region)
+        columns = table.get("columns")
+        if (
+            type(columns) is list
+            and columns
+            and all(column.get("value_kind") != "MONEY" for column in columns)
+        ):
+            # A percentage/rate schedule can repeat the same currency labels
+            # under the family heading.  Its declared non-money axis makes it
+            # context, not a competing accounting-value population.
+            continue
         candidate = evaluate_gemini_json_flat_family_table_v1(
             page_json=page["page_json"],
             page_json_version_id=region["page_json_version_id"],
@@ -187,6 +259,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             table_id=region["table_id"],
             compiled_specs=compiled,
         )
+        if "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_OR_TABLE_TITLE" in candidate["reasons"]:
+            # The two/three-anchor database query deliberately searches a
+            # one-page neighborhood.  A nearby table without the declarative
+            # explicit parent is near evidence, not a family candidate.
+            continue
         candidates_by_path[region["source_logical_name"]].append(candidate)
 
     trials = []
@@ -235,6 +312,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         schema_binding_spec=schema,
         trials=trials,
     )
+    validate_gemini_json_flat_family_sweep_v1(sweep)
     _write_once(args.output, sweep)
     return {
         "disposition": "SUCCEEDED",

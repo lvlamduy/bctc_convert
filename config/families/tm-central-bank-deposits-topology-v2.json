@@ -5,6 +5,8 @@
         "Bằng VND",
         "Bằng Đồng Việt Nam",
         "Bằng tiền đồng",
+        "Tiền gửi bằng VND",
+        "Tiền gửi tại NHNN bằng VND",
         "Tiền gửi tại NHNNVN bằng VND",
         "Tiền gửi tại NHNNVN bằng VND (i)",
         "Tiền gửi tại NHNNVN bằng VND (1)",
@@ -18,6 +20,8 @@
     {
       "aliases": [
         "Bằng ngoại tệ",
+        "Tiền gửi bằng ngoại tệ",
+        "Tiền gửi tại NHNN bằng ngoại tệ",
         "Tiền gửi tại NHNNVN bằng ngoại tệ",
         "Tiền gửi tại NHNNVN bằng ngoại tệ (i)",
         "Tiền gửi tại NHNNVN bằng ngoại tệ (ii)",
@@ -33,6 +37,7 @@
         "Tiền gửi tại NHNN Việt Nam",
         "Tiền gửi tại NHNNVN",
         "Tiền gửi tại NHNNVN (i)",
+        "Tiền gửi thanh toán tại NHNN Việt Nam",
         "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
         "Tiền gửi tại Ngân hàng Nhà nước Việt Nam (i)"
       ],

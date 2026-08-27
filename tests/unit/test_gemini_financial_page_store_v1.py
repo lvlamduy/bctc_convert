@@ -265,10 +265,38 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
         image_sha256="2" * 64,
         page_json=three_anchor_page,
     )
+    marked_page = deepcopy(_page())
+    for row, marker in zip(
+        marked_page["sections"][0]["tables"][0]["rows"][:2],
+        ("- ", "• "),
+        strict=True,
+    ):
+        row["label_exact"] = marker + row["label_exact"]
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+    marked = _ingest(
+        path,
+        physical_page=10,
+        image_sha256="3" * 64,
+        page_json=marked_page,
+    )
+    compound_page = deepcopy(_page())
+    compound_rows = compound_page["sections"][0]["tables"][0]["rows"]
+    compound_rows[0]["label_exact"] = "Tiền gửi tại NHNN - Bằng VND"
+    compound_rows[0]["hierarchy_path_exact"] = [compound_rows[0]["label_exact"]]
+    compound_rows[1]["label_exact"] = "Tiền gửi tại NHNNVN bằng ngoại tệ (i)"
+    compound_rows[1]["hierarchy_path_exact"] = [compound_rows[1]["label_exact"]]
+    compound = _ingest(
+        path,
+        physical_page=11,
+        image_sha256="4" * 64,
+        page_json=compound_page,
+    )
     selected = [
         first["page_json_version_id"],
         context["page_json_version_id"],
         third["page_json_version_id"],
+        marked["page_json_version_id"],
+        compound["page_json_version_id"],
     ]
 
     two_anchor = query_selected_family_anchor_regions_v1(
@@ -279,10 +307,22 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
     assert [candidate["page_json_version_id"] for candidate in two_anchor] == [
         first["page_json_version_id"],
         third["page_json_version_id"],
+        marked["page_json_version_id"],
     ]
     assert retry["page_json_version_id"] not in {
         candidate["page_json_version_id"] for candidate in two_anchor
     }
+    assert [
+        candidate["page_json_version_id"]
+        for candidate in query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=selected,
+            anchor_aliases=[
+                ["Tiền gửi tại NHNN bằng VND"],
+                ["Tiền gửi tại NHNNVN bằng ngoại tệ i"],
+            ],
+        )
+    ] == [compound["page_json_version_id"]]
     assert two_anchor[0]["context_pages"] == [
         {"physical_page": 7, "page_json_version_id": first["page_json_version_id"]},
         {"physical_page": 8, "page_json_version_id": context["page_json_version_id"]},
@@ -307,6 +347,7 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
     assert [hit["page_json_version_id"] for hit in hits] == [
         first["page_json_version_id"],
         third["page_json_version_id"],
+        marked["page_json_version_id"],
     ]
     assert retry["page_json_version_id"] not in {hit["page_json_version_id"] for hit in hits}
 
