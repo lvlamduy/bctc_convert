@@ -2897,9 +2897,17 @@ def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
         **material,
         "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material),
     }
+    legacy_material = {
+        **material,
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+    }
+    legacy_manifest = {
+        **legacy_material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(legacy_material),
+    }
     document_root = tmp_path / "artifacts/documents" / ("1" * 64)
     legacy_path = document_root / "current-document-manifest.json"
-    target._write_or_verify(legacy_path, canonical_json_bytes_v1(manifest) + b"\n")
+    target._write_or_verify(legacy_path, canonical_json_bytes_v1(legacy_manifest) + b"\n")
     manifest_relative = Path("current-document-manifests") / (
         manifest["document_manifest_id"].split(":", 2)[2] + ".json"
     )

@@ -1760,7 +1760,11 @@ def _replay_selected_document_for_corpus_v1(
             legacy_pages = legacy_manifest.get("pages")
             expected_pages = list(range(1, planned["document"]["page_count"] + 1))
             if (
-                legacy_manifest.get("format_version") != "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+                legacy_manifest.get("format_version")
+                not in {
+                    "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
+                    "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+                }
                 or legacy_manifest.get("document_manifest_id")
                 != "gfdmv1:manifest:" + canonical_json_sha256_v1(legacy_material)
                 or legacy_manifest.get("page_count") != len(expected_pages)
