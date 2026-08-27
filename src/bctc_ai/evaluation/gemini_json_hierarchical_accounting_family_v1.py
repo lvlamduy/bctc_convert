@@ -123,6 +123,11 @@ def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
     stripped = _without_leading_ordinal(folded)
     if _matches(stripped, alias):
         return True
+    # Gemini can concatenate the last ancestor and the current row label in
+    # one path string (for example "Chứng khoán NợTổng").  Accept only exact
+    # whitespace-free ancestor+label identity, never a loose substring.
+    if label and stripped.replace(" ", "") == (alias + label).replace(" ", ""):
+        return True
     if not label or not stripped.endswith(" " + label):
         return False
     ancestor_prefix = stripped[: -len(label)].strip()

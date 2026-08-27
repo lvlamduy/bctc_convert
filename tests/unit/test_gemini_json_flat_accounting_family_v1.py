@@ -1015,6 +1015,29 @@ def test_v3_unowned_intermediate_subtotal_does_not_impersonate_family_total() ->
     )
 
 
+def test_v3_concatenated_structural_total_path_keeps_its_owner() -> None:
+    page = _trading_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows.insert(
+        1,
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợTổng"],
+            "label_exact": "Tổng",
+            "row_kind": "TOTAL",
+            "values_exact": ["100", "90"],
+        },
+    )
+    rows.pop()
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    root = next(
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] == "EXPLICIT_NET_TOTAL"
+    )
+    assert root["mode"] == "DERIVED_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+
+
 def test_v3_root_raw_subset_requires_one_additive_child_not_provision_alone() -> None:
     candidate = _evaluate_trading(_trading_page(provision_only=True))
     assert candidate["status"] == UNRESOLVED
