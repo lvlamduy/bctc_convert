@@ -1360,6 +1360,17 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             or not unit_is_declared
         ):
             reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
+    if len(money_columns) != 2:
+        if "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT" not in reasons:
+            reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
+        return _candidate_result(
+            topology=topology,
+            page_json_version_id=page_json_version_id,
+            physical_page=physical_page,
+            section_id=section_id,
+            table_id=table_id,
+            reasons=reasons,
+        )
     source_rows = table.get("rows")
     if type(source_rows) is not list or not source_rows:
         raise _error("Gemini JSON hierarchy row axis is empty")

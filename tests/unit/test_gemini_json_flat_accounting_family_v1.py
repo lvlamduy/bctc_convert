@@ -1132,6 +1132,15 @@ def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> Non
     partial["sections"][0]["tables"][0]["rows"].pop()
     assert _evaluate_loan_quality(partial)["status"] == UNRESOLVED
 
+    one_period = _loan_quality_page()
+    one_period_table = one_period["sections"][0]["tables"][0]
+    one_period_table["columns"] = one_period_table["columns"][:1]
+    for row in one_period_table["rows"]:
+        row["values_exact"] = row["values_exact"][:1]
+    one_period_result = _evaluate_loan_quality(one_period)
+    assert one_period_result["status"] == UNRESOLVED
+    assert "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT" in one_period_result["reasons"]
+
 
 @pytest.mark.parametrize(
     ("source_label", "expected_role"),
