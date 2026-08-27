@@ -2302,7 +2302,6 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
             "size_bytes": writable_results_size,
         },
     }
-    _write_json(output / "run-result.json", result)
     _assert_frozen_database_unchanged(
         source_store,
         (source_sha, source_size),
@@ -2487,6 +2486,8 @@ def run_rollforward_table_repair_v1(
                 expected_sha256=source_results_boundary.initial_sha256,
                 expected_size_bytes=source_results_boundary.initial_size_bytes,
             )
+            if result.get("disposition") == "REPAIR_FRONTIER_COMPLETE":
+                _write_json(Path(artifact_dir).resolve() / "run-result.json", result)
             return result
         finally:
             _close_sqlite_boundaries(boundaries)
@@ -2907,7 +2908,6 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
             "size_bytes": writable_results_size,
         },
     }
-    _write_json(output / "run-result.json", result)
     _assert_frozen_database_unchanged(
         source_store,
         (source_sha, source_size),
@@ -3061,6 +3061,7 @@ def replay_sealed_rollforward_table_repair_v1(
                 expected_sha256=source_results_boundary.initial_sha256,
                 expected_size_bytes=source_results_boundary.initial_size_bytes,
             )
+            _write_json(Path(replay_artifact_dir).resolve() / "run-result.json", result)
             return result
         finally:
             _close_sqlite_boundaries(boundaries)

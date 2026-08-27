@@ -742,6 +742,7 @@ def test_writable_path_replacement_after_apply_is_rejected_before_publish(
         assert writable.read_bytes() == writable_before
         assert writable_results.read_bytes() == writable_results_before
         assert calls == ["low"] * 6
+        assert not (tmp_path / "pre-publish-replacement-output/run-result.json").exists()
     finally:
         writable.unlink(missing_ok=True)
         writable_results.unlink(missing_ok=True)
