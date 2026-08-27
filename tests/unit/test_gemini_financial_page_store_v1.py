@@ -41,7 +41,11 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
 
 @pytest.mark.parametrize(
     "prompt_variant",
-    ["region-repair-row-values", "region-repair-row-label-and-values"],
+    [
+        "region-repair-row-values",
+        "region-repair-row-label-and-values",
+        "region-repair-section-narratives",
+    ],
 )
 def test_region_repair_lineage_is_database_bound_and_idempotent(
     tmp_path, prompt_variant: str

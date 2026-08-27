@@ -40,6 +40,7 @@ _SELECTABLE_PROMPT_VARIANTS = frozenset(
         "region-repair",
         "region-repair-row-label-and-values",
         "region-repair-row-values",
+        "region-repair-section-narratives",
         "region-repair-table-period-axis",
         "region-repair-table-title-and-columns",
         "scope",
