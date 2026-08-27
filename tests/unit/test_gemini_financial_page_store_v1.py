@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     initialize_gemini_financial_page_store_v1,
     lookup_cached_page_json_v1,
     query_family_anchor_regions_v1,
+    query_selected_family_anchor_regions_v1,
     usage_summary_v1,
 )
 
@@ -86,6 +88,7 @@ def _ingest(
     prompt_sha256: str = "d" * 64,
     prompt_variant: str = "compact",
     provider_result: ProviderResultV1 | None = None,
+    page_json: dict[str, object] | None = None,
 ) -> dict[str, str]:
     return ingest_financial_page_extraction_v1(
         path,
@@ -111,7 +114,7 @@ def _ingest(
         requested_service_tier="flex",
         thinking_level="low",
         provider_result=provider_result or _result(),
-        page_json=_page(),
+        page_json=page_json or _page(),
     )
 
 
@@ -223,6 +226,122 @@ def test_two_and_three_anchor_sql_shortlist_and_usage_stats(tmp_path) -> None:
         "thought_tokens": 100,
         "total_cost_usd": "0.003937500000",
     }
+
+
+def test_selected_family_query_excludes_retry_versions_and_returns_local_context(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    first = _ingest(path)
+    retry = _ingest(path, prompt_sha256="f" * 64, prompt_variant="balanced")
+    empty_page = {
+        "status": "NO_RELEVANT_FINANCIAL_CONTENT",
+        "sections": [],
+        "completion": {
+            "all_relevant_content_transcribed": True,
+            "uncertainty_exact": [],
+        },
+    }
+    context = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="1" * 64,
+        page_json=empty_page,
+    )
+    three_anchor_page = deepcopy(_page())
+    third_row = three_anchor_page["sections"][0]["tables"][0]["rows"][2]
+    third_row["label_exact"] = "Tổng cộng"
+    third_row["hierarchy_path_exact"] = ["Tổng cộng"]
+    third = _ingest(
+        path,
+        physical_page=9,
+        image_sha256="2" * 64,
+        page_json=three_anchor_page,
+    )
+    selected = [
+        first["page_json_version_id"],
+        context["page_json_version_id"],
+        third["page_json_version_id"],
+    ]
+
+    two_anchor = query_selected_family_anchor_regions_v1(
+        path,
+        selected_page_json_version_ids=selected,
+        anchor_aliases=[["Cho vay các TCKT"], ["Công ty Nhà nước"]],
+    )
+    assert [candidate["page_json_version_id"] for candidate in two_anchor] == [
+        first["page_json_version_id"],
+        third["page_json_version_id"],
+    ]
+    assert retry["page_json_version_id"] not in {
+        candidate["page_json_version_id"] for candidate in two_anchor
+    }
+    assert two_anchor[0]["context_pages"] == [
+        {"physical_page": 7, "page_json_version_id": first["page_json_version_id"]},
+        {"physical_page": 8, "page_json_version_id": context["page_json_version_id"]},
+    ]
+    assert (
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=selected,
+            anchor_aliases=[
+                ["Cho vay các TCKT"],
+                ["Công ty Nhà nước"],
+                ["Tong cong"],
+            ],
+        )[0]["page_json_version_id"]
+        == third["page_json_version_id"]
+    )
+
+
+def test_selected_family_query_fails_closed_on_invalid_frontier_or_anchor_assignment(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    first = _ingest(path)
+    retry = _ingest(path, prompt_sha256="f" * 64, prompt_variant="balanced")
+    second = _ingest(path, physical_page=8, image_sha256="1" * 64)
+
+    assert (
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=[first["page_json_version_id"]],
+            anchor_aliases=[["Cho vay các TCKT"], ["Cho vay các TCKT"]],
+        )
+        == []
+    )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="repeats one physical page"):
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=[
+                first["page_json_version_id"],
+                retry["page_json_version_id"],
+            ],
+            anchor_aliases=[["Cho vay các TCKT"], ["Công ty Nhà nước"]],
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="corpus source/page order"):
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=[
+                second["page_json_version_id"],
+                first["page_json_version_id"],
+            ],
+            anchor_aliases=[["Cho vay các TCKT"], ["Công ty Nhà nước"]],
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="version is absent"):
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=["gfpstorev1:json:" + "0" * 64],
+            anchor_aliases=[["Cho vay các TCKT"], ["Công ty Nhà nước"]],
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier is invalid"):
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=["gfpstorev1:json:" + "z" * 64],
+            anchor_aliases=[["Cho vay các TCKT"], ["Công ty Nhà nước"]],
+        )
 
 
 def test_store_refuses_overwrite_and_identity_tamper(tmp_path) -> None:

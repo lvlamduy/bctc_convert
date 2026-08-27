@@ -1088,6 +1088,186 @@ def query_family_anchor_regions_v1(
     return result
 
 
+def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -> bool:
+    """Return whether every anchor group can bind a distinct visible row."""
+
+    ordered = sorted((tuple(group) for group in hit_groups), key=lambda group: (len(group), group))
+
+    def assign(group_ordinal: int, used: frozenset[str]) -> bool:
+        if group_ordinal == len(ordered):
+            return True
+        return any(
+            row_id not in used and assign(group_ordinal + 1, used | {row_id})
+            for row_id in ordered[group_ordinal]
+        )
+
+    return assign(0, frozenset())
+
+
+def query_selected_family_anchor_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    anchor_aliases: Sequence[Sequence[str]],
+    adjacent_page_radius: int = 1,
+) -> list[dict[str, Any]]:
+    """Shortlist local tables only within one manifest-selected page frontier.
+
+    The selected version IDs must be supplied in corpus source/page order.  A
+    temporary table makes that frontier authoritative for the query and keeps
+    historical retry versions out of family matching.
+    """
+
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not selected_page_json_version_ids
+        or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+        or any(
+            type(version_id) is not str
+            or not version_id.startswith("gfpstorev1:json:")
+            or len(version_id) != len("gfpstorev1:json:") + 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in version_id.removeprefix("gfpstorev1:json:")
+            )
+            for version_id in selected_page_json_version_ids
+        )
+    ):
+        raise _error("selected family query page JSON frontier is invalid")
+    if (
+        len(anchor_aliases) not in {2, 3}
+        or any(not aliases for aliases in anchor_aliases)
+        or type(adjacent_page_radius) is not int
+        or not 0 <= adjacent_page_radius <= 2
+    ):
+        raise _error("selected family query anchors or page radius are invalid")
+    folded_sets = [
+        sorted({normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases})
+        for aliases in anchor_aliases
+    ]
+    if any(not aliases or any(not alias for alias in aliases) for aliases in folded_sets):
+        raise _error("selected family query normalized anchor set is empty")
+
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_page_version("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_page_version VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        selected_rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, s.page_json_version_id,
+                   d.document_id, d.source_logical_name, p.physical_page
+            FROM selected_page_version AS s
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            ORDER BY s.selection_ordinal
+            """
+        ).fetchall()
+        if len(selected_rows) != len(selected_page_json_version_ids):
+            raise _error("selected family query page JSON version is absent")
+        locations = [(row["source_logical_name"], row["physical_page"]) for row in selected_rows]
+        if len(set(locations)) != len(locations):
+            raise _error("selected family query frontier repeats one physical page")
+        if locations != sorted(locations):
+            raise _error("selected family query frontier is not in corpus source/page order")
+        connection.execute(
+            "CREATE TEMP TABLE anchor_alias("
+            "anchor_ordinal INTEGER NOT NULL, label_ascii_folded TEXT NOT NULL, "
+            "PRIMARY KEY(anchor_ordinal,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO anchor_alias VALUES (?,?)",
+            (
+                (anchor_ordinal, alias)
+                for anchor_ordinal, aliases in enumerate(folded_sets, start=1)
+                for alias in aliases
+            ),
+        )
+        candidates = connection.execute(
+            """
+            SELECT r.page_json_version_id, r.section_id, r.table_id,
+                   s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, sn.source_order AS section_source_order,
+                   t.source_order AS table_source_order
+            FROM row_node AS r
+            JOIN selected_page_version AS s USING(page_json_version_id)
+            JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN section_node AS sn
+              ON sn.page_json_version_id=r.page_json_version_id
+             AND sn.section_id=r.section_id
+            JOIN table_node AS t
+              ON t.page_json_version_id=r.page_json_version_id
+             AND t.section_id=r.section_id AND t.table_id=r.table_id
+            GROUP BY r.page_json_version_id, r.section_id, r.table_id,
+                     s.selection_ordinal, d.document_id, d.source_logical_name,
+                     p.physical_page, sn.source_order, t.source_order
+            HAVING COUNT(DISTINCT a.anchor_ordinal)=?
+            ORDER BY s.selection_ordinal, sn.source_order, t.source_order,
+                     r.section_id, r.table_id
+            """,
+            (len(folded_sets),),
+        ).fetchall()
+        result: list[dict[str, Any]] = []
+        for candidate in candidates:
+            hit_groups = []
+            for anchor_ordinal in range(1, len(folded_sets) + 1):
+                rows = connection.execute(
+                    """
+                    SELECT DISTINCT r.row_id, r.source_order
+                    FROM row_node AS r
+                    JOIN anchor_alias AS a ON a.label_ascii_folded=r.label_ascii_folded
+                    WHERE r.page_json_version_id=? AND r.section_id=? AND r.table_id=?
+                      AND a.anchor_ordinal=?
+                    ORDER BY r.source_order, r.row_id
+                    """,
+                    (
+                        candidate["page_json_version_id"],
+                        candidate["section_id"],
+                        candidate["table_id"],
+                        anchor_ordinal,
+                    ),
+                ).fetchall()
+                hit_groups.append([row["row_id"] for row in rows])
+            if not _distinct_anchor_assignment_exists_v1(hit_groups):
+                continue
+            context_pages = connection.execute(
+                """
+                SELECT p.physical_page, s.page_json_version_id
+                FROM selected_page_version AS s
+                JOIN page_json_version AS v USING(page_json_version_id)
+                JOIN page AS p USING(page_id)
+                WHERE p.document_id=? AND p.physical_page BETWEEN ? AND ?
+                ORDER BY p.physical_page, s.selection_ordinal
+                """,
+                (
+                    candidate["document_id"],
+                    max(1, candidate["physical_page"] - adjacent_page_radius),
+                    candidate["physical_page"] + adjacent_page_radius,
+                ),
+            ).fetchall()
+            result.append(
+                {
+                    "anchor_row_ids": hit_groups,
+                    "context_pages": [dict(row) for row in context_pages],
+                    "document_id": candidate["document_id"],
+                    "page_json_version_id": candidate["page_json_version_id"],
+                    "physical_page": candidate["physical_page"],
+                    "section_id": candidate["section_id"],
+                    "source_logical_name": candidate["source_logical_name"],
+                    "table_id": candidate["table_id"],
+                }
+            )
+    return result
+
+
 def usage_summary_v1(path: Path) -> dict[str, Any]:
     """Aggregate token, cost, provider, and retry statistics for later reporting."""
 
