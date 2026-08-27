@@ -57,6 +57,17 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
+    if (
+        type(evaluation_spec) is dict
+        and evaluation_spec.get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
+    ):
+        from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+            compile_gemini_json_hierarchical_family_specs_v1,
+        )
+
+        return compile_gemini_json_hierarchical_family_specs_v1(
+            topology_spec, evaluation_spec, schema_binding_spec
+        )
     try:
         topology = compile_accounting_family_topology_spec_v1(topology_spec)
     except ValueError as exc:
@@ -662,6 +673,23 @@ def evaluate_gemini_json_flat_family_table_v1(
     compiled_specs: dict[str, Any],
 ) -> dict[str, Any]:
     """Evaluate one two/three-anchor table against a flat direct frontier."""
+
+    if (
+        compiled_specs.get("engine_format_version")
+        == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+    ):
+        from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+            evaluate_gemini_json_hierarchical_family_table_v1,
+        )
+
+        return evaluate_gemini_json_hierarchical_family_table_v1(
+            page_json=page_json,
+            page_json_version_id=page_json_version_id,
+            physical_page=physical_page,
+            section_id=section_id,
+            table_id=table_id,
+            compiled_specs=compiled_specs,
+        )
 
     reasons: list[str] = []
     if (

@@ -41,6 +41,17 @@ def _hierarchical_specs() -> tuple[dict, dict, dict]:
     )
 
 
+def _recursive_specs() -> tuple[dict, dict, dict]:
+    return tuple(
+        json.loads((ROOT / path).read_text(encoding="utf-8"))
+        for path in (
+            "config/families/tm-interbank-deposits-loans-topology-v4.json",
+            "config/families/tm-interbank-deposits-loans-evaluation-v4.json",
+            "config/families/tm-interbank-deposits-loans-schema-binding-v4.json",
+        )
+    )
+
+
 def _page() -> dict:
     return {
         "status": "FINANCIAL_NOTE_CONTENT",
@@ -196,6 +207,150 @@ def _evaluate_hierarchical(page: dict) -> dict:
         page_json=page,
         page_json_version_id="gfpstorev1:json:" + "3" * 64,
         physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+    )
+
+
+def _recursive_page() -> dict:
+    return {
+        "status": "FINANCIAL_NOTE_CONTENT",
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "title_exact": "Tiền gửi và cho vay các TCTD khác",
+                "tables": [
+                    {
+                        "columns": [
+                            {
+                                "header_path_exact": ["31.12.2025", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                            {
+                                "header_path_exact": ["31.12.2024", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                        ],
+                        "continuation": "NONE",
+                        "rows": [
+                            {
+                                "hierarchy_path_exact": ["Tiền gửi tại các TCTD khác"],
+                                "label_exact": "Tiền gửi tại các TCTD khác",
+                                "row_kind": "GROUP",
+                                "values_exact": [None, None],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi tại các TCTD khác",
+                                    "Tiền gửi không kỳ hạn",
+                                ],
+                                "label_exact": "Tiền gửi không kỳ hạn",
+                                "row_kind": "GROUP",
+                                "values_exact": [None, None],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi tại các TCTD khác",
+                                    "Tiền gửi không kỳ hạn",
+                                    "Bằng VND",
+                                ],
+                                "label_exact": "Bằng VND",
+                                "row_kind": "ITEM",
+                                "values_exact": ["60", "50"],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi tại các TCTD khác",
+                                    "Tiền gửi không kỳ hạn",
+                                    "Bằng ngoại tệ",
+                                ],
+                                "label_exact": "Bằng ngoại tệ",
+                                "row_kind": "ITEM",
+                                "values_exact": ["40", "40"],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi tại các TCTD khác",
+                                    "Tiền gửi không kỳ hạn",
+                                ],
+                                "label_exact": None,
+                                "row_kind": "SUBTOTAL",
+                                "values_exact": ["100", "90"],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi tại các TCTD khác",
+                                    "Tiền gửi có kỳ hạn",
+                                ],
+                                "label_exact": "Tiền gửi có kỳ hạn",
+                                "row_kind": "SUBTOTAL",
+                                "values_exact": ["50", "40"],
+                            },
+                            {
+                                "hierarchy_path_exact": ["Tiền gửi tại các TCTD khác"],
+                                "label_exact": None,
+                                "row_kind": "SUBTOTAL",
+                                "values_exact": ["150", "130"],
+                            },
+                            {
+                                "hierarchy_path_exact": ["Cho vay các TCTD khác"],
+                                "label_exact": "Cho vay các TCTD khác",
+                                "row_kind": "GROUP",
+                                "values_exact": [None, None],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Cho vay các TCTD khác",
+                                    "Bằng VND",
+                                ],
+                                "label_exact": "Bằng VND",
+                                "row_kind": "ITEM",
+                                "values_exact": ["20", "10"],
+                            },
+                            {
+                                "hierarchy_path_exact": ["Cho vay các TCTD khác"],
+                                "label_exact": None,
+                                "row_kind": "SUBTOTAL",
+                                "values_exact": ["20", "10"],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Tiền gửi và cho vay các TCTD khác",
+                                    "Dự phòng rủi ro",
+                                ],
+                                "label_exact": "Dự phòng rủi ro",
+                                "row_kind": "ITEM",
+                                "values_exact": ["-", "(1)"],
+                            },
+                            {
+                                "hierarchy_path_exact": ["Tiền gửi và cho vay các TCTD khác"],
+                                "label_exact": None,
+                                "row_kind": "TOTAL",
+                                "values_exact": ["170", "139"],
+                            },
+                        ],
+                        "title_exact": None,
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+            }
+        ],
+        "completion": {
+            "all_relevant_content_transcribed": True,
+            "uncertainty_exact": [],
+        },
+    }
+
+
+def _evaluate_recursive(page: dict) -> dict:
+    topology, evaluation, schema = _recursive_specs()
+    return evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id="gfpstorev1:json:" + "4" * 64,
+        physical_page=19,
         section_id="s1",
         table_id="t1",
         compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
@@ -379,6 +534,174 @@ def test_hierarchical_specs_reject_invalid_equivalence_and_aggregate_frontiers()
     invalid_schema["aggregate_role_bindings"][0]["source_roles"].append("DEPOSIT_VND")
     with pytest.raises(ValueError, match="aggregate role binding"):
         compile_gemini_json_flat_family_specs_v1(topology, evaluation, invalid_schema)
+
+
+def test_recursive_family_closes_multilevel_subtotals_and_infers_provision_once() -> None:
+    result = _evaluate_recursive(_recursive_page())
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["INTERBANK_DEPOSITS_AND_LOANS"]["values"]] == [
+        170,
+        139,
+    ]
+    assert mappings["TOTAL_INTERBANK_PROVISION"]["inferred_from_role"] == (
+        "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert mappings["TOTAL_INTERBANK_PROVISION"]["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
+        {"coefficient": -1, "source_text": "(1)", "state": "RAW_SIGNED_INTEGER"},
+    ]
+    assert mappings["DEMAND_DEPOSIT_GROUP"]["row_id"] == "r5"
+    assert mappings["INTERBANK_DEPOSIT_GROUP"]["row_id"] == "r7"
+    assert mappings["INTERBANK_LOAN_GROUP"]["row_id"] == "r10"
+
+    receipt = result["closure_receipt"]
+    assert receipt["inferred_ambiguous_provision_role"] == "TOTAL_INTERBANK_PROVISION"
+    root_equation = next(
+        equation
+        for equation in receipt["equations"]
+        if equation["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert root_equation["component_roles"] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    ]
+    assert root_equation["component_row_ids"] == ["r7", "r10", "r11"]
+    assert root_equation["lane_component_sums"] == [170, 139]
+    assert set(receipt["used_anonymous_result_row_ids"]) == {"r5", "r7", "r10", "r12"}
+    assert all(
+        mapping["row_id"] != "r3"
+        for mapping in result["mappings"]
+        if mapping["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+
+
+def test_recursive_family_accepts_primary_statement_money_columns_without_geometry() -> None:
+    page = _recursive_page()
+    section = page["sections"][0]
+    section["content_kind"] = "PRIMARY_FINANCIAL_STATEMENT"
+    section["statement_type"] = "BALANCE_SHEET"
+    table = section["tables"][0]
+    table["unit_exact"] = None
+    table["columns"] = [
+        {"header_path_exact": ["Mã số"], "value_kind": "TEXT"},
+        {"header_path_exact": ["31.12.2025", "Triệu VND"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31.12.2024", "Triệu VND"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Thuyết minh"], "value_kind": "TEXT"},
+    ]
+    table["rows"] = [
+        {
+            "hierarchy_path_exact": ["Tiền gửi và cho vay các TCTD khác"],
+            "label_exact": "Tiền gửi và cho vay các TCTD khác",
+            "row_kind": "TOTAL",
+            "values_exact": ["12", "170", "139", "6"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Tiền gửi và cho vay các TCTD khác",
+                "Tiền gửi tại các TCTD khác",
+            ],
+            "label_exact": "Tiền gửi tại các TCTD khác",
+            "row_kind": "SUBTOTAL",
+            "values_exact": [None, "150", "130", None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Tiền gửi và cho vay các TCTD khác",
+                "Cho vay các TCTD khác",
+            ],
+            "label_exact": "Cho vay các TCTD khác",
+            "row_kind": "SUBTOTAL",
+            "values_exact": [None, "20", "10", None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Tiền gửi và cho vay các TCTD khác",
+                "Dự phòng rủi ro",
+            ],
+            "label_exact": "Dự phòng rủi ro",
+            "row_kind": "ITEM",
+            "values_exact": [None, "-", "(1)", None],
+        },
+    ]
+    result = _evaluate_recursive(page)
+    assert result["status"] == READY
+    assert [mapping["role"] for mapping in result["mappings"]] == [
+        "INTERBANK_DEPOSITS_AND_LOANS",
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+        "TOTAL_INTERBANK_PROVISION",
+    ]
+    assert all(len(mapping["columns"]) == 2 for mapping in result["mappings"])
+
+
+def test_recursive_family_rejects_wrong_arithmetic_scope_unit_duplicate_and_extra() -> None:
+    wrong_root = _recursive_page()
+    wrong_root["sections"][0]["tables"][0]["rows"][-1]["values_exact"][1] = "140"
+    assert "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0" in _evaluate_recursive(wrong_root)["reasons"]
+
+    wrong_scope = _recursive_page()
+    provision = wrong_scope["sections"][0]["tables"][0]["rows"][-2]
+    provision["hierarchy_path_exact"] = ["Cho vay các TCTD khác", "Dự phòng rủi ro"]
+    assert "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0" in _evaluate_recursive(wrong_scope)["reasons"]
+
+    missing_unit = _recursive_page()
+    table = missing_unit["sections"][0]["tables"][0]
+    table["unit_exact"] = None
+    for column in table["columns"]:
+        column["header_path_exact"] = [column["header_path_exact"][0]]
+    assert (
+        "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT"
+        in _evaluate_recursive(missing_unit)["reasons"]
+    )
+
+    duplicate = _recursive_page()
+    duplicate["sections"][0]["tables"][0]["rows"].insert(
+        4, deepcopy(duplicate["sections"][0]["tables"][0]["rows"][2])
+    )
+    assert any(
+        reason.startswith("ROLE_OCCURRENCE_COUNT_ABOVE_ONE:DEMAND_DEPOSIT_VND:2")
+        for reason in _evaluate_recursive(duplicate)["reasons"]
+    )
+
+    extra = _recursive_page()
+    extra["sections"][0]["tables"][0]["rows"].insert(
+        -1,
+        {
+            "hierarchy_path_exact": ["Tiền gửi và cho vay các TCTD khác", "Ngoài frontier"],
+            "label_exact": "Ngoài frontier",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "1"],
+        },
+    )
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:12" in _evaluate_recursive(extra)["reasons"]
+
+
+def test_recursive_specs_and_sweep_fail_closed_under_coherent_tamper() -> None:
+    topology, evaluation, schema = _recursive_specs()
+    invalid = deepcopy(evaluation)
+    invalid["hierarchical_closure_spec"]["equations"][0]["component_role_alternatives"][0][
+        "component_roles"
+    ].append("INTERBANK_DEPOSITS_AND_LOANS")
+    with pytest.raises(ValueError, match="cyclic"):
+        compile_gemini_json_flat_family_specs_v1(topology, invalid, schema)
+
+    ready = _evaluate_recursive(_recursive_page())
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "5" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[{"document_ordinal": 1, **ready}],
+    )
+    assert sweep["format_version"] == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+    assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+    tampered = deepcopy(sweep)
+    tampered["trials"][0]["closure_receipt"]["equations"][-1]["component_roles"].reverse()
+    with pytest.raises(ValueError, match="does not replay exactly"):
+        validate_gemini_json_flat_family_sweep_v1(tampered)
 
 
 def test_flat_family_sweep_metrics_and_self_identity() -> None:

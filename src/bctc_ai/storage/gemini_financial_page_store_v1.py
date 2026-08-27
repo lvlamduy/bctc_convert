@@ -1331,7 +1331,20 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
     """Bind semantic aliases to exact labels with harmless list markers."""
 
     folded = {normalize_search_text_v1(alias)["text_ascii_folded"] for alias in aliases}
-    punctuation_forms = set(folded) | {alias + ":" for alias in folded}
+    punctuation_forms = (
+        set(folded) | {alias + ":" for alias in folded} | {alias + " (*)" for alias in folded}
+    )
+    punctuation_forms |= {
+        alias.replace("tien vang ", "tien, vang ", 1)
+        for alias in punctuation_forms
+        if alias.startswith("tien vang ")
+    }
+    punctuation_forms |= {
+        alias.replace(" tctd ", marker, 1)
+        for alias in punctuation_forms
+        if " tctd " in alias
+        for marker in (' ("tctd") ', " (“tctd”) ", " (tctd) ")
+    }
     for alias in folded:
         stem, separator, suffix = alias.rpartition(" ")
         if separator and (suffix.isdigit() or suffix in {"i", "ii", "iii", "iv", "v"}):
@@ -1341,9 +1354,29 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
             punctuation_forms.update(
                 f"{prefix} {marker} bang {value_kind}" for marker in ("-", "–", "—", "•")
             )
+    ordinal_prefixes = {
+        *(str(value) for value in range(1, 21)),
+        "i",
+        "ii",
+        "iii",
+        "iv",
+        "v",
+        "vi",
+        "vii",
+        "viii",
+        "ix",
+        "x",
+        "xi",
+        "xii",
+        "xiii",
+        "xiv",
+        "xv",
+    }
     return sorted(
         punctuation_forms
         | {marker + alias for alias in punctuation_forms for marker in ("- ", "– ", "— ", "• ")}
+        | {prefix + " " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
+        | {prefix + ". " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
     )
 
 

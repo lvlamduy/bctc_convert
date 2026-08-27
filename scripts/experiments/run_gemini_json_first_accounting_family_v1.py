@@ -116,7 +116,73 @@ def _hit_has_explicit_parent(
         if type(value) is str and value
     )
     folded = normalize_vietnamese_anchor_v1(title)
-    return any(alias in folded for alias in parent_aliases)
+    if any(alias in folded for alias in parent_aliases):
+        return True
+    return any(
+        any(
+            normalize_vietnamese_anchor_v1(value) == alias
+            or normalize_vietnamese_anchor_v1(value).startswith(alias + " ")
+            for alias in parent_aliases
+        )
+        for row in table.get("rows", [])
+        for value in [row.get("label_exact"), *row.get("hierarchy_path_exact", [])]
+        if type(value) is str and value
+    )
+
+
+def _selected_ready_candidate(
+    ready: list[dict[str, Any]],
+    *,
+    compiled_specs: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Prefer one exact role-rich detail over its exact JSON summary."""
+
+    if len(ready) == 1:
+        return ready[0]
+    if not ready:
+        return None
+
+    def root_signature(candidate: dict[str, Any]) -> tuple[Any, ...] | None:
+        roots = [
+            mapping
+            for mapping in candidate["mappings"]
+            if mapping["report_norm_id"] == compiled_specs["schema"]["family_report_norm_id"]
+        ]
+        if len(roots) != 1:
+            return None
+        root = roots[0]
+        return (
+            len(root["columns"]),
+            tuple(value["coefficient"] for value in root["values"]),
+        )
+
+    signatures = [root_signature(candidate) for candidate in ready]
+    if any(signature is None for signature in signatures) or len(set(signatures)) != 1:
+        return None
+    structural_roles = {
+        compiled_specs["topology"]["parent"]["role"],
+        *(
+            child["role"]
+            for child in compiled_specs["topology"]["children"]
+            if child["role_kind"] == "STRUCTURAL_GROUP"
+        ),
+    }
+    role_sets = [{mapping["role"] for mapping in candidate["mappings"]} for candidate in ready]
+    maximum_size = max(map(len, role_sets))
+    winners = [index for index, roles in enumerate(role_sets) if len(roles) == maximum_size]
+    if len(winners) == 1:
+        winner = winners[0]
+        if all(
+            (roles & structural_roles) <= (role_sets[winner] & structural_roles)
+            for roles in role_sets
+        ):
+            return ready[winner]
+    winners = [
+        index
+        for index, roles in enumerate(role_sets)
+        if all(index == other or roles > other_roles for other, other_roles in enumerate(role_sets))
+    ]
+    return ready[winners[0]] if len(winners) == 1 else None
 
 
 def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str, Any]:
@@ -259,7 +325,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             table_id=region["table_id"],
             compiled_specs=compiled,
         )
-        if "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_OR_TABLE_TITLE" in candidate["reasons"]:
+        if any(reason.startswith("FAMILY_PARENT_NOT_VISIBLE") for reason in candidate["reasons"]):
             # The two/three-anchor database query deliberately searches a
             # one-page neighborhood.  A nearby table without the declarative
             # explicit parent is near evidence, not a family candidate.
@@ -277,10 +343,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         reasons = []
         selected_candidate_id = None
         mappings = []
-        if len(ready) == 1 and not unresolved_candidates:
+        selected = _selected_ready_candidate(ready, compiled_specs=compiled)
+        if selected is not None:
             status = READY
-            selected_candidate_id = ready[0]["candidate_id"]
-            mappings = ready[0]["mappings"]
+            selected_candidate_id = selected["candidate_id"]
+            mappings = selected["mappings"]
         elif not candidates and path not in near_paths:
             status = NOT_OBSERVED
         else:

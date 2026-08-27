@@ -12,6 +12,7 @@ from test_gemini_financial_page_json_v1 import _page
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
+    _family_anchor_lookup_forms_v1,
     _parents,
     _visual_state,
     build_financial_document_manifest_v1,
@@ -28,6 +29,20 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     selected_page_extraction_receipts_v1,
     usage_summary_v1,
 )
+
+
+def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation() -> None:
+    forms = _family_anchor_lookup_forms_v1(
+        [
+            "Tiền vàng gửi tại các TCTD khác",
+            "Tiền gửi không kỳ hạn 1",
+            "Cho vay các TCTD khác bằng VND",
+        ]
+    )
+    assert "iii. tien, vang gui tai cac tctd khac" in forms
+    assert "tien gui khong ky han (1)" in forms
+    assert 'cho vay cac ("tctd") khac bang vnd' in forms
+    assert "7. cho vay cac tctd khac bang vnd" in forms
 
 
 @pytest.mark.parametrize("source", ["-", "–", "—", "_", " _ "])
