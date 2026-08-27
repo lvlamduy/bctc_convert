@@ -74,6 +74,7 @@ def _compile_specs(
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
     }:
         from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
             compile_gemini_json_hierarchical_family_specs_v1,

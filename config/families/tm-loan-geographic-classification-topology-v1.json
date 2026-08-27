@@ -1,0 +1,80 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trong nước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DOMESTIC_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Nước ngoài"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": [
+    "Báo cáo bộ phận theo khu vực địa lý",
+    "Báo cáo bộ phận riêng lẻ theo khu vực địa lý",
+    "Báo cáo bộ phận hợp nhất theo khu vực địa lý",
+    "Bộ phận chia theo khu vực địa lý"
+  ],
+  "limits": {
+    "max_continuation_pages": 1,
+    "max_cluster_span_lines": 32,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Phân tích theo khu vực địa lý",
+      "Theo khu vực địa lý",
+      "Phân tích dư nợ cho vay theo khu vực địa lý",
+      "Phân tích dư nợ cho vay khách hàng theo khu vực địa lý",
+      "Mức độ tập trung theo khu vực địa lý",
+      "Mức độ tập trung của tài sản nợ phải trả và các cam kết ngoại bảng theo khu vực địa lý"
+    ],
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "role": "LOAN_GEOGRAPHIC_CLASSIFICATION"
+  },
+  "presence_evidence_mode": "GLOBAL_CORE_HITS",
+  "required_role_combinations": [
+    [
+      "DOMESTIC_TOTAL",
+      "FOREIGN_TOTAL"
+    ]
+  ],
+  "required_role_pools": [
+    {
+      "minimum_count": 2,
+      "roles": [
+        "DOMESTIC_TOTAL",
+        "FOREIGN_TOTAL"
+      ]
+    }
+  ],
+  "structural_reset_aliases": [
+    "Báo cáo bộ phận theo khu vực địa lý",
+    "Báo cáo bộ phận riêng lẻ theo khu vực địa lý",
+    "Báo cáo bộ phận hợp nhất theo khu vực địa lý",
+    "Phân tích theo loại hình doanh nghiệp",
+    "Phân tích theo ngành nghề kinh doanh",
+    "Phân tích theo chất lượng nợ",
+    "Phân tích theo thời hạn cho vay"
+  ]
+}

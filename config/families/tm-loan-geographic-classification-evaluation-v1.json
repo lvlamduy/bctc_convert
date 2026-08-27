@@ -1,0 +1,98 @@
+{
+  "candidate_selection_policy": "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL",
+  "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+  "dual_axis_projection_policy": {
+    "blank_role_cell_policy": "ALLOW_ZERO_ONLY_WHEN_EXACT_TOTAL_EQUALS_OTHER_ROLE",
+    "blank_zero_derivable_roles": [
+      "FOREIGN_TOTAL"
+    ],
+    "format_version": "GEMINI_JSON_DUAL_AXIS_PROJECTION_POLICY_V1",
+    "metric_aliases": [
+      "Cho vay khách hàng",
+      "Tổng nợ cho vay khách hàng",
+      "Tổng dư nợ cho vay khách hàng"
+    ],
+    "orientations": [
+      "ROW_ROLES_METRIC_COLUMN",
+      "METRIC_ROW_ROLE_COLUMNS"
+    ],
+    "period_cluster_policy": "SAME_OR_ADJACENT_PAGE_EXACT_PERIOD_COMPLEMENT",
+    "period_table_count_alternatives": [
+      1,
+      2
+    ],
+    "population_policy": "EXACT_OPPOSITE_AXIS_QUALIFIER_AND_EXHAUSTIVE_ROLE_PAIR",
+    "projected_role_order": [
+      "DOMESTIC_TOTAL",
+      "FOREIGN_TOTAL"
+    ],
+    "total_aliases": [
+      "Tổng cộng",
+      "Tổng"
+    ],
+    "unit_aliases": [
+      "Triệu đồng",
+      "Triệu VND"
+    ]
+  },
+  "expected_lane_unit_kind_alternatives": [
+    [
+      "MONEY"
+    ],
+    [
+      "MONEY",
+      "MONEY"
+    ]
+  ],
+  "family_id": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
+  "hierarchical_closure_spec": {
+    "equations": [
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "DOMESTIC_TOTAL",
+              "FOREIGN_TOTAL"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+          }
+        ],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": [
+          "LOAN_GEOGRAPHIC_CLASSIFICATION"
+        ],
+        "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS"
+      }
+    ],
+    "family_id": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4",
+    "repeated_role_policy": {
+      "aggregate_roles": [],
+      "local_subtotal_roles": []
+    },
+    "rounding_lane_unit_kind_alternatives": [
+      [
+        "MONEY"
+      ],
+      [
+        "MONEY",
+        "MONEY"
+      ]
+    ],
+    "source_role_policy": {
+      "one_edit_role_or_scope_match_policy": "VETO",
+      "source_only_veto_roles": []
+    }
+  },
+  "occurrence_row_axis_policy": {
+    "format_version": "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1",
+    "require_authenticated_existing_dash_pixels": false,
+    "retain_all_context_bound_role_occurrences": true
+  },
+  "period_semantics": "BALANCE_COMPARATIVE"
+}

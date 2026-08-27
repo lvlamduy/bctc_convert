@@ -53,6 +53,7 @@ from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: 
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
     page_json_region_repair_lineages_v1,
+    query_selected_dual_axis_family_regions_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
 )
@@ -968,17 +969,77 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         compiled.get("engine_format_version") == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
     )
     period_table_projection = compiled.get("period_table_projection_policy") is not None
+    dual_axis_projection = compiled.get("dual_axis_projection_policy") is not None
     query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
-    near_aliases = _near_anchor_aliases_v1(compiled, stacked=stacked)
-    near_hits = query_selected_family_anchor_hits_v1(
-        database,
-        selected_page_json_version_ids=selected_ids,
-        anchor_aliases=near_aliases,
-        explicit_parent_aliases=compiled.get(
-            "query_parent_aliases", compiled["topology"]["parent"]["aliases"]
-        ),
-    )
+    near_hits: list[dict[str, Any]] = []
+    dual_axis_document_context: dict[str, dict[str, Any]] = {}
+    dual_axis_query_receipt: dict[str, Any] | None = None
     regions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
+    if dual_axis_projection:
+        dual_policy = compiled["dual_axis_projection_policy"]
+        queried = query_selected_dual_axis_family_regions_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            metric_aliases=dual_policy["metric_aliases"],
+            role_aliases={
+                role: compiled["query_aliases_by_role"][role]
+                for role in dual_policy["projected_role_order"]
+            },
+            unit_aliases=dual_policy["unit_aliases"],
+            adjacent_page_radius=1,
+        )
+        dual_axis_document_context = queried["document_context_by_source"]
+        dual_axis_query_receipt = queried["query_receipt"]
+        ordered_region_axis = [
+            {
+                key: region[key]
+                for key in (
+                    "source_logical_name",
+                    "physical_page",
+                    "page_json_version_id",
+                    "section_id",
+                    "table_id",
+                    "orientation",
+                )
+            }
+            for region in sorted(
+                queried["regions"],
+                key=lambda item: (
+                    item["source_logical_name"],
+                    item["physical_page"],
+                    item["section_id"],
+                    item["table_id"],
+                    item["page_json_version_id"],
+                    item["orientation"],
+                ),
+            )
+        ]
+        if (
+            dual_axis_query_receipt["exact_region_count"] != len(queried["regions"])
+            or dual_axis_query_receipt["exact_region_axis_sha256"]
+            != canonical_json_sha256_v1(ordered_region_axis)
+            or dual_axis_query_receipt["target_document_count"]
+            != len({region["source_logical_name"] for region in queried["regions"]})
+        ):
+            raise _error("dual-axis query receipt does not replay its exact region axis")
+        for region in queried["regions"]:
+            key = (
+                region["source_logical_name"],
+                region["physical_page"],
+                region["section_id"],
+                region["table_id"],
+            )
+            regions_by_key[key] = region
+    else:
+        near_aliases = _near_anchor_aliases_v1(compiled, stacked=stacked)
+        near_hits = query_selected_family_anchor_hits_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            anchor_aliases=near_aliases,
+            explicit_parent_aliases=compiled.get(
+                "query_parent_aliases", compiled["topology"]["parent"]["aliases"]
+            ),
+        )
     if stacked:
         regions = _stacked_candidate_regions_from_hits_v1(
             near_hits,
@@ -993,7 +1054,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 region["table_id"],
             )
             regions_by_key[key] = region
-    else:
+    elif not dual_axis_projection:
         for anchor_groups in query_anchor_groups:
             regions = query_selected_family_anchor_regions_v1(
                 database,
@@ -1022,26 +1083,39 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             ]
         }
     )
-    loaded = load_page_json_versions_v1(
-        database,
-        page_json_version_ids=candidate_version_ids,
+    loaded = (
+        load_page_json_versions_v1(
+            database,
+            page_json_version_ids=candidate_version_ids,
+        )
+        if candidate_version_ids
+        else []
     )
     page_by_version = {record["page_json_version_id"]: record for record in loaded}
-    near_paths = {
-        hit["source_logical_name"]
-        for hit in near_hits
-        if _hit_has_explicit_parent(
-            hit,
-            allow_row_parent=(
-                compiled.get("engine_format_version")
-                == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
-            ),
-            parent_aliases=compiled["topology"]["parent"]["aliases"],
-        )
-    }
+    near_paths = (
+        {region["source_logical_name"] for region in regions_by_key.values()}
+        if dual_axis_projection
+        else {
+            hit["source_logical_name"]
+            for hit in near_hits
+            if _hit_has_explicit_parent(
+                hit,
+                allow_row_parent=(
+                    compiled.get("engine_format_version")
+                    == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+                ),
+                parent_aliases=compiled["topology"]["parent"]["aliases"],
+            )
+        }
+    )
     candidates_by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
     grouped_region_keys: list[list[tuple[str, int, str, str]]] = []
-    if stacked:
+    if dual_axis_projection:
+        by_source: dict[str, list[tuple[str, int, str, str]]] = defaultdict(list)
+        for key in sorted(regions_by_key):
+            by_source[key[0]].append(key)
+        grouped_region_keys = list(by_source.values())
+    elif stacked:
         by_page: dict[tuple[str, int], list[tuple[str, int, str, str]]] = defaultdict(list)
         for key in sorted(regions_by_key):
             by_page[key[:2]].append(key)
@@ -1061,7 +1135,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         table = _region_table(page["page_json"], region)
         columns = table.get("columns")
         if (
-            type(columns) is list
+            not dual_axis_projection
+            and type(columns) is list
             and columns
             and all(column.get("value_kind") != "MONEY" for column in columns)
         ):
@@ -1070,7 +1145,27 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             # context, not a competing accounting-value population.
             continue
         evaluated_candidates = []
-        if stacked:
+        if dual_axis_projection:
+            from bctc_ai.evaluation.gemini_json_dual_axis_accounting_family_v1 import (
+                evaluate_gemini_json_dual_axis_family_cluster_v1,
+            )
+
+            source_path = region["source_logical_name"]
+            if dual_axis_query_receipt is None or source_path not in dual_axis_document_context:
+                raise _error("dual-axis query document context is incomplete")
+            evaluated_candidates.append(
+                evaluate_gemini_json_dual_axis_family_cluster_v1(
+                    regions=[regions_by_key[key] for key in grouped_keys],
+                    page_json_by_version={
+                        version_id: record["page_json"]
+                        for version_id, record in page_by_version.items()
+                    },
+                    document_context=dual_axis_document_context[source_path],
+                    compiled_specs=compiled,
+                    query_receipt=dual_axis_query_receipt,
+                )
+            )
+        elif stacked:
             from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
                 evaluate_gemini_json_stacked_period_family_region_v1,
             )
@@ -1129,16 +1224,19 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        candidates_by_path[region["source_logical_name"]].extend(
-            _with_adjacent_continuation_hard_negative_v1(
-                candidate,
-                region=region,
-                page_by_version=page_by_version,
-                parent_aliases=compiled["topology"]["parent"]["aliases"],
-                hard_negative_aliases=compiled["topology"]["hard_negative_aliases"],
+        if dual_axis_projection:
+            candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
+        else:
+            candidates_by_path[region["source_logical_name"]].extend(
+                _with_adjacent_continuation_hard_negative_v1(
+                    candidate,
+                    region=region,
+                    page_by_version=page_by_version,
+                    parent_aliases=compiled["topology"]["parent"]["aliases"],
+                    hard_negative_aliases=compiled["topology"]["hard_negative_aliases"],
+                )
+                for candidate in evaluated_candidates
             )
-            for candidate in evaluated_candidates
-        )
 
     trials = []
     for document in index["documents"]:
@@ -1215,6 +1313,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
+    if dual_axis_projection:
+        implementation_paths = (
+            *implementation_paths,
+            ROOT / "src/bctc_ai/evaluation/gemini_json_dual_axis_accounting_family_v1.py",
+        )
     stored = ingest_gemini_accounting_family_sweep_v1(
         args.results_database,
         sweep=sweep,

@@ -35,6 +35,7 @@ _EVALUATION_FORMATS = {
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
 }
 _SCHEMA_FORMATS = {
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
@@ -497,7 +498,7 @@ def _footnote_narrative_mapping_evidence(
 def _period_value_column_axis(
     *, columns: Any, table_unit: Any, evaluation: dict[str, Any]
 ) -> tuple[list[int], list[dict[str, Any]], list[int], dict[str, Any] | None, list[str]]:
-    """Bind two accounting periods while retaining optional percentage companions."""
+    """Bind one or two accounting periods with optional paired percentages."""
 
     reasons: list[str] = []
     if type(columns) is not list or not columns:
@@ -511,7 +512,14 @@ def _period_value_column_axis(
     money_indices = [index for index, kind in enumerate(kinds) if kind == "MONEY"]
     percent_indices = [index for index, kind in enumerate(kinds) if kind == "PERCENT"]
     money_columns = [columns[index] for index in money_indices]
-    if len(money_indices) != 2 or any(not _header_text(column) for column in columns):
+    supported_money_lane_counts = (
+        {1, 2}
+        if evaluation.get("format_version") == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7"
+        else {2}
+    )
+    if len(money_indices) not in supported_money_lane_counts or any(
+        not _header_text(column) for column in columns
+    ):
         reasons.append("PERIOD_VALUE_COLUMN_HEADER_OR_MONEY_LANE_COUNT_IS_NOT_EXACT")
         return money_indices, money_columns, percent_indices, None, reasons
     if percent_indices and (
@@ -538,12 +546,17 @@ def _period_value_column_axis(
     signatures = [_period_signature(_header_text(column)) for column in money_columns]
     if any(signature is None for signature in signatures):
         reasons.append("CURRENT_AND_COMPARATIVE_PERIOD_HEADERS_ARE_NOT_EXACT")
-    elif signatures[0][0] != signatures[1][0]:
+    elif len(signatures) == 2 and signatures[0][0] != signatures[1][0]:
         reasons.append("CURRENT_AND_COMPARATIVE_PERIOD_HEADER_KINDS_DIFFER")
-    elif signatures[0][0] == "DATE" and not signatures[0][1] > signatures[1][1]:
+    elif (
+        len(signatures) == 2
+        and signatures[0][0] == "DATE"
+        and not signatures[0][1] > signatures[1][1]
+    ):
         reasons.append("CURRENT_PERIOD_DATE_IS_NOT_AFTER_COMPARATIVE_PERIOD_DATE")
     elif (
-        signatures
+        len(signatures) == 2
+        and signatures
         != [
             ("SEMANTIC_ALIAS", "CURRENT_PERIOD"),
             ("SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"),
@@ -601,6 +614,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
     if evaluation_format in {
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
     }:
         evaluation_keys = {
             "candidate_selection_policy",
@@ -614,6 +628,8 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         }
         if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6":
             evaluation_keys.add("period_table_projection_policy")
+        elif evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7":
+            evaluation_keys.add("dual_axis_projection_policy")
     lane_alternatives = (
         evaluation_spec.get("expected_lane_unit_kind_alternatives")
         if type(evaluation_spec) is dict
@@ -621,6 +637,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         in {
             "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
             "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
         }
         else [evaluation_spec.get("expected_lane_unit_kinds")]
         if type(evaluation_spec) is dict
@@ -635,12 +652,17 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         or not lane_alternatives
         or any(
             alternative not in (["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"])
+            and not (
+                evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7"
+                and alternative == ["MONEY"]
+            )
             for alternative in lane_alternatives
         )
         or len({tuple(alternative) for alternative in lane_alternatives}) != len(lane_alternatives)
     ):
         raise _error("Gemini JSON hierarchy evaluation spec is invalid or unsupported")
     period_table_projection_policy = None
+    dual_axis_projection_policy = None
     if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6":
         raw_projection = evaluation_spec["period_table_projection_policy"]
         if (
@@ -671,6 +693,64 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "target_column_aliases": sorted(
                 {_normalized(alias) for alias in raw_projection["target_column_aliases"]}
             ),
+        }
+    elif evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7":
+        raw_projection = evaluation_spec["dual_axis_projection_policy"]
+        expected_fields = {
+            "blank_role_cell_policy",
+            "blank_zero_derivable_roles",
+            "format_version",
+            "metric_aliases",
+            "orientations",
+            "period_cluster_policy",
+            "period_table_count_alternatives",
+            "population_policy",
+            "projected_role_order",
+            "total_aliases",
+            "unit_aliases",
+        }
+        if type(raw_projection) is not dict or set(raw_projection) != expected_fields:
+            raise _error("Gemini JSON dual-axis projection policy fields are invalid")
+        normalized_alias_lists: dict[str, list[str]] = {}
+        for field in ("metric_aliases", "total_aliases", "unit_aliases"):
+            values = raw_projection[field]
+            if (
+                type(values) is not list
+                or not values
+                or any(type(value) is not str or not _normalized(value) for value in values)
+            ):
+                raise _error("Gemini JSON dual-axis projection aliases are invalid")
+            normalized = [_normalized(value) for value in values]
+            if len(normalized) != len(set(normalized)):
+                raise _error("Gemini JSON dual-axis projection aliases are ambiguous")
+            normalized_alias_lists[field] = normalized
+        projected_roles = raw_projection["projected_role_order"]
+        blank_zero_derivable_roles = raw_projection["blank_zero_derivable_roles"]
+        topology_child_roles = {child["role"] for child in topology["children"]}
+        if (
+            raw_projection["format_version"] != "GEMINI_JSON_DUAL_AXIS_PROJECTION_POLICY_V1"
+            or raw_projection["orientations"]
+            != ["ROW_ROLES_METRIC_COLUMN", "METRIC_ROW_ROLE_COLUMNS"]
+            or raw_projection["period_cluster_policy"]
+            != "SAME_OR_ADJACENT_PAGE_EXACT_PERIOD_COMPLEMENT"
+            or raw_projection["period_table_count_alternatives"] != [1, 2]
+            or raw_projection["population_policy"]
+            != "EXACT_OPPOSITE_AXIS_QUALIFIER_AND_EXHAUSTIVE_ROLE_PAIR"
+            or raw_projection["blank_role_cell_policy"]
+            != "ALLOW_ZERO_ONLY_WHEN_EXACT_TOTAL_EQUALS_OTHER_ROLE"
+            or type(projected_roles) is not list
+            or len(projected_roles) != 2
+            or len(set(projected_roles)) != 2
+            or any(role not in topology_child_roles for role in projected_roles)
+            or type(blank_zero_derivable_roles) is not list
+            or not blank_zero_derivable_roles
+            or len(blank_zero_derivable_roles) != len(set(blank_zero_derivable_roles))
+            or any(role not in projected_roles for role in blank_zero_derivable_roles)
+        ):
+            raise _error("Gemini JSON dual-axis projection policy is invalid")
+        dual_axis_projection_policy = {
+            **canonical_clone_v1(raw_projection),
+            **normalized_alias_lists,
         }
     hierarchy = evaluation_spec["hierarchical_closure_spec"]
     if (
@@ -714,6 +794,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
             }:
                 selection_policy = equation.get("component_selection_policy")
                 variable_subset = (
@@ -721,12 +802,14 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                     in {
                         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
                     }
                     and selection_policy == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
                 )
                 if evaluation_format in {
                     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
                 } and selection_policy not in {
                     "DECLARED_EXACT_ALTERNATIVE",
                     "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
@@ -787,6 +870,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                             in {
                                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
                             }
                             and equation.get("component_selection_policy")
                             == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
@@ -1087,7 +1171,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             query_anchor_groups.extend(safe_query_groups)
         else:
             query_anchor_groups.append([raw_aliases_by_role[role] for role in combination])
-    return {
+    compiled = {
         "aliases_by_role": aliases_by_role,
         "anchor_alias_groups": anchor_groups,
         "bindings": bindings,
@@ -1106,6 +1190,9 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "source_role_mapping_transforms": source_role_mapping_transforms,
         "topology": topology,
     }
+    if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7":
+        compiled["dual_axis_projection_policy"] = dual_axis_projection_policy
+    return compiled
 
 
 def compile_gemini_json_hierarchical_family_specs_v1(
@@ -1236,6 +1323,7 @@ def _solve(
     anonymous: list[dict[str, Any]],
     compiled: dict[str, Any],
     ambiguous_provision_target: str | None,
+    lane_count: int,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[str], set[str]]:
     topology = compiled["topology"]
     family_result_role = compiled["family_result_role"]
@@ -1330,7 +1418,7 @@ def _solve(
                 ),
                 key=lambda record: (record["ordinal"], record["role"], record["row_id"]),
             )
-            if subtotal_components and _sum(subtotal_components, 2) == _coefficients(
+            if subtotal_components and _sum(subtotal_components, lane_count) == _coefficients(
                 resolved[total_role]
             ):
                 equations_receipt.append(
@@ -1400,7 +1488,7 @@ def _solve(
                 role for role in alternative["component_roles"] if role in direct_visible
             ]
             components = [resolved[role] for role in selected_roles]
-            sums = _sum(components, 2)
+            sums = _sum(components, lane_count)
             carriers: list[dict[str, Any]] = []
             authoritative_visible = False
             if existing is not None and _carrier_matches_source_sum(
@@ -1435,6 +1523,7 @@ def _solve(
                         in {
                             "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                             "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
                         }
                         and record.get("owner_role") == topology["parent"]["role"]
                         and result_role != family_result_role
@@ -1547,7 +1636,7 @@ def _solve(
             else None
         )
         if len(alternatives) != 1 and lane_carrier is not None:
-            for lane in range(2):
+            for lane in range(lane_count):
                 lane_candidates = {}
                 for alternative in equation["component_role_alternatives"]:
                     declared = set(alternative["component_roles"])
@@ -1587,7 +1676,7 @@ def _solve(
                     lane_specific_frontiers = []
                     break
                 lane_specific_frontiers.append(next(iter(lane_candidates.values())))
-        if len(lane_specific_frontiers) == 2:
+        if len(lane_specific_frontiers) == lane_count:
             selected_roles_by_lane = [roles for roles, _components in lane_specific_frontiers]
             components_by_lane = [components for _roles, components in lane_specific_frontiers]
             resolved[result_role] = {**lane_carrier, "owner_role": None, "role": result_role}
@@ -1712,7 +1801,7 @@ def _solve(
     for receipt in equations_receipt:
         roles_by_lane = receipt.get("component_roles_by_lane")
         if roles_by_lane is None:
-            roles_by_lane = [receipt.get("component_roles", []) for _lane in range(2)]
+            roles_by_lane = [receipt.get("component_roles", []) for _lane in range(lane_count)]
         for lane, roles in enumerate(roles_by_lane):
             for role in roles:
                 lane_use_counts[(role, lane)] += 1
@@ -1732,6 +1821,7 @@ def _intermediate_parent_subtotal_receipts(
     source_rows: list[dict[str, Any]],
     topology: dict[str, Any],
     unmatched_numeric_ordinals: set[int],
+    lane_count: int,
 ) -> list[dict[str, Any]]:
     """Corroborate one visible parent subtotal without promoting it to the root.
 
@@ -1808,7 +1898,7 @@ def _intermediate_parent_subtotal_receipts(
         len(components) < 2
         or len(component_roles) != len(set(component_roles))
         or any(record.get("owner_role") not in component_roles for record in nested_nonadditive)
-        or _sum(components, 2) != _coefficients(candidate)
+        or _sum(components, lane_count) != _coefficients(candidate)
     ):
         return []
     return [
@@ -2253,6 +2343,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     if compiled_specs["evaluation"]["format_version"] in {
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
     }:
         (
             money_indices,
@@ -2292,7 +2383,12 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             or not unit_is_declared
         ):
             reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
-    if len(money_columns) != 2:
+    supported_lane_counts = (
+        {1, 2}
+        if compiled_specs["evaluation"]["format_version"] == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7"
+        else {2}
+    )
+    if len(money_columns) not in supported_lane_counts:
         if "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT" not in reasons:
             reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
         return _candidate_result(
@@ -2303,6 +2399,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             table_id=table_id,
             reasons=reasons,
         )
+    lane_count = len(money_columns)
     narrative_mapping_evidence, narrative_reasons = _footnote_narrative_mapping_evidence(
         table_title=table.get("title_exact"),
         narratives=section.get("narratives_exact"),
@@ -2465,6 +2562,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                 in {
                     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
                     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V7",
                 }
             ):
                 record["allowed_result_roles"] = {
@@ -2548,7 +2646,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         if (
             _coefficients(primary[0]) != _coefficients(shadow)
             or not descendants
-            or _sum(descendants, 2) != _coefficients(shadow)
+            or _sum(descendants, lane_count) != _coefficients(shadow)
         ):
             continue
         records_by_role[role] = primary
@@ -2571,6 +2669,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         source_rows=source_rows,
         topology=topology,
         unmatched_numeric_ordinals=set(unmatched_numeric),
+        lane_count=lane_count,
     )
     if intermediate_parent_subtotal_candidates and not intermediate_parent_receipts:
         unmatched_numeric.extend(
@@ -2643,6 +2742,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             anonymous=anonymous,
             compiled=compiled_specs,
             ambiguous_provision_target=target,
+            lane_count=lane_count,
         )
         if not local_reasons:
             solutions.append((resolved, receipts, used, target))

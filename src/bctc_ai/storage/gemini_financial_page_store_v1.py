@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -1994,6 +1995,478 @@ def query_selected_family_anchor_regions_v1(
                 }
             )
     return result
+
+
+_DUAL_AXIS_YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+
+
+def _dual_axis_folded_label_v1(value: Any) -> str:
+    if type(value) is not str:
+        return ""
+    return normalize_search_text_v1(value)["text_ascii_folded"]
+
+
+def _dual_axis_header_leaf_v1(
+    value: Any, *, declared_unit_suffixes: set[str]
+) -> tuple[str, list[str]]:
+    """Return an exact accounting-axis leaf after removing only a money unit."""
+
+    if type(value) not in {str, bytes}:
+        return "", []
+    try:
+        path = json.loads(value)
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+        return "", []
+    if type(path) is not list or any(item is not None and type(item) is not str for item in path):
+        return "", []
+    exact_path = [item for item in path if type(item) is str and item]
+    for exact in reversed(exact_path):
+        folded = _dual_axis_folded_label_v1(exact)
+        for suffix in sorted(declared_unit_suffixes, key=lambda item: (-len(item), item)):
+            if folded == suffix:
+                folded = ""
+                break
+            if folded.endswith(" " + suffix):
+                folded = folded[: -(len(suffix) + 1)].strip()
+                break
+        if folded:
+            return folded, exact_path
+    return "", exact_path
+
+
+def query_selected_dual_axis_family_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    metric_aliases: Sequence[str],
+    role_aliases: Mapping[str, Sequence[str]],
+    unit_aliases: Sequence[str],
+    adjacent_page_radius: int = 1,
+) -> dict[str, Any]:
+    """Query exact row/column-transposed accounting regions and bounded context.
+
+    An indexed row hit narrows every lookup before column headers are decoded.
+    A region is returned only when one orientation contains the two declared
+    role anchors and one exact opposite-axis metric qualifier.  Header matching
+    removes only a trailing money unit; it never uses a substring, bank, file,
+    page number, note number, OCR geometry, or broad-population narrowing.
+    """
+
+    if (
+        type(selected_page_json_version_ids) not in {list, tuple}
+        or not selected_page_json_version_ids
+        or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+        or any(
+            type(version_id) is not str
+            or not version_id.startswith("gfpstorev1:json:")
+            or len(version_id) != len("gfpstorev1:json:") + 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in version_id.removeprefix("gfpstorev1:json:")
+            )
+            for version_id in selected_page_json_version_ids
+        )
+        or type(metric_aliases) not in {list, tuple}
+        or not metric_aliases
+        or not isinstance(role_aliases, Mapping)
+        or len(role_aliases) != 2
+        or any(type(role) is not str or not role for role in role_aliases)
+        or any(
+            type(aliases) not in {list, tuple} or not aliases for aliases in role_aliases.values()
+        )
+        or type(unit_aliases) not in {list, tuple}
+        or not unit_aliases
+        or type(adjacent_page_radius) is not int
+        or not 0 <= adjacent_page_radius <= 2
+    ):
+        raise _error("selected dual-axis family query is invalid")
+
+    def folded_aliases(values: Sequence[str]) -> list[str]:
+        folded = [_dual_axis_folded_label_v1(value) for value in values]
+        if any(not value for value in folded) or len(folded) != len(set(folded)):
+            raise _error("selected dual-axis family aliases are invalid or ambiguous")
+        return folded
+
+    folded_metrics = set(folded_aliases(metric_aliases))
+    folded_roles = {role: set(folded_aliases(aliases)) for role, aliases in role_aliases.items()}
+    folded_units = set(folded_aliases(unit_aliases))
+    selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=selected_page_json_version_ids,
+    )
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_dual_page("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_dual_page VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        selected_pages = connection.execute(
+            """
+            SELECT s.selection_ordinal, s.page_json_version_id,
+                   d.document_id, d.source_logical_name, p.physical_page
+            FROM selected_dual_page AS s
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            ORDER BY s.selection_ordinal
+            """
+        ).fetchall()
+        if len(selected_pages) != len(selected_page_json_version_ids):
+            raise _error("selected dual-axis page JSON version is absent")
+        locations = [(row["source_logical_name"], row["physical_page"]) for row in selected_pages]
+        if len(locations) != len(set(locations)):
+            raise _error("selected dual-axis frontier repeats one physical page")
+        if locations != sorted(locations):
+            raise _error("selected dual-axis frontier is not in corpus source/page order")
+
+        connection.execute(
+            "CREATE TEMP TABLE dual_row_alias("
+            "axis_kind TEXT NOT NULL, role TEXT NOT NULL, label_ascii_folded TEXT NOT NULL, "
+            "PRIMARY KEY(axis_kind,role,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO dual_row_alias VALUES (?,?,?)",
+            [
+                *(("METRIC", "METRIC", alias) for alias in sorted(folded_metrics)),
+                *(
+                    ("ROLE", role, alias)
+                    for role, aliases in folded_roles.items()
+                    for alias in sorted(aliases)
+                ),
+            ],
+        )
+        row_hits = connection.execute(
+            """
+            SELECT r.page_json_version_id, r.section_id, r.table_id,
+                   r.row_id, r.source_order, r.label_exact,
+                   a.axis_kind, a.role
+            FROM row_node AS r
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN dual_row_alias AS a USING(label_ascii_folded)
+            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
+                     r.source_order, r.row_id, a.axis_kind, a.role
+            """
+        ).fetchall()
+        hits_by_table: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for row in row_hits:
+            key = (row["page_json_version_id"], row["section_id"], row["table_id"])
+            hits_by_table.setdefault(key, []).append(dict(row))
+        candidate_keys = sorted(
+            key
+            for key, hits in hits_by_table.items()
+            if {hit["role"] for hit in hits if hit["axis_kind"] == "ROLE"} == set(folded_roles)
+            or any(hit["axis_kind"] == "METRIC" for hit in hits)
+        )
+        connection.execute(
+            "CREATE TEMP TABLE dual_candidate_table("
+            "page_json_version_id TEXT NOT NULL, section_id TEXT NOT NULL, "
+            "table_id TEXT NOT NULL, PRIMARY KEY(page_json_version_id,section_id,table_id))"
+        )
+        connection.executemany(
+            "INSERT INTO dual_candidate_table VALUES (?,?,?)",
+            candidate_keys,
+        )
+        column_rows = connection.execute(
+            """
+            SELECT c.page_json_version_id, c.section_id, c.table_id,
+                   c.column_id, c.column_ordinal, c.header_path_exact_json,
+                   c.value_kind
+            FROM column_node AS c
+            JOIN dual_candidate_table AS k
+              USING(page_json_version_id,section_id,table_id)
+            ORDER BY c.page_json_version_id, c.section_id, c.table_id,
+                     c.column_ordinal, c.column_id
+            """
+        ).fetchall()
+        columns_by_table: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for row in column_rows:
+            record = dict(row)
+            leaf, exact_path = _dual_axis_header_leaf_v1(
+                record["header_path_exact_json"],
+                declared_unit_suffixes=folded_units,
+            )
+            record["header_leaf_ascii_folded"] = leaf
+            record["header_path_exact"] = exact_path
+            record.pop("header_path_exact_json")
+            key = (record["page_json_version_id"], record["section_id"], record["table_id"])
+            columns_by_table.setdefault(key, []).append(record)
+
+        page_by_version = {row["page_json_version_id"]: row for row in selected_pages}
+        selected_pages_by_document: dict[str, list[dict[str, Any]]] = {}
+        for row in selected_pages:
+            selected_pages_by_document.setdefault(row["document_id"], []).append(
+                {
+                    "physical_page": row["physical_page"],
+                    "page_json_version_id": row["page_json_version_id"],
+                }
+            )
+        regions: list[dict[str, Any]] = []
+        for key in candidate_keys:
+            hits = hits_by_table[key]
+            columns = columns_by_table.get(key, [])
+            row_roles = {
+                role: [hit for hit in hits if hit["axis_kind"] == "ROLE" and hit["role"] == role]
+                for role in folded_roles
+            }
+            metric_rows = [hit for hit in hits if hit["axis_kind"] == "METRIC"]
+            metric_columns = [
+                column
+                for column in columns
+                if column["value_kind"] == "MONEY"
+                and column["header_leaf_ascii_folded"] in folded_metrics
+            ]
+            role_columns = {
+                role: [
+                    column
+                    for column in columns
+                    if column["value_kind"] == "MONEY"
+                    and column["header_leaf_ascii_folded"] in aliases
+                ]
+                for role, aliases in folded_roles.items()
+            }
+            orientations = []
+            if (
+                all(len(matches) == 1 for matches in row_roles.values())
+                and len(metric_columns) == 1
+            ):
+                orientations.append("ROW_ROLES_METRIC_COLUMN")
+            if len(metric_rows) == 1 and all(
+                len(matches) == 1 for matches in role_columns.values()
+            ):
+                orientations.append("METRIC_ROW_ROLE_COLUMNS")
+            if len(orientations) != 1:
+                continue
+            page = page_by_version[key[0]]
+            context_pages = [
+                context
+                for context in selected_pages_by_document[page["document_id"]]
+                if max(1, page["physical_page"] - adjacent_page_radius)
+                <= context["physical_page"]
+                <= page["physical_page"] + adjacent_page_radius
+            ]
+            orientation = orientations[0]
+            regions.append(
+                {
+                    "axis_evidence": {
+                        "metric": (
+                            {k: v for k, v in metric_columns[0].items() if k != "value_kind"}
+                            if orientation == "ROW_ROLES_METRIC_COLUMN"
+                            else {
+                                key: metric_rows[0][key]
+                                for key in ("label_exact", "row_id", "source_order")
+                            }
+                        ),
+                        "roles": {
+                            role: (
+                                {
+                                    key: row_roles[role][0][key]
+                                    for key in ("label_exact", "row_id", "source_order")
+                                }
+                                if orientation == "ROW_ROLES_METRIC_COLUMN"
+                                else {
+                                    key: role_columns[role][0][key]
+                                    for key in (
+                                        "column_id",
+                                        "column_ordinal",
+                                        "header_leaf_ascii_folded",
+                                        "header_path_exact",
+                                    )
+                                }
+                            )
+                            for role in folded_roles
+                        },
+                    },
+                    "context_pages": context_pages,
+                    "document_id": page["document_id"],
+                    "orientation": orientation,
+                    "page_json_version_id": key[0],
+                    "physical_page": page["physical_page"],
+                    "section_id": key[1],
+                    "source_logical_name": page["source_logical_name"],
+                    "table_id": key[2],
+                }
+            )
+
+        target_documents = sorted({region["document_id"] for region in regions})
+        connection.execute("CREATE TEMP TABLE dual_target_document(document_id TEXT PRIMARY KEY)")
+        connection.executemany(
+            "INSERT INTO dual_target_document VALUES (?)",
+            ((document_id,) for document_id in target_documents),
+        )
+        title_rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, sn.section_id, NULL AS table_id,
+                   'SECTION_TITLE' AS source_kind, sn.title_exact AS text_exact
+            FROM section_node AS sn
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_target_document AS td USING(document_id)
+            WHERE sn.title_exact IS NOT NULL
+            UNION ALL
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, t.section_id, t.table_id,
+                   'TABLE_TITLE' AS source_kind, t.title_exact AS text_exact
+            FROM table_node AS t
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_target_document AS td USING(document_id)
+            WHERE t.title_exact IS NOT NULL
+            ORDER BY selection_ordinal, section_id, table_id, source_kind
+            """
+        ).fetchall()
+        unit_rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, t.section_id, t.table_id,
+                   'TABLE_UNIT' AS source_kind, t.unit_exact AS text_exact
+            FROM table_node AS t
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_target_document AS td USING(document_id)
+            WHERE t.unit_exact IS NOT NULL
+            ORDER BY selection_ordinal, t.section_id, t.table_id
+            """
+        ).fetchall()
+        header_rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, c.section_id, c.table_id, c.column_id,
+                   c.header_path_exact_json
+            FROM column_node AS c
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_target_document AS td USING(document_id)
+            ORDER BY selection_ordinal, c.section_id, c.table_id,
+                     c.column_ordinal, c.column_id
+            """
+        ).fetchall()
+
+    context_by_source = {
+        region["source_logical_name"]: {"period_evidence": [], "unit_evidence": []}
+        for region in regions
+    }
+
+    def append_context(target: list[dict[str, Any]], row: Mapping[str, Any], text: str) -> None:
+        record = {
+            "physical_page": row["physical_page"],
+            "section_id": row["section_id"],
+            "source_kind": row["source_kind"],
+            "table_id": row["table_id"],
+            "text_exact": text,
+        }
+        if record not in target:
+            target.append(record)
+
+    for row in title_rows:
+        if _DUAL_AXIS_YEAR.search(row["text_exact"]):
+            append_context(
+                context_by_source[row["source_logical_name"]]["period_evidence"],
+                row,
+                row["text_exact"],
+            )
+    for row in unit_rows:
+        folded = _dual_axis_folded_label_v1(row["text_exact"])
+        if folded in folded_units:
+            append_context(
+                context_by_source[row["source_logical_name"]]["unit_evidence"],
+                row,
+                row["text_exact"],
+            )
+    for row in header_rows:
+        try:
+            header_path = json.loads(row["header_path_exact_json"])
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("selected dual-axis column header path is invalid") from exc
+        if type(header_path) is not list or any(
+            value is not None and type(value) is not str for value in header_path
+        ):
+            raise _error("selected dual-axis column header path is invalid")
+        for text_exact in (value for value in header_path if type(value) is str and value):
+            record = {
+                **dict(row),
+                "source_kind": "COLUMN_HEADER",
+                "table_id": row["table_id"],
+            }
+            if _DUAL_AXIS_YEAR.search(text_exact):
+                append_context(
+                    context_by_source[row["source_logical_name"]]["period_evidence"],
+                    record,
+                    text_exact,
+                )
+            folded = _dual_axis_folded_label_v1(text_exact)
+            if any(folded == unit or folded.endswith(" " + unit) for unit in folded_units):
+                append_context(
+                    context_by_source[row["source_logical_name"]]["unit_evidence"],
+                    record,
+                    text_exact,
+                )
+    ordered_region_axis = [
+        {
+            key: region[key]
+            for key in (
+                "source_logical_name",
+                "physical_page",
+                "page_json_version_id",
+                "section_id",
+                "table_id",
+                "orientation",
+            )
+        }
+        for region in sorted(
+            regions,
+            key=lambda item: (
+                item["source_logical_name"],
+                item["physical_page"],
+                item["section_id"],
+                item["table_id"],
+                item["page_json_version_id"],
+                item["orientation"],
+            ),
+        )
+    ]
+    return {
+        "document_context_by_source": context_by_source,
+        "query_receipt": {
+            "candidate_table_count_before_column_decode": len(candidate_keys),
+            "decoded_column_header_count": len(column_rows),
+            "document_context_period_record_count": sum(
+                len(context["period_evidence"]) for context in context_by_source.values()
+            ),
+            "document_context_unit_record_count": sum(
+                len(context["unit_evidence"]) for context in context_by_source.values()
+            ),
+            "exact_region_count": len(regions),
+            "exact_region_axis_sha256": canonical_json_sha256_v1(ordered_region_axis),
+            "indexed_row_hit_count": len(row_hits),
+            "orientation_counts": {
+                orientation: sum(region["orientation"] == orientation for region in regions)
+                for orientation in (
+                    "METRIC_ROW_ROLE_COLUMNS",
+                    "ROW_ROLES_METRIC_COLUMN",
+                )
+            },
+            "selected_page_json_frontier_sha256": canonical_json_sha256_v1(
+                list(selected_page_json_version_ids)
+            ),
+            "selected_page_json_version_count": len(selected_page_json_version_ids),
+            "target_document_count": len(target_documents),
+            "target_document_header_record_count": len(header_rows),
+            "target_document_title_record_count": len(title_rows),
+        },
+        "regions": regions,
+    }
 
 
 def usage_summary_v1(path: Path) -> dict[str, Any]:

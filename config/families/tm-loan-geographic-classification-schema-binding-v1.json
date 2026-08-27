@@ -1,0 +1,20 @@
+{
+  "family_id": "LOAN_GEOGRAPHIC_CLASSIFICATION",
+  "family_owner_report_norm_id": 716,
+  "family_report_norm_id": 759,
+  "family_root_mapping_policy": "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "ignored_roles": [],
+  "role_bindings": [
+    {
+      "parent_report_norm_id": 759,
+      "report_norm_id": 5752,
+      "role": "DOMESTIC_TOTAL"
+    },
+    {
+      "parent_report_norm_id": 759,
+      "report_norm_id": 765,
+      "role": "FOREIGN_TOTAL"
+    }
+  ]
+}

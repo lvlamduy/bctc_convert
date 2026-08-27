@@ -16,6 +16,7 @@ from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
+    _dual_axis_header_leaf_v1,
     _family_anchor_lookup_forms_v1,
     _parents,
     _visual_state,
@@ -31,12 +32,72 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     lookup_cached_page_json_v1,
     page_json_region_repair_lineages_v1,
     query_family_anchor_regions_v1,
+    query_selected_dual_axis_family_regions_v1,
     query_selected_family_anchor_hits_v1,
     query_selected_family_anchor_regions_v1,
     record_page_json_region_repair_v1,
     selected_page_extraction_receipts_v1,
     usage_summary_v1,
 )
+
+
+def _dual_axis_page_for_query(orientation: str, *, broad_metric: bool = False) -> dict:
+    if orientation == "ROW_ROLES_METRIC_COLUMN":
+        columns = [
+            {
+                "header_path_exact": ["Cho vay khách hàng", "Triệu đồng"],
+                "value_kind": "MONEY",
+            }
+        ]
+        rows = [
+            {
+                "hierarchy_path_exact": [label],
+                "label_exact": label,
+                "row_kind": "ITEM",
+                "values_exact": [value],
+            }
+            for label, value in (("Trong nước", "10"), ("Nước ngoài", "-"))
+        ]
+    else:
+        columns = [
+            {"header_path_exact": ["Trong nước", "Triệu VND"], "value_kind": "MONEY"},
+            {"header_path_exact": ["Nước ngoài", "Triệu VND"], "value_kind": "MONEY"},
+            {"header_path_exact": ["Tổng cộng", "Triệu VND"], "value_kind": "MONEY"},
+        ]
+        metric = (
+            "Tổng dư nợ cho vay khách hàng, mua nợ và cấp tín dụng cho các TCTD khác"
+            if broad_metric
+            else "Tổng dư nợ cho vay khách hàng"
+        )
+        rows = [
+            {
+                "hierarchy_path_exact": [metric],
+                "label_exact": metric,
+                "row_kind": "ITEM",
+                "values_exact": ["10", "-", "10"],
+            }
+        ]
+    return {
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": ["Số liệu theo khu vực địa lý."],
+                "statement_type": "NOT_APPLICABLE",
+                "tables": [
+                    {
+                        "columns": columns,
+                        "continuation": "NONE",
+                        "rows": rows,
+                        "title_exact": "Tại ngày 31 tháng 12 năm 2025",
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+                "title_exact": "Phân tích theo khu vực địa lý",
+            }
+        ],
+        "status": "FINANCIAL_NOTE_CONTENT",
+    }
 
 
 @pytest.mark.parametrize(
@@ -133,6 +194,73 @@ def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation()
     assert "chung khoan chinh phu, chinh quyen dia phuong" in forms
     assert "cho vay cac to chuc kinh te, ca nhan trong nuoc(*)" in forms
     assert "cho vay cac to chuc - kinh te ca nhan trong nuoc" in forms
+
+
+def test_dual_axis_query_shortlists_rows_then_decodes_exact_transposed_headers(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    row = _ingest(path, page_json=_dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN"))
+    column = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        page_json=_dual_axis_page_for_query("METRIC_ROW_ROLE_COLUMNS"),
+    )
+    broad = _ingest(
+        path,
+        physical_page=9,
+        image_sha256="9" * 64,
+        page_json=_dual_axis_page_for_query("METRIC_ROW_ROLE_COLUMNS", broad_metric=True),
+    )
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            row["page_json_version_id"],
+            column["page_json_version_id"],
+            broad["page_json_version_id"],
+        ],
+        metric_aliases=[
+            "Cho vay khách hàng",
+            "Tổng nợ cho vay khách hàng",
+            "Tổng dư nợ cho vay khách hàng",
+        ],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND"],
+    )
+
+    assert sorted(region["orientation"] for region in queried["regions"]) == [
+        "METRIC_ROW_ROLE_COLUMNS",
+        "ROW_ROLES_METRIC_COLUMN",
+    ]
+    assert queried["query_receipt"]["exact_region_count"] == 2
+    assert queried["query_receipt"]["target_document_count"] == 1
+    assert queried["query_receipt"]["decoded_column_header_count"] < 10
+    assert len(queried["query_receipt"]["exact_region_axis_sha256"]) == 64
+    assert broad["page_json_version_id"] not in {
+        region["page_json_version_id"] for region in queried["regions"]
+    }
+
+
+def test_dual_axis_header_removes_only_declared_complete_unit_suffix() -> None:
+    folded, exact = _dual_axis_header_leaf_v1(
+        json.dumps(["Hợp đồng"]),
+        declared_unit_suffixes={"trieu dong", "trieu vnd"},
+    )
+    assert folded == "hop dong"
+    assert exact == ["Hợp đồng"]
+
+    folded, exact = _dual_axis_header_leaf_v1(
+        json.dumps(["Cho vay khách hàng Triệu đồng"]),
+        declared_unit_suffixes={"trieu dong", "trieu vnd"},
+    )
+    assert folded == "cho vay khach hang"
+    assert exact == ["Cho vay khách hàng Triệu đồng"]
 
 
 @pytest.mark.parametrize("source", ["-", "–", "—", "_", " _ "])
