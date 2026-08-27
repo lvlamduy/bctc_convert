@@ -21,11 +21,12 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+    _COMPARATIVE_PERIOD_ALIASES,
+    _CURRENT_PERIOD_ALIASES,
     _header_dates,
     _header_text,
     _matches,
     _money,
-    _period_signature,
 )
 from bctc_ai.evaluation.gemini_json_structural_context_v1 import (
     declared_surface_alias_match_v1,
@@ -713,6 +714,18 @@ def _region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _semantic_period_roles(value: str) -> list[str]:
+    folded = _normalized(value)
+    roles = []
+    if any(alias == folded or f" {alias} " in f" {folded} " for alias in _CURRENT_PERIOD_ALIASES):
+        roles.append("CURRENT_PERIOD")
+    if any(
+        alias == folded or f" {alias} " in f" {folded} " for alias in _COMPARATIVE_PERIOD_ALIASES
+    ):
+        roles.append("COMPARATIVE_PERIOD")
+    return roles
+
+
 def _period_axis(table: Mapping[str, Any]) -> dict[str, Any]:
     columns = table.get("columns")
     if (
@@ -724,22 +737,33 @@ def _period_axis(table: Mapping[str, Any]) -> dict[str, Any]:
     ):
         return {
             "complete": False,
+            "explicit_evidence_present": False,
             "partial": False,
             "reasons": ["EXACTLY_TWO_MONEY_COLUMNS_REQUIRED"],
         }
     headers = [_header_text(column) for column in columns]
-    if any(len(_header_dates(header)) > 1 for header in headers):
-        return {
-            "complete": False,
-            "headers_exact": headers,
-            "partial": False,
-            "reasons": ["MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER"],
-            "signatures": [],
-            "source": None,
-        }
-    signatures = [_period_signature(header) for header in headers]
-    present = sum(signature is not None for signature in signatures)
+    date_evidence = [
+        sorted(item.isoformat() for item in _header_dates(header)) for header in headers
+    ]
+    semantic_roles = [_semantic_period_roles(header) for header in headers]
+    explicit_evidence_present = any(date_evidence) or any(semantic_roles)
     reasons = []
+    expected_roles = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+    signatures: list[tuple[str, str] | None] = []
+    for ordinal, (dates, roles) in enumerate(zip(date_evidence, semantic_roles, strict=True)):
+        if len(dates) > 1:
+            reasons.append(f"MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER:c{ordinal + 1}")
+        if len(roles) > 1:
+            reasons.append(f"MULTIPLE_SEMANTIC_PERIOD_ROLES_IN_ONE_HEADER:c{ordinal + 1}")
+        if len(dates) == 1 and len(roles) == 1 and roles[0] != expected_roles[ordinal]:
+            reasons.append(f"DATE_AND_SEMANTIC_PERIOD_EVIDENCE_CONFLICT:c{ordinal + 1}")
+        if len(dates) == 1 and len(roles) <= 1:
+            signatures.append(("DATE", dates[0]))
+        elif not dates and len(roles) == 1:
+            signatures.append(("SEMANTIC_ALIAS", roles[0]))
+        else:
+            signatures.append(None)
+    present = sum(signature is not None for signature in signatures)
     if present == 1:
         reasons.append("PARTIAL_PERIOD_AXIS_CANNOT_INHERIT")
     if present == 2:
@@ -761,34 +785,72 @@ def _period_axis(table: Mapping[str, Any]) -> dict[str, Any]:
                 reasons.append("DATE_PERIOD_AXIS_IS_NOT_STRICT_CURRENT_THEN_COMPARATIVE")
     return {
         "complete": present == 2 and not reasons,
+        "date_evidence_by_column": date_evidence,
+        "explicit_evidence_present": explicit_evidence_present,
         "headers_exact": headers,
         "partial": present == 1,
         "reasons": reasons,
+        "semantic_roles_by_column": semantic_roles,
         "signatures": [
             list(signature) if signature is not None else None for signature in signatures
         ],
-        "source": "LOCAL_COLUMN_HEADERS" if present else None,
+        "source": "LOCAL_COLUMN_HEADERS" if explicit_evidence_present else None,
     }
 
 
 def _unit_axis(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
     recognized_aliases = list(compiled_specs["unit_binding_by_alias"])
     evidence: list[dict[str, Any]] = []
+    conflicting_surfaces: list[dict[str, Any]] = []
     undeclared: list[dict[str, Any]] = []
 
     def classify(surface: dict[str, Any], *, explicit_unit_slot: bool) -> dict[str, Any] | None:
-        matched = declared_surface_alias_match_v1(surface["text_exact"], recognized_aliases)
-        if matched is not None:
-            binding = compiled_specs["unit_binding_by_alias"][_normalized(matched)]
-            record = {
-                **surface,
-                "accepted": binding["accepted"],
-                "canonical_unit": binding["canonical_unit"],
-                "matched_alias": matched,
-                "magnitude_power10": binding["magnitude_power10"],
+        folded = _normalized(surface["text_exact"])
+        occurrences = [
+            (match.start(), match.end(), alias)
+            for alias in recognized_aliases
+            for match in re.finditer(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded)
+        ]
+        maximal_occurrences = sorted(
+            [
+                occurrence
+                for occurrence in occurrences
+                if not any(
+                    other[0] <= occurrence[0]
+                    and occurrence[1] <= other[1]
+                    and other[1] - other[0] > occurrence[1] - occurrence[0]
+                    for other in occurrences
+                )
+            ],
+            key=lambda item: (item[0], item[1], item[2]),
+        )
+        if maximal_occurrences:
+            records = []
+            for match_ordinal, (_start, _end, matched) in enumerate(maximal_occurrences, start=1):
+                binding = compiled_specs["unit_binding_by_alias"][matched]
+                records.append(
+                    {
+                        **surface,
+                        "accepted": binding["accepted"],
+                        "canonical_unit": binding["canonical_unit"],
+                        "match_ordinal": match_ordinal,
+                        "matched_alias": matched,
+                        "magnitude_power10": binding["magnitude_power10"],
+                    }
+                )
+            evidence.extend(records)
+            binding_identities = {
+                (record["canonical_unit"], record["magnitude_power10"]) for record in records
             }
-            evidence.append(record)
-            return record
+            if len(binding_identities) > 1:
+                conflicting_surfaces.append(
+                    {
+                        **surface,
+                        "matched_aliases": [record["matched_alias"] for record in records],
+                    }
+                )
+                return None
+            return records[0]
         if explicit_unit_slot or re.search(
             r"\b(?:dong|vnd|usd|trieu|nghin|ty)\b", _normalized(surface["text_exact"])
         ):
@@ -817,6 +879,8 @@ def _unit_axis(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -
             )
             column_records.append(record)
     reasons = []
+    if conflicting_surfaces:
+        reasons.append("MULTIPLE_CONFLICTING_DECLARED_MONEY_UNITS_ON_ONE_SURFACE")
     if undeclared:
         reasons.append("UNDECLARED_EXPLICIT_MONEY_UNIT")
     if any(item is not None and not item["accepted"] for item in [table_record, *column_records]):
@@ -847,6 +911,7 @@ def _unit_axis(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -
     return {
         "canonical_unit": canonical_unit,
         "complete": canonical_unit is not None and not reasons,
+        "conflicting_surfaces": conflicting_surfaces,
         "evidence": evidence,
         "reasons": reasons,
         "source": source,
@@ -883,8 +948,8 @@ def _resolve_sibling_axes(
             ("BALANCE", "DETAIL") if first["complete"] else ("DETAIL", "BALANCE")
         )
         target = axes[target_role][axis_name]
-        if axis_name == "period" and target.get("partial"):
-            reasons.append("PARTIAL_PERIOD_AXIS_CANNOT_INHERIT")
+        if axis_name == "period" and (target.get("explicit_evidence_present") or target["reasons"]):
+            reasons.append("EXPLICIT_PERIOD_EVIDENCE_CANNOT_BE_REPLACED_BY_INHERITANCE")
             continue
         if axis_name == "unit" and (target["evidence"] or target["undeclared_evidence"]):
             reasons.append("EXPLICIT_UNIT_EVIDENCE_CANNOT_BE_REPLACED_BY_INHERITANCE")

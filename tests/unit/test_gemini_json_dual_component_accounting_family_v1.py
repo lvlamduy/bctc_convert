@@ -416,7 +416,49 @@ def test_multiple_distinct_dates_in_one_header_are_unresolved() -> None:
     )
     candidate = _evaluate(page)
     assert candidate["status"] == UNRESOLVED
-    assert "BALANCE:MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER" in candidate["reasons"]
+    assert "BALANCE:MULTIPLE_DISTINCT_DATES_IN_ONE_PERIOD_HEADER:c1" in candidate["reasons"]
+
+
+def test_date_semantic_conflict_and_ambiguous_semantics_cannot_inherit() -> None:
+    date_conflict = _base_page()
+    date_conflict["sections"][0]["tables"][0]["columns"][0]["header_path_exact"] = [
+        "30/06/2026",
+        "Đầu kỳ",
+        "Triệu đồng",
+    ]
+    candidate = _evaluate(date_conflict)
+    assert candidate["status"] == UNRESOLVED
+    assert "BALANCE:DATE_AND_SEMANTIC_PERIOD_EVIDENCE_CONFLICT:c1" in candidate["reasons"]
+    balance_axis = candidate["closure_receipt"]["axes_by_component"]["BALANCE"]["period"]
+    assert balance_axis["date_evidence_by_column"][0] == ["2026-06-30"]
+    assert balance_axis["semantic_roles_by_column"][0] == ["COMPARATIVE_PERIOD"]
+
+    ambiguous = _base_page()
+    detail_columns = ambiguous["sections"][0]["tables"][1]["columns"]
+    for column in detail_columns:
+        column["header_path_exact"] = ["Kỳ này / Kỳ trước", "Triệu đồng"]
+    candidate = _evaluate(ambiguous)
+    assert candidate["status"] == UNRESOLVED
+    assert "DETAIL:MULTIPLE_SEMANTIC_PERIOD_ROLES_IN_ONE_HEADER:c1" in candidate["reasons"]
+    assert "EXPLICIT_PERIOD_EVIDENCE_CANNOT_BE_REPLACED_BY_INHERITANCE" in candidate["reasons"]
+    detail_axis = candidate["closure_receipt"]["axes_by_component"]["DETAIL"]["period"]
+    assert detail_axis["source"] == "LOCAL_COLUMN_HEADERS"
+    assert "inherited_from_component_role" not in detail_axis
+
+
+def test_conflicting_declared_units_on_one_surface_are_unresolved() -> None:
+    page = _base_page()
+    page["sections"][0]["tables"][0]["unit_exact"] = "Million VND / Nghìn đồng"
+    candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert (
+        "BALANCE:MULTIPLE_CONFLICTING_DECLARED_MONEY_UNITS_ON_ONE_SURFACE" in candidate["reasons"]
+    )
+    unit_axis = candidate["closure_receipt"]["axes_by_component"]["BALANCE"]["unit"]
+    assert unit_axis["conflicting_surfaces"][0]["matched_aliases"] == [
+        "million vnd",
+        "nghin dong",
+    ]
 
 
 def test_owner_can_be_exact_section_narrative_heading() -> None:
