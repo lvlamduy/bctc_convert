@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 from test_gemini_json_flat_accounting_family_v1 import (
+    _loan_quality_page,
+    _loan_quality_specs,
     _loan_type_page,
     _loan_type_specs,
     _page,
@@ -154,6 +156,50 @@ def test_invalid_money_cell_becomes_database_pending_region_job(tmp_path) -> Non
             "selected_page_json_version_id": selected_version_id,
         }
     ]
+
+
+def test_missing_title_footnote_narrative_targets_only_its_section() -> None:
+    topology, evaluation, schema = _loan_quality_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    page = _loan_quality_page()
+    page["sections"][0]["tables"][0]["title_exact"] += " (*)"
+    version_id = "gfpstorev1:json:" + "6" * 64
+    candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id=version_id,
+        physical_page=18,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    assert candidate["reasons"] == ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"]
+    trial = {
+        "candidate_count": 1,
+        "candidates": [candidate],
+        "document_ordinal": 1,
+        "mappings": [],
+        "reasons": candidate["reasons"],
+        "selected_candidate_id": None,
+        "source_logical_name": "ACB/2025/example.pdf",
+        "source_sha256": "7" * 64,
+        "status": UNRESOLVED,
+    }
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "8" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[trial],
+    )
+    plans = build_family_region_repair_plans_v1(
+        sweep=sweep,
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )
+    assert len(plans) == 1
+    assert plans[0]["repair_scope"] == "SECTION_NARRATIVES"
+    assert plans[0]["target_table_refs"] == [{"section_id": "s1", "table_id": "t1"}]
+    assert plans[0]["trigger_kinds"] == ["SECTION_NARRATIVE_SOURCE_INCOMPLETE"]
 
 
 def test_stacked_lane_failure_targets_exact_cross_table_row_with_header_context() -> None:

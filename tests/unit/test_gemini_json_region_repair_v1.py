@@ -9,13 +9,18 @@ from test_gemini_financial_page_json_v1 import _page
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     GeminiJsonRegionRepairV1Error,
     build_region_repair_prompt_v1,
+    build_section_narrative_repair_prompt_v1,
     build_table_axis_repair_prompt_v1,
     decode_region_repair_text_v1,
+    decode_section_narrative_repair_text_v1,
     decode_table_axis_repair_text_v1,
     merge_region_repair_v1,
+    merge_section_narrative_repair_v1,
     merge_table_axis_repair_v1,
     region_repair_response_schema_v1,
     region_repair_targets_v1,
+    section_narrative_repair_response_schema_v1,
+    section_narrative_repair_targets_v1,
     table_axis_repair_response_schema_v1,
     table_axis_repair_targets_v1,
 )
@@ -240,3 +245,54 @@ def test_table_axis_repair_rejects_missing_or_shifted_columns() -> None:
     }
     with pytest.raises(GeminiJsonRegionRepairV1Error, match="column axis"):
         decode_table_axis_repair_text_v1(json.dumps(repair), targets=targets)
+
+
+def test_section_narrative_repair_replaces_only_bound_section_narratives() -> None:
+    page = _page()
+    section = page["sections"][0]
+    section["narratives_exact"] = []
+    targets = section_narrative_repair_targets_v1(
+        page, table_refs=[{"section_id": "s1", "table_id": "t1"}]
+    )
+    prompt = build_section_narrative_repair_prompt_v1(
+        base_page_json_version_id="gfpstorev1:json:" + "4" * 64,
+        targets=targets,
+    )
+    assert "nằm ngoài các ô của bảng" in prompt
+    assert "không chép lại dòng hoặc số trong bảng" in prompt.lower()
+    assert section_narrative_repair_response_schema_v1()["additionalProperties"] is False
+    narrative = (
+        "(*) Không bao gồm 9.423.424 triệu đồng (31.12.2024: 8.689.759 triệu đồng) "
+        "cho vay giao dịch ký quỹ."
+    )
+    repair = {
+        "all_targets_transcribed": True,
+        "sections": [{"narratives_exact": [narrative], "target_id": "s1"}],
+        "uncertainty_exact": [],
+    }
+    assert decode_section_narrative_repair_text_v1(json.dumps(repair), targets=targets) == repair
+    merged, receipt = merge_section_narrative_repair_v1(
+        page,
+        base_page_json_version_id="gfpstorev1:json:" + "4" * 64,
+        targets=targets,
+        repair=repair,
+    )
+    assert merged["sections"][0]["narratives_exact"] == [narrative]
+    assert merged["sections"][0]["tables"] == page["sections"][0]["tables"]
+    assert receipt["changes"] == [
+        {
+            "narratives_after_exact": [narrative],
+            "narratives_before_exact": [],
+            "target_id": "s1",
+        }
+    ]
+
+    uncertain = deepcopy(repair)
+    uncertain["uncertainty_exact"] = ["Không đọc chắc chú thích"]
+    with pytest.raises(GeminiJsonRegionRepairV1Error, match="incomplete or uncertain"):
+        merge_section_narrative_repair_v1(
+            page,
+            base_page_json_version_id="gfpstorev1:json:" + "4" * 64,
+            targets=targets,
+            repair=uncertain,
+        )

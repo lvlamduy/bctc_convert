@@ -321,6 +321,189 @@ def merge_table_axis_repair_v1(
     }
 
 
+def section_narrative_repair_targets_v1(
+    page_json: Any, *, table_refs: Sequence[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """Resolve exact sections whose narrative/footnote axis needs rereading."""
+
+    checked = validate_financial_page_json_v1(page_json)
+    if (
+        type(table_refs) not in {list, tuple}
+        or not table_refs
+        or any(
+            type(ref) is not dict or set(ref) != {"section_id", "table_id"} for ref in table_refs
+        )
+    ):
+        raise _error("section-narrative repair frontier is invalid")
+    result = []
+    seen_sections = set()
+    for ref in table_refs:
+        section_index = int(ref["section_id"].removeprefix("s")) - 1
+        table_index = int(ref["table_id"].removeprefix("t")) - 1
+        try:
+            section = checked["sections"][section_index]
+            table = section["tables"][table_index]
+        except (IndexError, KeyError, TypeError, ValueError) as exc:
+            raise _error("section-narrative repair target lies outside the page JSON") from exc
+        if (
+            ref["section_id"] != f"s{section_index + 1}"
+            or ref["table_id"] != f"t{table_index + 1}"
+            or ref["section_id"] in seen_sections
+        ):
+            raise _error("section-narrative repair target ID is invalid or duplicate")
+        seen_sections.add(ref["section_id"])
+        labels = [row["label_exact"] for row in table["rows"] if row["label_exact"] is not None]
+        result.append(
+            {
+                "column_headers_exact": [
+                    canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
+                ],
+                "narratives_before_exact": canonical_clone_v1(section["narratives_exact"]),
+                "row_labels_context_exact": labels[:3] + labels[-2:] if len(labels) > 5 else labels,
+                "section_title_exact": section["title_exact"],
+                "table_title_exact": table["title_exact"],
+                "target_id": ref["section_id"],
+            }
+        )
+    return result
+
+
+def build_section_narrative_repair_prompt_v1(
+    *, base_page_json_version_id: str, targets: Sequence[dict[str, Any]]
+) -> str:
+    """Build one bounded prompt for the complete visible narrative axis of a section."""
+
+    if (
+        type(base_page_json_version_id) is not str
+        or not base_page_json_version_id.startswith("gfpstorev1:json:")
+        or type(targets) not in {list, tuple}
+        or not targets
+    ):
+        raise _error("section-narrative repair prompt input is invalid")
+    return (
+        "Đọc trực tiếp ảnh nguyên trang báo cáo tài chính. Với mỗi target_section, chép nguyên "
+        "văn và đầy đủ tất cả đoạn thuyết minh/chú thích thuộc section đó nhưng nằm ngoài các "
+        "ô của bảng, đặc biệt đoạn có dấu chú thích như (*), (**). Không chép lại dòng hoặc số "
+        "trong bảng. Giữ nguyên chính tả, dấu câu, ngày, đơn vị và mọi con số; mỗi đoạn là một "
+        "phần tử narratives_exact theo thứ tự xuất hiện. table_title_exact, header và nhãn dòng "
+        "chỉ giúp định vị section, không phải đáp án. narratives_before_exact có thể thiếu hoặc "
+        "sai và chỉ là evidence cũ. Nếu section thực sự không có đoạn ngoài bảng thì trả mảng "
+        "rỗng. Nếu không đọc chắc thì ghi uncertainty_exact. Mỗi target_id xuất hiện đúng một "
+        "lần. Trả đúng JSON theo schema.\nbase_page_json_version_id="
+        + base_page_json_version_id
+        + "\ntarget_sections="
+        + canonical_json_bytes_v1(list(targets)).decode("utf-8")
+    )
+
+
+def section_narrative_repair_response_schema_v1() -> dict[str, Any]:
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": False,
+        "properties": {
+            "all_targets_transcribed": {"type": "boolean"},
+            "sections": {
+                "items": {
+                    "additionalProperties": False,
+                    "properties": {
+                        "narratives_exact": {"items": {"type": "string"}, "type": "array"},
+                        "target_id": {"type": "string"},
+                    },
+                    "required": ["narratives_exact", "target_id"],
+                    "type": "object",
+                },
+                "type": "array",
+            },
+            "uncertainty_exact": {"items": {"type": "string"}, "type": "array"},
+        },
+        "required": ["all_targets_transcribed", "sections", "uncertainty_exact"],
+        "type": "object",
+    }
+
+
+def decode_section_narrative_repair_text_v1(
+    text: str, *, targets: Sequence[dict[str, Any]]
+) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise _error("section-narrative repair response is not JSON") from exc
+    if type(value) is not dict or set(value) != {
+        "all_targets_transcribed",
+        "sections",
+        "uncertainty_exact",
+    }:
+        raise _error("section-narrative repair response fields drifted")
+    expected_ids = [target["target_id"] for target in targets]
+    sections = value["sections"]
+    if (
+        type(value["all_targets_transcribed"]) is not bool
+        or type(value["uncertainty_exact"]) is not list
+        or any(type(item) is not str or not item for item in value["uncertainty_exact"])
+        or type(sections) is not list
+        or [section.get("target_id") for section in sections] != expected_ids
+    ):
+        raise _error("section-narrative repair completion or identity is invalid")
+    checked_sections = []
+    for section in sections:
+        if type(section) is not dict or set(section) != {"narratives_exact", "target_id"}:
+            raise _error("section-narrative repair section fields drifted")
+        narratives = section["narratives_exact"]
+        if type(narratives) is not list or any(
+            type(narrative) is not str or not narrative.strip() for narrative in narratives
+        ):
+            raise _error("section-narrative repair narrative axis is invalid")
+        checked_sections.append(canonical_clone_v1(section))
+    return {
+        "all_targets_transcribed": value["all_targets_transcribed"],
+        "sections": checked_sections,
+        "uncertainty_exact": list(value["uncertainty_exact"]),
+    }
+
+
+def merge_section_narrative_repair_v1(
+    page_json: Any,
+    *,
+    base_page_json_version_id: str,
+    targets: Sequence[dict[str, Any]],
+    repair: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    checked = validate_financial_page_json_v1(page_json)
+    decoded = decode_section_narrative_repair_text_v1(
+        canonical_json_bytes_v1(repair).decode("utf-8"), targets=targets
+    )
+    if not decoded["all_targets_transcribed"] or decoded["uncertainty_exact"]:
+        raise _error("section-narrative repair is incomplete or uncertain")
+    merged = canonical_clone_v1(checked)
+    before_sha = canonical_json_sha256_v1(checked)
+    changes = []
+    for target, section_repair in zip(targets, decoded["sections"], strict=True):
+        section_id = target["target_id"]
+        section = merged["sections"][int(section_id[1:]) - 1]
+        before = canonical_clone_v1(section["narratives_exact"])
+        section["narratives_exact"] = canonical_clone_v1(section_repair["narratives_exact"])
+        changes.append(
+            {
+                "narratives_after_exact": section_repair["narratives_exact"],
+                "narratives_before_exact": before,
+                "target_id": section_id,
+            }
+        )
+    merged = validate_financial_page_json_v1(merged)
+    receipt_material = {
+        "base_page_json_sha256": before_sha,
+        "base_page_json_version_id": base_page_json_version_id,
+        "changes": changes,
+        "format_version": FORMAT_VERSION,
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "repair_response_sha256": canonical_json_sha256_v1(decoded),
+    }
+    return merged, {
+        **receipt_material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(receipt_material),
+    }
+
+
 def build_region_repair_prompt_v1(
     *, base_page_json_version_id: str, targets: Sequence[dict[str, Any]]
 ) -> str:

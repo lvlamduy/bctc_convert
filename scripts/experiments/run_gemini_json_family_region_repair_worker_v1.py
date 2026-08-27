@@ -145,6 +145,10 @@ def _targeted_repair_is_accepted(plan: dict[str, Any], candidate: dict[str, Any]
         reason.startswith("FAMILY_PARENT_NOT_VISIBLE") for reason in after
     ):
         return False
+    if "SECTION_NARRATIVE_SOURCE_INCOMPLETE" in plan["trigger_kinds"] and (
+        "TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT" in after
+    ):
+        return False
     return True
 
 
@@ -168,6 +172,16 @@ def _target_evidence(page_json: dict[str, Any], target_ids: list[str]) -> list[d
 def _repair_target_evidence(
     page_json: dict[str, Any], plan: dict[str, Any]
 ) -> list[dict[str, Any]]:
+    if plan.get("repair_scope") == "SECTION_NARRATIVES":
+        return [
+            {
+                "narratives_exact": page_json["sections"][int(ref["section_id"][1:]) - 1][
+                    "narratives_exact"
+                ],
+                "section_id": ref["section_id"],
+            }
+            for ref in plan.get("target_table_refs", [])
+        ]
     if plan.get("repair_scope") not in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         return _target_evidence(page_json, plan["target_ids"])
     evidence = []

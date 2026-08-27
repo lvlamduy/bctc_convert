@@ -27,14 +27,19 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
 )
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (  # noqa: E402
     build_region_repair_prompt_v1,
+    build_section_narrative_repair_prompt_v1,
     build_table_axis_repair_prompt_v1,
     decode_region_repair_text_v1,
+    decode_section_narrative_repair_text_v1,
     decode_table_axis_repair_text_v1,
     merge_region_repair_v1,
+    merge_section_narrative_repair_v1,
     merge_table_axis_repair_v1,
     region_repair_response_schema_v1,
     region_repair_targets_v1,
     repair_prompt_sha256_v1,
+    section_narrative_repair_response_schema_v1,
+    section_narrative_repair_targets_v1,
     table_axis_repair_response_schema_v1,
     table_axis_repair_targets_v1,
 )
@@ -68,6 +73,7 @@ def _parser() -> argparse.ArgumentParser:
         choices=(
             "ROW_VALUES",
             "ROW_LABEL_AND_VALUES",
+            "SECTION_NARRATIVES",
             "TABLE_PERIOD_AXIS",
             "TABLE_TITLE_AND_COLUMNS",
         ),
@@ -121,6 +127,20 @@ def _render(args: argparse.Namespace) -> tuple[bytes, dict[str, Any], dict[str, 
 def _repair_projection_from_cached_page(
     cached_page: dict[str, Any], *, targets: list[dict[str, Any]], repair_scope: str
 ) -> dict[str, Any]:
+    if repair_scope == "SECTION_NARRATIVES":
+        return {
+            "all_targets_transcribed": True,
+            "sections": [
+                {
+                    "narratives_exact": cached_page["sections"][int(target["target_id"][1:]) - 1][
+                        "narratives_exact"
+                    ],
+                    "target_id": target["target_id"],
+                }
+                for target in targets
+            ],
+            "uncertainty_exact": [],
+        }
     if repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         tables = []
         for target in targets:
@@ -189,21 +209,35 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "base page version does not bind the rendered source page"
         )
 
-    if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
+    if args.repair_scope in {
+        "SECTION_NARRATIVES",
+        "TABLE_PERIOD_AXIS",
+        "TABLE_TITLE_AND_COLUMNS",
+    }:
         if not args.target_table_ref:
-            raise RunGeminiJsonRegionRepairV1Error("table-axis target frontier is empty")
+            raise RunGeminiJsonRegionRepairV1Error("table/section target frontier is empty")
         table_refs = []
         for value in args.target_table_ref:
             parts = value.split(":")
             if len(parts) != 2:
                 raise RunGeminiJsonRegionRepairV1Error("table-axis target ref is invalid")
             table_refs.append({"section_id": parts[0], "table_id": parts[1]})
-        targets = table_axis_repair_targets_v1(selected["page_json"], table_refs=table_refs)
-        prompt = build_table_axis_repair_prompt_v1(
-            base_page_json_version_id=args.base_page_json_version_id,
-            targets=targets,
-        )
-        schema = table_axis_repair_response_schema_v1()
+        if args.repair_scope == "SECTION_NARRATIVES":
+            targets = section_narrative_repair_targets_v1(
+                selected["page_json"], table_refs=table_refs
+            )
+            prompt = build_section_narrative_repair_prompt_v1(
+                base_page_json_version_id=args.base_page_json_version_id,
+                targets=targets,
+            )
+            schema = section_narrative_repair_response_schema_v1()
+        else:
+            targets = table_axis_repair_targets_v1(selected["page_json"], table_refs=table_refs)
+            prompt = build_table_axis_repair_prompt_v1(
+                base_page_json_version_id=args.base_page_json_version_id,
+                targets=targets,
+            )
+            schema = table_axis_repair_response_schema_v1()
     else:
         if not args.target_id:
             raise RunGeminiJsonRegionRepairV1Error("row repair target frontier is empty")
@@ -220,19 +254,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         schema = region_repair_response_schema_v1()
     prompt_sha = repair_prompt_sha256_v1(prompt)
     schema_sha = canonical_json_sha256_v1(schema)
-    prompt_variant = (
-        (
-            "region-repair-table-title-and-columns"
-            if args.repair_scope == "TABLE_TITLE_AND_COLUMNS"
-            else "region-repair-table-period-axis"
-        )
-        if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}
-        else (
-            "region-repair-row-label-and-values"
-            if args.repair_scope == "ROW_LABEL_AND_VALUES"
-            else "region-repair-row-values"
-        )
-    )
+    prompt_variant = {
+        "ROW_LABEL_AND_VALUES": "region-repair-row-label-and-values",
+        "ROW_VALUES": "region-repair-row-values",
+        "SECTION_NARRATIVES": "region-repair-section-narratives",
+        "TABLE_PERIOD_AXIS": "region-repair-table-period-axis",
+        "TABLE_TITLE_AND_COLUMNS": "region-repair-table-title-and-columns",
+    }[args.repair_scope]
     _write(args.artifact_dir / "prompt.txt", prompt.encode("utf-8"))
     _write(
         args.artifact_dir / "response-schema.json",
@@ -276,7 +304,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 cached["page_json"], targets=targets, repair_scope=args.repair_scope
             )
         ).decode("utf-8")
-    if args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
+    if args.repair_scope == "SECTION_NARRATIVES":
+        repair = decode_section_narrative_repair_text_v1(response_text, targets=targets)
+        merged, repair_receipt = merge_section_narrative_repair_v1(
+            selected["page_json"],
+            base_page_json_version_id=args.base_page_json_version_id,
+            targets=targets,
+            repair=repair,
+        )
+    elif args.repair_scope in {"TABLE_PERIOD_AXIS", "TABLE_TITLE_AND_COLUMNS"}:
         repair = decode_table_axis_repair_text_v1(response_text, targets=targets)
         merged, repair_receipt = merge_table_axis_repair_v1(
             selected["page_json"],

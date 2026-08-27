@@ -88,3 +88,20 @@ def test_table_title_repair_requires_parent_reason_removed_before_staged_followu
         "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
     }
     assert _targeted_repair_is_accepted(plan, title_fixed)
+
+
+def test_section_narrative_repair_requires_footnote_reason_removed() -> None:
+    plan = {
+        "trigger_kinds": ["SECTION_NARRATIVE_SOURCE_INCOMPLETE"],
+        "trigger_reasons": ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"],
+    }
+    still_missing = {
+        "reasons": ["TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"],
+        "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    }
+    assert not _targeted_repair_is_accepted(plan, still_missing)
+    resolved = {
+        "reasons": [],
+        "status": "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+    }
+    assert _targeted_repair_is_accepted(plan, resolved)

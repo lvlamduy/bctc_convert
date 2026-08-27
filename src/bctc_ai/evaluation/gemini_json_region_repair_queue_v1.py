@@ -50,6 +50,7 @@ _STACKED_GLOBAL_EQUATION_PREFIXES = (
     "PRESENTATION_NET_ROW_NOT_ONE_EXACT_LANE_EQUATION:",
     "VISIBLE_FAMILY_TOTAL_NOT_EXACT_DIRECT_FRONTIER:",
 )
+_MISSING_TITLE_FOOTNOTE_NARRATIVE = "TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"
 
 
 class GeminiJsonRegionRepairQueueV1Error(ValueError):
@@ -190,6 +191,15 @@ def build_family_region_repair_plans_v1(
                         f"{section_id}:{table_id}:r{ordinal}"
                         for ordinal in range(1, len(selected_rows) + 1)
                     )
+            section_narratives_incomplete = (
+                _MISSING_TITLE_FOOTNOTE_NARRATIVE in candidate["reasons"]
+            )
+            if section_narratives_incomplete:
+                trigger_kinds.add("SECTION_NARRATIVE_SOURCE_INCOMPLETE")
+                target_ids.update(
+                    f"{candidate['section_id']}:{candidate['table_id']}:r{ordinal}"
+                    for ordinal in range(1, len(rows) + 1)
+                )
             stacked_specific_periods = {
                 match.group(1)
                 for reason in candidate["reasons"]
@@ -372,6 +382,8 @@ def build_family_region_repair_plans_v1(
                 "repair_scope": (
                     "TABLE_TITLE_AND_COLUMNS"
                     if table_title_incomplete
+                    else "SECTION_NARRATIVES"
+                    if section_narratives_incomplete
                     else "TABLE_PERIOD_AXIS"
                     if period_axis_incomplete
                     else "ROW_LABEL_AND_VALUES"
@@ -385,7 +397,11 @@ def build_family_region_repair_plans_v1(
                 "table_id": candidate["table_id"],
                 "target_table_refs": (
                     canonical_clone_v1(component_refs)
-                    if period_axis_incomplete or table_title_incomplete
+                    if (
+                        period_axis_incomplete
+                        or table_title_incomplete
+                        or section_narratives_incomplete
+                    )
                     else []
                 ),
                 "target_ids": target_ids,
