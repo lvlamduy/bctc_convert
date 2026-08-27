@@ -14,7 +14,9 @@ from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
     compile_gemini_json_rollforward_family_specs_v1,
     evaluate_gemini_json_rollforward_family_cluster_v1,
     solve_one_unknown_rollforward_lane_v1,
+    validate_gemini_json_rollforward_family_candidate_replay_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION_A = "gfpstorev1:json:" + "a" * 64
@@ -448,6 +450,90 @@ def test_ordered_local_narratives_bind_transposed_lane_tables() -> None:
 
     assert candidate["status"] == READY
     assert len(candidate["mappings"]) == 8
+    assert candidate["closure_receipt"]["lane_assignment_receipts"] == [
+        {
+            "assignment_kind": "ORDERED_LOCAL_NARRATIVE_TO_TABLE_ASSIGNMENT",
+            "assigned_lane_role": "GENERAL_PROVISION_LANE",
+            "candidate_lane_roles_in_source_order": [
+                "GENERAL_PROVISION_LANE",
+                "SPECIFIC_PROVISION_LANE",
+            ],
+            "locator": candidate["component_regions"][0],
+        },
+        {
+            "assignment_kind": "ORDERED_LOCAL_NARRATIVE_TO_TABLE_ASSIGNMENT",
+            "assigned_lane_role": "SPECIFIC_PROVISION_LANE",
+            "candidate_lane_roles_in_source_order": [
+                "GENERAL_PROVISION_LANE",
+                "SPECIFIC_PROVISION_LANE",
+            ],
+            "locator": candidate["component_regions"][1],
+        },
+    ]
+
+
+def test_lane_assignment_receipt_is_bound_by_exact_candidate_replay() -> None:
+    page = _lane_page(
+        [
+            "Biến động dự phòng chung cho các khoản cho vay khách hàng như sau:",
+            "Biến động dự phòng cụ thể cho các khoản cho vay khách hàng như sau:",
+        ],
+        _lane_table(),
+        _lane_table(),
+    )
+    refs = _source_refs(
+        [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t2",
+            },
+        ]
+    )
+    compiled = _compiled()
+    receipt = build_gemini_json_rollforward_region_query_receipt_v1(refs)
+    candidate = evaluate_gemini_json_rollforward_family_cluster_v1(
+        regions=refs,
+        page_json_by_version={VERSION_A: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+
+    assert (
+        validate_gemini_json_rollforward_family_candidate_replay_v1(
+            candidate,
+            regions=refs,
+            page_json_by_version={VERSION_A: page},
+            compiled_specs=compiled,
+            query_receipt=receipt,
+        )
+        == candidate
+    )
+    drifted = copy.deepcopy(candidate)
+    drifted["closure_receipt"]["lane_assignment_receipts"][0]["assigned_lane_role"] = (
+        "SPECIFIC_PROVISION_LANE"
+    )
+    material = copy.deepcopy(drifted)
+    material.pop("candidate_id")
+    drifted["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(material)
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="candidate does not replay exactly",
+    ):
+        validate_gemini_json_rollforward_family_candidate_replay_v1(
+            drifted,
+            regions=refs,
+            page_json_by_version={VERSION_A: page},
+            compiled_specs=compiled,
+            query_receipt=receipt,
+        )
 
 
 def test_swapped_or_extra_narrative_axis_is_not_arbitrarily_assigned() -> None:
@@ -594,6 +680,47 @@ def test_structured_previous_page_continuation_is_explicit_evidence() -> None:
     ]
 
 
+def test_forward_only_continuation_markers_cannot_bind_from_previous_owner() -> None:
+    for title, continuation in (
+        ("Bảng số liệu tổng hợp", "CONTINUES_ON_NEXT_PAGE"),
+        ("Continued on next page", "NONE"),
+        ("Tiếp theo trang sau", "NONE"),
+        ("Continued on next page", "CONTINUES_ON_NEXT_PAGE"),
+    ):
+        current = _page(_period_table("31/12/2025"))
+        comparative = _page(_period_table("31/12/2024"))
+        target = comparative["sections"][0]
+        target["title_exact"] = title
+        target["narratives_exact"] = []
+        target["tables"][0]["continuation"] = continuation
+        for column in target["tables"][0]["columns"]:
+            column["header_path_exact"] = [column["header_path_exact"][-1]]
+        refs = [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_B,
+                "physical_page": 8,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+        ]
+
+        candidate = _evaluate(
+            current,
+            refs=refs,
+            pages={VERSION_A: current, VERSION_B: comparative},
+        )
+
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+        assert "ROLLFORWARD_EXPLICIT_CONTINUATION_EVIDENCE_NOT_VISIBLE" in candidate["reasons"]
+
+
 def test_bounded_owner_continuation_stops_at_an_intervening_reset() -> None:
     current = _page(_period_table("31/12/2025"))
     comparative = _page(_period_table("31/12/2024"))
@@ -699,6 +826,43 @@ def test_reset_fence_scans_intervening_row_label_and_hierarchy() -> None:
         assert candidate["mappings"] == []
         population = candidate["closure_receipt"]["population_receipt"]
         assert population["reset_fence_receipt"]["reset_hits"][0]["source_kind"] == reset_surface
+
+
+def test_reset_fence_scans_rows_even_when_every_component_has_a_local_owner() -> None:
+    for reset_surface in ("ROW_LABEL", "ROW_HIERARCHY"):
+        current = _period_table("31/12/2025")
+        if reset_surface == "ROW_LABEL":
+            current["rows"].insert(
+                -1,
+                {
+                    "hierarchy_path_exact": ["Thư tín dụng"],
+                    "label_exact": "Thư tín dụng",
+                    "row_kind": "ITEM",
+                    "values_exact": ["-", "-", "-"],
+                },
+            )
+        else:
+            for row in current["rows"]:
+                row["hierarchy_path_exact"] = ["Thư tín dụng", row["label_exact"]]
+        candidate = _evaluate(
+            _page(
+                current,
+                _period_table("31/12/2024"),
+            )
+        )
+
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+        assert (
+            "ROLLFORWARD_SELECTED_INTERVAL_POPULATION_RESET_OR_HARD_NEGATIVE_VISIBLE"
+            in candidate["reasons"]
+        )
+        population = candidate["closure_receipt"]["population_receipt"]
+        assert population["reset_or_hard_negative_visible"] is True
+        assert any(
+            hit["source_kind"] == reset_surface
+            for hit in population["reset_fence_receipt"]["reset_hits"]
+        )
 
 
 def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:

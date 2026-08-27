@@ -48,8 +48,9 @@ READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_CONTENT_ADDRESSED_DOCUMENT_SOURCE_VERSION_"
-    "ORDERED_REGION_RECEIPT_DECLARATIVE_OWNER_EXPLICIT_CONTINUATION_FULL_SECTION_"
-    "RESET_POPULATION_TWO_PERIOD_LANE_MOVEMENT_TRANSPOSE_ENDPOINT_CONTINUITY_EXACT_"
+    "ORDERED_REGION_RECEIPT_DECLARATIVE_OWNER_EXPLICIT_DIRECTIONAL_CONTINUATION_"
+    "FULL_SECTION_TABLE_ROW_RESET_POPULATION_TWO_PERIOD_LANE_MOVEMENT_TRANSPOSE_"
+    "ENDPOINT_CONTINUITY_EXACT_"
     "SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_"
     "GEOMETRY_PPOCR_VIETOCR_BANK_FILE_PAGE_NOTE_ROUTING_MULTI_UNKNOWN_ZERO_"
     "COERCION_OR_EXPORT_AUTHORITY"
@@ -85,6 +86,18 @@ _PAGE_JSON_VERSION_ID = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
 _SOURCE_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _CONTINUATION_MARKER_ALIASES = ("tiep theo", "continued")
+_FORWARD_CONTINUATION_ALIASES = (
+    "con tiep o trang sau",
+    "con tiep trang sau",
+    "continued on following page",
+    "continued on next page",
+    "continued on the following page",
+    "continued on the next page",
+    "tiep theo o trang sau",
+    "tiep theo trang sau",
+    "tiep tuc o trang sau",
+    "tiep tuc tren trang sau",
+)
 _CONTINUES_FROM_PREVIOUS = {"BOTH", "CONTINUES_FROM_PREVIOUS_PAGE"}
 _CONTINUATION_KINDS = {
     "BOTH",
@@ -675,14 +688,6 @@ def _explicit_continuation_evidence(
     continuation = table.get("continuation")
     if continuation not in _CONTINUATION_KINDS:
         raise _error("roll-forward table continuation kind is invalid")
-    evidence = []
-    if continuation in _CONTINUES_FROM_PREVIOUS:
-        evidence.append(
-            {
-                "source_exact": continuation,
-                "source_kind": "TABLE_CONTINUATION_KIND",
-            }
-        )
     narratives = section.get("narratives_exact")
     if type(narratives) is not list:
         raise _error("roll-forward continuation narrative axis is invalid")
@@ -691,10 +696,33 @@ def _explicit_continuation_evidence(
         ("SECTION_TITLE", section.get("title_exact")),
         *(("SECTION_NARRATIVE", value) for value in narratives),
     ]
+    forward_surfaces = [
+        {"source_exact": value, "source_kind": source_kind}
+        for source_kind, value in surfaces
+        if type(value) is str and _matches_alias(value, _FORWARD_CONTINUATION_ALIASES)
+    ]
+    # A forward-only marker belongs to the page that precedes a continuation;
+    # it can never authenticate that this table continues from an owner above.
+    if continuation == "CONTINUES_ON_NEXT_PAGE":
+        return []
+    if forward_surfaces and continuation == "CONTINUES_FROM_PREVIOUS_PAGE":
+        raise _error("roll-forward continuation directions conflict")
+    evidence = (
+        [
+            {
+                "source_exact": continuation,
+                "source_kind": "TABLE_CONTINUATION_KIND",
+            }
+        ]
+        if continuation in _CONTINUES_FROM_PREVIOUS
+        else []
+    )
     evidence.extend(
         {"source_exact": value, "source_kind": source_kind}
         for source_kind, value in surfaces
-        if type(value) is str and _matches_alias(value, _CONTINUATION_MARKER_ALIASES)
+        if type(value) is str
+        and not _matches_alias(value, _FORWARD_CONTINUATION_ALIASES)
+        and _matches_alias(value, _CONTINUATION_MARKER_ALIASES)
     )
     return evidence
 
@@ -1414,7 +1442,7 @@ def _bounded_population_reset_fence_v1(
     page_json_by_version: Mapping[str, Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Scan the complete selected-page interval used by owner continuation."""
+    """Scan every structural surface in the complete selected-page interval."""
 
     first_page = region_axis[0]["physical_page"]
     last_page = region_axis[-1]["physical_page"]
@@ -1620,21 +1648,15 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         reasons.append("ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_DIRECTION_INVALID")
     if any(not item["continuation_evidence"] for item in continuation_components):
         reasons.append("ROLLFORWARD_EXPLICIT_CONTINUATION_EVIDENCE_NOT_VISIBLE")
-    reset_fence_receipt = (
-        _bounded_population_reset_fence_v1(
-            region_axis,
-            page_json_by_version=page_json_by_version,
-            compiled_specs=compiled_specs,
-        )
-        if owner_components and continuation_components
-        else {
-            "checked_page_intervals": [],
-            "reset_hits": [],
-            "status": "NOT_REQUIRED_ALL_COMPONENTS_EXPLICIT_LOCAL_OWNER",
-        }
+    reset_fence_receipt = _bounded_population_reset_fence_v1(
+        region_axis,
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled_specs,
     )
     if reset_fence_receipt["reset_hits"]:
-        reasons.append("ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_RESET_FENCE_VIOLATED")
+        reasons.append("ROLLFORWARD_SELECTED_INTERVAL_POPULATION_RESET_OR_HARD_NEGATIVE_VISIBLE")
+        if continuation_components:
+            reasons.append("ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_RESET_FENCE_VIOLATED")
     population_receipt = {
         "binding_kind": (
             "ALL_COMPONENTS_EXPLICIT_LOCAL_OWNER"
@@ -1656,7 +1678,8 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         ),
         "owner_component_locators": [item["locator"] for item in owner_components],
         "reset_fence_receipt": reset_fence_receipt,
-        "reset_or_hard_negative_visible": any(
+        "reset_or_hard_negative_visible": bool(reset_fence_receipt["reset_hits"])
+        or any(
             item["context_reset_visible"] or item["structural_hard_negative_visible"]
             for item in component_classifications
         ),
@@ -1880,6 +1903,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             "duplicate_source_ambiguities": duplicate_source_ambiguities,
             "endpoint_continuity_receipts": endpoint_continuity_receipts,
             "equations": equations,
+            "lane_assignment_receipts": lane_assignment_receipts,
             "orientation": orientation,
             "period_lane_populations": {
                 period_role: sorted(lanes_by_period[period_role]) for period_role in period_roles
@@ -1913,3 +1937,24 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         "candidate_id": "gjfafcv1:candidate:" + canonical_json_sha256_v1(material),
         **material,
     }
+
+
+def validate_gemini_json_rollforward_family_candidate_replay_v1(
+    value: Any,
+    *,
+    regions: Sequence[dict[str, Any]],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    query_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Rebuild and exact-compare one candidate, including every provenance receipt."""
+
+    rebuilt = evaluate_gemini_json_rollforward_family_cluster_v1(
+        regions=regions,
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled_specs,
+        query_receipt=query_receipt,
+    )
+    if type(value) is not dict or not same_typed_json_v1(value, rebuilt):
+        raise _error("roll-forward family candidate does not replay exactly")
+    return rebuilt
