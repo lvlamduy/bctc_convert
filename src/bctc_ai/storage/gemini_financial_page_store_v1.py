@@ -1147,6 +1147,120 @@ def document_page_image_frontier_v1(
     return {page: grouped[page][0] for page in pages}
 
 
+def document_page_extraction_frontier_v1(
+    path: Path,
+    *,
+    source_sha256: str,
+    source_logical_name: str,
+    expected_physical_pages: Sequence[int],
+    render_dpi: int,
+) -> dict[int, dict[str, str]]:
+    """Recover a unique successful image/prompt pair for every document page."""
+
+    pages = list(expected_physical_pages)
+    if (
+        type(source_sha256) is not str
+        or len(source_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in source_sha256)
+        or type(source_logical_name) is not str
+        or not source_logical_name
+        or not pages
+        or pages != sorted(set(pages))
+        or any(type(page) is not int or page <= 0 for page in pages)
+        or render_dpi not in {200, 300}
+    ):
+        raise _error("stored document extraction frontier request is invalid")
+    with _connect(path, readonly=True) as connection:
+        rows = connection.execute(
+            """
+            SELECT DISTINCT p.physical_page, p.image_sha256,
+                            e.prompt_variant, e.prompt_sha256
+            FROM document AS d
+            JOIN page AS p USING(document_id)
+            JOIN extraction_run AS e USING(page_id)
+            WHERE d.source_sha256=? AND d.source_logical_name=? AND p.render_dpi=?
+            ORDER BY p.physical_page, p.image_sha256, e.prompt_variant
+            """,
+            (source_sha256, source_logical_name, render_dpi),
+        ).fetchall()
+    grouped: dict[int, list[dict[str, str]]] = {}
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    for row in rows:
+        if row["prompt_variant"] not in allowed_variants:
+            raise _error("stored document extraction prompt variant is invalid")
+        grouped.setdefault(row["physical_page"], []).append(
+            {
+                "image_sha256": row["image_sha256"],
+                "prompt_sha256": row["prompt_sha256"],
+                "prompt_variant": row["prompt_variant"],
+            }
+        )
+    if set(grouped) != set(pages) or any(len(records) != 1 for records in grouped.values()):
+        raise _error("stored document extraction frontier is incomplete or ambiguous")
+    return {page: grouped[page][0] for page in pages}
+
+
+def selected_page_extraction_receipts_v1(
+    path: Path,
+    *,
+    page_json_version_ids: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Replay exact extraction provenance for a manifest-selected page axis."""
+
+    version_ids = list(page_json_version_ids)
+    if (
+        not version_ids
+        or len(set(version_ids)) != len(version_ids)
+        or any(
+            type(version_id) is not str
+            or not version_id.startswith("gfpstorev1:json:")
+            or len(version_id) != len("gfpstorev1:json:") + 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in version_id.removeprefix("gfpstorev1:json:")
+            )
+            for version_id in version_ids
+        )
+    ):
+        raise _error("selected page extraction receipt frontier is invalid")
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_extraction_receipt("
+            "selection_ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_extraction_receipt VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, s.page_json_version_id,
+                   d.source_sha256, d.source_logical_name,
+                   p.physical_page, p.image_sha256, p.render_dpi,
+                   e.prompt_variant, e.prompt_sha256
+            FROM selected_extraction_receipt AS s
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN extraction_run AS e USING(extraction_run_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            ORDER BY s.selection_ordinal
+            """
+        ).fetchall()
+    if len(rows) != len(version_ids):
+        raise _error("selected page extraction receipt is absent")
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    result = []
+    for ordinal, row in enumerate(rows, start=1):
+        if (
+            row["selection_ordinal"] != ordinal
+            or row["page_json_version_id"] != version_ids[ordinal - 1]
+            or row["prompt_variant"] not in allowed_variants
+        ):
+            raise _error("selected page extraction receipt order or prompt is invalid")
+        result.append(dict(row))
+    return result
+
+
 def _distinct_anchor_assignment_exists_v1(hit_groups: Sequence[Sequence[str]]) -> bool:
     """Return whether every anchor group can bind a distinct visible row."""
 

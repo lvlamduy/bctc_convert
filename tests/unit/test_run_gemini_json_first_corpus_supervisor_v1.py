@@ -2806,6 +2806,15 @@ def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store
     )
     monkeypatch.setattr(
         target,
+        "_manifest_extraction_frontier_v1",
+        lambda **_kwargs: {
+            "page_images": {1: image_sha},
+            "prompt_sha256s": {1: prompt_sha},
+            "variants": {1: "items"},
+        },
+    )
+    monkeypatch.setattr(
+        target,
         "_current_page_image_sha256s_v1",
         lambda **_kwargs: pytest.fail("corpus freeze must not render stored pages again"),
     )
@@ -2991,6 +3000,15 @@ def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
         target,
         "_stored_page_image_sha256s_v1",
         lambda **_kwargs: {1: image_sha},
+    )
+    monkeypatch.setattr(
+        target,
+        "_manifest_extraction_frontier_v1",
+        lambda **_kwargs: {
+            "page_images": {1: image_sha},
+            "prompt_sha256s": {1: prompt_sha},
+            "variants": {1: "items"},
+        },
     )
     monkeypatch.setattr(
         target,

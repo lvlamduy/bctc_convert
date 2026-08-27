@@ -15,6 +15,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     _parents,
     _visual_state,
     build_financial_document_manifest_v1,
+    document_page_extraction_frontier_v1,
     document_page_image_frontier_v1,
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
@@ -22,6 +23,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     lookup_cached_page_json_v1,
     query_family_anchor_regions_v1,
     query_selected_family_anchor_regions_v1,
+    selected_page_extraction_receipts_v1,
     usage_summary_v1,
 )
 
@@ -325,6 +327,80 @@ def test_stored_document_page_image_frontier_is_exact_and_ambiguous_safe(tmp_pat
             expected_physical_pages=[7, 8],
             render_dpi=300,
         )
+
+
+def test_stored_document_extraction_frontier_binds_unique_prompt_per_page(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    _ingest(path, render_dpi=300, prompt_variant="simple")
+    _ingest(
+        path,
+        physical_page=8,
+        image_sha256="1" * 64,
+        prompt_sha256="f" * 64,
+        prompt_variant="scope",
+        render_dpi=300,
+    )
+    assert document_page_extraction_frontier_v1(
+        path,
+        source_sha256="b" * 64,
+        source_logical_name="report.pdf",
+        expected_physical_pages=[7, 8],
+        render_dpi=300,
+    ) == {
+        7: {
+            "image_sha256": "c" * 64,
+            "prompt_sha256": "d" * 64,
+            "prompt_variant": "simple",
+        },
+        8: {
+            "image_sha256": "1" * 64,
+            "prompt_sha256": "f" * 64,
+            "prompt_variant": "scope",
+        },
+    }
+
+    _ingest(
+        path,
+        physical_page=8,
+        image_sha256="1" * 64,
+        prompt_sha256="9" * 64,
+        prompt_variant="items",
+        render_dpi=300,
+    )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="incomplete or ambiguous"):
+        document_page_extraction_frontier_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            render_dpi=300,
+        )
+
+
+def test_selected_page_extraction_receipts_preserve_source_prompt_and_order(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    first = _ingest(path, render_dpi=300, prompt_variant="simple")
+    second = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="1" * 64,
+        prompt_sha256="f" * 64,
+        prompt_variant="scope",
+        render_dpi=300,
+    )
+    receipts = selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=[
+            first["page_json_version_id"],
+            second["page_json_version_id"],
+        ],
+    )
+    assert [receipt["physical_page"] for receipt in receipts] == [7, 8]
+    assert [receipt["prompt_variant"] for receipt in receipts] == ["simple", "scope"]
+    assert [receipt["prompt_sha256"] for receipt in receipts] == ["d" * 64, "f" * 64]
+    assert all(receipt["source_sha256"] == "b" * 64 for receipt in receipts)
 
 
 def test_selected_family_query_fails_closed_on_invalid_frontier_or_anchor_assignment(

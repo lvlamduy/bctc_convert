@@ -69,7 +69,9 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     batch_finalized_requests_v1,
     batch_progress_v1,
     build_financial_document_manifest_v1,
+    document_page_extraction_frontier_v1,
     document_page_image_frontier_v1,
+    selected_page_extraction_receipts_v1,
     usage_summary_v1,
 )
 
@@ -1210,6 +1212,74 @@ def _manifest_page_image_sha256s_v1(
     return result
 
 
+def _manifest_extraction_frontier_v1(
+    *,
+    database: Path,
+    manifest: dict[str, Any],
+    expected_pages: list[int],
+    dpi: int,
+    source_sha256: str,
+    source_logical_name: str,
+) -> dict[str, Any]:
+    """Cross-bind one manifest to the immutable extraction rows it selected."""
+
+    pages = manifest.get("pages")
+    page_images = _manifest_page_image_sha256s_v1(
+        manifest,
+        expected_pages=expected_pages,
+        dpi=dpi,
+    )
+    receipts = selected_page_extraction_receipts_v1(
+        database,
+        page_json_version_ids=[page.get("page_json_version_id") for page in pages],
+    )
+    variants: dict[int, str] = {}
+    prompt_sha256s: dict[int, str] = {}
+    for page, receipt in zip(pages, receipts, strict=True):
+        physical_page = page["physical_page"]
+        if (
+            receipt["physical_page"] != physical_page
+            or receipt["source_sha256"] != source_sha256
+            or receipt["source_logical_name"] != source_logical_name
+            or receipt["render_dpi"] != dpi
+            or receipt["image_sha256"] != page_images[physical_page]
+            or (
+                page.get("prompt_sha256") is not None
+                and page["prompt_sha256"] != receipt["prompt_sha256"]
+            )
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected document extraction receipt differs from its manifest"
+            )
+        variants[physical_page] = receipt["prompt_variant"]
+        prompt_sha256s[physical_page] = receipt["prompt_sha256"]
+    contract = manifest.get("extraction_contract")
+    if type(contract) is not dict:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected document extraction contract is absent"
+        )
+    if manifest.get("format_version") == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2":
+        contract_prompt_sha = contract.get("prompt_sha256")
+        if any(prompt_sha != contract_prompt_sha for prompt_sha in prompt_sha256s.values()):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected legacy document prompt differs from extraction receipt"
+            )
+    else:
+        expected_prompt_frontier = [
+            {"physical_page": page, "prompt_sha256": prompt_sha256s[page]}
+            for page in expected_pages
+        ]
+        if contract.get("page_prompt_sha256s") != expected_prompt_frontier:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected document prompt frontier differs from extraction receipts"
+            )
+    return {
+        "page_images": page_images,
+        "prompt_sha256s": prompt_sha256s,
+        "variants": variants,
+    }
+
+
 def _current_page_image_sha256s_v1(
     *,
     task: dict[str, Any],
@@ -1522,12 +1592,29 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         default_variant=corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
         overrides=args.page_prompt_variant,
     )
-    prompt_sha256s = {
-        page: sha256(
-            build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
-        ).hexdigest()
-        for page, variant in variants.items()
-    }
+    stored_prompt_sha256s = getattr(args, "stored_prompt_sha256s", None)
+    if stored_prompt_sha256s is None:
+        prompt_sha256s = {
+            page: sha256(
+                build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
+            ).hexdigest()
+            for page, variant in variants.items()
+        }
+    elif (
+        type(stored_prompt_sha256s) is not dict
+        or set(stored_prompt_sha256s) != set(expected_pages)
+        or any(
+            type(prompt_sha) is not str
+            or len(prompt_sha) != 64
+            or any(character not in "0123456789abcdef" for character in prompt_sha)
+            for prompt_sha in stored_prompt_sha256s.values()
+        )
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "stored document prompt receipt frontier is invalid"
+        )
+    else:
+        prompt_sha256s = dict(sorted(stored_prompt_sha256s.items()))
     stored_page_images = getattr(args, "stored_page_images", None)
     if stored_page_images is not None:
         _source(task, args.source_root)
@@ -1840,6 +1927,7 @@ def _replay_selected_document_for_corpus_v1(
     if selected is None:
         page_prompt_variant = []
         stored_page_images = None
+        stored_prompt_sha256s = None
         legacy_manifest_path = document_root / "current-document-manifest.json"
         legacy_manifest = (
             _json_file(legacy_manifest_path)
@@ -1881,25 +1969,47 @@ def _replay_selected_document_for_corpus_v1(
                 raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                     "legacy current document manifest identity or page frontier drifted"
                 )
-            legacy_variants = _prompt_variants_from_manifest_v1(legacy_manifest)
-            legacy_page_images = _manifest_page_image_sha256s_v1(
-                legacy_manifest,
+            legacy_frontier = _manifest_extraction_frontier_v1(
+                database=args.database,
+                manifest=legacy_manifest,
                 expected_pages=expected_pages,
                 dpi=plan["policy"]["dpi"],
+                source_sha256=planned["document"]["source_sha256"],
+                source_logical_name=planned["document"]["relative_path"],
             )
+            variants = legacy_frontier["variants"]
+            stored_prompt_sha256s = legacy_frontier["prompt_sha256s"]
             stored_page_images = [
                 {
-                    "image_sha256": legacy_page_images[page],
+                    "image_sha256": legacy_frontier["page_images"][page],
                     "physical_page": page,
                 }
                 for page in expected_pages
             ]
-            default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
-            page_prompt_variant = [
-                f"{page}={variant}"
-                for page, variant in legacy_variants.items()
-                if variant != default_variant
+        else:
+            expected_pages = list(range(1, planned["document"]["page_count"] + 1))
+            stored_frontier = document_page_extraction_frontier_v1(
+                args.database,
+                source_sha256=planned["document"]["source_sha256"],
+                source_logical_name=planned["document"]["relative_path"],
+                expected_physical_pages=expected_pages,
+                render_dpi=plan["policy"]["dpi"],
+            )
+            variants = {page: stored_frontier[page]["prompt_variant"] for page in expected_pages}
+            stored_prompt_sha256s = {
+                page: stored_frontier[page]["prompt_sha256"] for page in expected_pages
+            }
+            stored_page_images = [
+                {
+                    "image_sha256": stored_frontier[page]["image_sha256"],
+                    "physical_page": page,
+                }
+                for page in expected_pages
             ]
+        default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
+        page_prompt_variant = [
+            f"{page}={variant}" for page, variant in variants.items() if variant != default_variant
+        ]
         built = build_current_document_manifest(
             argparse.Namespace(
                 artifact_root=args.artifact_root,
@@ -1910,6 +2020,7 @@ def _replay_selected_document_for_corpus_v1(
                 reuse_stored_page_images=True,
                 source_root=args.source_root,
                 stored_page_images=stored_page_images,
+                stored_prompt_sha256s=stored_prompt_sha256s,
                 task_id=planned["tasks"][0]["task_id"],
             )
         )
@@ -1949,19 +2060,18 @@ def _replay_selected_document_for_corpus_v1(
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "selected corpus document manifest identity or page frontier drifted"
         )
-    variants = _prompt_variants_from_manifest_v1(manifest)
-    prompt_sha256s = {
-        page: sha256(
-            build_financial_page_json_prompt_v1(variant=variants[page]).encode("utf-8")
-        ).hexdigest()
-        for page in expected_pages
-    }
     _source(task, args.source_root)
-    page_images = _manifest_page_image_sha256s_v1(
-        manifest,
+    selected_frontier = _manifest_extraction_frontier_v1(
+        database=args.database,
+        manifest=manifest,
         expected_pages=expected_pages,
         dpi=plan["policy"]["dpi"],
+        source_sha256=planned["document"]["source_sha256"],
+        source_logical_name=planned["document"]["relative_path"],
     )
+    page_images = selected_frontier["page_images"]
+    prompt_sha256s = selected_frontier["prompt_sha256s"]
+    variants = selected_frontier["variants"]
     rebuilt = build_financial_document_manifest_v1(
         args.database,
         source_sha256=task["source_sha256"],
