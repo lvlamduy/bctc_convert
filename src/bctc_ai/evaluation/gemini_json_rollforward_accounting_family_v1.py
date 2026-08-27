@@ -7,11 +7,14 @@ presentations into one ``period -> lane -> movement`` graph:
 * two period tables whose columns are accounting lanes; and
 * two lane tables whose columns are periods.
 
-Only exact Gemini JSON strings and declarative specifications are consumed.
-There is no PDF geometry, OCR fallback, bank/file/page route, or numeric
-backsolve across unrelated rows.  A blank is an unknown, not zero.  One blank
-may be solved only by one full-rank lane equation; two blanks always remain
-unresolved and identify a bounded row/table repair frontier.
+Only exact Gemini JSON strings, one content-addressed same-document region
+receipt, and declarative specifications are consumed.  There is no PDF
+geometry, OCR fallback, bank/file/page route, or numeric backsolve across
+unrelated rows.  A blank is an unknown, not zero.  One blank may be solved only
+by one full-rank lane equation; two blanks always remain unresolved and
+identify a bounded row/table repair frontier.  Both periods must close their
+equations and every comparative closing endpoint must equal the current
+opening endpoint in the same lane and unit.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 
 ENGINE_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1"
@@ -37,13 +41,18 @@ EVALUATION_FORMAT_VERSION = "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1"
 LAYOUT_FORMAT_VERSION = "ACCOUNTING_ROLLFORWARD_LAYOUT_SPEC_V1"
 SCHEMA_FORMAT_VERSION = "ACCOUNTING_ROLLFORWARD_SCHEMA_BINDING_SPEC_V1"
 QUERY_RECEIPT_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_REGION_QUERY_RECEIPT_V1"
+QUERY_RECEIPT_AUTHENTICATION_KIND = (
+    "CONTENT_ADDRESSED_EXACT_DOCUMENT_SOURCE_VERSION_ORDERED_REGION_BINDING"
+)
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
-    "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_OWNER_RESET_POPULATION_"
-    "TWO_PERIOD_LANE_MOVEMENT_TRANSPOSE_EXACT_SIGNED_ROLLFORWARD_ONE_UNKNOWN_"
-    "FULL_RANK_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_PPOCR_VIETOCR_BANK_"
-    "FILE_PAGE_NOTE_ROUTING_MULTI_UNKNOWN_ZERO_COERCION_OR_EXPORT_AUTHORITY"
+    "MANIFEST_SELECTED_GEMINI_JSON_ONLY_CONTENT_ADDRESSED_DOCUMENT_SOURCE_VERSION_"
+    "ORDERED_REGION_RECEIPT_DECLARATIVE_OWNER_EXPLICIT_CONTINUATION_FULL_SECTION_"
+    "RESET_POPULATION_TWO_PERIOD_LANE_MOVEMENT_TRANSPOSE_ENDPOINT_CONTINUITY_EXACT_"
+    "SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_"
+    "GEOMETRY_PPOCR_VIETOCR_BANK_FILE_PAGE_NOTE_ROUTING_MULTI_UNKNOWN_ZERO_"
+    "COERCION_OR_EXPORT_AUTHORITY"
 )
 
 _ORIENTATIONS = {
@@ -72,6 +81,18 @@ _YEAR = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
 _DIGITS = re.compile(r"^\d+$")
 _GROUPED = re.compile(r"^\d{1,3}(?:[., ]\d{3})+$")
 _DASHES = {"-", "–", "—", "_"}
+_PAGE_JSON_VERSION_ID = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
+_DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
+_SOURCE_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_CONTINUATION_MARKER_ALIASES = ("tiep theo", "continued")
+_CONTINUES_FROM_PREVIOUS = {"BOTH", "CONTINUES_FROM_PREVIOUS_PAGE"}
+_CONTINUATION_KINDS = {
+    "BOTH",
+    "CONTINUES_FROM_PREVIOUS_PAGE",
+    "CONTINUES_ON_NEXT_PAGE",
+    "NONE",
+    "UNKNOWN",
+}
 
 
 class GeminiJsonRollforwardAccountingFamilyV1Error(ValueError):
@@ -648,6 +669,36 @@ def _lane_context_evidence(
     }
 
 
+def _explicit_continuation_evidence(
+    section: Mapping[str, Any], table: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    continuation = table.get("continuation")
+    if continuation not in _CONTINUATION_KINDS:
+        raise _error("roll-forward table continuation kind is invalid")
+    evidence = []
+    if continuation in _CONTINUES_FROM_PREVIOUS:
+        evidence.append(
+            {
+                "source_exact": continuation,
+                "source_kind": "TABLE_CONTINUATION_KIND",
+            }
+        )
+    narratives = section.get("narratives_exact")
+    if type(narratives) is not list:
+        raise _error("roll-forward continuation narrative axis is invalid")
+    surfaces = [
+        ("TABLE_TITLE", table.get("title_exact")),
+        ("SECTION_TITLE", section.get("title_exact")),
+        *(("SECTION_NARRATIVE", value) for value in narratives),
+    ]
+    evidence.extend(
+        {"source_exact": value, "source_kind": source_kind}
+        for source_kind, value in surfaces
+        if type(value) is str and _matches_alias(value, _CONTINUATION_MARKER_ALIASES)
+    )
+    return evidence
+
+
 def _bound_unit(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -> str | None:
     surfaces = [table.get("unit_exact")]
     for column in table.get("columns", []):
@@ -767,6 +818,7 @@ def classify_gemini_json_rollforward_table_v1(
         reasons.append("ROLLFORWARD_STRUCTURAL_HARD_NEGATIVE_VISIBLE")
     return {
         "column_lane_roles": lane_by_column,
+        "continuation_evidence": _explicit_continuation_evidence(section, table),
         "context_lane_assignment_source_kind": context["explicit_source_kind"],
         "context_lane_candidates_in_source_order": context["narrative_lane_roles"],
         "context_lane_evidence": context["narrative_lane_evidence"],
@@ -839,8 +891,11 @@ def _row_blocks(
             raise _error("roll-forward period block has incomplete endpoint topology")
         opening_date = active[0]["endpoint_date"]
         closing_date = active[-1]["endpoint_date"]
-        if active[0]["assignment_kind"] == "ORDERED_DATE_ENDPOINT_AS_OPENING" and (
-            opening_date is None or closing_date is None or opening_date >= closing_date
+        if (
+            opening_date is not None and closing_date is not None and opening_date >= closing_date
+        ) or (
+            active[0]["assignment_kind"] == "ORDERED_DATE_ENDPOINT_AS_OPENING"
+            and (opening_date is None or closing_date is None)
         ):
             raise _error("roll-forward ordered date endpoint continuity is invalid")
         blocks.append(active)
@@ -1099,9 +1154,12 @@ def _assign_period_column_lane_roles(
 
 def _region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     fields = {
+        "document_id",
         "page_json_version_id",
         "physical_page",
         "section_id",
+        "source_logical_name",
+        "source_sha256",
         "table_id",
     }
     result = []
@@ -1109,10 +1167,20 @@ def _region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
         if type(region) is not dict or set(region) != fields:
             raise _error("roll-forward component region locator is invalid")
         if (
-            type(region["page_json_version_id"]) is not str
-            or not region["page_json_version_id"].startswith("gfpstorev1:json:")
+            type(region["document_id"]) is not str
+            or _DOCUMENT_ID.fullmatch(region["document_id"]) is None
+            or type(region["source_logical_name"]) is not str
+            or not region["source_logical_name"].strip()
+            or type(region["source_sha256"]) is not str
+            or _SOURCE_SHA256.fullmatch(region["source_sha256"]) is None
+            or type(region["page_json_version_id"]) is not str
+            or _PAGE_JSON_VERSION_ID.fullmatch(region["page_json_version_id"]) is None
             or type(region["physical_page"]) is not int
             or region["physical_page"] <= 0
+            or type(region["section_id"]) is not str
+            or re.fullmatch(r"s[1-9][0-9]*", region["section_id"]) is None
+            or type(region["table_id"]) is not str
+            or re.fullmatch(r"t[1-9][0-9]*", region["table_id"]) is None
         ):
             raise _error("roll-forward component region identity is invalid")
         result.append(canonical_clone_v1(region))
@@ -1129,113 +1197,214 @@ def _region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
         raise _error("roll-forward component region axis is unordered or duplicate")
     if len(result) not in {1, 2} or result[-1]["physical_page"] - result[0]["physical_page"] > 1:
         raise _error("roll-forward component region span is out of bounds")
+    source_axis = {
+        (
+            item["document_id"],
+            item["source_logical_name"],
+            item["source_sha256"],
+        )
+        for item in result
+    }
+    if len(source_axis) != 1:
+        raise _error("roll-forward component regions cross one immutable document source")
+    version_by_page: dict[int, str] = {}
+    for item in result:
+        previous = version_by_page.setdefault(item["physical_page"], item["page_json_version_id"])
+        if previous != item["page_json_version_id"]:
+            raise _error("roll-forward component page selects multiple JSON versions")
     return result
 
 
-def _endpoint_source_receipt(
-    fragment: Mapping[str, Any], item: Mapping[str, Any]
-) -> dict[str, Any]:
-    """Keep one endpoint's exact provenance in a continuity receipt."""
+def _ordered_page_version_axis(
+    region_axis: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    result = []
+    seen: set[int] = set()
+    for item in region_axis:
+        if item["physical_page"] in seen:
+            continue
+        seen.add(item["physical_page"])
+        result.append(
+            {
+                "page_json_version_id": item["page_json_version_id"],
+                "physical_page": item["physical_page"],
+            }
+        )
+    return result
 
+
+def build_gemini_json_rollforward_region_query_receipt_v1(
+    regions: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    """Bind one query result to one immutable source and exact ordered regions."""
+
+    region_axis = _region_axis(regions)
+    first = region_axis[0]
+    material = {
+        "authentication_kind": QUERY_RECEIPT_AUTHENTICATION_KIND,
+        "document_id": first["document_id"],
+        "exact_region_count": len(region_axis),
+        "format_version": QUERY_RECEIPT_FORMAT_VERSION,
+        "ordered_page_json_version_axis_sha256": canonical_json_sha256_v1(
+            _ordered_page_version_axis(region_axis)
+        ),
+        "ordered_region_axis_sha256": canonical_json_sha256_v1(region_axis),
+        "source_logical_name": first["source_logical_name"],
+        "source_sha256": first["source_sha256"],
+    }
     return {
-        "assignment_kind": item["assignment_kind"],
-        "block_ordinal": fragment["block_ordinal"],
-        "bound_unit": fragment["bound_unit"],
-        "cell": canonical_clone_v1(item["cell"]),
-        "column_ordinal": item["column_ordinal"],
-        "endpoint_date": item["endpoint_date"],
-        "locator": canonical_clone_v1(fragment["locator"]),
-        "movement_role": item["movement_role"],
-        "row_id": item["row_id"],
+        **material,
+        "query_receipt_id": "gjfrqrv1:receipt:" + canonical_json_sha256_v1(material),
     }
 
 
-def _shared_endpoint_continuity_v1(
-    fragments: Sequence[Mapping[str, Any]],
+def _validated_region_query_receipt_v1(
+    value: Any, *, region_axis: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    expected = build_gemini_json_rollforward_region_query_receipt_v1(
+        [canonical_clone_v1(item) for item in region_axis]
+    )
+    if type(value) is not dict or not same_typed_json_v1(value, expected):
+        raise _error("roll-forward query receipt does not authenticate exact regions")
+    return canonical_clone_v1(expected)
+
+
+def _endpoint_source_receipt(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep one endpoint's exact source and solved-cell provenance."""
+
+    return canonical_clone_v1(
+        {
+            key: item[key]
+            for key in (
+                "assignment_kind",
+                "block_ordinal",
+                "bound_unit",
+                "cell",
+                "column_ordinal",
+                "endpoint_date",
+                "locator",
+                "movement_role",
+                "period_date",
+                "period_role",
+                "row_id",
+                "source_block_ordinal",
+                "source_movement_role",
+            )
+        }
+    )
+
+
+def _two_period_endpoint_continuity_v1(
+    role_vectors: Sequence[Mapping[str, Any]],
     *,
     compiled_specs: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Prove the sole implicit endpoint admitted by ``_row_blocks``.
-
-    A stacked presentation may print the older closing row only once and use
-    it as the newer opening row.  The proof remains local to one table/lane,
-    preserves both endpoint references, and requires identical value/unit plus
-    strictly increasing closing dates.  It never joins endpoints merely
-    because their values happen to be equal.
-    """
+    """Prove endpoint direction and prior-close/current-open equality per lane."""
 
     movement_by_kind = {
         item["kind"]: item["role"] for item in compiled_specs["layout"]["movement_roles"]
     }
+    opening_role = movement_by_kind["OPENING"]
     closing_role = movement_by_kind["CLOSING"]
+    by_key: dict[tuple[str, str, str], list[Mapping[str, Any]]] = {}
+    for vector in role_vectors:
+        by_key.setdefault(
+            (vector["period_role"], vector["lane_role"], vector["movement_role"]), []
+        ).append(vector)
+    lanes = sorted({vector["lane_role"] for vector in role_vectors})
     receipts: list[dict[str, Any]] = []
     reasons: list[str] = []
-    for fragment in fragments:
-        for opening in fragment["cells"]:
-            if opening["assignment_kind"] != "SHARED_PREVIOUS_CLOSING_AS_OPENING":
-                continue
-            lane_role = opening["lane_role"]
-            previous = [
-                (candidate_fragment, candidate)
-                for candidate_fragment in fragments
-                for candidate in candidate_fragment["cells"]
-                if candidate_fragment["locator"] == fragment["locator"]
-                and candidate_fragment["block_ordinal"] == opening["source_block_ordinal"]
-                and candidate["lane_role"] == lane_role
-                and candidate["movement_role"] == closing_role
-                and candidate["row_id"] == opening["row_id"]
-                and candidate["column_ordinal"] == opening["column_ordinal"]
-            ]
-            following = [
-                candidate
-                for candidate in fragment["cells"]
-                if candidate["lane_role"] == lane_role
-                and candidate["movement_role"] == closing_role
-            ]
-            valid = len(previous) == 1 and len(following) == 1
-            previous_fragment: Mapping[str, Any] | None = None
-            previous_closing: Mapping[str, Any] | None = None
-            following_closing: Mapping[str, Any] | None = None
-            if valid:
-                previous_fragment, previous_closing = previous[0]
-                following_closing = following[0]
-                previous_period = previous_fragment["period"]
-                following_period = fragment["period"]
-                valid = (
-                    previous_period is not None
-                    and following_period is not None
-                    and previous_period[0] < following_period[0]
-                    and previous_closing["endpoint_date"] is not None
-                    and following_closing["endpoint_date"] is not None
-                    and previous_closing["endpoint_date"] == previous_period[0].isoformat()
-                    and following_closing["endpoint_date"] == following_period[0].isoformat()
-                    and previous_closing["endpoint_date"] == opening["endpoint_date"]
-                    and previous_closing["cell"] == opening["cell"]
-                    and previous_fragment["bound_unit"] is not None
-                    and previous_fragment["bound_unit"] == fragment["bound_unit"]
-                    and fragment["block_ordinal"] == previous_fragment["block_ordinal"] + 1
-                )
-            if not valid:
-                reasons.append(f"ROLLFORWARD_SHARED_ENDPOINT_CONTINUITY_INVALID:{lane_role}")
-                continue
-            assert previous_fragment is not None
-            assert previous_closing is not None
-            assert following_closing is not None
-            receipts.append(
-                {
-                    "following_closing": _endpoint_source_receipt(fragment, following_closing),
-                    "following_period": fragment["period"][0].isoformat(),
-                    "lane_role": lane_role,
-                    "next_opening": _endpoint_source_receipt(fragment, opening),
-                    "previous_closing": _endpoint_source_receipt(
-                        previous_fragment, previous_closing
-                    ),
-                    "previous_period": previous_fragment["period"][0].isoformat(),
-                    "rule": (
-                        "SAME_LOCAL_SOURCE_ENDPOINT_SAME_VALUE_UNIT_LANE_STRICTLY_INCREASING_PERIOD"
-                    ),
-                }
+    for lane_role in lanes:
+        keys = (
+            ("COMPARATIVE_PERIOD", lane_role, opening_role),
+            ("COMPARATIVE_PERIOD", lane_role, closing_role),
+            ("CURRENT_PERIOD", lane_role, opening_role),
+            ("CURRENT_PERIOD", lane_role, closing_role),
+        )
+        if any(len(by_key.get(key, [])) != 1 for key in keys):
+            reasons.append(f"ROLLFORWARD_ENDPOINT_CONTINUITY_INCOMPLETE:{lane_role}")
+            continue
+        previous_opening, previous_closing, next_opening, following_closing = (
+            by_key[key][0] for key in keys
+        )
+        try:
+            previous_period = date.fromisoformat(previous_closing["period_date"])
+            following_period = date.fromisoformat(following_closing["period_date"])
+        except (TypeError, ValueError):
+            reasons.append(f"ROLLFORWARD_ENDPOINT_PERIOD_DATE_INVALID:{lane_role}")
+            continue
+
+        valid = previous_period < following_period
+        endpoints = (
+            (previous_opening, previous_closing, previous_period),
+            (next_opening, following_closing, following_period),
+        )
+        for opening, closing, period in endpoints:
+            opening_date = (
+                date.fromisoformat(opening["endpoint_date"])
+                if opening["endpoint_date"] is not None
+                else None
             )
+            closing_date = (
+                date.fromisoformat(closing["endpoint_date"])
+                if closing["endpoint_date"] is not None
+                else None
+            )
+            if opening_date is not None and opening_date >= period:
+                valid = False
+            if closing_date is not None and closing_date != period:
+                valid = False
+            if (
+                opening_date is not None
+                and closing_date is not None
+                and opening_date >= closing_date
+            ):
+                valid = False
+        previous_close_date = previous_closing["endpoint_date"]
+        next_open_date = next_opening["endpoint_date"]
+        if (
+            previous_close_date is not None
+            and next_open_date is not None
+            and date.fromisoformat(previous_close_date) > date.fromisoformat(next_open_date)
+        ):
+            valid = False
+        previous_coefficient = previous_closing["cell"]["coefficient"]
+        next_coefficient = next_opening["cell"]["coefficient"]
+        if (
+            previous_coefficient is None
+            or next_coefficient is None
+            or previous_coefficient != next_coefficient
+            or previous_closing["bound_unit"] is None
+            or previous_closing["bound_unit"] != next_opening["bound_unit"]
+        ):
+            valid = False
+        if next_opening["assignment_kind"] == "SHARED_PREVIOUS_CLOSING_AS_OPENING" and (
+            next_opening["locator"] != previous_closing["locator"]
+            or next_opening["row_id"] != previous_closing["row_id"]
+            or next_opening["column_ordinal"] != previous_closing["column_ordinal"]
+            or next_opening["source_movement_role"] != closing_role
+            or next_opening["source_block_ordinal"] != previous_closing["block_ordinal"]
+            or next_opening["cell"] != previous_closing["cell"]
+        ):
+            valid = False
+        if not valid:
+            reasons.append(f"ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:{lane_role}")
+            continue
+        receipts.append(
+            {
+                "following_closing": _endpoint_source_receipt(following_closing),
+                "following_period": following_period.isoformat(),
+                "lane_role": lane_role,
+                "next_opening": _endpoint_source_receipt(next_opening),
+                "previous_closing": _endpoint_source_receipt(previous_closing),
+                "previous_opening": _endpoint_source_receipt(previous_opening),
+                "previous_period": previous_period.isoformat(),
+                "rule": (
+                    "SAME_DOCUMENT_LANE_UNIT_PRIOR_CLOSE_EQUALS_CURRENT_OPEN_"
+                    "STRICTLY_INCREASING_PERIOD_ENDPOINT_DIRECTION"
+                ),
+            }
+        )
     return receipts, reasons
 
 
@@ -1299,8 +1468,9 @@ def _bounded_population_reset_fence_v1(
                     raise _error("roll-forward reset-fence table is invalid")
                 surfaces.append(("TABLE_TITLE", table.get("title_exact")))
                 columns = table.get("columns")
-                if type(columns) is not list:
-                    raise _error("roll-forward reset-fence column axis is invalid")
+                rows = table.get("rows")
+                if type(columns) is not list or type(rows) is not list:
+                    raise _error("roll-forward reset-fence table axes are invalid")
                 for column in columns:
                     if not isinstance(column, Mapping):
                         raise _error("roll-forward reset-fence column is invalid")
@@ -1308,6 +1478,14 @@ def _bounded_population_reset_fence_v1(
                     if type(header_path) is not list:
                         raise _error("roll-forward reset-fence header path is invalid")
                     surfaces.extend(("COLUMN_HEADER", value) for value in header_path)
+                for row in rows:
+                    if not isinstance(row, Mapping):
+                        raise _error("roll-forward reset-fence row is invalid")
+                    hierarchy = row.get("hierarchy_path_exact")
+                    if type(hierarchy) is not list:
+                        raise _error("roll-forward reset-fence row hierarchy is invalid")
+                    surfaces.append(("ROW_LABEL", row.get("label_exact")))
+                    surfaces.extend(("ROW_HIERARCHY", value) for value in hierarchy)
             hits.extend(
                 {
                     "page_json_version_id": version_id,
@@ -1336,12 +1514,10 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     """Evaluate one ordered one/two-table two-period roll-forward cluster."""
 
     region_axis = _region_axis(regions)
-    if (
-        type(query_receipt) is not dict
-        or query_receipt.get("format_version") != QUERY_RECEIPT_FORMAT_VERSION
-        or query_receipt.get("exact_region_count") < len(region_axis)
-    ):
-        raise _error("roll-forward query receipt is invalid")
+    checked_query_receipt = _validated_region_query_receipt_v1(
+        query_receipt,
+        region_axis=region_axis,
+    )
     fragments = []
     period_column_records = []
     component_classifications = []
@@ -1364,6 +1540,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             component_classifications.append(
                 {
                     "bound_unit": _bound_unit(table, compiled_specs=compiled_specs),
+                    "continuation_evidence": classification["continuation_evidence"],
                     "context_reset_visible": classification["context_reset_visible"],
                     "local_owner_visible": classification["local_owner_visible"],
                     "locator": canonical_clone_v1(locator),
@@ -1441,6 +1618,8 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
     ]
     if unbound_continuations:
         reasons.append("ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_DIRECTION_INVALID")
+    if any(not item["continuation_evidence"] for item in continuation_components):
+        reasons.append("ROLLFORWARD_EXPLICIT_CONTINUATION_EVIDENCE_NOT_VISIBLE")
     reset_fence_receipt = (
         _bounded_population_reset_fence_v1(
             region_axis,
@@ -1465,6 +1644,13 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             else "UNRESOLVED_NO_LOCAL_OWNER"
         ),
         "continuation_component_locators": [item["locator"] for item in continuation_components],
+        "continuation_evidence_receipts": [
+            {
+                "evidence": item["continuation_evidence"],
+                "locator": item["locator"],
+            }
+            for item in continuation_components
+        ],
         "max_physical_page_span": (
             region_axis[-1]["physical_page"] - region_axis[0]["physical_page"]
         ),
@@ -1493,13 +1679,8 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
         period: "CURRENT_PERIOD" if ordinal == 0 else "COMPARATIVE_PERIOD"
         for ordinal, period in enumerate(dates)
     }
-    endpoint_continuity_receipts, endpoint_reasons = _shared_endpoint_continuity_v1(
-        fragments,
-        compiled_specs=compiled_specs,
-    )
-    reasons.extend(endpoint_reasons)
     merged: dict[tuple[str, str, str], dict[str, Any]] = {}
-    duplicate_receipts = []
+    duplicate_source_ambiguities = []
     for fragment in fragments:
         if fragment["period"] is None or fragment["period"][0] not in period_role_by_date:
             continue
@@ -1511,6 +1692,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                 "block_ordinal": fragment["block_ordinal"],
                 "bound_unit": fragment["bound_unit"],
                 "locator": canonical_clone_v1(fragment["locator"]),
+                "period_date": fragment["period"][0].isoformat(),
                 "period_role": period_role,
                 "resolved_period": fragment["period"][1],
             }
@@ -1523,13 +1705,18 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                 and previous["resolved_period"] == record["resolved_period"]
                 and previous["bound_unit"] == record["bound_unit"]
             )
-            if not same_cell:
-                reasons.append("ROLLFORWARD_DUPLICATE_ROLE_PERIOD_LANE_CONFLICT:" + ":".join(key))
-                continue
-            duplicate_receipts.append(
+            reasons.append("ROLLFORWARD_DUPLICATE_ROLE_PERIOD_LANE_AMBIGUOUS:" + ":".join(key))
+            duplicate_source_ambiguities.append(
                 {
                     "corroborated_key": list(key),
+                    "disposition": (
+                        "IDENTICAL_DUPLICATE_SOURCE_AMBIGUOUS"
+                        if same_cell
+                        else "CONFLICTING_DUPLICATE_SOURCE_AMBIGUOUS"
+                    ),
+                    "first_column_ordinal": previous["column_ordinal"],
                     "first_locator": previous["locator"],
+                    "second_column_ordinal": record["column_ordinal"],
                     "second_locator": record["locator"],
                 }
             )
@@ -1625,6 +1812,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                 record = merged[(period_role, lane_role, movement_role)]
                 vector = {
                     "assignment_kind": record["assignment_kind"],
+                    "block_ordinal": record["block_ordinal"],
                     "bound_unit": record["bound_unit"],
                     "cell": cell,
                     "column_ordinal": record["column_ordinal"],
@@ -1632,6 +1820,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                     "lane_role": lane_role,
                     "locator": record["locator"],
                     "movement_role": movement_role,
+                    "period_date": record["period_date"],
                     "period_role": period_role,
                     "resolved_period": record["resolved_period"],
                     "row_id": record["row_id"],
@@ -1659,6 +1848,11 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
                         "item_mapping_id": "gjfrfmv1:item:" + canonical_json_sha256_v1(material),
                     }
                 )
+    endpoint_continuity_receipts, endpoint_reasons = _two_period_endpoint_continuity_v1(
+        role_vectors,
+        compiled_specs=compiled_specs,
+    )
+    reasons.extend(endpoint_reasons)
     reasons = sorted(set(reasons))
     orientation = (
         "STACKED_PERIOD_BLOCKS"
@@ -1683,7 +1877,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             ),
             "component_classifications": component_classifications,
             "component_region_axis_sha256": canonical_json_sha256_v1(region_axis),
-            "duplicate_corroborations": duplicate_receipts,
+            "duplicate_source_ambiguities": duplicate_source_ambiguities,
             "endpoint_continuity_receipts": endpoint_continuity_receipts,
             "equations": equations,
             "orientation": orientation,
@@ -1692,7 +1886,7 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             },
             "population_receipt": population_receipt,
             "potential_mapping_count": len(potential_mappings),
-            "query_receipt": canonical_clone_v1(query_receipt),
+            "query_receipt": checked_query_receipt,
             "role_vectors": role_vectors,
             "rule": "EXACT_SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK",
             "unresolved_frontiers": unresolved_frontiers,
@@ -1703,12 +1897,15 @@ def evaluate_gemini_json_rollforward_family_cluster_v1(
             for item in region_axis
             if item["page_json_version_id"] == first["page_json_version_id"]
         ],
+        "document_id": first["document_id"],
         "family_id": compiled_specs["topology"]["family_id"],
         "mappings": mappings,
         "page_json_version_id": first["page_json_version_id"],
         "physical_page": first["physical_page"],
         "reasons": reasons,
         "section_id": first["section_id"],
+        "source_logical_name": first["source_logical_name"],
+        "source_sha256": first["source_sha256"],
         "status": UNRESOLVED if reasons else READY,
         "table_id": first["table_id"],
     }

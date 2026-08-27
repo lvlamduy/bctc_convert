@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
+import pytest
+
 from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
-    QUERY_RECEIPT_FORMAT_VERSION,
     READY,
     UNRESOLVED,
+    GeminiJsonRollforwardAccountingFamilyV1Error,
+    build_gemini_json_rollforward_region_query_receipt_v1,
     compile_gemini_json_rollforward_family_specs_v1,
     evaluate_gemini_json_rollforward_family_cluster_v1,
     solve_one_unknown_rollforward_lane_v1,
@@ -15,6 +19,9 @@ from bctc_ai.evaluation.gemini_json_rollforward_accounting_family_v1 import (
 ROOT = Path(__file__).resolve().parents[2]
 VERSION_A = "gfpstorev1:json:" + "a" * 64
 VERSION_B = "gfpstorev1:json:" + "b" * 64
+DOCUMENT_ID = "gfpstorev1:document:" + "c" * 64
+SOURCE_LOGICAL_NAME = "family13-audited.pdf"
+SOURCE_SHA256 = "d" * 64
 
 
 def _json(name: str) -> dict:
@@ -48,6 +55,9 @@ def _period_table(
     margin_use: str | None = "(10)",
     unit: str | None = "Triệu đồng",
 ) -> dict:
+    current = "2025" in period
+    opening_values = ["110", "215", "110"] if current else ["100", "200", "100"]
+    closing_values = ["120", "230", "120"] if current else ["110", "215", "110"]
     return {
         "columns": [
             {
@@ -72,7 +82,7 @@ def _period_table(
                 "hierarchy_path_exact": ["Số dư đầu kỳ"],
                 "label_exact": "Số dư đầu kỳ",
                 "row_kind": "ITEM",
-                "values_exact": ["100", "200", "100"],
+                "values_exact": opening_values,
             },
             {
                 "hierarchy_path_exact": ["Trích lập dự phòng trong kỳ"],
@@ -90,7 +100,7 @@ def _period_table(
                 "hierarchy_path_exact": ["Số dư cuối kỳ"],
                 "label_exact": "Số dư cuối kỳ",
                 "row_kind": "TOTAL",
-                "values_exact": ["110", "215", "110"],
+                "values_exact": closing_values,
             },
         ],
         "title_exact": period,
@@ -215,15 +225,31 @@ def _evaluate(
             "table_id": "t2",
         },
     ]
+    checked_refs = _source_refs(refs)
     return evaluate_gemini_json_rollforward_family_cluster_v1(
-        regions=refs,
+        regions=checked_refs,
         page_json_by_version=pages or {VERSION_A: page},
         compiled_specs=_compiled(),
-        query_receipt={
-            "exact_region_count": len(refs),
-            "format_version": QUERY_RECEIPT_FORMAT_VERSION,
-        },
+        query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(checked_refs),
     )
+
+
+def _source_refs(
+    refs: list[dict],
+    *,
+    document_id: str = DOCUMENT_ID,
+    source_logical_name: str = SOURCE_LOGICAL_NAME,
+    source_sha256: str = SOURCE_SHA256,
+) -> list[dict]:
+    return [
+        {
+            "document_id": document_id,
+            "source_logical_name": source_logical_name,
+            "source_sha256": source_sha256,
+            **ref,
+        }
+        for ref in refs
+    ]
 
 
 def test_one_unknown_is_solved_only_by_one_full_rank_lane_equation() -> None:
@@ -494,6 +520,80 @@ def test_adjacent_component_can_inherit_one_bounded_reset_fenced_owner_context()
     assert population["reset_fence_receipt"]["status"] == "RESET_FENCE_CLEAR"
 
 
+def test_unmarked_component_cannot_inherit_arbitrary_owner_context() -> None:
+    current = _page(_period_table("31/12/2025"))
+    comparative = _page(_period_table("31/12/2024"))
+    target = comparative["sections"][0]
+    target["title_exact"] = "Bảng số liệu tổng hợp"
+    target["narratives_exact"] = []
+    for column in target["tables"][0]["columns"]:
+        column["header_path_exact"] = [column["header_path_exact"][-1]]
+    refs = [
+        {
+            "page_json_version_id": VERSION_A,
+            "physical_page": 7,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": VERSION_B,
+            "physical_page": 8,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    ]
+
+    candidate = _evaluate(
+        current,
+        refs=refs,
+        pages={VERSION_A: current, VERSION_B: comparative},
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_EXPLICIT_CONTINUATION_EVIDENCE_NOT_VISIBLE" in candidate["reasons"]
+
+
+def test_structured_previous_page_continuation_is_explicit_evidence() -> None:
+    current = _page(_period_table("31/12/2025"))
+    comparative = _page(_period_table("31/12/2024"))
+    target = comparative["sections"][0]
+    target["title_exact"] = "Bảng số liệu tổng hợp"
+    target["narratives_exact"] = []
+    target["tables"][0]["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
+    for column in target["tables"][0]["columns"]:
+        column["header_path_exact"] = [column["header_path_exact"][-1]]
+    refs = [
+        {
+            "page_json_version_id": VERSION_A,
+            "physical_page": 7,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": VERSION_B,
+            "physical_page": 8,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    ]
+
+    candidate = _evaluate(
+        current,
+        refs=refs,
+        pages={VERSION_A: current, VERSION_B: comparative},
+    )
+
+    assert candidate["status"] == READY
+    evidence = candidate["closure_receipt"]["population_receipt"]["continuation_evidence_receipts"]
+    assert evidence[0]["evidence"] == [
+        {
+            "source_exact": "CONTINUES_FROM_PREVIOUS_PAGE",
+            "source_kind": "TABLE_CONTINUATION_KIND",
+        }
+    ]
+
+
 def test_bounded_owner_continuation_stops_at_an_intervening_reset() -> None:
     current = _page(_period_table("31/12/2025"))
     comparative = _page(_period_table("31/12/2024"))
@@ -538,6 +638,69 @@ def test_bounded_owner_continuation_stops_at_an_intervening_reset() -> None:
     assert "ROLLFORWARD_BOUNDED_OWNER_CONTINUATION_RESET_FENCE_VIOLATED" in candidate["reasons"]
 
 
+def test_reset_fence_scans_intervening_row_label_and_hierarchy() -> None:
+    for reset_surface in ("ROW_LABEL", "ROW_HIERARCHY"):
+        current = _page(_period_table("31/12/2025"))
+        comparative = _page(_period_table("31/12/2024"))
+        target = comparative["sections"][0]
+        target["title_exact"] = "Bảng biến động dự phòng (tiếp theo)"
+        target["narratives_exact"] = ["Tiếp theo trang trước"]
+        for column in target["tables"][0]["columns"]:
+            column["header_path_exact"] = [column["header_path_exact"][-1]]
+        row_label = "Thư tín dụng" if reset_surface == "ROW_LABEL" else "Khoản mục"
+        hierarchy = ["Thư tín dụng"] if reset_surface == "ROW_HIERARCHY" else [row_label]
+        comparative["sections"].insert(
+            0,
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "tables": [
+                    {
+                        "columns": [{"header_path_exact": ["Nội dung"], "value_kind": "TEXT"}],
+                        "continuation": "NONE",
+                        "rows": [
+                            {
+                                "hierarchy_path_exact": hierarchy,
+                                "label_exact": row_label,
+                                "row_kind": "ITEM",
+                                "values_exact": ["Có"],
+                            }
+                        ],
+                        "title_exact": "Chi tiết",
+                        "unit_exact": None,
+                    }
+                ],
+                "title_exact": "Thông tin khác",
+            },
+        )
+        refs = [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_B,
+                "physical_page": 8,
+                "section_id": "s2",
+                "table_id": "t1",
+            },
+        ]
+
+        candidate = _evaluate(
+            current,
+            refs=refs,
+            pages={VERSION_A: current, VERSION_B: comparative},
+        )
+
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+        population = candidate["closure_receipt"]["population_receipt"]
+        assert population["reset_fence_receipt"]["reset_hits"][0]["source_kind"] == reset_surface
+
+
 def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:
     candidate = _evaluate(
         _page(_stacked_table()),
@@ -557,7 +720,10 @@ def test_shared_endpoint_stacked_blocks_require_full_exact_equations() -> None:
     for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]:
         assert receipt["previous_closing"]["locator"]
         assert receipt["next_opening"]["locator"]
-        assert receipt["previous_closing"]["cell"] == receipt["next_opening"]["cell"]
+        assert (
+            receipt["previous_closing"]["cell"]["coefficient"]
+            == receipt["next_opening"]["cell"]["coefficient"]
+        )
 
 
 def test_shared_endpoint_stacked_blocks_cannot_run_backwards() -> None:
@@ -582,8 +748,120 @@ def test_shared_endpoint_stacked_blocks_cannot_run_backwards() -> None:
 
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
+    assert "ROLLFORWARD_COMPONENT_TABLE_STRUCTURE_INVALID" in candidate["reasons"]
+
+
+def test_every_dated_opening_must_precede_its_period_closing() -> None:
+    table = _stacked_table()
+    table["rows"][0]["label_exact"] = "Tại ngày 1 tháng 1 năm 2026"
+    table["rows"][0]["hierarchy_path_exact"] = ["Tại ngày 1 tháng 1 năm 2026"]
+
+    candidate = _evaluate(
+        _page(table),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "ROLLFORWARD_COMPONENT_TABLE_STRUCTURE_INVALID" in candidate["reasons"]
+
+
+def test_explicit_current_opening_must_equal_comparative_closing() -> None:
+    table = _stacked_table()
+    table["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Tại ngày 1 tháng 1 năm 2025"],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025",
+            "row_kind": "ITEM",
+            "values_exact": ["999", "888", "777"],
+        },
+    )
+    table["rows"][4]["values_exact"] = ["10", "15", "10"]
+    table["rows"][5]["values_exact"] = ["1009", "903", "787"]
+
+    candidate = _evaluate(
+        _page(table),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert all(
+        f"ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:{lane_role}" in candidate["reasons"]
+        for lane_role in (
+            "GENERAL_PROVISION_LANE",
+            "MARGIN_ADVANCE_PROVISION_LANE",
+            "SPECIFIC_PROVISION_LANE",
+        )
+    )
+
+
+def test_explicit_consecutive_opening_preserves_ready_endpoint_receipts() -> None:
+    table = _stacked_table()
+    table["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Tại ngày 1 tháng 1 năm 2025"],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "200", "100"],
+        },
+    )
+
+    candidate = _evaluate(
+        _page(table),
+        refs=[
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+    )
+
+    assert candidate["status"] == READY
+    assert len(candidate["closure_receipt"]["endpoint_continuity_receipts"]) == 3
+    assert all(
+        receipt["next_opening"]["assignment_kind"] == "DECLARED_SURFACE_ROLE"
+        for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]
+    )
+
+
+def test_identical_duplicate_lane_columns_are_ambiguous_not_corroboration() -> None:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    for table in (current, comparative):
+        table["columns"].append(copy.deepcopy(table["columns"][0]))
+        for row in table["rows"]:
+            row["values_exact"].append(row["values_exact"][0])
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert len(candidate["closure_receipt"]["duplicate_source_ambiguities"]) == 8
+    assert all(
+        item["disposition"] == "IDENTICAL_DUPLICATE_SOURCE_AMBIGUOUS"
+        for item in candidate["closure_receipt"]["duplicate_source_ambiguities"]
+    )
     assert any(
-        reason.startswith("ROLLFORWARD_SHARED_ENDPOINT_CONTINUITY_INVALID:")
+        reason.startswith("ROLLFORWARD_DUPLICATE_ROLE_PERIOD_LANE_AMBIGUOUS:")
         for reason in candidate["reasons"]
     )
 
@@ -634,6 +912,132 @@ def test_adjacent_period_tables_are_bounded_and_wrong_period_is_unresolved() -> 
     assert unresolved["status"] == UNRESOLVED
     assert unresolved["mappings"] == []
     assert "ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED" in unresolved["reasons"]
+
+
+def test_query_receipt_binds_one_source_exact_versions_and_ordered_regions() -> None:
+    raw_refs = [
+        {
+            "page_json_version_id": VERSION_A,
+            "physical_page": 7,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": VERSION_B,
+            "physical_page": 8,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    ]
+    refs = _source_refs(raw_refs)
+    receipt = build_gemini_json_rollforward_region_query_receipt_v1(refs)
+    current = _page(_period_table("31/12/2025"))
+    comparative = _page(_period_table("31/12/2024"))
+
+    assert receipt["document_id"] == DOCUMENT_ID
+    assert receipt["source_sha256"] == SOURCE_SHA256
+    assert receipt["exact_region_count"] == 2
+    assert receipt["query_receipt_id"].startswith("gjfrqrv1:receipt:")
+    ready = evaluate_gemini_json_rollforward_family_cluster_v1(
+        regions=refs,
+        page_json_by_version={VERSION_A: current, VERSION_B: comparative},
+        compiled_specs=_compiled(),
+        query_receipt=receipt,
+    )
+    assert ready["status"] == READY
+
+    drifted_version_refs = copy.deepcopy(refs)
+    drifted_version_refs[1]["page_json_version_id"] = "gfpstorev1:json:" + "e" * 64
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="does not authenticate exact regions",
+    ):
+        evaluate_gemini_json_rollforward_family_cluster_v1(
+            regions=drifted_version_refs,
+            page_json_by_version={
+                VERSION_A: current,
+                drifted_version_refs[1]["page_json_version_id"]: comparative,
+            },
+            compiled_specs=_compiled(),
+            query_receipt=receipt,
+        )
+
+    drifted_receipt = copy.deepcopy(receipt)
+    drifted_receipt["source_sha256"] = "f" * 64
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="does not authenticate exact regions",
+    ):
+        evaluate_gemini_json_rollforward_family_cluster_v1(
+            regions=refs,
+            page_json_by_version={VERSION_A: current, VERSION_B: comparative},
+            compiled_specs=_compiled(),
+            query_receipt=drifted_receipt,
+        )
+
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="unordered or duplicate",
+    ):
+        build_gemini_json_rollforward_region_query_receipt_v1(list(reversed(refs)))
+
+
+def test_cross_document_or_source_component_axis_is_rejected_before_mapping() -> None:
+    refs = _source_refs(
+        [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_B,
+                "physical_page": 8,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+        ]
+    )
+    for field, value in (
+        ("document_id", "gfpstorev1:document:" + "e" * 64),
+        ("source_logical_name", "another.pdf"),
+        ("source_sha256", "f" * 64),
+    ):
+        drifted = copy.deepcopy(refs)
+        drifted[1][field] = value
+        with pytest.raises(
+            GeminiJsonRollforwardAccountingFamilyV1Error,
+            match="cross one immutable document source",
+        ):
+            build_gemini_json_rollforward_region_query_receipt_v1(drifted)
+
+
+def test_all_period_equations_are_receipted_but_only_current_period_is_exported() -> None:
+    comparative = _period_table("31/12/2024", margin_provision=None)
+    candidate = _evaluate(
+        _page(
+            _period_table("31/12/2025"),
+            comparative,
+        )
+    )
+
+    assert candidate["status"] == READY
+    equations = candidate["closure_receipt"]["equations"]
+    assert len(equations) == 6
+    assert {equation["period_role"] for equation in equations} == {
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    }
+    comparative_inferences = [
+        vector
+        for vector in candidate["closure_receipt"]["role_vectors"]
+        if vector["period_role"] == "COMPARATIVE_PERIOD"
+        and vector["cell"]["state"] == "INFERRED_ONE_UNKNOWN_FULL_RANK"
+    ]
+    assert len(comparative_inferences) == 1
+    assert {mapping["period_role"] for mapping in candidate["mappings"]} == {"CURRENT_PERIOD"}
+    assert len(candidate["closure_receipt"]["endpoint_continuity_receipts"]) == 3
 
 
 def test_date_style_opening_endpoint_needs_ordered_complete_topology() -> None:
