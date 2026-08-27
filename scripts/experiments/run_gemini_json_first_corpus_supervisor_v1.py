@@ -1634,6 +1634,17 @@ def _prompt_variants_from_manifest_v1(manifest: dict[str, Any]) -> dict[int, str
     prompt_frontier = contract.get("page_prompt_sha256s") if type(contract) is dict else None
     expected_pages = list(range(1, manifest.get("page_count", 0) + 1))
     if (
+        manifest.get("format_version") == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2"
+        and type(contract) is dict
+        and prompt_frontier is None
+    ):
+        prompt_sha256 = contract.get("prompt_sha256")
+        if prompt_sha256 not in variant_by_sha or not expected_pages:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected legacy document prompt does not map to one known variant"
+            )
+        return {physical_page: variant_by_sha[prompt_sha256] for physical_page in expected_pages}
+    if (
         type(prompt_frontier) is not list
         or [item.get("physical_page") for item in prompt_frontier if type(item) is dict]
         != expected_pages
@@ -1762,6 +1773,7 @@ def _replay_selected_document_for_corpus_v1(
             if (
                 legacy_manifest.get("format_version")
                 not in {
+                    "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2",
                     "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3",
                     "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
                 }

@@ -3024,6 +3024,29 @@ def test_receipt_bound_legacy_manifest_is_unique_and_content_exact(tmp_path) -> 
         )
 
 
+def test_legacy_v2_global_prompt_migrates_to_exact_page_frontier() -> None:
+    prompt_sha = hashlib.sha256(
+        target.build_financial_page_json_prompt_v1(variant="simple").encode("utf-8")
+    ).hexdigest()
+    manifest = {
+        "extraction_contract": {"prompt_sha256": prompt_sha},
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V2",
+        "page_count": 3,
+    }
+    assert target._prompt_variants_from_manifest_v1(manifest) == {
+        1: "simple",
+        2: "simple",
+        3: "simple",
+    }
+
+    manifest["extraction_contract"]["prompt_sha256"] = "f" * 64
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="legacy document prompt",
+    ):
+        target._prompt_variants_from_manifest_v1(manifest)
+
+
 def test_sqlite_snapshot_is_integrity_checked_immutable_and_single_link(tmp_path) -> None:
     source = tmp_path / "source.sqlite3"
     with sqlite3.connect(source) as connection:
