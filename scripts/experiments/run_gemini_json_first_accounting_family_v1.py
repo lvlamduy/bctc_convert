@@ -29,6 +29,11 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
+from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
+    ingest_gemini_accounting_family_sweep_v1,
+    load_gemini_accounting_family_sweep_v1,
+    record_gemini_accounting_family_export_v1,
+)
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
@@ -65,6 +70,18 @@ def _sha256(path: Path) -> str:
         while block := stream.read(1024 * 1024):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _file_ref(path: Path, *, root: Path | None = None) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise _error(f"traceable input is absent or not regular: {path}")
+    resolved = path.resolve()
+    logical = str(resolved.relative_to(root.resolve())) if root is not None else str(resolved)
+    return {
+        "path": logical,
+        "sha256": _sha256(resolved),
+        "size_bytes": resolved.stat().st_size,
+    }
 
 
 def _content_ref(root: Path, reference: dict[str, Any]) -> Path:
@@ -227,6 +244,18 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
+    parser.add_argument(
+        "--results-database",
+        type=Path,
+        required=True,
+        help="Derived family-run SQLite; the sweep is committed here before JSON export.",
+    )
+    parser.add_argument(
+        "--run-kind",
+        choices=("EXPERIMENTAL", "OFFICIAL"),
+        required=True,
+        help="Only OFFICIAL runs advance the database current-selection pointer.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser
 
@@ -387,11 +416,38 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         trials=trials,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
-    _write_once(args.output, sweep)
+    implementation_paths = (
+        ROOT / "scripts/experiments/run_gemini_json_first_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_hierarchical_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+    )
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        args.results_database,
+        sweep=sweep,
+        corpus_index_ref=_file_ref(args.corpus_index),
+        implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
+        run_kind=args.run_kind,
+    )
+    # The database is the system of record.  The JSON file is materialized
+    # only by loading the just-committed canonical sweep back from SQLite.
+    stored_sweep = load_gemini_accounting_family_sweep_v1(
+        args.results_database, stored["family_run_id"]
+    )
+    _write_once(args.output, stored_sweep)
+    export_ref = record_gemini_accounting_family_export_v1(
+        args.results_database,
+        family_run_id=stored["family_run_id"],
+        output_path=args.output,
+    )
     return {
         "disposition": "SUCCEEDED",
         "metrics": sweep["metrics"],
         "output": str(args.output),
+        "output_ref": export_ref,
+        "results_database": str(args.results_database),
+        "family_run_id": stored["family_run_id"],
+        "run_kind": args.run_kind,
         "sweep_id": sweep["sweep_id"],
     }
 
