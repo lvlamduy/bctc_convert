@@ -1,0 +1,2356 @@
+"""Bounded whole-table Gemini repair for typed roll-forward cells.
+
+The primitive is deliberately provider-free.  It turns an authenticated,
+declarative unresolved frontier into immutable sibling repair jobs, validates
+one complete table transcription, and emits a region-repair receipt that can
+be stored by the existing page/family stores.  It never calls a model, mutates
+the base page, back-solves an OCR cell, or selects an OFFICIAL family run.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import sqlite3
+from collections.abc import Mapping, Sequence
+from decimal import Decimal, InvalidOperation
+from fractions import Fraction
+from hashlib import sha256
+from io import BytesIO
+from pathlib import Path
+from typing import Any
+
+from PIL import Image
+
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
+    FORMAT_VERSION as PAGE_FORMAT_VERSION,
+)
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
+    SEARCH_NORMALIZATION_VERSION,
+    validate_financial_page_json_v1,
+)
+from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+    UNRESOLVED,
+    compile_gemini_json_flat_family_specs_v1,
+    validate_gemini_json_flat_family_sweep_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_clone_v1,
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+    same_typed_json_v1,
+)
+
+FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_V1"
+UNRESOLVED_FRONTIER_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_UNRESOLVED_FRONTIER_V1"
+QUEUE_FORMAT_VERSION = "GEMINI_JSON_REGION_REPAIR_QUEUE_V1"
+REPAIR_CONTRACT_VERSION = "TABLE_ROLLFORWARD_CELLS_ATOMIC_V1"
+ATTEMPT_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_ATTEMPT_V1"
+OVERLAY_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_OVERLAY_V1"
+CROP_RECEIPT_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_CROP_RECEIPT_V1"
+PAGE_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_PAGE_EVIDENCE_V1"
+TABLE_SPEC_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1"
+REPAIR_SCOPE = "TABLE_ROLLFORWARD_CELLS"
+
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_NODE = re.compile(r"^([strc])([1-9][0-9]*)$")
+_DASH = re.compile(r"^\s*[-–—_](?:\s*[-–—_])*\s*$")
+_FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL | re.IGNORECASE)
+_VISUAL_STATES = frozenset({"BLANK", "DASH", "PRINTED_ZERO", "VALUE"})
+_AFTER_POLICIES = frozenset({"SIGNED_INTEGER", "TYPED_ZERO"})
+_CHANGE_POLICIES = frozenset({"MAY_CHANGE", "MUST_CHANGE"})
+_EVIDENCE_KINDS = frozenset({"ATOMIC_TABLE_COLLATERAL", "UNRESOLVED_FRONTIER"})
+_THINKING_LEVELS = ("low", "medium", "high")
+_ATTEMPT_OUTCOMES = frozenset(
+    {
+        "PROVIDER_OR_VALIDATION_FAILURE",
+        "RESOLVED",
+        "RETRYABLE_VALIDATION_FAILURE",
+    }
+)
+_USAGE_FIELDS = {
+    "actual_cost_usd",
+    "cached_input_tokens",
+    "cost_disposition",
+    "input_tokens",
+    "output_tokens",
+    "thought_tokens",
+    "total_tokens",
+}
+_PROVIDER_FIELDS = {
+    "provider_model",
+    "provider_name",
+    "request_id_sha256",
+    "response_id_sha256",
+    "service_tier",
+}
+_PLAN_FIELDS = {
+    "acceptance_policy",
+    "base_page_json_sha256",
+    "base_page_json_version_id",
+    "candidate_id",
+    "candidate_semantic_replay_sha256",
+    "cell_allowlist",
+    "compiled_specs_sha256",
+    "component_table_refs",
+    "document_ordinal",
+    "equation_inventory",
+    "equation_inventory_sha256",
+    "family_id",
+    "format_version",
+    "indexed_query_evidence_sha256",
+    "page_evidence_id",
+    "physical_page",
+    "repair_contract_version",
+    "repair_job_id",
+    "repair_policy",
+    "repair_scope",
+    "repair_spec_sha256",
+    "request_contract",
+    "section_id",
+    "selected_page_frontier_sha256",
+    "shape_gate",
+    "source_binding",
+    "source_logical_name",
+    "source_sha256",
+    "sweep_id",
+    "table_id",
+    "target_ids",
+    "target_table_refs",
+    "trigger_kinds",
+    "trigger_reasons",
+}
+
+
+class GeminiJsonRollforwardTableRepairV1Error(ValueError):
+    """A bounded table repair is incomplete, ambiguous, or not source-bound."""
+
+
+def _error(message: str) -> GeminiJsonRollforwardTableRepairV1Error:
+    return GeminiJsonRollforwardTableRepairV1Error(message)
+
+
+def _exact_keys(value: Any, expected: set[str], label: str) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != expected:
+        raise _error(f"{label} fields drifted")
+    return value
+
+
+def _hash(value: Any, label: str) -> str:
+    if type(value) is not str or _HEX64.fullmatch(value) is None:
+        raise _error(f"{label} is not one lowercase SHA-256")
+    return value
+
+
+def _prefixed_hash(value: Any, prefix: str, label: str) -> str:
+    if (
+        type(value) is not str
+        or not value.startswith(prefix)
+        or _HEX64.fullmatch(value.removeprefix(prefix)) is None
+    ):
+        raise _error(f"{label} is invalid")
+    return value
+
+
+def _node_ordinal(value: Any, prefix: str, label: str) -> int:
+    if type(value) is not str:
+        raise _error(f"{label} is invalid")
+    match = _NODE.fullmatch(value)
+    if match is None or match.group(1) != prefix:
+        raise _error(f"{label} is invalid")
+    return int(match.group(2)) - 1
+
+
+def _cell_id(value: Any) -> tuple[int, int]:
+    if type(value) is not str:
+        raise _error("table repair cell ID is invalid")
+    parts = value.split(":")
+    if len(parts) != 2:
+        raise _error("table repair cell ID is invalid")
+    return (
+        _node_ordinal(parts[0], "r", "repair row ID"),
+        _node_ordinal(parts[1], "c", "repair column ID"),
+    )
+
+
+def _table(page_json: Any, section_id: str, table_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    checked = validate_financial_page_json_v1(page_json)
+    section_index = _node_ordinal(section_id, "s", "repair section ID")
+    table_index = _node_ordinal(table_id, "t", "repair table ID")
+    try:
+        return checked, checked["sections"][section_index]["tables"][table_index]
+    except (IndexError, KeyError, TypeError) as exc:
+        raise _error("table repair target lies outside the page JSON") from exc
+
+
+def _signed_integer(value: Any) -> int | None:
+    if type(value) is not str:
+        return None
+    text = value.strip()
+    if _DASH.fullmatch(text):
+        return 0
+    negative = text.startswith("(") and text.endswith(")")
+    if negative:
+        text = text[1:-1].strip()
+    elif text.startswith("-") and text[1:].strip():
+        negative = True
+        text = text[1:].strip()
+    digits = re.sub(r"[.,\s]", "", text)
+    if not digits.isdigit():
+        return None
+    result = int(digits)
+    return -result if negative else result
+
+
+def _visual_state(source_text: Any) -> str:
+    if source_text is None:
+        return "BLANK"
+    if type(source_text) is not str:
+        raise _error("table repair cell source_text is invalid")
+    if _DASH.fullmatch(source_text):
+        return "DASH"
+    coefficient = _signed_integer(source_text)
+    if coefficient is None:
+        raise _error("table repair money cell is not an exact signed integer")
+    return "PRINTED_ZERO" if coefficient == 0 else "VALUE"
+
+
+def _source_binding(value: Any) -> dict[str, Any]:
+    checked = _exact_keys(
+        value,
+        {
+            "crop_bbox_pixels_xyxy",
+            "document_id",
+            "image_sha256",
+            "image_size_bytes",
+            "media_type",
+            "page_id",
+            "physical_page",
+            "pixel_height",
+            "pixel_width",
+            "render_dpi",
+            "source_logical_name",
+            "source_sha256",
+            "source_size_bytes",
+        },
+        "table repair source binding",
+    )
+    if type(checked["source_logical_name"]) is not str or not checked["source_logical_name"]:
+        raise _error("table repair source logical name is invalid")
+    _hash(checked["source_sha256"], "table repair source SHA-256")
+    _prefixed_hash(checked["document_id"], "gfpstorev1:document:", "table repair document ID")
+    _prefixed_hash(checked["page_id"], "gfpstorev1:page:", "table repair page ID")
+    _hash(checked["image_sha256"], "table repair image SHA-256")
+    if (
+        type(checked["physical_page"]) is not int
+        or checked["physical_page"] <= 0
+        or type(checked["source_size_bytes"]) is not int
+        or checked["source_size_bytes"] < 0
+        or type(checked["image_size_bytes"]) is not int
+        or checked["image_size_bytes"] <= 0
+        or type(checked["pixel_width"]) is not int
+        or checked["pixel_width"] <= 0
+        or type(checked["pixel_height"]) is not int
+        or checked["pixel_height"] <= 0
+        or checked["render_dpi"] not in {200, 300}
+        or checked["media_type"] != "image/png"
+    ):
+        raise _error("table repair page image metadata is invalid")
+    document_material = {
+        "source_logical_name": checked["source_logical_name"],
+        "source_sha256": checked["source_sha256"],
+        "source_size_bytes": checked["source_size_bytes"],
+    }
+    expected_document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(document_material)
+    page_material = {
+        "document_id": expected_document_id,
+        "physical_page": checked["physical_page"],
+        "image_sha256": checked["image_sha256"],
+        "image_size_bytes": checked["image_size_bytes"],
+        "pixel_width": checked["pixel_width"],
+        "pixel_height": checked["pixel_height"],
+        "render_dpi": checked["render_dpi"],
+        "media_type": checked["media_type"],
+    }
+    if checked["document_id"] != expected_document_id or checked[
+        "page_id"
+    ] != "gfpstorev1:page:" + canonical_json_sha256_v1(page_material):
+        raise _error("table repair document or page identity does not replay")
+    bbox = checked["crop_bbox_pixels_xyxy"]
+    if (
+        type(bbox) is not list
+        or len(bbox) != 4
+        or any(type(item) is not int for item in bbox)
+        or not (0 <= bbox[0] < bbox[2] <= checked["pixel_width"])
+        or not (0 <= bbox[1] < bbox[3] <= checked["pixel_height"])
+    ):
+        raise _error("table repair crop lies outside the bound image")
+    return canonical_clone_v1(checked)
+
+
+def _allowlist(value: Any, *, table: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if type(value) is not list or not value:
+        raise _error("table repair cell allowlist is empty")
+    result = []
+    seen = set()
+    primary = 0
+    for raw in value:
+        item = _exact_keys(
+            raw,
+            {
+                "after_policy",
+                "before_exact",
+                "cell_id",
+                "change_policy",
+                "evidence_kind",
+            },
+            "table repair allowlist item",
+        )
+        row_index, column_index = _cell_id(item["cell_id"])
+        if item["cell_id"] in seen:
+            raise _error("table repair cell allowlist is duplicate")
+        seen.add(item["cell_id"])
+        try:
+            before = table["rows"][row_index]["values_exact"][column_index]
+        except (IndexError, KeyError, TypeError) as exc:
+            raise _error("table repair allowlisted cell lies outside the table") from exc
+        if item["before_exact"] != before:
+            raise _error("table repair allowlisted before value does not bind the base table")
+        if (
+            item["after_policy"] not in _AFTER_POLICIES
+            or item["change_policy"] not in _CHANGE_POLICIES
+            or item["evidence_kind"] not in _EVIDENCE_KINDS
+        ):
+            raise _error("table repair allowlist policy or evidence kind is invalid")
+        if item["evidence_kind"] == "UNRESOLVED_FRONTIER":
+            primary += 1
+        result.append(canonical_clone_v1(item))
+    if primary == 0:
+        raise _error("table repair allowlist has no unresolved-frontier cell")
+    return sorted(result, key=lambda item: _cell_id(item["cell_id"]))
+
+
+def _equations(
+    value: Any, *, row_count: int, column_count: int, allowlist: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    if type(value) is not list or not value:
+        raise _error("table repair equation inventory is empty")
+    result = []
+    identities = set()
+    referenced_allowlist = set()
+    allow_ids = {item["cell_id"] for item in allowlist}
+    for raw in value:
+        equation = _exact_keys(
+            raw,
+            {"equation_id", "result_cell_id", "terms"},
+            "table repair equation",
+        )
+        if (
+            type(equation["equation_id"]) is not str
+            or not equation["equation_id"]
+            or equation["equation_id"] in identities
+            or type(equation["terms"]) is not list
+            or not equation["terms"]
+        ):
+            raise _error("table repair equation identity or terms are invalid")
+        identities.add(equation["equation_id"])
+        coordinates = [equation["result_cell_id"]]
+        checked_terms = []
+        seen_terms = set()
+        for raw_term in equation["terms"]:
+            term = _exact_keys(
+                raw_term,
+                {"cell_id", "multiplier"},
+                "table repair equation term",
+            )
+            if (
+                term["cell_id"] in seen_terms
+                or type(term["multiplier"]) is not int
+                or term["multiplier"] == 0
+            ):
+                raise _error("table repair equation term is duplicate or invalid")
+            seen_terms.add(term["cell_id"])
+            coordinates.append(term["cell_id"])
+            checked_terms.append(canonical_clone_v1(term))
+        if equation["result_cell_id"] in seen_terms:
+            raise _error("table repair equation result repeats a term")
+        for coordinate in coordinates:
+            row_index, column_index = _cell_id(coordinate)
+            if row_index >= row_count or column_index >= column_count:
+                raise _error("table repair equation lies outside the target table")
+            if coordinate in allow_ids:
+                referenced_allowlist.add(coordinate)
+        result.append(
+            {
+                "equation_id": equation["equation_id"],
+                "result_cell_id": equation["result_cell_id"],
+                "terms": checked_terms,
+            }
+        )
+    if referenced_allowlist != allow_ids:
+        raise _error("table repair equation inventory does not cover the exact allowlist")
+    return sorted(result, key=lambda item: item["equation_id"])
+
+
+def _shape_gate(table: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "base_table_sha256": canonical_json_sha256_v1(table),
+        "column_count": len(table["columns"]),
+        "columns_exact": canonical_clone_v1(table["columns"]),
+        "continuation_exact": table["continuation"],
+        "row_axis_exact": [
+            {
+                "hierarchy_path_exact": canonical_clone_v1(row["hierarchy_path_exact"]),
+                "label_exact": row["label_exact"],
+                "row_kind": row["row_kind"],
+            }
+            for row in table["rows"]
+        ],
+        "row_count": len(table["rows"]),
+        "table_title_exact": table["title_exact"],
+        "unit_exact": table["unit_exact"],
+    }
+
+
+def load_rollforward_table_page_evidence_v1(
+    page_store_path: Path, *, page_json_version_ids: Sequence[str]
+) -> list[dict[str, Any]]:
+    """Replay exact page/source/image provenance from one frozen V9 page store."""
+
+    version_ids = list(page_json_version_ids)
+    if (
+        not version_ids
+        or len(version_ids) != len(set(version_ids))
+        or any(
+            type(version_id) is not str
+            or not version_id.startswith("gfpstorev1:json:")
+            or _HEX64.fullmatch(version_id.removeprefix("gfpstorev1:json:")) is None
+            for version_id in version_ids
+        )
+    ):
+        raise _error("table repair page evidence version frontier is invalid")
+    path = Path(page_store_path).resolve()
+    if page_store_path.is_symlink() or not path.is_file():
+        raise _error("table repair frozen page store is absent or not regular")
+    try:
+        connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
+        identity = connection.execute(
+            "SELECT format_version,page_format_version,search_normalization_version "
+            "FROM store_identity WHERE singleton=1"
+        ).fetchone()
+        if identity is None or tuple(identity) != (
+            "GEMINI_FINANCIAL_PAGE_STORE_V9",
+            PAGE_FORMAT_VERSION,
+            SEARCH_NORMALIZATION_VERSION,
+        ):
+            raise _error("table repair frozen page store identity drifted")
+        connection.execute(
+            "CREATE TEMP TABLE selected_table_repair_page("
+            "selection_ordinal INTEGER PRIMARY KEY,page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_table_repair_page VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        rows = connection.execute(
+            "SELECT s.selection_ordinal,v.page_json_version_id,v.extraction_run_id,"
+            "v.canonical_json_sha256,v.canonical_json_bytes,p.page_id,p.document_id,"
+            "p.physical_page,p.image_sha256,p.image_size_bytes,p.pixel_width,p.pixel_height,"
+            "p.render_dpi,p.media_type,d.source_logical_name,d.source_sha256,"
+            "d.source_size_bytes FROM selected_table_repair_page AS s "
+            "JOIN page_json_version AS v USING(page_json_version_id) "
+            "JOIN page AS p USING(page_id) JOIN document AS d USING(document_id) "
+            "ORDER BY s.selection_ordinal"
+        ).fetchall()
+    except (sqlite3.DatabaseError, OSError) as exc:
+        raise _error("table repair frozen page store cannot be replayed") from exc
+    finally:
+        if "connection" in locals():
+            connection.close()
+    if len(rows) != len(version_ids):
+        raise _error("table repair page version is absent from the frozen store")
+    result = []
+    for version_id, row in zip(version_ids, rows, strict=True):
+        try:
+            page_json = validate_financial_page_json_v1(json.loads(row["canonical_json_bytes"]))
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            raise _error("table repair stored page JSON is invalid") from exc
+        canonical = canonical_json_bytes_v1(page_json) + b"\n"
+        canonical_sha = sha256(canonical).hexdigest()
+        document_material = {
+            "source_logical_name": row["source_logical_name"],
+            "source_sha256": row["source_sha256"],
+            "source_size_bytes": row["source_size_bytes"],
+        }
+        document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(document_material)
+        page_material = {
+            "document_id": document_id,
+            "physical_page": row["physical_page"],
+            "image_sha256": row["image_sha256"],
+            "image_size_bytes": row["image_size_bytes"],
+            "pixel_width": row["pixel_width"],
+            "pixel_height": row["pixel_height"],
+            "render_dpi": row["render_dpi"],
+            "media_type": row["media_type"],
+        }
+        page_id = "gfpstorev1:page:" + canonical_json_sha256_v1(page_material)
+        expected_version_id = "gfpstorev1:json:" + canonical_json_sha256_v1(
+            {
+                "canonical_json_sha256": canonical_sha,
+                "extraction_run_id": row["extraction_run_id"],
+                "page_id": page_id,
+            }
+        )
+        if (
+            row["page_json_version_id"] != version_id
+            or row["canonical_json_sha256"] != canonical_sha
+            or bytes(row["canonical_json_bytes"]) != canonical
+            or row["document_id"] != document_id
+            or row["page_id"] != page_id
+            or expected_version_id != version_id
+        ):
+            raise _error("table repair page/source/version evidence does not replay")
+        source_binding_without_crop = {
+            "document_id": document_id,
+            "image_sha256": row["image_sha256"],
+            "image_size_bytes": row["image_size_bytes"],
+            "media_type": row["media_type"],
+            "page_id": page_id,
+            "physical_page": row["physical_page"],
+            "pixel_height": row["pixel_height"],
+            "pixel_width": row["pixel_width"],
+            "render_dpi": row["render_dpi"],
+            "source_logical_name": row["source_logical_name"],
+            "source_sha256": row["source_sha256"],
+            "source_size_bytes": row["source_size_bytes"],
+        }
+        material = {
+            "base_page_json_sha256": canonical_json_sha256_v1(page_json),
+            "base_page_json_version_id": version_id,
+            "format_version": PAGE_EVIDENCE_FORMAT_VERSION,
+            "page_json": page_json,
+            "source_binding_without_crop": source_binding_without_crop,
+        }
+        result.append(
+            {
+                **material,
+                "page_evidence_id": "gjfrpev1:evidence:" + canonical_json_sha256_v1(material),
+            }
+        )
+    return result
+
+
+def validate_rollforward_table_repair_plan_page_store_v1(
+    plan: Mapping[str, Any], *, page_store_path: Path
+) -> dict[str, Any]:
+    """Cross-bind one immutable plan to its current frozen-store source row."""
+
+    checked = _validated_plan(plan)
+    evidence = load_rollforward_table_page_evidence_v1(
+        page_store_path,
+        page_json_version_ids=[checked["base_page_json_version_id"]],
+    )[0]
+    expected_binding = {
+        **evidence["source_binding_without_crop"],
+        "crop_bbox_pixels_xyxy": checked["source_binding"]["crop_bbox_pixels_xyxy"],
+    }
+    if (
+        evidence["base_page_json_sha256"] != checked["base_page_json_sha256"]
+        or _source_binding(expected_binding) != checked["source_binding"]
+        or evidence["page_evidence_id"] != checked["page_evidence_id"]
+    ):
+        raise _error("table repair plan does not replay against the frozen page store")
+    target = rollforward_table_repair_target_v1(evidence["page_json"], plan=checked)
+    prompt = build_rollforward_table_repair_prompt_v1(
+        base_page_json_version_id=checked["base_page_json_version_id"],
+        target=target,
+    )
+    if checked["request_contract"]["prompt_sha256"] != sha256(prompt.encode("utf-8")).hexdigest():
+        raise _error("table repair prompt does not replay from frozen page evidence")
+    return evidence
+
+
+def _build_rollforward_table_cell_repair_plans_v1(
+    *,
+    unresolved_frontier: Sequence[Mapping[str, Any]],
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build deterministic whole-table sibling jobs from declarative frontiers."""
+
+    if type(unresolved_frontier) not in {list, tuple} or not unresolved_frontier:
+        raise _error("roll-forward table repair unresolved frontier is empty")
+    plans = []
+    locations = set()
+    for raw in unresolved_frontier:
+        frontier = _exact_keys(
+            raw,
+            {
+                "base_page_json_sha256",
+                "base_page_json_version_id",
+                "candidate_id",
+                "candidate_semantic_replay_sha256",
+                "cell_allowlist",
+                "compiled_specs_sha256",
+                "document_ordinal",
+                "equations",
+                "family_id",
+                "format_version",
+                "indexed_query_evidence_sha256",
+                "page_evidence_id",
+                "repair_spec_sha256",
+                "selected_page_frontier_sha256",
+                "section_id",
+                "source_binding",
+                "sweep_id",
+                "table_id",
+                "trigger_reasons",
+            },
+            "roll-forward table repair unresolved frontier",
+        )
+        if frontier["format_version"] != UNRESOLVED_FRONTIER_FORMAT_VERSION:
+            raise _error("roll-forward table repair frontier version drifted")
+        if (
+            type(frontier["family_id"]) is not str
+            or not frontier["family_id"]
+            or type(frontier["sweep_id"]) is not str
+            or not frontier["sweep_id"]
+            or type(frontier["document_ordinal"]) is not int
+            or frontier["document_ordinal"] <= 0
+            or type(frontier["candidate_id"]) is not str
+            or not frontier["candidate_id"].startswith("gjfafcv1:candidate:")
+            or type(frontier["trigger_reasons"]) is not list
+            or not frontier["trigger_reasons"]
+            or any(type(reason) is not str or not reason for reason in frontier["trigger_reasons"])
+        ):
+            raise _error("roll-forward table repair frontier identity is invalid")
+        version_id = _prefixed_hash(
+            frontier["base_page_json_version_id"],
+            "gfpstorev1:json:",
+            "table repair base page version",
+        )
+        page_json = page_json_by_version.get(version_id)
+        if type(page_json) is not dict:
+            raise _error("table repair base page JSON is absent")
+        checked_page, table = _table(page_json, frontier["section_id"], frontier["table_id"])
+        if frontier["base_page_json_sha256"] != canonical_json_sha256_v1(checked_page):
+            raise _error("table repair base page JSON SHA-256 does not replay")
+        source_binding = _source_binding(frontier["source_binding"])
+        allowlist = _allowlist(frontier["cell_allowlist"], table=table)
+        equations = _equations(
+            frontier["equations"],
+            row_count=len(table["rows"]),
+            column_count=len(table["columns"]),
+            allowlist=allowlist,
+        )
+        location = (version_id, frontier["section_id"], frontier["table_id"])
+        if location in locations:
+            raise _error("table repair frontier repeats one base table")
+        locations.add(location)
+        shape_gate = _shape_gate(table)
+        target = {
+            "column_headers_exact": [
+                canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
+            ],
+            "column_value_kinds": [column["value_kind"] for column in table["columns"]],
+            "row_labels_exact": [row["label_exact"] for row in table["rows"]],
+            "target_id": f"{frontier['section_id']}:{frontier['table_id']}",
+            "table_title_exact": table["title_exact"],
+            "unit_exact": table["unit_exact"],
+        }
+        prompt = build_rollforward_table_repair_prompt_v1(
+            base_page_json_version_id=version_id,
+            target=target,
+        )
+        response_schema = rollforward_table_repair_response_schema_v1()
+        material = {
+            "acceptance_policy": {
+                "all_other_cells_byte_equal": True,
+                "forbid_arithmetic_backsolve": True,
+                "require_all_allowlisted_cells_transcribed": True,
+                "require_all_declared_equations_exact": True,
+                "require_exact_shape_order_and_unit": True,
+            },
+            "base_page_json_sha256": frontier["base_page_json_sha256"],
+            "base_page_json_version_id": version_id,
+            "candidate_id": frontier["candidate_id"],
+            "candidate_semantic_replay_sha256": frontier["candidate_semantic_replay_sha256"],
+            "cell_allowlist": allowlist,
+            "compiled_specs_sha256": frontier["compiled_specs_sha256"],
+            "component_table_refs": [
+                {"section_id": frontier["section_id"], "table_id": frontier["table_id"]}
+            ],
+            "document_ordinal": frontier["document_ordinal"],
+            "equation_inventory": equations,
+            "equation_inventory_sha256": canonical_json_sha256_v1(equations),
+            "family_id": frontier["family_id"],
+            "format_version": QUEUE_FORMAT_VERSION,
+            "indexed_query_evidence_sha256": frontier["indexed_query_evidence_sha256"],
+            "physical_page": source_binding["physical_page"],
+            "page_evidence_id": frontier["page_evidence_id"],
+            "repair_spec_sha256": frontier["repair_spec_sha256"],
+            "selected_page_frontier_sha256": frontier["selected_page_frontier_sha256"],
+            "repair_contract_version": REPAIR_CONTRACT_VERSION,
+            "repair_policy": {
+                "attempt_lineage": "SIBLINGS_FROM_IMMUTABLE_BASE",
+                "initial_thinking_level": "low",
+                "max_attempts": 3,
+                "thinking_escalation": ["medium", "high"],
+            },
+            "repair_scope": REPAIR_SCOPE,
+            "request_contract": {
+                "output_contract_mode": "JSON_SCHEMA",
+                "prompt_sha256": sha256(prompt.encode("utf-8")).hexdigest(),
+                "prompt_variant": "rollforward-table-cells",
+                "response_schema_sha256": canonical_json_sha256_v1(response_schema),
+            },
+            "section_id": frontier["section_id"],
+            "shape_gate": shape_gate,
+            "source_binding": source_binding,
+            "source_logical_name": source_binding["source_logical_name"],
+            "source_sha256": source_binding["source_sha256"],
+            "sweep_id": frontier["sweep_id"],
+            "table_id": frontier["table_id"],
+            "target_ids": [
+                f"{frontier['section_id']}:{frontier['table_id']}:{item['cell_id']}"
+                for item in allowlist
+            ],
+            "target_table_refs": [
+                {"section_id": frontier["section_id"], "table_id": frontier["table_id"]}
+            ],
+            "trigger_kinds": ["ROLLFORWARD_TYPED_CELL_EVIDENCE_INCOMPLETE"],
+            "trigger_reasons": canonical_clone_v1(frontier["trigger_reasons"]),
+        }
+        plans.append(
+            {
+                **material,
+                "repair_job_id": "gjfrrqv1:job:" + canonical_json_sha256_v1(material),
+            }
+        )
+    return sorted(plans, key=lambda item: (item["document_ordinal"], item["repair_job_id"]))
+
+
+def _vector_cell_id(vector: Mapping[str, Any]) -> str:
+    row_id = vector.get("row_id")
+    column_ordinal = vector.get("column_ordinal")
+    _node_ordinal(row_id, "r", "roll-forward source vector row")
+    if type(column_ordinal) is not int or column_ordinal <= 0:
+        raise _error("roll-forward source vector column is invalid")
+    return f"{row_id}:c{column_ordinal}"
+
+
+def _frontier_vector(
+    role_vectors: Sequence[Mapping[str, Any]],
+    *,
+    frontier: Mapping[str, Any],
+    source_record: Mapping[str, Any],
+) -> dict[str, Any]:
+    matches = [
+        vector
+        for vector in role_vectors
+        if vector.get("period_role") == frontier.get("period_role")
+        and vector.get("lane_role") == frontier.get("lane_role")
+        and vector.get("movement_role") == source_record.get("movement_role")
+        and vector.get("row_id") == source_record.get("row_id")
+        and vector.get("locator") == source_record.get("locator")
+    ]
+    if len(matches) != 1:
+        raise _error("unresolved frontier does not bind one exact role vector")
+    return canonical_clone_v1(matches[0])
+
+
+def _closure_equation_v1(
+    *,
+    closure: Mapping[str, Any],
+    frontier: Mapping[str, Any],
+    closing_role: str,
+) -> dict[str, Any]:
+    equations = [
+        equation
+        for equation in closure.get("equations", [])
+        if equation.get("period_role") == frontier.get("period_role")
+        and equation.get("lane_role") == frontier.get("lane_role")
+    ]
+    if len(equations) != 1:
+        raise _error("unresolved frontier does not bind one exact closure equation")
+    equation = equations[0]
+    role_coefficients = equation.get("role_coefficients")
+    if type(role_coefficients) is not list or not role_coefficients:
+        raise _error("roll-forward closure equation role axis is invalid")
+    by_role = {item.get("role"): item for item in role_coefficients}
+    if len(by_role) != len(role_coefficients) or closing_role not in by_role:
+        raise _error("roll-forward closure equation has no unique closing role")
+    closing_coefficient = by_role[closing_role].get("equation_coefficient")
+    if closing_coefficient not in {-1, 1}:
+        raise _error("roll-forward closing equation coefficient is invalid")
+    vectors = closure.get("role_vectors")
+    if type(vectors) is not list:
+        raise _error("roll-forward closure role vectors are invalid")
+    vector_by_role = {}
+    for role in by_role:
+        matches = [
+            vector
+            for vector in vectors
+            if vector.get("period_role") == frontier.get("period_role")
+            and vector.get("lane_role") == frontier.get("lane_role")
+            and vector.get("movement_role") == role
+        ]
+        if len(matches) != 1:
+            raise _error("roll-forward closure equation role vector is not unique")
+        vector_by_role[role] = matches[0]
+    terms = []
+    for role, item in sorted(by_role.items()):
+        if role == closing_role:
+            continue
+        coefficient = item.get("equation_coefficient")
+        if type(coefficient) is not int or coefficient == 0:
+            raise _error("roll-forward closure equation coefficient is invalid")
+        numerator = -coefficient
+        if numerator % closing_coefficient:
+            raise _error("roll-forward closure equation cannot be expressed exactly")
+        terms.append(
+            {
+                "cell_id": _vector_cell_id(vector_by_role[role]),
+                "multiplier": numerator // closing_coefficient,
+            }
+        )
+    result_cell_id = _vector_cell_id(vector_by_role[closing_role])
+    material = {
+        "lane_role": frontier["lane_role"],
+        "period_role": frontier["period_role"],
+        "result_cell_id": result_cell_id,
+        "terms": terms,
+    }
+    return {
+        "equation_id": "rollforward:" + canonical_json_sha256_v1(material),
+        "result_cell_id": result_cell_id,
+        "terms": terms,
+    }
+
+
+def _collateral_equation_signature(equation: Mapping[str, Any]) -> tuple[Any, ...] | None:
+    result_row, result_column = _cell_id(equation["result_cell_id"])
+    term_coordinates = [
+        (*_cell_id(term["cell_id"]), term["multiplier"]) for term in equation["terms"]
+    ]
+    if any(row != result_row for row, _column, _multiplier in term_coordinates):
+        return None
+    return (
+        result_column,
+        tuple(sorted((column, multiplier) for _row, column, multiplier in term_coordinates)),
+    )
+
+
+def _validate_collateral_equation_corroboration(
+    table: Mapping[str, Any],
+    *,
+    collateral_equations: Sequence[Mapping[str, Any]],
+    collateral_cell_ids: set[str],
+) -> None:
+    by_signature: dict[tuple[Any, ...], list[Mapping[str, Any]]] = {}
+    for equation in collateral_equations:
+        signature = _collateral_equation_signature(equation)
+        if signature is None:
+            raise _error("table repair collateral equation is not one row-local pattern")
+        by_signature.setdefault(signature, []).append(equation)
+    covered = set()
+    for equations in by_signature.values():
+        closed_siblings = 0
+        group_covered = set()
+        for equation in equations:
+            referenced = {
+                equation["result_cell_id"],
+                *(term["cell_id"] for term in equation["terms"]),
+            }
+            group_covered.update(referenced & collateral_cell_ids)
+            result_row, result_column = _cell_id(equation["result_cell_id"])
+            result = _signed_integer(table["rows"][result_row]["values_exact"][result_column])
+            terms = []
+            for term in equation["terms"]:
+                row, column = _cell_id(term["cell_id"])
+                terms.append(
+                    (
+                        term["multiplier"],
+                        _signed_integer(table["rows"][row]["values_exact"][column]),
+                    )
+                )
+            if result is not None and all(value is not None for _multiplier, value in terms):
+                expected = sum(multiplier * value for multiplier, value in terms)
+                if result == expected:
+                    closed_siblings += 1
+        covered.update(group_covered)
+        if group_covered and closed_siblings < 2:
+            raise _error("table repair collateral equation lacks two exact sibling rows")
+    if covered != collateral_cell_ids:
+        raise _error("table repair collateral equations do not cover exact collateral cells")
+
+
+def build_rollforward_table_cell_repair_plans_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    page_store_path: Path,
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Derive jobs after exact page-DB query and semantic candidate replay.
+
+    ``selected_page_json_version_ids`` is the caller's already-authenticated corpus
+    or effective frontier.  The function replays the sweep's indexed query evidence
+    against that exact ordered frontier and then rebuilds every selected candidate
+    from page JSON before it derives a repair cell.
+    """
+
+    sweep = validate_gemini_json_flat_family_sweep_v1(family_sweep)
+    topology = sweep["specs"]["topology"]["value"]
+    evaluation = sweep["specs"]["evaluation"]["value"]
+    schema_binding = sweep["specs"]["schema_binding"]["value"]
+    rebuilt_specs = compile_gemini_json_flat_family_specs_v1(
+        topology,
+        evaluation,
+        schema_binding,
+    )
+    if not same_typed_json_v1(dict(compiled_specs), rebuilt_specs):
+        raise _error("roll-forward table repair compiled specs do not replay the sweep")
+    selected_ids = list(selected_page_json_version_ids)
+    if (
+        not selected_ids
+        or len(selected_ids) != len(set(selected_ids))
+        or any(
+            type(version_id) is not str or not version_id.startswith("gfpstorev1:json:")
+            for version_id in selected_ids
+        )
+    ):
+        raise _error("roll-forward table repair selected page frontier is invalid")
+    indexed_query_evidence = sweep.get("indexed_query_evidence")
+    if type(indexed_query_evidence) is not dict:
+        raise _error("roll-forward table repair sweep has no indexed query evidence")
+    from bctc_ai.storage.gemini_financial_page_store_v1 import (
+        validate_selected_rollforward_family_query_evidence_v1,
+    )
+
+    validate_selected_rollforward_family_query_evidence_v1(
+        page_store_path,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=rebuilt_specs,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=sweep["trials"],
+    )
+    specs = list(table_repair_specs)
+    if not specs:
+        raise _error("roll-forward table repair spec axis is empty")
+    version_ids = []
+    checked_specs = []
+    spec_fields = {
+        "base_page_json_version_id",
+        "collateral_cell_ids",
+        "collateral_equations",
+        "crop_bbox_pixels_xyxy",
+        "format_version",
+        "section_id",
+        "table_id",
+        "typed_zero_cell_ids",
+    }
+    for raw in specs:
+        spec = _exact_keys(raw, spec_fields, "roll-forward table repair spec")
+        if (
+            spec["format_version"] != TABLE_SPEC_FORMAT_VERSION
+            or type(spec["collateral_cell_ids"]) is not list
+            or len(spec["collateral_cell_ids"]) != len(set(spec["collateral_cell_ids"]))
+            or type(spec["typed_zero_cell_ids"]) is not list
+            or len(spec["typed_zero_cell_ids"]) != len(set(spec["typed_zero_cell_ids"]))
+            or type(spec["collateral_equations"]) is not list
+        ):
+            raise _error("roll-forward table repair spec is invalid")
+        _node_ordinal(spec["section_id"], "s", "table repair spec section")
+        _node_ordinal(spec["table_id"], "t", "table repair spec table")
+        for cell_id in [*spec["collateral_cell_ids"], *spec["typed_zero_cell_ids"]]:
+            _cell_id(cell_id)
+        version_ids.append(
+            _prefixed_hash(
+                spec["base_page_json_version_id"],
+                "gfpstorev1:json:",
+                "table repair spec page version",
+            )
+        )
+        checked_specs.append(canonical_clone_v1(spec))
+    if len(version_ids) != len(set(version_ids)):
+        raise _error("roll-forward table repair spec repeats one base page")
+    evidence_axis = load_rollforward_table_page_evidence_v1(
+        page_store_path, page_json_version_ids=version_ids
+    )
+    evidence_by_version = {item["base_page_json_version_id"]: item for item in evidence_axis}
+    evaluation_spec = sweep["specs"]["evaluation"]["value"]
+    layout_spec = evaluation_spec.get("layout_spec", evaluation_spec.get("layout", {}))
+    movement_roles = layout_spec.get("movement_roles")
+    closing = [item.get("role") for item in movement_roles or [] if item.get("kind") == "CLOSING"]
+    if len(closing) != 1:
+        raise _error("roll-forward repair sweep has no unique closing movement role")
+    frontiers = []
+    pages = {}
+    for spec in checked_specs:
+        version_id = spec["base_page_json_version_id"]
+        evidence = evidence_by_version[version_id]
+        page_json = evidence["page_json"]
+        _checked_page, table = _table(page_json, spec["section_id"], spec["table_id"])
+        matches = []
+        for trial in sweep["trials"]:
+            for candidate in trial.get("candidates", []):
+                regions = [
+                    region
+                    for region in candidate.get("component_regions", [])
+                    if region.get("page_json_version_id") == version_id
+                    and region.get("section_id") == spec["section_id"]
+                    and region.get("table_id") == spec["table_id"]
+                ]
+                if regions:
+                    matches.append((trial, candidate, regions[0]))
+        if len(matches) != 1:
+            raise _error("table repair spec does not bind one swept candidate region")
+        trial, candidate, region = matches[0]
+        component_regions = candidate.get("component_regions")
+        if type(component_regions) is not list or not component_regions:
+            raise _error("table repair candidate component region axis is invalid")
+        component_version_ids = list(
+            dict.fromkeys(item.get("page_json_version_id") for item in component_regions)
+        )
+        if any(version not in selected_ids for version in component_version_ids):
+            raise _error("table repair candidate lies outside the selected page frontier")
+        binding_without_crop = evidence["source_binding_without_crop"]
+        if (
+            trial["status"] != UNRESOLVED
+            or candidate["status"] != UNRESOLVED
+            or candidate["family_id"] != sweep["family_id"]
+            or region["document_id"] != binding_without_crop["document_id"]
+            or region["physical_page"] != binding_without_crop["physical_page"]
+            or region["source_logical_name"] != binding_without_crop["source_logical_name"]
+            or region["source_sha256"] != binding_without_crop["source_sha256"]
+        ):
+            raise _error("table repair swept candidate/source binding drifted")
+        closure = candidate["closure_receipt"]
+        role_vectors = closure.get("role_vectors")
+        unresolved = closure.get("unresolved_frontiers")
+        if type(role_vectors) is not list or type(unresolved) is not list:
+            raise _error("table repair candidate has no typed unresolved closure")
+        relevant = []
+        primary: dict[str, dict[str, Any]] = {}
+        mismatch_rows = set()
+        equations = []
+        for unresolved_item in unresolved:
+            reason = unresolved_item.get("reason")
+            if type(reason) is not str or not (
+                "ROLLFORWARD_LANE_EQUATION_RANK_DEFICIENT_MULTIPLE_UNKNOWNS:" in reason
+                or "ROLLFORWARD_LANE_EQUATION_MISMATCH:" in reason
+            ):
+                continue
+            source_records = unresolved_item.get("source_records")
+            if type(source_records) is not list:
+                raise _error("table repair unresolved source record axis is invalid")
+            records = [record for record in source_records if record.get("locator") == region]
+            if not records:
+                continue
+            relevant.append(unresolved_item)
+            mismatch = "_MISMATCH:" in reason
+            unknown_roles = unresolved_item.get("unknown_roles")
+            if type(unknown_roles) is not list:
+                raise _error("table repair unresolved role axis is invalid")
+            selected_records = (
+                records
+                if mismatch
+                else [record for record in records if record.get("movement_role") in unknown_roles]
+            )
+            if not selected_records:
+                raise _error("table repair unresolved frontier selects no repair cell")
+            for record in selected_records:
+                vector = _frontier_vector(
+                    role_vectors,
+                    frontier=unresolved_item,
+                    source_record=record,
+                )
+                cell_id = _vector_cell_id(vector)
+                row_index, column_index = _cell_id(cell_id)
+                before = table["rows"][row_index]["values_exact"][column_index]
+                if not mismatch and before is not None:
+                    raise _error("rank-deficient repair primary is not one source BLANK")
+                if mismatch:
+                    mismatch_rows.add(row_index)
+                prior = primary.get(cell_id)
+                change_policy = "MAY_CHANGE" if mismatch else "MUST_CHANGE"
+                if prior is not None and prior["change_policy"] != change_policy:
+                    raise _error("table repair cell has conflicting unresolved semantics")
+                primary[cell_id] = {
+                    "after_policy": "SIGNED_INTEGER",
+                    "before_exact": before,
+                    "cell_id": cell_id,
+                    "change_policy": change_policy,
+                    "evidence_kind": "UNRESOLVED_FRONTIER",
+                }
+            equations.append(
+                _closure_equation_v1(
+                    closure=closure,
+                    frontier=unresolved_item,
+                    closing_role=closing[0],
+                )
+            )
+        if not relevant or not primary:
+            raise _error("table repair spec is not backed by a typed unresolved equation")
+        collateral_ids = set(spec["collateral_cell_ids"])
+        if collateral_ids & set(primary):
+            raise _error("table repair collateral repeats one primary cell")
+        for cell_id in collateral_ids:
+            row_index, column_index = _cell_id(cell_id)
+            if (
+                row_index >= len(table["rows"])
+                or column_index >= len(table["columns"])
+                or row_index not in mismatch_rows
+            ):
+                raise _error("table repair collateral is not local to a mismatch row")
+            primary[cell_id] = {
+                "after_policy": "SIGNED_INTEGER",
+                "before_exact": table["rows"][row_index]["values_exact"][column_index],
+                "cell_id": cell_id,
+                "change_policy": "MAY_CHANGE",
+                "evidence_kind": "ATOMIC_TABLE_COLLATERAL",
+            }
+        typed_zero_ids = set(spec["typed_zero_cell_ids"])
+        if not typed_zero_ids <= set(primary):
+            raise _error("table repair typed-zero policy lies outside derived cells")
+        for cell_id in typed_zero_ids:
+            primary[cell_id]["after_policy"] = "TYPED_ZERO"
+        collateral_equations = canonical_clone_v1(spec["collateral_equations"])
+        if collateral_ids:
+            checked_collateral = _equations(
+                collateral_equations,
+                row_count=len(table["rows"]),
+                column_count=len(table["columns"]),
+                allowlist=[primary[cell_id] for cell_id in sorted(collateral_ids)],
+            )
+            _validate_collateral_equation_corroboration(
+                table,
+                collateral_equations=checked_collateral,
+                collateral_cell_ids=collateral_ids,
+            )
+            equations.extend(checked_collateral)
+        elif collateral_equations:
+            raise _error("table repair collateral equations have no collateral cells")
+        repair_spec_sha = canonical_json_sha256_v1(spec)
+        source_binding = _source_binding(
+            {
+                **binding_without_crop,
+                "crop_bbox_pixels_xyxy": spec["crop_bbox_pixels_xyxy"],
+            }
+        )
+        frontiers.append(
+            {
+                "base_page_json_sha256": evidence["base_page_json_sha256"],
+                "base_page_json_version_id": version_id,
+                "candidate_id": candidate["candidate_id"],
+                "candidate_semantic_replay_sha256": canonical_json_sha256_v1(candidate),
+                "cell_allowlist": sorted(
+                    primary.values(), key=lambda item: _cell_id(item["cell_id"])
+                ),
+                "compiled_specs_sha256": canonical_json_sha256_v1(rebuilt_specs),
+                "document_ordinal": trial["document_ordinal"],
+                "equations": equations,
+                "family_id": sweep["family_id"],
+                "format_version": UNRESOLVED_FRONTIER_FORMAT_VERSION,
+                "indexed_query_evidence_sha256": canonical_json_sha256_v1(indexed_query_evidence),
+                "page_evidence_id": evidence["page_evidence_id"],
+                "repair_spec_sha256": repair_spec_sha,
+                "selected_page_frontier_sha256": canonical_json_sha256_v1(selected_ids),
+                "section_id": spec["section_id"],
+                "source_binding": source_binding,
+                "sweep_id": sweep["sweep_id"],
+                "table_id": spec["table_id"],
+                "trigger_reasons": sorted({item["reason"] for item in relevant}),
+            }
+        )
+        pages[version_id] = page_json
+    return _build_rollforward_table_cell_repair_plans_v1(
+        unresolved_frontier=frontiers,
+        page_json_by_version=pages,
+    )
+
+
+def _validated_plan(plan: Any) -> dict[str, Any]:
+    if (
+        type(plan) is not dict
+        or set(plan) != _PLAN_FIELDS
+        or plan.get("format_version") != QUEUE_FORMAT_VERSION
+        or plan.get("repair_contract_version") != REPAIR_CONTRACT_VERSION
+        or plan.get("repair_scope") != REPAIR_SCOPE
+        or type(plan.get("repair_job_id")) is not str
+    ):
+        raise _error("roll-forward table repair plan is invalid")
+    material = {key: plan[key] for key in plan if key != "repair_job_id"}
+    if plan["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material):
+        raise _error("roll-forward table repair plan identity does not replay")
+    _hash(plan.get("base_page_json_sha256"), "table repair base page SHA-256")
+    _prefixed_hash(
+        plan.get("base_page_json_version_id"),
+        "gfpstorev1:json:",
+        "table repair base version",
+    )
+    _prefixed_hash(plan.get("candidate_id"), "gjfafcv1:candidate:", "table repair candidate")
+    _prefixed_hash(plan.get("sweep_id"), "gjfafsv1:sweep:", "table repair sweep")
+    _prefixed_hash(
+        plan.get("page_evidence_id"),
+        "gjfrpev1:evidence:",
+        "table repair page evidence",
+    )
+    _hash(plan.get("repair_spec_sha256"), "table repair spec SHA-256")
+    _hash(
+        plan.get("candidate_semantic_replay_sha256"),
+        "table repair semantic candidate SHA-256",
+    )
+    _hash(plan.get("compiled_specs_sha256"), "table repair compiled specs SHA-256")
+    _hash(
+        plan.get("indexed_query_evidence_sha256"),
+        "table repair indexed query evidence SHA-256",
+    )
+    _hash(
+        plan.get("selected_page_frontier_sha256"),
+        "table repair selected page frontier SHA-256",
+    )
+    binding = _source_binding(plan.get("source_binding"))
+    if (
+        plan.get("source_logical_name") != binding["source_logical_name"]
+        or plan.get("source_sha256") != binding["source_sha256"]
+        or plan.get("physical_page") != binding["physical_page"]
+        or type(plan.get("family_id")) is not str
+        or not plan["family_id"]
+        or type(plan.get("document_ordinal")) is not int
+        or plan["document_ordinal"] <= 0
+        or plan.get("acceptance_policy")
+        != {
+            "all_other_cells_byte_equal": True,
+            "forbid_arithmetic_backsolve": True,
+            "require_all_allowlisted_cells_transcribed": True,
+            "require_all_declared_equations_exact": True,
+            "require_exact_shape_order_and_unit": True,
+        }
+        or plan.get("repair_policy")
+        != {
+            "attempt_lineage": "SIBLINGS_FROM_IMMUTABLE_BASE",
+            "initial_thinking_level": "low",
+            "max_attempts": 3,
+            "thinking_escalation": ["medium", "high"],
+        }
+    ):
+        raise _error("roll-forward table repair plan policy or source axis drifted")
+    section_id = plan.get("section_id")
+    table_id = plan.get("table_id")
+    _node_ordinal(section_id, "s", "table repair plan section")
+    _node_ordinal(table_id, "t", "table repair plan table")
+    table_ref = {"section_id": section_id, "table_id": table_id}
+    if plan.get("component_table_refs") != [table_ref] or plan.get("target_table_refs") != [
+        table_ref
+    ]:
+        raise _error("roll-forward table repair table reference axis drifted")
+    shape = _exact_keys(
+        plan.get("shape_gate"),
+        {
+            "base_table_sha256",
+            "column_count",
+            "columns_exact",
+            "continuation_exact",
+            "row_axis_exact",
+            "row_count",
+            "table_title_exact",
+            "unit_exact",
+        },
+        "table repair shape gate",
+    )
+    _hash(shape["base_table_sha256"], "table repair base table SHA-256")
+    if (
+        type(shape["column_count"]) is not int
+        or shape["column_count"] <= 0
+        or type(shape["row_count"]) is not int
+        or shape["row_count"] <= 0
+        or type(shape["columns_exact"]) is not list
+        or len(shape["columns_exact"]) != shape["column_count"]
+        or type(shape["row_axis_exact"]) is not list
+        or len(shape["row_axis_exact"]) != shape["row_count"]
+        or any(column.get("value_kind") != "MONEY" for column in shape["columns_exact"])
+    ):
+        raise _error("table repair shape gate is invalid")
+    raw_allowlist = plan.get("cell_allowlist")
+    if type(raw_allowlist) is not list or not raw_allowlist:
+        raise _error("table repair plan allowlist is invalid")
+    allowlist = []
+    for item in raw_allowlist:
+        checked_item = _exact_keys(
+            item,
+            {
+                "after_policy",
+                "before_exact",
+                "cell_id",
+                "change_policy",
+                "evidence_kind",
+            },
+            "table repair plan allowlist item",
+        )
+        row, column = _cell_id(checked_item["cell_id"])
+        if (
+            row >= shape["row_count"]
+            or column >= shape["column_count"]
+            or checked_item["after_policy"] not in _AFTER_POLICIES
+            or checked_item["change_policy"] not in _CHANGE_POLICIES
+            or checked_item["evidence_kind"] not in _EVIDENCE_KINDS
+        ):
+            raise _error("table repair plan allowlist item is invalid")
+        allowlist.append(checked_item)
+    if (
+        raw_allowlist != sorted(raw_allowlist, key=lambda item: _cell_id(item["cell_id"]))
+        or len({item["cell_id"] for item in allowlist}) != len(allowlist)
+        or not any(item["evidence_kind"] == "UNRESOLVED_FRONTIER" for item in allowlist)
+        or plan.get("target_ids")
+        != [f"{section_id}:{table_id}:{item['cell_id']}" for item in allowlist]
+    ):
+        raise _error("table repair plan allowlist or target axis drifted")
+    equations = _equations(
+        plan.get("equation_inventory"),
+        row_count=shape["row_count"],
+        column_count=shape["column_count"],
+        allowlist=allowlist,
+    )
+    if equations != plan["equation_inventory"] or canonical_json_sha256_v1(equations) != plan.get(
+        "equation_inventory_sha256"
+    ):
+        raise _error("table repair plan equation inventory drifted")
+    request = _exact_keys(
+        plan.get("request_contract"),
+        {
+            "output_contract_mode",
+            "prompt_sha256",
+            "prompt_variant",
+            "response_schema_sha256",
+        },
+        "table repair request contract",
+    )
+    if (
+        request["output_contract_mode"] != "JSON_SCHEMA"
+        or request["prompt_variant"] != "rollforward-table-cells"
+        or _hash(request["prompt_sha256"], "table repair prompt SHA-256")
+        != request["prompt_sha256"]
+        or request["response_schema_sha256"]
+        != canonical_json_sha256_v1(rollforward_table_repair_response_schema_v1())
+        or plan.get("trigger_kinds") != ["ROLLFORWARD_TYPED_CELL_EVIDENCE_INCOMPLETE"]
+        or type(plan.get("trigger_reasons")) is not list
+        or not plan["trigger_reasons"]
+        or plan["trigger_reasons"] != sorted(set(plan["trigger_reasons"]))
+    ):
+        raise _error("table repair request or trigger contract drifted")
+    return canonical_clone_v1(plan)
+
+
+def rollforward_table_repair_target_v1(
+    page_json: Any, *, plan: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Return response-blind table labels/header context for one crop request."""
+
+    checked_plan = _validated_plan(plan)
+    checked_page, table = _table(page_json, checked_plan["section_id"], checked_plan["table_id"])
+    if (
+        canonical_json_sha256_v1(checked_page) != checked_plan["base_page_json_sha256"]
+        or _shape_gate(table) != checked_plan["shape_gate"]
+    ):
+        raise _error("roll-forward table repair plan does not bind the base table")
+    return {
+        "column_headers_exact": [
+            canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
+        ],
+        "column_value_kinds": [column["value_kind"] for column in table["columns"]],
+        "row_labels_exact": [row["label_exact"] for row in table["rows"]],
+        "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
+        "table_title_exact": table["title_exact"],
+        "unit_exact": table["unit_exact"],
+    }
+
+
+def build_rollforward_table_repair_prompt_v1(
+    *, base_page_json_version_id: str, target: Mapping[str, Any]
+) -> str:
+    """Build one concise prompt; prior cell values are intentionally excluded."""
+
+    _prefixed_hash(
+        base_page_json_version_id,
+        "gfpstorev1:json:",
+        "roll-forward table repair base version",
+    )
+    required = {
+        "column_headers_exact",
+        "column_value_kinds",
+        "row_labels_exact",
+        "table_title_exact",
+        "target_id",
+        "unit_exact",
+    }
+    checked = _exact_keys(dict(target), required, "roll-forward table repair target")
+    context = {
+        "column_headers_exact": checked["column_headers_exact"],
+        "column_value_kinds": checked["column_value_kinds"],
+        "row_labels_exact": checked["row_labels_exact"],
+        "target_id": checked["target_id"],
+        "table_title_exact": checked["table_title_exact"],
+        "unit_exact": checked["unit_exact"],
+    }
+    return (
+        "Ảnh chỉ chứa một bảng biến động dự phòng rủi ro cho vay. Chép nguyên toàn bộ "
+        "bảng vào JSON: đủ tiêu đề, đơn vị, mọi cột, mọi dòng và mọi ô theo đúng thứ tự. "
+        "Không bỏ ô, không dịch giá trị sang cột kế bên, không dùng phép tính để suy ra hoặc "
+        "sửa nội dung. Với mỗi ô: BLANK chỉ khi hoàn toàn không có dấu; DASH khi nhìn thấy "
+        "dấu gạch kế toán; PRINTED_ZERO khi in số 0; VALUE cho số khác. Giữ source_text "
+        "đúng như ảnh, gồm ngoặc và dấu âm. Mỗi dòng phải có đúng số cell bằng số cột. "
+        "Thông tin context chỉ để định vị và không chứa đáp án ô. Nếu không chắc bất kỳ ô "
+        "nào, ghi uncertainty_exact; không đoán. Trả duy nhất JSON theo schema.\n"
+        f"base_page_json_version_id={base_page_json_version_id}\n"
+        "target_table_context=" + canonical_json_bytes_v1(context).decode("utf-8")
+    )
+
+
+def rollforward_table_repair_response_schema_v1() -> dict[str, Any]:
+    nullable_string = {"type": ["string", "null"]}
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": False,
+        "properties": {
+            "all_cells_transcribed": {"type": "boolean"},
+            "columns": {
+                "items": {
+                    "additionalProperties": False,
+                    "properties": {
+                        "header_path_exact": {
+                            "items": nullable_string,
+                            "minItems": 1,
+                            "type": "array",
+                        },
+                        "value_kind": {"type": "string"},
+                    },
+                    "required": ["header_path_exact", "value_kind"],
+                    "type": "object",
+                },
+                "type": "array",
+            },
+            "rows": {
+                "items": {
+                    "additionalProperties": False,
+                    "properties": {
+                        "cells": {
+                            "items": {
+                                "additionalProperties": False,
+                                "properties": {
+                                    "source_text": nullable_string,
+                                    "visual_state": {
+                                        "enum": sorted(_VISUAL_STATES),
+                                        "type": "string",
+                                    },
+                                },
+                                "required": ["source_text", "visual_state"],
+                                "type": "object",
+                            },
+                            "type": "array",
+                        },
+                        "label_exact": nullable_string,
+                    },
+                    "required": ["label_exact", "cells"],
+                    "type": "object",
+                },
+                "type": "array",
+            },
+            "table_title_exact": nullable_string,
+            "target_id": {"type": "string"},
+            "uncertainty_exact": {"items": {"type": "string"}, "type": "array"},
+            "unit_exact": nullable_string,
+        },
+        "required": [
+            "all_cells_transcribed",
+            "target_id",
+            "table_title_exact",
+            "unit_exact",
+            "columns",
+            "rows",
+            "uncertainty_exact",
+        ],
+        "type": "object",
+    }
+
+
+def decode_rollforward_table_repair_text_v1(
+    text: str, *, target: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Decode one complete table response without silently filling any cell."""
+
+    if type(text) is not str:
+        raise _error("roll-forward table repair response is not text")
+    match = _FENCE.fullmatch(text.strip())
+    payload = match.group(1) if match is not None else text
+    try:
+        value = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise _error("roll-forward table repair response is not JSON") from exc
+    required = {
+        "all_cells_transcribed",
+        "columns",
+        "rows",
+        "table_title_exact",
+        "target_id",
+        "uncertainty_exact",
+        "unit_exact",
+    }
+    checked = _exact_keys(value, required, "roll-forward table repair response")
+    expected_columns = target["column_headers_exact"]
+    expected_rows = target["row_labels_exact"]
+    if (
+        type(checked["all_cells_transcribed"]) is not bool
+        or type(checked["uncertainty_exact"]) is not list
+        or any(type(item) is not str or not item for item in checked["uncertainty_exact"])
+        or checked["target_id"] != target["target_id"]
+        or type(checked["table_title_exact"]) not in {str, type(None)}
+        or type(checked["unit_exact"]) not in {str, type(None)}
+        or type(checked["columns"]) is not list
+        or len(checked["columns"]) != len(expected_columns)
+        or type(checked["rows"]) is not list
+        or len(checked["rows"]) != len(expected_rows)
+    ):
+        raise _error("roll-forward table repair completion, identity, or shape is invalid")
+    for column in checked["columns"]:
+        if (
+            type(column) is not dict
+            or set(column) != {"header_path_exact", "value_kind"}
+            or type(column["header_path_exact"]) is not list
+            or not column["header_path_exact"]
+            or any(type(item) not in {str, type(None)} for item in column["header_path_exact"])
+            or type(column["value_kind"]) is not str
+        ):
+            raise _error("roll-forward table repair column axis is invalid")
+    for row in checked["rows"]:
+        if (
+            type(row) is not dict
+            or set(row) != {"cells", "label_exact"}
+            or type(row["label_exact"]) not in {str, type(None)}
+            or type(row["cells"]) is not list
+            or len(row["cells"]) != len(expected_columns)
+        ):
+            raise _error("roll-forward table repair row or cell shape is invalid")
+        for cell in row["cells"]:
+            if (
+                type(cell) is not dict
+                or set(cell) != {"source_text", "visual_state"}
+                or type(cell["source_text"]) not in {str, type(None)}
+                or cell["visual_state"] not in _VISUAL_STATES
+                or _visual_state(cell["source_text"]) != cell["visual_state"]
+            ):
+                raise _error("roll-forward table repair visual cell state is invalid")
+    return canonical_clone_v1(checked)
+
+
+def _matrix_rank(rows: Sequence[Sequence[int]]) -> int:
+    matrix = [[Fraction(value) for value in row] for row in rows]
+    if not matrix:
+        return 0
+    row_count = len(matrix)
+    column_count = len(matrix[0])
+    rank = 0
+    for column in range(column_count):
+        pivot = next((index for index in range(rank, row_count) if matrix[index][column]), None)
+        if pivot is None:
+            continue
+        matrix[rank], matrix[pivot] = matrix[pivot], matrix[rank]
+        scale = matrix[rank][column]
+        matrix[rank] = [value / scale for value in matrix[rank]]
+        for index in range(row_count):
+            if index == rank or not matrix[index][column]:
+                continue
+            factor = matrix[index][column]
+            matrix[index] = [
+                value - factor * pivot_value
+                for value, pivot_value in zip(matrix[index], matrix[rank], strict=True)
+            ]
+        rank += 1
+        if rank == row_count:
+            break
+    return rank
+
+
+def _equation_gate(
+    table: Mapping[str, Any],
+    *,
+    equations: Sequence[Mapping[str, Any]],
+    allowlist: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    allow_ids = [item["cell_id"] for item in allowlist]
+    matrix = []
+    receipts = []
+    for equation in equations:
+        result_row, result_column = _cell_id(equation["result_cell_id"])
+        result = _signed_integer(table["rows"][result_row]["values_exact"][result_column])
+        terms = []
+        for term in equation["terms"]:
+            row_index, column_index = _cell_id(term["cell_id"])
+            coefficient = _signed_integer(table["rows"][row_index]["values_exact"][column_index])
+            terms.append((term["multiplier"], coefficient))
+        if result is None or any(coefficient is None for _, coefficient in terms):
+            raise _error("roll-forward table repair equation contains an unknown cell")
+        expected = sum(
+            multiplier * coefficient for multiplier, coefficient in terms if coefficient is not None
+        )
+        if result != expected:
+            raise _error("roll-forward table repair equation does not close")
+        row = []
+        for cell_id in allow_ids:
+            value = 1 if equation["result_cell_id"] == cell_id else 0
+            value -= sum(
+                term["multiplier"] for term in equation["terms"] if term["cell_id"] == cell_id
+            )
+            row.append(value)
+        matrix.append(row)
+        receipts.append(
+            {
+                "equation_id": equation["equation_id"],
+                "expected_result": expected,
+                "observed_result": result,
+                "status": "EXACT",
+            }
+        )
+    return {
+        "allowlist_equation_rank": _matrix_rank(matrix),
+        "allowlisted_cell_count": len(allow_ids),
+        "closed_equation_count": len(receipts),
+        "equation_receipts": receipts,
+        "forbid_arithmetic_backsolve": True,
+    }
+
+
+def _after_policy(cell: Mapping[str, Any], policy: str) -> None:
+    coefficient = _signed_integer(cell["source_text"])
+    if policy == "TYPED_ZERO":
+        if cell["visual_state"] not in {"DASH", "PRINTED_ZERO"} or coefficient != 0:
+            raise _error("roll-forward table repair expected one source-transcribed typed zero")
+        return
+    if policy == "SIGNED_INTEGER":
+        if cell["visual_state"] == "BLANK" or coefficient is None:
+            raise _error("roll-forward table repair expected one source-transcribed integer")
+        return
+    raise _error("roll-forward table repair after policy drifted")
+
+
+def merge_rollforward_table_repair_v1(
+    page_json: Any,
+    *,
+    plan: Mapping[str, Any],
+    repair: Mapping[str, Any],
+    page_store_path: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Atomically merge only allowlisted cells after every table/equation gate."""
+
+    checked_plan = _validated_plan(plan)
+    page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
+        checked_plan, page_store_path=page_store_path
+    )
+    checked_page, table = _table(page_json, checked_plan["section_id"], checked_plan["table_id"])
+    if (
+        checked_page != page_evidence["page_json"]
+        or canonical_json_sha256_v1(checked_page) != checked_plan["base_page_json_sha256"]
+        or _shape_gate(table) != checked_plan["shape_gate"]
+    ):
+        raise _error("roll-forward table repair base page or table drifted")
+    target = rollforward_table_repair_target_v1(checked_page, plan=checked_plan)
+    decoded = decode_rollforward_table_repair_text_v1(
+        canonical_json_bytes_v1(dict(repair)).decode("utf-8"), target=target
+    )
+    if not decoded["all_cells_transcribed"] or decoded["uncertainty_exact"]:
+        raise _error("roll-forward table repair is incomplete or uncertain")
+    if (
+        decoded["table_title_exact"] != table["title_exact"]
+        or decoded["unit_exact"] != table["unit_exact"]
+        or decoded["columns"] != table["columns"]
+        or [row["label_exact"] for row in decoded["rows"]]
+        != [row["label_exact"] for row in table["rows"]]
+    ):
+        raise _error("roll-forward table repair shape, order, header, or unit gate failed")
+
+    allow_by_id = {item["cell_id"]: item for item in checked_plan["cell_allowlist"]}
+    merged = canonical_clone_v1(checked_page)
+    merged_table = merged["sections"][_node_ordinal(checked_plan["section_id"], "s", "section")][
+        "tables"
+    ][_node_ordinal(checked_plan["table_id"], "t", "table")]
+    changes = []
+    for row_index, (base_row, response_row) in enumerate(
+        zip(table["rows"], decoded["rows"], strict=True), start=1
+    ):
+        for column_index, (before, response_cell) in enumerate(
+            zip(base_row["values_exact"], response_row["cells"], strict=True), start=1
+        ):
+            cell_id = f"r{row_index}:c{column_index}"
+            allowed = allow_by_id.get(cell_id)
+            if allowed is None:
+                if response_cell != {
+                    "source_text": before,
+                    "visual_state": _visual_state(before),
+                }:
+                    raise _error("roll-forward table repair changed a cell outside the allowlist")
+                continue
+            if response_cell["source_text"] == before:
+                if allowed["change_policy"] == "MUST_CHANGE":
+                    raise _error("roll-forward table repair left a must-change cell unchanged")
+                continue
+            _after_policy(response_cell, allowed["after_policy"])
+            merged_table["rows"][row_index - 1]["values_exact"][column_index - 1] = response_cell[
+                "source_text"
+            ]
+            changes.append(
+                {
+                    "after_exact": response_cell["source_text"],
+                    "after_policy": allowed["after_policy"],
+                    "after_visual_state": response_cell["visual_state"],
+                    "before_exact": before,
+                    "before_visual_state": _visual_state(before),
+                    "cell_id": cell_id,
+                    "change_policy": allowed["change_policy"],
+                    "evidence_kind": allowed["evidence_kind"],
+                }
+            )
+    changed_ids = {item["cell_id"] for item in changes}
+    must_change_ids = {
+        item["cell_id"]
+        for item in checked_plan["cell_allowlist"]
+        if item["change_policy"] == "MUST_CHANGE"
+    }
+    if not changes or not must_change_ids <= changed_ids:
+        raise _error("roll-forward table repair did not satisfy its change policy")
+    merged = validate_financial_page_json_v1(merged)
+    merged_table = merged["sections"][_node_ordinal(checked_plan["section_id"], "s", "section")][
+        "tables"
+    ][_node_ordinal(checked_plan["table_id"], "t", "table")]
+    gate = _equation_gate(
+        merged_table,
+        equations=checked_plan["equation_inventory"],
+        allowlist=checked_plan["cell_allowlist"],
+    )
+    change = {
+        "all_other_cells_byte_equal": True,
+        "base_table_sha256": checked_plan["shape_gate"]["base_table_sha256"],
+        "cell_changes": sorted(changes, key=lambda item: _cell_id(item["cell_id"])),
+        "changed_cell_count": len(changes),
+        "equation_gate": gate,
+        "equation_inventory_sha256": checked_plan["equation_inventory_sha256"],
+        "merged_table_sha256": canonical_json_sha256_v1(merged_table),
+        "repair_scope": REPAIR_SCOPE,
+        "shape_gate": canonical_clone_v1(checked_plan["shape_gate"]),
+        "source_binding": canonical_clone_v1(checked_plan["source_binding"]),
+        "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
+        "validated_allowlist_cell_count": len(checked_plan["cell_allowlist"]),
+    }
+    receipt_material = {
+        "base_page_json_sha256": canonical_json_sha256_v1(checked_page),
+        "base_page_json_version_id": checked_plan["base_page_json_version_id"],
+        "changes": [change],
+        "format_version": "GEMINI_JSON_REGION_REPAIR_V1",
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "repair_response_sha256": canonical_json_sha256_v1(decoded),
+    }
+    return merged, {
+        **receipt_material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(receipt_material),
+    }
+
+
+def crop_rollforward_table_image_v1(
+    image_bytes: bytes, *, plan: Mapping[str, Any], page_store_path: Path
+) -> tuple[bytes, dict[str, Any]]:
+    """Crop one immutable image by its receipt-bound, declarative table box."""
+
+    checked_plan = _validated_plan(plan)
+    validate_rollforward_table_repair_plan_page_store_v1(
+        checked_plan, page_store_path=page_store_path
+    )
+    binding = checked_plan["source_binding"]
+    if (
+        type(image_bytes) is not bytes
+        or sha256(image_bytes).hexdigest() != binding["image_sha256"]
+        or len(image_bytes) != binding["image_size_bytes"]
+    ):
+        raise _error("roll-forward table repair image bytes do not bind the plan")
+    try:
+        image = Image.open(BytesIO(image_bytes))
+        image.load()
+    except Exception as exc:
+        raise _error("roll-forward table repair image cannot be decoded") from exc
+    if image.size != (binding["pixel_width"], binding["pixel_height"]):
+        raise _error("roll-forward table repair image dimensions drifted")
+    crop = image.crop(tuple(binding["crop_bbox_pixels_xyxy"]))
+    output = BytesIO()
+    crop.save(output, format="PNG")
+    payload = output.getvalue()
+    material = {
+        "crop_bbox_pixels_xyxy": binding["crop_bbox_pixels_xyxy"],
+        "crop_height": crop.height,
+        "crop_image_sha256": sha256(payload).hexdigest(),
+        "crop_size_bytes": len(payload),
+        "crop_width": crop.width,
+        "full_image_sha256": binding["image_sha256"],
+        "format_version": CROP_RECEIPT_FORMAT_VERSION,
+        "page_id": binding["page_id"],
+        "prompt_sha256": checked_plan["request_contract"]["prompt_sha256"],
+        "repair_job_id": checked_plan["repair_job_id"],
+        "response_schema_sha256": checked_plan["request_contract"]["response_schema_sha256"],
+        "source_binding_sha256": canonical_json_sha256_v1(binding),
+    }
+    return payload, {
+        **material,
+        "crop_receipt_id": "gjfrtcv1:crop:" + canonical_json_sha256_v1(material),
+    }
+
+
+def validate_rollforward_table_repair_usage_v1(value: Any) -> dict[str, Any]:
+    checked = _exact_keys(value, _USAGE_FIELDS, "roll-forward table repair usage")
+    if (
+        any(
+            type(checked[field]) is not int or checked[field] < 0
+            for field in _USAGE_FIELDS
+            if field.endswith("_tokens")
+        )
+        or type(checked["cost_disposition"]) is not str
+        or not checked["cost_disposition"]
+    ):
+        raise _error("roll-forward table repair token or cost disposition is invalid")
+    try:
+        cost = Decimal(checked["actual_cost_usd"])
+    except (InvalidOperation, TypeError) as exc:
+        raise _error("roll-forward table repair actual cost is invalid") from exc
+    if cost < 0 or not cost.is_finite():
+        raise _error("roll-forward table repair actual cost is invalid")
+    if checked["cached_input_tokens"] > checked["input_tokens"]:
+        raise _error("roll-forward table repair cached input exceeds input tokens")
+    return canonical_clone_v1(checked)
+
+
+def _crop_receipt(value: Any, *, plan: Mapping[str, Any]) -> dict[str, Any]:
+    fields = {
+        "crop_bbox_pixels_xyxy",
+        "crop_height",
+        "crop_image_sha256",
+        "crop_receipt_id",
+        "crop_size_bytes",
+        "crop_width",
+        "format_version",
+        "full_image_sha256",
+        "page_id",
+        "prompt_sha256",
+        "repair_job_id",
+        "response_schema_sha256",
+        "source_binding_sha256",
+    }
+    checked = _exact_keys(value, fields, "roll-forward table crop receipt")
+    material = {key: checked[key] for key in checked if key != "crop_receipt_id"}
+    binding = plan["source_binding"]
+    bbox = binding["crop_bbox_pixels_xyxy"]
+    if (
+        checked["format_version"] != CROP_RECEIPT_FORMAT_VERSION
+        or checked["crop_receipt_id"] != "gjfrtcv1:crop:" + canonical_json_sha256_v1(material)
+        or checked["repair_job_id"] != plan["repair_job_id"]
+        or checked["page_id"] != binding["page_id"]
+        or checked["full_image_sha256"] != binding["image_sha256"]
+        or checked["source_binding_sha256"] != canonical_json_sha256_v1(binding)
+        or checked["crop_bbox_pixels_xyxy"] != bbox
+        or checked["crop_width"] != bbox[2] - bbox[0]
+        or checked["crop_height"] != bbox[3] - bbox[1]
+        or type(checked["crop_size_bytes"]) is not int
+        or checked["crop_size_bytes"] <= 0
+        or _hash(checked["crop_image_sha256"], "table repair crop SHA-256")
+        != checked["crop_image_sha256"]
+        or checked["prompt_sha256"] != plan["request_contract"]["prompt_sha256"]
+        or checked["response_schema_sha256"] != plan["request_contract"]["response_schema_sha256"]
+    ):
+        raise _error("roll-forward table crop receipt does not replay the plan")
+    return canonical_clone_v1(checked)
+
+
+def _content_ref(value: Any, label: str) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    checked = _exact_keys(value, {"path", "sha256", "size_bytes"}, label)
+    if (
+        type(checked["path"]) is not str
+        or not checked["path"]
+        or checked["path"].startswith("/")
+        or ".." in checked["path"].split("/")
+        or _hash(checked["sha256"], f"{label} SHA-256") != checked["sha256"]
+        or type(checked["size_bytes"]) is not int
+        or checked["size_bytes"] <= 0
+    ):
+        raise _error(f"{label} is invalid")
+    return canonical_clone_v1(checked)
+
+
+def _validation_record(value: Any) -> dict[str, Any]:
+    checked = _exact_keys(
+        value,
+        {"reason_codes", "status"},
+        "roll-forward table repair validation record",
+    )
+    if (
+        checked["status"] not in {"FAIL", "PASS"}
+        or type(checked["reason_codes"]) is not list
+        or checked["reason_codes"] != sorted(set(checked["reason_codes"]))
+        or any(type(reason) is not str or not reason for reason in checked["reason_codes"])
+        or (checked["status"] == "PASS") != (not checked["reason_codes"])
+    ):
+        raise _error("roll-forward table repair validation record is invalid")
+    return canonical_clone_v1(checked)
+
+
+def _provider(value: Any) -> dict[str, Any]:
+    checked = _exact_keys(value, _PROVIDER_FIELDS, "roll-forward table repair provider")
+    if any(
+        type(checked[field]) is not str or not checked[field]
+        for field in ("provider_model", "provider_name", "service_tier")
+    ) or type(checked["response_id_sha256"]) not in {str, type(None)}:
+        raise _error("roll-forward table repair provider identity is invalid")
+    _hash(checked["request_id_sha256"], "roll-forward table repair request ID SHA-256")
+    if checked["response_id_sha256"] is not None:
+        _hash(checked["response_id_sha256"], "roll-forward table repair response ID SHA-256")
+    return canonical_clone_v1(checked)
+
+
+def _provider_usage_gate(provider: Mapping[str, Any], usage: Mapping[str, Any]) -> None:
+    name = provider["provider_name"].casefold()
+    input_tokens = usage["input_tokens"]
+    output_tokens = usage["output_tokens"]
+    thought_tokens = usage["thought_tokens"]
+    total_tokens = usage["total_tokens"]
+    if name == "openrouter":
+        if total_tokens != input_tokens + output_tokens or thought_tokens > output_tokens:
+            raise _error("OpenRouter table repair token equation does not close")
+        return
+    if name == "google":
+        if total_tokens != input_tokens + output_tokens + thought_tokens:
+            raise _error("Google table repair token equation does not close")
+        return
+    raise _error("roll-forward table repair provider usage semantics are undeclared")
+
+
+def _validated_attempt(value: Any) -> dict[str, Any]:
+    fields = {
+        "attempt_id",
+        "attempt_ordinal",
+        "crop_receipt",
+        "decoded_response_sha256",
+        "elapsed_seconds",
+        "format_version",
+        "next_status",
+        "observed_page_json_version_id",
+        "outcome",
+        "provider",
+        "repair_id",
+        "repair_job_id",
+        "repair_receipt_sha256",
+        "request_contract_sha256",
+        "response_artifact_ref",
+        "sibling_base_page_json_version_id",
+        "thinking_level",
+        "usage",
+        "validation",
+    }
+    checked = _exact_keys(value, fields, "roll-forward table repair attempt")
+    material = {key: checked[key] for key in checked if key != "attempt_id"}
+    if checked["format_version"] != ATTEMPT_FORMAT_VERSION or checked[
+        "attempt_id"
+    ] != "gjfrtav1:attempt:" + canonical_json_sha256_v1(material):
+        raise _error("roll-forward table repair attempt identity does not replay")
+    if (
+        type(checked["attempt_ordinal"]) is not int
+        or checked["attempt_ordinal"] not in {1, 2, 3}
+        or checked["thinking_level"] != _THINKING_LEVELS[checked["attempt_ordinal"] - 1]
+        or checked["outcome"] not in _ATTEMPT_OUTCOMES
+        or checked["next_status"] not in {"ABSTAINED", "PENDING", "RESOLVED"}
+        or type(checked["repair_job_id"]) is not str
+        or not checked["repair_job_id"].startswith("gjfrrqv1:job:")
+    ):
+        raise _error("roll-forward table repair attempt state is invalid")
+    _prefixed_hash(
+        checked["sibling_base_page_json_version_id"],
+        "gfpstorev1:json:",
+        "table repair attempt sibling base version",
+    )
+    if checked["observed_page_json_version_id"] is not None:
+        _prefixed_hash(
+            checked["observed_page_json_version_id"],
+            "gfpstorev1:json:",
+            "table repair attempt observed version",
+        )
+    _hash(checked["request_contract_sha256"], "table repair request contract SHA-256")
+    if checked["decoded_response_sha256"] is not None:
+        _hash(
+            checked["decoded_response_sha256"],
+            "table repair decoded response SHA-256",
+        )
+    provider = _provider(checked["provider"])
+    usage = validate_rollforward_table_repair_usage_v1(checked["usage"])
+    _provider_usage_gate(provider, usage)
+    _content_ref(checked["response_artifact_ref"], "table repair raw response reference")
+    validation = _validation_record(checked["validation"])
+    try:
+        elapsed = Decimal(checked["elapsed_seconds"])
+    except (InvalidOperation, TypeError) as exc:
+        raise _error("roll-forward table repair attempt elapsed time is invalid") from exc
+    if elapsed < 0 or not elapsed.is_finite():
+        raise _error("roll-forward table repair attempt elapsed time is invalid")
+    resolved = checked["outcome"] == "RESOLVED"
+    if (
+        resolved
+        != (
+            checked["next_status"] == "RESOLVED"
+            and checked["observed_page_json_version_id"] is not None
+            and checked["repair_id"] is not None
+            and checked["repair_receipt_sha256"] is not None
+            and validation["status"] == "PASS"
+            and checked["response_artifact_ref"] is not None
+            and checked["decoded_response_sha256"] is not None
+        )
+        or (not resolved and validation["status"] != "FAIL")
+        or (
+            not resolved
+            and any(
+                checked[field] is not None
+                for field in (
+                    "observed_page_json_version_id",
+                    "repair_id",
+                    "repair_receipt_sha256",
+                )
+            )
+        )
+        or (checked["attempt_ordinal"] < 3 and not resolved and checked["next_status"] != "PENDING")
+        or (
+            checked["attempt_ordinal"] == 3
+            and not resolved
+            and checked["next_status"] != "ABSTAINED"
+        )
+    ):
+        raise _error("roll-forward table repair attempt outcome lineage is invalid")
+    if checked["repair_id"] is not None:
+        _prefixed_hash(checked["repair_id"], "gjfrrv1:repair:", "table repair ID")
+        _hash(checked["repair_receipt_sha256"], "table repair receipt SHA-256")
+    return canonical_clone_v1(checked)
+
+
+def _repair_receipt_for_plan(value: Any, *, plan: Mapping[str, Any]) -> dict[str, Any]:
+    fields = {
+        "base_page_json_sha256",
+        "base_page_json_version_id",
+        "changes",
+        "format_version",
+        "merged_page_json_sha256",
+        "repair_id",
+        "repair_response_sha256",
+    }
+    receipt = _exact_keys(value, fields, "roll-forward table repair receipt")
+    material = {key: receipt[key] for key in receipt if key != "repair_id"}
+    if (
+        receipt["format_version"] != "GEMINI_JSON_REGION_REPAIR_V1"
+        or receipt["repair_id"] != "gjfrrv1:repair:" + canonical_json_sha256_v1(material)
+        or receipt["base_page_json_version_id"] != plan["base_page_json_version_id"]
+        or receipt["base_page_json_sha256"] != plan["base_page_json_sha256"]
+        or type(receipt["changes"]) is not list
+        or len(receipt["changes"]) != 1
+    ):
+        raise _error("resolved roll-forward table repair receipt identity drifted")
+    _hash(receipt["merged_page_json_sha256"], "table repair merged page SHA-256")
+    _hash(receipt["repair_response_sha256"], "table repair response SHA-256")
+    change = receipt["changes"][0]
+    required_change_fields = {
+        "all_other_cells_byte_equal",
+        "base_table_sha256",
+        "cell_changes",
+        "changed_cell_count",
+        "equation_gate",
+        "equation_inventory_sha256",
+        "merged_table_sha256",
+        "repair_scope",
+        "shape_gate",
+        "source_binding",
+        "target_id",
+        "validated_allowlist_cell_count",
+    }
+    if (
+        type(change) is not dict
+        or set(change) != required_change_fields
+        or change["all_other_cells_byte_equal"] is not True
+        or change["repair_scope"] != REPAIR_SCOPE
+        or change["base_table_sha256"] != plan["shape_gate"]["base_table_sha256"]
+        or change["shape_gate"] != plan["shape_gate"]
+        or change["source_binding"] != plan["source_binding"]
+        or change["equation_inventory_sha256"] != plan["equation_inventory_sha256"]
+        or change["target_id"] != f"{plan['section_id']}:{plan['table_id']}"
+        or change["validated_allowlist_cell_count"] != len(plan["cell_allowlist"])
+        or type(change["cell_changes"]) is not list
+        or change["changed_cell_count"] != len(change["cell_changes"])
+        or change["changed_cell_count"] <= 0
+        or not {
+            item["cell_id"]
+            for item in plan["cell_allowlist"]
+            if item["change_policy"] == "MUST_CHANGE"
+        }
+        <= {item.get("cell_id") for item in change["cell_changes"]}
+        or any(
+            item.get("cell_id") not in {allowed["cell_id"] for allowed in plan["cell_allowlist"]}
+            for item in change["cell_changes"]
+        )
+    ):
+        raise _error("resolved roll-forward table repair receipt contract drifted")
+    return canonical_clone_v1(receipt)
+
+
+def build_rollforward_table_repair_attempt_v1(
+    *,
+    plan: Mapping[str, Any],
+    prior_attempts: Sequence[Mapping[str, Any]],
+    thinking_level: str,
+    outcome: str,
+    observed_page_json_version_id: str | None,
+    repair_receipt: Mapping[str, Any] | None,
+    crop_receipt: Mapping[str, Any],
+    response_artifact_ref: Mapping[str, Any] | None,
+    raw_response_bytes: bytes | None,
+    validation: Mapping[str, Any],
+    usage: Mapping[str, Any],
+    provider: Mapping[str, Any],
+    elapsed_seconds: str,
+) -> dict[str, Any]:
+    """Append one typed low/medium/high sibling attempt ledger record."""
+
+    checked_plan = _validated_plan(plan)
+    prior = [_validated_attempt(item) for item in prior_attempts]
+    if any(
+        item["repair_job_id"] != checked_plan["repair_job_id"]
+        or item["sibling_base_page_json_version_id"] != checked_plan["base_page_json_version_id"]
+        or item["attempt_ordinal"] != index
+        or item["thinking_level"] != _THINKING_LEVELS[index - 1]
+        for index, item in enumerate(prior, start=1)
+    ) or (prior and prior[-1]["next_status"] != "PENDING"):
+        raise _error("roll-forward table repair prior attempt frontier does not replay")
+    ordinal = len(prior) + 1
+    if (
+        ordinal > 3
+        or thinking_level != _THINKING_LEVELS[ordinal - 1]
+        or outcome not in _ATTEMPT_OUTCOMES
+    ):
+        raise _error("roll-forward table repair thinking escalation is invalid")
+    try:
+        elapsed = Decimal(elapsed_seconds)
+    except (InvalidOperation, TypeError) as exc:
+        raise _error("roll-forward table repair elapsed time is invalid") from exc
+    if elapsed < 0 or not elapsed.is_finite():
+        raise _error("roll-forward table repair elapsed time is invalid")
+    checked_usage = validate_rollforward_table_repair_usage_v1(dict(usage))
+    checked_provider = _provider(provider)
+    _provider_usage_gate(checked_provider, checked_usage)
+    checked_crop = _crop_receipt(crop_receipt, plan=checked_plan)
+    if any(
+        _crop_receipt(item["crop_receipt"], plan=checked_plan) != checked_crop
+        or item["request_contract_sha256"]
+        != canonical_json_sha256_v1(checked_plan["request_contract"])
+        for item in prior
+    ):
+        raise _error("roll-forward table repair prior request/crop lineage drifted")
+    checked_response_ref = _content_ref(
+        response_artifact_ref, "table repair raw response reference"
+    )
+    if raw_response_bytes is not None and type(raw_response_bytes) is not bytes:
+        raise _error("roll-forward table repair raw response bytes are invalid")
+    if (raw_response_bytes is None) != (checked_response_ref is None):
+        raise _error("roll-forward table repair raw response bytes/ref presence differs")
+    if raw_response_bytes is not None and (
+        sha256(raw_response_bytes).hexdigest() != checked_response_ref["sha256"]
+        or len(raw_response_bytes) != checked_response_ref["size_bytes"]
+    ):
+        raise _error("roll-forward table repair raw response bytes do not bind their ref")
+    decoded_response_sha = None
+    if raw_response_bytes is not None:
+        try:
+            response_text = raw_response_bytes.decode("utf-8")
+            shape = checked_plan["shape_gate"]
+            decoded = decode_rollforward_table_repair_text_v1(
+                response_text,
+                target={
+                    "column_headers_exact": [
+                        column["header_path_exact"] for column in shape["columns_exact"]
+                    ],
+                    "column_value_kinds": [
+                        column["value_kind"] for column in shape["columns_exact"]
+                    ],
+                    "row_labels_exact": [row["label_exact"] for row in shape["row_axis_exact"]],
+                    "table_title_exact": shape["table_title_exact"],
+                    "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
+                    "unit_exact": shape["unit_exact"],
+                },
+            )
+            decoded_response_sha = canonical_json_sha256_v1(decoded)
+        except (UnicodeDecodeError, GeminiJsonRollforwardTableRepairV1Error):
+            decoded_response_sha = None
+    checked_validation = _validation_record(validation)
+    resolved = outcome == "RESOLVED"
+    if resolved:
+        checked_receipt = _repair_receipt_for_plan(repair_receipt, plan=checked_plan)
+        if (
+            type(observed_page_json_version_id) is not str
+            or checked_response_ref is None
+            or checked_validation != {"reason_codes": [], "status": "PASS"}
+            or decoded_response_sha != checked_receipt["repair_response_sha256"]
+        ):
+            raise _error("resolved roll-forward table repair lineage is invalid")
+        _prefixed_hash(
+            observed_page_json_version_id,
+            "gfpstorev1:json:",
+            "roll-forward table repair observed version",
+        )
+        repair_id = checked_receipt["repair_id"]
+        receipt_sha = sha256(canonical_json_bytes_v1(checked_receipt) + b"\n").hexdigest()
+        next_status = "RESOLVED"
+    else:
+        if (
+            observed_page_json_version_id is not None
+            or repair_receipt is not None
+            or checked_validation["status"] != "FAIL"
+            or (outcome == "RETRYABLE_VALIDATION_FAILURE" and checked_response_ref is None)
+        ):
+            raise _error("failed roll-forward table repair cannot select a sibling version")
+        repair_id = None
+        receipt_sha = None
+        next_status = "ABSTAINED" if ordinal == 3 else "PENDING"
+    material = {
+        "attempt_ordinal": ordinal,
+        "crop_receipt": checked_crop,
+        "decoded_response_sha256": decoded_response_sha,
+        "elapsed_seconds": str(elapsed_seconds),
+        "format_version": ATTEMPT_FORMAT_VERSION,
+        "next_status": next_status,
+        "observed_page_json_version_id": observed_page_json_version_id,
+        "outcome": outcome,
+        "provider": checked_provider,
+        "repair_id": repair_id,
+        "repair_job_id": checked_plan["repair_job_id"],
+        "repair_receipt_sha256": receipt_sha,
+        "request_contract_sha256": canonical_json_sha256_v1(checked_plan["request_contract"]),
+        "response_artifact_ref": checked_response_ref,
+        "sibling_base_page_json_version_id": checked_plan["base_page_json_version_id"],
+        "thinking_level": thinking_level,
+        "usage": checked_usage,
+        "validation": checked_validation,
+    }
+    return {
+        **material,
+        "attempt_id": "gjfrtav1:attempt:" + canonical_json_sha256_v1(material),
+    }
+
+
+def build_rollforward_table_repair_overlay_v1(
+    *,
+    family_run_id: str,
+    plans: Sequence[Mapping[str, Any]],
+    attempts: Sequence[Mapping[str, Any]],
+    page_store_path: Path,
+) -> dict[str, Any]:
+    """Build standard replacement rows for a later family effective frontier."""
+
+    _prefixed_hash(family_run_id, "gjfafstorev1:run:", "repair source family run ID")
+    checked_plans = [_validated_plan(plan) for plan in plans]
+    checked_attempts = [_validated_attempt(attempt) for attempt in attempts]
+    if not checked_plans or len({plan["repair_job_id"] for plan in checked_plans}) != len(
+        checked_plans
+    ):
+        raise _error("roll-forward table repair overlay plan frontier is empty or duplicate")
+    plan_by_job = {plan["repair_job_id"]: plan for plan in checked_plans}
+    for plan in checked_plans:
+        validate_rollforward_table_repair_plan_page_store_v1(plan, page_store_path=page_store_path)
+    if any(attempt["repair_job_id"] not in plan_by_job for attempt in checked_attempts):
+        raise _error("roll-forward table repair overlay contains an unplanned attempt")
+    for attempt in checked_attempts:
+        plan = plan_by_job[attempt["repair_job_id"]]
+        if attempt["sibling_base_page_json_version_id"] != plan[
+            "base_page_json_version_id"
+        ] or attempt["request_contract_sha256"] != canonical_json_sha256_v1(
+            plan["request_contract"]
+        ):
+            raise _error("roll-forward table repair overlay attempt crosses one plan")
+        _crop_receipt(attempt["crop_receipt"], plan=plan)
+    resolved_attempts = [
+        attempt for attempt in checked_attempts if attempt["next_status"] == "RESOLVED"
+    ]
+    lineages_by_observed = {}
+    if resolved_attempts:
+        from bctc_ai.storage.gemini_financial_page_store_v1 import (
+            page_json_region_repair_lineages_v1,
+        )
+
+        lineages = page_json_region_repair_lineages_v1(
+            page_store_path,
+            observed_page_json_version_ids=[
+                item["observed_page_json_version_id"] for item in resolved_attempts
+            ],
+        )
+        lineages_by_observed = {item["observed_page_json_version_id"]: item for item in lineages}
+    family_ids = {plan["family_id"] for plan in checked_plans}
+    replacements = []
+    statuses = []
+    for plan in checked_plans:
+        job_attempts = sorted(
+            (
+                attempt
+                for attempt in checked_attempts
+                if attempt["repair_job_id"] == plan["repair_job_id"]
+            ),
+            key=lambda item: item["attempt_ordinal"],
+        )
+        if not job_attempts or job_attempts[-1]["next_status"] not in {"RESOLVED", "ABSTAINED"}:
+            raise _error("roll-forward table repair overlay contains a nonterminal job")
+        terminal = job_attempts[-1]
+        statuses.append(terminal["next_status"])
+        if terminal["next_status"] == "ABSTAINED":
+            continue
+        lineage = lineages_by_observed.get(terminal["observed_page_json_version_id"])
+        if (
+            lineage is None
+            or lineage["base_page_json_version_id"] != plan["base_page_json_version_id"]
+            or lineage["repair_id"] != terminal["repair_id"]
+            or lineage["repair_receipt_sha256"] != terminal["repair_receipt_sha256"]
+            or lineage["repair_receipt"].get("repair_response_sha256")
+            != terminal["decoded_response_sha256"]
+        ):
+            raise _error("roll-forward table repair overlay page-store lineage drifted")
+        _repair_receipt_for_plan(lineage["repair_receipt"], plan=plan)
+        replacements.append(
+            {
+                "base_page_json_version_id": plan["base_page_json_version_id"],
+                "candidate_id": plan["candidate_id"],
+                "document_ordinal": plan["document_ordinal"],
+                "physical_page": plan["physical_page"],
+                "repair_id": terminal["repair_id"],
+                "repair_job_id": plan["repair_job_id"],
+                "repair_receipt_sha256": terminal["repair_receipt_sha256"],
+                "selected_page_json_version_id": lineage["canonical_merged_page_json_version_id"],
+            }
+        )
+    if len(family_ids) != 1:
+        raise _error("roll-forward table repair overlay crosses family identities")
+    if len({item["base_page_json_version_id"] for item in replacements}) != len(replacements):
+        raise _error("roll-forward table repair overlay replaces a base page twice")
+    material = {
+        "attempt_ledger_sha256": canonical_json_sha256_v1(checked_attempts),
+        "family_id": next(iter(family_ids)),
+        "format_version": OVERLAY_FORMAT_VERSION,
+        "job_status_counts": {
+            "ABSTAINED": statuses.count("ABSTAINED"),
+            "RESOLVED": statuses.count("RESOLVED"),
+        },
+        "repair_source_family_run_id": family_run_id,
+        "replacements": sorted(
+            replacements,
+            key=lambda item: (item["document_ordinal"], item["physical_page"]),
+        ),
+    }
+    return {
+        **material,
+        "overlay_id": "gjfrtov1:overlay:" + canonical_json_sha256_v1(material),
+    }

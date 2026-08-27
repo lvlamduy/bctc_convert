@@ -1,0 +1,1010 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from dataclasses import replace
+from hashlib import sha256
+from io import BytesIO
+from pathlib import Path
+
+import pytest
+from PIL import Image
+from test_gemini_financial_page_store_v1 import _result
+
+from bctc_ai.evaluation import gemini_json_rollforward_table_repair_v1 as subject
+from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (
+    GeminiJsonRollforwardTableRepairV1Error,
+    build_rollforward_table_cell_repair_plans_v1,
+    build_rollforward_table_repair_attempt_v1,
+    build_rollforward_table_repair_overlay_v1,
+    build_rollforward_table_repair_prompt_v1,
+    crop_rollforward_table_image_v1,
+    merge_rollforward_table_repair_v1,
+    rollforward_table_repair_target_v1,
+    validate_rollforward_table_repair_plan_page_store_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
+from bctc_ai.storage import gemini_financial_page_store_v1 as page_store_subject
+from bctc_ai.storage.gemini_financial_page_store_v1 import (
+    ingest_financial_page_extraction_v1,
+    initialize_gemini_financial_page_store_v1,
+    record_page_json_region_repair_v1,
+)
+
+PRODUCTION_AXIS = [
+    {
+        "crop": [330, 1950, 2390, 3340],
+        "ordinal": 9,
+        "page": 17,
+        "section_id": "s3",
+        "source": "vietstock_bctc/ACB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "5a22f62d8b2853423f71fab7d09e42f96cf8dc3eacd9032836febb5550198db7",
+        "table_id": "t1",
+    },
+    {
+        "crop": [250, 1950, 2390, 3170],
+        "ordinal": 10,
+        "page": 18,
+        "section_id": "s1",
+        "source": "vietstock_bctc/ACB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+        "source_sha256": "2952d7a567ca49f17867c4677d45a40632097eab74fa0a32c6c22ed52b21ede6",
+        "table_id": "t3",
+    },
+    {
+        "crop": [250, 1900, 2390, 3150],
+        "ordinal": 11,
+        "page": 18,
+        "section_id": "s1",
+        "source": "vietstock_bctc/ACB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "62ad59ba4d81857ba1c610c2d9733747283ed9f9b584a3bd1c5f2b2a48a75bff",
+        "table_id": "t3",
+    },
+    {
+        "crop": [220, 1750, 2400, 3070],
+        "ordinal": 12,
+        "page": 18,
+        "section_id": "s1",
+        "source": "vietstock_bctc/ACB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "ad6cab1acd7556f8ee0372764f732f2efe8746b36b5517761f68762b095b07b7",
+        "table_id": "t3",
+    },
+    {
+        "crop": [220, 1750, 2400, 3050],
+        "ordinal": 18,
+        "page": 18,
+        "section_id": "s3",
+        "source": "vietstock_bctc/ACB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_sha256": "db55bb607d254aeef6daafd873a8199d621ac0740849e68d09ab0db772d11c86",
+        "table_id": "t1",
+    },
+    {
+        "crop": [250, 2000, 2350, 3050],
+        "ordinal": 35,
+        "page": 42,
+        "section_id": "s1",
+        "source": "vietstock_bctc/CTG/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "87f852400bf25421aa80000436387f25c5382bfd0d72a4d67122493361b486e6",
+        "table_id": "t3",
+    },
+]
+
+
+def _row(label: str, values: list[str | None], *, total: bool = False) -> dict:
+    return {
+        "hierarchy_path_exact": [label],
+        "label_exact": label,
+        "row_kind": "TOTAL" if total else "ITEM",
+        "values_exact": values,
+    }
+
+
+def _columns() -> list[dict]:
+    return [
+        {"header_path_exact": ["Dự phòng cụ thể"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Dự phòng chung"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tổng cộng"], "value_kind": "MONEY"},
+    ]
+
+
+def _acb_table() -> dict:
+    return {
+        "columns": _columns(),
+        "continuation": "NONE",
+        "rows": [
+            _row("Số dư đầu kỳ 2025", ["100", "200", "110"]),
+            _row("Trích lập 2025", ["20", "30", None]),
+            _row("Sử dụng 2025", ["(10)", "(15)", None]),
+            _row("Số dư cuối kỳ 2025", ["110", "215", "110"], total=True),
+            _row("Số dư đầu kỳ 2024", ["90", "190", "100"]),
+            _row("Trích lập 2024", ["10", "10", None]),
+            _row("Sử dụng 2024", ["-", "-", None]),
+            _row("Số dư cuối kỳ 2024", ["100", "200", "100"], total=True),
+        ],
+        "title_exact": "Biến động dự phòng rủi ro cho vay khách hàng",
+        "unit_exact": "Triệu đồng",
+    }
+
+
+def _ctg_table() -> dict:
+    return {
+        "columns": _columns(),
+        "continuation": "NONE",
+        "rows": [
+            _row("Số dư tại ngày 1 tháng 1 năm 2024", ["16.638.548", "10.860.006", "27.498.554"]),
+            _row("Trích lập trong năm", ["25.424.264", "1.825.755", "27.250.019"]),
+            _row("Sử dụng trong năm", ["(18.417.106)", "(18.417.106)", None]),
+            _row("Số dư tại ngày 31 tháng 12 năm 2024", ["23.645.706", "12.685.761", "36.331.467"]),
+            _row("Trích lập trong năm 2025", ["15.248.173", "2.009.598", "17.257.771"]),
+            _row("Sử dụng trong năm 2025", ["(18.986.013)", "-", "(18.986.013)"]),
+            _row("Số dư tại ngày 31 tháng 12 năm 2025", ["19.907.866", "14.695.359", "34.603.225"]),
+        ],
+        "title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "unit_exact": "Triệu đồng",
+    }
+
+
+def _page_at(table: dict, section_id: str, table_id: str) -> dict:
+    section_count = int(section_id[1:])
+    table_count = int(table_id[1:])
+    sections = []
+    for section_ordinal in range(1, section_count + 1):
+        tables = []
+        for table_ordinal in range(1, table_count + 1):
+            selected = (
+                table
+                if (section_ordinal, table_ordinal) == (section_count, table_count)
+                else {
+                    "columns": [{"header_path_exact": ["Giá trị"], "value_kind": "MONEY"}],
+                    "continuation": "NONE",
+                    "rows": [_row("Dòng kiểm soát", ["1"])],
+                    "title_exact": "Bảng kiểm soát",
+                    "unit_exact": "Triệu đồng",
+                }
+            )
+            tables.append(deepcopy(selected))
+        sections.append(
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": ["Dự phòng rủi ro cho vay khách hàng"],
+                "statement_type": "NOT_APPLICABLE",
+                "tables": tables,
+                "title_exact": "Dự phòng rủi ro cho vay khách hàng",
+            }
+        )
+    return {
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+        "sections": sections,
+        "status": "FINANCIAL_NOTE_CONTENT",
+    }
+
+
+def _png(ordinal: int, *, height: int) -> bytes:
+    image = Image.new("RGB", (2481, height), (240 - ordinal % 20, 240, 240))
+    output = BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
+
+
+def _cell_state(value: str | None) -> str:
+    if value is None:
+        return "BLANK"
+    if value.strip() in {"-", "–", "—", "_"}:
+        return "DASH"
+    digits = value.strip().strip("()").replace(".", "").replace(",", "").replace(" ", "")
+    return "PRINTED_ZERO" if digits == "0" else "VALUE"
+
+
+def _response(page: dict, plan: dict, *, corrected: bool = True) -> dict:
+    section = page["sections"][int(plan["section_id"][1:]) - 1]
+    table = section["tables"][int(plan["table_id"][1:]) - 1]
+    values = [list(row["values_exact"]) for row in table["rows"]]
+    if corrected and plan["document_ordinal"] != 35:
+        for row in (1, 2, 5, 6):
+            values[row][2] = "-"
+    elif corrected:
+        values[2][1] = "-"
+        values[2][2] = "(18.417.106)"
+    return {
+        "all_cells_transcribed": True,
+        "columns": deepcopy(table["columns"]),
+        "rows": [
+            {
+                "cells": [
+                    {"source_text": value, "visual_state": _cell_state(value)} for value in row
+                ],
+                "label_exact": table["rows"][index]["label_exact"],
+            }
+            for index, row in enumerate(values)
+        ],
+        "table_title_exact": table["title_exact"],
+        "target_id": f"{plan['section_id']}:{plan['table_id']}",
+        "uncertainty_exact": [],
+        "unit_exact": table["unit_exact"],
+    }
+
+
+def _source_record(region: dict, movement_role: str, row_id: str) -> dict:
+    return {"locator": deepcopy(region), "movement_role": movement_role, "row_id": row_id}
+
+
+def _candidate(axis: dict, evidence: dict) -> dict:
+    region = {
+        "document_id": evidence["source_binding_without_crop"]["document_id"],
+        "page_json_version_id": evidence["base_page_json_version_id"],
+        "physical_page": axis["page"],
+        "section_id": axis["section_id"],
+        "source_logical_name": axis["source"],
+        "source_sha256": axis["source_sha256"],
+        "table_id": axis["table_id"],
+    }
+    roles = [
+        ("OPENING_BALANCE_ROW", "r1"),
+        ("PROVISION_OR_REVERSAL_ROW", "r2"),
+        ("USE_MOVEMENT_ROW", "r3"),
+        ("CLOSING_BALANCE_ROW", "r4"),
+    ]
+    if axis["ordinal"] == 35:
+        frontier = {
+            "lane_role": "GENERAL_PROVISION_LANE",
+            "period_role": "COMPARATIVE_PERIOD",
+            "reason": "ROLLFORWARD_LANE_EQUATION_MISMATCH:COMPARATIVE_PERIOD:GENERAL_PROVISION_LANE",
+            "source_records": [_source_record(region, role, row) for role, row in roles],
+            "unknown_roles": [],
+        }
+        coefficients = [10860006, 1825755, -18417106, 12685761]
+        vectors = [
+            {
+                "column_ordinal": 2,
+                "lane_role": frontier["lane_role"],
+                "locator": deepcopy(region),
+                "movement_role": role,
+                "period_role": frontier["period_role"],
+                "row_id": row,
+            }
+            for role, row in roles
+        ]
+        equations = [
+            {
+                "lane_role": frontier["lane_role"],
+                "period_role": frontier["period_role"],
+                "role_coefficients": [
+                    {
+                        "coefficient": coefficient,
+                        "equation_coefficient": -1 if role == "CLOSING_BALANCE_ROW" else 1,
+                        "role": role,
+                    }
+                    for (role, _row), coefficient in zip(roles, coefficients, strict=True)
+                ],
+            }
+        ]
+        frontiers = [frontier]
+    else:
+        vectors = []
+        equations = []
+        frontiers = []
+        for period, offset in (("CURRENT_PERIOD", 0), ("COMPARATIVE_PERIOD", 4)):
+            period_roles = [(role, f"r{int(row[1:]) + offset}") for role, row in roles]
+            frontier = {
+                "lane_role": "MARGIN_ADVANCE_PROVISION_LANE",
+                "period_role": period,
+                "reason": "ROLLFORWARD_LANE_EQUATION_RANK_DEFICIENT_MULTIPLE_UNKNOWNS:"
+                + ("" if period == "CURRENT_PERIOD" else "COMPARATIVE_PERIOD:")
+                + "MARGIN_ADVANCE_PROVISION_LANE",
+                "source_records": [_source_record(region, role, row) for role, row in period_roles],
+                "unknown_roles": ["PROVISION_OR_REVERSAL_ROW", "USE_MOVEMENT_ROW"],
+            }
+            frontiers.append(frontier)
+            vectors.extend(
+                {
+                    "column_ordinal": 3,
+                    "lane_role": frontier["lane_role"],
+                    "locator": deepcopy(region),
+                    "movement_role": role,
+                    "period_role": period,
+                    "row_id": row,
+                }
+                for role, row in period_roles
+            )
+            equations.append(
+                {
+                    "lane_role": frontier["lane_role"],
+                    "period_role": period,
+                    "role_coefficients": [
+                        {
+                            "coefficient": None if role in frontier["unknown_roles"] else 110,
+                            "equation_coefficient": -1 if role == "CLOSING_BALANCE_ROW" else 1,
+                            "role": role,
+                        }
+                        for role, _row in period_roles
+                    ],
+                }
+            )
+    return {
+        "candidate_id": "gjfafcv1:candidate:" + sha256(str(axis["ordinal"]).encode()).hexdigest(),
+        "closure_receipt": {
+            "equations": equations,
+            "role_vectors": vectors,
+            "unresolved_frontiers": frontiers,
+        },
+        "component_regions": [region],
+        "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+        "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    }
+
+
+@pytest.fixture
+def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
+    store = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(store)
+    pages = {}
+    images = {}
+    evidence = []
+    for axis in PRODUCTION_AXIS:
+        table = _ctg_table() if axis["ordinal"] == 35 else _acb_table()
+        page = _page_at(table, axis["section_id"], axis["table_id"])
+        height = 3508 if axis["ordinal"] == 35 else 3509
+        image = _png(axis["ordinal"], height=height)
+        ids = ingest_financial_page_extraction_v1(
+            store,
+            document={
+                "source_logical_name": axis["source"],
+                "source_sha256": axis["source_sha256"],
+                "source_size_bytes": 1000 + axis["ordinal"],
+            },
+            page={
+                "physical_page": axis["page"],
+                "image_sha256": sha256(image).hexdigest(),
+                "image_size_bytes": len(image),
+                "pixel_width": 2481,
+                "pixel_height": height,
+                "render_dpi": 300,
+                "media_type": "image/png",
+            },
+            prompt_variant="compact",
+            output_contract_mode="JSON_SCHEMA",
+            prompt_sha256=f"{axis['ordinal']:064x}",
+            response_schema_sha256="e" * 64,
+            requested_model="gemini-3.7-flash",
+            requested_service_tier="flex",
+            thinking_level="low",
+            provider_result=_result(),
+            page_json=page,
+        )
+        pages[ids["page_json_version_id"]] = page
+        images[ids["page_json_version_id"]] = image
+        evidence.extend(
+            subject.load_rollforward_table_page_evidence_v1(
+                store, page_json_version_ids=[ids["page_json_version_id"]]
+            )
+        )
+    candidates = [
+        _candidate(axis, item) for axis, item in zip(PRODUCTION_AXIS, evidence, strict=True)
+    ]
+    sweep = {
+        "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+        "indexed_query_evidence": {"fixture": "exact-selected-frontier"},
+        "specs": {
+            "evaluation": {
+                "value": {
+                    "layout_spec": {
+                        "movement_roles": [
+                            {"kind": "OPENING", "role": "OPENING_BALANCE_ROW"},
+                            {
+                                "kind": "PROVISION_OR_REVERSAL",
+                                "role": "PROVISION_OR_REVERSAL_ROW",
+                            },
+                            {"kind": "USE", "role": "USE_MOVEMENT_ROW"},
+                            {"kind": "CLOSING", "role": "CLOSING_BALANCE_ROW"},
+                        ]
+                    }
+                }
+            },
+            "schema_binding": {"value": {"fixture": "schema"}},
+            "topology": {"value": {"fixture": "topology"}},
+        },
+        "sweep_id": "gjfafsv1:sweep:" + "9" * 64,
+        "trials": [
+            {
+                "candidates": [candidate],
+                "document_ordinal": axis["ordinal"],
+                "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+            }
+            for axis, candidate in zip(PRODUCTION_AXIS, candidates, strict=True)
+        ],
+    }
+    monkeypatch.setattr(subject, "validate_gemini_json_flat_family_sweep_v1", lambda value: value)
+    compiled = {"fixture": "compiled-rollforward-specs"}
+    monkeypatch.setattr(
+        subject,
+        "compile_gemini_json_flat_family_specs_v1",
+        lambda _topology, _evaluation, _schema: compiled,
+    )
+    authoritative_candidates = {
+        candidate["candidate_id"]: deepcopy(candidate) for candidate in candidates
+    }
+
+    def replay_query_and_candidates(_path, *, trials, **_kwargs):
+        for trial in trials:
+            for candidate in trial["candidates"]:
+                expected = authoritative_candidates.get(candidate.get("candidate_id"))
+                if expected != candidate:
+                    raise GeminiJsonRollforwardTableRepairV1Error(
+                        "fixture semantic candidate replay rejected coherent drift"
+                    )
+        return sweep["indexed_query_evidence"]
+
+    monkeypatch.setattr(
+        page_store_subject,
+        "validate_selected_rollforward_family_query_evidence_v1",
+        replay_query_and_candidates,
+    )
+    specs = []
+    for axis, item in zip(PRODUCTION_AXIS[:5], evidence[:5], strict=True):
+        specs.append(
+            {
+                "base_page_json_version_id": item["base_page_json_version_id"],
+                "collateral_cell_ids": [],
+                "collateral_equations": [],
+                "crop_bbox_pixels_xyxy": axis["crop"],
+                "format_version": subject.TABLE_SPEC_FORMAT_VERSION,
+                "section_id": axis["section_id"],
+                "table_id": axis["table_id"],
+                "typed_zero_cell_ids": ["r2:c3", "r3:c3", "r6:c3", "r7:c3"],
+            }
+        )
+    row_totals = [
+        {
+            "equation_id": f"row-total-r{row}",
+            "result_cell_id": f"r{row}:c3",
+            "terms": [
+                {"cell_id": f"r{row}:c1", "multiplier": 1},
+                {"cell_id": f"r{row}:c2", "multiplier": 1},
+            ],
+        }
+        for row in range(1, 8)
+    ]
+    specs.append(
+        {
+            "base_page_json_version_id": evidence[-1]["base_page_json_version_id"],
+            "collateral_cell_ids": ["r3:c3"],
+            "collateral_equations": row_totals,
+            "crop_bbox_pixels_xyxy": PRODUCTION_AXIS[-1]["crop"],
+            "format_version": subject.TABLE_SPEC_FORMAT_VERSION,
+            "section_id": "s1",
+            "table_id": "t3",
+            "typed_zero_cell_ids": ["r3:c2"],
+        }
+    )
+    plans = build_rollforward_table_cell_repair_plans_v1(
+        compiled_specs=compiled,
+        family_sweep=sweep,
+        page_store_path=store,
+        selected_page_json_version_ids=[item["base_page_json_version_id"] for item in evidence],
+        table_repair_specs=specs,
+    )
+    return {
+        "evidence": evidence,
+        "compiled": compiled,
+        "images": images,
+        "pages": pages,
+        "plans": plans,
+        "specs": specs,
+        "store": store,
+        "sweep": sweep,
+    }
+
+
+def _reseal_plan(plan: dict) -> None:
+    material = {key: plan[key] for key in plan if key != "repair_job_id"}
+    plan["repair_job_id"] = "gjfrrqv1:job:" + canonical_json_sha256_v1(material)
+
+
+def _usage() -> dict:
+    return {
+        "actual_cost_usd": "0.001234",
+        "cached_input_tokens": 0,
+        "cost_disposition": "OPENROUTER_ACTUAL",
+        "input_tokens": 600,
+        "output_tokens": 300,
+        "thought_tokens": 20,
+        "total_tokens": 900,
+    }
+
+
+def _provider() -> dict:
+    return {
+        "provider_model": "google/gemini-3.7-flash",
+        "provider_name": "openrouter",
+        "request_id_sha256": "1" * 64,
+        "response_id_sha256": "2" * 64,
+        "service_tier": "flex",
+    }
+
+
+def _raw_ref(payload: bytes, name: str = "response.json") -> dict:
+    return {
+        "path": f"artifacts/{name}",
+        "sha256": sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def test_six_declarative_jobs_are_exactly_sweep_and_store_derived(corpus: dict) -> None:
+    plans = corpus["plans"]
+    assert [plan["document_ordinal"] for plan in plans] == [9, 10, 11, 12, 18, 35]
+    assert [plan["source_binding"]["crop_bbox_pixels_xyxy"] for plan in plans] == [
+        item["crop"] for item in PRODUCTION_AXIS
+    ]
+    for plan in plans[:5]:
+        assert [item["cell_id"] for item in plan["cell_allowlist"]] == [
+            "r2:c3",
+            "r3:c3",
+            "r6:c3",
+            "r7:c3",
+        ]
+        assert {item["change_policy"] for item in plan["cell_allowlist"]} == {"MUST_CHANGE"}
+        assert {item["after_policy"] for item in plan["cell_allowlist"]} == {"TYPED_ZERO"}
+        assert plan["shape_gate"]["row_count"] == 8
+        assert plan["shape_gate"]["column_count"] == 3
+    ctg = plans[-1]
+    assert ctg["shape_gate"]["row_count"] == 7
+    assert ctg["shape_gate"]["column_count"] == 3
+    assert [item["cell_id"] for item in ctg["cell_allowlist"]] == [
+        "r1:c2",
+        "r2:c2",
+        "r3:c2",
+        "r3:c3",
+        "r4:c2",
+    ]
+    assert {item["change_policy"] for item in ctg["cell_allowlist"]} == {"MAY_CHANGE"}
+    assert len(ctg["equation_inventory"]) == 8
+    for plan in plans:
+        assert (
+            validate_rollforward_table_repair_plan_page_store_v1(
+                plan, page_store_path=corpus["store"]
+            )["base_page_json_version_id"]
+            == plan["base_page_json_version_id"]
+        )
+
+
+def test_planner_rejects_coherently_rehashed_unknown_role_and_vector_forgery(
+    corpus: dict,
+) -> None:
+    attacked = deepcopy(corpus["sweep"])
+    candidate = attacked["trials"][0]["candidates"][0]
+    candidate["closure_receipt"]["unresolved_frontiers"][0]["unknown_roles"] = [
+        "CLOSING_BALANCE_ROW",
+        "PROVISION_OR_REVERSAL_ROW",
+    ]
+    candidate["closure_receipt"]["role_vectors"][1]["column_ordinal"] = 2
+    material = {key: candidate[key] for key in candidate if key != "candidate_id"}
+    candidate["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(material)
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="semantic candidate replay"):
+        build_rollforward_table_cell_repair_plans_v1(
+            compiled_specs=corpus["compiled"],
+            family_sweep=attacked,
+            page_store_path=corpus["store"],
+            selected_page_json_version_ids=[
+                item["base_page_json_version_id"] for item in corpus["evidence"]
+            ],
+            table_repair_specs=corpus["specs"],
+        )
+
+
+def test_planner_replays_exact_caller_authenticated_selected_frontier(
+    corpus: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    expected = [item["base_page_json_version_id"] for item in corpus["evidence"]]
+
+    def exact_query_replay(_path, *, selected_page_json_version_ids, **_kwargs):
+        if selected_page_json_version_ids != expected:
+            raise ValueError("selected page frontier drifted")
+        return corpus["sweep"]["indexed_query_evidence"]
+
+    monkeypatch.setattr(
+        page_store_subject,
+        "validate_selected_rollforward_family_query_evidence_v1",
+        exact_query_replay,
+    )
+    with pytest.raises(ValueError, match="selected page frontier drifted"):
+        build_rollforward_table_cell_repair_plans_v1(
+            compiled_specs=corpus["compiled"],
+            family_sweep=corpus["sweep"],
+            page_store_path=corpus["store"],
+            selected_page_json_version_ids=expected[:-1],
+            table_repair_specs=corpus["specs"],
+        )
+
+
+def test_prompt_is_structural_complete_and_response_blind(corpus: dict) -> None:
+    plan = corpus["plans"][-1]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    prompt = build_rollforward_table_repair_prompt_v1(
+        base_page_json_version_id=plan["base_page_json_version_id"],
+        target=rollforward_table_repair_target_v1(page, plan=plan),
+    )
+    assert "column_value_kinds" in prompt
+    assert "DASH" in prompt and "BLANK" in prompt and "PRINTED_ZERO" in prompt
+    assert "không dùng phép tính để suy ra" in prompt
+    assert "18.417.106" not in prompt
+    assert "before_exact" not in prompt
+    assert sha256(prompt.encode()).hexdigest() == plan["request_contract"]["prompt_sha256"]
+
+
+def test_acb_dash_and_ctg_shifted_total_merge_only_exact_changed_cells(corpus: dict) -> None:
+    for plan in (corpus["plans"][0], corpus["plans"][-1]):
+        page = corpus["pages"][plan["base_page_json_version_id"]]
+        repair = _response(page, plan)
+        merged, receipt = merge_rollforward_table_repair_v1(
+            page,
+            plan=plan,
+            repair=repair,
+            page_store_path=corpus["store"],
+        )
+        change = receipt["changes"][0]
+        changed_ids = [item["cell_id"] for item in change["cell_changes"]]
+        assert changed_ids == (
+            ["r2:c3", "r3:c3", "r6:c3", "r7:c3"]
+            if plan["document_ordinal"] != 35
+            else ["r3:c2", "r3:c3"]
+        )
+        assert change["all_other_cells_byte_equal"] is True
+        assert change["equation_gate"]["closed_equation_count"] == len(plan["equation_inventory"])
+        base_copy = deepcopy(page)
+        table = base_copy["sections"][int(plan["section_id"][1:]) - 1]["tables"][
+            int(plan["table_id"][1:]) - 1
+        ]
+        merged_table = merged["sections"][int(plan["section_id"][1:]) - 1]["tables"][
+            int(plan["table_id"][1:]) - 1
+        ]
+        for item in change["cell_changes"]:
+            row, column = (int(part[1:]) - 1 for part in item["cell_id"].split(":"))
+            table["rows"][row]["values_exact"][column] = merged_table["rows"][row]["values_exact"][
+                column
+            ]
+        assert merged == base_copy
+
+
+@pytest.mark.parametrize(
+    ("attack", "match"),
+    [
+        ("blank_as_zero", "must-change"),
+        ("partial", "shape"),
+        ("outside", "outside the allowlist"),
+        ("unit", "shape, order, header, or unit"),
+        ("order", "shape, order, header, or unit"),
+        ("two_unknown_inference", "typed zero"),
+    ],
+)
+def test_atomic_validator_rejects_incomplete_inferred_or_outside_drift(
+    corpus: dict, attack: str, match: str
+) -> None:
+    plan = corpus["plans"][0]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _response(page, plan)
+    if attack == "blank_as_zero":
+        repair = _response(page, plan, corrected=False)
+    elif attack == "partial":
+        repair["rows"].pop()
+    elif attack == "outside":
+        repair["rows"][0]["cells"][0] = {"source_text": "999", "visual_state": "VALUE"}
+    elif attack == "unit":
+        repair["unit_exact"] = "Đồng"
+    elif attack == "order":
+        repair["rows"][0], repair["rows"][1] = repair["rows"][1], repair["rows"][0]
+    else:
+        repair["rows"][1]["cells"][2] = {"source_text": "1", "visual_state": "VALUE"}
+        repair["rows"][2]["cells"][2] = {"source_text": "(1)", "visual_state": "VALUE"}
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match=match):
+        merge_rollforward_table_repair_v1(
+            page,
+            plan=plan,
+            repair=repair,
+            page_store_path=corpus["store"],
+        )
+
+
+def test_shifted_total_must_close_both_lane_and_row_equations(corpus: dict) -> None:
+    plan = corpus["plans"][-1]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _response(page, plan)
+    repair["rows"][2]["cells"][2] = {"source_text": None, "visual_state": "BLANK"}
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error, match="equation contains an unknown"
+    ):
+        merge_rollforward_table_repair_v1(
+            page,
+            plan=plan,
+            repair=repair,
+            page_store_path=corpus["store"],
+        )
+
+
+def test_crop_and_page_store_replay_reject_cross_page_same_shape_source(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    image = corpus["images"][plan["base_page_json_version_id"]]
+    crop, receipt = crop_rollforward_table_image_v1(
+        image, plan=plan, page_store_path=corpus["store"]
+    )
+    assert sha256(crop).hexdigest() == receipt["crop_image_sha256"]
+    assert receipt["prompt_sha256"] == plan["request_contract"]["prompt_sha256"]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="image bytes"):
+        crop_rollforward_table_image_v1(
+            corpus["images"][corpus["plans"][1]["base_page_json_version_id"]],
+            plan=plan,
+            page_store_path=corpus["store"],
+        )
+    attacked = deepcopy(plan)
+    attacked["source_binding"] = deepcopy(corpus["plans"][1]["source_binding"])
+    attacked["source_logical_name"] = attacked["source_binding"]["source_logical_name"]
+    attacked["source_sha256"] = attacked["source_binding"]["source_sha256"]
+    attacked["physical_page"] = attacked["source_binding"]["physical_page"]
+    attacked["page_evidence_id"] = corpus["plans"][1]["page_evidence_id"]
+    _reseal_plan(attacked)
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="frozen page store"):
+        validate_rollforward_table_repair_plan_page_store_v1(
+            attacked, page_store_path=corpus["store"]
+        )
+
+
+def test_plan_hashes_fail_closed_on_crop_version_and_equation_spec_tamper(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    for mutate in (
+        lambda value: value["source_binding"]["crop_bbox_pixels_xyxy"].__setitem__(0, 0),
+        lambda value: value.__setitem__(
+            "base_page_json_version_id", corpus["plans"][1]["base_page_json_version_id"]
+        ),
+        lambda value: value.__setitem__("repair_spec_sha256", "f" * 64),
+        lambda value: value.__setitem__("equation_inventory_sha256", "e" * 64),
+    ):
+        attacked = deepcopy(plan)
+        mutate(attacked)
+        with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="identity"):
+            validate_rollforward_table_repair_plan_page_store_v1(
+                attacked, page_store_path=corpus["store"]
+            )
+
+
+def _resolved_lineage(corpus: dict, plan: dict) -> tuple[dict, dict, bytes, dict]:
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _response(page, plan)
+    merged, receipt = merge_rollforward_table_repair_v1(
+        page,
+        plan=plan,
+        repair=repair,
+        page_store_path=corpus["store"],
+    )
+    raw = canonical_json_bytes_v1(repair) + b"\n"
+    binding = plan["source_binding"]
+    merged_ids = ingest_financial_page_extraction_v1(
+        corpus["store"],
+        document={
+            "source_logical_name": binding["source_logical_name"],
+            "source_sha256": binding["source_sha256"],
+            "source_size_bytes": binding["source_size_bytes"],
+        },
+        page={
+            "physical_page": binding["physical_page"],
+            "image_sha256": binding["image_sha256"],
+            "image_size_bytes": binding["image_size_bytes"],
+            "pixel_width": binding["pixel_width"],
+            "pixel_height": binding["pixel_height"],
+            "render_dpi": binding["render_dpi"],
+            "media_type": binding["media_type"],
+        },
+        prompt_variant="region-repair-row-values",
+        output_contract_mode="JSON_SCHEMA",
+        prompt_sha256=plan["request_contract"]["prompt_sha256"],
+        response_schema_sha256=plan["request_contract"]["response_schema_sha256"],
+        requested_model="gemini-3.7-flash",
+        requested_service_tier="flex",
+        thinking_level="high",
+        provider_result=replace(_result(), raw_response_bytes=raw),
+        page_json=merged,
+    )
+    lineage = record_page_json_region_repair_v1(
+        corpus["store"],
+        merged_page_json_version_id=merged_ids["page_json_version_id"],
+        receipt=receipt,
+    )
+    _crop, crop_receipt = crop_rollforward_table_image_v1(
+        corpus["images"][plan["base_page_json_version_id"]],
+        plan=plan,
+        page_store_path=corpus["store"],
+    )
+    return receipt, lineage, raw, crop_receipt
+
+
+def test_retry_tiers_are_siblings_and_preserve_raw_usage_cost_and_validation(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    receipt, lineage, raw, crop_receipt = _resolved_lineage(corpus, plan)
+    bad = b'{"partial":true}'
+    low = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        prior_attempts=[],
+        thinking_level="low",
+        outcome="RETRYABLE_VALIDATION_FAILURE",
+        observed_page_json_version_id=None,
+        repair_receipt=None,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(bad, "low.json"),
+        raw_response_bytes=bad,
+        validation={"reason_codes": ["PARTIAL_TABLE"], "status": "FAIL"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1.25",
+    )
+    medium = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        prior_attempts=[low],
+        thinking_level="medium",
+        outcome="RETRYABLE_VALIDATION_FAILURE",
+        observed_page_json_version_id=None,
+        repair_receipt=None,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(bad, "medium.json"),
+        raw_response_bytes=bad,
+        validation={"reason_codes": ["OUTSIDE_ALLOWLIST_DRIFT"], "status": "FAIL"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="2.50",
+    )
+    high = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        prior_attempts=[low, medium],
+        thinking_level="high",
+        outcome="RESOLVED",
+        observed_page_json_version_id=lineage["observed_page_json_version_id"],
+        repair_receipt=receipt,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(raw, "high.json"),
+        raw_response_bytes=raw,
+        validation={"reason_codes": [], "status": "PASS"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="3.75",
+    )
+    assert [item["thinking_level"] for item in (low, medium, high)] == [
+        "low",
+        "medium",
+        "high",
+    ]
+    assert {item["sibling_base_page_json_version_id"] for item in (low, medium, high)} == {
+        plan["base_page_json_version_id"]
+    }
+    assert high["decoded_response_sha256"] == receipt["repair_response_sha256"]
+    assert high["usage"]["actual_cost_usd"] == "0.001234"
+    overlay = build_rollforward_table_repair_overlay_v1(
+        family_run_id="gjfafstorev1:run:" + "a" * 64,
+        plans=[plan],
+        attempts=[low, medium, high],
+        page_store_path=corpus["store"],
+    )
+    assert overlay["job_status_counts"] == {"ABSTAINED": 0, "RESOLVED": 1}
+    assert (
+        overlay["replacements"][0]["selected_page_json_version_id"]
+        == lineage["merged_page_json_version_id"]
+    )
+
+
+def test_attempt_rejects_response_ref_mismatch_and_overlay_rejects_arbitrary_version(
+    corpus: dict,
+) -> None:
+    plan = corpus["plans"][0]
+    receipt, lineage, raw, crop_receipt = _resolved_lineage(corpus, plan)
+    wrong_ref = _raw_ref(raw)
+    wrong_ref["sha256"] = "f" * 64
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="do not bind"):
+        build_rollforward_table_repair_attempt_v1(
+            plan=plan,
+            prior_attempts=[],
+            thinking_level="low",
+            outcome="RESOLVED",
+            observed_page_json_version_id=lineage["observed_page_json_version_id"],
+            repair_receipt=receipt,
+            crop_receipt=crop_receipt,
+            response_artifact_ref=wrong_ref,
+            raw_response_bytes=raw,
+            validation={"reason_codes": [], "status": "PASS"},
+            usage=_usage(),
+            provider=_provider(),
+            elapsed_seconds="1",
+        )
+    arbitrary = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        prior_attempts=[],
+        thinking_level="low",
+        outcome="RESOLVED",
+        observed_page_json_version_id=corpus["plans"][1]["base_page_json_version_id"],
+        repair_receipt=receipt,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(raw),
+        raw_response_bytes=raw,
+        validation={"reason_codes": [], "status": "PASS"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1",
+    )
+    with pytest.raises(Exception, match="lineage is absent"):
+        build_rollforward_table_repair_overlay_v1(
+            family_run_id="gjfafstorev1:run:" + "a" * 64,
+            plans=[plan],
+            attempts=[arbitrary],
+            page_store_path=corpus["store"],
+        )
+
+
+def test_failed_tier_cannot_chain_from_a_different_job_or_crop(corpus: dict) -> None:
+    first, second = corpus["plans"][:2]
+    _crop, crop = crop_rollforward_table_image_v1(
+        corpus["images"][first["base_page_json_version_id"]],
+        plan=first,
+        page_store_path=corpus["store"],
+    )
+    bad = b"not json"
+    low = build_rollforward_table_repair_attempt_v1(
+        plan=first,
+        prior_attempts=[],
+        thinking_level="low",
+        outcome="PROVIDER_OR_VALIDATION_FAILURE",
+        observed_page_json_version_id=None,
+        repair_receipt=None,
+        crop_receipt=crop,
+        response_artifact_ref=_raw_ref(bad),
+        raw_response_bytes=bad,
+        validation={"reason_codes": ["INVALID_JSON"], "status": "FAIL"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1",
+    )
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="frontier"):
+        build_rollforward_table_repair_attempt_v1(
+            plan=second,
+            prior_attempts=[low],
+            thinking_level="medium",
+            outcome="PROVIDER_OR_VALIDATION_FAILURE",
+            observed_page_json_version_id=None,
+            repair_receipt=None,
+            crop_receipt=crop,
+            response_artifact_ref=_raw_ref(bad),
+            raw_response_bytes=bad,
+            validation={"reason_codes": ["INVALID_JSON"], "status": "FAIL"},
+            usage=_usage(),
+            provider=_provider(),
+            elapsed_seconds="1",
+        )
+
+
+def test_attempt_rejects_incoherent_token_or_cache_accounting(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    _crop, crop = crop_rollforward_table_image_v1(
+        corpus["images"][plan["base_page_json_version_id"]],
+        plan=plan,
+        page_store_path=corpus["store"],
+    )
+    raw = b"not json"
+    for field, value, match in (
+        ("total_tokens", 901, "token equation"),
+        ("cached_input_tokens", 601, "cached input"),
+        ("thought_tokens", 301, "token equation"),
+    ):
+        usage = _usage()
+        usage[field] = value
+        with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match=match):
+            build_rollforward_table_repair_attempt_v1(
+                plan=plan,
+                prior_attempts=[],
+                thinking_level="low",
+                outcome="PROVIDER_OR_VALIDATION_FAILURE",
+                observed_page_json_version_id=None,
+                repair_receipt=None,
+                crop_receipt=crop,
+                response_artifact_ref=_raw_ref(raw),
+                raw_response_bytes=raw,
+                validation={"reason_codes": ["INVALID_JSON"], "status": "FAIL"},
+                usage=usage,
+                provider=_provider(),
+                elapsed_seconds="1",
+            )
