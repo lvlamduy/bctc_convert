@@ -99,6 +99,7 @@ def _node_index(identifier: Any, prefix: str, limit: int) -> int:
 def _hit_has_explicit_parent(
     hit: dict[str, Any],
     *,
+    allow_row_parent: bool,
     page_json: dict[str, Any],
     parent_aliases: list[str],
 ) -> bool:
@@ -118,6 +119,8 @@ def _hit_has_explicit_parent(
     folded = normalize_vietnamese_anchor_v1(title)
     if any(alias in folded for alias in parent_aliases):
         return True
+    if not allow_row_parent:
+        return False
     return any(
         any(
             normalize_vietnamese_anchor_v1(value) == alias
@@ -298,6 +301,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         for hit in near_hits
         if _hit_has_explicit_parent(
             hit,
+            allow_row_parent=(
+                compiled.get("engine_format_version")
+                == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+            ),
             page_json=page_by_version[hit["page_json_version_id"]]["page_json"],
             parent_aliases=compiled["topology"]["parent"]["aliases"],
         )
