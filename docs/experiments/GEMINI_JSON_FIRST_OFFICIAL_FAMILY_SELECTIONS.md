@@ -29,9 +29,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 7 | `LOAN_INDUSTRY_CLASSIFICATION` | 98 | 42 | 0 | 1.618 | `gjfafstorev1:run:c48c3c9d742a15bba9a04b3ad0c2805ba219845ff5b4435cdc6daacefdcbb724` |
 | 8 | `LOAN_QUALITY_CLASSIFICATION` | 140 | 0 | 0 | 867 | `gjfafstorev1:run:49b58fd099a2a7e45e145f0485def1736a472f12e415af7d78166e6f38ad41d3` |
 | 9 | `LOAN_MATURITY_BUCKETS` | 140 | 0 | 0 | 438 | `gjfafstorev1:run:fddb4e5c2e7ee969d20c226edd2eca640fdd001ee27f0cfd09c03d6f962f80d1` |
+| 10 | `LOAN_CURRENCY_CLASSIFICATION` | 10 | 130 | 0 | 20 | `gjfafstorev1:run:9cfa45e2a2dbc6da2e8227e6b7baf6ce09a5b6b0955b83e580ac3145221cd8b5` |
 
-Tại checkpoint này database có đủ đúng chín current selection liên tục từ
-Family 1 đến Family 9. Family 10 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng mười current selection liên tục từ
+Family 1 đến Family 10. Family 11 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -86,7 +87,34 @@ Artifact OFFICIAL:
 - Gate code tại `bcd1d1d`: 103/103 test, Ruff/format xanh; Family 4 control
   giữ nguyên 140/140 status, mappings và reasons.
 
+## Family 10 closure
+
+Artifact OFFICIAL:
+`/tmp/gemini-json-family10-official-8a225db.json`, SHA-256
+`79a849d8c8ab9e589f2d03be9f76e401382efa4f8827d6c193d2c3327f4b4423`,
+97.879 byte, sweep
+`gjfafsv1:sweep:2d11616ce7f27a3e46a2882f4dd7b8c2d8e6172936ef1bfcf0712668bb64cc63`.
+
+- Kết quả: `READY=10`, `NOT_OBSERVED=130`, `UNRESOLVED=0`, 20 mappings và
+  không tạo repair job.
+- RNID 756 là context-only; chỉ RNID 757/758 được phát. Sáu hồ sơ ACB dùng
+  cặp nhãn đầy đủ, bốn hồ sơ HDB dùng owner `Cho vay khách hàng` với cặp nhãn
+  ngắn được bind theo đúng scope.
+- Query tách hai mode: cặp nhãn đầy đủ, hoặc owner cấu trúc cộng cặp nhãn
+  scoped. Vì vậy `Bằng VND`/`Bằng ngoại tệ` trong bảng rủi ro tiền tệ không
+  trở thành family candidate.
+- Ba phương trình exhaustive dùng chung cho core, thư tín dụng trả chậm và
+  family root; các dòng thư tín dụng chỉ corroborate closure, không được map.
+- Đối chiếu formal cũ: 20/20 vectors, 40/40 cells và tổng hệ số
+  11.489.059.821 bằng tuyệt đối. Fingerprint vector là
+  `f4c12ce95f175804194e41b92644c5334ce02d672e7e85935dbfde788ee492ad`.
+- Gate tích hợp tại `8a225db`: 116/116 test tác động xanh; replay Family 9 giữ
+  nguyên artifact SHA-256 `80b46c...ef89`. Family 4 giữ nguyên output của
+  baseline `bcd1d1d`; khác biệt với artifact OFFICIAL cũ là runner evolution
+  có trước Family 10, không phải thay đổi query này.
+
 ## Next gate
 
-Family 10 là `LOAN_CURRENCY_CLASSIFICATION`. Phải preflight từ indexed Gemini
-JSON và chỉ promote sau khi Family 9 current selection đã replay đúng như trên.
+Family 11 là `LOAN_GEOGRAPHY_CLASSIFICATION`. Preflight đã xác nhận JSON hiện
+có đủ evidence, nhưng cần shared dual-axis graph/index để xử lý cả role ở hàng
+lẫn role ở cột và cụm period ở trang kề nhau; không được quay lại OCR cũ.
