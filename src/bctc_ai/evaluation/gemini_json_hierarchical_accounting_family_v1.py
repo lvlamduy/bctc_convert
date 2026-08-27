@@ -20,7 +20,7 @@ from bctc_ai.evaluation.accounting_family_topology_v1 import (
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_clone_v1
+from bctc_ai.source_structure.contracts_v1 import canonical_clone_v1, canonical_json_sha256_v1
 
 FORMAT_VERSION = "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
 CLAIM_BOUNDARY = (
@@ -33,6 +33,7 @@ _EVALUATION_FORMATS = {
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3",
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
 }
 _SCHEMA_FORMATS = {
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
@@ -414,7 +415,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "candidate_selection_policy",
             "occurrence_row_axis_policy",
         }
-    if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5":
+    if evaluation_format in {
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+    }:
         evaluation_keys = {
             "candidate_selection_policy",
             "closure_policy",
@@ -425,10 +429,16 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "occurrence_row_axis_policy",
             "period_semantics",
         }
+        if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6":
+            evaluation_keys.add("period_table_projection_policy")
     lane_alternatives = (
         evaluation_spec.get("expected_lane_unit_kind_alternatives")
         if type(evaluation_spec) is dict
-        and evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+        and evaluation_format
+        in {
+            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+        }
         else [evaluation_spec.get("expected_lane_unit_kinds")]
         if type(evaluation_spec) is dict
         else None
@@ -447,6 +457,38 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         or len({tuple(alternative) for alternative in lane_alternatives}) != len(lane_alternatives)
     ):
         raise _error("Gemini JSON hierarchy evaluation spec is invalid or unsupported")
+    period_table_projection_policy = None
+    if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6":
+        raw_projection = evaluation_spec["period_table_projection_policy"]
+        if (
+            type(raw_projection) is not dict
+            or set(raw_projection)
+            != {
+                "format_version",
+                "period_table_count",
+                "population_policy",
+                "target_column_aliases",
+            }
+            or raw_projection["format_version"] != "GEMINI_JSON_PERIOD_TABLE_PROJECTION_POLICY_V1"
+            or raw_projection["period_table_count"] != 2
+            or raw_projection["population_policy"]
+            != "IDENTICAL_DECLARED_ROLE_POPULATION_AND_SOURCE_ORDER"
+            or type(raw_projection["target_column_aliases"]) is not list
+            or not raw_projection["target_column_aliases"]
+            or any(
+                type(alias) is not str or not _normalized(alias)
+                for alias in raw_projection["target_column_aliases"]
+            )
+            or len({_normalized(alias) for alias in raw_projection["target_column_aliases"]})
+            != len(raw_projection["target_column_aliases"])
+        ):
+            raise _error("Gemini JSON period-table projection policy is invalid")
+        period_table_projection_policy = {
+            **canonical_clone_v1(raw_projection),
+            "target_column_aliases": sorted(
+                {_normalized(alias) for alias in raw_projection["target_column_aliases"]}
+            ),
+        }
     hierarchy = evaluation_spec["hierarchical_closure_spec"]
     if (
         type(hierarchy) is not dict
@@ -488,20 +530,24 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             if evaluation_format in {
                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
                 "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
             }:
                 selection_policy = equation.get("component_selection_policy")
                 variable_subset = (
-                    evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                    evaluation_format
+                    in {
+                        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                    }
                     and selection_policy == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
                 )
-                if (
-                    evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
-                    and selection_policy
-                    not in {
-                        "DECLARED_EXACT_ALTERNATIVE",
-                        "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
-                    }
-                ):
+                if evaluation_format in {
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                } and selection_policy not in {
+                    "DECLARED_EXACT_ALTERNATIVE",
+                    "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+                }:
                     raise _error("Gemini JSON hierarchy component selection policy is invalid")
                 minimum = 1 if variable_subset else len(roles) if type(roles) is list else None
                 minimum_additive = 0
@@ -554,7 +600,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                     "variable_component_subset": (
                         evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
                         or (
-                            evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                            evaluation_format
+                            in {
+                                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                            }
                             and equation.get("component_selection_policy")
                             == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
                         )
@@ -690,6 +740,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "evaluation": canonical_clone_v1(evaluation_spec),
         "family_result_role": family_result_role,
         "ignored_roles": sorted(ignored),
+        "period_table_projection_policy": period_table_projection_policy,
         "schema": canonical_clone_v1(schema_spec),
         "topology": topology,
     }
@@ -698,7 +749,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
 def compile_gemini_json_hierarchical_family_specs_v1(
     topology_spec: Any, evaluation_spec: Any, schema_binding_spec: Any
 ) -> dict[str, Any]:
-    """Compile one V4/V5 accounting family for JSON-only evaluation."""
+    """Compile one V4/V5/V6 accounting family for JSON-only evaluation."""
 
     return _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
 
@@ -998,7 +1049,10 @@ def _solve(
                     record["row_id"] not in used_anonymous
                     and not (
                         compiled["evaluation"]["format_version"]
-                        == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                        in {
+                            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                            "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                        }
                         and record.get("owner_role") == topology["parent"]["role"]
                         and result_role != family_result_role
                         and "allowed_result_roles" not in record
@@ -1287,6 +1341,206 @@ def _solve(
     return resolved, equations_receipt, reasons, used_anonymous
 
 
+def _projected_target_column_index(
+    table: dict[str, Any], *, target_column_aliases: list[str]
+) -> int | None:
+    columns = table.get("columns")
+    if type(columns) is not list or not columns:
+        return None
+    matches = []
+    for index, column in enumerate(columns):
+        header = _normalized(_header_text(column))
+        if column.get("value_kind") == "MONEY" and any(
+            header == alias or header.startswith(alias + " ") or f" {alias} " in f" {header} "
+            for alias in target_column_aliases
+        ):
+            matches.append(index)
+    return matches[0] if len(matches) == 1 else None
+
+
+def evaluate_gemini_json_hierarchical_period_table_pair_v1(
+    *,
+    page_json: Any,
+    page_json_version_id: str,
+    physical_page: int,
+    section_id: str,
+    table_ids: list[str],
+    compiled_specs: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Project two exact period tables onto one declared asset column.
+
+    ``None`` means the tables do not satisfy the projection contract and must
+    be evaluated independently.  No source cell, period, label, or hierarchy
+    relation is inferred by this adapter.
+    """
+
+    policy = compiled_specs.get("period_table_projection_policy")
+    if policy is None or len(table_ids) != policy["period_table_count"]:
+        return None
+    if type(page_json) is not dict or type(page_json.get("sections")) is not list:
+        raise _error("Gemini JSON projected period page is invalid")
+    try:
+        section = page_json["sections"][int(section_id[1:]) - 1]
+        source_tables = [section["tables"][int(table_id[1:]) - 1] for table_id in table_ids]
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise _error("Gemini JSON projected period table identity is invalid") from exc
+    table_dates = [_header_date(str(table.get("title_exact") or "")) for table in source_tables]
+    if any(value is None for value in table_dates) or len(set(table_dates)) != 2:
+        return None
+    ordered = sorted(
+        zip(table_dates, table_ids, source_tables, strict=True),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    projected_by_period: list[dict[str, Any]] = []
+    for period_date, source_table_id, table in ordered:
+        target_index = _projected_target_column_index(
+            table,
+            target_column_aliases=policy["target_column_aliases"],
+        )
+        columns = table.get("columns")
+        rows = table.get("rows")
+        if target_index is None or type(columns) is not list or type(rows) is not list:
+            return None
+        records = []
+        unmatched_valued = []
+        total_rows = []
+        for ordinal, row in enumerate(rows, start=1):
+            values = row.get("values_exact")
+            if type(values) is not list or len(values) != len(columns):
+                return None
+            roles = _row_roles(
+                row,
+                topology=compiled_specs["topology"],
+                aliases_by_role=compiled_specs["aliases_by_role"],
+            )
+            visible_value = values[target_index]
+            if len(roles) == 1 and visible_value is not None:
+                records.append(
+                    {
+                        "ordinal": ordinal,
+                        "role": roles[0],
+                        "row": row,
+                        "source_value": visible_value,
+                    }
+                )
+            elif visible_value is not None and row.get("row_kind") in {"SUBTOTAL", "TOTAL"}:
+                total_rows.append((ordinal, row, visible_value))
+            elif visible_value is not None:
+                unmatched_valued.append(ordinal)
+        roles = [record["role"] for record in records]
+        if unmatched_valued or not roles or len(roles) != len(set(roles)) or len(total_rows) > 1:
+            return None
+        try:
+            component_sum = sum(_money(record["source_value"])["coefficient"] for record in records)
+            if total_rows and _money(total_rows[0][2])["coefficient"] != component_sum:
+                return None
+        except ValueError:
+            return None
+        projected_by_period.append(
+            {
+                "column": columns[target_index],
+                "date": period_date,
+                "records": records,
+                "roles": roles,
+                "source_table_id": source_table_id,
+                "target_column_index": target_index,
+                "total_row": total_rows[0] if total_rows else None,
+                "unit_exact": table.get("unit_exact"),
+            }
+        )
+    if projected_by_period[0]["roles"] != projected_by_period[1]["roles"]:
+        return None
+    projected_rows = []
+    for current, comparative in zip(
+        projected_by_period[0]["records"],
+        projected_by_period[1]["records"],
+        strict=True,
+    ):
+        projected_rows.append(
+            {
+                "hierarchy_path_exact": canonical_clone_v1(current["row"]["hierarchy_path_exact"]),
+                "label_exact": current["row"].get("label_exact"),
+                "row_kind": current["row"].get("row_kind"),
+                "values_exact": [current["source_value"], comparative["source_value"]],
+            }
+        )
+    if all(period["total_row"] is not None for period in projected_by_period):
+        current_total = projected_by_period[0]["total_row"]
+        comparative_total = projected_by_period[1]["total_row"]
+        projected_rows.append(
+            {
+                "hierarchy_path_exact": canonical_clone_v1(
+                    current_total[1]["hierarchy_path_exact"]
+                ),
+                "label_exact": current_total[1].get("label_exact"),
+                "row_kind": "TOTAL",
+                "values_exact": [current_total[2], comparative_total[2]],
+            }
+        )
+    projected_table = {
+        "columns": [
+            {
+                "header_path_exact": [
+                    source_tables[table_ids.index(period["source_table_id"])].get("title_exact"),
+                    *canonical_clone_v1(period["column"]["header_path_exact"]),
+                ],
+                "value_kind": "MONEY",
+            }
+            for period in projected_by_period
+        ],
+        "continuation": "NONE",
+        "rows": projected_rows,
+        "title_exact": " | ".join(
+            str(source_tables[table_ids.index(period["source_table_id"])].get("title_exact") or "")
+            for period in projected_by_period
+        ),
+        "unit_exact": (
+            projected_by_period[0]["unit_exact"]
+            if projected_by_period[0]["unit_exact"] == projected_by_period[1]["unit_exact"]
+            else None
+        ),
+    }
+    projected_page = canonical_clone_v1(page_json)
+    primary_table_id = projected_by_period[0]["source_table_id"]
+    projected_page["sections"][int(section_id[1:]) - 1]["tables"][int(primary_table_id[1:]) - 1] = (
+        projected_table
+    )
+    result = evaluate_gemini_json_hierarchical_family_table_v1(
+        page_json=projected_page,
+        page_json_version_id=page_json_version_id,
+        physical_page=physical_page,
+        section_id=section_id,
+        table_id=primary_table_id,
+        compiled_specs=compiled_specs,
+    )
+    receipt = {
+        "period_signatures": [period["date"].isoformat() for period in projected_by_period],
+        "population_roles": projected_by_period[0]["roles"],
+        "rule": policy["population_policy"],
+        "source_table_ids": [period["source_table_id"] for period in projected_by_period],
+        "target_column_headers": [
+            canonical_clone_v1(period["column"]["header_path_exact"])
+            for period in projected_by_period
+        ],
+        "target_column_indices": [period["target_column_index"] for period in projected_by_period],
+    }
+    result["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(
+        {
+            "family_id": compiled_specs["topology"]["family_id"],
+            "page_json_version_id": page_json_version_id,
+            "physical_page": physical_page,
+            "section_id": section_id,
+            "source_table_ids": receipt["source_table_ids"],
+        }
+    )
+    result["period_table_projection_receipt"] = receipt
+    result["source_table_ids"] = receipt["source_table_ids"]
+    if result.get("closure_receipt") is not None:
+        result["closure_receipt"]["period_table_projection"] = canonical_clone_v1(receipt)
+    return result
+
+
 def evaluate_gemini_json_hierarchical_family_table_v1(
     *,
     page_json: Any,
@@ -1321,7 +1575,10 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     columns = table.get("columns")
     period_value_axis_receipt = None
     percent_indices: list[int] = []
-    if compiled_specs["evaluation"]["format_version"] == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5":
+    if compiled_specs["evaluation"]["format_version"] in {
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+        "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+    }:
         (
             money_indices,
             money_columns,
@@ -1379,8 +1636,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         for ordinal, row in enumerate(source_rows, start=1)
         if any(_matches(row.get("label_exact"), alias) for alias in topology["parent"]["aliases"])
     ]
-    if not parent_in_title and len(parent_row_ordinals) != 1:
-        reasons.append("FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW")
+    explicit_parent_visible = parent_in_title or len(parent_row_ordinals) == 1
     if not parent_in_title and len(parent_row_ordinals) == 1:
         parent_ordinal = parent_row_ordinals[0]
         rows = [
@@ -1514,7 +1770,10 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                 owner is None
                 and row.get("row_kind") == "SUBTOTAL"
                 and compiled_specs["evaluation"]["format_version"]
-                == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                in {
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+                    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
+                }
             ):
                 record["allowed_result_roles"] = {
                     equation["result_role"]
@@ -1526,12 +1785,24 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             continue
         else:
             unmatched_numeric.append(ordinal)
+    required_pools_satisfied = True
     for pool in topology.get("required_role_pools", []):
         observed_count = sum(role in records_by_role for role in pool["roles"])
         if observed_count < pool["minimum_count"]:
+            required_pools_satisfied = False
             reasons.append(
                 f"REQUIRED_ROLE_POOL_COUNT_BELOW_MINIMUM:{observed_count}:{pool['minimum_count']}"
             )
+    required_combination_visible = any(
+        all(role in records_by_role for role in combination)
+        for combination in topology["required_role_combinations"]
+    )
+    if not explicit_parent_visible and not (
+        topology["parent"]["resolution_mode"] == "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"
+        and required_pools_satisfied
+        and required_combination_visible
+    ):
+        reasons.append("FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW")
     # A later presentation view may repeat one structural subtotal beneath an
     # untyped, label-only group (for example a listed/unlisted disclosure).
     # Keep the primary occurrence and bind the repeated subtotal as a

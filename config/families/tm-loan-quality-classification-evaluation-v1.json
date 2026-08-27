@@ -3,7 +3,7 @@
   "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
   "expected_lane_unit_kind_alternatives": [["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"]],
   "family_id": "LOAN_QUALITY_CLASSIFICATION",
-  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V6",
   "hierarchical_closure_spec": {
     "equations": [
       {
@@ -28,5 +28,11 @@
     "source_role_policy": {"one_edit_role_or_scope_match_policy": "VETO", "source_only_veto_roles": []}
   },
   "occurrence_row_axis_policy": {"format_version": "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1", "require_authenticated_existing_dash_pixels": false, "retain_all_context_bound_role_occurrences": true},
+  "period_table_projection_policy": {
+    "format_version": "GEMINI_JSON_PERIOD_TABLE_PROJECTION_POLICY_V1",
+    "period_table_count": 2,
+    "population_policy": "IDENTICAL_DECLARED_ROLE_POPULATION_AND_SOURCE_ORDER",
+    "target_column_aliases": ["Cho vay khách hàng", "Dư nợ cho vay khách hàng"]
+  },
   "period_semantics": "BALANCE_COMPARATIVE"
 }

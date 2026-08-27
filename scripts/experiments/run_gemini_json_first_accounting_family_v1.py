@@ -799,6 +799,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     stacked = (
         compiled.get("engine_format_version") == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
     )
+    period_table_projection = compiled.get("period_table_projection_policy") is not None
     required_roles = {
         role
         for combination in compiled["topology"]["required_role_combinations"]
@@ -882,6 +883,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         for key in sorted(regions_by_key):
             by_page[key[:2]].append(key)
         grouped_region_keys = list(by_page.values())
+    elif period_table_projection:
+        by_page_section: dict[tuple[str, int, str], list[tuple[str, int, str, str]]] = defaultdict(
+            list
+        )
+        for key in sorted(regions_by_key):
+            by_page_section[key[:3]].append(key)
+        grouped_region_keys = list(by_page_section.values())
     else:
         grouped_region_keys = [[key] for key in sorted(regions_by_key)]
     for grouped_keys in grouped_region_keys:
@@ -898,34 +906,67 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             # under the family heading.  Its declared non-money axis makes it
             # context, not a competing accounting-value population.
             continue
+        evaluated_candidates = []
         if stacked:
             from bctc_ai.evaluation.gemini_json_stacked_period_accounting_family_v1 import (
                 evaluate_gemini_json_stacked_period_family_region_v1,
             )
 
-            candidate = evaluate_gemini_json_stacked_period_family_region_v1(
-                page_json=page["page_json"],
-                page_json_version_id=region["page_json_version_id"],
-                physical_page=region["physical_page"],
-                table_refs=[
-                    (regions_by_key[key]["section_id"], regions_by_key[key]["table_id"])
-                    for key in grouped_keys
-                ],
-                compiled_specs=compiled,
+            evaluated_candidates.append(
+                evaluate_gemini_json_stacked_period_family_region_v1(
+                    page_json=page["page_json"],
+                    page_json_version_id=region["page_json_version_id"],
+                    physical_page=region["physical_page"],
+                    table_refs=[
+                        (regions_by_key[key]["section_id"], regions_by_key[key]["table_id"])
+                        for key in grouped_keys
+                    ],
+                    compiled_specs=compiled,
+                )
             )
-        else:
-            candidate = evaluate_gemini_json_flat_family_table_v1(
+        elif period_table_projection:
+            from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+                evaluate_gemini_json_hierarchical_period_table_pair_v1,
+            )
+
+            projected = evaluate_gemini_json_hierarchical_period_table_pair_v1(
                 page_json=page["page_json"],
                 page_json_version_id=region["page_json_version_id"],
                 physical_page=region["physical_page"],
                 section_id=region["section_id"],
-                table_id=region["table_id"],
+                table_ids=[regions_by_key[key]["table_id"] for key in grouped_keys],
                 compiled_specs=compiled,
+            )
+            if projected is not None:
+                evaluated_candidates.append(projected)
+            else:
+                for key in grouped_keys:
+                    fallback_region = regions_by_key[key]
+                    evaluated_candidates.append(
+                        evaluate_gemini_json_flat_family_table_v1(
+                            page_json=page["page_json"],
+                            page_json_version_id=fallback_region["page_json_version_id"],
+                            physical_page=fallback_region["physical_page"],
+                            section_id=fallback_region["section_id"],
+                            table_id=fallback_region["table_id"],
+                            compiled_specs=compiled,
+                        )
+                    )
+        else:
+            evaluated_candidates.append(
+                evaluate_gemini_json_flat_family_table_v1(
+                    page_json=page["page_json"],
+                    page_json_version_id=region["page_json_version_id"],
+                    physical_page=region["physical_page"],
+                    section_id=region["section_id"],
+                    table_id=region["table_id"],
+                    compiled_specs=compiled,
+                )
             )
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        candidates_by_path[region["source_logical_name"]].append(candidate)
+        candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
 
     trials = []
     for document in index["documents"]:

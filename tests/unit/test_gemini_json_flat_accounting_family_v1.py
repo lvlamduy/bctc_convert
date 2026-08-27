@@ -15,7 +15,10 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     evaluate_gemini_json_flat_family_table_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
-from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import _row_roles
+from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+    _row_roles,
+    evaluate_gemini_json_hierarchical_period_table_pair_v1,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -1140,6 +1143,81 @@ def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> Non
     one_period_result = _evaluate_loan_quality(one_period)
     assert one_period_result["status"] == UNRESOLVED
     assert "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT" in one_period_result["reasons"]
+
+
+def test_loan_quality_projects_two_exact_period_tables_to_one_asset_axis() -> None:
+    source = _loan_quality_page()
+    source_rows = source["sections"][0]["tables"][0]["rows"]
+    tables = []
+    for period, value_index in (("31 tháng 12 năm 2025", 0), ("31 tháng 12 năm 2024", 1)):
+        rows = []
+        for row in source_rows:
+            values = row["values_exact"]
+            rows.append(
+                {
+                    **deepcopy(row),
+                    "values_exact": [values[value_index], "1"],
+                }
+            )
+        rows.append(
+            {
+                "hierarchy_path_exact": [None],
+                "label_exact": None,
+                "row_kind": "TOTAL",
+                "values_exact": ["130" if value_index == 0 else "107", "5"],
+            }
+        )
+        tables.append(
+            {
+                "columns": [
+                    {
+                        "header_path_exact": ["Cho vay khách hàng", "triệu đồng"],
+                        "value_kind": "MONEY",
+                    },
+                    {"header_path_exact": ["Mua nợ", "triệu đồng"], "value_kind": "MONEY"},
+                ],
+                "continuation": "NONE",
+                "rows": rows,
+                "title_exact": f"Tại ngày {period}",
+                "unit_exact": "triệu đồng",
+            }
+        )
+    source["sections"][0]["title_exact"] = "THUYẾT MINH BÁO CÁO TÀI CHÍNH"
+    source["sections"][0]["tables"] = tables
+    topology, evaluation, schema = _loan_quality_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    result = evaluate_gemini_json_hierarchical_period_table_pair_v1(
+        page_json=source,
+        page_json_version_id="gfpstorev1:json:" + "8" * 64,
+        physical_page=68,
+        section_id="s1",
+        table_ids=["t1", "t2"],
+        compiled_specs=compiled,
+    )
+    assert result is not None
+    assert result["status"] == READY
+    assert result["source_table_ids"] == ["t1", "t2"]
+    assert result["period_table_projection_receipt"]["target_column_indices"] == [0, 0]
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [100, 90]
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        130,
+        107,
+    ]
+
+    mismatched = deepcopy(source)
+    mismatched["sections"][0]["tables"][1]["rows"][0]["label_exact"] = "Không khai báo"
+    assert (
+        evaluate_gemini_json_hierarchical_period_table_pair_v1(
+            page_json=mismatched,
+            page_json_version_id="gfpstorev1:json:" + "8" * 64,
+            physical_page=68,
+            section_id="s1",
+            table_ids=["t1", "t2"],
+            compiled_specs=compiled,
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize(
