@@ -1,0 +1,14 @@
+{
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "family_owner_report_norm_id": 716,
+  "family_report_norm_id": 752,
+  "family_root_mapping_policy": "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "ignored_roles": ["CORE_LOAN_POPULATION", "DELAYED_LC_POPULATION", "DELAYED_LC_SHORT_TERM"],
+  "role_bindings": [
+    {"parent_report_norm_id": 752, "report_norm_id": 753, "role": "SHORT_TERM"},
+    {"parent_report_norm_id": 752, "report_norm_id": 754, "role": "MEDIUM_TERM"},
+    {"parent_report_norm_id": 752, "report_norm_id": 755, "role": "LONG_TERM"},
+    {"parent_report_norm_id": 752, "report_norm_id": 5747, "role": "MARGIN_AND_SECURITIES_ADVANCE"}
+  ]
+}

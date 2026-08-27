@@ -1,0 +1,74 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {"aliases": ["Nợ ngắn hạn", "Cho vay ngắn hạn", "Ngắn hạn", "Nợ ngắn hạn (đến 01 năm)", "Nợ ngắn hạn (Đến 1 năm)", "Nợ ngắn hạn (Dưới 1 năm)"], "within_role": "CORE_LOAN_POPULATION"},
+        {"aliases": ["Nợ ngắn hạn", "Cho vay ngắn hạn", "Ngắn hạn", "Nợ ngắn hạn (đến 01 năm)", "Nợ ngắn hạn (Đến 1 năm)", "Nợ ngắn hạn (Dưới 1 năm)"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "SHORT_TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)"], "within_role": "CORE_LOAN_POPULATION"},
+        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "MEDIUM_TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Nợ dài hạn", "Cho vay dài hạn", "Dài hạn", "Nợ dài hạn (trên 5 năm)", "Nợ dài hạn (trên 05 năm)"], "within_role": "CORE_LOAN_POPULATION"},
+        {"aliases": ["Nợ dài hạn", "Cho vay dài hạn", "Dài hạn", "Nợ dài hạn (trên 5 năm)", "Nợ dài hạn (trên 05 năm)"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "LONG_TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay khách hàng", "Dư nợ cho vay", "Dư nợ cho vay khách hàng", "Dư nợ cho vay khách hàng của Ngân hàng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CORE_LOAN_POPULATION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024", "Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DELAYED_LC_POPULATION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Nợ ngắn hạn", "Nợ ngắn hạn (đến 01 năm)", "Nợ ngắn hạn (Đến 1 năm)", "Nợ ngắn hạn (Dưới 1 năm)"], "presence_anchor": false, "within_role": "DELAYED_LC_POPULATION"},
+        {"aliases": ["Nợ ngắn hạn - Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"], "presence_anchor": false, "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "DELAYED_LC_SHORT_TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - ngắn hạn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null},
+        {"aliases": ["cho vay giao dịch ký quỹ", "ứng trước"], "match_mode": "CONTAINS_ORDERED_NORMALIZED_PHRASES", "presence_anchor": false, "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "MARGIN_AND_SECURITIES_ADVANCE",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": ["Phân tích theo loại hình cho vay", "Phân tích chất lượng nợ cho vay", "Phân tích dư nợ theo ngành", "Phân tích dư nợ theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp"],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 24, "max_label_line_span": 4},
+  "parent": {
+    "aliases": ["Phân tích dư nợ theo thời gian", "Phân tích dư nợ theo thời gian cho vay", "Phân tích dư nợ theo thời gian cho vay gốc", "Phân tích dư nợ theo thời gian cho vay ban đầu", "Phân tích dư nợ theo thời gian gốc của khoản vay", "Phân tích dư nợ theo thời gian đáo hạn", "Phân tích dư nợ cho vay theo thời gian", "Phân tích dư nợ cho vay theo thời hạn gốc của khoản vay", "Phân tích dư nợ cho vay theo thời hạn vay", "Phân tích dư nợ theo thời hạn cho vay", "Phân tích dư nợ theo thời hạn cho vay như sau", "Phân tích dư nợ cho vay khách hàng theo thời hạn cho vay", "Phân tích dư nợ cho vay khách hàng theo thời hạn cho vay như sau", "Theo kỳ hạn", "Cho vay khách hàng", "Các khoản cho vay khách hàng", "Dư nợ cho vay khách hàng"],
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "role": "LOAN_MATURITY_BUCKETS"
+  },
+  "presence_evidence_mode": "GLOBAL_CORE_HITS",
+  "required_role_combinations": [["SHORT_TERM", "MEDIUM_TERM"], ["MEDIUM_TERM", "LONG_TERM"]],
+  "required_role_pools": [{"minimum_count": 3, "roles": ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"]}],
+  "structural_reset_aliases": ["Phân tích theo loại hình cho vay", "Phân tích chất lượng nợ cho vay", "Phân tích dư nợ theo ngành", "Phân tích dư nợ theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp", "Dự phòng rủi ro cho vay khách hàng"]
+}

@@ -51,6 +51,20 @@ _STACKED_GLOBAL_EQUATION_PREFIXES = (
     "VISIBLE_FAMILY_TOTAL_NOT_EXACT_DIRECT_FRONTIER:",
 )
 _MISSING_TITLE_FOOTNOTE_NARRATIVE = "TITLE_FOOTNOTE_NARRATIVE_SOURCE_NOT_EXACT"
+_HIERARCHICAL_PERIOD_AXIS_REASONS = frozenset(
+    {
+        "CURRENT_AND_COMPARATIVE_PERIOD_HEADERS_ARE_NOT_EXACT",
+        "CURRENT_AND_COMPARATIVE_PERIOD_HEADER_KINDS_DIFFER",
+        "CURRENT_PERIOD_DATE_IS_NOT_AFTER_COMPARATIVE_PERIOD_DATE",
+        "ORDERED_CURRENT_COMPARATIVE_PERIOD_ALIASES_DO_NOT_REPLAY",
+        "PERCENTAGE_COMPANION_COLUMN_ORDER_IS_NOT_PERIOD_PAIRED",
+        "PERCENTAGE_COMPANION_PERIODS_DO_NOT_MATCH_MONEY_PERIODS",
+        "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT",
+        "PERIOD_VALUE_COLUMN_AXIS_IS_ABSENT",
+        "PERIOD_VALUE_COLUMN_HEADER_OR_MONEY_LANE_COUNT_IS_NOT_EXACT",
+        "PERIOD_VALUE_COLUMN_KIND_SEQUENCE_IS_NOT_DECLARED",
+    }
+)
 
 
 class GeminiJsonRegionRepairQueueV1Error(ValueError):
@@ -134,6 +148,10 @@ def build_family_region_repair_plans_v1(
                 compiled_specs.get("engine_format_version")
                 == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
             )
+            hierarchical = (
+                compiled_specs.get("engine_format_version")
+                == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+            )
             component_refs = (
                 candidate.get("component_table_refs")
                 if stacked
@@ -169,9 +187,16 @@ def build_family_region_repair_plans_v1(
             trigger_kinds = set()
             equation_roles = set()
             invalid_roles = set()
-            period_axis_incomplete = stacked and any(
-                reason == "Gemini JSON stacked-period region does not expose exactly two periods"
-                or reason.startswith("PERIOD_HAS_NO_DECLARED_ROLE:")
+            period_axis_incomplete = any(
+                (
+                    stacked
+                    and (
+                        reason
+                        == "Gemini JSON stacked-period region does not expose exactly two periods"
+                        or reason.startswith("PERIOD_HAS_NO_DECLARED_ROLE:")
+                    )
+                )
+                or (hierarchical and reason in _HIERARCHICAL_PERIOD_AXIS_REASONS)
                 for reason in candidate["reasons"]
             )
             if period_axis_incomplete:

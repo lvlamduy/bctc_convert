@@ -951,20 +951,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         compiled.get("engine_format_version") == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"
     )
     period_table_projection = compiled.get("period_table_projection_policy") is not None
-    required_roles = {
-        role
-        for combination in compiled["topology"]["required_role_combinations"]
-        for role in combination
-    }
     query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
-    if stacked:
-        near_aliases = sorted(
-            {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
-        )
-    else:
-        near_aliases = sorted(
-            {alias for role in required_roles for alias in compiled["aliases_by_role"][role]}
-        )
+    near_aliases = sorted(
+        {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
+    )
     near_hits = query_selected_family_anchor_hits_v1(
         database,
         selected_page_json_version_ids=selected_ids,

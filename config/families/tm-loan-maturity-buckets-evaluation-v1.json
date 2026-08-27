@@ -1,0 +1,57 @@
+{
+  "candidate_selection_policy": "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL",
+  "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+  "expected_lane_unit_kind_alternatives": [["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"]],
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+  "hierarchical_closure_spec": {
+    "equations": [
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [{
+          "component_roles": ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"],
+          "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+          "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+        }],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "CORE_LOAN_POPULATION",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": ["CORE_LOAN_POPULATION"],
+        "visible_source_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [{
+          "component_roles": ["DELAYED_LC_SHORT_TERM"],
+          "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+          "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+        }],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "DELAYED_LC_POPULATION",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": ["DELAYED_LC_POPULATION"],
+        "visible_source_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [{
+          "component_roles": ["CORE_LOAN_POPULATION", "DELAYED_LC_POPULATION", "MARGIN_AND_SECURITIES_ADVANCE"],
+          "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+          "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+        }],
+        "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "result_role": "LOAN_MATURITY_BUCKETS",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": ["LOAN_MATURITY_BUCKETS"],
+        "visible_source_policy": "REQUIRE_EXHAUSTIVE_COMPONENTS"
+      }
+    ],
+    "family_id": "LOAN_MATURITY_BUCKETS",
+    "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_CLOSURE_SPEC_V4",
+    "repeated_role_policy": {"aggregate_roles": [], "local_subtotal_roles": ["CORE_LOAN_POPULATION", "DELAYED_LC_POPULATION"]},
+    "rounding_lane_unit_kind_alternatives": [["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"]],
+    "source_role_policy": {"one_edit_role_or_scope_match_policy": "VETO", "source_only_veto_roles": []}
+  },
+  "occurrence_row_axis_policy": {"format_version": "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1", "require_authenticated_existing_dash_pixels": false, "retain_all_context_bound_role_occurrences": true},
+  "period_semantics": "BALANCE_COMPARATIVE"
+}

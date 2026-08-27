@@ -44,6 +44,7 @@ _SCHEMA_FORMATS = {
 }
 _DASHES = {"-", "–", "—", "_"}
 _DATE_DMY = re.compile(r"(?<!\d)([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})(?!\d)")
+_DATE_MDY = re.compile(r"(?<!\d)([01]?\d)[./-]([0-3]?\d)[./-]((?:19|20)\d{2})(?!\d)")
 _DATE_WORDS = re.compile(
     r"ng[aà]y\s+([0-3]?\d)\s+th[aá]ng\s+([01]?\d)\s+n[aă]m\s+((?:19|20)\d{2})",
     re.IGNORECASE,
@@ -329,13 +330,25 @@ def _header_text(column: Any) -> str:
 
 
 def _header_date(value: str) -> date | None:
-    match = _DATE_DMY.search(value) or _DATE_WORDS.search(value)
-    if match is None:
-        return None
-    try:
-        return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
-    except ValueError:
-        return None
+    for pattern in (_DATE_DMY, _DATE_WORDS):
+        for match in pattern.finditer(value):
+            try:
+                return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+            except ValueError:
+                continue
+    # A slash date is interpreted as MDY only when it cannot be DMY: the
+    # second field is a valid day above 12.  Ambiguous 01/02-style dates retain
+    # the project's DMY authority and never reach this fallback.
+    for match in _DATE_MDY.finditer(value):
+        month = int(match.group(1))
+        day = int(match.group(2))
+        if day <= 12:
+            continue
+        try:
+            return date(int(match.group(3)), month, day)
+        except ValueError:
+            continue
+    return None
 
 
 def _header_dates(value: str) -> set[date]:
@@ -346,6 +359,15 @@ def _header_dates(value: str) -> set[date]:
                 parsed.add(date(int(match.group(3)), int(match.group(2)), int(match.group(1))))
             except ValueError:
                 continue
+    for match in _DATE_MDY.finditer(value):
+        month = int(match.group(1))
+        day = int(match.group(2))
+        if day <= 12:
+            continue
+        try:
+            parsed.add(date(int(match.group(3)), month, day))
+        except ValueError:
+            continue
     return parsed
 
 
@@ -846,6 +868,12 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         or schema_spec.get("format_version") not in _SCHEMA_FORMATS
         or schema_spec.get("family_id") != topology["family_id"]
         or type(schema_spec.get("family_report_norm_id")) is not int
+        or schema_spec.get("family_root_mapping_policy")
+        not in {
+            "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+            "REQUIRE_HIERARCHICALLY_RESOLVED",
+            "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY",
+        }
         or type(schema_spec.get("ignored_roles")) is not list
         or type(schema_spec.get("role_bindings")) is not list
     ):
@@ -961,7 +989,16 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         )
         for child in topology["children"]
     }
+    raw_aliases_by_role = {
+        child["role"]: sorted(
+            {alias for matcher in child["matchers"] for alias in matcher["aliases"]}
+        )
+        for child in topology_spec["children"]
+    }
+    if set(raw_aliases_by_role) != set(aliases_by_role):
+        raise _error("Gemini JSON hierarchy raw query role axis drifted")
     anchor_groups = []
+    query_anchor_groups = []
     for combination in topology["required_role_combinations"]:
         if len(combination) == 1:
             role = combination[0]
@@ -975,10 +1012,15 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             owner = next(iter(owners))
             anchor_groups.append([aliases_by_role[owner], aliases_by_role[role]])
             anchor_groups.append([topology["parent"]["aliases"], aliases_by_role[role]])
+            query_anchor_groups.append([raw_aliases_by_role[owner], raw_aliases_by_role[role]])
+            query_anchor_groups.append(
+                [topology_spec["parent"]["aliases"], raw_aliases_by_role[role]]
+            )
             continue
         if len(combination) not in {2, 3}:
             raise _error("Gemini JSON hierarchy anchor combination is invalid")
         anchor_groups.append([aliases_by_role[role] for role in combination])
+        query_anchor_groups.append([raw_aliases_by_role[role] for role in combination])
     return {
         "aliases_by_role": aliases_by_role,
         "anchor_alias_groups": anchor_groups,
@@ -991,6 +1033,8 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "ignored_roles": sorted(ignored),
         "footnote_narrative_mapping_transforms": footnote_narrative_mapping_transforms,
         "period_table_projection_policy": period_table_projection_policy,
+        "query_anchor_alias_groups": canonical_clone_v1(query_anchor_groups),
+        "query_parent_aliases": canonical_clone_v1(topology_spec["parent"]["aliases"]),
         "schema": canonical_clone_v1(schema_spec),
         "source_role_mapping_transforms": source_role_mapping_transforms,
         "topology": topology,
@@ -2568,7 +2612,12 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     receipts = [*intermediate_parent_receipts, *receipts]
     root_role = topology["parent"]["role"]
     family_result_role = compiled_specs["family_result_role"]
-    mapping_roles = [root_role] + [
+    mapping_roles = (
+        []
+        if compiled_specs["schema"]["family_root_mapping_policy"]
+        == "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY"
+        else [root_role]
+    ) + [
         child["role"]
         for child in topology["children"]
         if child["role"] in compiled_specs["bindings"]
@@ -2638,6 +2687,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     }
     closure_receipt = {
         "equations": receipts,
+        "family_root_mapping_policy": compiled_specs["schema"]["family_root_mapping_policy"],
         "inferred_ambiguous_provision_role": inferred_target,
         **(
             {"period_value_column_axis": period_value_axis_receipt}
