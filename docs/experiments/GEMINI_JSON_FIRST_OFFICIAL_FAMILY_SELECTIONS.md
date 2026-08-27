@@ -31,9 +31,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 9 | `LOAN_MATURITY_BUCKETS` | 140 | 0 | 0 | 438 | `gjfafstorev1:run:fddb4e5c2e7ee969d20c226edd2eca640fdd001ee27f0cfd09c03d6f962f80d1` |
 | 10 | `LOAN_CURRENCY_CLASSIFICATION` | 10 | 130 | 0 | 20 | `gjfafstorev1:run:9cfa45e2a2dbc6da2e8227e6b7baf6ce09a5b6b0955b83e580ac3145221cd8b5` |
 | 11 | `LOAN_GEOGRAPHIC_CLASSIFICATION` | 41 | 99 | 0 | 82 | `gjfafstorev1:run:a2723ed4c4b6108ab66bffd5d19006eca1abf7cb31ec3895d09a392d3ace62f7` |
+| 12 | `LOAN_ENTERPRISE_FAMILY12` | 84 | 56 | 0 | 903 | `gjfafstorev1:run:4d953adc4d8fd66f85b612488ee5f7225db1cfa2f4bb48853d993e040c90fb98` |
 
-Tại checkpoint này database có đủ đúng mười một current selection liên tục từ
-Family 1 đến Family 11. Family 12 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng mười hai current selection liên tục từ
+Family 1 đến Family 12. Family 13 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -146,9 +147,38 @@ Artifact OFFICIAL:
   Family 4/9/10 giữ nguyên semantic outputs; production không có routing theo
   bank/file/page/note.
 
+## Family 12 closure
+
+Artifact OFFICIAL:
+`/tmp/gemini-family12-official-c58983d.json`, SHA-256
+`a88ed2a3d003107171b465d56bd532d76f98eb0dda35c91a6b5643f158f22d93`,
+2.989.104 byte, sweep
+`gjfafsv1:sweep:e19dfeb014361879a2c913e04384b86ebd98c814092fc3f2b465ad54ed47c83a`.
+
+- Kết quả: `READY=84`, `NOT_OBSERVED=56`, `UNRESOLVED=0`, 903 mappings,
+  1.806 MONEY cells, 419 closure equations và không tạo repair job.
+- Query chỉ đọc 8.947 page-version đã chọn. Từ 1.463 indexed row hits trong
+  267 tables, resolver tạo đúng 84 accepted regions; mọi table gần đều có
+  disposition có kiểu và toàn bộ query evidence được replay lại từ SQLite.
+- Shared structural-context resolver dùng section/table title, narrative và
+  owner cục bộ hoặc preceding carry tối đa hai trang, với population reset và
+  hard-negative fence. Không có routing theo bank, file, page hay source hash.
+- Collapsed direct frontier bảo đảm subtotal đã chứng minh thay thế descendants
+  thay vì cộng đồng thời cả cha và con. Leading/trailing population carrier,
+  peer equation, later total và detached-root đều phải khép trên mọi lane.
+- Đối chiếu E-0118 giữ nguyên chính xác 57 leaf mappings (fingerprint
+  `662fee71ad552826783fe06f3e4effaf36ffb76862ae279a3bb76ef3c4c5cabd`)
+  và sáu root mappings (fingerprint
+  `d42d462a8ea7b5dca345cc82f5dbc1c268530d16877011c580604f6cb6768a2a`).
+- Gate code tại `b5fdcee`, composed tại `c58983d`: audit độc lập không có
+  blocker; 178/178 test, Ruff, format, diff-check và fsck sạch. Artifacts
+  Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
+  nguyên byte.
+
 ## Next gate
 
-Family 12 là `LOAN_ENTERPRISE_FAMILY12`. Preflight database đã xác nhận JSON
-hiện có đủ evidence cho 84 hồ sơ, nhưng cần shared title-axis/owner-continuation
-binding và collapsed direct frontier để subtotal thay thế đúng descendants,
-không được cộng đồng thời parent với các dòng con hoặc quay lại OCR cũ.
+Family 13 là `PROVISION_MOVEMENT_ROLLFORWARD`. Trước khi chạy family này,
+pipeline phải hoàn thiện các primitive dùng chung cho timeline endpoint-pair,
+period/lane transpose, one-unknown linear inference và bounded OWNER_ABSENT
+repair. Đồng thời document-region fragment composer được phát triển dùng chung
+cho các family nhiều bảng/trang; không tạo engine riêng theo từng ngân hàng.
