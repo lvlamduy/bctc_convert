@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import sqlite3
 import sys
@@ -550,6 +551,206 @@ def test_openrouter_refuses_valid_database_ref_that_does_not_identify_writable_c
     assert not (tmp_path / "wrong-ref-output").exists()
 
 
+def test_descriptor_snapshots_ignore_restored_source_path_replacement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    _bind_fixture_images(monkeypatch, corpus)
+    original_core = target._run_rollforward_table_repair_on_private_sqlite_v1
+    original_sources = [corpus["store"], inputs["source_results_database"]]
+    observed_private_paths = []
+
+    def attacked_core(**kwargs):
+        observed_private_paths.extend(
+            [kwargs["source_page_store"], kwargs["source_results_database"]]
+        )
+        held_paths = []
+        try:
+            for ordinal, source in enumerate(original_sources):
+                held = tmp_path / f"held-source-{ordinal}.sqlite3"
+                os.replace(source, held)
+                source.write_bytes(b"controlled non-SQLite path replacement")
+                held_paths.append((source, held))
+            return original_core(**kwargs)
+        finally:
+            for source, held in reversed(held_paths):
+                source.unlink(missing_ok=True)
+                os.replace(held, source)
+
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        attacked_core,
+    )
+    result = target.run_rollforward_table_repair_v1(
+        **inputs,
+        artifact_dir=tmp_path / "source-replacement-dry-run",
+        dry_run=True,
+    )
+
+    assert result["disposition"] == "DRY_RUN_PREPARED"
+    assert len(observed_private_paths) == 2
+    assert all(path not in original_sources for path in observed_private_paths)
+    assert (
+        sha256(original_sources[0].read_bytes()).hexdigest() == inputs["source_page_store_sha256"]
+    )
+    assert (
+        sha256(original_sources[1].read_bytes()).hexdigest()
+        == inputs["source_results_database_sha256"]
+    )
+
+
+def test_writable_path_replacement_is_rejected_before_provider_or_publish(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    writable_before = writable.read_bytes()
+    writable_results_before = writable_results.read_bytes()
+    _bind_fixture_images(monkeypatch, corpus)
+    original_core = target._run_rollforward_table_repair_on_private_sqlite_v1
+
+    def attacked_core(**kwargs):
+        assert kwargs["writable_page_store"] != writable
+        assert kwargs["writable_results_database"] != writable_results
+        held_writable = tmp_path / "held-writable.sqlite3"
+        held_results = tmp_path / "held-writable-results.sqlite3"
+        os.replace(writable, held_writable)
+        os.replace(writable_results, held_results)
+        writable.write_bytes(writable_before)
+        writable_results.write_bytes(writable_results_before)
+        try:
+            return original_core(**kwargs)
+        finally:
+            writable.unlink(missing_ok=True)
+            writable_results.unlink(missing_ok=True)
+            os.replace(held_writable, writable)
+            os.replace(held_results, writable_results)
+
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        attacked_core,
+    )
+    calls = []
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="reference does not identify the writable database",
+    ):
+        target.run_rollforward_table_repair_v1(
+            **inputs,
+            artifact_dir=tmp_path / "writable-replacement-output",
+            dry_run=False,
+            writable_page_store=writable,
+            writable_results_database=writable_results,
+            openrouter_api_key="x" * 32,
+            provider_call=lambda **kwargs: calls.append(kwargs),
+        )
+    assert calls == []
+    assert writable.read_bytes() == writable_before
+    assert writable_results.read_bytes() == writable_results_before
+    assert not (tmp_path / "writable-replacement-output").exists()
+
+
+def test_writable_path_replacement_after_apply_is_rejected_before_publish(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    held_writable = tmp_path / "held-writable.sqlite3"
+    held_results = tmp_path / "held-writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    writable_before = writable.read_bytes()
+    writable_results_before = writable_results.read_bytes()
+    _bind_fixture_images(monkeypatch, corpus)
+    plans_by_version = {plan["base_page_json_version_id"]: plan for plan in corpus["plans"]}
+    calls = []
+
+    def provider(**kwargs) -> ProviderResultV1:
+        calls.append(kwargs["thinking_level"])
+        version_id = next(
+            line.split("=", 1)[1]
+            for line in kwargs["prompt"].splitlines()
+            if line.startswith("base_page_json_version_id=")
+        )
+        usage = {
+            "actual_cost_usd": "0.000100000000",
+            "billing_disposition": "BILLED_ACTUAL",
+            "cached_input_tokens": 0,
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "thought_tokens": 1,
+            "total_tokens": 15,
+        }
+        return ProviderResultV1(
+            output_text=canonical_json_bytes_v1(
+                _response(corpus["pages"][version_id], plans_by_version[version_id])
+            ).decode("utf-8"),
+            raw_response_bytes=canonical_json_bytes_v1({"fake": version_id}) + b"\n",
+            provider_name="Google",
+            provider_model="google/gemini-3.7-flash",
+            service_tier="flex",
+            attempts=(),
+            usage=usage,
+            response_id_sha256=sha256(version_id.encode()).hexdigest(),
+        )
+
+    original_core = target._run_rollforward_table_repair_on_private_sqlite_v1
+
+    def attacked_core(**kwargs):
+        result = original_core(**kwargs)
+        assert result["disposition"] == "REPAIR_FRONTIER_COMPLETE"
+        os.replace(writable, held_writable)
+        os.replace(writable_results, held_results)
+        writable.write_bytes(writable_before)
+        writable_results.write_bytes(writable_results_before)
+        return result
+
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        attacked_core,
+    )
+    try:
+        with pytest.raises(
+            target.RunGeminiJsonRollforwardTableRepairV1Error,
+            match="path, inode, or bytes changed across the stable boundary",
+        ):
+            target.run_rollforward_table_repair_v1(
+                **inputs,
+                artifact_dir=tmp_path / "pre-publish-replacement-output",
+                dry_run=False,
+                writable_page_store=writable,
+                writable_results_database=writable_results,
+                openrouter_api_key="x" * 32,
+                workers=6,
+                provider_call=provider,
+            )
+        assert held_writable.read_bytes() == writable_before
+        assert held_results.read_bytes() == writable_results_before
+        assert writable.read_bytes() == writable_before
+        assert writable_results.read_bytes() == writable_results_before
+        assert calls == ["low"] * 6
+    finally:
+        writable.unlink(missing_ok=True)
+        writable_results.unlink(missing_ok=True)
+        if held_writable.exists():
+            os.replace(held_writable, writable)
+        if held_results.exists():
+            os.replace(held_results, writable_results)
+
+
 def test_runner_rejects_unbound_source_and_writable_sqlite_sidecars(
     tmp_path: Path,
     corpus: dict,
@@ -677,12 +878,10 @@ def test_cross_store_failure_is_terminal_and_seals_replay_without_provider_recal
     )
     assert not (output / "repair-overlay.json").exists()
     assert not (output / "effective-page-frontier.json").exists()
+    assert writable.read_bytes() == corpus["store"].read_bytes()
+    assert writable_results.read_bytes() == inputs["source_results_database"].read_bytes()
 
     monkeypatch.setattr(target, "_mirror_family_attempt", original_mirror)
-    writable.unlink()
-    writable_results.unlink()
-    shutil.copyfile(corpus["store"], writable)
-    shutil.copyfile(inputs["source_results_database"], writable_results)
     sealed_result_sha256 = sha256((output / "run-result.json").read_bytes()).hexdigest()
     recovered = target.replay_sealed_rollforward_table_repair_v1(
         **inputs,

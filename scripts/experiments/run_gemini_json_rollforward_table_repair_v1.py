@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import sqlite3
+import stat
 import sys
 import tempfile
 import time
@@ -160,6 +161,18 @@ class _ProviderObservation:
     elapsed_seconds: str
 
 
+@dataclass(frozen=True)
+class _SqliteBoundary:
+    descriptor: int
+    identity: tuple[int, int]
+    initial_sha256: str
+    initial_size_bytes: int
+    label: str
+    original_path: Path
+    private_path: Path
+    writable: bool
+
+
 def _error(message: str) -> RunGeminiJsonRollforwardTableRepairV1Error:
     return RunGeminiJsonRollforwardTableRepairV1Error(message)
 
@@ -172,6 +185,15 @@ def _sha_file(path: Path) -> tuple[str, int]:
             digest.update(chunk)
             size += len(chunk)
     return digest.hexdigest(), size
+
+
+def _sha_descriptor(descriptor: int) -> tuple[str, int]:
+    digest = sha256()
+    offset = 0
+    while chunk := os.pread(descriptor, 1024 * 1024, offset):
+        digest.update(chunk)
+        offset += len(chunk)
+    return digest.hexdigest(), offset
 
 
 def _sqlite_sidecars(path: Path) -> tuple[Path, Path, Path]:
@@ -195,6 +217,169 @@ def _expected_hash(value: str, *, label: str) -> str:
     if type(value) is not str or _HEX64.fullmatch(value) is None:
         raise _error(f"{label} must be one lowercase SHA-256")
     return value
+
+
+def _copy_descriptor_to_new_file(
+    descriptor: int,
+    destination: Path,
+    *,
+    mode: int,
+) -> tuple[str, int]:
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise _error("this platform cannot establish a no-follow SQLite boundary")
+    output_descriptor = os.open(
+        destination,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+        mode,
+    )
+    digest = sha256()
+    offset = 0
+    try:
+        while chunk := os.pread(descriptor, 1024 * 1024, offset):
+            digest.update(chunk)
+            written = 0
+            while written < len(chunk):
+                count = os.write(output_descriptor, chunk[written:])
+                if count <= 0:
+                    raise _error("private SQLite snapshot write made no progress")
+                written += count
+            offset += len(chunk)
+        os.fsync(output_descriptor)
+    finally:
+        os.close(output_descriptor)
+    os.chmod(destination, mode)
+    return digest.hexdigest(), offset
+
+
+def _establish_sqlite_boundary(
+    path: Path,
+    expected_sha256: str,
+    *,
+    label: str,
+    private_path: Path,
+    writable: bool,
+) -> _SqliteBoundary:
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise _error("this platform cannot establish a no-follow SQLite boundary")
+    candidate = Path(path)
+    if candidate.is_symlink():
+        raise _error(f"{label} must be one regular, non-symlink file")
+    try:
+        resolved = candidate.resolve(strict=True)
+        flags = os.O_CLOEXEC | os.O_NOFOLLOW | (os.O_RDWR if writable else os.O_RDONLY)
+        descriptor = os.open(resolved, flags)
+    except OSError as exc:
+        raise _error(f"{label} cannot be opened through a no-follow file descriptor") from exc
+    try:
+        descriptor_stat = os.fstat(descriptor)
+        path_stat = os.stat(resolved, follow_symlinks=False)
+        identity = (descriptor_stat.st_dev, descriptor_stat.st_ino)
+        if (
+            not stat.S_ISREG(descriptor_stat.st_mode)
+            or not stat.S_ISREG(path_stat.st_mode)
+            or identity != (path_stat.st_dev, path_stat.st_ino)
+        ):
+            raise _error(f"{label} file identity changed while opening")
+        _reject_sqlite_sidecars(resolved, label=label)
+        expected = _expected_hash(expected_sha256, label=f"{label} expected SHA-256")
+        actual, size = _copy_descriptor_to_new_file(
+            descriptor,
+            private_path,
+            mode=0o600 if writable else 0o400,
+        )
+        if actual != expected or size != descriptor_stat.st_size:
+            raise _error(f"{label} bytes do not match the caller pin")
+        if _sha_file(private_path) != (actual, size):
+            raise _error(f"{label} private snapshot differs from its held descriptor")
+        return _SqliteBoundary(
+            descriptor=descriptor,
+            identity=identity,
+            initial_sha256=actual,
+            initial_size_bytes=size,
+            label=label,
+            original_path=resolved,
+            private_path=private_path,
+            writable=writable,
+        )
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _assert_sqlite_boundary_current(
+    boundary: _SqliteBoundary,
+    *,
+    expected_sha256: str,
+    expected_size_bytes: int,
+) -> None:
+    _reject_sqlite_sidecars(boundary.original_path, label=boundary.label)
+    try:
+        path_stat = os.stat(boundary.original_path, follow_symlinks=False)
+        descriptor_stat = os.fstat(boundary.descriptor)
+    except OSError as exc:
+        raise _error(f"{boundary.label} path or held descriptor is no longer available") from exc
+    if (
+        not stat.S_ISREG(path_stat.st_mode)
+        or not stat.S_ISREG(descriptor_stat.st_mode)
+        or (path_stat.st_dev, path_stat.st_ino) != boundary.identity
+        or (descriptor_stat.st_dev, descriptor_stat.st_ino) != boundary.identity
+        or _sha_descriptor(boundary.descriptor) != (expected_sha256, expected_size_bytes)
+    ):
+        raise _error(f"{boundary.label} path, inode, or bytes changed across the stable boundary")
+
+
+def _publish_private_sqlite(boundary: _SqliteBoundary) -> tuple[str, int]:
+    if not boundary.writable:
+        raise _error("a read-only SQLite snapshot cannot be published")
+    _reject_sqlite_sidecars(boundary.private_path, label=f"private {boundary.label}")
+    private_sha256, private_size = _sha_file(boundary.private_path)
+    _assert_sqlite_boundary_current(
+        boundary,
+        expected_sha256=boundary.initial_sha256,
+        expected_size_bytes=boundary.initial_size_bytes,
+    )
+    if (private_sha256, private_size) != (
+        boundary.initial_sha256,
+        boundary.initial_size_bytes,
+    ):
+        private_descriptor = os.open(
+            boundary.private_path,
+            os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW,
+        )
+        try:
+            os.ftruncate(boundary.descriptor, 0)
+            offset = 0
+            while chunk := os.pread(private_descriptor, 1024 * 1024, offset):
+                written = 0
+                while written < len(chunk):
+                    count = os.pwrite(
+                        boundary.descriptor,
+                        chunk[written:],
+                        offset + written,
+                    )
+                    if count <= 0:
+                        raise _error(f"{boundary.label} publish made no progress")
+                    written += count
+                offset += len(chunk)
+            if offset != private_size:
+                raise _error(f"private {boundary.label} changed while publishing")
+            os.fsync(boundary.descriptor)
+        finally:
+            os.close(private_descriptor)
+    _assert_sqlite_boundary_current(
+        boundary,
+        expected_sha256=private_sha256,
+        expected_size_bytes=private_size,
+    )
+    return private_sha256, private_size
+
+
+def _close_sqlite_boundaries(boundaries: Sequence[_SqliteBoundary]) -> None:
+    for boundary in reversed(boundaries):
+        try:
+            os.close(boundary.descriptor)
+        except OSError:
+            pass
 
 
 def _read_pinned_json(path: Path, expected_sha256: str, *, label: str) -> _PinnedJson:
@@ -1534,6 +1719,7 @@ def _bind_effective_frontier_database_ref(
     writable_database: Path,
     *,
     label: str,
+    expected_identity: tuple[int, int] | None = None,
 ) -> None:
     relative = PurePosixPath(reference_path)
     candidate = artifact_root.joinpath(*relative.parts)
@@ -1546,13 +1732,54 @@ def _bind_effective_frontier_database_ref(
     if not resolved.is_relative_to(artifact_root) or not resolved.is_file():
         raise _error(f"{label} reference is absent from the pinned artifact root")
     try:
-        if not os.path.samefile(resolved, writable_database):
+        if expected_identity is None:
+            matches = os.path.samefile(resolved, writable_database)
+        else:
+            reference_stat = os.stat(resolved, follow_symlinks=False)
+            matches = (
+                stat.S_ISREG(reference_stat.st_mode)
+                and (reference_stat.st_dev, reference_stat.st_ino) == expected_identity
+            )
+        if not matches:
             raise _error(f"{label} reference does not identify the writable database")
     except OSError as exc:
         raise _error(f"{label} reference identity cannot be compared") from exc
 
 
-def run_rollforward_table_repair_v1(
+def _bind_published_database_refs(
+    *,
+    artifact_root: Path,
+    repair_spec_config_path: Path,
+    repair_spec_config_sha256: str,
+    writable_store_boundary: _SqliteBoundary,
+    writable_results_boundary: _SqliteBoundary,
+    label_prefix: str,
+) -> None:
+    config = _validate_config(
+        _read_pinned_json(
+            repair_spec_config_path,
+            repair_spec_config_sha256,
+            label="external repair-spec config",
+        ).value
+    )
+    effective_artifact_root = _validate_artifact_root(artifact_root)
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        config["writable_page_store_ref_path"],
+        writable_store_boundary.original_path,
+        label=f"{label_prefix} page database",
+        expected_identity=writable_store_boundary.identity,
+    )
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        config["writable_results_database_ref_path"],
+        writable_results_boundary.original_path,
+        label=f"{label_prefix} results database",
+        expected_identity=writable_results_boundary.identity,
+    )
+
+
+def _run_rollforward_table_repair_on_private_sqlite_v1(
     *,
     family_sweep_path: Path,
     family_sweep_sha256: str,
@@ -1571,6 +1798,8 @@ def run_rollforward_table_repair_v1(
     dry_run: bool,
     writable_page_store: Path | None = None,
     writable_results_database: Path | None = None,
+    writable_page_store_ref_identity: tuple[int, int] | None = None,
+    writable_results_database_ref_identity: tuple[int, int] | None = None,
     openrouter_api_key: str | None = None,
     workers: int = 6,
     timeout_seconds: int = 900,
@@ -1655,12 +1884,14 @@ def run_rollforward_table_repair_v1(
             prepared.config["writable_page_store_ref_path"],
             writable_store,
             label="effective-frontier page database",
+            expected_identity=writable_page_store_ref_identity,
         )
         _bind_effective_frontier_database_ref(
             effective_artifact_root,
             prepared.config["writable_results_database_ref_path"],
             writable_results,
             label="effective-frontier results database",
+            expected_identity=writable_results_database_ref_identity,
         )
     _assert_frozen_database_unchanged(
         source_store,
@@ -2001,6 +2232,20 @@ def run_rollforward_table_repair_v1(
         or standard_overlay["replacements"] != expected_standard_replacements
     ):
         raise _error("standard family-results overlay differs from the audited repair overlay")
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        prepared.config["writable_page_store_ref_path"],
+        writable_store,
+        label="effective-frontier page database",
+        expected_identity=writable_page_store_ref_identity,
+    )
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        prepared.config["writable_results_database_ref_path"],
+        writable_results,
+        label="effective-frontier results database",
+        expected_identity=writable_results_database_ref_identity,
+    )
     _reject_sqlite_sidecars(writable_store, label="writable page-store copy")
     _reject_sqlite_sidecars(writable_results, label="writable family-results database copy")
     writable_sha, writable_size = _sha_file(writable_store)
@@ -2071,7 +2316,183 @@ def run_rollforward_table_repair_v1(
     return result
 
 
-def replay_sealed_rollforward_table_repair_v1(
+def run_rollforward_table_repair_v1(
+    *,
+    family_sweep_path: Path,
+    family_sweep_sha256: str,
+    selected_page_ids_path: Path,
+    selected_page_ids_sha256: str,
+    source_page_store: Path,
+    source_page_store_sha256: str,
+    source_results_database: Path,
+    source_results_database_sha256: str,
+    repair_spec_config_path: Path,
+    repair_spec_config_sha256: str,
+    workspace_root: Path,
+    runner_implementation_sha256: str,
+    artifact_root: Path,
+    artifact_dir: Path,
+    dry_run: bool,
+    writable_page_store: Path | None = None,
+    writable_results_database: Path | None = None,
+    openrouter_api_key: str | None = None,
+    workers: int = 6,
+    timeout_seconds: int = 900,
+    provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
+) -> dict[str, Any]:
+    """Run against descriptor-pinned private SQLite snapshots and work copies."""
+
+    boundaries: list[_SqliteBoundary] = []
+    with tempfile.TemporaryDirectory(prefix="family13-table-repair-sqlite-boundary-") as directory:
+        private_root = Path(directory)
+        try:
+            source_store_boundary = _establish_sqlite_boundary(
+                source_page_store,
+                source_page_store_sha256,
+                label="frozen source page store",
+                private_path=private_root / "source-page-store.sqlite3",
+                writable=False,
+            )
+            boundaries.append(source_store_boundary)
+            source_results_boundary = _establish_sqlite_boundary(
+                source_results_database,
+                source_results_database_sha256,
+                label="frozen source family-results database",
+                private_path=private_root / "source-family-results.sqlite3",
+                writable=False,
+            )
+            boundaries.append(source_results_boundary)
+            writable_store_boundary = None
+            writable_results_boundary = None
+            if not dry_run and writable_page_store is not None:
+                writable_store_boundary = _establish_sqlite_boundary(
+                    writable_page_store,
+                    source_page_store_sha256,
+                    label="writable page-store copy",
+                    private_path=private_root / "writable-page-store.sqlite3",
+                    writable=True,
+                )
+                boundaries.append(writable_store_boundary)
+                if writable_store_boundary.identity == source_store_boundary.identity:
+                    raise _error(
+                        "writable page-store copy is the frozen source file or one hard link to it"
+                    )
+            if not dry_run and writable_results_database is not None:
+                writable_results_boundary = _establish_sqlite_boundary(
+                    writable_results_database,
+                    source_results_database_sha256,
+                    label="writable family-results database copy",
+                    private_path=private_root / "writable-family-results.sqlite3",
+                    writable=True,
+                )
+                boundaries.append(writable_results_boundary)
+                if writable_results_boundary.identity == source_results_boundary.identity:
+                    raise _error(
+                        "writable family-results database copy is the frozen source file or "
+                        "one hard link to it"
+                    )
+            result = _run_rollforward_table_repair_on_private_sqlite_v1(
+                family_sweep_path=family_sweep_path,
+                family_sweep_sha256=family_sweep_sha256,
+                selected_page_ids_path=selected_page_ids_path,
+                selected_page_ids_sha256=selected_page_ids_sha256,
+                source_page_store=source_store_boundary.private_path,
+                source_page_store_sha256=source_page_store_sha256,
+                source_results_database=source_results_boundary.private_path,
+                source_results_database_sha256=source_results_database_sha256,
+                repair_spec_config_path=repair_spec_config_path,
+                repair_spec_config_sha256=repair_spec_config_sha256,
+                workspace_root=workspace_root,
+                runner_implementation_sha256=runner_implementation_sha256,
+                artifact_root=artifact_root,
+                artifact_dir=artifact_dir,
+                dry_run=dry_run,
+                writable_page_store=(
+                    None
+                    if writable_store_boundary is None
+                    else writable_store_boundary.private_path
+                ),
+                writable_results_database=(
+                    None
+                    if writable_results_boundary is None
+                    else writable_results_boundary.private_path
+                ),
+                writable_page_store_ref_identity=(
+                    None if writable_store_boundary is None else writable_store_boundary.identity
+                ),
+                writable_results_database_ref_identity=(
+                    None
+                    if writable_results_boundary is None
+                    else writable_results_boundary.identity
+                ),
+                openrouter_api_key=openrouter_api_key,
+                workers=workers,
+                timeout_seconds=timeout_seconds,
+                provider_call=provider_call,
+            )
+            _assert_sqlite_boundary_current(
+                source_store_boundary,
+                expected_sha256=source_store_boundary.initial_sha256,
+                expected_size_bytes=source_store_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                source_results_boundary,
+                expected_sha256=source_results_boundary.initial_sha256,
+                expected_size_bytes=source_results_boundary.initial_size_bytes,
+            )
+            if writable_store_boundary is not None and writable_results_boundary is not None:
+                _assert_sqlite_boundary_current(
+                    writable_store_boundary,
+                    expected_sha256=writable_store_boundary.initial_sha256,
+                    expected_size_bytes=writable_store_boundary.initial_size_bytes,
+                )
+                _assert_sqlite_boundary_current(
+                    writable_results_boundary,
+                    expected_sha256=writable_results_boundary.initial_sha256,
+                    expected_size_bytes=writable_results_boundary.initial_size_bytes,
+                )
+                if result.get("disposition") == "REPAIR_FRONTIER_COMPLETE":
+                    published_store = _publish_private_sqlite(writable_store_boundary)
+                    published_results = _publish_private_sqlite(writable_results_boundary)
+                    if result.get("writable_page_store") != {
+                        "sha256": published_store[0],
+                        "size_bytes": published_store[1],
+                    }:
+                        raise _error("published page-store bytes differ from the run result")
+                    if result.get("writable_results_database") != {
+                        "sha256": published_results[0],
+                        "size_bytes": published_results[1],
+                    }:
+                        raise _error("published family-results bytes differ from the run result")
+                    _bind_published_database_refs(
+                        artifact_root=artifact_root,
+                        repair_spec_config_path=repair_spec_config_path,
+                        repair_spec_config_sha256=repair_spec_config_sha256,
+                        writable_store_boundary=writable_store_boundary,
+                        writable_results_boundary=writable_results_boundary,
+                        label_prefix="published effective-frontier",
+                    )
+                elif result.get("disposition") not in {
+                    "REPAIR_CAPTURE_INCOMPLETE",
+                    "REPAIR_FRONTIER_INCOMPLETE",
+                }:
+                    raise _error("bounded provider run returned an unknown terminal disposition")
+            _assert_sqlite_boundary_current(
+                source_store_boundary,
+                expected_sha256=source_store_boundary.initial_sha256,
+                expected_size_bytes=source_store_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                source_results_boundary,
+                expected_sha256=source_results_boundary.initial_sha256,
+                expected_size_bytes=source_results_boundary.initial_size_bytes,
+            )
+            return result
+        finally:
+            _close_sqlite_boundaries(boundaries)
+
+
+def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
     *,
     family_sweep_path: Path,
     family_sweep_sha256: str,
@@ -2091,6 +2512,8 @@ def replay_sealed_rollforward_table_repair_v1(
     replay_artifact_dir: Path,
     writable_page_store: Path,
     writable_results_database: Path,
+    writable_page_store_ref_identity: tuple[int, int] | None = None,
+    writable_results_database_ref_identity: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """Replay sealed provider observations onto fresh DB copies without a provider call."""
 
@@ -2145,12 +2568,14 @@ def replay_sealed_rollforward_table_repair_v1(
         prepared.config["writable_page_store_ref_path"],
         writable_store,
         label="effective-frontier replay page database",
+        expected_identity=writable_page_store_ref_identity,
     )
     _bind_effective_frontier_database_ref(
         effective_artifact_root,
         prepared.config["writable_results_database_ref_path"],
         writable_results,
         label="effective-frontier replay results database",
+        expected_identity=writable_results_database_ref_identity,
     )
     sealed_input = Path(sealed_artifact_dir)
     sealed_output = sealed_input.resolve()
@@ -2415,6 +2840,20 @@ def replay_sealed_rollforward_table_repair_v1(
         or standard_overlay["replacements"] != expected_replacements
     ):
         raise _error("fresh replay standard overlay differs from the audited overlay")
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        prepared.config["writable_page_store_ref_path"],
+        writable_store,
+        label="effective-frontier replay page database",
+        expected_identity=writable_page_store_ref_identity,
+    )
+    _bind_effective_frontier_database_ref(
+        effective_artifact_root,
+        prepared.config["writable_results_database_ref_path"],
+        writable_results,
+        label="effective-frontier replay results database",
+        expected_identity=writable_results_database_ref_identity,
+    )
     _reject_sqlite_sidecars(writable_store, label="fresh replay page-store copy")
     _reject_sqlite_sidecars(
         writable_results,
@@ -2480,6 +2919,151 @@ def replay_sealed_rollforward_table_repair_v1(
         label="frozen source family-results database",
     )
     return result
+
+
+def replay_sealed_rollforward_table_repair_v1(
+    *,
+    family_sweep_path: Path,
+    family_sweep_sha256: str,
+    selected_page_ids_path: Path,
+    selected_page_ids_sha256: str,
+    source_page_store: Path,
+    source_page_store_sha256: str,
+    source_results_database: Path,
+    source_results_database_sha256: str,
+    repair_spec_config_path: Path,
+    repair_spec_config_sha256: str,
+    workspace_root: Path,
+    runner_implementation_sha256: str,
+    artifact_root: Path,
+    sealed_artifact_dir: Path,
+    sealed_run_result_sha256: str,
+    replay_artifact_dir: Path,
+    writable_page_store: Path,
+    writable_results_database: Path,
+) -> dict[str, Any]:
+    """Replay sealed artifacts on descriptor-pinned private SQLite work copies."""
+
+    boundaries: list[_SqliteBoundary] = []
+    with tempfile.TemporaryDirectory(prefix="family13-table-repair-replay-sqlite-") as directory:
+        private_root = Path(directory)
+        try:
+            source_store_boundary = _establish_sqlite_boundary(
+                source_page_store,
+                source_page_store_sha256,
+                label="frozen source page store",
+                private_path=private_root / "source-page-store.sqlite3",
+                writable=False,
+            )
+            boundaries.append(source_store_boundary)
+            source_results_boundary = _establish_sqlite_boundary(
+                source_results_database,
+                source_results_database_sha256,
+                label="frozen source family-results database",
+                private_path=private_root / "source-family-results.sqlite3",
+                writable=False,
+            )
+            boundaries.append(source_results_boundary)
+            writable_store_boundary = _establish_sqlite_boundary(
+                writable_page_store,
+                source_page_store_sha256,
+                label="fresh replay page-store copy",
+                private_path=private_root / "writable-page-store.sqlite3",
+                writable=True,
+            )
+            boundaries.append(writable_store_boundary)
+            if writable_store_boundary.identity == source_store_boundary.identity:
+                raise _error(
+                    "fresh replay page-store copy is the frozen source file or one hard link to it"
+                )
+            writable_results_boundary = _establish_sqlite_boundary(
+                writable_results_database,
+                source_results_database_sha256,
+                label="fresh replay family-results database copy",
+                private_path=private_root / "writable-family-results.sqlite3",
+                writable=True,
+            )
+            boundaries.append(writable_results_boundary)
+            if writable_results_boundary.identity == source_results_boundary.identity:
+                raise _error(
+                    "fresh replay family-results database copy is the frozen source file or "
+                    "one hard link to it"
+                )
+            result = _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
+                family_sweep_path=family_sweep_path,
+                family_sweep_sha256=family_sweep_sha256,
+                selected_page_ids_path=selected_page_ids_path,
+                selected_page_ids_sha256=selected_page_ids_sha256,
+                source_page_store=source_store_boundary.private_path,
+                source_page_store_sha256=source_page_store_sha256,
+                source_results_database=source_results_boundary.private_path,
+                source_results_database_sha256=source_results_database_sha256,
+                repair_spec_config_path=repair_spec_config_path,
+                repair_spec_config_sha256=repair_spec_config_sha256,
+                workspace_root=workspace_root,
+                runner_implementation_sha256=runner_implementation_sha256,
+                artifact_root=artifact_root,
+                sealed_artifact_dir=sealed_artifact_dir,
+                sealed_run_result_sha256=sealed_run_result_sha256,
+                replay_artifact_dir=replay_artifact_dir,
+                writable_page_store=writable_store_boundary.private_path,
+                writable_results_database=writable_results_boundary.private_path,
+                writable_page_store_ref_identity=writable_store_boundary.identity,
+                writable_results_database_ref_identity=writable_results_boundary.identity,
+            )
+            _assert_sqlite_boundary_current(
+                source_store_boundary,
+                expected_sha256=source_store_boundary.initial_sha256,
+                expected_size_bytes=source_store_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                source_results_boundary,
+                expected_sha256=source_results_boundary.initial_sha256,
+                expected_size_bytes=source_results_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                writable_store_boundary,
+                expected_sha256=writable_store_boundary.initial_sha256,
+                expected_size_bytes=writable_store_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                writable_results_boundary,
+                expected_sha256=writable_results_boundary.initial_sha256,
+                expected_size_bytes=writable_results_boundary.initial_size_bytes,
+            )
+            published_store = _publish_private_sqlite(writable_store_boundary)
+            published_results = _publish_private_sqlite(writable_results_boundary)
+            if result.get("writable_page_store") != {
+                "sha256": published_store[0],
+                "size_bytes": published_store[1],
+            }:
+                raise _error("published replay page-store bytes differ from the run result")
+            if result.get("writable_results_database") != {
+                "sha256": published_results[0],
+                "size_bytes": published_results[1],
+            }:
+                raise _error("published replay family-results bytes differ from the run result")
+            _bind_published_database_refs(
+                artifact_root=artifact_root,
+                repair_spec_config_path=repair_spec_config_path,
+                repair_spec_config_sha256=repair_spec_config_sha256,
+                writable_store_boundary=writable_store_boundary,
+                writable_results_boundary=writable_results_boundary,
+                label_prefix="published replay effective-frontier",
+            )
+            _assert_sqlite_boundary_current(
+                source_store_boundary,
+                expected_sha256=source_store_boundary.initial_sha256,
+                expected_size_bytes=source_store_boundary.initial_size_bytes,
+            )
+            _assert_sqlite_boundary_current(
+                source_results_boundary,
+                expected_sha256=source_results_boundary.initial_sha256,
+                expected_size_bytes=source_results_boundary.initial_size_bytes,
+            )
+            return result
+        finally:
+            _close_sqlite_boundaries(boundaries)
 
 
 def _parser() -> argparse.ArgumentParser:
