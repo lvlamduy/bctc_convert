@@ -695,9 +695,9 @@ def _solve(
                     authoritative_visible = True
             maximum_component_ordinal = max(component["ordinal"] for component in components)
             for record in anonymous:
-                if record.get("owner_role") == result_role or result_role in record.get(
-                    "allowed_result_roles", set()
-                ):
+                if (
+                    record.get("owner_role") == result_role and "allowed_result_roles" not in record
+                ) or result_role in record.get("authoritative_result_roles", set()):
                     authoritative_visible = True
                 if (
                     record["row_id"] not in used_anonymous
@@ -1135,8 +1135,9 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             # zero-valued accounting result.  Its children/subtotal decide it.
             continue
         elif row.get("row_kind") in {"SUBTOTAL", "TOTAL"}:
-            if owner is None:
+            if owner is None and row.get("row_kind") == "TOTAL":
                 record["allowed_result_roles"] = {compiled_specs["family_result_role"]}
+                record["authoritative_result_roles"] = {compiled_specs["family_result_role"]}
             anonymous.append(record)
         elif all(value is None for value in values):
             continue

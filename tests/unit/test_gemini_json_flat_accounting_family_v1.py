@@ -989,6 +989,32 @@ def test_v3_lane_specific_frontier_rejects_same_role_consumed_twice_in_one_lane(
     } <= set(candidate["reasons"])
 
 
+def test_v3_unowned_intermediate_subtotal_does_not_impersonate_family_total() -> None:
+    page = _trading_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[-1] = {
+        "hierarchy_path_exact": [None],
+        "label_exact": None,
+        "row_kind": "SUBTOTAL",
+        "values_exact": ["1", "1"],
+    }
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    root = next(
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] == "EXPLICIT_NET_TOTAL"
+    )
+    assert root["mode"] == "DERIVED_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+
+    page["sections"][0]["tables"][0]["rows"][-1]["row_kind"] = "TOTAL"
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == UNRESOLVED
+    assert (
+        "EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:EXPLICIT_NET_TOTAL:0" in candidate["reasons"]
+    )
+
+
 def test_v3_root_raw_subset_requires_one_additive_child_not_provision_alone() -> None:
     candidate = _evaluate_trading(_trading_page(provision_only=True))
     assert candidate["status"] == UNRESOLVED
