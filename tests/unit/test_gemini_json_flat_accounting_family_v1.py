@@ -52,6 +52,17 @@ def _recursive_specs() -> tuple[dict, dict, dict]:
     )
 
 
+def _trading_specs() -> tuple[dict, dict, dict]:
+    return tuple(
+        json.loads((ROOT / path).read_text(encoding="utf-8"))
+        for path in (
+            "config/families/tm-trading-securities-topology-v1.json",
+            "config/families/tm-trading-securities-evaluation-v1.json",
+            "config/families/tm-trading-securities-schema-binding-v1.json",
+        )
+    )
+
+
 def _page() -> dict:
     return {
         "status": "FINANCIAL_NOTE_CONTENT",
@@ -119,6 +130,76 @@ def _evaluate(page: dict) -> dict:
         page_json=page,
         page_json_version_id="gfpstorev1:json:" + "1" * 64,
         physical_page=7,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+    )
+
+
+def _trading_page(*, provision_only: bool = False) -> dict:
+    rows = [
+        {
+            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["-", "-"],
+        }
+    ]
+    if not provision_only:
+        rows[:0] = [
+            {
+                "hierarchy_path_exact": ["Chứng khoán nợ"],
+                "label_exact": "Chứng khoán nợ",
+                "row_kind": "SUBTOTAL",
+                "values_exact": ["100", "90"],
+            },
+            {
+                "hierarchy_path_exact": ["Chứng khoán vốn"],
+                "label_exact": "Chứng khoán vốn",
+                "row_kind": "SUBTOTAL",
+                "values_exact": ["50", "40"],
+            },
+        ]
+    rows.append(
+        {
+            "hierarchy_path_exact": ["Giá trị thuần"],
+            "label_exact": "Giá trị thuần",
+            "row_kind": "TOTAL",
+            "values_exact": ["0", "0"] if provision_only else ["150", "130"],
+        }
+    )
+    return {
+        "status": "FINANCIAL_NOTE_CONTENT",
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "title_exact": "CHỨNG KHOÁN KINH DOANH",
+                "tables": [
+                    {
+                        "columns": [
+                            {"header_path_exact": ["2025"], "value_kind": "MONEY"},
+                            {"header_path_exact": ["2024"], "value_kind": "MONEY"},
+                        ],
+                        "continuation": "NONE",
+                        "rows": rows,
+                        "title_exact": None,
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+            }
+        ],
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+    }
+
+
+def _evaluate_trading(page: dict) -> dict:
+    topology, evaluation, schema = _trading_specs()
+    return evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id="gfpstorev1:json:" + "4" * 64,
+        physical_page=8,
         section_id="s1",
         table_id="t1",
         compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
@@ -737,3 +818,144 @@ def test_flat_family_sweep_metrics_and_self_identity() -> None:
     tampered["metrics"]["mapping_count"] += 1
     with pytest.raises(ValueError, match="does not replay exactly"):
         validate_gemini_json_flat_family_sweep_v1(tampered)
+
+
+def test_v3_root_prefers_exact_maximum_frontier_and_consumes_zero_provision_once() -> None:
+    candidate = _evaluate_trading(_trading_page())
+    assert candidate["status"] == READY
+    root_receipts = [
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] == "EXPLICIT_NET_TOTAL"
+    ]
+    assert len(root_receipts) == 1
+    assert root_receipts[0]["component_roles"] == [
+        "DEBT_SECURITIES_GROUP",
+        "EQUITY_SECURITIES_GROUP",
+        "TRADING_SECURITIES_PROVISION_GROUP",
+    ]
+    assert (
+        sum(
+            equation["component_roles"].count("TRADING_SECURITIES_PROVISION_GROUP")
+            for equation in candidate["closure_receipt"]["equations"]
+        )
+        == 1
+    )
+
+
+def test_v3_root_raw_subset_requires_one_additive_child_not_provision_alone() -> None:
+    candidate = _evaluate_trading(_trading_page(provision_only=True))
+    assert candidate["status"] == UNRESOLVED
+    assert "NO_EXHAUSTIVE_DIRECT_FRONTIER:EXPLICIT_NET_TOTAL" in candidate["reasons"]
+
+    topology, evaluation, schema = _trading_specs()
+    invalid = deepcopy(evaluation)
+    invalid["hierarchical_closure_spec"]["equations"][-1]["component_role_alternatives"][-1][
+        "minimum_additive_child_count"
+    ] = "1"
+    with pytest.raises(ValueError, match="alternative is invalid"):
+        compile_gemini_json_flat_family_specs_v1(topology, invalid, schema)
+
+
+def test_v3_label_only_groups_derive_from_complete_optional_children() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán nợ",
+                "Chứng khoán nợ do các TCTD khác trong nước phát hành (i) (ii)",
+            ],
+            "label_exact": "Chứng khoán nợ do các TCTD khác trong nước phát hành (i) (ii)",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán vốn"],
+            "label_exact": "Chứng khoán vốn",
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán vốn",
+                "Chứng khoán vốn do các TCKT trong nước phát hành",
+            ],
+            "label_exact": "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "row_kind": "ITEM",
+            "values_exact": ["50", "40"],
+        },
+        {
+            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Dự phòng rủi ro chứng khoán kinh doanh",
+                "Dự phòng giảm giá chứng khoán kinh doanh",
+            ],
+            "label_exact": "Dự phòng giảm giá chứng khoán kinh doanh",
+            "row_kind": "ITEM",
+            "values_exact": ["-", "-"],
+        },
+        {
+            "hierarchy_path_exact": ["Tổng chứng khoán kinh doanh"],
+            "label_exact": "Tổng chứng khoán kinh doanh",
+            "row_kind": "SUBTOTAL",
+            "values_exact": ["150", "130"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["150", "130"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    equations = {
+        equation["result_role"]: equation for equation in candidate["closure_receipt"]["equations"]
+    }
+    assert equations["DEBT_SECURITIES_GROUP"]["component_roles"] == [
+        "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
+    ]
+    assert equations["EQUITY_SECURITIES_GROUP"]["component_roles"] == [
+        "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    ]
+    assert equations["TRADING_SECURITIES_PROVISION_GROUP"]["component_roles"] == [
+        "PROVISION_PRICE_DECREASE"
+    ]
+
+
+def test_v3_one_visible_listing_child_exactly_corroborates_its_group() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "GROUP",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ", "Đã niêm yết"],
+            "label_exact": "Đã niêm yết",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "90"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["100", "90"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    assert any(mapping["role"] == "DEBT_LISTED" for mapping in candidate["mappings"])

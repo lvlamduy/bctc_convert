@@ -25,9 +25,14 @@ CLAIM_BOUNDARY = (
     "ACCOUNTING_CLOSURE_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_PPOCR_"
     "VIETOCR_BANK_FILE_PAGE_NOTE_ROUTING_BACKSOLVE_CANONICAL_OR_EXPORT_AUTHORITY"
 )
-_EVALUATION_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
-_SCHEMA_FORMAT = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5"
-_ROOT_ROLE_KINDS = {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+_EVALUATION_FORMATS = {
+    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3",
+    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
+}
+_SCHEMA_FORMATS = {
+    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
+    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5",
+}
 _DASHES = {"-", "–", "—", "_"}
 
 
@@ -40,7 +45,14 @@ def _error(message: str) -> ValueError:
 
 
 def _normalized(value: Any) -> str:
-    return normalize_vietnamese_anchor_v1(value) if type(value) is str else ""
+    folded = normalize_vietnamese_anchor_v1(value) if type(value) is str else ""
+    for expanded, acronym in (
+        ("to chuc kinh te", "tckt"),
+        ("to chuc tin dung", "tctd"),
+        ("ngan hang thuong mai", "nhtm"),
+    ):
+        folded = folded.replace(f"{expanded} {acronym}", expanded)
+    return folded
 
 
 def _without_leading_ordinal(folded: str) -> str:
@@ -76,7 +88,7 @@ def _matches(value: Any, alias: str) -> bool:
     if alias in forms:
         return True
     suffixes = {form.removeprefix(alias).strip() for form in forms if form.startswith(alias + " ")}
-    return bool(suffixes) and suffixes <= {
+    allowed_suffix_tokens = {
         "1",
         "2",
         "3",
@@ -88,6 +100,10 @@ def _matches(value: Any, alias: str) -> bool:
         "iv",
         "v",
     }
+    return bool(suffixes) and all(
+        suffix and all(token in allowed_suffix_tokens for token in suffix.split())
+        for suffix in suffixes
+    )
 
 
 def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
@@ -169,20 +185,26 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         topology = compile_accounting_family_topology_spec_v1(topology_spec)
     except ValueError as exc:
         raise _error("Gemini JSON hierarchy topology spec is invalid") from exc
+    evaluation_format = (
+        evaluation_spec.get("format_version") if type(evaluation_spec) is dict else None
+    )
+    evaluation_keys = {
+        "closure_policy",
+        "expected_lane_unit_kinds",
+        "family_id",
+        "format_version",
+        "hierarchical_closure_spec",
+        "period_semantics",
+    }
+    if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4":
+        evaluation_keys |= {
+            "candidate_selection_policy",
+            "occurrence_row_axis_policy",
+        }
     if (
         type(evaluation_spec) is not dict
-        or set(evaluation_spec)
-        != {
-            "candidate_selection_policy",
-            "closure_policy",
-            "expected_lane_unit_kinds",
-            "family_id",
-            "format_version",
-            "hierarchical_closure_spec",
-            "occurrence_row_axis_policy",
-            "period_semantics",
-        }
-        or evaluation_spec.get("format_version") != _EVALUATION_FORMAT
+        or set(evaluation_spec) != evaluation_keys
+        or evaluation_format not in _EVALUATION_FORMATS
         or evaluation_spec.get("family_id") != topology["family_id"]
         or evaluation_spec.get("expected_lane_unit_kinds") != ["MONEY", "MONEY"]
     ):
@@ -214,21 +236,55 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         checked_alternatives = []
         for alternative in alternatives:
             roles = alternative.get("component_roles") if type(alternative) is dict else None
+            coverage = alternative.get("coverage_policy") if type(alternative) is dict else None
+            if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4":
+                minimum = len(roles) if type(roles) is list else None
+                minimum_additive = 0
+                derivation = alternative.get("derivation_policy")
+                valid_policy = coverage == "EXHAUSTIVE_COMPONENT_SET" and derivation in {
+                    "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS",
+                    "VISIBLE_RESULT_CORROBORATION_ONLY",
+                }
+            else:
+                minimum = alternative.get("minimum_component_count")
+                minimum_additive = alternative.get("minimum_additive_child_count", 0)
+                derivation = (
+                    "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+                    if coverage == "EXHAUSTIVE_COMPONENT_SET"
+                    else "VISIBLE_RESULT_CORROBORATION_ONLY"
+                )
+                valid_policy = (
+                    coverage
+                    in {
+                        "EXHAUSTIVE_COMPONENT_SET",
+                        "VISIBLE_RESULT_CORROBORATION_ONLY",
+                    }
+                    and type(minimum) is int
+                    and type(minimum_additive) is int
+                    and type(roles) is list
+                    and 1 <= minimum <= len(roles)
+                    and 0 <= minimum_additive <= len(roles)
+                )
             if (
                 type(roles) is not list
                 or not roles
                 or len(roles) != len(set(roles))
                 or result in roles
                 or any(role not in known_roles for role in roles)
-                or alternative.get("coverage_policy") != "EXHAUSTIVE_COMPONENT_SET"
-                or alternative.get("derivation_policy")
-                not in {
-                    "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS",
-                    "VISIBLE_RESULT_CORROBORATION_ONLY",
-                }
+                or not valid_policy
             ):
                 raise _error("Gemini JSON hierarchy equation alternative is invalid")
-            checked_alternatives.append(canonical_clone_v1(alternative))
+            checked_alternatives.append(
+                {
+                    **canonical_clone_v1(alternative),
+                    "derivation_policy": derivation,
+                    "minimum_additive_child_count": minimum_additive,
+                    "minimum_component_count": minimum,
+                    "variable_component_subset": (
+                        evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
+                    ),
+                }
+            )
         visible_roles = equation.get("visible_result_roles")
         if (
             type(visible_roles) is not list
@@ -259,8 +315,19 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                 progressed = True
         if not progressed:
             raise _error("Gemini JSON hierarchy equation graph is cyclic")
-    if topology["parent"]["role"] not in result_roles:
-        raise _error("Gemini JSON hierarchy has no family-root equation")
+    component_result_roles = {
+        role
+        for equation in equations
+        for alternative in equation["component_role_alternatives"]
+        for role in alternative["component_roles"]
+        if role in result_roles
+    }
+    family_result_roles = result_roles - component_result_roles
+    family_result_role = topology["parent"]["role"]
+    if family_result_role not in result_roles:
+        if len(family_result_roles) != 1:
+            raise _error("Gemini JSON hierarchy has no unique family-root equation")
+        family_result_role = next(iter(family_result_roles))
 
     if (
         type(schema_spec) is not dict
@@ -273,7 +340,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "ignored_roles",
             "role_bindings",
         }
-        or schema_spec.get("format_version") != _SCHEMA_FORMAT
+        or schema_spec.get("format_version") not in _SCHEMA_FORMATS
         or schema_spec.get("family_id") != topology["family_id"]
         or type(schema_spec.get("family_report_norm_id")) is not int
         or type(schema_spec.get("ignored_roles")) is not list
@@ -304,6 +371,16 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
     }
     anchor_groups = []
     for combination in topology["required_role_combinations"]:
+        if len(combination) == 1:
+            role = combination[0]
+            owners = {
+                matcher["within_role"]
+                for matcher in children_by_role[role]["matchers"]
+                if matcher["within_role"] is not None
+            }
+            if len(owners) != 1:
+                raise _error("Gemini JSON hierarchy single-role anchor has no unique owner")
+            combination = [next(iter(owners)), role]
         if len(combination) not in {2, 3}:
             raise _error("Gemini JSON hierarchy anchor combination is invalid")
         anchor_groups.append([aliases_by_role[role] for role in combination])
@@ -315,6 +392,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         "engine_format_version": FORMAT_VERSION,
         "equations": ordered,
         "evaluation": canonical_clone_v1(evaluation_spec),
+        "family_result_role": family_result_role,
         "ignored_roles": sorted(ignored),
         "schema": canonical_clone_v1(schema_spec),
         "topology": topology,
@@ -410,11 +488,12 @@ def _solve(
     ambiguous_provision_target: str | None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[str], set[str]]:
     topology = compiled["topology"]
-    parent_role = topology["parent"]["role"]
+    family_result_role = compiled["family_result_role"]
     resolved = dict(base_by_role)
     used_anonymous: set[str] = set()
     equations_receipt: list[dict[str, Any]] = []
     reasons: list[str] = []
+    deferred_visible_only_frontiers: list[tuple[str, set[str]]] = []
     component_parents: dict[str, set[str]] = defaultdict(set)
     for equation in compiled["equations"]:
         for alternative in equation["component_role_alternatives"]:
@@ -453,11 +532,44 @@ def _solve(
             record = resolved[role]
             owner = record.get("owner_role")
             allowed_parents = component_parents[role]
-            if owner is not None and owner in allowed_parents and owner != result_role:
-                continue
-            if owner is not None and result_role in allowed_parents and owner != result_role:
+            if (
+                owner is not None
+                and owner in resolved
+                and owner in allowed_parents
+                and owner != result_role
+            ):
                 continue
             direct_visible.add(role)
+        role_kinds = {child["role"]: child["role_kind"] for child in topology["children"]}
+        for total_role in sorted(
+            role for role in direct_visible if role_kinds.get(role) == "TOTAL"
+        ):
+            cooccurring = {
+                role
+                for alternative in equation["component_role_alternatives"]
+                if total_role in alternative["component_roles"]
+                for role in alternative["component_roles"]
+            }
+            subtotal_components = [
+                resolved[role]
+                for role in direct_visible - cooccurring - {total_role}
+                if role_kinds.get(role) in {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+            ]
+            if subtotal_components and _sum(subtotal_components, 2) == _coefficients(
+                resolved[total_role]
+            ):
+                equations_receipt.append(
+                    {
+                        "component_roles": [record["role"] for record in subtotal_components],
+                        "component_row_ids": [record["row_id"] for record in subtotal_components],
+                        "lane_component_sums": _coefficients(resolved[total_role]),
+                        "mode": "VISIBLE_TOTAL_EXACTLY_CORROBORATED_BY_DIRECT_COMPONENTS",
+                        "result_coefficients": _coefficients(resolved[total_role]),
+                        "result_role": total_role,
+                        "result_row_id": resolved[total_role]["row_id"],
+                    }
+                )
+                direct_visible -= {record["role"] for record in subtotal_components}
         existing = resolved.get(result_role)
         if not direct_visible:
             if existing is not None:
@@ -471,17 +583,34 @@ def _solve(
                     }
                 )
             continue
-        eligible = [
-            alternative
-            for alternative in equation["component_role_alternatives"]
-            if set(alternative["component_roles"]) == direct_visible
-        ]
+        eligible = []
+        for alternative in equation["component_role_alternatives"]:
+            declared = set(alternative["component_roles"])
+            if alternative["variable_component_subset"]:
+                selected_declared = direct_visible & declared
+                matches = (
+                    len(selected_declared) >= alternative["minimum_component_count"]
+                    and sum(role_kinds.get(role) == "ADDITIVE_CHILD" for role in selected_declared)
+                    >= alternative["minimum_additive_child_count"]
+                )
+            elif alternative["coverage_policy"] == "EXHAUSTIVE_COMPONENT_SET":
+                matches = declared == direct_visible
+            else:
+                matches = (
+                    direct_visible <= declared
+                    and len(direct_visible) >= alternative["minimum_component_count"]
+                )
+            if matches:
+                eligible.append(alternative)
         if not eligible:
             reasons.append(f"NO_EXHAUSTIVE_DIRECT_FRONTIER:{result_role}")
             continue
         alternatives = []
         for alternative in eligible:
-            components = [resolved[role] for role in alternative["component_roles"]]
+            selected_roles = [
+                role for role in alternative["component_roles"] if role in direct_visible
+            ]
+            components = [resolved[role] for role in selected_roles]
             sums = _sum(components, 2)
             carriers: list[dict[str, Any]] = []
             authoritative_visible = False
@@ -505,13 +634,25 @@ def _solve(
                     and record["ordinal"] > maximum_component_ordinal
                     and _coefficients(record) == sums
                     and result_role in record.get("allowed_result_roles", {result_role})
-                    and (
-                        record.get("owner_role") in {None, result_role}
-                        or result_role == parent_role
-                    )
+                    and record.get("owner_role") in {None, result_role, topology["parent"]["role"]}
                 ):
                     carriers.append(record)
             unique_carriers = {carrier["row_id"]: carrier for carrier in carriers}
+            if existing is not None and existing["row_id"] in unique_carriers:
+                corroborating = [
+                    record
+                    for row_id, record in unique_carriers.items()
+                    if row_id != existing["row_id"]
+                    and record.get("owner_role") == result_role
+                    and _coefficients(record) == sums
+                ]
+                if len(corroborating) == len(unique_carriers) - 1 == 1:
+                    unique_carriers = {
+                        existing["row_id"]: {
+                            **existing,
+                            "corroborating_result_row_ids": [corroborating[0]["row_id"]],
+                        }
+                    }
             if len(unique_carriers) == 1:
                 alternatives.append(
                     (alternative, components, sums, next(iter(unique_carriers.values())))
@@ -523,10 +664,72 @@ def _solve(
                 == "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
             ):
                 alternatives.append((alternative, components, sums, None))
-        if len(alternatives) != 1:
-            reasons.append(
-                f"EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:{result_role}:{len(alternatives)}"
+        alternatives_by_frontier = {}
+        for alternative, components, sums, carrier in alternatives:
+            key = (
+                tuple(record["role"] for record in components),
+                tuple(record["row_id"] for record in components),
+                carrier["row_id"] if carrier is not None else None,
+                tuple(sums),
             )
+            alternatives_by_frontier[key] = (alternative, components, sums, carrier)
+        alternatives = list(alternatives_by_frontier.values())
+        equivalent_presentation_frontiers: list[list[str]] = []
+        if len(alternatives) > 1:
+            signatures = {
+                (
+                    tuple(sums),
+                    carrier["row_id"] if carrier is not None else None,
+                )
+                for _alternative, _components, sums, carrier in alternatives
+            }
+            role_sets = [
+                {record["role"] for record in components}
+                for _alternative, components, _sums, _carrier in alternatives
+            ]
+            maximum_frontiers = [
+                index
+                for index, roles in enumerate(role_sets)
+                if all(
+                    index == other or roles > other_roles
+                    for other, other_roles in enumerate(role_sets)
+                )
+            ]
+            if len(maximum_frontiers) == 1:
+                alternatives = [alternatives[maximum_frontiers[0]]]
+                role_sets = [role_sets[maximum_frontiers[0]]]
+            if (
+                len(alternatives) > 1
+                and len(signatures) == 1
+                and all(
+                    not roles & other_roles
+                    for index, roles in enumerate(role_sets)
+                    for other_roles in role_sets[index + 1 :]
+                )
+            ):
+                equivalent_presentation_frontiers = [
+                    [record["role"] for record in components]
+                    for _alternative, components, _sums, _carrier in alternatives
+                ]
+                alternatives = alternatives[:1]
+        if len(alternatives) != 1:
+            result_is_visibly_declared = existing is not None or any(
+                record.get("owner_role") == result_role for record in anonymous
+            )
+            if (
+                not alternatives
+                and not result_is_visibly_declared
+                and eligible
+                and all(
+                    alternative["derivation_policy"] == "VISIBLE_RESULT_CORROBORATION_ONLY"
+                    for alternative in eligible
+                )
+            ):
+                deferred_visible_only_frontiers.append((result_role, direct_visible))
+            else:
+                reasons.append(
+                    f"EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:{result_role}:{len(alternatives)}"
+                )
             continue
         alternative, components, sums, carrier = alternatives[0]
         if carrier is None:
@@ -539,7 +742,7 @@ def _solve(
                     }
                     for coefficient in sums
                 ],
-                "derived_from_roles": list(alternative["component_roles"]),
+                "derived_from_roles": selected_roles,
                 "derived_from_row_ids": [component["row_id"] for component in components],
                 "label_exact": result_role,
                 "ordinal": max(component["ordinal"] for component in components),
@@ -553,17 +756,28 @@ def _solve(
             result = {**carrier, "owner_role": None, "role": result_role}
             if carrier["row_id"].startswith("r") and carrier not in base_by_role.values():
                 used_anonymous.add(carrier["row_id"])
+            used_anonymous.update(result.get("corroborating_result_row_ids", []))
             mode = "VISIBLE_RESULT_EXACTLY_CORROBORATED"
         resolved[result_role] = result
         equations_receipt.append(
             {
-                "component_roles": list(alternative["component_roles"]),
+                "component_roles": selected_roles,
                 "component_row_ids": [component["row_id"] for component in components],
                 "lane_component_sums": sums,
                 "mode": mode,
                 "result_coefficients": _coefficients(result),
                 "result_role": result_role,
                 "result_row_id": result["row_id"],
+                **(
+                    {"equivalent_presentation_frontiers": equivalent_presentation_frontiers}
+                    if equivalent_presentation_frontiers
+                    else {}
+                ),
+                **(
+                    {"corroborating_result_row_ids": result["corroborating_result_row_ids"]}
+                    if "corroborating_result_row_ids" in result
+                    else {}
+                ),
             }
         )
     if ambiguous_provision_target is not None:
@@ -573,7 +787,15 @@ def _solve(
         )
         if use_count != 1:
             reasons.append(f"INFERRED_AMBIGUOUS_PROVISION_USE_COUNT_NOT_ONE:{use_count}")
-    if parent_role not in resolved:
+    component_use_counts = {
+        role: sum(role in receipt.get("component_roles", []) for receipt in equations_receipt)
+        for _result_role, roles in deferred_visible_only_frontiers
+        for role in roles
+    }
+    for result_role, roles in deferred_visible_only_frontiers:
+        if any(component_use_counts[role] != 1 for role in roles):
+            reasons.append(f"UNRESOLVED_VISIBLE_ONLY_FRONTIER:{result_role}")
+    if family_result_role not in resolved:
         reasons.append("FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED")
     return resolved, equations_receipt, reasons, used_anonymous
 
@@ -663,6 +885,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     records_by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
     anonymous: list[dict[str, Any]] = []
     unmatched_numeric: list[int] = []
+    unrelated_group_labels: set[str] = set()
     for ordinal, row in rows:
         source_values = row.get("values_exact")
         if type(source_values) is not list or len(source_values) != len(columns or []):
@@ -677,6 +900,21 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         roles = _row_roles(
             row, topology=topology, aliases_by_role=compiled_specs["aliases_by_role"]
         )
+        path_labels = {
+            _normalized(value)
+            for value in row.get("hierarchy_path_exact", [])
+            if _normalized(value)
+        }
+        if not roles and path_labels & unrelated_group_labels:
+            continue
+        if (
+            not roles
+            and row.get("row_kind") == "GROUP"
+            and all(value is None for value in values)
+            and _normalized(row.get("label_exact"))
+        ):
+            unrelated_group_labels.add(_normalized(row["label_exact"]))
+            continue
         owner = _nearest_owner(
             row,
             structural_roles=structural_roles,
@@ -723,6 +961,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             # zero-valued accounting result.  Its children/subtotal decide it.
             continue
         elif row.get("row_kind") in {"SUBTOTAL", "TOTAL"}:
+            if owner is None:
+                record["allowed_result_roles"] = {compiled_specs["family_result_role"]}
             anonymous.append(record)
         elif all(value is None for value in values):
             continue
@@ -792,6 +1032,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
                 if len(exact_scope_targets) == 1:
                     targets = exact_scope_targets
     solutions = []
+    solution_failures: list[str] = []
     for target in targets:
         resolved, receipts, local_reasons, used = _solve(
             base_by_role=base,
@@ -801,8 +1042,12 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         )
         if not local_reasons:
             solutions.append((resolved, receipts, used, target))
+        else:
+            solution_failures.extend(local_reasons)
     if len(solutions) != 1:
         reasons.append(f"HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:{len(solutions)}")
+        if not solutions:
+            reasons.extend(solution_failures)
     if unmatched_numeric:
         reasons.append("UNBOUND_VISIBLE_NUMERIC_ROWS:" + ",".join(map(str, unmatched_numeric)))
     result = _candidate_result(
@@ -817,6 +1062,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         return result
     resolved, receipts, used_anonymous, inferred_target = solutions[0]
     root_role = topology["parent"]["role"]
+    family_result_role = compiled_specs["family_result_role"]
     mapping_roles = [root_role] + [
         child["role"]
         for child in topology["children"]
@@ -824,7 +1070,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     ]
     mappings = []
     for role in mapping_roles:
-        record = resolved.get(role)
+        record = resolved.get(family_result_role if role == root_role else role)
         if record is None:
             continue
         mapping = {

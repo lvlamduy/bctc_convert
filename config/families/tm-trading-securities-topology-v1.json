@@ -106,6 +106,7 @@
           "aliases": [
             "Chứng khoán do các TCKT nước ngoài phát hành",
             "Chứng khoán nợ do các TCKT nước ngoài phát hành",
+            "Chứng khoán nợ nước ngoài",
             "Chứng khoán nước ngoài"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
@@ -229,6 +230,7 @@
           "aliases": [
             "Chứng khoán vốn do các TCTD nước ngoài phát hành",
             "Chứng khoán vốn do các TCKT nước ngoài phát hành",
+            "Chứng khoán vốn nước ngoài",
             "Chứng khoán nước ngoài"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
@@ -391,7 +393,10 @@
         {
           "aliases": [
             "Dự phòng rủi ro chứng khoán kinh doanh",
-            "Dự phòng rủi ro chứng khoán"
+            "Dự phòng rủi ro chứng khoán",
+            "Dự phòng giảm giá",
+            "Dự phòng giảm giá chứng khoán",
+            "Dự phòng giảm giá chứng khoán kinh doanh"
           ],
           "within_role": null
         }

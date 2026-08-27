@@ -28,7 +28,11 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     evaluate_gemini_json_flat_family_table_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
+from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_clone_v1,
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
@@ -150,6 +154,186 @@ def _hit_has_explicit_parent(
     )
 
 
+def _normalized_column_axis(mapping: dict[str, Any]) -> tuple[tuple[str, str], ...] | None:
+    columns = mapping.get("columns")
+    if type(columns) is not list or not columns:
+        return None
+    result = []
+    for column in columns:
+        if type(column) is not dict or type(column.get("header_path_exact")) is not list:
+            return None
+        header = " ".join(value for value in column["header_path_exact"] if type(value) is str)
+        result.append((column.get("value_kind"), normalize_vietnamese_anchor_v1(header)))
+    return tuple(result)
+
+
+def _net_adjusted_presentation_bundle(
+    ready: list[dict[str, Any]], *, compiled_specs: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Compose one net table with adjacent disjoint gross classification views."""
+
+    root_mapping_role = compiled_specs["topology"]["parent"]["role"]
+    root_result_role = compiled_specs.get("family_result_role")
+    if type(root_result_role) is not str or len(ready) < 2:
+        return None
+    root_specs = [
+        equation
+        for equation in compiled_specs.get("equations", [])
+        if equation.get("result_role") == root_result_role
+    ]
+    if len(root_specs) != 1:
+        return None
+    declared_root_components = {
+        role
+        for alternative in root_specs[0]["component_role_alternatives"]
+        for role in alternative["component_roles"]
+    }
+    details = []
+    for candidate in ready:
+        if not {
+            "candidate_id",
+            "closure_receipt",
+            "mappings",
+            "page_json_version_id",
+            "physical_page",
+            "reasons",
+            "section_id",
+            "status",
+            "table_id",
+        } <= set(candidate):
+            return None
+        roots = [
+            mapping for mapping in candidate["mappings"] if mapping["role"] == root_mapping_role
+        ]
+        equations = candidate["closure_receipt"].get("equations")
+        if len(roots) != 1 or type(equations) is not list:
+            return None
+        root_equations = [
+            equation for equation in equations if equation.get("result_role") == root_result_role
+        ]
+        if len(root_equations) != 1:
+            return None
+        if not set(root_equations[0].get("component_roles", [])) <= declared_root_components:
+            return None
+        receipts = {
+            equation.get("result_role"): equation
+            for equation in equations
+            if type(equation) is dict and type(equation.get("result_role")) is str
+        }
+        adjustment_roles = []
+        adjustment_coefficients = None
+        for role in root_equations[0].get("component_roles", []):
+            receipt = receipts.get(role)
+            coefficients = receipt.get("result_coefficients") if receipt is not None else None
+            if (
+                type(coefficients) is list
+                and coefficients
+                and all(type(value) is int and value <= 0 for value in coefficients)
+                and any(value < 0 for value in coefficients)
+            ):
+                adjustment_roles.append(role)
+                if adjustment_coefficients is None:
+                    adjustment_coefficients = [0] * len(coefficients)
+                if len(coefficients) != len(adjustment_coefficients):
+                    return None
+                adjustment_coefficients = [
+                    total + value
+                    for total, value in zip(adjustment_coefficients, coefficients, strict=True)
+                ]
+        details.append(
+            {
+                "adjustment_coefficients": adjustment_coefficients,
+                "adjustment_roles": adjustment_roles,
+                "candidate": candidate,
+                "column_axis": _normalized_column_axis(roots[0]),
+                "root": roots[0],
+                "values": [value["coefficient"] for value in roots[0]["values"]],
+            }
+        )
+    if (
+        any(detail["column_axis"] is None for detail in details)
+        or len({detail["column_axis"] for detail in details}) != 1
+    ):
+        return None
+    adjusted = [detail for detail in details if detail["adjustment_roles"]]
+    if len(adjusted) != 1:
+        return None
+    net = adjusted[0]
+    gross = [detail for detail in details if detail is not net]
+    adjustment = net["adjustment_coefficients"]
+    if adjustment is None or any(
+        len(detail["values"]) != len(net["values"])
+        or [
+            gross_value + adjustment_value
+            for gross_value, adjustment_value in zip(detail["values"], adjustment, strict=True)
+        ]
+        != net["values"]
+        for detail in gross
+    ):
+        return None
+    net_page = net["candidate"]["physical_page"]
+    if any(abs(detail["candidate"]["physical_page"] - net_page) > 1 for detail in gross):
+        return None
+    nonroot_axes = [
+        [
+            mapping
+            for mapping in detail["candidate"]["mappings"]
+            if mapping["role"] != root_mapping_role
+        ]
+        for detail in details
+    ]
+    role_axes = [{mapping["role"] for mapping in axis} for axis in nonroot_axes]
+    rnid_axes = [{mapping["report_norm_id"] for mapping in axis} for axis in nonroot_axes]
+    if any(not axis for axis in role_axes) or any(
+        roles & other_roles or rnids & other_rnids
+        for index, (roles, rnids) in enumerate(zip(role_axes, rnid_axes, strict=True))
+        for other_roles, other_rnids in zip(
+            role_axes[index + 1 :], rnid_axes[index + 1 :], strict=True
+        )
+    ):
+        return None
+    ordered = [net, *sorted(gross, key=lambda detail: detail["candidate"]["physical_page"])]
+    mappings = [canonical_clone_v1(net["root"])]
+    for detail in ordered:
+        mappings.extend(
+            canonical_clone_v1(
+                [
+                    mapping
+                    for mapping in detail["candidate"]["mappings"]
+                    if mapping["role"] != root_mapping_role
+                ]
+            )
+        )
+    material = {
+        "closure_receipt": {
+            "adjustment_coefficients": adjustment,
+            "adjustment_roles": net["adjustment_roles"],
+            "component_candidate_ids": [detail["candidate"]["candidate_id"] for detail in ordered],
+            "component_closure_receipt_sha256": [
+                canonical_json_sha256_v1(detail["candidate"]["closure_receipt"])
+                for detail in ordered
+            ],
+            "rule": "NET_PRESENTATION_PLUS_ADJACENT_DISJOINT_GROSS_CLASSIFICATION_AXES",
+        },
+        "component_page_json_version_ids": [
+            detail["candidate"]["page_json_version_id"] for detail in ordered
+        ],
+        "component_table_ids": [detail["candidate"]["table_id"] for detail in ordered],
+        "family_id": net["candidate"].get("family_id"),
+        "mappings": mappings,
+        "page_json_version_id": net["candidate"]["page_json_version_id"],
+        "physical_page": net_page,
+        "reasons": [],
+        "section_id": net["candidate"]["section_id"],
+        "status": READY,
+        "table_id": net["candidate"]["table_id"],
+    }
+    return {
+        "candidate_id": "gjfafcv1:candidate:" + canonical_json_sha256_v1(material),
+        **material,
+    }
+
+
 def _selected_ready_candidate(
     ready: list[dict[str, Any]],
     *,
@@ -177,8 +361,10 @@ def _selected_ready_candidate(
         )
 
     signatures = [root_signature(candidate) for candidate in ready]
-    if any(signature is None for signature in signatures) or len(set(signatures)) != 1:
+    if any(signature is None for signature in signatures):
         return None
+    if len(set(signatures)) != 1:
+        return _net_adjusted_presentation_bundle(ready, compiled_specs=compiled_specs)
     structural_roles = {
         compiled_specs["topology"]["parent"]["role"],
         *(
@@ -202,7 +388,99 @@ def _selected_ready_candidate(
         for index, roles in enumerate(role_sets)
         if all(index == other or roles > other_roles for other, other_roles in enumerate(role_sets))
     ]
-    return ready[winners[0]] if len(winners) == 1 else None
+    if len(winners) == 1:
+        return ready[winners[0]]
+
+    # Gemini may faithfully emit two adjacent tables for two complete views of
+    # the same accounting population (for example issuer class and listing
+    # status).  Preserve both source-observed role axes rather than arbitrarily
+    # selecting one or summing the two presentations.  This composition is
+    # valid only on one page/section, with an identical visible root and
+    # pairwise-disjoint non-root schema roles.
+    required_provenance = {
+        "candidate_id",
+        "closure_receipt",
+        "mappings",
+        "page_json_version_id",
+        "physical_page",
+        "reasons",
+        "section_id",
+        "status",
+        "table_id",
+    }
+    if any(not required_provenance <= set(candidate) for candidate in ready):
+        return None
+    scopes = {
+        (
+            candidate["page_json_version_id"],
+            candidate["physical_page"],
+            candidate["section_id"],
+        )
+        for candidate in ready
+    }
+    table_ids = [candidate["table_id"] for candidate in ready]
+    if len(scopes) != 1 or len(set(table_ids)) != len(table_ids):
+        return None
+    root_role = compiled_specs["topology"]["parent"]["role"]
+    roots = []
+    nonroot_axes = []
+    for candidate in ready:
+        root_mappings = [
+            mapping for mapping in candidate["mappings"] if mapping["role"] == root_role
+        ]
+        if len(root_mappings) != 1:
+            return None
+        roots.append(root_mappings[0])
+        nonroot_axes.append(
+            [mapping for mapping in candidate["mappings"] if mapping["role"] != root_role]
+        )
+
+    def comparable_root(mapping: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "columns": mapping["columns"],
+            "report_norm_id": mapping["report_norm_id"],
+            "role": mapping["role"],
+            "values": mapping["values"],
+        }
+
+    if len({canonical_json_sha256_v1(comparable_root(root)) for root in roots}) != 1:
+        return None
+    role_axes = [{mapping["role"] for mapping in axis} for axis in nonroot_axes]
+    rnid_axes = [{mapping["report_norm_id"] for mapping in axis} for axis in nonroot_axes]
+    if any(not axis for axis in role_axes) or any(
+        roles & other_roles or rnids & other_rnids
+        for index, (roles, rnids) in enumerate(zip(role_axes, rnid_axes, strict=True))
+        for other_roles, other_rnids in zip(
+            role_axes[index + 1 :], rnid_axes[index + 1 :], strict=True
+        )
+    ):
+        return None
+    page_version_id, physical_page, section_id = next(iter(scopes))
+    mappings = [canonical_clone_v1(roots[0])]
+    for axis in nonroot_axes:
+        mappings.extend(canonical_clone_v1(axis))
+    material = {
+        "closure_receipt": {
+            "component_candidate_ids": [candidate["candidate_id"] for candidate in ready],
+            "component_closure_receipt_sha256": [
+                canonical_json_sha256_v1(candidate["closure_receipt"]) for candidate in ready
+            ],
+            "rule": "EQUIVALENT_DISJOINT_PRESENTATION_AXES_SHARE_ONE_EXACT_VISIBLE_ROOT",
+        },
+        "component_table_ids": table_ids,
+        "family_id": ready[0].get("family_id"),
+        "mappings": mappings,
+        "page_json_version_id": page_version_id,
+        "physical_page": physical_page,
+        "reasons": [],
+        "section_id": section_id,
+        "status": READY,
+        "table_id": table_ids[0],
+    }
+    return {
+        "candidate_id": "gjfafcv1:candidate:" + canonical_json_sha256_v1(material),
+        **material,
+    }
 
 
 def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str, Any]:
@@ -381,6 +659,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         mappings = []
         selected = _selected_ready_candidate(ready, compiled_specs=compiled)
         if selected is not None:
+            if selected["candidate_id"] not in {
+                candidate["candidate_id"] for candidate in candidates
+            }:
+                candidates = [*candidates, selected]
             status = READY
             selected_candidate_id = selected["candidate_id"]
             mappings = selected["mappings"]

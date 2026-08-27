@@ -50,6 +50,23 @@ def _candidate(candidate_id: str, roles: list[tuple[str, int]]) -> dict:
     }
 
 
+def _traceable_candidate(candidate_id: str, table_id: str, roles: list[tuple[str, int]]) -> dict:
+    candidate = _candidate(candidate_id, roles)
+    candidate.update(
+        {
+            "closure_receipt": {"rule": "EXACT", "table_id": table_id},
+            "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "physical_page": 7,
+            "reasons": [],
+            "section_id": "s1",
+            "status": target.READY,
+            "table_id": table_id,
+        }
+    )
+    return candidate
+
+
 def test_exact_role_rich_detail_uniquely_supersedes_its_summary() -> None:
     summary = _candidate(
         "summary",
@@ -124,3 +141,121 @@ def test_row_level_parent_authority_is_opt_in_for_recursive_json_engine() -> Non
         page_json=page,
         parent_aliases=aliases,
     )
+
+
+def test_disjoint_equivalent_table_presentations_are_composed_without_double_counting() -> None:
+    issuer = _traceable_candidate(
+        "issuer",
+        "t1",
+        [
+            ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+            ("DEMAND_DEPOSIT_VND", 578),
+        ],
+    )
+    currency = _traceable_candidate(
+        "currency",
+        "t2",
+        [
+            ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+            ("TERM_DEPOSIT_VND", 581),
+        ],
+    )
+    selected = target._selected_ready_candidate([issuer, currency], compiled_specs=_compiled())
+    assert selected is not None
+    assert selected["component_table_ids"] == ["t1", "t2"]
+    assert [mapping["role"] for mapping in selected["mappings"]] == [
+        "INTERBANK_DEPOSITS_AND_LOANS",
+        "DEMAND_DEPOSIT_VND",
+        "TERM_DEPOSIT_VND",
+    ]
+    assert selected["closure_receipt"]["component_candidate_ids"] == [
+        "issuer",
+        "currency",
+    ]
+
+    overlap = _traceable_candidate(
+        "overlap",
+        "t3",
+        [
+            ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+            ("DEMAND_DEPOSIT_VND", 578),
+        ],
+    )
+    assert target._selected_ready_candidate([issuer, overlap], compiled_specs=_compiled()) is None
+    currency["section_id"] = "s2"
+    assert target._selected_ready_candidate([issuer, currency], compiled_specs=_compiled()) is None
+
+
+def test_net_adjusted_table_supersedes_adjacent_gross_view_and_keeps_both_axes() -> None:
+    net = _traceable_candidate(
+        "net",
+        "t1",
+        [
+            ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+            ("DEMAND_DEPOSIT_VND", 578),
+        ],
+    )
+    gross = _traceable_candidate(
+        "gross",
+        "t1",
+        [
+            ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+            ("TERM_DEPOSIT_VND", 581),
+        ],
+    )
+    columns = [
+        {"header_path_exact": ["2025", "Triệu đồng"], "value_kind": "MONEY"},
+        {"header_path_exact": ["2024", "Triệu đồng"], "value_kind": "MONEY"},
+    ]
+    net["mappings"][0]["columns"] = columns
+    gross["mappings"][0]["columns"] = columns
+    for value, coefficient in zip(net["mappings"][0]["values"], (90, 80), strict=True):
+        value["coefficient"] = coefficient
+        value["source_text"] = str(coefficient)
+    for value, coefficient in zip(gross["mappings"][0]["values"], (100, 90), strict=True):
+        value["coefficient"] = coefficient
+        value["source_text"] = str(coefficient)
+    net["closure_receipt"] = {
+        "equations": [
+            {
+                "component_roles": [],
+                "result_coefficients": [-10, -10],
+                "result_role": "TOTAL_INTERBANK_PROVISION",
+            },
+            {
+                "component_roles": [
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                    "TOTAL_INTERBANK_PROVISION",
+                ],
+                "result_coefficients": [90, 80],
+                "result_role": "INTERBANK_DEPOSITS_AND_LOANS",
+            },
+        ]
+    }
+    gross["closure_receipt"] = {
+        "equations": [
+            {
+                "component_roles": [
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                ],
+                "result_coefficients": [100, 90],
+                "result_role": "INTERBANK_DEPOSITS_AND_LOANS",
+            }
+        ]
+    }
+    gross["physical_page"] = 8
+    gross["page_json_version_id"] = "gfpstorev1:json:" + "2" * 64
+    selected = target._selected_ready_candidate([net, gross], compiled_specs=_compiled())
+    assert selected is not None
+    assert selected["physical_page"] == 7
+    assert selected["closure_receipt"]["adjustment_coefficients"] == [-10, -10]
+    assert [mapping["role"] for mapping in selected["mappings"]] == [
+        "INTERBANK_DEPOSITS_AND_LOANS",
+        "DEMAND_DEPOSIT_VND",
+        "TERM_DEPOSIT_VND",
+    ]
+
+    gross["mappings"][0]["values"][0]["coefficient"] += 1
+    assert target._selected_ready_candidate([net, gross], compiled_specs=_compiled()) is None

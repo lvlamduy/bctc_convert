@@ -18,7 +18,7 @@
               "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
               "DEBT_OTHER"
             ],
-            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "minimum_component_count": 1
           },
           {
@@ -27,7 +27,7 @@
               "DEBT_UNLISTED"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
-            "minimum_component_count": 2
+            "minimum_component_count": 1
           }
         ],
         "result_role": "DEBT_SECURITIES_GROUP",
@@ -46,7 +46,7 @@
               "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
               "EQUITY_OTHER"
             ],
-            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "minimum_component_count": 1
           },
           {
@@ -55,7 +55,7 @@
               "EQUITY_UNLISTED"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
-            "minimum_component_count": 2
+            "minimum_component_count": 1
           }
         ],
         "result_role": "EQUITY_SECURITIES_GROUP",
@@ -73,7 +73,7 @@
               "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
               "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
             ],
-            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "minimum_component_count": 1
           },
           {
@@ -82,7 +82,7 @@
               "OTHER_UNLISTED"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
-            "minimum_component_count": 2
+            "minimum_component_count": 1
           }
         ],
         "result_role": "OTHER_TRADING_SECURITIES_GROUP",
@@ -99,7 +99,7 @@
               "PROVISION_GENERAL",
               "PROVISION_SPECIFIC"
             ],
-            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "minimum_component_count": 1
           }
         ],
@@ -113,11 +113,27 @@
         "component_role_alternatives": [
           {
             "component_roles": [
+              "EXPLICIT_GROSS_TOTAL"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 1
+          },
+          {
+            "component_roles": [
               "EXPLICIT_GROSS_TOTAL",
               "TRADING_SECURITIES_PROVISION_GROUP"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
             "minimum_component_count": 2
+          },
+          {
+            "component_roles": [
+              "DEBT_SECURITIES_GROUP",
+              "EQUITY_SECURITIES_GROUP",
+              "OTHER_TRADING_SECURITIES_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 1
           },
           {
             "component_roles": [
@@ -154,6 +170,7 @@
               "TRADING_SECURITIES_PROVISION_GROUP"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_additive_child_count": 1,
             "minimum_component_count": 1
           }
         ],
