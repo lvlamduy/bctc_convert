@@ -1,0 +1,247 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng chung"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "GENERAL_PROVISION_LANE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng cụ thể",
+            "Dự phòng riêng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SPECIFIC_PROVISION_LANE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ và ứng trước khách hàng",
+            "Dự phòng cho vay giao dịch ký quỹ và ứng trước khách hàng",
+            "Dự phòng cho vay giao dịch ký quỹ và ứng trước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "MARGIN_ADVANCE_PROVISION_LANE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Số dư đầu kỳ",
+            "Số dư đầu năm",
+            "Số dư dự phòng đầu kỳ",
+            "Số dư tại ngày 1 tháng 1",
+            "Số dư tại ngày 01 tháng 01",
+            "Tại ngày 1 tháng 1",
+            "Tại ngày 01 tháng 01",
+            "Tại ngày 1/1",
+            "Tại ngày 01/01",
+            "Số đầu kỳ",
+            "Số đầu năm"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OPENING_BALANCE_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "(Hoàn nhập)/trích lập dự phòng trong kỳ",
+            "(Hoàn nhập)/trích lập dự phòng trong năm",
+            "Trích lập/(Hoàn nhập) dự phòng trong kỳ",
+            "Trích lập/(Hoàn nhập) dự phòng trong năm",
+            "Trích lập dự phòng trong kỳ",
+            "Trích lập dự phòng trong năm",
+            "Trích lập trong kỳ",
+            "Trích lập trong năm",
+            "Dự phòng trích lập trong kỳ",
+            "Dự phòng trích lập trong năm",
+            "Hoàn nhập dự phòng trong kỳ",
+            "Hoàn nhập dự phòng trong năm",
+            "Trích lập dự phòng",
+            "Hoàn nhập dự phòng",
+            "Trích lập",
+            "Hoàn nhập"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_OR_REVERSAL_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Sử dụng dự phòng trong kỳ",
+            "Sử dụng dự phòng trong năm",
+            "Sử dụng dự phòng để xử lý các khoản nợ",
+            "Sử dụng dự phòng rủi ro tín dụng trong kỳ",
+            "Sử dụng dự phòng rủi ro tín dụng trong năm",
+            "Dự phòng đã sử dụng trong kỳ",
+            "Dự phòng đã sử dụng trong năm",
+            "Xử lý các khoản cho vay khó thu hồi bằng nguồn dự phòng",
+            "Xử lý các khoản nợ khó thu hồi bằng nguồn dự phòng",
+            "Xử lý các khoản nợ xấu bằng nguồn dự phòng",
+            "Xử lý các khoản nợ bằng nguồn dự phòng",
+            "Xử lý rủi ro bằng nguồn dự phòng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "USE_MOVEMENT_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chênh lệch tỷ giá",
+            "Chênh lệch tỷ giá hối đoái",
+            "Ảnh hưởng của chênh lệch tỷ giá"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_EXCHANGE_MOVEMENT_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giảm dự phòng rủi ro tín dụng trong kỳ",
+            "Giảm dự phòng rủi ro tín dụng trong năm",
+            "Giảm dự phòng trong kỳ",
+            "Giảm dự phòng trong năm"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DECREASE_MOVEMENT_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Điều chỉnh khác",
+            "Biến động khác",
+            "Thay đổi khác",
+            "Tăng khác",
+            "Giảm khác",
+            "Khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_MOVEMENT_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Số dư cuối kỳ",
+            "Số dư cuối năm",
+            "Số dư dự phòng cuối kỳ",
+            "Số dư tại ngày 31 tháng 12",
+            "Tại ngày 31 tháng 12",
+            "Tại ngày 30 tháng 6",
+            "Tại ngày 31 tháng 3",
+            "Tại ngày 30 tháng 9",
+            "Số cuối kỳ",
+            "Số cuối năm"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CLOSING_BALANCE_ROW",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chính sách dự phòng rủi ro tín dụng",
+    "Chứng khoán đầu tư",
+    "Dự phòng giảm giá chứng khoán",
+    "Dự phòng rủi ro cho các khoản nợ đã mua",
+    "Hoạt động mua nợ",
+    "Phân loại nợ và trích lập dự phòng",
+    "Thay đổi dự phòng rủi ro tín dụng chứng khoán đầu tư",
+    "Thư tín dụng",
+    "Nghiệp vụ phát hành thư tín dụng",
+    "Bảo lãnh và cam kết ngoại bảng"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 96,
+    "max_continuation_pages": 1,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Dự phòng rủi ro cho vay khách hàng",
+      "Biến động số dư dự phòng rủi ro cho vay khách hàng",
+      "Biến động số dư dự phòng rủi ro cho vay KH",
+      "Thay đổi dự phòng rủi ro cho vay khách hàng"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CUSTOMER_LOAN_PROVISION_MOVEMENT_OWNER"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "OPENING_BALANCE_ROW",
+      "PROVISION_OR_REVERSAL_ROW",
+      "CLOSING_BALANCE_ROW"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chính sách dự phòng rủi ro tín dụng",
+    "Chứng khoán đầu tư",
+    "Dự phòng giảm giá chứng khoán",
+    "Dự phòng rủi ro cho các khoản nợ đã mua",
+    "Hoạt động mua nợ",
+    "Phân loại nợ và trích lập dự phòng",
+    "Thay đổi dự phòng rủi ro tín dụng chứng khoán đầu tư",
+    "Thư tín dụng",
+    "Nghiệp vụ phát hành thư tín dụng",
+    "Bảo lãnh và cam kết ngoại bảng",
+    "Phân tích chất lượng nợ cho vay",
+    "Phân tích dư nợ cho vay theo ngành nghề kinh doanh",
+    "Phân tích theo loại hình doanh nghiệp"
+  ]
+}

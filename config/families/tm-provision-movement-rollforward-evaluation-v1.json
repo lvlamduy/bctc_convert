@@ -1,0 +1,139 @@
+{
+  "closure_policy": "EXACT_SIGNED_ROLLFORWARD_ONE_UNKNOWN_FULL_RANK",
+  "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+  "format_version": "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
+  "layout_spec": {
+    "allowed_orientations": [
+      "STACKED_PERIOD_BLOCKS",
+      "PERIOD_TABLES_LANE_COLUMNS",
+      "LANE_TABLES_PERIOD_COLUMNS"
+    ],
+    "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+    "format_version": "ACCOUNTING_ROLLFORWARD_LAYOUT_SPEC_V1",
+    "lane_roles": [
+      {
+        "aliases": [
+          "Dự phòng chung"
+        ],
+        "optional": false,
+        "role": "GENERAL_PROVISION_LANE"
+      },
+      {
+        "aliases": [
+          "Dự phòng cụ thể",
+          "Dự phòng riêng"
+        ],
+        "optional": false,
+        "role": "SPECIFIC_PROVISION_LANE"
+      },
+      {
+        "aliases": [
+          "Dự phòng cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+          "Dự phòng rủi ro cho vay giao dịch ký quỹ và ứng trước khách hàng",
+          "Dự phòng cho vay giao dịch ký quỹ và ứng trước khách hàng",
+          "Dự phòng cho vay giao dịch ký quỹ và ứng trước"
+        ],
+        "optional": true,
+        "role": "MARGIN_ADVANCE_PROVISION_LANE"
+      }
+    ],
+    "max_component_tables": 2,
+    "max_page_span": 1,
+    "minimum_required_lanes": 2,
+    "movement_roles": [
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "OPENING",
+        "required": true,
+        "role": "OPENING_BALANCE_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "PROVISION_OR_REVERSAL",
+        "required": true,
+        "role": "PROVISION_OR_REVERSAL_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "USE",
+        "required": false,
+        "role": "USE_MOVEMENT_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "FOREIGN_EXCHANGE",
+        "required": false,
+        "role": "FOREIGN_EXCHANGE_MOVEMENT_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "DECREASE",
+        "required": false,
+        "role": "DECREASE_MOVEMENT_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": 1,
+        "kind": "OTHER",
+        "required": false,
+        "role": "OTHER_MOVEMENT_ROW"
+      },
+      {
+        "allow_one_unknown_inference": true,
+        "equation_coefficient": -1,
+        "kind": "CLOSING",
+        "required": true,
+        "role": "CLOSING_BALANCE_ROW"
+      }
+    ],
+    "population_policy": {
+      "hard_negative_aliases": [
+        "Thư tín dụng",
+        "Nghiệp vụ phát hành thư tín dụng",
+        "Bảo lãnh và cam kết ngoại bảng",
+        "Chứng khoán đầu tư",
+        "Chứng khoán kinh doanh",
+        "Trái phiếu doanh nghiệp chưa niêm yết",
+        "Góp vốn đầu tư dài hạn",
+        "Đầu tư dài hạn",
+        "Tài sản Có nội bảng khác",
+        "Hoạt động mua nợ",
+        "Dự phòng rủi ro cho các khoản nợ đã mua",
+        "Cho vay các TCTD khác",
+        "Tiền gửi tại và cho vay các TCTD khác"
+      ],
+      "owner_aliases": [
+        "Cho vay khách hàng",
+        "Dự phòng rủi ro cho vay khách hàng",
+        "Dự phòng cho vay khách hàng",
+        "Thay đổi tăng giảm của dự phòng rủi ro tín dụng",
+        "Đối với sự thay đổi tăng giảm của dự phòng rủi ro tín dụng",
+        "Biến động dự phòng rủi ro tín dụng"
+      ],
+      "owner_page_radius": 2,
+      "reset_aliases": [
+        "Phân tích chất lượng nợ cho vay",
+        "Chứng khoán đầu tư",
+        "Chứng khoán kinh doanh",
+        "Đầu tư dài hạn",
+        "Tài sản Có nội bảng khác",
+        "Hoạt động mua nợ",
+        "Cho vay các TCTD khác",
+        "Thư tín dụng"
+      ]
+    },
+    "unit_aliases": [
+      "Triệu đồng",
+      "Tỷ đồng",
+      "Nghìn đồng",
+      "Đồng",
+      "VND"
+    ]
+  },
+  "period_semantics": "CURRENT_AND_COMPARATIVE_MOVEMENT"
+}

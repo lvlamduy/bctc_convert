@@ -1,0 +1,105 @@
+{
+  "context_only_report_norm_ids": [
+    783,
+    784,
+    792,
+    6061
+  ],
+  "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+  "family_root_report_norm_id": 783,
+  "format_version": "ACCOUNTING_ROLLFORWARD_SCHEMA_BINDING_SPEC_V1",
+  "mapping_bindings": [
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "OPENING_BALANCE_ROW",
+      "report_norm_id": 785
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "PROVISION_OR_REVERSAL_ROW",
+      "report_norm_id": 786
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "USE_MOVEMENT_ROW",
+      "report_norm_id": 787
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "FOREIGN_EXCHANGE_MOVEMENT_ROW",
+      "report_norm_id": 788
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "DECREASE_MOVEMENT_ROW",
+      "report_norm_id": 789
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "OTHER_MOVEMENT_ROW",
+      "report_norm_id": 790
+    },
+    {
+      "lane_role": "GENERAL_PROVISION_LANE",
+      "movement_role": "CLOSING_BALANCE_ROW",
+      "report_norm_id": 791
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "OPENING_BALANCE_ROW",
+      "report_norm_id": 793
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "PROVISION_OR_REVERSAL_ROW",
+      "report_norm_id": 794
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "USE_MOVEMENT_ROW",
+      "report_norm_id": 795
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "FOREIGN_EXCHANGE_MOVEMENT_ROW",
+      "report_norm_id": 796
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "DECREASE_MOVEMENT_ROW",
+      "report_norm_id": 797
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "OTHER_MOVEMENT_ROW",
+      "report_norm_id": 798
+    },
+    {
+      "lane_role": "SPECIFIC_PROVISION_LANE",
+      "movement_role": "CLOSING_BALANCE_ROW",
+      "report_norm_id": 799
+    },
+    {
+      "lane_role": "MARGIN_ADVANCE_PROVISION_LANE",
+      "movement_role": "OPENING_BALANCE_ROW",
+      "report_norm_id": 6062
+    },
+    {
+      "lane_role": "MARGIN_ADVANCE_PROVISION_LANE",
+      "movement_role": "PROVISION_OR_REVERSAL_ROW",
+      "report_norm_id": 6063
+    },
+    {
+      "lane_role": "MARGIN_ADVANCE_PROVISION_LANE",
+      "movement_role": "USE_MOVEMENT_ROW",
+      "report_norm_id": 6064
+    },
+    {
+      "lane_role": "MARGIN_ADVANCE_PROVISION_LANE",
+      "movement_role": "CLOSING_BALANCE_ROW",
+      "report_norm_id": 6065
+    }
+  ],
+  "schema_period_role": "CURRENT_PERIOD",
+  "unknown_inference_policy": "ONE_UNKNOWN_ONE_FULL_RANK_LANE_EQUATION_ONLY"
+}
