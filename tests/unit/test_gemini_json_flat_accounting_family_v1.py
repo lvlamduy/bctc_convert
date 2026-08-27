@@ -1452,6 +1452,24 @@ def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() ->
     assert root_equation["component_roles"][-1] == "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
     assert root_equation["component_row_ids"].count("r6") == 1
 
+    accentless_line_broken = deepcopy(page)
+    accentless_label = (
+        "Cac khoan cho vay giao dich ky quy danh rieng cho khach hang,\nva ung truoc "
+        "theo hop dong giao dich dau tu chung khoan tai VPBankS."
+    )
+    accentless_line_broken["sections"][0]["tables"][0]["rows"][-2]["label_exact"] = accentless_label
+    accentless_line_broken["sections"][0]["tables"][0]["rows"][-2]["hierarchy_path_exact"] = [
+        accentless_label
+    ]
+    accentless_result = _evaluate_loan_quality(accentless_line_broken)
+    assert accentless_result["status"] == READY
+    accentless_margin = next(
+        mapping
+        for mapping in accentless_result["mappings"]
+        if mapping["role"] == "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
+    )
+    assert accentless_margin["label_match_mode"] == "CONTAINS_ORDERED_NORMALIZED_PHRASES"
+
     incomplete_phrase = deepcopy(page)
     incomplete_phrase["sections"][0]["tables"][0]["rows"][-2]["label_exact"] = (
         "Các khoản cho vay giao dịch ký quỹ dành cho khách hàng"
@@ -1463,6 +1481,12 @@ def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() ->
         "Các khoản ứng trước và cho vay giao dịch ký quỹ dành cho khách hàng"
     )
     assert _evaluate_loan_quality(reversed_phrases)["status"] == UNRESOLVED
+
+    generic_words_only = deepcopy(page)
+    generic_words_only["sections"][0]["tables"][0]["rows"][-2]["label_exact"] = (
+        "Các khoản cho vay khác đối với khách hàng"
+    )
+    assert _evaluate_loan_quality(generic_words_only)["status"] == UNRESOLVED
 
 
 def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> None:
