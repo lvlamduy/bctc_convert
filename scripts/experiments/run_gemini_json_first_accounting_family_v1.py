@@ -683,6 +683,16 @@ def _selected_ready_candidate(
     }
 
 
+def _candidate_is_decisive_hard_negative(candidate: dict[str, Any]) -> bool:
+    """Return whether a candidate's authenticated title excludes the family."""
+
+    return (
+        candidate.get("status") == UNRESOLVED
+        and type(candidate.get("reasons")) is list
+        and "HARD_NEGATIVE_FAMILY_TITLE_PRESENT" in candidate["reasons"]
+    )
+
+
 def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str, Any]:
     sections = page_json.get("sections")
     if type(sections) is not list:
@@ -995,9 +1005,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for document in index["documents"]:
         path = document["relative_path"]
         candidates = candidates_by_path.get(path, [])
-        ready = [candidate for candidate in candidates if candidate["status"] == READY]
+        active_candidates = [
+            candidate
+            for candidate in candidates
+            if not _candidate_is_decisive_hard_negative(candidate)
+        ]
+        ready = [candidate for candidate in active_candidates if candidate["status"] == READY]
         unresolved_candidates = [
-            candidate for candidate in candidates if candidate["status"] == UNRESOLVED
+            candidate for candidate in active_candidates if candidate["status"] == UNRESOLVED
         ]
         reasons = []
         selected_candidate_id = None
@@ -1011,7 +1026,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             status = READY
             selected_candidate_id = selected["candidate_id"]
             mappings = selected["mappings"]
-        elif not candidates and path not in near_paths:
+        elif not active_candidates and path not in near_paths:
             status = NOT_OBSERVED
         else:
             status = UNRESOLVED

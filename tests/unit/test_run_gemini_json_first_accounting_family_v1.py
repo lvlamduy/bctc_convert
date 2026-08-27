@@ -128,6 +128,21 @@ def test_explicit_parent_binding_uniquely_supersedes_shape_only_child_cluster() 
     assert target._selected_ready_candidate([explicit, peer], compiled_specs=_compiled()) is None
 
 
+def test_decisive_hard_negative_candidate_is_removed_from_family_disposition() -> None:
+    candidate = {
+        "reasons": ["HARD_NEGATIVE_FAMILY_TITLE_PRESENT"],
+        "status": target.UNRESOLVED,
+    }
+    assert target._candidate_is_decisive_hard_negative(candidate)
+
+    candidate["reasons"] = ["FAMILY_PARENT_NOT_VISIBLE"]
+    assert not target._candidate_is_decisive_hard_negative(candidate)
+
+    candidate["reasons"] = ["HARD_NEGATIVE_FAMILY_TITLE_PRESENT"]
+    candidate["status"] = target.READY
+    assert not target._candidate_is_decisive_hard_negative(candidate)
+
+
 def test_stacked_regions_are_derived_from_one_hit_frontier_with_punctuation_variants() -> None:
     parent = "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác"
     hit = {
