@@ -1,0 +1,16 @@
+{
+  "family_id": "LOAN_QUALITY_CLASSIFICATION",
+  "family_owner_report_norm_id": 716,
+  "family_report_norm_id": 746,
+  "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "ignored_roles": ["INCLUDED_MARGIN_SOURCE_DISCLOSURE"],
+  "role_bindings": [
+    {"parent_report_norm_id": 746, "report_norm_id": 747, "role": "STANDARD"},
+    {"parent_report_norm_id": 746, "report_norm_id": 748, "role": "SPECIAL_MENTION"},
+    {"parent_report_norm_id": 746, "report_norm_id": 749, "role": "SUBSTANDARD"},
+    {"parent_report_norm_id": 746, "report_norm_id": 750, "role": "DOUBTFUL"},
+    {"parent_report_norm_id": 746, "report_norm_id": 751, "role": "LOSS"},
+    {"parent_report_norm_id": 746, "report_norm_id": 1944, "role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"}
+  ]
+}

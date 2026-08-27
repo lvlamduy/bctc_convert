@@ -1,0 +1,64 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Nợ đủ tiêu chuẩn", "Nhóm 1 Nợ đủ tiêu chuẩn", "Nợ nhóm 1"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STANDARD",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ cần chú ý", "Nhóm 2 Nợ cần chú ý", "Nợ nhóm 2"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SPECIAL_MENTION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ dưới tiêu chuẩn", "Nhóm 3 Nợ dưới tiêu chuẩn", "Nợ nhóm 3"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SUBSTANDARD",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ nghi ngờ", "Nhóm 4 Nợ nghi ngờ", "Nợ nhóm 4"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DOUBTFUL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ có khả năng mất vốn", "Nhóm 5 Nợ có khả năng mất vốn", "Nợ nhóm 5"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "LOSS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Trong đó Các khoản cho vay tại MBS", "Trong đó Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Trong đó Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "presence_anchor": false, "within_role": "STANDARD"}],
+      "presence": "OPTIONAL",
+      "role": "INCLUDED_MARGIN_SOURCE_DISCLOSURE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_QUALITY_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": ["Phân tích chất lượng tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng dư nợ tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng hoạt động mua nợ", "Phân tích chất lượng chứng khoán đầu tư"],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 40, "max_label_line_span": 4},
+  "parent": {
+    "aliases": ["Phân tích chất lượng nợ cho vay", "Phân tích chất lượng dư nợ cho vay khách hàng", "Phân tích chất lượng dư nợ cho vay", "Phân tích dư nợ cho vay theo chất lượng nợ", "Phân tích dư nợ theo chất lượng nợ cho vay", "Phân tích dư nợ theo chất lượng nợ", "Theo chất lượng nợ cho vay", "Theo chất lượng dư nợ cho vay", "Phân loại chất lượng tài sản có rủi ro tín dụng", "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau", "Cho vay khách hàng"],
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "role": "LOAN_QUALITY_CLASSIFICATION"
+  },
+  "presence_evidence_mode": "GLOBAL_CORE_HITS",
+  "required_role_combinations": [
+    ["STANDARD", "SPECIAL_MENTION"],
+    ["STANDARD", "SUBSTANDARD"],
+    ["SPECIAL_MENTION", "DOUBTFUL"],
+    ["SUBSTANDARD", "LOSS"]
+  ],
+  "required_role_pools": [{"minimum_count": 5, "roles": ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS"]}],
+  "structural_reset_aliases": ["Phân tích theo loại hình cho vay", "Phân tích dư nợ theo thời gian", "Phân tích dư nợ theo thời gian đáo hạn", "Phân tích dư nợ theo ngành", "Phân tích dư nợ theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp", "Dự phòng rủi ro cho vay khách hàng"]
+}

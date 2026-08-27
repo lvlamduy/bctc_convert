@@ -1315,6 +1315,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         if type(value) is str and value
     )
     title_folded = _normalized(title)
+    if any(alias in title_folded for alias in topology["hard_negative_aliases"]):
+        reasons.append("HARD_NEGATIVE_FAMILY_TITLE_PRESENT")
     parent_in_title = any(alias in title_folded for alias in topology["parent"]["aliases"])
     columns = table.get("columns")
     period_value_axis_receipt = None
@@ -1513,6 +1515,12 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             continue
         else:
             unmatched_numeric.append(ordinal)
+    for pool in topology.get("required_role_pools", []):
+        observed_count = sum(role in records_by_role for role in pool["roles"])
+        if observed_count < pool["minimum_count"]:
+            reasons.append(
+                f"REQUIRED_ROLE_POOL_COUNT_BELOW_MINIMUM:{observed_count}:{pool['minimum_count']}"
+            )
     # A later presentation view may repeat one structural subtotal beneath an
     # untyped, label-only group (for example a listed/unlisted disclosure).
     # Keep the primary occurrence and bind the repeated subtotal as a

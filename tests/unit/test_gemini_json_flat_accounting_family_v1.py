@@ -75,6 +75,105 @@ def _loan_industry_specs() -> tuple[dict, dict, dict]:
     )
 
 
+def _loan_quality_specs() -> tuple[dict, dict, dict]:
+    return tuple(
+        json.loads((ROOT / path).read_text(encoding="utf-8"))
+        for path in (
+            "config/families/tm-loan-quality-classification-topology-v1.json",
+            "config/families/tm-loan-quality-classification-evaluation-v1.json",
+            "config/families/tm-loan-quality-classification-schema-binding-v1.json",
+        )
+    )
+
+
+def _loan_quality_page(*, included_margin: bool = False, standalone_margin: bool = False) -> dict:
+    rows = [
+        {
+            "hierarchy_path_exact": ["Phân tích chất lượng nợ cho vay", label],
+            "label_exact": label,
+            "row_kind": "ITEM",
+            "values_exact": values,
+        }
+        for label, values in (
+            ("Nợ đủ tiêu chuẩn", ["100", "90"]),
+            ("Nợ cần chú ý", ["20", "10"]),
+            ("Nợ dưới tiêu chuẩn", ["5", "4"]),
+            ("Nợ nghi ngờ", ["3", "2"]),
+            ("Nợ có khả năng mất vốn", ["2", "1"]),
+        )
+    ]
+    if included_margin:
+        rows.insert(
+            1,
+            {
+                "hierarchy_path_exact": [
+                    "Phân tích chất lượng nợ cho vay",
+                    "Nợ đủ tiêu chuẩn",
+                    "Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+                ],
+                "label_exact": (
+                    "Trong đó Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
+                ),
+                "row_kind": "ITEM",
+                "values_exact": ["7", "6"],
+            },
+        )
+    if standalone_margin:
+        rows.append(
+            {
+                "hierarchy_path_exact": [
+                    "Phân tích chất lượng nợ cho vay",
+                    "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+                ],
+                "label_exact": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+                "row_kind": "ITEM",
+                "values_exact": ["7", "6"],
+            }
+        )
+    return {
+        "status": "FINANCIAL_NOTE_CONTENT",
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "title_exact": "CHO VAY KHÁCH HÀNG",
+                "tables": [
+                    {
+                        "columns": [
+                            {
+                                "header_path_exact": ["31.12.2025", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                            {
+                                "header_path_exact": ["31.12.2024", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                        ],
+                        "continuation": "NONE",
+                        "rows": rows,
+                        "title_exact": "Phân tích chất lượng nợ cho vay",
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+            }
+        ],
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+    }
+
+
+def _evaluate_loan_quality(page: dict) -> dict:
+    topology, evaluation, schema = _loan_quality_specs()
+    return evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id="gfpstorev1:json:" + "9" * 64,
+        physical_page=17,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+    )
+
+
 def _loan_type_page(*, percentage_companions: bool) -> dict:
     columns = [
         {"header_path_exact": ["31.12.2025", "Triệu đồng"], "value_kind": "MONEY"},
@@ -973,6 +1072,65 @@ def test_period_value_hierarchy_accepts_reordered_optional_rows_but_rejects_dupl
         },
     )
     assert "UNBOUND_VISIBLE_NUMERIC_ROWS:3" in _evaluate_loan_type(extra)["reasons"]
+
+
+def test_loan_quality_family_derives_exact_five_grade_root_without_geometry() -> None:
+    result = _evaluate_loan_quality(_loan_quality_page())
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert set(mappings) == {
+        "LOAN_QUALITY_CLASSIFICATION",
+        "STANDARD",
+        "SPECIAL_MENTION",
+        "SUBSTANDARD",
+        "DOUBTFUL",
+        "LOSS",
+    }
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        130,
+        107,
+    ]
+
+
+def test_loan_quality_nested_margin_is_source_bound_but_not_double_counted() -> None:
+    result = _evaluate_loan_quality(_loan_quality_page(included_margin=True))
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert "INCLUDED_MARGIN_SOURCE_DISCLOSURE" not in mappings
+    assert [cell["coefficient"] for cell in mappings["STANDARD"]["values"]] == [100, 90]
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        130,
+        107,
+    ]
+
+
+def test_loan_quality_standalone_margin_is_one_direct_component() -> None:
+    result = _evaluate_loan_quality(_loan_quality_page(standalone_margin=True))
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [
+        cell["coefficient"]
+        for cell in mappings["STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"]["values"]
+    ] == [7, 6]
+    assert [cell["coefficient"] for cell in mappings["LOAN_QUALITY_CLASSIFICATION"]["values"]] == [
+        137,
+        113,
+    ]
+
+
+def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> None:
+    wrong_family = _loan_quality_page()
+    wrong_family["sections"][0]["tables"][0]["title_exact"] = (
+        "Phân tích chất lượng tiền gửi và cho vay các TCTD khác"
+    )
+    assert _evaluate_loan_quality(wrong_family)["status"] == UNRESOLVED
+
+    partial = _loan_quality_page()
+    partial["sections"][0]["tables"][0]["rows"].pop()
+    assert _evaluate_loan_quality(partial)["status"] == UNRESOLVED
 
 
 @pytest.mark.parametrize(
