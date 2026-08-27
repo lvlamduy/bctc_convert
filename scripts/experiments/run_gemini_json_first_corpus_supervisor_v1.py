@@ -6,9 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
+from collections import Counter
 from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import sha256
 from pathlib import Path
@@ -52,6 +55,9 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+)
+from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
+    build_current_corpus_manifest_index_v1,
 )
 from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (  # noqa: E402
     build_current_document_manifest_selection_v1,
@@ -151,6 +157,13 @@ def _parser() -> argparse.ArgumentParser:
         default=[],
         metavar="PAGE=VARIANT",
     )
+
+    corpus_manifest = commands.add_parser("corpus-manifest-current")
+    corpus_manifest.add_argument("--plan", type=Path, required=True)
+    corpus_manifest.add_argument("--ledger", type=Path, required=True)
+    corpus_manifest.add_argument("--source-root", type=Path, required=True)
+    corpus_manifest.add_argument("--database", type=Path, required=True)
+    corpus_manifest.add_argument("--artifact-root", type=Path, required=True)
 
     accelerate = commands.add_parser("accelerate-google-document")
     accelerate.add_argument("--plan", type=Path, required=True)
@@ -1226,6 +1239,42 @@ def _page_prompt_variants_v1(
     return result
 
 
+def _allowed_gateway_service_tiers_v1() -> list[dict[str, str]]:
+    return [
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_BATCH_API",
+            "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+        },
+        {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        },
+    ]
+
+
+def _preferred_gateway_service_tiers_v1() -> list[dict[str, str]]:
+    """Select the paid OpenRouter version before historical Google versions."""
+
+    return [
+        {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_BATCH_API",
+            "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+        },
+    ]
+
+
 def _write_current_document_manifest_selection_v1(
     *,
     artifact_root: Path,
@@ -1448,34 +1497,8 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         prompt_sha256=prompt_sha256s,
         response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
         requested_model=GOOGLE_MODEL,
-        allowed_gateway_service_tiers=[
-            {
-                "gateway": "GOOGLE_GEMINI_API",
-                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_BATCH_API",
-                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-            },
-            {
-                "gateway": "OPENROUTER",
-                "requested_service_tier": OPENROUTER_SERVICE_TIER,
-            },
-        ],
-        preferred_gateway_service_tiers=[
-            {
-                "gateway": "OPENROUTER",
-                "requested_service_tier": OPENROUTER_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_BATCH_API",
-                "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
-            },
-            {
-                "gateway": "GOOGLE_GEMINI_API",
-                "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-            },
-        ],
+        allowed_gateway_service_tiers=_allowed_gateway_service_tiers_v1(),
+        preferred_gateway_service_tiers=_preferred_gateway_service_tiers_v1(),
     )
     unresolved_pages = [
         page["physical_page"] for page in manifest["pages"] if page["status"] == "UNRESOLVED_PAGE"
@@ -1528,6 +1551,408 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         "totals": manifest["totals"],
         "repaired_task_ids": [task["task_id"] for task in repaired_tasks],
         "selection_id": selection["selection_id"],
+    }
+
+
+def _sha256_file_v1(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as stream:
+        while block := stream.read(1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _artifact_content_ref_v1(*, artifact_root: Path, path: Path) -> dict[str, Any]:
+    root = artifact_root.resolve()
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze artifact lies outside its root"
+        ) from exc
+    if path.is_symlink() or not path.is_file():
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze artifact is absent or not regular"
+        )
+    stat = path.stat()
+    if stat.st_nlink != 1 or stat.st_mode & 0o777 != 0o444:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze artifact is not immutable and single-link"
+        )
+    return {
+        "path": relative.as_posix(),
+        "sha256": _sha256_file_v1(path),
+        "size_bytes": stat.st_size,
+    }
+
+
+def _sqlite_snapshot_v1(
+    *, source: Path, artifact_root: Path, logical_name: str
+) -> tuple[Path, dict[str, Any]]:
+    """Create one integrity-checked, immutable SQLite backup without copying WAL state."""
+
+    if (
+        source.is_symlink()
+        or not source.is_file()
+        or source.stat().st_nlink != 1
+        or "/" in logical_name
+        or not logical_name.endswith(".sqlite3")
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze SQLite source or logical name is invalid"
+        )
+    output_root = artifact_root / "current-corpus-freeze-inputs"
+    output_root.mkdir(parents=True, exist_ok=True)
+    descriptor, stage_name = tempfile.mkstemp(
+        prefix=logical_name + ".stage-", suffix=".sqlite3", dir=output_root
+    )
+    os.close(descriptor)
+    stage = Path(stage_name)
+    try:
+        source_uri = f"file:{source.resolve()}?mode=ro"
+        with sqlite3.connect(source_uri, uri=True) as source_connection:
+            with sqlite3.connect(stage) as destination_connection:
+                source_connection.backup(destination_connection)
+                integrity = destination_connection.execute("PRAGMA integrity_check").fetchall()
+                if integrity != [("ok",)]:
+                    raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                        "corpus freeze SQLite snapshot failed integrity check"
+                    )
+        with stage.open("rb") as stream:
+            os.fsync(stream.fileno())
+        digest = _sha256_file_v1(stage)
+        destination = output_root / f"{logical_name.removesuffix('.sqlite3')}-{digest}.sqlite3"
+        if destination.exists():
+            if (
+                destination.is_symlink()
+                or not destination.is_file()
+                or destination.stat().st_nlink != 1
+                or destination.stat().st_size != stage.stat().st_size
+                or _sha256_file_v1(destination) != digest
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "immutable corpus freeze SQLite snapshot drifted"
+                )
+            stage.unlink()
+        else:
+            os.chmod(stage, 0o444)
+            os.replace(stage, destination)
+        os.chmod(destination, 0o444)
+        return destination, _artifact_content_ref_v1(artifact_root=artifact_root, path=destination)
+    finally:
+        stage.unlink(missing_ok=True)
+
+
+def _prompt_variants_from_manifest_v1(manifest: dict[str, Any]) -> dict[int, str]:
+    allowed = ("balanced", "compact", "items", "scope", "simple")
+    variant_by_sha = {
+        sha256(
+            build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
+        ).hexdigest(): variant
+        for variant in allowed
+    }
+    if len(variant_by_sha) != len(allowed):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "financial page prompt variants are not content-distinct"
+        )
+    contract = manifest.get("extraction_contract")
+    prompt_frontier = contract.get("page_prompt_sha256s") if type(contract) is dict else None
+    expected_pages = list(range(1, manifest.get("page_count", 0) + 1))
+    if (
+        type(prompt_frontier) is not list
+        or [item.get("physical_page") for item in prompt_frontier if type(item) is dict]
+        != expected_pages
+        or any(
+            type(item) is not dict
+            or set(item) != {"physical_page", "prompt_sha256"}
+            or item["prompt_sha256"] not in variant_by_sha
+            for item in prompt_frontier
+        )
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected document prompt frontier does not map to one known variant"
+        )
+    return {
+        item["physical_page"]: variant_by_sha[item["prompt_sha256"]] for item in prompt_frontier
+    }
+
+
+def _replay_selected_document_for_corpus_v1(
+    *,
+    args: argparse.Namespace,
+    plan: dict[str, Any],
+    planned: dict[str, Any],
+    task: dict[str, Any],
+) -> dict[str, Any]:
+    document_root = args.artifact_root / "documents" / planned["document_plan_id"].split(":", 1)[1]
+    selected = load_current_document_manifest_selection_v1(
+        document_root,
+        document_plan_id=planned["document_plan_id"],
+        source_sha256=planned["document"]["source_sha256"],
+    )
+    if selected is None:
+        built = build_current_document_manifest(
+            argparse.Namespace(
+                artifact_root=args.artifact_root,
+                database=args.database,
+                ledger=args.ledger,
+                page_prompt_variant=[],
+                plan=args.plan,
+                source_root=args.source_root,
+                task_id=planned["tasks"][0]["task_id"],
+            )
+        )
+        if built.get("disposition") != "SUCCEEDED":
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "corpus freeze could not derive a complete default-prompt document manifest"
+            )
+        selected = load_current_document_manifest_selection_v1(
+            document_root,
+            document_plan_id=planned["document_plan_id"],
+            source_sha256=planned["document"]["source_sha256"],
+        )
+    if selected is None:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze current document selection is absent"
+        )
+    selection, manifest_path = selected
+    manifest = _json_file(manifest_path)
+    material = {key: value for key, value in manifest.items() if key != "document_manifest_id"}
+    expected_manifest_id = "gfdmv1:manifest:" + canonical_json_sha256_v1(material)
+    expected_pages = list(range(1, planned["document"]["page_count"] + 1))
+    document = manifest.get("document")
+    pages = manifest.get("pages")
+    if (
+        manifest.get("format_version") != "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+        or manifest.get("document_manifest_id") != expected_manifest_id
+        or selection["document_manifest_id"] != expected_manifest_id
+        or manifest.get("page_count") != len(expected_pages)
+        or type(document) is not dict
+        or document.get("source_logical_name") != planned["document"]["relative_path"]
+        or document.get("source_sha256") != planned["document"]["source_sha256"]
+        or document.get("source_size_bytes") != planned["document"]["source_size_bytes"]
+        or type(pages) is not list
+        or [page.get("physical_page") for page in pages if type(page) is dict] != expected_pages
+        or any(page.get("status") == "UNRESOLVED_PAGE" for page in pages)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected corpus document manifest identity or page frontier drifted"
+        )
+    variants = _prompt_variants_from_manifest_v1(manifest)
+    prompt_sha256s = {
+        page: sha256(
+            build_financial_page_json_prompt_v1(variant=variants[page]).encode("utf-8")
+        ).hexdigest()
+        for page in expected_pages
+    }
+    page_images = _current_page_image_sha256s_v1(
+        task=task,
+        source_root=args.source_root,
+        dpi=plan["policy"]["dpi"],
+    )
+    rebuilt = build_financial_document_manifest_v1(
+        args.database,
+        source_sha256=task["source_sha256"],
+        source_logical_name=task["relative_path"],
+        expected_physical_pages=expected_pages,
+        page_image_sha256s=page_images,
+        prompt_sha256=prompt_sha256s,
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+        requested_model=GOOGLE_MODEL,
+        allowed_gateway_service_tiers=_allowed_gateway_service_tiers_v1(),
+        preferred_gateway_service_tiers=_preferred_gateway_service_tiers_v1(),
+    )
+    image_frontier = [
+        {"image_sha256": page_images[page], "physical_page": page} for page in expected_pages
+    ]
+    prompt_sha_frontier = [
+        {"physical_page": page, "prompt_sha256": prompt_sha256s[page]} for page in expected_pages
+    ]
+    prompt_frontier = [
+        {"physical_page": page, "prompt_variant": variants[page]} for page in expected_pages
+    ]
+    rebuilt_material = {
+        key: value for key, value in rebuilt.items() if key != "document_manifest_id"
+    }
+    rebuilt_document = rebuilt.get("document")
+    rebuilt_contract = rebuilt.get("extraction_contract")
+    rebuilt_pages = rebuilt.get("pages")
+    if (
+        rebuilt.get("document_manifest_id")
+        != "gfdmv1:manifest:" + canonical_json_sha256_v1(rebuilt_material)
+        or rebuilt.get("format_version") != "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+        or rebuilt.get("page_count") != len(expected_pages)
+        or rebuilt_document != document
+        or type(rebuilt_contract) is not dict
+        or rebuilt_contract.get("page_image_sha256s") != image_frontier
+        or rebuilt_contract.get("page_prompt_sha256s") != prompt_sha_frontier
+        or rebuilt_contract.get("preferred_gateway_service_tiers")
+        != _preferred_gateway_service_tiers_v1()
+        or type(rebuilt_pages) is not list
+        or [page.get("physical_page") for page in rebuilt_pages if type(page) is dict]
+        != expected_pages
+        or any(page.get("status") == "UNRESOLVED_PAGE" for page in rebuilt_pages)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "rebuilt corpus document manifest does not replay exactly"
+        )
+    if rebuilt != manifest:
+        manifest_path, selection = _write_current_document_manifest_selection_v1(
+            artifact_root=args.artifact_root,
+            planned=planned,
+            task=task,
+            manifest=rebuilt,
+            page_images=page_images,
+            variants=variants,
+        )
+        manifest = rebuilt
+        pages = manifest["pages"]
+    if selection["page_image_frontier_sha256"] != canonical_json_sha256_v1(
+        image_frontier
+    ) or selection["page_prompt_frontier_sha256"] != canonical_json_sha256_v1(prompt_frontier):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "selected corpus document does not replay from source, prompts, and database"
+        )
+    provider_counts: Counter[tuple[str, str, str]] = Counter()
+    for page in pages:
+        route = page.get("provider_route")
+        if (
+            type(route) is not dict
+            or set(route) != {"gateway", "requested_service_tier", "selected_provider"}
+            or any(type(route[field]) is not str or not route[field] for field in route)
+            or page.get("selected_service_tier") != route["requested_service_tier"]
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "selected corpus document provider route is invalid"
+            )
+        provider_counts[
+            (route["gateway"], route["selected_provider"], page["selected_service_tier"])
+        ] += 1
+    selection_path = (
+        document_root
+        / "current-document-manifest-selections"
+        / (selection["selection_id"].split(":", 2)[2] + ".json")
+    )
+    status_counts = {
+        status: manifest["status_counts"].get(status, 0)
+        for status in (
+            "FINANCIAL_NOTE_CONTENT",
+            "MIXED_FINANCIAL_CONTENT",
+            "NO_RELEVANT_FINANCIAL_CONTENT",
+            "PRIMARY_FINANCIAL_STATEMENT",
+        )
+    }
+    return {
+        "document_manifest_id": manifest["document_manifest_id"],
+        "document_manifest_ref": _artifact_content_ref_v1(
+            artifact_root=args.artifact_root, path=manifest_path
+        ),
+        "document_plan_id": planned["document_plan_id"],
+        "page_count": len(expected_pages),
+        "page_json_frontier_sha256": canonical_json_sha256_v1(pages),
+        "page_status_counts": status_counts,
+        "provider_counts": [
+            {
+                "count": provider_counts[key],
+                "gateway": key[0],
+                "selected_provider": key[1],
+                "selected_service_tier": key[2],
+            }
+            for key in sorted(provider_counts)
+        ],
+        "relative_path": planned["document"]["relative_path"],
+        "selection_id": selection["selection_id"],
+        "selection_ref": _artifact_content_ref_v1(
+            artifact_root=args.artifact_root, path=selection_path
+        ),
+        "source_sha256": planned["document"]["source_sha256"],
+        "source_size_bytes": planned["document"]["source_size_bytes"],
+    }
+
+
+def build_current_corpus_manifest(args: argparse.Namespace) -> dict[str, Any]:
+    """Freeze all selected pages after the complete 140-document ledger closes."""
+
+    plan = _plan(args.plan)
+    ledger_summary = corpus_ledger_summary_v1(args.ledger)
+    tasks = list_corpus_tasks_v1(args.ledger)
+    planned_task_ids = {
+        task["task_id"] for document in plan["documents"] for task in document["tasks"]
+    }
+    if (
+        ledger_summary["corpus_plan_id"] != plan["corpus_plan_id"]
+        or ledger_summary["documents"] != len(plan["documents"])
+        or ledger_summary["total_pages"] != plan["summary"]["page_count"]
+        or {task["task_id"] for task in tasks} != planned_task_ids
+        or any(task["state"] != "SUCCEEDED" for task in tasks)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze requires the exact fully succeeded ledger frontier"
+        )
+    by_task_id = {task["task_id"]: task for task in tasks}
+    documents = []
+    for source_ordinal, planned in enumerate(plan["documents"], start=1):
+        record = _replay_selected_document_for_corpus_v1(
+            args=args,
+            plan=plan,
+            planned=planned,
+            task=by_task_id[planned["tasks"][0]["task_id"]],
+        )
+        documents.append({**record, "source_ordinal": source_ordinal})
+
+    plan_payload = canonical_json_bytes_v1(plan) + b"\n"
+    plan_digest = sha256(plan_payload).hexdigest()
+    plan_output = (
+        args.artifact_root / "current-corpus-freeze-inputs" / f"corpus-plan-{plan_digest}.json"
+    )
+    _write_or_verify(plan_output, plan_payload)
+    database_snapshot, database_ref = _sqlite_snapshot_v1(
+        source=args.database,
+        artifact_root=args.artifact_root,
+        logical_name="store.sqlite3",
+    )
+    ledger_snapshot, ledger_ref = _sqlite_snapshot_v1(
+        source=args.ledger,
+        artifact_root=args.artifact_root,
+        logical_name="ledger.sqlite3",
+    )
+    usage = usage_summary_v1(database_snapshot)
+    frozen_ledger_summary = corpus_ledger_summary_v1(ledger_snapshot)
+    frozen_tasks = list_corpus_tasks_v1(ledger_snapshot)
+    if (
+        frozen_ledger_summary != ledger_summary
+        or frozen_tasks != tasks
+        or any(task["state"] != "SUCCEEDED" for task in frozen_tasks)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "corpus freeze ledger snapshot does not replay exactly"
+        )
+    index = build_current_corpus_manifest_index_v1(
+        corpus_plan_id=plan["corpus_plan_id"],
+        corpus_run_id=ledger_summary["corpus_run_id"],
+        corpus_plan_ref=_artifact_content_ref_v1(
+            artifact_root=args.artifact_root, path=plan_output
+        ),
+        database_ref=database_ref,
+        ledger_ref=ledger_ref,
+        documents=documents,
+        store_usage_summary=usage,
+    )
+    digest = index["corpus_manifest_index_id"].split(":", 2)[2]
+    output = args.artifact_root / "current-corpus-manifest-indexes" / f"{digest}.json"
+    _write_or_verify(output, canonical_json_bytes_v1(index) + b"\n")
+    return {
+        "corpus_manifest_index_id": index["corpus_manifest_index_id"],
+        "database_ref": database_ref,
+        "disposition": "SUCCEEDED",
+        "document_count": index["summary"]["document_count"],
+        "ledger_ref": ledger_ref,
+        "output": str(output),
+        "page_count": index["summary"]["page_count"],
+        "page_status_counts": index["summary"]["page_status_counts"],
+        "provider_counts": index["summary"]["provider_counts"],
+        "store_usage_summary": usage,
     }
 
 
@@ -2856,6 +3281,8 @@ def main() -> int:
         result = repair_openrouter_google_task(args)
     elif args.command == "document-manifest-current":
         result = build_current_document_manifest(args)
+    elif args.command == "corpus-manifest-current":
+        result = build_current_corpus_manifest(args)
     elif args.command == "accelerate-google-document":
         result = accelerate_google_document(args)
     elif args.command == "accelerate-pending-google":

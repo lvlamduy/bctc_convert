@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from argparse import Namespace
@@ -14,7 +15,10 @@ import pytest
 from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (
     build_gemini_json_first_corpus_plan_v1,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 
 _ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = _ROOT / "scripts/experiments/run_gemini_json_first_corpus_supervisor_v1.py"
@@ -2632,3 +2636,291 @@ def test_finalize_google_manifests_reuses_selected_current_manifest(
         database=tmp_path / "store.sqlite3",
         artifact_root=tmp_path / "artifacts",
     ) == [str(selected_manifest)]
+
+
+def test_corpus_document_replay_reuses_selected_manifest_and_rebuilds_from_store(
+    monkeypatch, tmp_path
+) -> None:
+    prompt_sha = hashlib.sha256(
+        target.build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+    ).hexdigest()
+    image_sha = "3" * 64
+    page = {
+        "canonical_json_sha256": "4" * 64,
+        "physical_page": 1,
+        "provider_route": {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": "flex",
+            "selected_provider": "Google",
+        },
+        "selected_service_tier": "flex",
+        "status": "FINANCIAL_NOTE_CONTENT",
+    }
+    material = {
+        "document": {
+            "source_logical_name": "ACB/report.pdf",
+            "source_sha256": "2" * 64,
+            "source_size_bytes": 200,
+        },
+        "extraction_contract": {
+            "page_image_sha256s": [{"image_sha256": image_sha, "physical_page": 1}],
+            "page_prompt_sha256s": [{"physical_page": 1, "prompt_sha256": prompt_sha}],
+        },
+        "format_version": "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+        "page_count": 1,
+        "pages": [page],
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": 1},
+        "totals": {"cost_usd": "0.001000000000"},
+    }
+    manifest = {
+        **material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material),
+    }
+    rebuilt_material = {
+        **material,
+        "extraction_contract": {
+            **material["extraction_contract"],
+            "preferred_gateway_service_tiers": target._preferred_gateway_service_tiers_v1(),
+        },
+    }
+    rebuilt = {
+        **rebuilt_material,
+        "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(rebuilt_material),
+    }
+    planned = {
+        "document": {
+            "page_count": 1,
+            "relative_path": "ACB/report.pdf",
+            "source_sha256": "2" * 64,
+            "source_size_bytes": 200,
+        },
+        "document_plan_id": "gjfpdocv1:" + "1" * 64,
+        "tasks": [{"task_id": "task-1"}],
+    }
+    document_root = tmp_path / "artifacts/documents" / ("1" * 64)
+    manifest_relative = Path("current-document-manifests") / (
+        manifest["document_manifest_id"].split(":", 2)[2] + ".json"
+    )
+    manifest_path = document_root / manifest_relative
+    target._write_or_verify(manifest_path, canonical_json_bytes_v1(manifest) + b"\n")
+    selection = target.build_current_document_manifest_selection_v1(
+        document_plan_id=planned["document_plan_id"],
+        source_sha256="2" * 64,
+        document_manifest_id=manifest["document_manifest_id"],
+        document_manifest_ref={
+            "path": manifest_relative.as_posix(),
+            "sha256": hashlib.sha256(canonical_json_bytes_v1(manifest) + b"\n").hexdigest(),
+            "size_bytes": len(canonical_json_bytes_v1(manifest) + b"\n"),
+        },
+        page_image_frontier_sha256=canonical_json_sha256_v1(
+            [{"image_sha256": image_sha, "physical_page": 1}]
+        ),
+        page_prompt_frontier_sha256=canonical_json_sha256_v1(
+            [{"physical_page": 1, "prompt_variant": "items"}]
+        ),
+        prior_selection_ids=[],
+    )
+    selection_path = (
+        document_root
+        / "current-document-manifest-selections"
+        / (selection["selection_id"].split(":", 2)[2] + ".json")
+    )
+    target._write_or_verify(selection_path, canonical_json_bytes_v1(selection) + b"\n")
+    monkeypatch.setattr(
+        target,
+        "build_current_document_manifest",
+        lambda *_args, **_kwargs: pytest.fail("selected adaptive manifest must be reused"),
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: image_sha},
+    )
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: rebuilt,
+    )
+    record = target._replay_selected_document_for_corpus_v1(
+        args=Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            ledger=tmp_path / "ledger.sqlite3",
+            plan=tmp_path / "plan.json",
+            source_root=tmp_path / "source",
+        ),
+        plan={"policy": {"dpi": 300}},
+        planned=planned,
+        task={"source_sha256": "2" * 64, "relative_path": "ACB/report.pdf"},
+    )
+    assert record["selection_id"] != selection["selection_id"]
+    assert record["document_manifest_id"] == rebuilt["document_manifest_id"]
+    assert record["page_status_counts"]["FINANCIAL_NOTE_CONTENT"] == 1
+    assert record["provider_counts"] == [
+        {
+            "count": 1,
+            "gateway": "OPENROUTER",
+            "selected_provider": "Google",
+            "selected_service_tier": "flex",
+        }
+    ]
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: "9" * 64},
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="does not replay exactly",
+    ):
+        target._replay_selected_document_for_corpus_v1(
+            args=Namespace(
+                artifact_root=tmp_path / "artifacts",
+                database=tmp_path / "store.sqlite3",
+                ledger=tmp_path / "ledger.sqlite3",
+                plan=tmp_path / "plan.json",
+                source_root=tmp_path / "source",
+            ),
+            plan={"policy": {"dpi": 300}},
+            planned=planned,
+            task={"source_sha256": "2" * 64, "relative_path": "ACB/report.pdf"},
+        )
+
+
+def test_sqlite_snapshot_is_integrity_checked_immutable_and_single_link(tmp_path) -> None:
+    source = tmp_path / "source.sqlite3"
+    with sqlite3.connect(source) as connection:
+        connection.execute("CREATE TABLE item(value TEXT NOT NULL)")
+        connection.execute("INSERT INTO item VALUES ('sealed')")
+    output, reference = target._sqlite_snapshot_v1(
+        source=source,
+        artifact_root=tmp_path / "artifacts",
+        logical_name="store.sqlite3",
+    )
+    assert output.stat().st_mode & 0o777 == 0o444
+    assert output.stat().st_nlink == 1
+    assert hashlib.sha256(output.read_bytes()).hexdigest() == reference["sha256"]
+    with sqlite3.connect(f"file:{output}?mode=ro", uri=True) as connection:
+        assert connection.execute("SELECT value FROM item").fetchone()[0] == "sealed"
+
+
+def test_current_corpus_manifest_requires_all_tasks_and_preserves_source_order(
+    monkeypatch, tmp_path
+) -> None:
+    documents = []
+    tasks = []
+    for digit, path in (("1", "A/a.pdf"), ("2", "B/b.pdf")):
+        task_id = "gjfptaskv1:" + digit * 64
+        documents.append(
+            {
+                "document": {
+                    "page_count": 1,
+                    "relative_path": path,
+                    "source_sha256": digit * 64,
+                    "source_size_bytes": 100,
+                },
+                "document_plan_id": "gjfpdocv1:" + digit * 64,
+                "tasks": [{"task_id": task_id}],
+            }
+        )
+        tasks.append(
+            {
+                "document_plan_id": "gjfpdocv1:" + digit * 64,
+                "state": "SUCCEEDED",
+                "task_id": task_id,
+            }
+        )
+    plan = {
+        "corpus_plan_id": "gjfpcorpusv1:" + "a" * 64,
+        "documents": documents,
+        "summary": {"page_count": 2},
+    }
+    summary = {
+        "corpus_plan_id": plan["corpus_plan_id"],
+        "corpus_run_id": "gjfpcrunv1:" + "b" * 64,
+        "documents": 2,
+        "total_pages": 2,
+    }
+    monkeypatch.setattr(target, "_plan", lambda _path: plan)
+    monkeypatch.setattr(target, "corpus_ledger_summary_v1", lambda _path: summary)
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _path: tasks)
+    replayed = []
+
+    def replay(**kwargs):
+        planned = kwargs["planned"]
+        digit = planned["document_plan_id"][-1]
+        replayed.append(planned["document"]["relative_path"])
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + digit * 64,
+            "document_manifest_ref": {
+                "path": f"documents/{digit}/manifest.json",
+                "sha256": digit * 64,
+                "size_bytes": 100,
+            },
+            "document_plan_id": planned["document_plan_id"],
+            "page_count": 1,
+            "page_json_frontier_sha256": digit * 64,
+            "page_status_counts": {
+                "FINANCIAL_NOTE_CONTENT": 1,
+                "MIXED_FINANCIAL_CONTENT": 0,
+                "NO_RELEVANT_FINANCIAL_CONTENT": 0,
+                "PRIMARY_FINANCIAL_STATEMENT": 0,
+            },
+            "provider_counts": [
+                {
+                    "count": 1,
+                    "gateway": "OPENROUTER",
+                    "selected_provider": "Google",
+                    "selected_service_tier": "flex",
+                }
+            ],
+            "relative_path": planned["document"]["relative_path"],
+            "selection_id": "gjfcdmsv1:selection:" + digit * 64,
+            "selection_ref": {
+                "path": f"documents/{digit}/selection.json",
+                "sha256": digit * 64,
+                "size_bytes": 100,
+            },
+            "source_sha256": digit * 64,
+            "source_size_bytes": 100,
+        }
+
+    monkeypatch.setattr(target, "_replay_selected_document_for_corpus_v1", replay)
+
+    def snapshot(*, source, artifact_root, logical_name):
+        output = artifact_root / "current-corpus-freeze-inputs" / logical_name
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(logical_name.encode())
+        output.chmod(0o444)
+        return output, target._artifact_content_ref_v1(artifact_root=artifact_root, path=output)
+
+    monkeypatch.setattr(target, "_sqlite_snapshot_v1", snapshot)
+    usage = {
+        "attempts": [],
+        "cached_input_tokens": 0,
+        "input_tokens": 10,
+        "output_tokens": 5,
+        "run_count": 2,
+        "thought_tokens": 0,
+        "total_cost_usd": "0.001000000000",
+    }
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _path: usage)
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        plan=tmp_path / "plan.json",
+        source_root=tmp_path / "source",
+    )
+    result = target.build_current_corpus_manifest(args)
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["document_count"] == 2
+    assert result["page_count"] == 2
+    assert replayed == ["A/a.pdf", "B/b.pdf"]
+    assert Path(result["output"]).stat().st_mode & 0o777 == 0o444
+    tasks[1]["state"] = "PENDING"
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="fully succeeded ledger frontier",
+    ):
+        target.build_current_corpus_manifest(args)
