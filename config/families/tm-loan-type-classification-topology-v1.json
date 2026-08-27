@@ -1,0 +1,95 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Cho vay các tổ chức kinh tế, cá nhân trong nước", "Cho vay các tổ chức kinh tế và cá nhân trong nước", "Cho vay các TCKT, cá nhân trong nước", "Cho vay các tổ chức kinh tế, cá nhân", "Cho vay các tổ chức kinh tế và cá nhân"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho thuê tài chính", "Các khoản phải thu từ cho thuê tài chính"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FINANCIAL_LEASE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay từ nguồn vốn từ Chính phủ, các tổ chức quốc tế khác", "Cho vay từ nguồn vốn Chính phủ và các tổ chức quốc tế khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "GOVERNMENT_FUNDED_LOANS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay theo chỉ định của Chính phủ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "GOVERNMENT_DIRECTED_LOANS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay cá nhân và tổ chức nước ngoài", "Cho vay đối với các tổ chức, cá nhân nước ngoài", "Cho vay đối với các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các TCKT, cá nhân nước ngoài", "Cho vay các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các tổ chức, cá nhân nước ngoài"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DISCOUNT_INSTRUMENTS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản trả thay khách hàng", "Các khoản phải trả thay khách hàng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "PAYMENTS_ON_BEHALF", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ cho vay được khoanh và nợ chờ xử lý", "Nợ cho vay khoanh và nợ chờ xử lý"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FROZEN_OR_PENDING_LOANS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay bằng vốn tài trợ, ủy thác đầu tư"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng cho vay khác", "Cộng cho vay khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_LOANS_AGGREGATE", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_LOANS_EXPLICIT_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cấp tín dụng khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_CREDIT_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay trong nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản trả ngay", "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024", "Nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản thanh toán trả ngay hoặc trả trước phát sinh trước 01/07/2024"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DELAYED_LC_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay thấu chi và thẻ tín dụng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OVERDRAFT_AND_CREDIT_CARD_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay vốn đặc biệt"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "SPECIAL_CAPITAL_LOANS_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay khách hàng", "Cho vay khách hàng (i)", "Tổng dư nợ cho vay khách hàng theo loại hình cho vay"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CORE_LOAN_TYPE_SUBTOTAL", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "MARGIN_AND_SECURITIES_ADVANCE", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_TYPE_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
+  "hard_negative_aliases": ["Phân tích theo chất lượng nợ", "Phân tích theo thời hạn cho vay", "Phân tích theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp"],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 96, "max_label_line_span": 4},
+  "parent": {
+    "aliases": ["Cho vay khách hàng", "Các khoản cho vay khách hàng", "Theo loại hình cho vay", "Phân tích theo loại hình cho vay", "Dư nợ cho vay khách hàng của Ngân hàng"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "LOAN_TYPE_CLASSIFICATION"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "DISCOUNT_INSTRUMENTS"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "PAYMENTS_ON_BEHALF"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FINANCIAL_LEASE"],
+    ["OTHER_LOANS_EXPLICIT_COMPONENT", "MARGIN_AND_SECURITIES_ADVANCE"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "GOVERNMENT_DIRECTED_LOANS"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FOREIGN_ORGANIZATIONS_INDIVIDUALS"]
+  ],
+  "required_role_pools": [{
+    "minimum_count": 2,
+    "roles": ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FINANCIAL_LEASE", "GOVERNMENT_FUNDED_LOANS", "GOVERNMENT_DIRECTED_LOANS", "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "DISCOUNT_INSTRUMENTS", "PAYMENTS_ON_BEHALF", "FROZEN_OR_PENDING_LOANS", "ENTRUSTED_OR_SPONSORED_CAPITAL", "OTHER_LOANS_EXPLICIT_COMPONENT", "OTHER_CREDIT_COMPONENT", "DELAYED_LC_COMPONENT", "OVERDRAFT_AND_CREDIT_CARD_COMPONENT", "SPECIAL_CAPITAL_LOANS_COMPONENT", "MARGIN_AND_SECURITIES_ADVANCE"]
+  }],
+  "structural_reset_aliases": ["Phân tích theo chất lượng nợ", "Phân tích theo thời hạn cho vay", "Phân tích theo ngành nghề kinh doanh", "Phân tích theo loại hình doanh nghiệp", "Dự phòng rủi ro cho vay khách hàng"]
+}

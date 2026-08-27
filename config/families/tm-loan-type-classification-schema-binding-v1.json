@@ -1,0 +1,21 @@
+{
+  "family_id": "LOAN_TYPE_CLASSIFICATION",
+  "family_owner_report_norm_id": 716,
+  "family_report_norm_id": 717,
+  "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
+  "ignored_roles": ["OTHER_LOANS_EXPLICIT_COMPONENT", "OTHER_CREDIT_COMPONENT", "DELAYED_LC_COMPONENT", "OVERDRAFT_AND_CREDIT_CARD_COMPONENT", "SPECIAL_CAPITAL_LOANS_COMPONENT", "CORE_LOAN_TYPE_SUBTOTAL"],
+  "role_bindings": [
+    {"parent_report_norm_id": 717, "report_norm_id": 718, "role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 719, "role": "FINANCIAL_LEASE"},
+    {"parent_report_norm_id": 717, "report_norm_id": 720, "role": "GOVERNMENT_FUNDED_LOANS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 6057, "role": "GOVERNMENT_DIRECTED_LOANS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 721, "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 722, "role": "DISCOUNT_INSTRUMENTS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 723, "role": "PAYMENTS_ON_BEHALF"},
+    {"parent_report_norm_id": 717, "report_norm_id": 724, "role": "FROZEN_OR_PENDING_LOANS"},
+    {"parent_report_norm_id": 717, "report_norm_id": 725, "role": "ENTRUSTED_OR_SPONSORED_CAPITAL"},
+    {"parent_report_norm_id": 717, "report_norm_id": 726, "role": "OTHER_LOANS_AGGREGATE"},
+    {"parent_report_norm_id": 717, "report_norm_id": 5745, "role": "MARGIN_AND_SECURITIES_ADVANCE"}
+  ]
+}

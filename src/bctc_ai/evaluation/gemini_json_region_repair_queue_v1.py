@@ -23,6 +23,8 @@ FORMAT_VERSION = "GEMINI_JSON_REGION_REPAIR_QUEUE_V1"
 REPAIR_CONTRACT_VERSION = "CONTEXTUAL_ROW_VALUES_SIGN_AWARE_AND_TABLE_PERIOD_AXIS_V3"
 _INVALID_ROW = re.compile(r"^(?:ROW|NESTED_COMPONENT)_MONEY_CELL_IS_NOT_EXACT_INTEGER:(\d+)$")
 _INVALID_ROLE = re.compile(r"^ROLE_MONEY_CELL_IS_NOT_EXACT_INTEGER:([^:]+)$")
+_INVALID_PERCENT_ROW = re.compile(r"^ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:(\d+)$")
+_UNBOUND_VISIBLE_ROWS = re.compile(r"^UNBOUND_VISIBLE_NUMERIC_ROWS:(\d+(?:,\d+)*)$")
 _UNSATISFIED_RESULT = re.compile(
     r"^(?:EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:([^:]+):0"
     r"|NESTED_PARENT_NOT_EXACT_CHILD_SUM:([^:]+))$"
@@ -268,6 +270,25 @@ def build_family_region_repair_plans_v1(
                     target_ids.add(f"{candidate['section_id']}:{candidate['table_id']}:r{ordinal}")
                     trigger_kinds.add("INVALID_MONEY_CELL")
                     continue
+                invalid_percent = _INVALID_PERCENT_ROW.fullmatch(reason)
+                if invalid_percent is not None:
+                    ordinal = int(invalid_percent.group(1))
+                    if not 1 <= ordinal <= len(rows):
+                        raise _error("typed invalid-percentage row lies outside candidate table")
+                    target_ids.add(f"{candidate['section_id']}:{candidate['table_id']}:r{ordinal}")
+                    trigger_kinds.add("INVALID_PERCENT_CELL")
+                    continue
+                unbound_rows = _UNBOUND_VISIBLE_ROWS.fullmatch(reason)
+                if unbound_rows is not None:
+                    ordinals = [int(value) for value in unbound_rows.group(1).split(",")]
+                    if any(not 1 <= ordinal <= len(rows) for ordinal in ordinals):
+                        raise _error("typed unbound row lies outside candidate table")
+                    target_ids.update(
+                        f"{candidate['section_id']}:{candidate['table_id']}:r{ordinal}"
+                        for ordinal in ordinals
+                    )
+                    trigger_kinds.add("UNMATCHED_SOURCE_LABEL")
+                    continue
                 invalid_role = _INVALID_ROLE.fullmatch(reason)
                 if invalid_role is not None:
                     invalid_roles.add(invalid_role.group(1))
@@ -325,7 +346,13 @@ def build_family_region_repair_plans_v1(
                     "thinking_escalation": ["medium", "high"],
                 },
                 "repair_contract_version": REPAIR_CONTRACT_VERSION,
-                "repair_scope": ("TABLE_PERIOD_AXIS" if period_axis_incomplete else "ROW_VALUES"),
+                "repair_scope": (
+                    "TABLE_PERIOD_AXIS"
+                    if period_axis_incomplete
+                    else "ROW_LABEL_AND_VALUES"
+                    if "UNMATCHED_SOURCE_LABEL" in trigger_kinds
+                    else "ROW_VALUES"
+                ),
                 "section_id": candidate["section_id"],
                 "source_logical_name": trial["source_logical_name"],
                 "source_sha256": trial["source_sha256"],

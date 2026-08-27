@@ -357,6 +357,7 @@ def _submit(args: argparse.Namespace) -> int:
                 prompt=prompt,
                 response_schema=schema,
                 output_contract_mode=output_contract_mode,
+                thinking_level="low",
             )
         )
     google_input_file = None

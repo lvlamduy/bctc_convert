@@ -116,6 +116,14 @@ def _targeted_repair_is_accepted(plan: dict[str, Any], candidate: dict[str, Any]
         for reason in after
     ):
         return False
+    if "INVALID_PERCENT_CELL" in plan["trigger_kinds"] and any(
+        reason.startswith("ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:") for reason in after
+    ):
+        return False
+    if "UNMATCHED_SOURCE_LABEL" in plan["trigger_kinds"] and any(
+        reason.startswith("UNBOUND_VISIBLE_NUMERIC_ROWS:") for reason in after
+    ):
+        return False
     if "UNSATISFIED_EXACT_EQUATION" in plan["trigger_kinds"] and any(
         reason.startswith("EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE:")
         or reason.startswith("NESTED_PARENT_NOT_EXACT_CHILD_SUM:")

@@ -52,6 +52,99 @@ def _recursive_specs() -> tuple[dict, dict, dict]:
     )
 
 
+def _loan_type_specs() -> tuple[dict, dict, dict]:
+    return tuple(
+        json.loads((ROOT / path).read_text(encoding="utf-8"))
+        for path in (
+            "config/families/tm-loan-type-classification-topology-v1.json",
+            "config/families/tm-loan-type-classification-evaluation-v1.json",
+            "config/families/tm-loan-type-classification-schema-binding-v1.json",
+        )
+    )
+
+
+def _loan_type_page(*, percentage_companions: bool) -> dict:
+    columns = [
+        {"header_path_exact": ["31.12.2025", "Triệu đồng"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31.12.2024", "Triệu đồng"], "value_kind": "MONEY"},
+    ]
+    values = [
+        ["100", "90"],
+        ["20", "10"],
+        ["120", "100"],
+    ]
+    if percentage_companions:
+        columns = [
+            {"header_path_exact": ["Số cuối năm", "Triệu đồng"], "value_kind": "MONEY"},
+            {"header_path_exact": ["Số cuối năm", "%"], "value_kind": "PERCENT"},
+            {"header_path_exact": ["Số đầu năm", "Triệu đồng"], "value_kind": "MONEY"},
+            {"header_path_exact": ["Số đầu năm", "%"], "value_kind": "PERCENT"},
+        ]
+        values = [
+            ["100", "83,33", "90", "90,00"],
+            ["20", "16,67", "10", "10,00"],
+            ["120", "100,00", "100", "100,00"],
+        ]
+    return {
+        "status": "FINANCIAL_NOTE_CONTENT",
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "title_exact": "CHO VAY KHÁCH HÀNG",
+                "tables": [
+                    {
+                        "columns": columns,
+                        "continuation": "NONE",
+                        "rows": [
+                            {
+                                "hierarchy_path_exact": [
+                                    "Cho vay khách hàng",
+                                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                                ],
+                                "label_exact": "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                                "row_kind": "ITEM",
+                                "values_exact": values[0],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Cho vay khách hàng",
+                                    "Cho vay khác",
+                                ],
+                                "label_exact": "Cho vay khác",
+                                "row_kind": "ITEM",
+                                "values_exact": values[1],
+                            },
+                            {
+                                "hierarchy_path_exact": ["Cho vay khách hàng", None],
+                                "label_exact": None,
+                                "row_kind": "TOTAL",
+                                "values_exact": values[2],
+                            },
+                        ],
+                        "title_exact": "Theo loại hình cho vay",
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+            }
+        ],
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+    }
+
+
+def _evaluate_loan_type(page: dict) -> dict:
+    topology, evaluation, schema = _loan_type_specs()
+    return evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id="gfpstorev1:json:" + "6" * 64,
+        physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+    )
+
+
 def _trading_specs() -> tuple[dict, dict, dict]:
     return tuple(
         json.loads((ROOT / path).read_text(encoding="utf-8"))
@@ -670,6 +763,102 @@ def test_hierarchical_specs_reject_invalid_equivalence_and_aggregate_frontiers()
     invalid_schema["aggregate_role_bindings"][0]["source_roles"].append("DEPOSIT_VND")
     with pytest.raises(ValueError, match="aggregate role binding"):
         compile_gemini_json_flat_family_specs_v1(topology, evaluation, invalid_schema)
+
+
+@pytest.mark.parametrize("percentage_companions", [False, True])
+def test_period_value_hierarchy_maps_two_period_money_and_optional_percent_companions(
+    percentage_companions: bool,
+) -> None:
+    result = _evaluate_loan_type(_loan_type_page(percentage_companions=percentage_companions))
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [717, 718, 726]
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [value["coefficient"] for value in mappings["LOAN_TYPE_CLASSIFICATION"]["values"]] == [
+        120,
+        100,
+    ]
+    assert mappings["OTHER_LOANS_AGGREGATE"]["derived_from_roles"] == [
+        "OTHER_LOANS_EXPLICIT_COMPONENT"
+    ]
+    axis = result["closure_receipt"]["period_value_column_axis"]
+    assert axis["money_column_indices"] == ([0, 2] if percentage_companions else [0, 1])
+    assert axis["percent_column_indices"] == ([1, 3] if percentage_companions else [])
+    if percentage_companions:
+        assert mappings["DOMESTIC_ORGANIZATIONS_INDIVIDUALS"]["percentage_companion_values"] == [
+            {
+                "coefficient": 8333,
+                "column_index": 1,
+                "scale": 2,
+                "source_text": "83,33",
+                "state": "RAW_UNSIGNED_DECIMAL_PERCENT",
+            },
+            {
+                "coefficient": 9000,
+                "column_index": 3,
+                "scale": 2,
+                "source_text": "90,00",
+                "state": "RAW_UNSIGNED_DECIMAL_PERCENT",
+            },
+        ]
+
+
+def test_period_value_hierarchy_rejects_column_shift_bad_period_percent_and_money_sum() -> None:
+    shifted = _loan_type_page(percentage_companions=True)
+    columns = shifted["sections"][0]["tables"][0]["columns"]
+    columns[1], columns[2] = columns[2], columns[1]
+    assert (
+        "PERIOD_VALUE_COLUMN_KIND_SEQUENCE_IS_NOT_DECLARED"
+        in _evaluate_loan_type(shifted)["reasons"]
+    )
+
+    wrong_period = _loan_type_page(percentage_companions=True)
+    wrong_period["sections"][0]["tables"][0]["columns"][3]["header_path_exact"][0] = "Số cuối năm"
+    assert (
+        "PERCENTAGE_COMPANION_PERIODS_DO_NOT_MATCH_MONEY_PERIODS"
+        in _evaluate_loan_type(wrong_period)["reasons"]
+    )
+
+    bad_percent = _loan_type_page(percentage_companions=True)
+    bad_percent["sections"][0]["tables"][0]["rows"][0]["values_exact"][1] = "8x,33"
+    assert "ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:1" in _evaluate_loan_type(bad_percent)["reasons"]
+
+    mismatch = _loan_type_page(percentage_companions=True)
+    mismatch["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "121"
+    assert any(
+        reason.startswith("EXACT_DIRECT_FRONTIER_SOLUTION_COUNT_NOT_ONE")
+        for reason in _evaluate_loan_type(mismatch)["reasons"]
+    )
+
+
+def test_period_value_hierarchy_accepts_reordered_optional_rows_but_rejects_duplicates_and_extra() -> (
+    None
+):
+    reordered = _loan_type_page(percentage_companions=False)
+    rows = reordered["sections"][0]["tables"][0]["rows"]
+    rows[:2] = reversed(rows[:2])
+    assert _evaluate_loan_type(reordered)["status"] == READY
+
+    duplicate = _loan_type_page(percentage_companions=False)
+    duplicate["sections"][0]["tables"][0]["rows"].insert(
+        1, deepcopy(duplicate["sections"][0]["tables"][0]["rows"][0])
+    )
+    assert any(
+        reason.startswith("ROLE_OCCURRENCE_COUNT_ABOVE_ONE")
+        for reason in _evaluate_loan_type(duplicate)["reasons"]
+    )
+
+    extra = _loan_type_page(percentage_companions=False)
+    extra["sections"][0]["tables"][0]["rows"].insert(
+        -1,
+        {
+            "hierarchy_path_exact": ["Cho vay khách hàng", "Không khai báo"],
+            "label_exact": "Không khai báo",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "1"],
+        },
+    )
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:3" in _evaluate_loan_type(extra)["reasons"]
 
 
 def test_recursive_family_closes_multilevel_subtotals_and_infers_provision_once() -> None:

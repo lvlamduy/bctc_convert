@@ -65,7 +65,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-table-ref", action="append")
     parser.add_argument(
         "--repair-scope",
-        choices=("ROW_VALUES", "TABLE_PERIOD_AXIS"),
+        choices=("ROW_VALUES", "ROW_LABEL_AND_VALUES", "TABLE_PERIOD_AXIS"),
         default="ROW_VALUES",
     )
     parser.add_argument("--database", type=Path, required=True)
@@ -206,6 +206,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             selected["page_json"],
             target_ids=args.target_id,
             context_radius={"low": 1, "medium": 2, "high": 3}[args.thinking_level],
+            allow_label_change=args.repair_scope == "ROW_LABEL_AND_VALUES",
         )
         prompt = build_region_repair_prompt_v1(
             base_page_json_version_id=args.base_page_json_version_id,
@@ -217,7 +218,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     prompt_variant = (
         "region-repair-table-period-axis"
         if args.repair_scope == "TABLE_PERIOD_AXIS"
-        else "region-repair-row-values"
+        else (
+            "region-repair-row-label-and-values"
+            if args.repair_scope == "ROW_LABEL_AND_VALUES"
+            else "region-repair-row-values"
+        )
     )
     _write(args.artifact_dir / "prompt.txt", prompt.encode("utf-8"))
     _write(

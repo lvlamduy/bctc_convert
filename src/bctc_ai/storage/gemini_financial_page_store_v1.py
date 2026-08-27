@@ -1605,6 +1605,18 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
         | {alias + " (*)" for alias in folded}
         | comma_forms
     )
+    combined_comma_footnote_forms = {
+        alias + separator + marker
+        for alias in comma_forms
+        for separator in ("", " ")
+        for marker in ("(*)", "(**)", "(***)")
+    }
+    punctuation_forms |= {
+        alias + separator + marker
+        for alias in folded
+        for separator in ("", " ")
+        for marker in ("(*)", "(**)", "(***)")
+    }
     punctuation_forms |= {
         alias.replace("tien vang ", "tien, vang ", 1)
         for alias in punctuation_forms
@@ -1645,6 +1657,7 @@ def _family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
     }
     return sorted(
         punctuation_forms
+        | combined_comma_footnote_forms
         | {marker + alias for alias in punctuation_forms for marker in ("- ", "– ", "— ", "• ")}
         | {prefix + " " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
         | {prefix + ". " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}

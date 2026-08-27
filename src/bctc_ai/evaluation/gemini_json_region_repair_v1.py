@@ -44,7 +44,11 @@ def _target_id(value: Any) -> tuple[int, int, int]:
 
 
 def region_repair_targets_v1(
-    page_json: Any, *, target_ids: Sequence[str], context_radius: int = 1
+    page_json: Any,
+    *,
+    target_ids: Sequence[str],
+    context_radius: int = 1,
+    allow_label_change: bool = False,
 ) -> list[dict[str, Any]]:
     """Resolve exact row targets without scanning unrelated page content downstream."""
 
@@ -55,6 +59,7 @@ def region_repair_targets_v1(
         or len(set(target_ids)) != len(target_ids)
         or type(context_radius) is not int
         or not 1 <= context_radius <= 3
+        or type(allow_label_change) is not bool
     ):
         raise _error("region repair target frontier is empty or duplicate")
     result = []
@@ -92,6 +97,7 @@ def region_repair_targets_v1(
                 "target_id": target_id,
                 "value_count": len(row["values_exact"]),
                 "values_before_exact": row["values_exact"],
+                **({"allow_label_change": True} if allow_label_change else {}),
             }
         )
     return result
@@ -332,6 +338,11 @@ def build_region_repair_prompt_v1(
             "label_exact": target["label_exact"],
             "target_id": target["target_id"],
             "value_count": target["value_count"],
+            **(
+                {"label_change_policy": "REREAD_FULL_EXACT_SOURCE_LABEL"}
+                if target.get("allow_label_change") is True
+                else {}
+            ),
         }
         for target in targets
     ]
@@ -342,7 +353,10 @@ def build_region_repair_prompt_v1(
         "đủ nhãn và từng giá trị theo "
         "thứ tự cột. Kiểm tra kỹ dấu âm, ngoặc đơn hoặc dấu gạch có thể nằm lệch về "
         "bên trái/phải của con số nhưng vẫn thuộc cùng ô; phải chép cả dấu và số. "
-        "Header và các dòng lân cận chỉ dùng để gán đúng cột. Không dùng tổng để suy ra "
+        "Nếu target có label_change_policy, phải đọc lại toàn bộ nhãn từ ảnh, gồm cả phần "
+        "quấn sang dòng kế tiếp; label_exact cũ chỉ là gợi ý định vị và có thể bị cắt. "
+        "Nếu không có policy này thì giữ nguyên nhãn. Header và các dòng lân cận chỉ dùng "
+        "để gán đúng cột. Không dùng tổng để suy ra "
         "hoặc sửa số, và không dùng phép tính để đoán nội dung ô. Ô trống trả null; dấu gạch ngang độc lập có "
         "thể trả '-' hoặc '0'. Mỗi target_id phải xuất hiện đúng một lần. Nếu không đọc chắc một "
         "ô, vẫn giữ target nhưng ghi null và mô tả ngắn trong uncertainty_exact. Trả đúng JSON "
@@ -427,11 +441,19 @@ def decode_region_repair_text_v1(text: str, *, targets: Sequence[dict[str, Any]]
         observed_label = row["label_exact"]
         if (expected_label is None) != (observed_label is None):
             raise _error("region repair label does not bind the requested row")
-        if expected_label is not None and (
-            normalize_search_text_v1(expected_label)["text_ascii_folded"]
-            != normalize_search_text_v1(observed_label)["text_ascii_folded"]
+        if (
+            not target.get("allow_label_change", False)
+            and expected_label is not None
+            and (
+                normalize_search_text_v1(expected_label)["text_ascii_folded"]
+                != normalize_search_text_v1(observed_label)["text_ascii_folded"]
+            )
         ):
             raise _error("region repair label does not bind the requested row")
+        if target.get("allow_label_change", False) and (
+            type(observed_label) is not str or not observed_label.strip()
+        ):
+            raise _error("region repair source label reread is empty")
         checked_rows.append(canonical_clone_v1(row))
     return {
         "all_targets_transcribed": value["all_targets_transcribed"],
@@ -462,12 +484,30 @@ def merge_region_repair_v1(
         section_index, table_index, row_index = _target_id(target["target_id"])
         destination = merged["sections"][section_index]["tables"][table_index]["rows"][row_index]
         before = canonical_clone_v1(destination["values_exact"])
+        label_before = destination["label_exact"]
         destination["values_exact"] = canonical_clone_v1(row["values_exact"])
+        label_change = target.get("allow_label_change", False)
+        path_before = canonical_clone_v1(destination["hierarchy_path_exact"])
+        if label_change:
+            if not path_before or path_before[-1] != label_before:
+                raise _error("region repair source label is not the hierarchy leaf")
+            destination["label_exact"] = row["label_exact"]
+            destination["hierarchy_path_exact"][-1] = row["label_exact"]
         changes.append(
             {
                 "target_id": target["target_id"],
                 "values_after_exact": row["values_exact"],
                 "values_before_exact": before,
+                **(
+                    {
+                        "hierarchy_path_after_exact": destination["hierarchy_path_exact"],
+                        "hierarchy_path_before_exact": path_before,
+                        "label_after_exact": row["label_exact"],
+                        "label_before_exact": label_before,
+                    }
+                    if label_change
+                    else {}
+                ),
             }
         )
     merged = validate_financial_page_json_v1(merged)

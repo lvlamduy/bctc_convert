@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from test_gemini_json_flat_accounting_family_v1 import _page, _specs
+from test_gemini_json_flat_accounting_family_v1 import (
+    _loan_type_page,
+    _loan_type_specs,
+    _page,
+    _specs,
+)
 from test_gemini_json_stacked_period_accounting_family_v1 import (
     _compiled as _stacked_compiled,
 )
@@ -286,3 +291,53 @@ def test_stacked_presentation_failure_targets_only_the_printed_net_rows() -> Non
     )
     assert plans[0]["repair_scope"] == "ROW_VALUES"
     assert plans[0]["target_ids"] == ["s1:t1:r7", "s1:t2:r7"]
+
+
+def test_unbound_visible_numeric_row_queues_exact_label_and_value_reread() -> None:
+    topology, evaluation, schema = _loan_type_specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    page = _loan_type_page(percentage_companions=False)
+    row = page["sections"][0]["tables"][0]["rows"][1]
+    row["label_exact"] = "Cho vay chiết khấu công cụ chuyển nhượng và các"
+    row["hierarchy_path_exact"][-1] = row["label_exact"]
+    version_id = "gfpstorev1:json:" + "d" * 64
+    candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id=version_id,
+        physical_page=11,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    assert "UNBOUND_VISIBLE_NUMERIC_ROWS:2" in candidate["reasons"]
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "e" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            {
+                "candidate_count": 1,
+                "candidates": [candidate],
+                "document_ordinal": 1,
+                "mappings": [],
+                "reasons": candidate["reasons"],
+                "selected_candidate_id": None,
+                "source_logical_name": "CTG/2025/loan-type.pdf",
+                "source_sha256": "f" * 64,
+                "status": UNRESOLVED,
+            }
+        ],
+    )
+    plans = build_family_region_repair_plans_v1(
+        sweep=sweep,
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )
+    assert len(plans) == 1
+    assert plans[0]["repair_scope"] == "ROW_LABEL_AND_VALUES"
+    assert plans[0]["target_ids"] == ["s1:t1:r2"]
+    assert set(plans[0]["trigger_kinds"]) == {
+        "UNMATCHED_SOURCE_LABEL",
+        "UNSATISFIED_EXACT_EQUATION",
+    }

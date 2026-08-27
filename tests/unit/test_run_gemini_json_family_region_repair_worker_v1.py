@@ -5,6 +5,7 @@ import pytest
 from scripts.experiments.run_gemini_json_family_region_repair_worker_v1 import (
     RunGeminiJsonFamilyRegionRepairWorkerV1Error,
     _repair_attempt_outcome_v1,
+    _targeted_repair_is_accepted,
 )
 
 
@@ -49,3 +50,21 @@ def test_repair_outcome_rejects_unknown_reasoning_level() -> None:
             stable_source=False,
             thinking_level="extreme",
         )
+
+
+def test_unmatched_label_repair_is_not_accepted_while_target_row_remains_unbound() -> None:
+    plan = {
+        "trigger_kinds": ["UNMATCHED_SOURCE_LABEL"],
+        "trigger_reasons": [
+            "FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED",
+            "UNBOUND_VISIBLE_NUMERIC_ROWS:2",
+        ],
+    }
+    candidate = {
+        "reasons": [
+            "FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED",
+            "UNBOUND_VISIBLE_NUMERIC_ROWS:2",
+        ],
+        "status": "UNRESOLVED_REQUIRES_NEW_EVIDENCE",
+    }
+    assert not _targeted_repair_is_accepted(plan, candidate)

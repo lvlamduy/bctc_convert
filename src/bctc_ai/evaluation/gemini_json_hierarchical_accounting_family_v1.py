@@ -7,7 +7,10 @@ the declarative topology/equation/schema specs are the only semantic axis.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from typing import Any
 
@@ -29,12 +32,39 @@ CLAIM_BOUNDARY = (
 _EVALUATION_FORMATS = {
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3",
     "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
+    "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
 }
 _SCHEMA_FORMATS = {
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
     "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5",
+    "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
 }
 _DASHES = {"-", "–", "—", "_"}
+_DATE_DMY = re.compile(r"(?<!\d)([0-3]?\d)[./-]([01]?\d)[./-]((?:19|20)\d{2})(?!\d)")
+_DATE_WORDS = re.compile(
+    r"ng[aà]y\s+([0-3]?\d)\s+th[aá]ng\s+([01]?\d)\s+n[aă]m\s+((?:19|20)\d{2})",
+    re.IGNORECASE,
+)
+_CURRENT_PERIOD_ALIASES = {
+    "cuoi ky",
+    "cuoi nam",
+    "ky nay",
+    "nam nay",
+    "so cuoi ky",
+    "so cuoi nam",
+    "tai ngay cuoi ky",
+    "tai ngay cuoi nam",
+}
+_COMPARATIVE_PERIOD_ALIASES = {
+    "dau ky",
+    "dau nam",
+    "ky truoc",
+    "nam truoc",
+    "so dau ky",
+    "so dau nam",
+    "tai ngay dau ky",
+    "tai ngay dau nam",
+}
 
 
 def _error(message: str) -> ValueError:
@@ -204,6 +234,165 @@ def _money(value: Any) -> dict[str, Any]:
     }
 
 
+def _header_text(column: Any) -> str:
+    path = column.get("header_path_exact") if type(column) is dict else None
+    if (
+        type(path) is not list
+        or not path
+        or any(value is not None and type(value) is not str for value in path)
+    ):
+        return ""
+    return " ".join(value for value in path if value).strip()
+
+
+def _header_date(value: str) -> date | None:
+    match = _DATE_DMY.search(value) or _DATE_WORDS.search(value)
+    if match is None:
+        return None
+    try:
+        return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+    except ValueError:
+        return None
+
+
+def _period_alias_role(value: str) -> str | None:
+    folded = _normalized(value)
+    current = any(
+        alias == folded or f" {alias} " in f" {folded} " for alias in _CURRENT_PERIOD_ALIASES
+    )
+    comparative = any(
+        alias == folded or f" {alias} " in f" {folded} " for alias in _COMPARATIVE_PERIOD_ALIASES
+    )
+    if current == comparative:
+        return None
+    return "CURRENT_PERIOD" if current else "COMPARATIVE_PERIOD"
+
+
+def _period_signature(value: str) -> tuple[str, str] | None:
+    parsed = _header_date(value)
+    if parsed is not None:
+        return "DATE", parsed.isoformat()
+    role = _period_alias_role(value)
+    return ("SEMANTIC_ALIAS", role) if role is not None else None
+
+
+def _percent(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {"source_text": None, "state": "BLANK_PRESENTATION"}
+    if type(value) is not str or not value.strip():
+        raise _error("Gemini JSON hierarchy percentage cell is invalid")
+    body = value.strip()
+    if body in _DASHES:
+        return {
+            "coefficient": 0,
+            "scale": 0,
+            "source_text": value,
+            "state": "DASH_ZERO",
+        }
+    body = body.removesuffix("%").strip().replace(" ", "")
+    if "," in body and "." in body:
+        raise _error("Gemini JSON hierarchy percentage separator is ambiguous")
+    normalized = body.replace(",", ".")
+    try:
+        parsed = Decimal(normalized)
+    except InvalidOperation as exc:
+        raise _error("Gemini JSON hierarchy percentage cell is not an exact decimal") from exc
+    if not parsed.is_finite() or parsed < 0 or parsed > 100:
+        raise _error("Gemini JSON hierarchy percentage cell is outside zero to one hundred")
+    exponent = parsed.as_tuple().exponent
+    scale = max(0, -exponent)
+    coefficient = int(parsed.scaleb(scale))
+    return {
+        "coefficient": coefficient,
+        "scale": scale,
+        "source_text": value,
+        "state": "RAW_UNSIGNED_DECIMAL_PERCENT",
+    }
+
+
+def _period_value_column_axis(
+    *, columns: Any, table_unit: Any, evaluation: dict[str, Any]
+) -> tuple[list[int], list[dict[str, Any]], list[int], dict[str, Any] | None, list[str]]:
+    """Bind two accounting periods while retaining optional percentage companions."""
+
+    reasons: list[str] = []
+    if type(columns) is not list or not columns:
+        return [], [], [], None, ["PERIOD_VALUE_COLUMN_AXIS_IS_ABSENT"]
+    kinds = [column.get("value_kind") if type(column) is dict else None for column in columns]
+    allowed = evaluation.get("expected_lane_unit_kind_alternatives")
+    if allowed is None:
+        allowed = [evaluation.get("expected_lane_unit_kinds")]
+    if kinds not in allowed:
+        reasons.append("PERIOD_VALUE_COLUMN_KIND_SEQUENCE_IS_NOT_DECLARED")
+    money_indices = [index for index, kind in enumerate(kinds) if kind == "MONEY"]
+    percent_indices = [index for index, kind in enumerate(kinds) if kind == "PERCENT"]
+    money_columns = [columns[index] for index in money_indices]
+    if len(money_indices) != 2 or any(not _header_text(column) for column in columns):
+        reasons.append("PERIOD_VALUE_COLUMN_HEADER_OR_MONEY_LANE_COUNT_IS_NOT_EXACT")
+        return money_indices, money_columns, percent_indices, None, reasons
+    if percent_indices and (
+        len(percent_indices) != 2
+        or len(columns) != 4
+        or money_indices != [0, 2]
+        or percent_indices != [1, 3]
+    ):
+        reasons.append("PERCENTAGE_COMPANION_COLUMN_ORDER_IS_NOT_PERIOD_PAIRED")
+    unit_declared = type(table_unit) is str and bool(table_unit.strip())
+    if not unit_declared:
+        unit_declared = all(
+            any(
+                token in _normalized(_header_text(column))
+                for token in ("trieu dong", "trieu vnd", "nghin dong", "vnd")
+            )
+            for column in money_columns
+        )
+    unit_disposition = (
+        "EXPLICIT_TABLE_OR_COLUMN_MONEY_UNIT"
+        if unit_declared
+        else "SOURCE_TABLE_UNIT_NOT_EXPLICIT_RAW_COEFFICIENTS_PRESERVED"
+    )
+    signatures = [_period_signature(_header_text(column)) for column in money_columns]
+    if any(signature is None for signature in signatures):
+        reasons.append("CURRENT_AND_COMPARATIVE_PERIOD_HEADERS_ARE_NOT_EXACT")
+    elif signatures[0][0] != signatures[1][0]:
+        reasons.append("CURRENT_AND_COMPARATIVE_PERIOD_HEADER_KINDS_DIFFER")
+    elif signatures[0][0] == "DATE" and not signatures[0][1] > signatures[1][1]:
+        reasons.append("CURRENT_PERIOD_DATE_IS_NOT_AFTER_COMPARATIVE_PERIOD_DATE")
+    elif (
+        signatures
+        != [
+            ("SEMANTIC_ALIAS", "CURRENT_PERIOD"),
+            ("SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"),
+        ]
+        and signatures[0][0] == "SEMANTIC_ALIAS"
+    ):
+        reasons.append("ORDERED_CURRENT_COMPARATIVE_PERIOD_ALIASES_DO_NOT_REPLAY")
+    if percent_indices and len(percent_indices) == 2:
+        companion_signatures = []
+        for period_ordinal, index in enumerate(percent_indices):
+            header = _header_text(columns[index])
+            signature = _period_signature(header)
+            if signature is None and (
+                header.strip() == "%" or _normalized(header) in {"ty le", "phan tram"}
+            ):
+                signature = signatures[period_ordinal]
+            companion_signatures.append(signature)
+        if companion_signatures != signatures:
+            reasons.append("PERCENTAGE_COMPANION_PERIODS_DO_NOT_MATCH_MONEY_PERIODS")
+    receipt = (
+        {
+            "money_column_indices": money_indices,
+            "percent_column_indices": percent_indices,
+            "period_signatures": [list(signature) for signature in signatures],
+            "source_value_kind_sequence": kinds,
+            "unit_disposition": unit_disposition,
+        }
+        if not reasons
+        else None
+    )
+    return money_indices, money_columns, percent_indices, receipt, reasons
+
+
 def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -> dict[str, Any]:
     try:
         topology = compile_accounting_family_topology_spec_v1(topology_spec)
@@ -225,12 +414,37 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "candidate_selection_policy",
             "occurrence_row_axis_policy",
         }
+    if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5":
+        evaluation_keys = {
+            "candidate_selection_policy",
+            "closure_policy",
+            "expected_lane_unit_kind_alternatives",
+            "family_id",
+            "format_version",
+            "hierarchical_closure_spec",
+            "occurrence_row_axis_policy",
+            "period_semantics",
+        }
+    lane_alternatives = (
+        evaluation_spec.get("expected_lane_unit_kind_alternatives")
+        if type(evaluation_spec) is dict
+        and evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+        else [evaluation_spec.get("expected_lane_unit_kinds")]
+        if type(evaluation_spec) is dict
+        else None
+    )
     if (
         type(evaluation_spec) is not dict
         or set(evaluation_spec) != evaluation_keys
         or evaluation_format not in _EVALUATION_FORMATS
         or evaluation_spec.get("family_id") != topology["family_id"]
-        or evaluation_spec.get("expected_lane_unit_kinds") != ["MONEY", "MONEY"]
+        or type(lane_alternatives) is not list
+        or not lane_alternatives
+        or any(
+            alternative not in (["MONEY", "MONEY"], ["MONEY", "PERCENT", "MONEY", "PERCENT"])
+            for alternative in lane_alternatives
+        )
+        or len({tuple(alternative) for alternative in lane_alternatives}) != len(lane_alternatives)
     ):
         raise _error("Gemini JSON hierarchy evaluation spec is invalid or unsupported")
     hierarchy = evaluation_spec["hierarchical_closure_spec"]
@@ -264,8 +478,25 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             lane_specific_only = (
                 alternative.get("lane_specific_only", False) if type(alternative) is dict else None
             )
-            if evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4":
-                minimum = len(roles) if type(roles) is list else None
+            if evaluation_format in {
+                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4",
+                "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5",
+            }:
+                selection_policy = equation.get("component_selection_policy")
+                variable_subset = (
+                    evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                    and selection_policy == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
+                )
+                if (
+                    evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                    and selection_policy
+                    not in {
+                        "DECLARED_EXACT_ALTERNATIVE",
+                        "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+                    }
+                ):
+                    raise _error("Gemini JSON hierarchy component selection policy is invalid")
+                minimum = 1 if variable_subset else len(roles) if type(roles) is list else None
                 minimum_additive = 0
                 derivation = alternative.get("derivation_policy")
                 valid_policy = coverage == "EXHAUSTIVE_COMPONENT_SET" and derivation in {
@@ -315,6 +546,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
                     "lane_specific_only": lane_specific_only,
                     "variable_component_subset": (
                         evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
+                        or (
+                            evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                            and equation.get("component_selection_policy")
+                            == "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL"
+                        )
                     ),
                 }
             )
@@ -362,17 +598,21 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             raise _error("Gemini JSON hierarchy has no unique family-root equation")
         family_result_role = next(iter(family_result_roles))
 
+    schema_fields = {
+        "family_id",
+        "family_report_norm_id",
+        "family_root_mapping_policy",
+        "format_version",
+        "ignored_roles",
+        "role_bindings",
+    }
+    if type(schema_spec) is dict and schema_spec.get("format_version") == (
+        "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
+    ):
+        schema_fields.add("family_owner_report_norm_id")
     if (
         type(schema_spec) is not dict
-        or set(schema_spec)
-        != {
-            "family_id",
-            "family_report_norm_id",
-            "family_root_mapping_policy",
-            "format_version",
-            "ignored_roles",
-            "role_bindings",
-        }
+        or set(schema_spec) != schema_fields
         or schema_spec.get("format_version") not in _SCHEMA_FORMATS
         or schema_spec.get("family_id") != topology["family_id"]
         or type(schema_spec.get("family_report_norm_id")) is not int
@@ -384,6 +624,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
     for binding in schema_spec["role_bindings"]:
         if (
             type(binding) is not dict
+            or (
+                schema_spec["format_version"] == "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
+                and set(binding) != {"parent_report_norm_id", "report_norm_id", "role"}
+            )
             or type(binding.get("role")) is not str
             or binding["role"] not in children_by_role
             or binding["role"] in bindings
@@ -391,6 +635,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             or binding["report_norm_id"] <= 0
         ):
             raise _error("Gemini JSON hierarchy role binding is invalid")
+        if "parent_report_norm_id" in binding and (
+            type(binding["parent_report_norm_id"]) is not int
+            or binding["parent_report_norm_id"] <= 0
+        ):
+            raise _error("Gemini JSON hierarchy binding parent is invalid")
         bindings[binding["role"]] = binding["report_norm_id"]
     ignored = set(schema_spec["ignored_roles"])
     if set(bindings) | ignored != set(children_by_role) or set(bindings) & ignored:
@@ -706,6 +955,13 @@ def _solve(
                     authoritative_visible = True
                 if (
                     record["row_id"] not in used_anonymous
+                    and not (
+                        compiled["evaluation"]["format_version"]
+                        == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+                        and record.get("owner_role") == topology["parent"]["role"]
+                        and result_role != family_result_role
+                        and "allowed_result_roles" not in record
+                    )
                     and (
                         record["ordinal"] > maximum_component_ordinal
                         or record.get("presentation_shadow_for_role") == result_role
@@ -1005,31 +1261,47 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
     title_folded = _normalized(title)
     parent_in_title = any(alias in title_folded for alias in topology["parent"]["aliases"])
     columns = table.get("columns")
-    money_indices = (
-        [index for index, column in enumerate(columns) if column.get("value_kind") == "MONEY"]
-        if type(columns) is list
-        else []
-    )
-    money_columns = [columns[index] for index in money_indices] if type(columns) is list else []
-    unit_is_declared = (
-        type(table.get("unit_exact")) is str and bool(table["unit_exact"].strip())
-    ) or (
-        len(money_columns) == 2
-        and all(
-            "trieu" in _normalized(" ".join(map(str, column.get("header_path_exact", []))))
-            for column in money_columns
+    period_value_axis_receipt = None
+    percent_indices: list[int] = []
+    if compiled_specs["evaluation"]["format_version"] == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5":
+        (
+            money_indices,
+            money_columns,
+            percent_indices,
+            period_value_axis_receipt,
+            column_reasons,
+        ) = _period_value_column_axis(
+            columns=columns,
+            table_unit=table.get("unit_exact"),
+            evaluation=compiled_specs["evaluation"],
         )
-    )
-    if (
-        type(columns) is not list
-        or len(money_columns) != 2
-        or any(
-            type(column.get("header_path_exact")) is not list or not column["header_path_exact"]
-            for column in money_columns
+        reasons.extend(column_reasons)
+    else:
+        money_indices = (
+            [index for index, column in enumerate(columns) if column.get("value_kind") == "MONEY"]
+            if type(columns) is list
+            else []
         )
-        or not unit_is_declared
-    ):
-        reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
+        money_columns = [columns[index] for index in money_indices] if type(columns) is list else []
+        unit_is_declared = (
+            type(table.get("unit_exact")) is str and bool(table["unit_exact"].strip())
+        ) or (
+            len(money_columns) == 2
+            and all(
+                "trieu" in _normalized(" ".join(map(str, column.get("header_path_exact", []))))
+                for column in money_columns
+            )
+        )
+        if (
+            type(columns) is not list
+            or len(money_columns) != 2
+            or any(
+                type(column.get("header_path_exact")) is not list or not column["header_path_exact"]
+                for column in money_columns
+            )
+            or not unit_is_declared
+        ):
+            reasons.append("PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT")
     source_rows = table.get("rows")
     if type(source_rows) is not list or not source_rows:
         raise _error("Gemini JSON hierarchy row axis is empty")
@@ -1072,6 +1344,19 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         except ValueError:
             reasons.append(f"ROW_MONEY_CELL_IS_NOT_EXACT_INTEGER:{ordinal}")
             continue
+        percentage_companions = []
+        if percent_indices:
+            try:
+                percentage_companions = [
+                    {
+                        "column_index": index,
+                        **_percent(source_values[index]),
+                    }
+                    for index in percent_indices
+                ]
+            except ValueError:
+                reasons.append(f"ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:{ordinal}")
+                continue
         roles = _row_roles(
             row, topology=topology, aliases_by_role=compiled_specs["aliases_by_role"]
         )
@@ -1100,10 +1385,14 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             aliases_by_role=compiled_specs["aliases_by_role"],
             own_roles=set(roles),
         )
-        if owner is None and _path_has_role(
+        path_has_family_parent = _path_has_role(
             row.get("hierarchy_path_exact"),
             aliases=topology["parent"]["aliases"],
             label_exact=row.get("label_exact"),
+        )
+        if path_has_family_parent and (
+            owner is None
+            or (row.get("row_kind") == "TOTAL" and not _normalized(row.get("label_exact")))
         ):
             owner = topology["parent"]["role"]
         record = {
@@ -1112,6 +1401,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             "ordinal": ordinal,
             "owner_role": owner,
             "path": canonical_clone_v1(row.get("hierarchy_path_exact")),
+            "percentage_companions": percentage_companions,
             "row_id": f"r{ordinal}",
         }
         if roles and any(value is not None for value in values):
@@ -1143,6 +1433,17 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             if owner is None and row.get("row_kind") == "TOTAL":
                 record["allowed_result_roles"] = {compiled_specs["family_result_role"]}
                 record["authoritative_result_roles"] = {compiled_specs["family_result_role"]}
+            elif (
+                owner is None
+                and row.get("row_kind") == "SUBTOTAL"
+                and compiled_specs["evaluation"]["format_version"]
+                == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V5"
+            ):
+                record["allowed_result_roles"] = {
+                    equation["result_role"]
+                    for equation in compiled_specs["equations"]
+                    if equation["result_role"] != compiled_specs["family_result_role"]
+                }
             anonymous.append(record)
         elif all(value is None for value in values):
             continue
@@ -1334,11 +1635,23 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             mapping["derived_from_row_ids"] = canonical_clone_v1(record["derived_from_row_ids"])
         if "inferred_from_role" in record:
             mapping["inferred_from_role"] = record["inferred_from_role"]
+        if record.get("percentage_companions"):
+            mapping["percentage_companion_columns"] = canonical_clone_v1(
+                [columns[index] for index in percent_indices]
+            )
+            mapping["percentage_companion_values"] = canonical_clone_v1(
+                record["percentage_companions"]
+            )
         mappings.append(mapping)
     result["mappings"] = mappings
     result["closure_receipt"] = {
         "equations": receipts,
         "inferred_ambiguous_provision_role": inferred_target,
+        **(
+            {"period_value_column_axis": period_value_axis_receipt}
+            if period_value_axis_receipt is not None
+            else {}
+        ),
         "rule": "EXACT_EXHAUSTIVE_GEMINI_JSON_RECURSIVE_DIRECT_FRONTIER_ALL_LANES",
         "used_anonymous_result_row_ids": sorted(used_anonymous),
     }

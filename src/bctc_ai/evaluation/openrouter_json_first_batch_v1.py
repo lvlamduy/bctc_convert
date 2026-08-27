@@ -15,6 +15,7 @@ from typing import Any
 
 from bctc_ai.evaluation.gemini_json_first_batch_v1 import InlinePageRequestV1
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
+    GOOGLE_THINKING_LEVELS,
     OPENROUTER_MODEL,
     ProviderResultV1,
     _openrouter_response_v1,
@@ -79,6 +80,8 @@ def build_openrouter_batch_body_v1(*, requests: Sequence[InlinePageRequestV1]) -
         raise OpenRouterJsonFirstBatchV1Error("OpenRouter batch request IDs must be unique")
     output = []
     for request in requests:
+        if request.thinking_level not in GOOGLE_THINKING_LEVELS:
+            raise OpenRouterJsonFirstBatchV1Error("OpenRouter batch thinking level is invalid")
         if (request.image is None) == (request.file_uri is None):
             raise OpenRouterJsonFirstBatchV1Error(
                 "OpenRouter batch requires exactly one inline image or public HTTPS URL"
@@ -114,7 +117,7 @@ def build_openrouter_batch_body_v1(*, requests: Sequence[InlinePageRequestV1]) -
                 "only": [OPENROUTER_BATCH_PROVIDER],
                 "require_parameters": True,
             },
-            "reasoning": {"effort": "low"},
+            "reasoning": {"effort": request.thinking_level},
         }
         if request.output_contract_mode == "JSON_SCHEMA":
             body["response_format"] = {

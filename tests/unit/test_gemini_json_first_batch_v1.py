@@ -119,6 +119,7 @@ def test_inline_batch_body_binds_request_ids_and_generate_content_contract() -> 
     ]
     assert requests[0]["request"]["store"] is False
     assert requests[0]["request"]["generationConfig"]["maxOutputTokens"] == 65536
+    assert requests[0]["request"]["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "LOW"}
     assert requests[0]["request"]["model"] == "models/gemini-3.7-flash"
     assert "responseJsonSchema" in requests[0]["request"]["generationConfig"]
 

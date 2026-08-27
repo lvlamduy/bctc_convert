@@ -15,6 +15,7 @@ from typing import Any
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
+    GOOGLE_THINKING_LEVELS,
     GeminiJsonFirstProviderV1Error,
     ProviderResultV1,
     _google_generate_content_body_v1,
@@ -54,6 +55,7 @@ class InlinePageRequestV1:
     prompt: str
     response_schema: dict[str, Any]
     output_contract_mode: str = "JSON_SCHEMA"
+    thinking_level: str = "low"
     image: bytes | None = None
     file_uri: str | None = None
 
@@ -142,12 +144,15 @@ def build_google_inline_batch_body_v1(
         raise GeminiJsonFirstBatchV1Error("batch request IDs must be unique")
     inlined = []
     for request in requests:
+        if request.thinking_level not in GOOGLE_THINKING_LEVELS:
+            raise GeminiJsonFirstBatchV1Error("batch thinking level is invalid")
         generate_request = _google_generate_content_body_v1(
             image=request.image,
             media_type=request.media_type,
             prompt=request.prompt,
             response_schema=request.response_schema,
             output_contract_mode=request.output_contract_mode,
+            thinking_level=request.thinking_level,
             file_uri=request.file_uri,
         )
         generate_request["model"] = "models/" + GOOGLE_MODEL

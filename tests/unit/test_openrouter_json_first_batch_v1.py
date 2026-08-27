@@ -97,6 +97,7 @@ def test_openrouter_batch_body_pins_model_provider_and_full_image_schema() -> No
         "require_parameters": True,
     }
     assert request["body"]["max_tokens"] == 65536
+    assert request["body"]["reasoning"] == {"effort": "low"}
     assert request["body"]["messages"][0]["content"][1]["image_url"]["url"].startswith(
         "data:image/png;base64,"
     )

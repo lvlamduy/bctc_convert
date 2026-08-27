@@ -141,6 +141,48 @@ def test_targeted_region_repair_can_bind_an_unlabeled_visible_total_by_row_ident
     assert merged["sections"][0]["tables"][0]["rows"][2]["values_exact"] == ["30", "20"]
 
 
+def test_targeted_region_repair_can_reread_one_truncated_label_and_its_values() -> None:
+    page = _page()
+    row = page["sections"][0]["tables"][0]["rows"][1]
+    row["label_exact"] = "Cho vay chiết khấu công cụ chuyển nhượng và các"
+    row["hierarchy_path_exact"] = [row["label_exact"]]
+    row["values_exact"] = ["625.084", "1.745.674"]
+    targets = region_repair_targets_v1(
+        page,
+        target_ids=["s1:t1:r2"],
+        allow_label_change=True,
+    )
+    prompt = build_region_repair_prompt_v1(
+        base_page_json_version_id="gfpstorev1:json:" + "3" * 64,
+        targets=targets,
+    )
+    assert "đọc lại toàn bộ nhãn" in prompt
+    repaired_label = "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá"
+    repair = {
+        "all_targets_transcribed": True,
+        "rows": [
+            {
+                "label_exact": repaired_label,
+                "target_id": "s1:t1:r2",
+                "values_exact": ["625.084", "1.745.674"],
+            }
+        ],
+        "uncertainty_exact": [],
+    }
+    decoded = decode_region_repair_text_v1(json.dumps(repair), targets=targets)
+    merged, receipt = merge_region_repair_v1(
+        page,
+        base_page_json_version_id="gfpstorev1:json:" + "3" * 64,
+        targets=targets,
+        repair=decoded,
+    )
+    merged_row = merged["sections"][0]["tables"][0]["rows"][1]
+    assert merged_row["label_exact"] == repaired_label
+    assert merged_row["hierarchy_path_exact"] == [repaired_label]
+    assert receipt["changes"][0]["label_before_exact"].endswith("và các")
+    assert receipt["changes"][0]["label_after_exact"] == repaired_label
+
+
 def test_table_axis_repair_changes_only_bound_title_and_column_headers() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
