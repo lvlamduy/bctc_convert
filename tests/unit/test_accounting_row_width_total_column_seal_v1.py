@@ -159,6 +159,56 @@ def test_relocation_is_unresolved_if_horizontal_equation_still_needs_from_cell()
     assert result["effective_projection"] == result["raw_table_snapshot"]
 
 
+def test_every_data_row_requires_one_authoritative_horizontal_equation() -> None:
+    source = _shifted_table()
+    source["equations"] = [
+        equation
+        for equation in source["equations"]
+        if equation["equation_id"] != "movement-horizontal"
+    ]
+
+    result = build_accounting_row_width_total_column_seal_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert result["unresolved_reasons"] == ["INCOMPLETE_AUTHORITATIVE_HORIZONTAL_EQUATION_COVERAGE"]
+    assert result["relocation_receipts"] == []
+
+    duplicated = _shifted_table()
+    extra = deepcopy(
+        next(
+            equation
+            for equation in duplicated["equations"]
+            if equation["equation_id"] == "movement-horizontal"
+        )
+    )
+    extra["equation_id"] = "movement-horizontal-duplicate"
+    duplicated["equations"].append(extra)
+    duplicate_result = build_accounting_row_width_total_column_seal_v1(duplicated)
+    assert duplicate_result["status"] == "UNRESOLVED"
+    assert duplicate_result["unresolved_reasons"] == [
+        "INCOMPLETE_AUTHORITATIVE_HORIZONTAL_EQUATION_COVERAGE"
+    ]
+
+
+def test_correction_without_an_affected_vertical_inventory_is_unresolved() -> None:
+    source = _shifted_table()
+    source["rows"] = [_row("only", [10, 20, 30, None], 0)]
+    source["equations"] = [
+        _equation(
+            "only-horizontal",
+            "HORIZONTAL_ROW",
+            [_term("only", "a"), _term("only", "b")],
+            "only",
+            "total",
+        )
+    ]
+
+    result = build_accounting_row_width_total_column_seal_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert result["relocation_receipts"] == []
+
+
 def test_one_unit_vertical_mismatch_vetoes_otherwise_plausible_shift() -> None:
     source = _shifted_table()
     source["rows"][3]["cells"]["a"] = _cell(13, "13")

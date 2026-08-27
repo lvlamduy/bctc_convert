@@ -109,6 +109,16 @@ def _four_block_source() -> dict:
                 ],
                 "subtotal_row_id": "depreciation",
             },
+            {
+                "equation_id": "carrying-equation",
+                "mapping_ids": ["mapping-carrying"],
+                "subtotal_row_id": "carrying",
+            },
+            {
+                "equation_id": "other-equation",
+                "mapping_ids": ["mapping-other"],
+                "subtotal_row_id": "other",
+            },
         ],
         "mappings": mappings,
         "rows": rows,
@@ -135,6 +145,13 @@ def test_four_flattened_parent_blocks_collapse_by_order_indent_and_exact_sum() -
         "depreciation-child-1",
         "depreciation-child-2",
     ]
+    cost_relation = next(
+        relation
+        for relation in result["effective_parent_relations"]
+        if relation["child_row_id"] == "cost-child-1"
+    )
+    assert cost_relation["raw_source_parent_row_id"] == "root"
+    assert cost_relation["effective_parent_row_id"] == "cost"
     receipts = {receipt["subtotal_row_id"]: receipt for receipt in result["block_receipts"]}
     assert receipts["cost"]["selected_frontiers"][0]["selection_mode"] == ("SUBTOTAL_FRONTIER")
     assert receipts["depreciation"]["selected_frontiers"][0]["selection_mode"] == (
@@ -221,6 +238,49 @@ def test_subtotal_and_descendants_may_all_be_mapped_but_not_double_consumed() ->
     )
 
 
+def test_every_collapsed_block_requires_exactly_one_selected_frontier() -> None:
+    missing = _four_block_source()
+    missing["equation_frontiers"] = [
+        frontier
+        for frontier in missing["equation_frontiers"]
+        if frontier["subtotal_row_id"] != "other"
+    ]
+    result = build_ordered_visible_subtotal_block_collapse_v1(missing)
+    assert result["status"] == "UNRESOLVED"
+    assert "BLOCK_REQUIRES_EXACTLY_ONE_SELECTED_EQUATION_FRONTIER" in result["unresolved_reasons"]
+    assert result["block_receipts"] == []
+
+    doubled = _four_block_source()
+    doubled["equation_frontiers"].append(
+        {
+            "equation_id": "cost-descendant-equation",
+            "mapping_ids": ["mapping-cost-child-1", "mapping-cost-child-2"],
+            "subtotal_row_id": "cost",
+        }
+    )
+    result = build_ordered_visible_subtotal_block_collapse_v1(doubled)
+    assert result["status"] == "UNRESOLVED"
+    assert "BLOCK_REQUIRES_EXACTLY_ONE_SELECTED_EQUATION_FRONTIER" in result["unresolved_reasons"]
+    assert result["effective_parent_relations"] == []
+
+
+def test_mapping_id_laundering_cannot_duplicate_one_source_row_role() -> None:
+    source = _four_block_source()
+    source["mappings"].append(
+        {
+            "mapping_id": "mapping-cost-laundered",
+            "role_id": "cost",
+            "row_id": "cost",
+        }
+    )
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "DUPLICATE_SOURCE_ROW_ROLE_MAPPING_VETO" in result["unresolved_reasons"]
+    assert result["block_receipts"] == []
+
+
 def test_partial_descendant_frontier_and_mapping_reuse_are_unresolved() -> None:
     partial = _four_block_source()
     partial["equation_frontiers"][0]["mapping_ids"] = ["mapping-cost-child-1"]
@@ -236,7 +296,7 @@ def test_partial_descendant_frontier_and_mapping_reuse_are_unresolved() -> None:
     )
     result = build_ordered_visible_subtotal_block_collapse_v1(reused)
     assert result["status"] == "UNRESOLVED"
-    assert "MAPPING_REUSED_ACROSS_SELECTED_FRONTIERS_VETO" in result["unresolved_reasons"]
+    assert "SOURCE_ROW_ROLE_REUSED_ACROSS_SELECTED_FRONTIERS_VETO" in result["unresolved_reasons"]
 
 
 def test_peer_reset_and_flat_indent_do_not_create_an_effective_parent() -> None:
@@ -267,6 +327,53 @@ def test_deeper_indented_child_with_ambiguous_source_parent_is_unresolved() -> N
 
     assert result["status"] == "UNRESOLVED"
     assert "AMBIGUOUS_VISIBLE_CHILD_PARENT_MARKER_VETO" in result["unresolved_reasons"]
+
+
+@pytest.mark.parametrize(
+    "mutation,expected_reason",
+    [
+        ("self", "RAW_PARENT_SELF_REFERENCE_VETO"),
+        ("cycle", "RAW_PARENT_CYCLE_VETO"),
+        ("inversion", "RAW_PARENT_DESCENDANT_OR_ORDER_INVERSION_VETO"),
+    ],
+)
+def test_raw_parent_self_cycle_and_descendant_inversion_are_vetoed(
+    mutation: str, expected_reason: str
+) -> None:
+    source = _four_block_source()
+    if mutation == "self":
+        source["rows"][1]["source_parent_row_id"] = "cost-child-1"
+    elif mutation == "cycle":
+        source["rows"][0]["source_parent_row_id"] = "cost-child-1"
+        source["rows"][1]["source_parent_row_id"] = "cost"
+    else:
+        source["rows"][0]["source_parent_row_id"] = "cost-child-2"
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert expected_reason in result["unresolved_reasons"]
+    assert result["effective_parent_relations"] == []
+
+
+def test_mixed_direct_child_depth_two_three_two_is_unresolved() -> None:
+    source = _four_block_source()
+    source["rows"][2]["hierarchy_level"] = 3
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "DIRECT_CHILD_DEPTH_MUST_EQUAL_SUBTOTAL_DEPTH_PLUS_ONE" in result["unresolved_reasons"]
+
+
+def test_mixed_correct_and_flattened_parent_modes_are_unresolved() -> None:
+    source = _four_block_source()
+    source["rows"][1]["source_parent_row_id"] = "cost"
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "MIXED_RAW_PARENT_PROJECTION_MODES_VETO" in result["unresolved_reasons"]
 
 
 def test_noncontiguous_exact_child_after_peer_is_unresolved() -> None:

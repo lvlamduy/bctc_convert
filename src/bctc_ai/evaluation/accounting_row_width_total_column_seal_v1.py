@@ -9,6 +9,7 @@ vertical rollforward.  Blank cells are unknown, not zero.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from itertools import product
 from typing import Any
@@ -192,7 +193,6 @@ def _input(value: Any) -> dict[str, Any]:
     column_set = set(column_ids)
     equations: list[dict[str, Any]] = []
     equation_ids: set[str] = set()
-    horizontal_rows: set[str] = set()
     for raw in value["equations"]:
         if (
             type(raw) is not dict
@@ -232,13 +232,10 @@ def _input(value: Any) -> dict[str, Any]:
             coordinates.add(coordinate)
             terms.append(canonical_clone_v1(term))
         if raw["axis"] == "HORIZONTAL_ROW":
-            if (
-                (unique_right_edge_total and result["column_id"] != totals[0]["column_id"])
-                or any(term["row_id"] != result["row_id"] for term in terms)
-                or result["row_id"] in horizontal_rows
+            if (unique_right_edge_total and result["column_id"] != totals[0]["column_id"]) or any(
+                term["row_id"] != result["row_id"] for term in terms
             ):
                 raise _error("horizontal equation must bind one row to the unique TOTAL")
-            horizontal_rows.add(result["row_id"])
         elif any(term["column_id"] != result["column_id"] for term in terms):
             raise _error("vertical rollforward must remain in one exact column")
         equations.append(
@@ -365,6 +362,33 @@ def _apply_actions(
     return effective
 
 
+def _affected_equations(
+    action: Mapping[str, Any], table: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    changed = {
+        (action["from"]["row_id"], action["from"]["column_id"]),
+        (action["to"]["row_id"], action["to"]["column_id"]),
+    }
+    affected = []
+    for equation in table["equations"]:
+        references = {
+            (equation["result"]["row_id"], equation["result"]["column_id"]),
+            *((term["row_id"], term["column_id"]) for term in equation["terms"]),
+        }
+        if references & changed:
+            affected.append(equation)
+    return affected
+
+
+def _action_has_authoritative_equation_frontier(
+    action: Mapping[str, Any], table: Mapping[str, Any]
+) -> bool:
+    affected = _affected_equations(action, table)
+    return any(equation["axis"] == "HORIZONTAL_ROW" for equation in affected) and any(
+        equation["axis"] == "VERTICAL_ROLLFORWARD" for equation in affected
+    )
+
+
 def _effective_projection(
     table: Mapping[str, Any],
     coordinates: Mapping[tuple[str, str], Mapping[str, Any] | None],
@@ -384,27 +408,19 @@ def _receipt(
     raw: Mapping[tuple[str, str], Mapping[str, Any] | None],
     effective: Mapping[tuple[str, str], Mapping[str, Any] | None],
 ) -> dict[str, Any]:
-    changed = {
-        (action["from"]["row_id"], action["from"]["column_id"]),
-        (action["to"]["row_id"], action["to"]["column_id"]),
-    }
-    affected = []
-    for equation in table["equations"]:
-        references = {
-            (equation["result"]["row_id"], equation["result"]["column_id"]),
-            *((term["row_id"], term["column_id"]) for term in equation["terms"]),
+    affected = [
+        {
+            "axis": equation["axis"],
+            "equation_id": equation["equation_id"],
+            "equation_sha256": canonical_json_sha256_v1(equation),
         }
-        if references & changed:
-            affected.append(
-                {
-                    "axis": equation["axis"],
-                    "equation_id": equation["equation_id"],
-                    "equation_sha256": canonical_json_sha256_v1(equation),
-                }
-            )
+        for equation in _affected_equations(action, table)
+    ]
     affected.sort(key=lambda item: (item["axis"], item["equation_id"]))
-    if not any(item["axis"] == "HORIZONTAL_ROW" for item in affected):
-        raise _error("relocation proof lacks its horizontal row equation")
+    if not any(item["axis"] == "HORIZONTAL_ROW" for item in affected) or not any(
+        item["axis"] == "VERTICAL_ROLLFORWARD" for item in affected
+    ):
+        raise _error("relocation proof lacks horizontal or affected vertical equations")
     material = {
         "action_kind": action["action_kind"],
         "affected_equations": affected,
@@ -461,6 +477,22 @@ def build_accounting_row_width_total_column_seal_v1(value: Any) -> dict[str, Any
             status="UNRESOLVED",
             unresolved_reasons=["AMBIGUOUS_OR_NON_RIGHT_EDGE_TOTAL_COLUMN_BINDING"],
         )
+    data_rows = {row["row_id"] for row in table["rows"] if row["row_kind"] == "DATA"}
+    horizontal_counts = Counter(
+        equation["result"]["row_id"]
+        for equation in table["equations"]
+        if equation["axis"] == "HORIZONTAL_ROW"
+    )
+    if set(horizontal_counts) != data_rows or any(
+        count != 1 for count in horizontal_counts.values()
+    ):
+        return _result(
+            table,
+            raw,
+            [],
+            status="UNRESOLVED",
+            unresolved_reasons=["INCOMPLETE_AUTHORITATIVE_HORIZONTAL_EQUATION_COVERAGE"],
+        )
     column_ids = [column["column_id"] for column in table["columns"]]
     if all(_equation_closes(equation, raw, column_ids) for equation in table["equations"]):
         return _result(
@@ -486,6 +518,10 @@ def build_accounting_row_width_total_column_seal_v1(value: Any) -> dict[str, Any
     for choices in product((False, True), repeat=len(ordered)):
         selected = [candidate for candidate, use in zip(ordered, choices, strict=True) if use]
         if not selected:
+            continue
+        if any(
+            not _action_has_authoritative_equation_frontier(action, table) for action in selected
+        ):
             continue
         effective = _apply_actions(raw, selected)
         if all(

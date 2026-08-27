@@ -183,14 +183,53 @@ def _unresolved(source: dict[str, Any], reasons: list[str]) -> dict[str, Any]:
     return _result(source, [], [], status="UNRESOLVED", unresolved_reasons=sorted(set(reasons)))
 
 
+def _raw_parent_graph_reasons(source: dict[str, Any]) -> list[str]:
+    rows_by_id = {row["row_id"]: row for row in source["rows"]}
+    reasons = []
+    for row in source["rows"]:
+        parent_id = row["source_parent_row_id"]
+        if parent_id is None or parent_id not in rows_by_id:
+            continue
+        if parent_id == row["row_id"]:
+            reasons.append("RAW_PARENT_SELF_REFERENCE_VETO")
+            continue
+        parent = rows_by_id[parent_id]
+        if (
+            parent["row_ordinal"] >= row["row_ordinal"]
+            or parent["hierarchy_level"] >= row["hierarchy_level"]
+        ):
+            reasons.append("RAW_PARENT_DESCENDANT_OR_ORDER_INVERSION_VETO")
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(row_id: str) -> None:
+        if row_id in visited:
+            return
+        if row_id in visiting:
+            reasons.append("RAW_PARENT_CYCLE_VETO")
+            return
+        visiting.add(row_id)
+        parent_id = rows_by_id[row_id]["source_parent_row_id"]
+        if parent_id in rows_by_id:
+            visit(parent_id)
+        visiting.remove(row_id)
+        visited.add(row_id)
+
+    for row_id in rows_by_id:
+        visit(row_id)
+    return reasons
+
+
 def _discover_blocks(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     rows = source["rows"]
     blocks = []
-    reasons: list[str] = []
+    reasons: list[str] = _raw_parent_graph_reasons(source)
     for index, subtotal in enumerate(rows):
         if subtotal["row_kind"] != "SUBTOTAL":
             continue
         children = []
+        observed_parent_modes = []
         cursor = index + 1
         while cursor < len(rows):
             candidate = rows[cursor]
@@ -199,17 +238,30 @@ def _discover_blocks(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list
             if candidate["row_kind"] != "DETAIL":
                 break
             if candidate["hierarchy_level"] <= subtotal["hierarchy_level"]:
-                if candidate["source_parent_row_id"] == subtotal["row_id"]:
+                if candidate["source_parent_row_id"] in {
+                    subtotal["row_id"],
+                    subtotal["source_parent_row_id"],
+                }:
                     reasons.append("HIERARCHY_OR_INDENT_MARKER_MISMATCH")
                 break
-            allowed_source_parents = {subtotal["row_id"], subtotal["source_parent_row_id"]}
-            if candidate["source_parent_row_id"] not in allowed_source_parents:
+            if candidate["hierarchy_level"] != subtotal["hierarchy_level"] + 1:
+                reasons.append("DIRECT_CHILD_DEPTH_MUST_EQUAL_SUBTOTAL_DEPTH_PLUS_ONE")
+                break
+            if candidate["source_parent_row_id"] == subtotal["row_id"]:
+                parent_mode = "ALREADY_CORRECT_DIRECT_PARENT"
+            elif (
+                subtotal["source_parent_row_id"] is not None
+                and candidate["source_parent_row_id"] == subtotal["source_parent_row_id"]
+            ):
+                parent_mode = "CONSISTENT_FLATTENED_EXTERNAL_PARENT"
+            else:
                 reasons.append("AMBIGUOUS_VISIBLE_CHILD_PARENT_MARKER_VETO")
                 break
             if not _same_context(subtotal, candidate):
                 reasons.append("CROSS_TABLE_ROOT_PERIOD_OR_UNIT_CHILD_VETO")
                 break
             children.append(candidate)
+            observed_parent_modes.append(parent_mode)
             cursor += 1
         if children and any(
             row["source_parent_row_id"] == subtotal["row_id"] for row in rows[cursor:]
@@ -218,6 +270,10 @@ def _discover_blocks(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list
         if len(children) == 1:
             reasons.append("SUBTOTAL_REQUIRES_AT_LEAST_TWO_CONTIGUOUS_CHILDREN")
         if len(children) < 2:
+            continue
+        parent_modes = set(observed_parent_modes)
+        if len(parent_modes) != 1:
+            reasons.append("MIXED_RAW_PARENT_PROJECTION_MODES_VETO")
             continue
         if any(child["money_lane_ids"] != subtotal["money_lane_ids"] for child in children):
             reasons.append("MONEY_LANE_AXIS_MISMATCH")
@@ -249,6 +305,7 @@ def _discover_blocks(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list
                 {
                     "children": children,
                     "lane_equations": lane_equations,
+                    "parent_projection_mode": next(iter(parent_modes)),
                     "subtotal": subtotal,
                 }
             )
@@ -269,17 +326,26 @@ def _bind_frontiers(
         subtotal_id: [] for subtotal_id in blocks_by_subtotal
     }
     reasons: list[str] = []
-    globally_used: set[str] = set()
+    mapping_pairs = Counter(
+        (mapping["row_id"], mapping["role_id"]) for mapping in mappings.values()
+    )
+    if any(count > 1 for count in mapping_pairs.values()):
+        reasons.append("DUPLICATE_SOURCE_ROW_ROLE_MAPPING_VETO")
+    globally_used: set[tuple[str, str]] = set()
     for frontier in source["equation_frontiers"]:
         subtotal_id = frontier["subtotal_row_id"]
         block = blocks_by_subtotal.get(subtotal_id)
         if block is None:
             reasons.append("SELECTED_FRONTIER_HAS_NO_EXACT_COLLAPSIBLE_BLOCK")
             continue
-        if any(mapping_id in globally_used for mapping_id in frontier["mapping_ids"]):
-            reasons.append("MAPPING_REUSED_ACROSS_SELECTED_FRONTIERS_VETO")
+        selected_pairs = {
+            (mappings[mapping_id]["row_id"], mappings[mapping_id]["role_id"])
+            for mapping_id in frontier["mapping_ids"]
+        }
+        if any(pair in globally_used for pair in selected_pairs):
+            reasons.append("SOURCE_ROW_ROLE_REUSED_ACROSS_SELECTED_FRONTIERS_VETO")
             continue
-        globally_used.update(frontier["mapping_ids"])
+        globally_used.update(selected_pairs)
         selected_rows = [mappings[mapping_id]["row_id"] for mapping_id in frontier["mapping_ids"]]
         counts = Counter(selected_rows)
         child_ids = [child["row_id"] for child in block["children"]]
@@ -297,6 +363,8 @@ def _bind_frontiers(
                 "selection_mode": mode,
             }
         )
+    if any(len(frontiers) != 1 for frontiers in selected_by_subtotal.values()):
+        reasons.append("BLOCK_REQUIRES_EXACTLY_ONE_SELECTED_EQUATION_FRONTIER")
     return selected_by_subtotal, reasons
 
 
@@ -316,6 +384,7 @@ def _receipts(
             "context": context,
             "lane_equations": canonical_clone_v1(block["lane_equations"]),
             "ordered_row_span": [subtotal["row_ordinal"], children[-1]["row_ordinal"]],
+            "parent_projection_mode": block["parent_projection_mode"],
             "selected_frontiers": canonical_clone_v1(selected[subtotal["row_id"]]),
             "source_row_sha256s": [canonical_json_sha256_v1(row) for row in [subtotal, *children]],
             "subtotal_row_id": subtotal["row_id"],
@@ -327,6 +396,7 @@ def _receipts(
                 "block_id": block_id,
                 "child_row_id": child["row_id"],
                 "effective_parent_row_id": subtotal["row_id"],
+                "raw_source_parent_row_id": child["source_parent_row_id"],
             }
             for child in children
         )
