@@ -11,6 +11,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 FORMAT_VERSION = "GEMINI_FAMILY_EFFECTIVE_PAGE_FRONTIER_V1"
+CHAIN_FORMAT_VERSION = "GEMINI_FAMILY_EFFECTIVE_PAGE_FRONTIER_CHAIN_V2"
 
 
 class GeminiFamilyEffectivePageFrontierV1Error(ValueError):
@@ -156,8 +157,8 @@ def build_gemini_family_effective_page_frontier_v1(
     )
 
 
-def validate_gemini_family_effective_page_frontier_v1(value: Any) -> dict[str, Any]:
-    """Validate the self-addressed envelope without reopening its external databases."""
+def _validate_single_frontier_v1(value: Any) -> dict[str, Any]:
+    """Validate one V1 stage without reopening its external databases."""
 
     required = {
         "base_corpus_manifest_index_id",
@@ -205,28 +206,136 @@ def validate_gemini_family_effective_page_frontier_v1(value: Any) -> dict[str, A
     return checked
 
 
+def build_gemini_family_effective_page_frontier_chain_v2(
+    *, stages: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Compose two or more immutable V1 repair stages without flattening lineage."""
+
+    checked_stages = [_validate_single_frontier_v1(dict(stage)) for stage in stages]
+    if len(checked_stages) < 2:
+        raise _error("effective page frontier chain requires at least two stages")
+    first = checked_stages[0]
+    for previous, current in zip(checked_stages, checked_stages[1:], strict=False):
+        if (
+            current["base_corpus_manifest_index_id"] != first["base_corpus_manifest_index_id"]
+            or current["family_id"] != first["family_id"]
+            or current["base_page_count"] != first["base_page_count"]
+            or previous["effective_page_json_frontier_sha256"]
+            != current["base_page_json_frontier_sha256"]
+        ):
+            raise _error("effective page frontier chain stage continuity drifted")
+    material = {
+        "base_corpus_manifest_index_id": first["base_corpus_manifest_index_id"],
+        "base_page_count": first["base_page_count"],
+        "base_page_json_frontier_sha256": first["base_page_json_frontier_sha256"],
+        "effective_page_count": checked_stages[-1]["effective_page_count"],
+        "effective_page_json_frontier_sha256": checked_stages[-1][
+            "effective_page_json_frontier_sha256"
+        ],
+        "family_id": first["family_id"],
+        "format_version": CHAIN_FORMAT_VERSION,
+        "stages": checked_stages,
+    }
+    return validate_gemini_family_effective_page_frontier_v1(
+        {
+            **material,
+            "effective_page_frontier_id": "gjfepfv2:frontier:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def _validate_frontier_chain_v2(value: Any) -> dict[str, Any]:
+    required = {
+        "base_corpus_manifest_index_id",
+        "base_page_count",
+        "base_page_json_frontier_sha256",
+        "effective_page_count",
+        "effective_page_frontier_id",
+        "effective_page_json_frontier_sha256",
+        "family_id",
+        "format_version",
+        "stages",
+    }
+    if type(value) is not dict or set(value) != required:
+        raise _error("effective page frontier chain fields drifted")
+    checked = canonical_clone_v1(value)
+    stages = checked.get("stages")
+    if (
+        checked.get("format_version") != CHAIN_FORMAT_VERSION
+        or type(stages) is not list
+        or len(stages) < 2
+    ):
+        raise _error("effective page frontier chain is invalid")
+    checked_stages = [_validate_single_frontier_v1(stage) for stage in stages]
+    first = checked_stages[0]
+    last = checked_stages[-1]
+    for previous, current in zip(checked_stages, checked_stages[1:], strict=False):
+        if (
+            current["base_corpus_manifest_index_id"] != first["base_corpus_manifest_index_id"]
+            or current["family_id"] != first["family_id"]
+            or current["base_page_count"] != first["base_page_count"]
+            or previous["effective_page_json_frontier_sha256"]
+            != current["base_page_json_frontier_sha256"]
+        ):
+            raise _error("effective page frontier chain stage continuity drifted")
+    if (
+        checked.get("base_corpus_manifest_index_id") != first["base_corpus_manifest_index_id"]
+        or checked.get("family_id") != first["family_id"]
+        or checked.get("base_page_count") != first["base_page_count"]
+        or checked.get("effective_page_count") != last["effective_page_count"]
+        or checked.get("base_page_json_frontier_sha256") != first["base_page_json_frontier_sha256"]
+        or checked.get("effective_page_json_frontier_sha256")
+        != last["effective_page_json_frontier_sha256"]
+    ):
+        raise _error("effective page frontier chain envelope drifted")
+    material = {key: checked[key] for key in checked if key != "effective_page_frontier_id"}
+    if checked.get("effective_page_frontier_id") != "gjfepfv2:frontier:" + (
+        canonical_json_sha256_v1(material)
+    ):
+        raise _error("effective page frontier chain identity does not replay")
+    return checked
+
+
+def validate_gemini_family_effective_page_frontier_v1(value: Any) -> dict[str, Any]:
+    """Validate one V1 stage or one ordered V2 chain."""
+
+    if type(value) is dict and value.get("format_version") == CHAIN_FORMAT_VERSION:
+        return _validate_frontier_chain_v2(value)
+    return _validate_single_frontier_v1(value)
+
+
+def effective_page_frontier_stages_v1(value: Any) -> list[dict[str, Any]]:
+    """Return the ordered V1 stages represented by one frontier envelope."""
+
+    checked = validate_gemini_family_effective_page_frontier_v1(value)
+    if checked["format_version"] == FORMAT_VERSION:
+        return [checked]
+    return canonical_clone_v1(checked["stages"])
+
+
 def apply_gemini_family_effective_page_frontier_v1(
     value: Any, *, base_page_json_version_ids: Sequence[str]
 ) -> tuple[dict[str, Any], list[str]]:
     """Validate an overlay and return its exact effective ordered version axis."""
 
     checked = validate_gemini_family_effective_page_frontier_v1(value)
-    rebuilt = build_gemini_family_effective_page_frontier_v1(
-        base_corpus_manifest_index_id=checked.get("base_corpus_manifest_index_id"),
-        base_page_json_version_ids=base_page_json_version_ids,
-        database_ref=checked.get("database_ref"),
-        family_id=checked.get("family_id"),
-        job_status_counts=checked.get("job_status_counts"),
-        repair_source_family_run_id=checked.get("repair_source_family_run_id"),
-        replacements=checked.get("replacements"),
-        results_database_ref=checked.get("results_database_ref"),
-    )
-    if rebuilt != checked:
-        raise _error("effective page frontier does not replay exactly")
-    by_base = {
-        item["base_page_json_version_id"]: item["selected_page_json_version_id"]
-        for item in checked["replacements"]
-    }
-    return checked, [
-        by_base.get(version_id, version_id) for version_id in base_page_json_version_ids
-    ]
+    effective_ids = list(base_page_json_version_ids)
+    for stage in effective_page_frontier_stages_v1(checked):
+        rebuilt = build_gemini_family_effective_page_frontier_v1(
+            base_corpus_manifest_index_id=stage.get("base_corpus_manifest_index_id"),
+            base_page_json_version_ids=effective_ids,
+            database_ref=stage.get("database_ref"),
+            family_id=stage.get("family_id"),
+            job_status_counts=stage.get("job_status_counts"),
+            repair_source_family_run_id=stage.get("repair_source_family_run_id"),
+            replacements=stage.get("replacements"),
+            results_database_ref=stage.get("results_database_ref"),
+        )
+        if rebuilt != stage:
+            raise _error("effective page frontier does not replay exactly")
+        by_base = {
+            item["base_page_json_version_id"]: item["selected_page_json_version_id"]
+            for item in stage["replacements"]
+        }
+        effective_ids = [by_base.get(version_id, version_id) for version_id in effective_ids]
+    return checked, effective_ids

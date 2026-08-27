@@ -27,7 +27,10 @@ from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E
     validate_current_corpus_manifest_index_v1,
 )
 from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: E402
+    apply_gemini_family_effective_page_frontier_v1,
+    build_gemini_family_effective_page_frontier_chain_v2,
     build_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     page_json_region_repair_lineages_v1,
@@ -143,6 +146,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--page-database", type=Path, required=True)
     parser.add_argument("--results-database", type=Path, required=True)
     parser.add_argument("--repair-source-family-run-id", required=True)
+    parser.add_argument(
+        "--base-effective-page-frontier",
+        type=Path,
+        help="Optional prior V1/V2 frontier; the new repair stage is chained after it.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser
 
@@ -164,6 +172,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         base_ids.extend(page.get("page_json_version_id") for page in manifest["pages"])
     if len(base_ids) != index["summary"]["page_count"] or len(set(base_ids)) != len(base_ids):
         raise _error("base page JSON frontier is incomplete or duplicate")
+    prior_frontier = None
+    stage_base_ids = base_ids
+    prior_stages = []
+    if args.base_effective_page_frontier is not None:
+        prior_frontier, stage_base_ids = apply_gemini_family_effective_page_frontier_v1(
+            _json(args.base_effective_page_frontier),
+            base_page_json_version_ids=base_ids,
+        )
+        prior_stages = effective_page_frontier_stages_v1(prior_frontier)
 
     page_database_ref = _snapshot_sqlite(
         args.page_database, artifact_root=artifact_root, label="page-store"
@@ -197,9 +214,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "repair_receipt_sha256": lineage["repair_receipt_sha256"],
             }
         )
-    frontier = build_gemini_family_effective_page_frontier_v1(
+    stage = build_gemini_family_effective_page_frontier_v1(
         base_corpus_manifest_index_id=index["corpus_manifest_index_id"],
-        base_page_json_version_ids=base_ids,
+        base_page_json_version_ids=stage_base_ids,
         database_ref=page_database_ref,
         family_id=overlay["family_id"],
         job_status_counts=overlay["job_status_counts"],
@@ -207,14 +224,25 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         replacements=replacements,
         results_database_ref=results_database_ref,
     )
-    digest = frontier["effective_page_frontier_id"].removeprefix("gjfepfv1:frontier:")
+    if prior_frontier is not None:
+        if (
+            prior_frontier["base_corpus_manifest_index_id"] != index["corpus_manifest_index_id"]
+            or prior_frontier["family_id"] != overlay["family_id"]
+        ):
+            raise _error("base effective page frontier binds another corpus or family")
+        frontier = build_gemini_family_effective_page_frontier_chain_v2(
+            stages=[*prior_stages, stage]
+        )
+    else:
+        frontier = stage
+    digest = frontier["effective_page_frontier_id"].rsplit(":", 1)[-1]
     output = output_dir / f"{digest}.json"
     _write_once(output, canonical_json_bytes_v1(frontier) + b"\n")
     return {
         "database_ref": page_database_ref,
         "disposition": "SUCCEEDED",
         "effective_page_frontier_id": frontier["effective_page_frontier_id"],
-        "job_status_counts": frontier["job_status_counts"],
+        "job_status_counts": overlay["job_status_counts"],
         "output": str(output),
         "replacement_count": len(replacements),
         "results_database_ref": results_database_ref,

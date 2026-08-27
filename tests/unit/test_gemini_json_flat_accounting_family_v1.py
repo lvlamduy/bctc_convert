@@ -921,6 +921,28 @@ def test_scoped_role_matcher_uses_sequential_authenticated_structural_owner_fall
         topology=compiled["topology"],
         aliases_by_role=compiled["aliases_by_role"],
     ) == ["CONSTRUCTION"]
+    assert _row_roles(
+        {
+            "hierarchy_path_exact": [],
+            "label_exact": (
+                "Hoạt động của Đảng cộng sản, tổ chức chính trị - xã hội, quản lý "
+                "Nhà nước, an ninh quốc phòng; đảm bảo xã hội bắt buộc"
+            ),
+        },
+        topology=compiled["topology"],
+        aliases_by_role=compiled["aliases_by_role"],
+    ) == ["OTHER_INDUSTRIES"]
+    assert _row_roles(
+        {
+            "hierarchy_path_exact": [],
+            "label_exact": (
+                "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao "
+                "dịch đầu tư chứng khoán tại VPBankS"
+            ),
+        },
+        topology=compiled["topology"],
+        aliases_by_role=compiled["aliases_by_role"],
+    ) == ["MARGIN_AND_SECURITIES_ADVANCE"]
 
 
 def test_period_value_hierarchy_accepts_reordered_optional_rows_but_rejects_duplicates_and_extra() -> (

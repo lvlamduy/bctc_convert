@@ -48,6 +48,7 @@ from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E
 )
 from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: E402
     apply_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
@@ -758,43 +759,42 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             or effective_page_frontier["family_id"] != compiled["topology"]["family_id"]
         ):
             raise _error("effective page frontier does not bind this corpus and family")
-        database = _content_ref(artifact_root, effective_page_frontier["database_ref"])
-        repair_results_database = _content_ref(
-            artifact_root, effective_page_frontier["results_database_ref"]
-        )
-        source_overlay = resolved_gemini_family_region_repair_overlay_v1(
-            repair_results_database,
-            family_run_id=effective_page_frontier["repair_source_family_run_id"],
-        )
-        if (
-            source_overlay["family_id"] != effective_page_frontier["family_id"]
-            or source_overlay["job_status_counts"] != effective_page_frontier["job_status_counts"]
-        ):
-            raise _error("effective page frontier source family jobs do not replay")
-        lineages = page_json_region_repair_lineages_v1(
-            database,
-            observed_page_json_version_ids=[
-                replacement["selected_page_json_version_id"]
-                for replacement in source_overlay["replacements"]
-            ],
-        )
-        replacements = []
-        for replacement, lineage in zip(source_overlay["replacements"], lineages, strict=True):
-            if (
-                lineage["base_page_json_version_id"] != replacement["base_page_json_version_id"]
-                or lineage["observed_page_json_version_id"]
-                != replacement["selected_page_json_version_id"]
-            ):
-                raise _error("effective page frontier repair lineage does not replay")
-            replacements.append(
-                {
-                    **replacement,
-                    "repair_id": lineage["repair_id"],
-                    "repair_receipt_sha256": lineage["repair_receipt_sha256"],
-                }
+        for stage in effective_page_frontier_stages_v1(effective_page_frontier):
+            database = _content_ref(artifact_root, stage["database_ref"])
+            repair_results_database = _content_ref(artifact_root, stage["results_database_ref"])
+            source_overlay = resolved_gemini_family_region_repair_overlay_v1(
+                repair_results_database,
+                family_run_id=stage["repair_source_family_run_id"],
             )
-        if replacements != effective_page_frontier["replacements"]:
-            raise _error("effective page frontier replacement evidence drifted")
+            if (
+                source_overlay["family_id"] != stage["family_id"]
+                or source_overlay["job_status_counts"] != stage["job_status_counts"]
+            ):
+                raise _error("effective page frontier source family jobs do not replay")
+            lineages = page_json_region_repair_lineages_v1(
+                database,
+                observed_page_json_version_ids=[
+                    replacement["selected_page_json_version_id"]
+                    for replacement in source_overlay["replacements"]
+                ],
+            )
+            replacements = []
+            for replacement, lineage in zip(source_overlay["replacements"], lineages, strict=True):
+                if (
+                    lineage["base_page_json_version_id"] != replacement["base_page_json_version_id"]
+                    or lineage["observed_page_json_version_id"]
+                    != replacement["selected_page_json_version_id"]
+                ):
+                    raise _error("effective page frontier repair lineage does not replay")
+                replacements.append(
+                    {
+                        **replacement,
+                        "repair_id": lineage["repair_id"],
+                        "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+                    }
+                )
+            if replacements != stage["replacements"]:
+                raise _error("effective page frontier replacement evidence drifted")
 
     stacked = (
         compiled.get("engine_format_version") == "GEMINI_JSON_STACKED_PERIOD_ACCOUNTING_FAMILY_V1"

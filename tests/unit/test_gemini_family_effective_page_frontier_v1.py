@@ -13,7 +13,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
 from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (
     GeminiFamilyEffectivePageFrontierV1Error,
     apply_gemini_family_effective_page_frontier_v1,
+    build_gemini_family_effective_page_frontier_chain_v2,
     build_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
 )
 
 
@@ -97,3 +99,39 @@ def test_effective_page_frontier_preserves_identity_repair_observation() -> None
     )
     assert sweep["effective_page_frontier"] == family_frontier
     assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+
+
+def test_effective_page_frontier_chain_replays_ordered_region_versions() -> None:
+    base = ["gfpstorev1:json:" + digit * 64 for digit in "12"]
+    title_version = "gfpstorev1:json:" + "7" * 64
+    row_version = "gfpstorev1:json:" + "8" * 64
+    stage1 = build_gemini_family_effective_page_frontier_v1(
+        base_corpus_manifest_index_id="gjfccmiv1:index:" + "9" * 64,
+        base_page_json_version_ids=base,
+        database_ref=_ref("store-title.sqlite3", "a"),
+        family_id="LOAN_INDUSTRY_CLASSIFICATION",
+        job_status_counts={"ABSTAINED": 0, "RESOLVED": 1},
+        repair_source_family_run_id="gjfafstorev1:run:" + "b" * 64,
+        replacements=[_replacement(base[0], title_version)],
+        results_database_ref=_ref("families-title.sqlite3", "c"),
+    )
+    stage2 = build_gemini_family_effective_page_frontier_v1(
+        base_corpus_manifest_index_id="gjfccmiv1:index:" + "9" * 64,
+        base_page_json_version_ids=[title_version, base[1]],
+        database_ref=_ref("store-row.sqlite3", "d"),
+        family_id="LOAN_INDUSTRY_CLASSIFICATION",
+        job_status_counts={"ABSTAINED": 0, "RESOLVED": 1},
+        repair_source_family_run_id="gjfafstorev1:run:" + "e" * 64,
+        replacements=[_replacement(title_version, row_version)],
+        results_database_ref=_ref("families-row.sqlite3", "f"),
+    )
+    chain = build_gemini_family_effective_page_frontier_chain_v2(stages=[stage1, stage2])
+    checked, effective = apply_gemini_family_effective_page_frontier_v1(
+        chain, base_page_json_version_ids=base
+    )
+    assert checked == chain
+    assert effective == [row_version, base[1]]
+    assert effective_page_frontier_stages_v1(chain) == [stage1, stage2]
+
+    with pytest.raises(GeminiFamilyEffectivePageFrontierV1Error, match="continuity"):
+        build_gemini_family_effective_page_frontier_chain_v2(stages=[stage2, stage1])
