@@ -109,36 +109,22 @@ def test_candidate_selection_rejects_root_drift_and_equal_detail_ambiguity() -> 
 
 
 def test_row_level_parent_authority_is_opt_in_for_recursive_json_engine() -> None:
-    page = {
-        "sections": [
-            {
-                "title_exact": "BẢNG CÂN ĐỐI KẾ TOÁN",
-                "tables": [
-                    {
-                        "title_exact": None,
-                        "rows": [
-                            {
-                                "hierarchy_path_exact": ["Tiền gửi và cho vay các TCTD khác"],
-                                "label_exact": "Tiền gửi và cho vay các TCTD khác",
-                            }
-                        ],
-                    }
-                ],
-            }
-        ]
+    hit = {
+        "hierarchy_path_exact": ["Tiền gửi và cho vay các TCTD khác"],
+        "label_exact": "Tiền gửi và cho vay các TCTD khác",
+        "section_title_exact": "BẢNG CÂN ĐỐI KẾ TOÁN",
+        "table_has_explicit_parent_row": 1,
+        "table_title_exact": None,
     }
-    hit = {"section_id": "s1", "table_id": "t1"}
     aliases = _compiled()["topology"]["parent"]["aliases"]
     assert not target._hit_has_explicit_parent(
         hit,
         allow_row_parent=False,
-        page_json=page,
         parent_aliases=aliases,
     )
     assert target._hit_has_explicit_parent(
         hit,
         allow_row_parent=True,
-        page_json=page,
         parent_aliases=aliases,
     )
 

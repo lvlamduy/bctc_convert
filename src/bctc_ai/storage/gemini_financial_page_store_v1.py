@@ -1385,6 +1385,7 @@ def query_selected_family_anchor_hits_v1(
     *,
     selected_page_json_version_ids: Sequence[str],
     anchor_aliases: Sequence[str],
+    explicit_parent_aliases: Sequence[str] = (),
 ) -> list[dict[str, Any]]:
     """Return one-anchor near evidence without granting a family match."""
 
@@ -1394,9 +1395,11 @@ def query_selected_family_anchor_hits_v1(
         or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
         or type(anchor_aliases) not in {list, tuple}
         or not anchor_aliases
+        or type(explicit_parent_aliases) not in {list, tuple}
     ):
         raise _error("selected family near-anchor request is invalid")
     folded = _family_anchor_lookup_forms_v1(anchor_aliases)
+    folded_parents = _family_anchor_lookup_forms_v1(explicit_parent_aliases)
     if any(not alias for alias in folded):
         raise _error("selected family near-anchor normalization is empty")
     selected_page_extraction_receipts_v1(
@@ -1419,23 +1422,63 @@ def query_selected_family_anchor_hits_v1(
             "INSERT INTO near_anchor_alias VALUES (?)",
             ((alias,) for alias in folded),
         )
+        connection.execute(
+            "CREATE TEMP TABLE near_parent_alias(label_ascii_folded TEXT PRIMARY KEY)"
+        )
+        connection.executemany(
+            "INSERT INTO near_parent_alias VALUES (?)",
+            ((alias,) for alias in folded_parents),
+        )
         rows = connection.execute(
             """
             SELECT s.selection_ordinal, r.page_json_version_id,
                    d.source_logical_name, p.physical_page,
                    r.section_id, r.table_id, r.row_id,
-                   r.source_order, r.label_exact
+                   r.source_order, r.label_exact,
+                   r.hierarchy_path_exact_json,
+                   sn.title_exact AS section_title_exact,
+                   t.title_exact AS table_title_exact,
+                   EXISTS(
+                     SELECT 1
+                     FROM row_node AS parent_row
+                     JOIN near_parent_alias AS parent_alias
+                       ON parent_row.label_ascii_folded=parent_alias.label_ascii_folded
+                       OR parent_row.label_ascii_folded LIKE
+                          parent_alias.label_ascii_folded || ' %'
+                     WHERE parent_row.page_json_version_id=r.page_json_version_id
+                       AND parent_row.section_id=r.section_id
+                       AND parent_row.table_id=r.table_id
+                   ) AS table_has_explicit_parent_row
             FROM row_node AS r
             JOIN selected_near_page AS s USING(page_json_version_id)
             JOIN near_anchor_alias AS a USING(label_ascii_folded)
             JOIN page_json_version AS v USING(page_json_version_id)
             JOIN page AS p USING(page_id)
             JOIN document AS d USING(document_id)
+            JOIN section_node AS sn
+              ON sn.page_json_version_id=r.page_json_version_id
+             AND sn.section_id=r.section_id
+            JOIN table_node AS t
+              ON t.page_json_version_id=r.page_json_version_id
+             AND t.section_id=r.section_id AND t.table_id=r.table_id
             ORDER BY s.selection_ordinal, r.section_id, r.table_id,
                      r.source_order, r.row_id
             """
         ).fetchall()
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        record = dict(row)
+        try:
+            hierarchy_path = json.loads(record.pop("hierarchy_path_exact_json"))
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("selected family near-anchor hierarchy path is invalid") from exc
+        if type(hierarchy_path) is not list or any(
+            value is not None and type(value) is not str for value in hierarchy_path
+        ):
+            raise _error("selected family near-anchor hierarchy path is invalid")
+        record["hierarchy_path_exact"] = hierarchy_path
+        result.append(record)
+    return result
 
 
 def query_selected_family_anchor_regions_v1(

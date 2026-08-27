@@ -8,6 +8,7 @@ the declarative topology/equation/schema specs are the only semantic axis.
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -44,6 +45,7 @@ def _error(message: str) -> ValueError:
     return GeminiJsonFlatAccountingFamilyV1Error(message)
 
 
+@lru_cache(maxsize=16384)
 def _normalized(value: Any) -> str:
     folded = normalize_vietnamese_anchor_v1(value) if type(value) is str else ""
     for expanded, acronym in (

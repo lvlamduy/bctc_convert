@@ -121,20 +121,11 @@ def _hit_has_explicit_parent(
     hit: dict[str, Any],
     *,
     allow_row_parent: bool,
-    page_json: dict[str, Any],
     parent_aliases: list[str],
 ) -> bool:
-    sections = page_json.get("sections")
-    if type(sections) is not list:
-        raise _error("Gemini JSON near-hit page has no section axis")
-    section = sections[_node_index(hit["section_id"], "s", len(sections))]
-    tables = section.get("tables")
-    if type(tables) is not list:
-        raise _error("Gemini JSON near-hit section has no table axis")
-    table = tables[_node_index(hit["table_id"], "t", len(tables))]
     title = " ".join(
         value
-        for value in (section.get("title_exact"), table.get("title_exact"))
+        for value in (hit.get("section_title_exact"), hit.get("table_title_exact"))
         if type(value) is str and value
     )
     folded = normalize_vietnamese_anchor_v1(title)
@@ -142,15 +133,14 @@ def _hit_has_explicit_parent(
         return True
     if not allow_row_parent:
         return False
+    if hit.get("table_has_explicit_parent_row") == 1:
+        return True
     return any(
-        any(
-            normalize_vietnamese_anchor_v1(value) == alias
-            or normalize_vietnamese_anchor_v1(value).startswith(alias + " ")
-            for alias in parent_aliases
-        )
-        for row in table.get("rows", [])
-        for value in [row.get("label_exact"), *row.get("hierarchy_path_exact", [])]
+        normalize_vietnamese_anchor_v1(value) == alias
+        or normalize_vietnamese_anchor_v1(value).startswith(alias + " ")
+        for value in [hit.get("label_exact"), *hit.get("hierarchy_path_exact", [])]
         if type(value) is str and value
+        for alias in parent_aliases
     )
 
 
@@ -593,14 +583,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         database,
         selected_page_json_version_ids=selected_ids,
         anchor_aliases=near_aliases,
+        explicit_parent_aliases=compiled["topology"]["parent"]["aliases"],
     )
     candidate_version_ids = sorted(
         {region["page_json_version_id"] for region in regions_by_key.values()}
     )
-    near_version_ids = sorted({hit["page_json_version_id"] for hit in near_hits})
     loaded = load_page_json_versions_v1(
         database,
-        page_json_version_ids=sorted(set(candidate_version_ids) | set(near_version_ids)),
+        page_json_version_ids=candidate_version_ids,
     )
     page_by_version = {record["page_json_version_id"]: record for record in loaded}
     near_paths = {
@@ -612,7 +602,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 compiled.get("engine_format_version")
                 == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
             ),
-            page_json=page_by_version[hit["page_json_version_id"]]["page_json"],
             parent_aliases=compiled["topology"]["parent"]["aliases"],
         )
     }
