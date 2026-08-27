@@ -1652,6 +1652,81 @@ def _prompt_variants_from_manifest_v1(manifest: dict[str, Any]) -> dict[int, str
     }
 
 
+def _receipt_bound_legacy_document_manifest_v1(
+    *, artifact_root: Path, task: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Locate the exact completed manifest named by a pre-selection task receipt."""
+
+    raw_receipt = task.get("last_receipt_json")
+    if raw_receipt is None:
+        return None
+    if type(raw_receipt) is bytes:
+        receipt_bytes = raw_receipt
+    elif type(raw_receipt) is str:
+        receipt_bytes = raw_receipt.encode("utf-8")
+    else:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task receipt has an invalid type"
+        )
+    try:
+        receipt = json.loads(receipt_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task receipt is not JSON"
+        ) from exc
+    if type(receipt) is not dict:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task receipt is not one object"
+        )
+    result = receipt.get("result")
+    identifiers = {
+        value
+        for value in (
+            receipt.get("document_manifest_id"),
+            result.get("document_manifest_id") if type(result) is dict else None,
+            result.get("manifest_id") if type(result) is dict else None,
+        )
+        if value is not None
+    }
+    if not identifiers:
+        return None
+    if len(identifiers) != 1 or any(
+        type(value) is not str
+        or not value.startswith("gfdmv1:manifest:")
+        or len(value) != len("gfdmv1:manifest:") + 64
+        or any(
+            character not in "0123456789abcdef"
+            for character in value.removeprefix("gfdmv1:manifest:")
+        )
+        for value in identifiers
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task manifest identity is invalid or contradictory"
+        )
+    expected_id = next(iter(identifiers))
+    task_root = _task_root(task, artifact_root)
+    matches: list[tuple[bytes, dict[str, Any]]] = []
+    if task_root.exists():
+        for path in sorted(task_root.glob("**/*document-manifest*.json")):
+            if path.is_symlink() or not path.is_file():
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "completed corpus task manifest candidate is not a regular file"
+                )
+            candidate = _json_file(path)
+            if candidate.get("document_manifest_id") == expected_id:
+                matches.append((canonical_json_bytes_v1(candidate), candidate))
+    if not matches:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task receipt manifest artifact is absent"
+        )
+    distinct = {payload for payload, _candidate in matches}
+    if len(distinct) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "completed corpus task receipt resolves to conflicting manifests"
+        )
+    return matches[0][1]
+
+
 def _replay_selected_document_for_corpus_v1(
     *,
     args: argparse.Namespace,
@@ -1668,8 +1743,14 @@ def _replay_selected_document_for_corpus_v1(
     if selected is None:
         page_prompt_variant = []
         legacy_manifest_path = document_root / "current-document-manifest.json"
-        if legacy_manifest_path.exists():
-            legacy_manifest = _json_file(legacy_manifest_path)
+        legacy_manifest = (
+            _json_file(legacy_manifest_path)
+            if legacy_manifest_path.exists()
+            else _receipt_bound_legacy_document_manifest_v1(
+                artifact_root=args.artifact_root, task=task
+            )
+        )
+        if legacy_manifest is not None:
             legacy_material = {
                 key: value
                 for key, value in legacy_manifest.items()

@@ -2972,6 +2972,50 @@ def test_corpus_document_replay_migrates_legacy_pointer_with_adaptive_prompt(
     assert record["selection_id"] == selection["selection_id"]
 
 
+def test_receipt_bound_legacy_manifest_is_unique_and_content_exact(tmp_path) -> None:
+    manifest_id = "gfdmv1:manifest:" + "1" * 64
+    task = {
+        "artifact_relative_path": "tasks/aa/task",
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "document_manifest_id": manifest_id,
+                "result": {"manifest_id": manifest_id},
+            }
+        ),
+    }
+    task_root = tmp_path / "artifacts/tasks/aa/task"
+    task_root.mkdir(parents=True)
+    manifest = {"document_manifest_id": manifest_id, "marker": "sealed"}
+    (task_root / "mixed-prompt-document-manifest.json").write_bytes(
+        canonical_json_bytes_v1(manifest) + b"\n"
+    )
+    assert (
+        target._receipt_bound_legacy_document_manifest_v1(
+            artifact_root=tmp_path / "artifacts", task=task
+        )
+        == manifest
+    )
+
+    duplicate = task_root / "nested/document-manifest-copy.json"
+    duplicate.parent.mkdir()
+    duplicate.write_bytes(canonical_json_bytes_v1(manifest) + b"\n")
+    assert (
+        target._receipt_bound_legacy_document_manifest_v1(
+            artifact_root=tmp_path / "artifacts", task=task
+        )
+        == manifest
+    )
+
+    duplicate.write_bytes(canonical_json_bytes_v1({**manifest, "marker": "conflict"}) + b"\n")
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="conflicting manifests",
+    ):
+        target._receipt_bound_legacy_document_manifest_v1(
+            artifact_root=tmp_path / "artifacts", task=task
+        )
+
+
 def test_sqlite_snapshot_is_integrity_checked_immutable_and_single_link(tmp_path) -> None:
     source = tmp_path / "source.sqlite3"
     with sqlite3.connect(source) as connection:
