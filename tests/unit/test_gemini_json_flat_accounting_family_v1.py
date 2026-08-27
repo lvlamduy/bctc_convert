@@ -959,3 +959,54 @@ def test_v3_one_visible_listing_child_exactly_corroborates_its_group() -> None:
     candidate = _evaluate_trading(page)
     assert candidate["status"] == READY
     assert any(mapping["role"] == "DEBT_LISTED" for mapping in candidate["mappings"])
+
+
+def test_v3_expanded_tckt_annotation_and_short_other_label_are_structural() -> None:
+    page = _trading_page()
+    page["sections"][0]["tables"][0]["rows"] = [
+        {
+            "hierarchy_path_exact": ["Chứng khoán nợ"],
+            "label_exact": "Chứng khoán nợ",
+            "row_kind": "GROUP",
+            "values_exact": ["150", "130"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán nợ",
+                'Chứng khoán nợ do các tổ chức kinh tế ("TCKT") trong nước phát hành',
+            ],
+            "label_exact": ('Chứng khoán nợ do các tổ chức kinh tế ("TCKT") trong nước phát hành'),
+            "row_kind": "ITEM",
+            "values_exact": ["150", "130"],
+        },
+        {
+            "hierarchy_path_exact": ["Chứng khoán khác"],
+            "label_exact": "Chứng khoán khác",
+            "row_kind": "ITEM",
+            "values_exact": ["50", "40"],
+        },
+        {
+            "hierarchy_path_exact": ["Dự phòng rủi ro chứng khoán kinh doanh"],
+            "label_exact": "Dự phòng rủi ro chứng khoán kinh doanh",
+            "row_kind": "ITEM",
+            "values_exact": ["(10)", "(5)"],
+        },
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["190", "165"],
+        },
+    ]
+    candidate = _evaluate_trading(page)
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} >= {
+        "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "TRADING_SECURITIES",
+    }
+    root_equation = next(
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] == "EXPLICIT_NET_TOTAL"
+    )
+    assert "OTHER_TRADING_SECURITIES_GROUP" in root_equation["component_roles"]

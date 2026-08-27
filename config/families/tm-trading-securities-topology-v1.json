@@ -90,6 +90,7 @@
             "Chứng khoán nợ do các TCKT trong nước phát hành",
             "Chứng khoán nợ do các TCKT khác phát hành",
             "Chứng khoán nợ do các TCKT khác trong nước phát hành",
+            "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành",
             "Trái phiếu do các TCKT trong nước phát hành",
             "Trái phiếu do các tổ chức kinh tế trong nước phát hành"
           ],
@@ -286,7 +287,8 @@
       "matchers": [
         {
           "aliases": [
-            "Chứng khoán kinh doanh khác"
+            "Chứng khoán kinh doanh khác",
+            "Chứng khoán khác"
           ],
           "within_role": null
         }
