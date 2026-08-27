@@ -150,6 +150,41 @@ def _matches(value: Any, alias: str) -> bool:
     )
 
 
+def _matcher_matches(value: Any, matcher: dict[str, Any]) -> bool:
+    mode = matcher.get("match_mode", "EXACT_NORMALIZED")
+    aliases = matcher["aliases"]
+    if mode == "EXACT_NORMALIZED":
+        return any(_matches(value, alias) for alias in aliases)
+    folded = _normalized(value)
+    forms = {folded, _without_leading_ordinal(folded)}
+    forms |= {
+        form.removeprefix(prefix).strip()
+        for form in tuple(forms)
+        for prefix in ("trong do ", "bao gom ")
+        if form.startswith(prefix)
+    }
+
+    def contains(form: str, phrase: str, *, start: int = 0) -> int:
+        padded = f" {form} "
+        token = f" {phrase} "
+        position = padded.find(token, start)
+        return position + len(token) if position >= 0 else -1
+
+    if mode == "CONTAINS_NORMALIZED_PHRASE":
+        return any(contains(form, alias) >= 0 for form in forms for alias in aliases)
+    if mode == "CONTAINS_ORDERED_NORMALIZED_PHRASES":
+        for form in forms:
+            cursor = 0
+            for alias in aliases:
+                cursor = contains(form, alias, start=cursor)
+                if cursor < 0:
+                    break
+            else:
+                return True
+        return False
+    raise _error("Gemini JSON hierarchy matcher mode is invalid")
+
+
 def _path_value_matches_alias(folded: str, alias: str, label: str) -> bool:
     stripped = _without_leading_ordinal(folded)
     if _matches(stripped, alias):
@@ -765,32 +800,31 @@ def compile_gemini_json_hierarchical_family_specs_v1(
     return _compile_specs(topology_spec, evaluation_spec, schema_binding_spec)
 
 
-def _row_roles(
+def _row_role_match_modes(
     row: dict[str, Any],
     *,
     topology: dict[str, Any],
     aliases_by_role: dict[str, list[str]],
     fallback_within_role: str | None = None,
-) -> list[str]:
-    scoped: list[str] = []
-    unscoped: list[str] = []
+) -> dict[str, str]:
+    scoped: dict[str, list[str]] = defaultdict(list)
+    unscoped: dict[str, list[str]] = defaultdict(list)
     for child in topology["children"]:
         role = child["role"]
         for matcher in child["matchers"]:
-            if not any(_matches(row.get("label_exact"), alias) for alias in matcher["aliases"]):
+            if not _matcher_matches(row.get("label_exact"), matcher):
                 continue
             within = matcher["within_role"]
             if within is None:
-                unscoped.append(role)
+                unscoped[role].append(matcher.get("match_mode", "EXACT_NORMALIZED"))
             elif within == fallback_within_role or _path_has_role(
                 row.get("hierarchy_path_exact"),
                 aliases=aliases_by_role[within],
                 label_exact=row.get("label_exact"),
             ):
-                scoped.append(role)
-    matches = sorted(set(scoped or unscoped))
-    if len(matches) <= 1:
-        return matches
+                scoped[role].append(matcher.get("match_mode", "EXACT_NORMALIZED"))
+    selected = scoped or unscoped
+    matches = sorted(selected)
     kinds = {
         role: next(c["role_kind"] for c in topology["children"] if c["role"] == role)
         for role in matches
@@ -798,9 +832,31 @@ def _row_roles(
     # One printed compound row may be both a structural subtotal and its sole
     # typed child.  It is safe only because the equation must corroborate the
     # same values and the root frontier consumes the structural role, not both.
-    if set(kinds.values()) == {"STRUCTURAL_GROUP", "ADDITIVE_CHILD"}:
-        return matches
-    raise _error("Gemini JSON hierarchy row matches multiple incompatible roles")
+    if len(matches) > 1 and set(kinds.values()) != {"STRUCTURAL_GROUP", "ADDITIVE_CHILD"}:
+        raise _error("Gemini JSON hierarchy row matches multiple incompatible roles")
+    rank = {
+        "CONTAINS_NORMALIZED_PHRASE": 1,
+        "CONTAINS_ORDERED_NORMALIZED_PHRASES": 2,
+        "EXACT_NORMALIZED": 3,
+    }
+    return {role: max(selected[role], key=lambda mode: rank[mode]) for role in matches}
+
+
+def _row_roles(
+    row: dict[str, Any],
+    *,
+    topology: dict[str, Any],
+    aliases_by_role: dict[str, list[str]],
+    fallback_within_role: str | None = None,
+) -> list[str]:
+    return list(
+        _row_role_match_modes(
+            row,
+            topology=topology,
+            aliases_by_role=aliases_by_role,
+            fallback_within_role=fallback_within_role,
+        )
+    )
 
 
 def _nearest_owner(
@@ -1720,12 +1776,13 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             except ValueError:
                 reasons.append(f"ROW_PERCENT_CELL_IS_NOT_EXACT_DECIMAL:{ordinal}")
                 continue
-        roles = _row_roles(
+        role_match_modes = _row_role_match_modes(
             row,
             topology=topology,
             aliases_by_role=compiled_specs["aliases_by_role"],
             fallback_within_role=active_structural_role,
         )
+        roles = list(role_match_modes)
         row_structural_roles = sorted(structural_roles & set(roles))
         if len(row_structural_roles) == 1:
             active_structural_role = row_structural_roles[0]
@@ -1787,7 +1844,13 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             if len(structural_matches) == 1 and additive_matches:
                 record["owner_role"] = structural_matches[0]
             for role in additive_matches or structural_matches:
-                records_by_role[role].append({**record, "role": role})
+                records_by_role[role].append(
+                    {
+                        **record,
+                        "label_match_mode": role_match_modes[role],
+                        "role": role,
+                    }
+                )
             if structural_matches and additive_matches:
                 anonymous.append(
                     {
@@ -2033,6 +2096,8 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             mapping["derived_from_row_ids"] = canonical_clone_v1(record["derived_from_row_ids"])
         if "inferred_from_role" in record:
             mapping["inferred_from_role"] = record["inferred_from_role"]
+        if record.get("label_match_mode") != "EXACT_NORMALIZED" and "label_match_mode" in record:
+            mapping["label_match_mode"] = record["label_match_mode"]
         if record.get("percentage_companions"):
             mapping["percentage_companion_columns"] = canonical_clone_v1(
                 [columns[index] for index in percent_indices]
@@ -2042,7 +2107,16 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
             )
         mappings.append(mapping)
     result["mappings"] = mappings
-    result["closure_receipt"] = {
+    source_role_label_matches = {
+        role: {
+            "label_exact": record["label_exact"],
+            "match_mode": record["label_match_mode"],
+            "row_id": record["row_id"],
+        }
+        for role, record in sorted(resolved.items())
+        if record.get("label_match_mode") not in {None, "EXACT_NORMALIZED"}
+    }
+    closure_receipt = {
         "equations": receipts,
         "inferred_ambiguous_provision_role": inferred_target,
         **(
@@ -2053,4 +2127,7 @@ def evaluate_gemini_json_hierarchical_family_table_v1(
         "rule": "EXACT_EXHAUSTIVE_GEMINI_JSON_RECURSIVE_DIRECT_FRONTIER_ALL_LANES",
         "used_anonymous_result_row_ids": sorted(used_anonymous),
     }
+    if source_role_label_matches:
+        closure_receipt["source_role_label_matches"] = source_role_label_matches
+    result["closure_receipt"] = closure_receipt
     return result

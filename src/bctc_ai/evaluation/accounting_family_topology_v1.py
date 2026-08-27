@@ -112,6 +112,11 @@ _ROLE_KINDS = {
     "TOTAL",
 }
 _PRESENCE = {"OPTIONAL", "REQUIRED"}
+_MATCH_MODES = {
+    "EXACT_NORMALIZED",
+    "CONTAINS_NORMALIZED_PHRASE",
+    "CONTAINS_ORDERED_NORMALIZED_PHRASES",
+}
 _PARENT_RESOLUTION = {"EXPLICIT_ONLY", "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"}
 _PRESENCE_EVIDENCE_MODES = {
     "GLOBAL_CORE_HITS",
@@ -233,9 +238,14 @@ def _spec(value: Any) -> dict[str, Any]:
             if type(raw_matchers) is not list or not raw_matchers:
                 raise _error("contextual accounting family role needs at least one matcher")
             matchers = []
-            seen_matchers: set[tuple[tuple[str, ...], str | None, bool, bool]] = set()
+            seen_matchers: set[tuple[tuple[str, ...], str | None, bool, bool, str]] = set()
             for raw_matcher in raw_matchers:
                 matcher_fields = set(raw_matcher) if type(raw_matcher) is dict else set()
+                match_mode = (
+                    raw_matcher.get("match_mode", "EXACT_NORMALIZED")
+                    if type(raw_matcher) is dict
+                    else None
+                )
                 if (
                     type(raw_matcher) is not dict
                     or not {"aliases", "within_role"} <= matcher_fields
@@ -243,6 +253,7 @@ def _spec(value: Any) -> dict[str, Any]:
                     <= {
                         "aliases",
                         "allow_trailing_organization_qualifier",
+                        "match_mode",
                         "presence_anchor",
                         "within_role",
                     }
@@ -254,11 +265,19 @@ def _spec(value: Any) -> dict[str, Any]:
                         )
                     )
                     or type(raw_matcher.get("presence_anchor", True)) is not bool
+                    or match_mode not in _MATCH_MODES
                     or type(raw_matcher.get("allow_trailing_organization_qualifier", False))
                     is not bool
                     or (
                         raw_matcher.get("allow_trailing_organization_qualifier", False)
                         and raw_matcher["within_role"] is None
+                    )
+                    or (
+                        match_mode != "EXACT_NORMALIZED"
+                        and (
+                            raw_matcher.get("presence_anchor", True)
+                            or role_kind == "STRUCTURAL_GROUP"
+                        )
                     )
                 ):
                     raise _error("contextual accounting family matcher fields drifted")
@@ -266,6 +285,17 @@ def _spec(value: Any) -> dict[str, Any]:
                     raw_matcher["aliases"], f"{role} contextual matcher aliases"
                 )
                 presence_anchor = raw_matcher.get("presence_anchor", True)
+                if match_mode != "EXACT_NORMALIZED" and (
+                    any(
+                        len(alias.split()) < 2 or len(alias.replace(" ", "")) < 8
+                        for alias in matcher_aliases
+                    )
+                    or (
+                        match_mode == "CONTAINS_ORDERED_NORMALIZED_PHRASES"
+                        and len(matcher_aliases) < 2
+                    )
+                ):
+                    raise _error("normalized phrase matcher is too weak")
                 allow_trailing_organization_qualifier = raw_matcher.get(
                     "allow_trailing_organization_qualifier", False
                 )
@@ -274,6 +304,7 @@ def _spec(value: Any) -> dict[str, Any]:
                     raw_matcher["within_role"],
                     presence_anchor,
                     allow_trailing_organization_qualifier,
+                    match_mode,
                 )
                 if signature in seen_matchers:
                     raise _error("contextual accounting family matchers must be unique")
@@ -285,6 +316,8 @@ def _spec(value: Any) -> dict[str, Any]:
                 }
                 if allow_trailing_organization_qualifier:
                     matcher["allow_trailing_organization_qualifier"] = True
+                if match_mode != "EXACT_NORMALIZED":
+                    matcher["match_mode"] = match_mode
                 matchers.append(matcher)
         else:
             matchers = [

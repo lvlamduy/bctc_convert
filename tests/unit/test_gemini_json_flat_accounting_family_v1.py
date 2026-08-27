@@ -1181,12 +1181,12 @@ def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() ->
         [
             {
                 "hierarchy_path_exact": [
-                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng "
-                    "giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn"
+                    "Các khoản cho vay giao dịch ký quỹ dành cho khách hàng và ứng trước "
+                    "theo hợp đồng đầu tư tại Công ty ABC"
                 ],
                 "label_exact": (
-                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng "
-                    "giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn"
+                    "Các khoản cho vay giao dịch ký quỹ dành cho khách hàng và ứng trước "
+                    "theo hợp đồng đầu tư tại Công ty ABC"
                 ),
                 "row_kind": "ITEM",
                 "values_exact": ["7", "6"],
@@ -1201,9 +1201,37 @@ def test_loan_quality_mbb_qualified_margin_label_is_a_direct_root_component() ->
     )
     result = _evaluate_loan_quality(page)
     assert result["status"] == READY
+    margin = next(
+        mapping
+        for mapping in result["mappings"]
+        if mapping["role"] == "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
+    )
+    assert margin["label_match_mode"] == "CONTAINS_ORDERED_NORMALIZED_PHRASES"
+    assert result["closure_receipt"]["source_role_label_matches"][
+        "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
+    ] == {
+        "label_exact": (
+            "Các khoản cho vay giao dịch ký quỹ dành cho khách hàng và ứng trước "
+            "theo hợp đồng đầu tư tại Công ty ABC"
+        ),
+        "match_mode": "CONTAINS_ORDERED_NORMALIZED_PHRASES",
+        "row_id": "r6",
+    }
     root_equation = result["closure_receipt"]["equations"][-1]
     assert root_equation["component_roles"][-1] == "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"
     assert root_equation["component_row_ids"].count("r6") == 1
+
+    incomplete_phrase = deepcopy(page)
+    incomplete_phrase["sections"][0]["tables"][0]["rows"][-2]["label_exact"] = (
+        "Các khoản cho vay giao dịch ký quỹ dành cho khách hàng"
+    )
+    assert _evaluate_loan_quality(incomplete_phrase)["status"] == UNRESOLVED
+
+    reversed_phrases = deepcopy(page)
+    reversed_phrases["sections"][0]["tables"][0]["rows"][-2]["label_exact"] = (
+        "Các khoản ứng trước và cho vay giao dịch ký quỹ dành cho khách hàng"
+    )
+    assert _evaluate_loan_quality(reversed_phrases)["status"] == UNRESOLVED
 
 
 def test_loan_quality_hard_negative_title_and_missing_grade_fail_closed() -> None:

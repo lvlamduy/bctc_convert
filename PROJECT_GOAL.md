@@ -57,6 +57,18 @@ all-column equations take priority over literal name matching. Arithmetic may
 validate a printed structure or support a uniquely constrained inference, but
 must not silently repair source digits.
 
+Every label must retain its exact source spelling and also receive shared
+search forms: Unicode-normalized lowercase, accentless Vietnamese, collapsed
+whitespace/line breaks, normalized punctuation, and bounded abbreviation
+expansion. Declarative matchers may require an exact normalized alias, one
+continuous core phrase, or multiple core phrases in declared order. A partial
+phrase match is never standalone family authority: it must be corroborated by
+the declared parent/child/sibling/neighbor context and the exact accounting
+frontier. This permits stable meanings such as margin lending and securities
+sale advances to survive organization qualifiers or wording changes without
+accepting unrelated rows. Exact source text and the matcher policy used remain
+in the evidence receipt; normalized text must also be indexed in the database.
+
 Families that share a structural mechanism must use the same engine and
 primitive with declarative family-specific roles, aliases, variants, and
 equations. Do not create a separate algorithm file per family unless a genuinely

@@ -58,7 +58,10 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại MBS - Nợ đủ tiêu chuẩn"], "within_role": null}],
+      "matchers": [
+        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại MBS - Nợ đủ tiêu chuẩn"], "within_role": null},
+        {"aliases": ["cho vay giao dịch ký quỹ", "ứng trước"], "match_mode": "CONTAINS_ORDERED_NORMALIZED_PHRASES", "presence_anchor": false, "within_role": null}
+      ],
       "presence": "OPTIONAL",
       "role": "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE",
       "role_kind": "ADDITIVE_CHILD"
