@@ -1789,7 +1789,12 @@ def _extract_table_local_records(
     }
 
 
-def _canonical_lane_role(lane_key: Sequence[str], *, ordered_dates: Sequence[str]) -> str | None:
+def _canonical_lane_role(
+    lane_key: Sequence[str],
+    *,
+    ordered_dates: Sequence[str],
+    ordered_bare_years: Sequence[str] = (),
+) -> str | None:
     if list(lane_key) == ["SEMANTIC_ALIAS", "CURRENT_PERIOD"]:
         return "CURRENT_PERIOD"
     if list(lane_key) == ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"]:
@@ -1798,6 +1803,11 @@ def _canonical_lane_role(lane_key: Sequence[str], *, ordered_dates: Sequence[str
         if ordered_dates and lane_key[1] == ordered_dates[0]:
             return "CURRENT_PERIOD"
         if len(ordered_dates) == 2 and lane_key[1] == ordered_dates[1]:
+            return "COMPARATIVE_PERIOD"
+    if len(lane_key) == 2 and lane_key[0] == "BARE_YEAR":
+        if ordered_bare_years and lane_key[1] == ordered_bare_years[0]:
+            return "CURRENT_PERIOD"
+        if len(ordered_bare_years) == 2 and lane_key[1] == ordered_bare_years[1]:
             return "COMPARATIVE_PERIOD"
     return None
 
@@ -1811,6 +1821,9 @@ def _observation_priority(item: Mapping[str, Any]) -> tuple[int, int, int]:
     }
     state = item["state"]
     identity_priority = {
+        "SOURCE_PRINTED_TOTAL_PROVEN_AS_EXPLICIT_SECTION_CONTEXT_ROLE": 4,
+        "SOURCE_PRINTED_TOTAL_PROVEN_AS_EXPLICIT_TABLE_CONTEXT_ROLE": 4,
+        "SOURCE_PRINTED_TOTAL_PROVEN_AS_ROW_POPULATION_CONTEXT_ROLE": 1,
         "SOURCE_TOTAL_PROVEN_AS_CONTEXT_ROLE": 1,
         "SOURCE_TRAILING_TOTAL_PROVEN_AS_BLANK_GROUP_ROLE": 2,
         "SOURCE_OBSERVED_ROLE_ROW": 3,
@@ -1823,7 +1836,10 @@ def _observation_priority(item: Mapping[str, Any]) -> tuple[int, int, int]:
 
 
 def _global_records(
-    local_records: Sequence[Mapping[str, Any]], *, proven_roles: set[str]
+    local_records: Sequence[Mapping[str, Any]],
+    *,
+    proven_roles: set[str],
+    allow_bare_year: bool = False,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[str]]:
     dates = sorted(
         {
@@ -1835,15 +1851,37 @@ def _global_records(
         key=date.fromisoformat,
         reverse=True,
     )
+    bare_years = sorted(
+        {
+            lane_key[1]
+            for record in local_records
+            for lane_key in record["lane_keys"]
+            if lane_key[0] == "BARE_YEAR"
+        },
+        reverse=True,
+    )
     reasons = []
     if len(dates) > 2:
         reasons.append("DOCUMENT_MAPPING_PERIOD_AXIS_HAS_MORE_THAN_TWO_DATES")
+    if allow_bare_year and len(bare_years) > 2:
+        reasons.append("DOCUMENT_MAPPING_PERIOD_AXIS_HAS_MORE_THAN_TWO_BARE_YEARS")
+    mixed_period_axis = bool(allow_bare_year and dates and bare_years)
+    if mixed_period_axis:
+        reasons.append("DOCUMENT_MAPPING_PERIOD_AXIS_MIXES_DATE_AND_BARE_YEAR")
     observations: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
         lambda: defaultdict(list)
     )
     for record in local_records:
         for lane_key, cell in zip(record["lane_keys"], record["cells"], strict=True):
-            lane_role = _canonical_lane_role(lane_key, ordered_dates=dates)
+            lane_role = (
+                None
+                if mixed_period_axis
+                else _canonical_lane_role(
+                    lane_key,
+                    ordered_dates=dates,
+                    ordered_bare_years=bare_years if allow_bare_year else (),
+                )
+            )
             if lane_role is None:
                 continue
             observations[record["role"]][lane_role].append(

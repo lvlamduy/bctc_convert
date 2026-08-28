@@ -1,0 +1,116 @@
+{
+  "aggregate_duplicate_roles": [
+    "CIP_TO_OTHER_ASSETS",
+    "DEPOSITS_COLLATERAL",
+    "OTHER_INTEREST",
+    "OTHER_RECEIVABLE",
+    "PREPAID_COST",
+    "TAX_OVERPAYMENT_DEDUCTIBLE",
+    "WITHOUT_RECOURSE_DOCUMENT_RECEIVABLE"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "corroboration_pairs": [],
+  "context_total_mapping_roles": [
+    "RECEIVABLES",
+    "CONSTRUCTION_IN_PROGRESS",
+    "EXTERNAL_RECEIVABLES",
+    "OTHER_RECEIVABLE",
+    "INTEREST_FEE_RECEIVABLES",
+    "OTHER_ASSET_BRANCH",
+    "COLLATERAL_ASSET",
+    "GOODWILL_CURRENT",
+    "CREDIT_RISK_QUALITY"
+  ],
+  "derived_role_equations": [
+    {
+      "component_roles": [
+        "FIXED_ASSET_PURCHASE_REPAIR",
+        "CONSTRUCTION_IN_PROGRESS"
+      ],
+      "result_role": "CAPEX_RECEIVABLE"
+    }
+  ],
+  "detail_context_roles": [
+    "CONSTRUCTION_IN_PROGRESS",
+    "EXTERNAL_RECEIVABLES",
+    "OTHER_RECEIVABLE",
+    "COLLATERAL_ASSET"
+  ],
+  "family_id": "OTHER_ASSETS",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "money_unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": ["Triệu VND", "Triệu đồng", "Million VND"],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": false,
+      "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": false,
+      "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": ["VND", "Đồng"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ],
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "root_component_roles": [
+    "RECEIVABLES",
+    "INTEREST_FEE_RECEIVABLES",
+    "OTHER_ASSET_BRANCH",
+    "GOODWILL_CURRENT",
+    "CREDIT_RISK_QUALITY"
+  ],
+  "role_unit_overrides": [
+    {"role": "GOODWILL_ALLOCATION_YEARS", "unit": "YEARS"}
+  ],
+  "table_context_roles": [
+    "RECEIVABLES",
+    "INTEREST_FEE_RECEIVABLES",
+    "OTHER_ASSET_BRANCH",
+    "GOODWILL_CURRENT",
+    "CIP_MOVEMENT",
+    "CREDIT_RISK_QUALITY"
+  ],
+  "typed_control_exclusions": [
+    {
+      "aliases": [
+        "tài sản thuế thu nhập doanh nghiệp hoãn lại",
+        "deferred tax asset"
+      ],
+      "disposition": "DEFERRED_TAX_SOURCE_ONLY_OUTSIDE_SCHEMA_BRANCH"
+    },
+    {
+      "aliases": [
+        "dự phòng rủi ro cho các tài sản Có nội bảng khác",
+        "dự phòng rủi ro các tài sản Có nội bảng khác",
+        "dự phòng tài sản Có khác",
+        "biến động dự phòng rủi ro",
+        "biến động quỹ dự phòng rủi ro"
+      ],
+      "disposition": "OTHER_ASSET_PROVISION_MOVEMENT_CONTROL"
+    },
+    {
+      "aliases": [
+        "phân loại tài sản tài chính",
+        "giá trị hợp lý của tài sản tài chính",
+        "công cụ tài chính"
+      ],
+      "disposition": "FINANCIAL_INSTRUMENT_OR_FAIR_VALUE_CONTROL"
+    }
+  ]
+}

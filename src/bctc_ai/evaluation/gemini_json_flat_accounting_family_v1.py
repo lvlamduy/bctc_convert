@@ -118,6 +118,18 @@ def _compile_specs(
     if (
         type(evaluation_spec) is dict
         and evaluation_spec.get("format_version")
+        == "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+            compile_gemini_json_multitable_hierarchical_family_specs_v1,
+        )
+
+        return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            topology_spec, evaluation_spec, schema_binding_spec
+        )
+    if (
+        type(evaluation_spec) is dict
+        and evaluation_spec.get("format_version")
         == "ACCOUNTING_DUAL_COMPONENT_FAMILY_EVALUATION_SPEC_V1"
     ):
         from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
@@ -3664,6 +3676,7 @@ def build_gemini_json_flat_family_sweep_v1(
         "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8",
         "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
         "ACCOUNTING_INVESTMENT_SECURITIES_FAMILY_EVALUATION_SPEC_V1",
+        "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
         "ACCOUNTING_OTHER_LONG_TERM_INVESTMENTS_FAMILY_EVALUATION_SPEC_V1",
         "ACCOUNTING_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
     }
@@ -3709,6 +3722,20 @@ def build_gemini_json_flat_family_sweep_v1(
 
             checked_indexed_query_evidence = (
                 validate_gemini_json_indexed_other_long_term_investments_query_evidence_v1(
+                    indexed_query_evidence,
+                    compiled_specs=compiled,
+                )
+            )
+        elif (
+            compiled.get("engine_format_version")
+            == "GEMINI_JSON_MULTITABLE_HIERARCHICAL_ACCOUNTING_FAMILY_V1"
+        ):
+            from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+                validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
+            )
+
+            checked_indexed_query_evidence = (
+                validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
                     indexed_query_evidence,
                     compiled_specs=compiled,
                 )
@@ -3791,6 +3818,20 @@ def build_gemini_json_flat_family_sweep_v1(
         )
 
         trials = validate_gemini_json_other_long_term_investments_sweep_query_bindings_v1(
+            trials=trials,
+            indexed_query_evidence=checked_indexed_query_evidence,
+            compiled_specs=compiled,
+        )
+    if (
+        checked_indexed_query_evidence is not None
+        and compiled.get("engine_format_version")
+        == "GEMINI_JSON_MULTITABLE_HIERARCHICAL_ACCOUNTING_FAMILY_V1"
+    ):
+        from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+            validate_gemini_json_multitable_hierarchical_sweep_query_bindings_v1,
+        )
+
+        trials = validate_gemini_json_multitable_hierarchical_sweep_query_bindings_v1(
             trials=trials,
             indexed_query_evidence=checked_indexed_query_evidence,
             compiled_specs=compiled,

@@ -162,7 +162,14 @@ def _matches(value: Any, alias: str) -> bool:
             or (
                 suffix.split()[:2] == ["thuyet", "minh"]
                 and len(suffix.split()) > 2
-                and all(token.isdigit() for token in suffix.split()[2:])
+                and (
+                    all(token.isdigit() for token in suffix.split()[2:])
+                    or (
+                        suffix.split()[2] == "so"
+                        and len(suffix.split()) > 3
+                        and all(token.isdigit() for token in suffix.split()[3:])
+                    )
+                )
             )
         )
         for suffix in suffixes

@@ -1,0 +1,288 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Các khoản phải thu"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "RECEIVABLES", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí xây dựng cơ bản, mua sắm TSCĐ", "Chi phí xây dựng cơ bản dở dang, mua sắm TSCĐ", "Chi phí mua sắm tài sản cố định và xây dựng cơ bản dở dang", "Tạm ứng mua sắm tài sản cố định"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "CAPEX_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí xây dựng cơ bản dở dang", "Xây dựng cơ bản dở dang"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "CONSTRUCTION_IN_PROGRESS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mua sắm sửa chữa lớn TSCĐ", "Mua sắm tài sản cố định", "Mua sắm sửa chữa lớn tài sản cố định"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "FIXED_ASSET_PURCHASE_REPAIR", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản phải thu nội bộ", "Phải thu nội bộ"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "INTERNAL_RECEIVABLES", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản phải thu bên ngoài", "Phải thu bên ngoài"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "EXTERNAL_RECEIVABLES", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả trước cho người bán", "Tạm ứng nhà cung cấp", "Tạm ứng cho nhà cung cấp"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "ADVANCE_TO_SUPPLIER", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Các khoản ký quỹ, bảo lãnh, thế chấp, đặt cọc", "Ký quỹ, thế chấp, cầm cố", "Ký quỹ, thế chấp, đặt cọc", "Ký quỹ, đặt cọc", "Ký quỹ", "Ký quỹ và khoản phải thu hợp đồng tương lai trái phiếu Chính phủ", "Đặt cọc theo các hợp đồng kinh tế"], "within_role": "RECEIVABLES"},
+        {"aliases": ["Đặt cọc tiền thuê nhà, thuê tài sản cố định"], "within_role": "OTHER_ASSET_BRANCH"}
+      ],
+      "presence": "OPTIONAL", "role": "DEPOSITS_COLLATERAL", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế nộp thừa, được khấu trừ", "Thuế giá trị gia tăng được khấu trừ", "Thuế thu nhập doanh nghiệp nộp thừa", "Tạm ứng thuế khác"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "TAX_OVERPAYMENT_DEDUCTIBLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tạm ứng", "Tạm ứng chi phí xử lý tài sản bảo đảm", "Tạm ứng chi phí xử lý tài sản đảm bảo"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "ADVANCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu từ bán chứng khoán", "Phải thu trong hoạt động giao dịch chứng khoán", "Phải thu trong hoạt động giao dịch chứng khoán của BSC"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "SECURITIES_SALE_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu từ công ty chứng khoán là công ty con", "Phải thu từ CTCK là công ty con"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "SECURITIES_SUBSIDIARY_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu từ Công ty Bảo hiểm là công ty con", "Phải thu khách hàng trong hoạt động bảo hiểm", "Phải thu trong hoạt động bảo hiểm của công ty con"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "INSURANCE_SUBSIDIARY_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu từ NHNN Việt Nam", "Phải thu từ NHNN về cho vay hỗ trợ lãi suất"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "STATE_BANK_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cổ tức phải thu"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "DIVIDEND_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu liên quan đến dịch vụ thanh toán", "Phải thu trung gian thanh toán", "Phải thu tổ chức thẻ", "Phải thu về hoạt động thanh toán"], "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "PAYMENT_SERVICE_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải thu miễn truy đòi theo bộ chứng từ", "Phải thu trong hoạt động mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng", "Mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng", "Phải thu từ nghiệp vụ mua hẳn miễn truy đòi"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "WITHOUT_RECOURSE_DOCUMENT_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Phải thu khác", "Các khoản phải thu khác", "Các khoản phải thu bên ngoài khác", "Các khoản phải thu khác từ bên ngoài", "Phải thu bên ngoài khác", "Các khoản phải thu từ bán nợ"], "within_role": "RECEIVABLES"},
+        {"aliases": ["Khác"], "within_role": "RECEIVABLES"}
+      ],
+      "presence": "OPTIONAL", "role": "OTHER_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản lãi, phí phải thu"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "INTEREST_FEE_RECEIVABLES", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Từ cho vay khách hàng", "Lãi phải thu từ hoạt động tín dụng", "Lãi phải thu hoạt động tín dụng và phí phải thu"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "CREDIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Từ tiền gửi và cho vay các tổ chức tín dụng khác", "Từ tiền gửi và cho vay các TCTD khác", "Lãi phải thu từ tiền gửi"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Từ giao dịch phái sinh", "Lãi phải thu từ công cụ tài chính phái sinh", "Từ các giao dịch phái sinh"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "DERIVATIVE_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Từ các nguồn khác", "Lãi phải thu từ đầu tư chứng khoán", "Từ các khoản chứng khoán đầu tư", "Lãi và phí phải thu khác", "Phí phải thu", "Phí phải thu từ nghiệp vụ L/C", "Lãi phải thu từ hoạt động mua nợ", "Lãi phải thu từ nghiệp vụ mua nợ", "Phí phải thu từ nghiệp vụ mua hẳn miễn truy đòi bộ chứng từ"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
+      "presence": "OPTIONAL", "role": "OTHER_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tài sản Có khác", "Tài sản Có khác (mục con)"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_ASSET_BRANCH", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Ủy thác đầu tư", "Các hợp đồng ủy thác đầu tư"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "ENTRUSTED_INVESTMENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí chờ phân bổ", "Chi phí trả trước", "Chi phí trả trước chờ phân bổ", "Chi phí trả trước chờ phân bổ khác", "Tiền thuê đất trả tiền trước một lần", "Tạm ứng cho khoản tiền gửi, tiết kiệm lãi trả trước"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "PREPAID_COST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vật liệu", "Vật liệu và công cụ", "Vật liệu, công cụ lao động"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "MATERIAL", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thanh toán", "Tạm ứng thanh toán thẻ"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "PAYMENT_ADVANCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi thế thương mại"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_ASSET", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tài sản gán nợ chờ xử lý", "Tài sản gán nợ đã chuyển quyền sở hữu", "Tài sản bảo đảm nhận thay thế cho việc thực hiện nghĩa vụ của bên bảo đảm", "Tài sản bảo đảm đã chuyển quyền sở hữu cho TCTD chờ xử lý", "Tài sản thay thế cho việc thực hiện nghĩa vụ của bên bảo đảm đã chuyển quyền sở hữu cho TCTD chờ xử lý"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "COLLATERAL_ASSET", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Hàng hóa bất động sản", "Bất động sản"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "REAL_ESTATE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cổ phiếu"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "SHARES", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Khác"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "OTHER_MISC_ASSET", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tài sản Có khác", "Tài sản khác", "Các khoản khác"], "within_role": "OTHER_ASSET_BRANCH"}],
+      "presence": "OPTIONAL", "role": "OTHER_ASSET", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi thế thương mại kỳ này"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "GOODWILL_CURRENT", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng giá trị Lợi thế thương mại", "Tổng giá trị Lợi thế thương mại (LTTM)"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_GROSS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thời gian phân bổ (năm)", "Thời gian phân bổ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_ALLOCATION_YEARS", "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giá trị Lợi thế thương mại đã phân bổ lũy kế đầu kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_ALLOCATED_OPEN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giá trị Lợi thế thương mại chưa phân bổ đầu kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_UNALLOCATED_OPEN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi thế thương mại tăng trong kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_INCREASE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi thế thương mại phát sinh trong kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_ARISING", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Điều chỉnh do sự thay đổi giá trị của tài sản và công nợ có thể xác định được"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_VALUE_ADJUSTMENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi thế thương mại giảm trong kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_DECREASE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["LTTM giảm do thanh lý, nhượng bán một phần hoặc toàn bộ TCTD"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_DISPOSAL", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giá trị Lợi thế thương mại phân bổ trong kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_ALLOCATION", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các điều chỉnh giảm khác của LTTM"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_OTHER_DECREASE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng giá trị Lợi thế thương mại chưa phân bổ cuối kỳ"], "within_role": "GOODWILL_CURRENT"}],
+      "presence": "OPTIONAL", "role": "GOODWILL_UNALLOCATED_CLOSE", "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Biến động chi phí XDCB dở dang", "Biến động về xây dựng cơ bản dở dang"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CIP_MOVEMENT", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu năm", "Số dư đầu kỳ"], "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_OPENING", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng trong năm", "Tăng trong kỳ"], "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_INCREASE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang TSCĐ hữu hình"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_TO_TANGIBLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang TSCĐ vô hình"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_TO_INTANGIBLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang tài sản khác", "Chuyển sang bất động sản đầu tư"], "match_mode": "CONTAINS_NORMALIZED_PHRASE", "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_TO_OTHER_ASSETS", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối năm", "Số dư cuối kỳ"], "presence_anchor": false, "within_role": "CIP_MOVEMENT"}],
+      "presence": "OPTIONAL", "role": "CIP_ENDING", "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Phân tích chất lượng tài sản Có khác được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng các khoản phải thu trong hoạt động mua hẳn miễn truy đòi"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CREDIT_RISK_QUALITY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Nhóm 1 - Nợ đủ tiêu chuẩn", "Nợ đủ tiêu chuẩn"], "within_role": "CREDIT_RISK_QUALITY"}],
+      "presence": "OPTIONAL", "role": "GRADE_1", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nhóm 2 - Nợ cần chú ý", "Nợ cần chú ý"], "within_role": "CREDIT_RISK_QUALITY"}],
+      "presence": "OPTIONAL", "role": "GRADE_2", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nhóm 3 - Nợ dưới tiêu chuẩn", "Nợ dưới tiêu chuẩn"], "within_role": "CREDIT_RISK_QUALITY"}],
+      "presence": "OPTIONAL", "role": "GRADE_3", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nhóm 4 - Nợ nghi ngờ", "Nợ nghi ngờ"], "within_role": "CREDIT_RISK_QUALITY"}],
+      "presence": "OPTIONAL", "role": "GRADE_4", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nhóm 5 - Nợ có khả năng mất vốn", "Nợ có khả năng mất vốn"], "within_role": "CREDIT_RISK_QUALITY"}],
+      "presence": "OPTIONAL", "role": "GRADE_5", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "OTHER_ASSETS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản cố định hữu hình",
+    "Tài sản cố định vô hình",
+    "Bất động sản đầu tư",
+    "Tiền gửi của khách hàng",
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Các khoản nợ Chính phủ và Ngân hàng Trung ương",
+    "Các khoản nợ Chính phủ và NHNN",
+    "Tài sản Nợ khác",
+    "Nợ phải trả khác"
+  ],
+  "limits": {"max_continuation_pages": 6, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Tài sản Có khác"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "OTHER_ASSETS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["RECEIVABLES"],
+    ["INTEREST_FEE_RECEIVABLES"],
+    ["OTHER_ASSET_BRANCH"],
+    ["GOODWILL_CURRENT"],
+    ["CIP_MOVEMENT"],
+    ["CREDIT_RISK_QUALITY"]
+  ],
+  "structural_reset_aliases": [
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các TCTD khác",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Các khoản nợ khác",
+    "Tài sản Nợ khác",
+    "Vốn chủ sở hữu"
+  ]
+}
