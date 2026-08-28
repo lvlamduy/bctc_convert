@@ -1,0 +1,134 @@
+{
+    "asset_header_aliases": [
+        "Nhà cửa",
+        "Nhà cửa, vật kiến trúc",
+        "Quyền sử dụng đất",
+        "Quyền sử dụng đất có thời hạn",
+        "Đất và quyền sử dụng đất"
+    ],
+    "branch_layouts": [
+        {
+            "branch_role": "COST_BRANCH",
+            "ending_role": "COST_ENDING",
+            "hierarchy_aliases": [
+                "Nguyên giá"
+            ],
+            "opening_role": "COST_OPENING",
+            "rollforward_kind": "SIGNED_ADDITIVE",
+            "subtotal_roles": [
+                "COST_TOTAL_INCREASE",
+                "COST_TOTAL_DECREASE"
+            ]
+        },
+        {
+            "branch_role": "DEPRECIATION_BRANCH",
+            "ending_role": "DEP_ENDING",
+            "hierarchy_aliases": [
+                "Giá trị hao mòn lũy kế",
+                "Hao mòn lũy kế",
+                "Khấu hao lũy kế",
+                "Giá trị hao mòn"
+            ],
+            "opening_role": "DEP_OPENING",
+            "rollforward_kind": "SIGNED_ADDITIVE",
+            "subtotal_roles": [
+                "DEP_TOTAL_INCREASE",
+                "DEP_TOTAL_DECREASE"
+            ]
+        },
+        {
+            "branch_role": "CARRYING_BRANCH",
+            "ending_role": "CARRY_ENDING",
+            "hierarchy_aliases": [
+                "Giá trị còn lại"
+            ],
+            "opening_role": "CARRY_OPENING",
+            "rollforward_kind": "COST_AND_DEPRECIATION_CONTROL",
+            "subtotal_roles": []
+        }
+    ],
+    "closure_policy": "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT",
+    "component_policy": {
+        "combined_endpoint_policy": "ONE_SOURCE_ROW_WITH_DISTINCT_OPENING_AND_ENDING_SEMANTICS_MAY_BIND_BOTH",
+        "default_branch_fragment_roles": [
+            "COST_BRANCH"
+        ],
+        "fragment_mode": "SAME_PERIOD_SIBLING_TABLES_EXACT_AGGREGATION",
+        "optional_absent_branch_roles": [
+            "DEPRECIATION_BRANCH"
+        ],
+        "summary_control": {
+            "current_role": "CARRY_ENDING",
+            "opening_role": "CARRY_OPENING",
+            "row_aliases": [
+                "Bất động sản đầu tư cho thuê",
+                "Bất động sản đầu tư nắm giữ chờ tăng giá"
+            ],
+            "selection_policy": "UNIQUE_TOTAL_ROW_TWO_EXPLICIT_PERIOD_COLUMNS"
+        }
+    },
+    "direct_role_fallbacks": [],
+    "equation_only_roles": [
+        "DEP_TOTAL_DECREASE"
+    ],
+    "family_id": "INVESTMENT_PROPERTY_ROLLFORWARD",
+    "format_version": "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
+    "header_hard_negative_aliases": [
+        "Tài sản cố định hữu hình",
+        "Tài sản cố định thuê tài chính",
+        "Tài sản cố định vô hình",
+        "Máy móc, thiết bị",
+        "Phần mềm máy tính"
+    ],
+    "layout_policy": "ONE_CURRENT_TOTAL_COLUMN_TABLE_WITH_OPTIONAL_TYPED_COMPARATIVE_CONTROL_TABLES",
+    "minimum_distinct_asset_header_aliases": 1,
+    "money_unit_bindings": [
+        {
+            "accepted": true,
+            "aliases": [
+                "Nghìn đồng",
+                "Nghìn VND",
+                "Thousand VND"
+            ],
+            "canonical_unit": "THOUSAND_VND",
+            "magnitude_power10": 3
+        },
+        {
+            "accepted": true,
+            "aliases": [
+                "Triệu đồng",
+                "Triệu VND",
+                "Million VND"
+            ],
+            "canonical_unit": "MILLION_VND",
+            "magnitude_power10": 6
+        },
+        {
+            "accepted": true,
+            "aliases": [
+                "Tỷ đồng",
+                "Tỷ VND",
+                "Billion VND"
+            ],
+            "canonical_unit": "BILLION_VND",
+            "magnitude_power10": 9
+        },
+        {
+            "accepted": false,
+            "aliases": [
+                "Đồng",
+                "VND"
+            ],
+            "canonical_unit": "VND",
+            "magnitude_power10": 0
+        }
+    ],
+    "period_policy": "UNIQUE_SOURCE_VISIBLE_OR_TYPED_DOCUMENT_REPORTING_DATE_WITH_COMPARATIVE_ENDPOINT_CONTINUITY",
+    "row_width_policy": "UNIQUE_RIGHT_EDGE_TOTAL_WITH_ALL_EQUATION_SEALED_RELOCATION_ONLY",
+    "subtotal_policy": "VISIBLE_SUBTOTAL_AND_DIRECT_CHILDREN_COEXIST_BUT_VERTICAL_CONSUMES_EXACTLY_ONE_FRONTIER",
+    "supplemental_disclosure_roles": [],
+    "total_column_aliases": [
+        "Tổng cộng",
+        "Tổng"
+    ]
+}

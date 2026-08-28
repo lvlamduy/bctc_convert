@@ -228,6 +228,23 @@ PINNED_INTANGIBLE_HISTORICAL_ORACLES = (
         "size_bytes": 219131,
     },
 )
+PINNED_INVESTMENT_PROPERTY_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INVESTMENT_PROPERTY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0072-investment-property-8bank-codex-verified-mapping-v1.json",
+        "sha256": "2831f70486cdd624a222158f0aaffdb1340e378264fa31d688e4f435136b935d",
+        "size_bytes": 58162,
+    },
+    {
+        "format_version": "ANNUAL_2025_INVESTMENT_PROPERTY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0126-annual-2025-investment-property-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "6bb18468bd27826dc12c5a64377b49a16400c17ebd807f883a3225289fb88d07",
+        "size_bytes": 97767,
+    },
+)
 PINNED_INTANGIBLE_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "d6bf4945b30ed3da8277b9c4308ae538726e2395cc826893c955cc2f8a5cbf1b"
@@ -285,6 +302,65 @@ PINNED_INTANGIBLE_SPEC_REFS = {
         "path": "config/families/tm-intangible-fixed-assets-topology-v1.json",
         "sha256": "2799465474d48da39992a65b238a9434abcb68aa8b967d0f913722eff82654d8",
         "size_bytes": 16265,
+    },
+}
+PINNED_INVESTMENT_PROPERTY_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "9d4b4d09179485582a40547c8023b871d2c038d184f5e5af408037d6db7bb64a"
+    ),
+    "accepted_cluster_count": 12,
+    "accepted_control_region_count": 9,
+    "accepted_current_region_count": 26,
+    "candidate_disposition_axis_sha256": (
+        "f465da2767ed453f86c65d497aee72c4738ca55ea37c3d9c3768eb904a13d4c4"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 128, READY: 12, UNRESOLVED: 0},
+    "query_policy_sha256": "1c36d2509bbaef08f502d41ad0708169ad8f904af68c8773293a10fc47621b8c",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_INVESTMENT_PROPERTY_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 105,
+    "not_observed_count": 128,
+    "ready_count": 12,
+    "unresolved_count": 0,
+}
+PINNED_INVESTMENT_PROPERTY_RELEASE_AUDIT_METRICS = {
+    "equation_count": 185,
+    "historical_document_match_count": 16,
+    "historical_value_match_count": 26,
+    "mapping_count": 105,
+}
+PINNED_INVESTMENT_PROPERTY_RELEASE_AXIS_SHA256 = {
+    "clusters": "84df976799ec32dc83c4978b13531fd61d0167b0fb08ed6d511dc7862454b81c",
+    "equations": "c5872011db70caacb523af3d7f17521c475469cde5dbf27a3823eef81497f4b6",
+    "historical_comparator": ("3e874e6a278b2aff896cf27149f3b20df5f49805380cbff4f9fb04ea55523b1e"),
+    "mappings": "d931909ea2fb3f48a35a99d922fa2d4da9414234c04e63b647e0d0e4a9c31fd6",
+}
+PINNED_INVESTMENT_PROPERTY_SPEC_REFS = {
+    "evaluation": {
+        "path": "config/families/tm-investment-property-evaluation-v1.json",
+        "sha256": "78ad0d23b233326e80702e5d9bca67539f0d37cbca6cd0d9c5f526f069074981",
+        "size_bytes": 4567,
+    },
+    "schema_binding": {
+        "path": "config/families/tm-investment-property-schema-binding-v1.json",
+        "sha256": "b0f98b9d76a972c2c509cfd8ba66fb7f597ce6b07f0e931b9fa7b8d0a4fdf1ae",
+        "size_bytes": 3156,
+    },
+    "topology": {
+        "path": "config/families/tm-investment-property-topology-v1.json",
+        "sha256": "2f5e61cecaac0234b489d0da7cbfb6d49c7a0695bf60b6599468b7cbefbd935c",
+        "size_bytes": 15747,
     },
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
@@ -496,6 +572,8 @@ def _historical_oracles(
         pinned_oracles = PINNED_LEASED_HISTORICAL_ORACLES
     elif family_id == "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD":
         pinned_oracles = PINNED_INTANGIBLE_HISTORICAL_ORACLES
+    elif family_id == "INVESTMENT_PROPERTY_ROLLFORWARD":
+        pinned_oracles = PINNED_INVESTMENT_PROPERTY_HISTORICAL_ORACLES
     else:
         raise _error("fixed-asset-rollforward release family is not pinned")
     result = []
@@ -670,8 +748,36 @@ def _audit_axes(
                     "unit": mapping["bound_unit"],
                 }
             )
-        for equation in candidate["closure_receipt"]["table_receipt"]["equations"]:
-            equations.append({**document, "equation": equation})
+        component_population = candidate["closure_receipt"].get("component_population_receipt")
+        if type(component_population) is dict:
+            for component in component_population.get("components", []):
+                table_receipt = component.get("table_receipt")
+                component_equations = (
+                    table_receipt.get("equations", [])
+                    if type(table_receipt) is dict
+                    else component.get("summary_control_projection", {}).get(
+                        "summary_equations", []
+                    )
+                )
+                for equation in component_equations:
+                    equations.append(
+                        {
+                            **document,
+                            "component_region": component["region"],
+                            "equation": equation,
+                        }
+                    )
+            for equation in component_population.get("aggregate_equations", []):
+                equations.append(
+                    {
+                        **document,
+                        "component_region": None,
+                        "equation": equation,
+                    }
+                )
+        else:
+            for equation in candidate["closure_receipt"]["table_receipt"]["equations"]:
+                equations.append({**document, "equation": equation})
     comparator, oracle_refs = _historical_comparator_axis(
         trials=trials, compiled_specs=compiled_specs
     )
@@ -877,6 +983,18 @@ def _assert_release_pins(
             "equations": 1120,
             "historical_comparator": 155,
             "mappings": 829,
+        }
+    elif family_id == "INVESTMENT_PROPERTY_ROLLFORWARD":
+        pinned_query_receipt = PINNED_INVESTMENT_PROPERTY_QUERY_RECEIPT
+        pinned_metrics = PINNED_INVESTMENT_PROPERTY_RELEASE_METRICS
+        pinned_audit_metrics = PINNED_INVESTMENT_PROPERTY_RELEASE_AUDIT_METRICS
+        pinned_axis_sha256 = PINNED_INVESTMENT_PROPERTY_RELEASE_AXIS_SHA256
+        pinned_spec_refs = PINNED_INVESTMENT_PROPERTY_SPEC_REFS
+        expected_axis_counts = {
+            "clusters": 12,
+            "equations": 185,
+            "historical_comparator": 43,
+            "mappings": 105,
         }
     else:
         raise _error("fixed-asset-rollforward release family is not pinned")

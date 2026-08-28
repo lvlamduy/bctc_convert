@@ -9,9 +9,14 @@ from test_gemini_financial_page_store_v1 import _ingest
 from test_gemini_json_fixed_asset_rollforward_family_v1 import (
     _compiled,
     _compiled_intangible,
+    _compiled_investment_property,
     _compiled_leased,
     _intangible_page,
     _intangible_table,
+    _investment_cost_fragment,
+    _investment_property_page,
+    _investment_property_table,
+    _investment_summary_table,
     _leased_page,
     _page,
     _supplemental_table,
@@ -428,4 +433,95 @@ def test_sqlite_replay_rejects_coherent_supplemental_source_locator_drift(tmp_pa
             compiled_specs=compiled,
             indexed_query_evidence=evidence,
             trials=forged,
+        )
+
+
+def test_indexed_investment_property_replays_exact_multi_component_population(tmp_path) -> None:
+    database = tmp_path / "investment-property-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(),
+            _investment_property_table(),
+            _investment_cost_fragment(),
+        ]
+    )
+    ingested = _ingest(database, page_json=page)
+    selected = [ingested["page_json_version_id"]]
+    compiled = _compiled_investment_property()
+    evidence = query_selected_fixed_asset_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected,
+        compiled_specs=compiled,
+    )
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 0,
+        READY: 1,
+        "UNRESOLVED_GEMINI_JSON_FAMILY": 0,
+    }
+    cluster = evidence["accepted_clusters"][0]
+    assert len(cluster["component_regions"]) == 3
+    receipt = build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+        cluster["component_regions"], control_regions=cluster["control_regions"]
+    )
+    assert receipt["format_version"].endswith("V2")
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=cluster["control_regions"],
+        page_json_by_version={ingested["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    assert candidate["status"] == READY
+    trials = [_trial(evidence["selected_document_axis"][0], candidate, READY)]
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "d" * 64,
+        topology_spec=_json("tm-investment-property-topology-v1.json"),
+        evaluation_spec=_json("tm-investment-property-evaluation-v1.json"),
+        schema_binding_spec=_json("tm-investment-property-schema-binding-v1.json"),
+        trials=trials,
+        indexed_query_evidence=evidence,
+    )
+    assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+    assert (
+        validate_selected_fixed_asset_rollforward_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=trials,
+        )
+        == trials
+    )
+    forged = copy.deepcopy(evidence)
+    forged_cluster = forged["accepted_clusters"][0]
+    forged_cluster["summary_control_comparison_receipt"]["status"] = "FORGED_SELF_SEAL"
+    forged_cluster_material = {
+        key: value for key, value in forged_cluster.items() if key != "cluster_id"
+    }
+    forged_cluster["cluster_id"] = "gjffarfcv1:cluster:" + canonical_json_sha256_v1(
+        forged_cluster_material
+    )
+    disposition_cluster = forged["candidate_dispositions"][0]["cluster"]
+    disposition_cluster["summary_control_comparison_receipt"]["status"] = "FORGED_SELF_SEAL"
+    disposition_material = {
+        key: value for key, value in disposition_cluster.items() if key != "cluster_id"
+    }
+    disposition_cluster["cluster_id"] = "gjffarfcv1:cluster:" + canonical_json_sha256_v1(
+        disposition_material
+    )
+    forged["query_receipt"]["accepted_cluster_axis_sha256"] = canonical_json_sha256_v1(
+        forged["accepted_clusters"]
+    )
+    forged["query_receipt"]["candidate_disposition_axis_sha256"] = canonical_json_sha256_v1(
+        forged["candidate_dispositions"]
+    )
+    forged_material = {key: value for key, value in forged.items() if key != "query_evidence_id"}
+    forged["query_evidence_id"] = "gjffareqv1:evidence:" + canonical_json_sha256_v1(forged_material)
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="does not replay"):
+        validate_selected_fixed_asset_rollforward_family_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=forged,
         )

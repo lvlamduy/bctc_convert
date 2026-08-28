@@ -62,6 +62,19 @@ def _compiled_intangible():
     )
 
 
+def _compiled_investment_property():
+    return compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
+        *[
+            json.loads((ROOT / path).read_bytes())
+            for path in (
+                "config/families/tm-investment-property-topology-v1.json",
+                "config/families/tm-investment-property-evaluation-v1.json",
+                "config/families/tm-investment-property-schema-binding-v1.json",
+            )
+        ]
+    )
+
+
 def _row(label, branch, values, *, row_kind="ITEM", path=None):
     return {
         "hierarchy_path_exact": path or [branch, label],
@@ -198,6 +211,112 @@ def _page(table=None):
         ],
         "status": "FINANCIAL_NOTE_CONTENT",
     }
+
+
+def _investment_property_table(*, current_year=2025, unit="Triệu VND"):
+    table = _table(current_year=current_year, unit=unit)
+    table["columns"][1]["header_path_exact"] = [
+        "Quyền sử dụng đất có thời hạn",
+        "Triệu VND",
+    ]
+    table["title_exact"] = f"Bất động sản đầu tư cho thuê năm {current_year}"
+    return table
+
+
+def _investment_property_page(*, tables, narratives=None):
+    page = _page()
+    section = page["sections"][0]
+    section["title_exact"] = "Bất động sản đầu tư"
+    section["narratives_exact"] = [] if narratives is None else narratives
+    section["tables"] = tables
+    return page
+
+
+def _investment_cost_fragment(*, current_year=2025, unit="Triệu VND"):
+    table = _investment_property_table(current_year=current_year, unit=unit)
+    table["rows"] = [row for row in table["rows"] if row["hierarchy_path_exact"][0] == "Nguyên giá"]
+    for row in table["rows"]:
+        if row["row_kind"] == "GROUP":
+            continue
+        if row["label_exact"].startswith("Tại ngày 1 tháng 1"):
+            row["values_exact"] = ["4", "6", "10"]
+        elif row["label_exact"] == "Mua trong kỳ":
+            row["values_exact"] = ["2", "3", "5"]
+        else:
+            row["values_exact"] = ["6", "9", "15"]
+    table["title_exact"] = f"Bất động sản đầu tư nắm giữ chờ tăng giá năm {current_year}"
+    return table
+
+
+def _investment_summary_table(*, current=279, comparative=250, unit="Triệu VND"):
+    return {
+        "columns": [
+            {"header_path_exact": ["31/12/2025"], "value_kind": "MONEY"},
+            {"header_path_exact": ["31/12/2024"], "value_kind": "MONEY"},
+        ],
+        "continuation": "NONE",
+        "rows": [
+            _row(
+                "Bất động sản đầu tư cho thuê",
+                "Bất động sản đầu tư",
+                [str(current - 15), str(comparative - 10)],
+                path=["Bất động sản đầu tư cho thuê"],
+            ),
+            _row(
+                "Bất động sản đầu tư nắm giữ chờ tăng giá",
+                "Bất động sản đầu tư",
+                ["15", "10"],
+                path=["Bất động sản đầu tư nắm giữ chờ tăng giá"],
+            ),
+            _row(
+                "Tổng cộng",
+                "Bất động sản đầu tư",
+                [str(current), str(comparative)],
+                row_kind="TOTAL",
+                path=["Tổng cộng"],
+            ),
+        ],
+        "title_exact": "Giá trị còn lại của bất động sản đầu tư",
+        "unit_exact": unit,
+    }
+
+
+def _investment_statement_page(*, current=330, comparative=300, unit="Triệu VND"):
+    page = _typed_balance_sheet_page()
+    table = page["sections"][0]["tables"][0]
+    table["unit_exact"] = unit
+    table["rows"] = [
+        _row(
+            "Bất động sản đầu tư",
+            "Bất động sản đầu tư",
+            [str(current), str(comparative)],
+            row_kind="TOTAL",
+            path=["Bất động sản đầu tư"],
+        )
+    ]
+    return page
+
+
+def _investment_candidate(page_records):
+    compiled = _compiled_investment_property()
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=page_records, compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+        cluster["component_regions"], control_regions=cluster["control_regions"]
+    )
+    page_json_by_version = {
+        item["page_json_version_id"]: item["page_json"] for item in page_records
+    }
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=cluster["control_regions"],
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, receipt, page_json_by_version, candidate
 
 
 def _leased_table():
@@ -911,6 +1030,468 @@ def test_money_normalizer_accepts_repeated_dash_and_one_ocr_glyph_only():
         match="money text is not one exact signed integer",
     ):
         fixed_asset_v1._money("100triệu", source_locator=locator)
+    for unsupported in ("-一百-", "100万"):
+        with pytest.raises(
+            GeminiJsonFixedAssetRollforwardFamilyV1Error,
+            match="money text is not one exact signed integer",
+        ):
+            fixed_asset_v1._money(unsupported, source_locator=locator)
+
+
+def test_investment_property_sibling_fragment_aggregation_closes_from_local_graph():
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(),
+            _investment_property_table(),
+            _investment_cost_fragment(),
+        ]
+    )
+    compiled, cluster, _receipt, _pages, candidate = _investment_candidate([_page_record(page)])
+    assert compiled["bindings"]["CARRY_ENDING"] == 5974
+    assert len(cluster["component_regions"]) == 3
+    assert candidate["status"] == READY
+    assert len(candidate["mappings"]) == 8
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    assert by_role["COST_OPENING"]["cell"]["coefficient"] == 310
+    assert by_role["COST_PURCHASE"]["cell"]["coefficient"] == 35
+    assert by_role["COST_ENDING"]["cell"]["coefficient"] == 345
+    assert by_role["CARRY_OPENING"]["cell"]["coefficient"] == 250
+    assert by_role["CARRY_ENDING"]["cell"]["coefficient"] == 279
+    assert all(
+        item["status"] == "EXACT"
+        for item in candidate["closure_receipt"]["component_population_receipt"][
+            "aggregate_equations"
+        ]
+    )
+
+
+def test_investment_property_cost_only_schedule_binds_typed_statement_control():
+    statement = _page_record(
+        _investment_statement_page(current=15, comparative=10), physical_page=1
+    )
+    note = _page_record(
+        _investment_property_page(tables=[_investment_cost_fragment()]),
+        selected_page_ordinal=2,
+        physical_page=20,
+    )
+    _compiled_specs, cluster, _receipt, _pages, candidate = _investment_candidate([statement, note])
+    assert len(cluster["component_regions"]) == 2
+    assert candidate["status"] == READY
+    assert [(item["role"], item["cell"]["coefficient"]) for item in candidate["mappings"]] == [
+        ("COST_OPENING", 10),
+        ("COST_PURCHASE", 5),
+        ("COST_ENDING", 15),
+        ("CARRY_OPENING", 10),
+        ("CARRY_ENDING", 15),
+    ]
+
+
+def test_investment_property_note_and_statement_controls_must_agree():
+    statement = _page_record(
+        _investment_statement_page(current=279, comparative=250), physical_page=1
+    )
+    note = _page_record(
+        _investment_property_page(
+            tables=[
+                _investment_summary_table(),
+                _investment_property_table(),
+                _investment_cost_fragment(),
+            ]
+        ),
+        selected_page_ordinal=2,
+        physical_page=20,
+    )
+    _compiled_specs, cluster, _receipt, _pages, candidate = _investment_candidate([statement, note])
+    assert candidate["status"] == READY
+    assert cluster["summary_control_comparison_receipt"]["status"] == "EXACT"
+    assert len(cluster["summary_control_comparison_receipt"]["controls"]) == 2
+
+    mismatched = _page_record(
+        _investment_statement_page(current=280, comparative=250), physical_page=1
+    )
+    unresolved = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[mismatched, note], compiled_specs=_compiled_investment_property()
+    )
+    assert unresolved["status"] == UNRESOLVED
+    assert "SAME_PERIOD_CARRYING_SUMMARY_CONTROLS_MISMATCH" in unresolved["reasons"]
+
+
+def test_investment_property_summary_without_rollforward_is_not_observed():
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(_investment_statement_page())],
+        compiled_specs=_compiled_investment_property(),
+    )
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["reasons"] == []
+
+
+def test_investment_property_aggregate_summary_mismatch_fails_closed():
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(current=280),
+            _investment_property_table(),
+            _investment_cost_fragment(),
+        ]
+    )
+    _compiled_specs, _cluster, _receipt, _pages, candidate = _investment_candidate(
+        [_page_record(page)]
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "AGGREGATE_CARRYING_CONTROL_EQUATION_MISMATCH:CARRY_ENDING" in candidate["reasons"]
+
+
+def test_investment_property_summary_detail_total_equation_fails_closed():
+    summary = _investment_summary_table()
+    summary["rows"][0]["values_exact"][0] = "263"
+    page = _investment_property_page(
+        tables=[summary, _investment_property_table(), _investment_cost_fragment()]
+    )
+    _compiled_specs, _cluster, _receipt, _pages, candidate = _investment_candidate(
+        [_page_record(page)]
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "SUMMARY_CONTROL_HORIZONTAL_EQUATION_MISMATCH:CARRY_ENDING" in candidate["reasons"]
+
+
+def test_investment_property_sibling_population_must_equal_summary_population():
+    summary = _investment_summary_table()
+    summary["rows"].pop(1)
+    page = _investment_property_page(
+        tables=[summary, _investment_property_table(), _investment_cost_fragment()]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "SIBLING_COMPONENT_TO_SUMMARY_POPULATION_EXACT_SET_MISMATCH" in cluster["reasons"]
+
+
+def test_investment_property_duplicate_sibling_population_title_is_ambiguous():
+    second = _investment_cost_fragment()
+    second["title_exact"] = _investment_property_table()["title_exact"]
+    page = _investment_property_page(
+        tables=[_investment_summary_table(), _investment_property_table(), second]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "SIBLING_COMPONENT_SUMMARY_POPULATION_IS_DUPLICATE" in cluster["reasons"]
+
+
+def test_investment_property_foreign_table_breaks_sibling_component_interval():
+    foreign = {
+        "columns": [{"header_path_exact": ["Khoản mục"], "value_kind": "TEXT"}],
+        "continuation": "NONE",
+        "rows": [],
+        "title_exact": "Thuyết minh ngoại lai",
+        "unit_exact": None,
+    }
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(),
+            _investment_property_table(),
+            foreign,
+            _investment_cost_fragment(),
+        ]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "CURRENT_SIBLING_COMPONENT_TABLE_INTERVAL_IS_NOT_CONTIGUOUS" in cluster["reasons"]
+
+
+def test_investment_property_standalone_reset_heading_vetoes_owner_scope():
+    page = _investment_property_page(
+        tables=[_investment_property_table()],
+        narratives=["14 Tài sản cố định hữu hình"],
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "STRUCTURAL_RESET_HEADING_INSIDE_COMPONENT_OWNER_SCOPE" in cluster["reasons"]
+
+
+def test_investment_property_incidental_reset_phrase_does_not_veto_owner_scope():
+    page = _investment_property_page(
+        tables=[_investment_property_table()],
+        narratives=["Trong kỳ có chuyển từ tài sản cố định hữu hình theo phê duyệt."],
+    )
+    _compiled_specs, _cluster, _receipt, _pages, candidate = _investment_candidate(
+        [_page_record(page)]
+    )
+    assert candidate["status"] == READY
+
+
+@pytest.mark.parametrize(
+    "child_label",
+    ["Bất động sản đầu tư - Nguyên giá", "Hao mòn bất động sản đầu tư"],
+)
+def test_investment_property_statement_child_cannot_masquerade_as_root_control(child_label):
+    statement = _investment_statement_page(current=15, comparative=10)
+    statement_row = statement["sections"][0]["tables"][0]["rows"][0]
+    statement_row["label_exact"] = child_label
+    statement_row["hierarchy_path_exact"] = [statement_row["label_exact"]]
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[
+            _page_record(statement, physical_page=1),
+            _page_record(
+                _investment_property_page(tables=[_investment_cost_fragment()]),
+                selected_page_ordinal=2,
+                physical_page=20,
+            ),
+        ],
+        compiled_specs=_compiled_investment_property(),
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "COMPONENT_AGGREGATION_REQUIRES_CARRYING_SUMMARY_CONTROL" in cluster["reasons"]
+
+
+def test_investment_property_duplicate_summary_is_ambiguous():
+    summary = _investment_summary_table()
+    page = _investment_property_page(
+        tables=[_investment_property_table(), summary, deepcopy(summary)]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "CURRENT_CARRYING_SUMMARY_CONTROL_IS_NOT_UNIQUE" in cluster["reasons"]
+
+
+def test_investment_property_malformed_extra_summary_evidence_is_not_ignored():
+    malformed = _investment_summary_table()
+    malformed["rows"].insert(
+        1,
+        _row(
+            "Khoản mục ngoại lai",
+            "Bất động sản đầu tư",
+            ["1", "1"],
+            path=["Khoản mục ngoại lai"],
+        ),
+    )
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(),
+            _investment_property_table(),
+            _investment_cost_fragment(),
+            malformed,
+        ]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "CARRYING_SUMMARY_CONTROL_STRUCTURE_IS_NOT_AUTHENTICATED" in cluster["reasons"]
+
+
+def test_investment_property_malformed_summary_without_schedule_is_not_observed():
+    malformed = _investment_summary_table()
+    malformed["rows"].insert(
+        1,
+        _row(
+            "Khoản mục ngoại lai",
+            "Bất động sản đầu tư",
+            ["1", "1"],
+            path=["Khoản mục ngoại lai"],
+        ),
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(_investment_property_page(tables=[malformed]))],
+        compiled_specs=_compiled_investment_property(),
+    )
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["reasons"] == []
+
+
+def test_investment_property_malformed_statement_root_control_is_not_ignored():
+    statement = _investment_statement_page(current=15, comparative=10)
+    statement["sections"][0]["tables"][0]["columns"][1]["header_path_exact"] = [
+        "30/06/2025",
+        "31/12/2024",
+    ]
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[
+            _page_record(statement, physical_page=1),
+            _page_record(
+                _investment_property_page(tables=[_investment_cost_fragment()]),
+                selected_page_ordinal=2,
+                physical_page=20,
+            ),
+        ],
+        compiled_specs=_compiled_investment_property(),
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "CARRYING_SUMMARY_CONTROL_STRUCTURE_IS_NOT_AUTHENTICATED" in cluster["reasons"]
+
+
+def test_investment_property_unknown_numeric_fragment_is_not_ignored():
+    fragment = _investment_cost_fragment()
+    fragment["rows"].insert(2, _row("Dòng lạ", "Nguyên giá", ["1", "2", "3"]))
+    page = _investment_property_page(tables=[_investment_property_table(), fragment])
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "UNCLASSIFIED_NUMERIC_ROW_INSIDE_FIXED_ASSET_BRANCH" in cluster["reasons"]
+
+
+def test_investment_property_source_cannot_inject_an_internal_forced_role():
+    fragment = _investment_cost_fragment()
+    movement = next(row for row in fragment["rows"] if row["label_exact"] == "Mua trong kỳ")
+    movement["label_exact"] = "Dòng nguồn không khai báo"
+    movement["hierarchy_path_exact"][-1] = movement["label_exact"]
+    movement["__forced_role"] = "COST_PURCHASE"
+    page = _investment_property_page(tables=[fragment])
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "UNCLASSIFIED_NUMERIC_ROW_INSIDE_FIXED_ASSET_BRANCH" in cluster["reasons"]
+
+
+def test_investment_property_movement_date_range_is_not_two_endpoints():
+    fragment = _investment_cost_fragment()
+    movement = next(row for row in fragment["rows"] if row["label_exact"] == "Mua trong kỳ")
+    movement["label_exact"] = "Khấu hao từ ngày 1 tháng 1 năm 2025 đến ngày 31 tháng 12 năm 2025"
+    movement["hierarchy_path_exact"][-1] = movement["label_exact"]
+    page = _investment_property_page(tables=[fragment])
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_investment_property()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "UNCLASSIFIED_NUMERIC_ROW_INSIDE_FIXED_ASSET_BRANCH" in cluster["reasons"]
+
+
+def test_investment_property_component_unit_conflict_fails_before_mapping():
+    page = _investment_property_page(
+        tables=[
+            _investment_summary_table(),
+            _investment_property_table(),
+            _investment_cost_fragment(unit="Nghìn VND"),
+        ]
+    )
+    _compiled_specs, _cluster, _receipt, _pages, candidate = _investment_candidate(
+        [_page_record(page)]
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "CURRENT_COMPONENT_MONEY_UNIT_AXIS_IS_NOT_UNIQUE" in candidate["reasons"]
+
+
+def test_investment_property_same_context_tables_use_exact_endpoint_continuity():
+    current = _investment_property_table()
+    for row in current["rows"]:
+        if row["label_exact"].startswith("Tại ngày 1 tháng 1"):
+            row["label_exact"] = "Số dư đầu kỳ"
+            row["hierarchy_path_exact"][-1] = "Số dư đầu kỳ"
+        elif "31 tháng 12" in row["label_exact"]:
+            row["label_exact"] = "Số dư cuối kỳ"
+            row["hierarchy_path_exact"][-1] = "Số dư cuối kỳ"
+    comparative = _investment_property_table(current_year=2024)
+    comparative["rows"] = [
+        _row("Nguyên giá", "Nguyên giá", [None, None, None], row_kind="GROUP", path=["Nguyên giá"]),
+        _row(
+            "Số dư đầu năm và cuối năm",
+            "Nguyên giá",
+            ["100", "200", "300"],
+            row_kind="SUBTOTAL",
+        ),
+        _row(
+            "Giá trị hao mòn lũy kế",
+            "Giá trị hao mòn lũy kế",
+            [None, None, None],
+            row_kind="GROUP",
+            path=["Giá trị hao mòn lũy kế"],
+        ),
+        _row("Số dư đầu năm", "Giá trị hao mòn lũy kế", ["18", "36", "54"]),
+        _row("Khấu hao trong năm", "Giá trị hao mòn lũy kế", ["2", "4", "6"]),
+        _row(
+            "Số dư cuối năm",
+            "Giá trị hao mòn lũy kế",
+            ["20", "40", "60"],
+            row_kind="TOTAL",
+        ),
+        _row(
+            "Giá trị còn lại",
+            "Giá trị còn lại",
+            [None, None, None],
+            row_kind="GROUP",
+            path=["Giá trị còn lại"],
+        ),
+        _row("Số dư đầu năm", "Giá trị còn lại", ["82", "164", "246"]),
+        _row(
+            "Số dư cuối năm",
+            "Giá trị còn lại",
+            ["80", "160", "240"],
+            row_kind="TOTAL",
+        ),
+    ]
+    note_page = _investment_property_page(
+        tables=[current, comparative],
+        narratives=["Cho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"],
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[
+            _page_record(
+                _typed_balance_sheet_page(current="30/06/2025", comparative="31/12/2024"),
+                physical_page=1,
+            ),
+            _page_record(note_page, selected_page_ordinal=2, physical_page=20),
+        ],
+        compiled_specs=_compiled_investment_property(),
+    )
+    assert cluster["status"] == READY
+    assert len(cluster["component_regions"]) == 1
+    assert cluster["component_regions"][0]["table_id"] == "t1"
+    assert cluster["control_regions"][0]["table_id"] == "t2"
+    assert cluster["control_regions"][0]["period_end_date"] == "2024-12-31"
+    combined = next(item for item in cluster["family_table_inventory"] if item["table_id"] == "t2")[
+        "combined_endpoint_receipts"
+    ]
+    assert combined == [
+        {
+            "binding_kind": "ONE_SOURCE_ROW_BINDS_EXPLICIT_OPENING_AND_ENDING_SEMANTICS",
+            "roles": ["COST_OPENING", "COST_ENDING"],
+            "source_label_exact": "Số dư đầu năm và cuối năm",
+            "source_row_id": "r2",
+        }
+    ]
+
+
+def test_investment_property_gemini_dash_annotation_is_local_zero_observation():
+    cell = fixed_asset_v1._money("-带有横线-", source_locator={"column_id": "c1", "row_id": "r1"})
+    assert cell["state"] == "DASH_ZERO"
+    assert cell["coefficient"] == 0
+    assert cell["source_text"] == "-带有横线-"
+
+
+def test_investment_property_candidate_coherent_mapping_tamper_rejects_replay():
+    page = _investment_property_page(tables=[_investment_property_table()])
+    compiled, cluster, receipt, pages, candidate = _investment_candidate([_page_record(page)])
+    forged = deepcopy(candidate)
+    forged["mappings"][0]["cell"]["coefficient"] += 7
+    mapping_material = {
+        key: value for key, value in forged["mappings"][0].items() if key != "item_mapping_id"
+    }
+    forged["mappings"][0]["item_mapping_id"] = "gjffarimv1:item:" + canonical_json_sha256_v1(
+        mapping_material
+    )
+    candidate_material = {key: value for key, value in forged.items() if key != "candidate_id"}
+    forged["candidate_id"] = "gjffarcv1:candidate:" + canonical_json_sha256_v1(candidate_material)
+    with pytest.raises(GeminiJsonFixedAssetRollforwardFamilyV1Error):
+        validate_gemini_json_fixed_asset_rollforward_family_candidate_replay_v1(
+            forged,
+            regions=cluster["component_regions"],
+            control_regions=cluster["control_regions"],
+            page_json_by_version=pages,
+            compiled_specs=compiled,
+            query_receipt=receipt,
+        )
 
 
 def test_two_period_tables_under_one_section_select_by_endpoint_period():
