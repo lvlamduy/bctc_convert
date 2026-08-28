@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the other-assets family over one authenticated selected JSON corpus."""
+"""Run one multi-table hierarchical family over an authenticated JSON corpus."""
 
 from __future__ import annotations
 
@@ -124,6 +124,77 @@ PINNED_HISTORICAL_ORACLES = (
         "size_bytes": 396487,
     },
 )
+PINNED_GOVERNMENT_SBV_LIABILITIES_HISTORICAL_ORACLES = (
+    {
+        "format_version": "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0074-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "0ccfc5b9d9c10ed288de065f0194668df47f51674d9034423559dd06c0ad5de6",
+        "size_bytes": 105806,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0128-annual-2025-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "c5832f9d8a40e48dbb262cb2ecf4a1d442276b2f601da5c7be519e8b6538eea4",
+        "size_bytes": 148324,
+    },
+)
+PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 140,
+    "candidate_disposition_axis_sha256": (
+        "b952e106b3a54b188cc35c4aecbb5e08247b8eae139ee5d4fae4a509370b3b4d"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "65365467af2bca6d6ab349c52714fc1ddc1d6c79e608ae5ff8aaf1a75138df49",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 739,
+    "not_observed_count": 0,
+    "ready_count": 140,
+    "unresolved_count": 0,
+}
+PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AUDIT_METRICS = {
+    "equation_count": 411,
+    "historical_comparator_exact_count": 86,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 70,
+    "historical_mapping_record_count": 75,
+    "mapping_count": 739,
+}
+PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AXIS_COUNTS = {
+    "clusters": 140,
+    "equations": 411,
+    "historical_comparator": 91,
+    "mappings": 739,
+}
+PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AXIS_SHA256 = {
+    "clusters": "b4fddfc1e44bd58c4820242d80ca87f874a277278358e32a12b9ec7624037893",
+    "equations": "f2684f572e744bcda4f1a61b8256348b529d27dff5b76a34a8422f210677ae26",
+    "historical_comparator": ("5dd650fc8d33d024990b98cf743ceb3a178aa095dbd46ffac32394a43368246f"),
+    "mappings": "1fbb965bf98a05fa59b00cb2ba96b8f49ac73938b952dbbe601375f79993578c",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -186,7 +257,7 @@ def _file_identity(value: os.stat_result) -> tuple[int, ...]:
 
 def _assert_no_sqlite_sidecars(path: Path) -> None:
     if any(os.path.lexists(f"{path}{suffix}") for suffix in _SQLITE_SIDECAR_SUFFIXES):
-        raise _error("other-assets SQLite source has a journal/WAL sidecar")
+        raise _error("multi-table hierarchical SQLite source has a journal/WAL sidecar")
 
 
 def _fd_sha256(descriptor: int) -> str:
@@ -228,7 +299,7 @@ class _AuthenticatedSqliteSnapshot:
             source_named = os.stat(self.source, follow_symlinks=False)
             snapshot_stat = os.stat(self.path, follow_symlinks=False)
         except FileNotFoundError as exc:
-            raise _error("authenticated other-assets SQLite path disappeared") from exc
+            raise _error("authenticated multi-table SQLite path disappeared") from exc
         source_fd = os.fstat(self.source_descriptor)
         if (
             not stat.S_ISREG(source_named.st_mode)
@@ -241,7 +312,7 @@ class _AuthenticatedSqliteSnapshot:
             or _fd_sha256(self.source_descriptor) != self.expected_sha256
             or _sha256(self.path) != self.expected_sha256
         ):
-            raise _error("authenticated other-assets SQLite bytes changed during use")
+            raise _error("authenticated multi-table SQLite bytes changed during use")
 
 
 @contextmanager
@@ -260,7 +331,7 @@ def _authenticated_sqlite_snapshot(
             or source_identity != _file_identity(os.stat(source, follow_symlinks=False))
             or source_stat.st_size != reference.get("size_bytes")
         ):
-            raise _error("other-assets SQLite source identity drifted before snapshot")
+            raise _error("multi-table SQLite source identity drifted before snapshot")
         with tempfile.TemporaryDirectory(prefix="family22-authenticated-sqlite-") as directory:
             snapshot = Path(directory) / "page-store.sqlite3"
             output_descriptor = os.open(snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
@@ -281,7 +352,7 @@ def _authenticated_sqlite_snapshot(
             if copied != reference.get("size_bytes") or digest.hexdigest() != reference.get(
                 "sha256"
             ):
-                raise _error("other-assets SQLite snapshot bytes do not authenticate")
+                raise _error("multi-table SQLite snapshot bytes do not authenticate")
             os.chmod(snapshot, 0o444)
             guard = _AuthenticatedSqliteSnapshot(
                 source=source,
@@ -319,13 +390,52 @@ def _selected_page_axis(*, index: Mapping[str, Any], artifact_root: Path) -> lis
         or len(version_ids) != len(set(version_ids))
         or any(type(version_id) is not str for version_id in version_ids)
     ):
-        raise _error("selected other-assets JSON frontier is incomplete or duplicate")
+        raise _error("selected multi-table JSON frontier is incomplete or duplicate")
     return version_ids
 
 
-def _historical_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
+def _historical_oracle_refs(
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    family_id = compiled_specs["topology"]["family_id"]
+    if family_id == "OTHER_ASSETS":
+        return PINNED_HISTORICAL_ORACLES
+    if family_id == "GOVERNMENT_SBV_LIABILITIES":
+        return PINNED_GOVERNMENT_SBV_LIABILITIES_HISTORICAL_ORACLES
+    raise _error("multi-table hierarchical family has no pinned historical oracle profile")
+
+
+def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
+    family_id = compiled_specs["topology"]["family_id"]
+    if family_id == "OTHER_ASSETS":
+        return {
+            "axis_counts": {
+                "clusters": 78,
+                "equations": 374,
+                "historical_comparator": 208,
+                "mappings": 1290,
+            },
+            "axis_sha256": PINNED_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_RELEASE_METRICS,
+        }
+    if family_id == "GOVERNMENT_SBV_LIABILITIES":
+        return {
+            "axis_counts": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_METRICS,
+        }
+    raise _error("multi-table hierarchical family has no pinned release profile")
+
+
+def _historical_oracles(
+    *, compiled_specs: Mapping[str, Any]
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     result = []
-    for pinned in PINNED_HISTORICAL_ORACLES:
+    for pinned in _historical_oracle_refs(compiled_specs):
         path = ROOT / pinned["path"]
         value = _json(path)
         metrics = value.get("metrics")
@@ -343,7 +453,7 @@ def _historical_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
             )
             != metrics["mapping_verified_count"]
         ):
-            raise _error("pinned other-assets historical oracle drifted")
+            raise _error("pinned multi-table historical oracle drifted")
         result.append((dict(pinned), value))
     return result
 
@@ -353,7 +463,7 @@ def _trial_by_source(trials: Sequence[dict[str, Any]]) -> dict[str, dict[str, An
     for trial in trials:
         source_sha256 = trial.get("source_sha256")
         if type(source_sha256) is not str or source_sha256 in result:
-            raise _error("other-assets trial source axis is ambiguous")
+            raise _error("multi-table trial source axis is ambiguous")
         result[source_sha256] = trial
     return result
 
@@ -369,20 +479,20 @@ def _historical_comparator_axis(
     oracle_refs = []
     joined_sources = set()
     expected_mapping_count = 0
-    for oracle_ref, oracle in _historical_oracles():
+    for oracle_ref, oracle in _historical_oracles(compiled_specs=compiled_specs):
         oracle_refs.append(oracle_ref)
         expected_mapping_count += oracle["metrics"]["mapping_verified_count"]
         for oracle_trial in oracle["trials"]:
             source_sha256 = oracle_trial.get("source_pdf_sha256")
             if type(source_sha256) is not str or source_sha256 in joined_sources:
-                raise _error("historical other-assets source join is duplicate or invalid")
+                raise _error("historical multi-table source join is duplicate or invalid")
             joined_sources.add(source_sha256)
             trial = current_trials.get(source_sha256)
             if trial is None:
-                raise _error("historical other-assets source does not join one current trial")
+                raise _error("historical multi-table source does not join one current trial")
             historical_mappings = oracle_trial.get("verified_mappings", [])
             if type(historical_mappings) is not list:
-                raise _error("historical other-assets mapping axis is invalid")
+                raise _error("historical multi-table mapping axis is invalid")
             expected_status = READY if historical_mappings else NOT_OBSERVED
             axis.append(
                 {
@@ -419,7 +529,7 @@ def _historical_comparator_axis(
                         for value in values
                     )
                 ):
-                    raise _error("current other-assets comparator mapping axis is invalid")
+                    raise _error("current multi-table comparator mapping axis is invalid")
                 actual_by_id[report_norm_id] = mapping
             for historical in historical_mappings:
                 binding = historical.get("schema_binding")
@@ -464,7 +574,7 @@ def _historical_comparator_axis(
                     }
                 )
     if len(axis) != expected_mapping_count + 16:
-        raise _error("historical other-assets comparator denominator drifted")
+        raise _error("historical multi-table comparator denominator drifted")
     return axis, oracle_refs
 
 
@@ -618,14 +728,14 @@ def validate_multitable_hierarchical_experimental_audit_content_v1(
         or set(value["axes"]) != axis_names
         or any(type(axis) is not list for axis in value["axes"].values())
     ):
-        raise _error("other-assets experimental audit shape drifted")
+        raise _error("multi-table experimental audit shape drifted")
     counts = {name: len(axis) for name, axis in value["axes"].items()}
     hashes = {name: canonical_json_sha256_v1(axis) for name, axis in value["axes"].items()}
     if value.get("axis_counts") != counts or value.get("axis_sha256") != hashes:
-        raise _error("other-assets experimental audit axis seal drifted")
+        raise _error("multi-table experimental audit axis seal drifted")
     material = {key: value[key] for key in fields - {"audit_id"}}
     if value.get("audit_id") != "gjmthfeav1:audit:" + canonical_json_sha256_v1(material):
-        raise _error("other-assets experimental audit identity drifted")
+        raise _error("multi-table experimental audit identity drifted")
     return json.loads(canonical_json_bytes_v1(value))
 
 
@@ -648,11 +758,11 @@ def validate_multitable_hierarchical_experimental_audit_replay_v1(
         checked_sweep["specs"]["schema_binding"]["value"],
     )
     if not same_typed_json_v1(embedded, compiled_specs):
-        raise _error("other-assets caller and embedded compiled specs differ")
+        raise _error("multi-table caller and embedded compiled specs differ")
     if not same_typed_json_v1(checked_sweep["trials"], trials) or not same_typed_json_v1(
         checked_sweep["indexed_query_evidence"], indexed_query_evidence
     ):
-        raise _error("other-assets audit sweep/query/trial axis drifted")
+        raise _error("multi-table audit sweep/query/trial axis drifted")
     validate_selected_multitable_hierarchical_family_candidate_replays_v1(
         database,
         selected_page_json_version_ids=selected_page_json_version_ids,
@@ -671,7 +781,7 @@ def validate_multitable_hierarchical_experimental_audit_replay_v1(
     )
     validate_multitable_hierarchical_experimental_audit_content_v1(value)
     if not same_typed_json_v1(value, expected):
-        raise _error("other-assets experimental audit does not replay exactly")
+        raise _error("multi-table experimental audit does not replay exactly")
     return expected
 
 
@@ -702,11 +812,11 @@ def _validate_multitable_hierarchical_experimental_audit_after_sqlite_candidate_
         checked_sweep["specs"]["schema_binding"]["value"],
     )
     if not same_typed_json_v1(embedded, compiled_specs):
-        raise _error("other-assets caller and embedded compiled specs differ")
+        raise _error("multi-table caller and embedded compiled specs differ")
     if not same_typed_json_v1(checked_sweep["trials"], trials) or not same_typed_json_v1(
         checked_sweep["indexed_query_evidence"], indexed_query_evidence
     ):
-        raise _error("other-assets audit sweep/query/trial axis drifted")
+        raise _error("multi-table audit sweep/query/trial axis drifted")
     expected = build_multitable_hierarchical_experimental_audit_v1(
         sweep=checked_sweep,
         sweep_output=sweep_output,
@@ -718,18 +828,20 @@ def _validate_multitable_hierarchical_experimental_audit_after_sqlite_candidate_
     )
     validate_multitable_hierarchical_experimental_audit_content_v1(value)
     if not same_typed_json_v1(value, expected):
-        raise _error("other-assets post-SQLite audit envelope does not replay exactly")
+        raise _error("multi-table post-SQLite audit envelope does not replay exactly")
     return expected
 
 
 def _assert_release_pins(
     *,
+    compiled_specs: Mapping[str, Any],
     index: Mapping[str, Any],
     selected_ids: Sequence[str],
     sweep: Mapping[str, Any],
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
 ) -> None:
+    profile = _release_profile(compiled_specs)
     actual = {
         "audit_metrics": audit.get("audit_metrics"),
         "axis_counts": audit.get("axis_counts"),
@@ -744,27 +856,21 @@ def _assert_release_pins(
         mismatches.append("corpus_manifest_index_id")
     if actual["selected_page_json_frontier_sha256"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256:
         mismatches.append("selected_page_json_frontier_sha256")
-    if not same_typed_json_v1(actual["query_receipt"], PINNED_QUERY_RECEIPT):
+    if not same_typed_json_v1(actual["query_receipt"], profile["query_receipt"]):
         mismatches.append("query_receipt")
-    if not same_typed_json_v1(actual["sweep_metrics"], PINNED_RELEASE_METRICS):
+    if not same_typed_json_v1(actual["sweep_metrics"], profile["sweep_metrics"]):
         mismatches.append("sweep_metrics")
-    if not same_typed_json_v1(actual["audit_metrics"], PINNED_RELEASE_AUDIT_METRICS):
+    if not same_typed_json_v1(actual["audit_metrics"], profile["audit_metrics"]):
         mismatches.append("audit_metrics")
-    if not same_typed_json_v1(audit.get("axis_sha256"), PINNED_RELEASE_AXIS_SHA256):
+    if not same_typed_json_v1(audit.get("axis_sha256"), profile["axis_sha256"]):
         mismatches.append("axis_sha256")
-    expected_axis_counts = {
-        "clusters": 78,
-        "equations": 374,
-        "historical_comparator": 208,
-        "mappings": 1290,
-    }
     if any(
-        actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
+        actual["axis_counts"].get(name) != count for name, count in profile["axis_counts"].items()
     ):
         mismatches.append("axis_counts")
     if mismatches:
         raise _error(
-            "other-assets frozen corpus release pin drifted: "
+            "multi-table hierarchical frozen corpus release pin drifted: "
             + ",".join(mismatches)
             + "; actual="
             + json.dumps(actual, ensure_ascii=False, sort_keys=True)
@@ -776,7 +882,7 @@ def _write_once(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         if path.is_symlink() or not path.is_file() or path.read_bytes() != payload:
-            raise _error("other-assets output exists with different bytes")
+            raise _error("multi-table output exists with different bytes")
         return
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
     try:
@@ -844,7 +950,7 @@ def _load_selected_pages_by_document(
 
     axis_by_version = {item["page_json_version_id"]: item for item in selected_page_axis}
     if len(axis_by_version) != len(selected_ids) or list(axis_by_version) != list(selected_ids):
-        raise _error("other-assets selected page/evidence order drifted")
+        raise _error("multi-table selected page/evidence order drifted")
     result: dict[int, dict[str, dict[str, Any]]] = defaultdict(dict)
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
     try:
@@ -870,15 +976,15 @@ def _load_selected_pages_by_document(
             try:
                 page_json = json.loads(bytes(canonical_json_bytes))
             except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise _error("other-assets selected canonical page JSON is invalid") from exc
+                raise _error("multi-table selected canonical page JSON is invalid") from exc
             if type(page_json) is not dict:
-                raise _error("other-assets selected canonical page is not one object")
+                raise _error("multi-table selected canonical page is not one object")
             axis = axis_by_version[page_json_version_id]
             result[axis["document_ordinal"]][page_json_version_id] = page_json
     finally:
         connection.close()
     if loaded_ids != list(selected_ids):
-        raise _error("other-assets selected canonical page frontier is incomplete")
+        raise _error("multi-table selected canonical page frontier is incomplete")
     return result
 
 
@@ -934,7 +1040,7 @@ def _run_with_authenticated_database(
         trials=trials,
     )
     if not same_typed_json_v1(replayed_trials, trials):
-        raise _error("other-assets SQLite candidate replay returned a different trial axis")
+        raise _error("multi-table SQLite candidate replay returned a different trial axis")
     audit = build_multitable_hierarchical_experimental_audit_v1(
         sweep=sweep,
         sweep_output=args.output,
@@ -955,6 +1061,7 @@ def _run_with_authenticated_database(
         spec_refs=spec_refs,
     )
     _assert_release_pins(
+        compiled_specs=compiled,
         index=index,
         selected_ids=selected_ids,
         sweep=sweep,
@@ -988,7 +1095,7 @@ def _run_with_authenticated_database(
         args.results_database, stored["family_run_id"]
     )
     if not same_typed_json_v1(stored_sweep, sweep):
-        raise _error("stored other-assets sweep differs from authenticated evaluation")
+        raise _error("stored multi-table sweep differs from authenticated evaluation")
     output_ref = record_gemini_accounting_family_export_v1(
         args.results_database, family_run_id=stored["family_run_id"], output_path=args.output
     )

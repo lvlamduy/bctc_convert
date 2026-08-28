@@ -1,0 +1,61 @@
+{
+  "aggregate_duplicate_roles": ["OTHER_LIABILITY", "OTHER_LOAN"],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "corroboration_pairs": [],
+  "context_total_mapping_roles": ["CENTRAL_BANK_LOAN", "TREASURY_PAYMENT_DEPOSIT"],
+  "derived_role_equations": [],
+  "detail_context_roles": ["OTHER_LOAN", "OTHER_LIABILITY"],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "family_id": "GOVERNMENT_SBV_LIABILITIES",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "label_only_structural_group_policy": "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "money_unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": ["Triệu VND", "Triệu đồng", "Million VND"],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": false,
+      "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": false,
+      "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": ["VND", "Đồng"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ],
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "root_component_roles": [
+    "CENTRAL_BANK_LOAN",
+    "TREASURY_PAYMENT_DEPOSIT",
+    "TREASURY_TERM_DEPOSIT",
+    "CENTRAL_BANK_DEPOSIT",
+    "MINISTRY_FINANCE_DEPOSIT",
+    "OTHER_LIABILITY"
+  ],
+  "role_unit_overrides": [],
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "table_context_roles": ["CENTRAL_BANK_LOAN", "TREASURY_PAYMENT_DEPOSIT"],
+  "typed_control_exclusions": [
+    {
+      "aliases": ["Phân tích theo kỳ hạn còn lại", "Phân tích các khoản nợ theo kỳ hạn"],
+      "disposition": "MATURITY_ANALYSIS_CONTROL_OUTSIDE_SCHEMA_AXIS"
+    }
+  ]
+}

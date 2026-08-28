@@ -1,0 +1,135 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Vay Ngân hàng Nhà nước", "Vay Ngân hàng Nhà nước Việt Nam", "Vay NHNN", "Vay từ NHNN", "Vay từ Ngân hàng Trung ương", "Vay Ngân hàng Trung ương", "Các khoản vay từ NHNN", "Các khoản nợ NHNNVN"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CENTRAL_BANK_LOAN", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Vay theo hồ sơ tín dụng"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "CREDIT_FILE_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay chiết khấu các giấy tờ có giá", "Vay chiết khấu giấy tờ có giá", "Vay chiết khấu, tái chiết khấu các giấy tờ có giá", "Vay chiết khấu, tái chiết khấu giấy tờ có giá", "Vay chiết khấu các giấy tờ có giá Ngân hàng Trung ương"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "DISCOUNT_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay cầm cố giấy tờ có giá", "Vay cầm cố các giấy tờ có giá", "Vay cầm cố GTCG"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "PLEDGED_SECURITIES_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay thanh toán bù trừ"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "CLEARING_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay hỗ trợ đặc biệt"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "SPECIAL_SUPPORT_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay dài hạn NHNN từ nguồn của các tổ chức quốc tế"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "LONG_TERM_INTERNATIONAL_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay hỗ trợ các DNNN", "Vay hỗ trợ các doanh nghiệp Nhà nước"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "STATE_ENTERPRISE_SUPPORT_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay tái cấp vốn"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "REFINANCE_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vay khác", "Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô", "Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "OTHER_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ quá hạn"], "within_role": "CENTRAL_BANK_LOAN"}],
+      "presence": "OPTIONAL", "role": "OVERDUE_LOAN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi thanh toán của Kho bạc Nhà nước", "Tiền gửi thanh toán của Kho bạc Nhà nước Việt Nam và Lào", "Tiền gửi không kỳ hạn của KBNN", "Tiền gửi của Kho bạc Nhà nước", "Tiền gửi của KBNN"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "TREASURY_PAYMENT_DEPOSIT", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Bằng VND", "Tiền gửi bằng đồng Việt Nam", "Tiền gửi không kỳ hạn bằng VND", "Tiền gửi không kỳ hạn bằng Đồng Việt Nam", "Tiền gửi của Kho bạc nhà nước bằng VND"], "within_role": "TREASURY_PAYMENT_DEPOSIT"}],
+      "presence": "OPTIONAL", "role": "TREASURY_PAYMENT_VND", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Bằng ngoại tệ", "Tiền gửi không kỳ hạn bằng ngoại tệ"], "within_role": "TREASURY_PAYMENT_DEPOSIT"}],
+      "presence": "OPTIONAL", "role": "TREASURY_PAYMENT_FOREIGN", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi có kỳ hạn của Kho bạc Nhà nước", "Tiền gửi có kỳ hạn của KBNN", "Tiền gửi có kỳ hạn bằng VND"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "TREASURY_TERM_DEPOSIT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi của NHNN"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CENTRAL_BANK_DEPOSIT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi của Bộ Tài chính"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "MINISTRY_FINANCE_DEPOSIT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản nợ khác", "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước", "Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_LIABILITY", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "GOVERNMENT_SBV_LIABILITIES",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản Có khác",
+    "Tiền gửi và cho vay các TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng, tổ chức tài chính khác",
+    "Tiền gửi và vay các tổ chức tài chính, tổ chức tín dụng khác",
+    "Tiền gửi của và vay các tổ chức tín dụng khác",
+    "Tiền gửi và tiền vay các TCTD, tổ chức tài chính khác, tiền gửi của khách hàng",
+    "Tiền gửi của các tổ chức tín dụng khác",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Các khoản phải trả và công nợ khác",
+    "Vốn và các quỹ"
+  ],
+  "limits": {"max_continuation_pages": 3, "max_cluster_span_lines": 2048, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Các khoản nợ Chính phủ và Ngân hàng Nhà nước", "Các khoản nợ Chính phủ và Ngân hàng Trung ương", "Các khoản nợ Chính phủ và NHNN", "Các khoản nợ Chính phủ và Ngân hàng Nhà nước Việt Nam"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "GOVERNMENT_SBV_LIABILITIES_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["CENTRAL_BANK_LOAN"],
+    ["CREDIT_FILE_LOAN"],
+    ["DISCOUNT_LOAN"],
+    ["PLEDGED_SECURITIES_LOAN"],
+    ["CLEARING_LOAN"],
+    ["SPECIAL_SUPPORT_LOAN"],
+    ["LONG_TERM_INTERNATIONAL_LOAN"],
+    ["STATE_ENTERPRISE_SUPPORT_LOAN"],
+    ["REFINANCE_LOAN"],
+    ["OTHER_LOAN"],
+    ["OVERDUE_LOAN"],
+    ["TREASURY_PAYMENT_DEPOSIT"],
+    ["TREASURY_PAYMENT_VND"],
+    ["TREASURY_PAYMENT_FOREIGN"],
+    ["TREASURY_TERM_DEPOSIT"],
+    ["CENTRAL_BANK_DEPOSIT"],
+    ["MINISTRY_FINANCE_DEPOSIT"],
+    ["OTHER_LIABILITY"]
+  ],
+  "structural_reset_aliases": [
+    "Tiền gửi và cho vay các TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng, tổ chức tài chính khác",
+    "Tiền gửi và vay các tổ chức tài chính, tổ chức tín dụng khác",
+    "Tiền gửi của và vay các tổ chức tín dụng khác",
+    "Tiền gửi và tiền vay các TCTD, tổ chức tài chính khác, tiền gửi của khách hàng",
+    "Tiền gửi của các tổ chức tín dụng khác",
+    "Tiền gửi của khách hàng",
+    "Vốn nhận tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+    "Phát hành giấy tờ có giá",
+    "Các khoản phải trả và công nợ khác",
+    "Vốn và các quỹ"
+  ]
+}

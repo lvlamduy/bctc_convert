@@ -17,6 +17,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_ID = "gfpstorev1:document:" + "a" * 64
@@ -33,6 +34,14 @@ def _compiled() -> dict:
         _json("tm-other-assets-topology-v1.json"),
         _json("tm-other-assets-evaluation-v1.json"),
         _json("tm-other-assets-schema-binding-v1.json"),
+    )
+
+
+def _government_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-government-sbv-liabilities-topology-v1.json"),
+        _json("tm-government-sbv-liabilities-evaluation-v1.json"),
+        _json("tm-government-sbv-liabilities-schema-binding-v1.json"),
     )
 
 
@@ -921,6 +930,389 @@ def test_hard_negative_heading_ends_owner_fence_before_following_money_table() -
         item for item in cluster["declared_money_table_inventory"] if item["section_id"] == "s2"
     )
     assert following["disposition"] == "OUTSIDE_SELECTED_OWNER_FENCE"
+
+
+def test_owner_surface_policy_ignores_accounting_policy_narrative_and_stops_at_reset() -> None:
+    policy_table = _table(
+        None,
+        [
+            _row("Bằng VND", ["900", "800"]),
+            _row(None, ["900", "800"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    family_table = _table(
+        None,
+        [
+            _row("Vay Ngân hàng Nhà nước", ["100", "80"], kind="GROUP"),
+            _row(
+                "Vay theo hồ sơ tín dụng",
+                ["100", "80"],
+                hierarchy=["Vay Ngân hàng Nhà nước", "Vay theo hồ sơ tín dụng"],
+            ),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    following_table = _table(
+        None,
+        [
+            _row("Bằng VND", ["700", "600"]),
+            _row(None, ["700", "600"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    policy_page = _page(
+        _section(
+            "Chính sách kế toán",
+            policy_table,
+            narratives=[
+                "(n) Các khoản nợ Chính phủ và Ngân hàng Nhà nước\n"
+                "Các khoản nợ được ghi nhận theo giá gốc."
+            ],
+        )
+    )
+    family_page = _page(
+        _section("14. CÁC KHOẢN NỢ CHÍNH PHỦ VÀ NGÂN HÀNG NHÀ NƯỚC", family_table),
+        _section(
+            "THUYẾT MINH BÁO CÁO TÀI CHÍNH (tiếp theo)\n15. TIỀN GỬI VÀ VAY CÁC TCTD KHÁC",
+            following_table,
+        ),
+    )
+    compiled = _government_compiled()
+    policy_record = _record(policy_page)
+    family_record = _record(family_page)
+    family_record.update(
+        {
+            "page_json_version_id": "gfpstorev1:json:" + "d" * 64,
+            "physical_page": 2,
+            "selected_page_ordinal": 2,
+        }
+    )
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[policy_record, family_record], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert [
+        (item["physical_page"], item["section_id"], item["table_id"])
+        for item in cluster["component_regions"]
+    ] == [(2, "s1", "t1")]
+    dispositions = {
+        (item["physical_page"], item["section_id"], item["table_id"]): item["disposition"]
+        for item in cluster["declared_money_table_inventory"]
+    }
+    assert dispositions[(1, "s1", "t1")] == "OUTSIDE_SELECTED_OWNER_FENCE"
+    assert dispositions[(2, "s2", "t1")] == "OUTSIDE_SELECTED_OWNER_FENCE"
+
+
+def test_default_owner_surface_policy_preserves_narrative_owner_evidence() -> None:
+    page = _summary_page()
+    page["sections"][0]["title_exact"] = "Chính sách kế toán"
+    page["sections"][0]["narratives_exact"] = ["14. TÀI SẢN CÓ KHÁC"]
+    _compiled_specs, cluster, candidate = _evaluate(page)
+    assert cluster["status"] == READY
+    assert candidate["status"] == READY
+
+
+def test_owner_surface_policy_rejects_unknown_surface_kind() -> None:
+    evaluation = _json("tm-government-sbv-liabilities-evaluation-v1.json")
+    evaluation["owner_surface_kinds"] = ["PAGE_NARRATIVE"]
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="owner surface kinds are invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-government-sbv-liabilities-topology-v1.json"),
+            evaluation,
+            _json("tm-government-sbv-liabilities-schema-binding-v1.json"),
+        )
+
+
+def test_label_only_structural_groups_project_only_after_terminal_total_closure() -> None:
+    table = _table(
+        None,
+        [
+            _row("Vay NHNN", [None, None], kind="GROUP"),
+            _row(
+                "Vay cầm cố giấy tờ có giá",
+                ["31", "8"],
+                hierarchy=["Vay NHNN", "Vay cầm cố giấy tờ có giá"],
+            ),
+            _row("Tiền gửi của Kho bạc Nhà nước", [None, None], kind="GROUP"),
+            _row(
+                "Tiền gửi bằng đồng Việt Nam",
+                ["2", "1"],
+                hierarchy=[
+                    "Tiền gửi của Kho bạc Nhà nước",
+                    "Tiền gửi bằng đồng Việt Nam",
+                ],
+            ),
+            _row("Các khoản nợ khác", [None, None], kind="GROUP"),
+            _row(
+                "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
+                ["3", "0"],
+                hierarchy=[
+                    "Các khoản nợ khác",
+                    "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
+                ],
+            ),
+            _row(None, ["36", "9"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("15. Các khoản nợ Chính phủ và NHNN", table))
+    compiled = _government_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["CENTRAL_BANK_LOAN"]["values"]] == [
+        31,
+        8,
+    ]
+    assert [cell["coefficient"] for cell in by_role["TREASURY_PAYMENT_DEPOSIT"]["values"]] == [2, 1]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        36,
+        9,
+    ]
+    projections = candidate["closure_receipt"]["table_receipts"][0][
+        "label_only_structural_group_receipts"
+    ]
+    assert [(item["carrier_row_ordinal"], item["child_row_ordinal"]) for item in projections] == [
+        (1, 2),
+        (3, 4),
+        (5, 6),
+    ]
+
+
+def test_intermediate_total_is_not_root_and_complete_top_level_sum_derives_root() -> None:
+    table = _table(
+        None,
+        [
+            _row("Vay NHNN", ["7", "9"]),
+            _row(
+                "Vay theo hồ sơ tín dụng",
+                ["2", "3"],
+                hierarchy=["Vay NHNN", "Vay theo hồ sơ tín dụng"],
+            ),
+            _row(
+                "Vay chiết khấu các giấy tờ có giá",
+                ["5", "6"],
+                hierarchy=["Vay NHNN", "Vay chiết khấu các giấy tờ có giá"],
+            ),
+            _row("Tiền gửi của Kho bạc Nhà nước", ["134", "145"]),
+            _row(
+                "Bằng VND",
+                ["134", "145"],
+                hierarchy=["Tiền gửi của Kho bạc Nhà nước", "Bằng VND"],
+            ),
+            _row(None, ["141", "154"], kind="TOTAL", hierarchy=[None]),
+            _row(
+                "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
+                ["3", "0"],
+                kind="TOTAL",
+            ),
+        ],
+    )
+    page = _page(_section("15. Các khoản nợ Chính phủ và NHNN", table))
+    compiled = _government_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    root = next(item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
+    assert [cell["coefficient"] for cell in root["values"]] == [144, 154]
+    assert root["state"] == "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+    assert candidate["closure_receipt"]["root_component_sum_receipts"][0]["component_roles"] == [
+        "CENTRAL_BANK_LOAN",
+        "TREASURY_PAYMENT_DEPOSIT",
+        "OTHER_LIABILITY",
+    ]
+    forged = copy.deepcopy(candidate)
+    forged["closure_receipt"]["root_component_sum_receipts"][0]["coefficients"][0] += 1
+    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in forged.items() if key != "candidate_id"}
+    )
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="candidate replay drifted",
+    ):
+        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+            forged,
+            regions=cluster["component_regions"],
+            page_json_by_version={VERSION_ID: page},
+            compiled_specs=compiled,
+            query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+                cluster["component_regions"]
+            ),
+        )
+
+
+def test_label_only_structural_group_policy_rejects_unknown_value() -> None:
+    evaluation = _json("tm-government-sbv-liabilities-evaluation-v1.json")
+    evaluation["label_only_structural_group_policy"] = "INFER_FROM_LABEL"
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="label-only structural group policy is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-government-sbv-liabilities-topology-v1.json"),
+            evaluation,
+            _json("tm-government-sbv-liabilities-schema-binding-v1.json"),
+        )
+
+
+@pytest.mark.parametrize("root_row_kind", ["ITEM", "TOTAL"])
+def test_exact_owner_row_plus_total_maps_structural_family_root(root_row_kind: str) -> None:
+    table = _table(
+        None,
+        [
+            _row("Các khoản nợ Chính phủ và NHNN", ["100", "80"], kind=root_row_kind),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("15. Các khoản nợ Chính phủ và NHNN", table))
+    compiled = _government_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert cluster["component_regions"][0]["component_roles"] == []
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    root = next(item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
+    assert root["report_norm_id"] == 1024
+    assert [cell["coefficient"] for cell in root["values"]] == [100, 80]
+
+
+def test_explicit_hierarchy_parent_blocks_currency_leaf_from_wrong_structural_group() -> None:
+    table = _table(
+        None,
+        [
+            _row("Tiền gửi của Bộ Tài chính", ["30", "20"], kind="GROUP"),
+            _row(
+                "- Bằng VND",
+                ["30", "20"],
+                hierarchy=["Tiền gửi của Bộ Tài chính", "- Bằng VND"],
+            ),
+            _row("Tiền gửi thanh toán của Kho bạc Nhà nước", ["70", "60"], kind="GROUP"),
+            _row(
+                "- Bằng VND",
+                ["40", "30"],
+                hierarchy=["Tiền gửi thanh toán của Kho bạc Nhà nước", "- Bằng VND"],
+            ),
+            _row(
+                "- Bằng ngoại tệ",
+                ["30", "30"],
+                hierarchy=["Tiền gửi thanh toán của Kho bạc Nhà nước", "- Bằng ngoại tệ"],
+            ),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("15. Các khoản nợ Chính phủ và NHNN", table))
+    compiled = _government_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["MINISTRY_FINANCE_DEPOSIT"]["values"]] == [
+        30,
+        20,
+    ]
+    assert [cell["coefficient"] for cell in by_role["TREASURY_PAYMENT_VND"]["values"]] == [
+        40,
+        30,
+    ]
+    assert [cell["coefficient"] for cell in by_role["TREASURY_PAYMENT_FOREIGN"]["values"]] == [
+        30,
+        30,
+    ]
+
+
+def test_canonical_top_level_frontier_proves_blank_zero_without_mixed_depth() -> None:
+    table = _table(
+        None,
+        [
+            _row("Vay NHNN", ["12", "9"], kind="SUBTOTAL"),
+            _row(
+                "Vay theo hồ sơ tín dụng",
+                ["2", "1"],
+                hierarchy=["Vay NHNN", "Vay theo hồ sơ tín dụng"],
+            ),
+            _row(
+                "Vay chiết khấu các giấy tờ có giá",
+                ["10", "8"],
+                hierarchy=["Vay NHNN", "Vay chiết khấu các giấy tờ có giá"],
+            ),
+            _row("Tiền gửi của KBNN", ["20", "18"], kind="SUBTOTAL"),
+            _row(
+                "Tiền gửi bằng đồng Việt Nam",
+                ["20", "18"],
+                hierarchy=["Tiền gửi của KBNN", "Tiền gửi bằng đồng Việt Nam"],
+            ),
+            _row(
+                "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
+                ["3", None],
+            ),
+            _row(None, ["35", "27"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("15. Các khoản nợ Chính phủ và NHNN", table))
+    compiled = _government_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    other = next(item for item in candidate["mappings"] if item["role"] == "OTHER_LIABILITY")
+    assert [cell["coefficient"] for cell in other["values"]] == [3, 0]
+    assert other["values"][1]["state"] == "INFERRED_BLANK_ZERO_IF_EQUATION_EXACT"
+    root_equation = next(
+        item
+        for item in candidate["closure_receipt"]["equations"]
+        if item["equation_kind"] == "EXACT_VISIBLE_TOP_LEVEL_DIRECT_FRONTIER_EQUAL_PRINTED_TOTAL"
+    )
+    assert [ref[0]["row_id"] for ref in root_equation["component_source_refs"]] == [
+        "r1",
+        "r4",
+        "r6",
+    ]
 
 
 def test_derived_role_equation_rejects_duplicate_component_roles() -> None:

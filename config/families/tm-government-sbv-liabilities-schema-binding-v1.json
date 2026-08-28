@@ -1,0 +1,27 @@
+{
+  "family_id": "GOVERNMENT_SBV_LIABILITIES",
+  "family_root_report_norm_id": 1024,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 6070, "role": "CENTRAL_BANK_LOAN"},
+    {"report_norm_id": 1025, "role": "CREDIT_FILE_LOAN"},
+    {"report_norm_id": 1026, "role": "DISCOUNT_LOAN"},
+    {"report_norm_id": 1027, "role": "PLEDGED_SECURITIES_LOAN"},
+    {"report_norm_id": 1028, "role": "CLEARING_LOAN"},
+    {"report_norm_id": 1029, "role": "SPECIAL_SUPPORT_LOAN"},
+    {"report_norm_id": 1030, "role": "LONG_TERM_INTERNATIONAL_LOAN"},
+    {"report_norm_id": 1031, "role": "STATE_ENTERPRISE_SUPPORT_LOAN"},
+    {"report_norm_id": 1032, "role": "REFINANCE_LOAN"},
+    {"report_norm_id": 1033, "role": "OTHER_LOAN"},
+    {"report_norm_id": 1034, "role": "OVERDUE_LOAN"},
+    {"report_norm_id": 1035, "role": "TREASURY_PAYMENT_DEPOSIT"},
+    {"report_norm_id": 1036, "role": "TREASURY_PAYMENT_VND"},
+    {"report_norm_id": 1037, "role": "TREASURY_PAYMENT_FOREIGN"},
+    {"report_norm_id": 6071, "role": "TREASURY_TERM_DEPOSIT"},
+    {"report_norm_id": 1038, "role": "CENTRAL_BANK_DEPOSIT"},
+    {"report_norm_id": 6072, "role": "MINISTRY_FINANCE_DEPOSIT"},
+    {"report_norm_id": 1039, "role": "OTHER_LIABILITY"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}
