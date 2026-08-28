@@ -1528,6 +1528,108 @@ def selected_page_extraction_receipts_v1(
     return result
 
 
+def selected_page_json_provenance_receipts_v1(
+    path: Path,
+    *,
+    page_json_version_ids: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Replay page provenance through extraction or an exact repair lineage.
+
+    A manifest-selected base version must still come from one of the fixed
+    page-extraction prompt variants.  A derived version may use a local
+    algorithmic observation prompt, but only when the store contains a unique,
+    content-addressed region-repair lineage whose base recursively reaches a
+    selectable page extraction.  This keeps family queries independent of the
+    repair prompt serialization without treating an arbitrary extraction run as
+    corpus evidence.
+    """
+
+    version_ids = list(page_json_version_ids)
+    if (
+        not version_ids
+        or len(set(version_ids)) != len(version_ids)
+        or any(
+            type(version_id) is not str
+            or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", version_id) is None
+            for version_id in version_ids
+        )
+    ):
+        raise _error("selected page JSON provenance frontier is invalid")
+
+    def receipts_for(selected_ids: list[str]) -> list[dict[str, Any]]:
+        with _connect(path, readonly=True) as connection:
+            connection.execute(
+                "CREATE TEMP TABLE selected_page_provenance("
+                "selection_ordinal INTEGER PRIMARY KEY, "
+                "page_json_version_id TEXT NOT NULL UNIQUE)"
+            )
+            connection.executemany(
+                "INSERT INTO selected_page_provenance VALUES (?,?)",
+                enumerate(selected_ids, start=1),
+            )
+            rows = connection.execute(
+                """
+                SELECT s.selection_ordinal, s.page_json_version_id,
+                       d.source_sha256, d.source_logical_name,
+                       p.physical_page, p.image_sha256, p.render_dpi,
+                       e.prompt_variant, e.prompt_sha256
+                FROM selected_page_provenance AS s
+                JOIN page_json_version AS v USING(page_json_version_id)
+                JOIN extraction_run AS e USING(extraction_run_id)
+                JOIN page AS p USING(page_id)
+                JOIN document AS d USING(document_id)
+                ORDER BY s.selection_ordinal
+                """
+            ).fetchall()
+        if len(rows) != len(selected_ids):
+            raise _error("selected page JSON provenance is absent")
+        result = [dict(row) for row in rows]
+        if any(
+            record["selection_ordinal"] != ordinal
+            or record["page_json_version_id"] != selected_ids[ordinal - 1]
+            for ordinal, record in enumerate(result, start=1)
+        ):
+            raise _error("selected page JSON provenance order drifted")
+        return result
+
+    root_receipts = receipts_for(version_ids)
+    pending = [
+        record["page_json_version_id"]
+        for record in root_receipts
+        if record["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
+    ]
+    visited: set[str] = set()
+    while pending:
+        if len(pending) != len(set(pending)) or any(
+            version_id in visited for version_id in pending
+        ):
+            raise _error("selected page JSON repair provenance is cyclic or duplicate")
+        visited.update(pending)
+        try:
+            lineages = page_json_region_repair_lineages_v1(
+                path,
+                observed_page_json_version_ids=pending,
+            )
+        except GeminiFinancialPageStoreV1Error as exc:
+            raise _error(
+                "selected page JSON provenance lacks selectable extraction or exact repair lineage"
+            ) from exc
+        if any(
+            lineage["observed_page_json_version_id"] != version_id
+            or lineage["canonical_merged_page_json_version_id"] != version_id
+            for version_id, lineage in zip(pending, lineages, strict=True)
+        ):
+            raise _error("selected page JSON repair lineage does not bind its selected version")
+        base_ids = [lineage["base_page_json_version_id"] for lineage in lineages]
+        base_receipts = receipts_for(base_ids)
+        pending = [
+            record["page_json_version_id"]
+            for record in base_receipts
+            if record["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
+        ]
+    return root_receipts
+
+
 def load_page_json_versions_v1(
     path: Path,
     *,
@@ -1535,7 +1637,7 @@ def load_page_json_versions_v1(
 ) -> list[dict[str, Any]]:
     """Load exact validated page JSON objects in the caller's selected order."""
 
-    receipts = selected_page_extraction_receipts_v1(
+    receipts = selected_page_json_provenance_receipts_v1(
         path,
         page_json_version_ids=page_json_version_ids,
     )
@@ -1793,7 +1895,7 @@ def query_selected_rollforward_family_regions_v1(
         "layout": layout,
     }
     query_policy_sha256 = canonical_json_sha256_v1(query_policy)
-    selected_page_extraction_receipts_v1(path, page_json_version_ids=version_ids)
+    selected_page_json_provenance_receipts_v1(path, page_json_version_ids=version_ids)
 
     def decode_string_axis(raw: Any, *, label: str) -> list[Any]:
         try:

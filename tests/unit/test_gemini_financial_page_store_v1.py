@@ -37,6 +37,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     query_selected_family_anchor_regions_v1,
     record_page_json_region_repair_v1,
     selected_page_extraction_receipts_v1,
+    selected_page_json_provenance_receipts_v1,
     usage_summary_v1,
 )
 
@@ -106,6 +107,7 @@ def _dual_axis_page_for_query(orientation: str, *, broad_metric: bool = False) -
         "region-repair-row-values",
         "region-repair-row-label-and-values",
         "region-repair-section-narratives",
+        "sealed-legacy-target-observation-revalidation",
     ],
 )
 def test_region_repair_lineage_is_database_bound_and_idempotent(
@@ -162,6 +164,11 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(
     assert cached["database_identities"]["page_json_version_id"] == repaired["page_json_version_id"]
     assert cached["page_json"] == merged
     assert loaded[0]["page_json"] == merged
+    provenance = selected_page_json_provenance_receipts_v1(
+        path,
+        page_json_version_ids=[repaired["page_json_version_id"]],
+    )
+    assert provenance[0]["prompt_variant"] == prompt_variant
     replayed = page_json_region_repair_lineages_v1(
         path, observed_page_json_version_ids=[repaired["page_json_version_id"]]
     )
@@ -175,6 +182,26 @@ def test_region_repair_lineage_is_database_bound_and_idempotent(
             "repair_receipt_sha256": lineage["repair_receipt_sha256"],
         }
     ]
+
+
+def test_page_json_provenance_rejects_nonselectable_prompt_without_repair_lineage(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    unbound = _ingest(
+        path,
+        prompt_sha256="f" * 64,
+        prompt_variant="sealed-legacy-target-observation-revalidation",
+    )
+    with pytest.raises(
+        GeminiFinancialPageStoreV1Error,
+        match="lacks selectable extraction or exact repair lineage",
+    ):
+        load_page_json_versions_v1(
+            path,
+            page_json_version_ids=[unbound["page_json_version_id"]],
+        )
 
 
 def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation() -> None:

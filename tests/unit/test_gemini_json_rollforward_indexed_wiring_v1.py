@@ -44,7 +44,9 @@ from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     initialize_gemini_financial_page_store_v1,
+    initialize_region_repair_extension_v1,
     query_selected_rollforward_family_regions_v1,
+    record_page_json_region_repair_v1,
     validate_selected_rollforward_family_query_evidence_v1,
 )
 
@@ -365,6 +367,70 @@ def _inherited_unit_sweep(tmp_path: Path) -> tuple[Path, list[str], dict, dict]:
         indexed_query_evidence=indexed,
     )
     return database, selected_ids, compiled, sweep
+
+
+def test_rollforward_query_accepts_algorithmic_page_version_only_with_exact_repair_lineage(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "repaired-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    base_page = _page(
+        _period_table("31/12/2025"),
+        _period_table("31/12/2024"),
+    )
+    base = _ingest(database, page_json=base_page)
+    repaired_page = deepcopy(base_page)
+    repaired_page["sections"][0]["tables"][0]["rows"][2]["values_exact"][2] = "-"
+    repaired = _ingest(
+        database,
+        prompt_sha256="f" * 64,
+        prompt_variant="sealed-legacy-target-observation-revalidation",
+        page_json=repaired_page,
+    )
+    _, _, _, compiled = _specs()
+    with pytest.raises(
+        GeminiFinancialPageStoreV1Error,
+        match="lacks selectable extraction or exact repair lineage",
+    ):
+        query_selected_rollforward_family_regions_v1(
+            database,
+            selected_page_json_version_ids=[repaired["page_json_version_id"]],
+            compiled_specs=compiled,
+        )
+
+    material = {
+        "base_page_json_sha256": canonical_json_sha256_v1(base_page),
+        "base_page_json_version_id": base["page_json_version_id"],
+        "changes": [
+            {
+                "after": "-",
+                "before": "(10)",
+                "path": "sections[0].tables[0].rows[2].values_exact[2]",
+            }
+        ],
+        "format_version": "GEMINI_JSON_REGION_REPAIR_V1",
+        "merged_page_json_sha256": canonical_json_sha256_v1(repaired_page),
+        "repair_response_sha256": "e" * 64,
+    }
+    receipt = {
+        **material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(material),
+    }
+    initialize_region_repair_extension_v1(database)
+    record_page_json_region_repair_v1(
+        database,
+        merged_page_json_version_id=repaired["page_json_version_id"],
+        receipt=receipt,
+    )
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[repaired["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    assert len(indexed["accepted_regions"]) == 2
+    assert {region["page_json_version_id"] for region in indexed["accepted_regions"]} == {
+        repaired["page_json_version_id"]
+    }
 
 
 def _inherited_fiscal_sweep(tmp_path: Path) -> tuple[Path, list[str], dict, dict]:
