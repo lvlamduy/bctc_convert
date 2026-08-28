@@ -175,6 +175,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     )
     if label_only_structural_group_policy not in {
         "DISABLED",
+        "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
         "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
     }:
         raise _error("multi-table hierarchical label-only structural group policy is invalid")
@@ -1986,11 +1987,11 @@ def _extract_table_local_records(
         if ordinal in hit_by_row and hit_by_row[ordinal] != hit["role"]:
             raise _error("multi-table hierarchical source row role repeated")
         hit_by_row[ordinal] = hit["role"]
-    label_only_group_proxies: dict[int, tuple[int, dict[str, Any]]] = {}
-    if (
-        compiled_specs["label_only_structural_group_policy"]
-        == "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE"
-    ):
+    label_only_group_proxies: dict[int, tuple[list[int], dict[str, Any]]] = {}
+    if compiled_specs["label_only_structural_group_policy"] in {
+        "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+        "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+    }:
         for carrier_ordinal, role in sorted(hit_by_row.items()):
             carrier = row_records.get(carrier_ordinal)
             if (
@@ -2004,6 +2005,10 @@ def _extract_table_local_records(
                 for ordinal in row_records
                 if ordinal != carrier_ordinal
                 and _row_is_strict_descendant(rows, ordinal, carrier_ordinal)
+                and not (
+                    rows[ordinal - 1].get("row_kind") in {"SUBTOTAL", "TOTAL"}
+                    and not _normalized(rows[ordinal - 1].get("label_exact"))
+                )
             ]
             direct = [
                 ordinal
@@ -2014,15 +2019,41 @@ def _extract_table_local_records(
                     for other_ordinal in descendants
                 )
             ]
-            if len(direct) == 1 and (
-                role in compiled_specs["context_total_mapping_roles"]
-                or hit_by_row.get(direct[0]) == role
+            single_only = (
+                compiled_specs["label_only_structural_group_policy"]
+                == "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE"
+            )
+            if not direct or (single_only and len(direct) != 1):
+                continue
+            if role not in compiled_specs["context_total_mapping_roles"] and not (
+                len(direct) == 1 and hit_by_row.get(direct[0]) == role
             ):
-                child_ordinal = direct[0]
-                label_only_group_proxies[carrier_ordinal] = (
-                    child_ordinal,
-                    row_records[child_ordinal],
+                continue
+            direct_records = [row_records[ordinal] for ordinal in direct]
+            if len(direct_records) == 1:
+                proxy = direct_records[0]
+            else:
+                coefficients = _sum_records(direct_records)
+                proxy = _local_record(
+                    "SOURCE_ROW",
+                    [
+                        {
+                            "coefficient": coefficient,
+                            "source_text": None,
+                            "state": "EXACT_LABEL_ONLY_GROUP_DIRECT_CHILD_FRONTIER_SUM",
+                        }
+                        for coefficient in coefficients
+                    ],
+                    direct_records[0]["lane_keys"],
+                    [
+                        source_ref
+                        for direct_record in direct_records
+                        for source_ref in direct_record["source_refs"]
+                    ],
+                    "SOURCE_LABEL_ONLY_GROUP_DIRECT_CHILD_FRONTIER_SUM",
+                    direct_records[0]["valuation_basis"],
                 )
+            label_only_group_proxies[carrier_ordinal] = (direct, proxy)
     shadowed_role_ordinals: set[int] = set()
     hierarchical_duplicate_receipts = []
     ordinals_by_role: dict[str, list[int]] = defaultdict(list)
@@ -2221,7 +2252,7 @@ def _extract_table_local_records(
         preceding = [
             (
                 ordinal,
-                label_only_group_proxies.get(ordinal, (ordinal, record))[1],
+                label_only_group_proxies.get(ordinal, ([], record))[1],
             )
             for ordinal, record in row_records.items()
             if ordinal < total_ordinal and ordinal not in total_ordinals
@@ -2254,7 +2285,7 @@ def _extract_table_local_records(
             descendants = set(proven_carrier_children.get(carrier_ordinal, set()))
             proxy = label_only_group_proxies.get(carrier_ordinal)
             if proxy is not None:
-                descendants.add(proxy[0])
+                descendants.update(proxy[0])
             pending = list(descendants)
             while pending:
                 child = pending.pop()
@@ -2329,7 +2360,7 @@ def _extract_table_local_records(
             proxy = label_only_group_proxies.get(ordinal)
             if proxy is None or ordinal in projected_label_only_groups:
                 continue
-            child_ordinal, _child_record = proxy
+            child_ordinals, _child_record = proxy
             role = hit_by_row[ordinal]
             local_records.append(
                 _local_record(
@@ -2337,25 +2368,36 @@ def _extract_table_local_records(
                     proxy_record["cells"],
                     proxy_record["lane_keys"],
                     proxy_record["source_refs"],
-                    "DECLARED_LABEL_ONLY_STRUCTURAL_GROUP_PROJECTED_FROM_"
-                    "SOLE_DIRECT_CHILD_AFTER_SOURCE_TOTAL_CLOSURE",
+                    (
+                        "DECLARED_LABEL_ONLY_STRUCTURAL_GROUP_PROJECTED_FROM_"
+                        "SOLE_DIRECT_CHILD_AFTER_SOURCE_TOTAL_CLOSURE"
+                        if len(child_ordinals) == 1
+                        else "DECLARED_LABEL_ONLY_STRUCTURAL_GROUP_PROJECTED_FROM_"
+                        "DIRECT_CHILD_FRONTIER_AFTER_SOURCE_TOTAL_CLOSURE"
+                    ),
                     proxy_record["valuation_basis"],
                 )
             )
-            label_only_structural_group_receipts.append(
-                {
-                    "carrier_role": role,
-                    "carrier_row_ordinal": ordinal,
-                    "child_row_ordinal": child_ordinal,
-                    "child_source_refs": canonical_clone_v1(proxy_record["source_refs"]),
-                    "rule": (
-                        "SINGLE_DIRECT_CHILD_PROJECTS_LABEL_ONLY_STRUCTURAL_GROUP_"
-                        "ONLY_AFTER_SOURCE_TOTAL_CLOSURE"
-                    ),
-                }
-            )
+            projection_receipt = {
+                "carrier_role": role,
+                "carrier_row_ordinal": ordinal,
+                "child_source_refs": canonical_clone_v1(proxy_record["source_refs"]),
+                "rule": (
+                    "DIRECT_CHILD_FRONTIER_PROJECTS_LABEL_ONLY_STRUCTURAL_GROUP_"
+                    "ONLY_AFTER_SOURCE_TOTAL_CLOSURE"
+                ),
+            }
+            if len(child_ordinals) == 1:
+                projection_receipt["child_row_ordinal"] = child_ordinals[0]
+                projection_receipt["rule"] = (
+                    "SINGLE_DIRECT_CHILD_PROJECTS_LABEL_ONLY_STRUCTURAL_GROUP_"
+                    "ONLY_AFTER_SOURCE_TOTAL_CLOSURE"
+                )
+            else:
+                projection_receipt["child_row_ordinals"] = child_ordinals
+            label_only_structural_group_receipts.append(projection_receipt)
             projected_label_only_groups.add(ordinal)
-            consumed_ordinals.add(child_ordinal)
+            consumed_ordinals.update(child_ordinals)
             proven_roles.add(role)
         proven_roles.update(
             hit_by_row[ordinal] for ordinal, _record in component_axis if ordinal in hit_by_row

@@ -1568,6 +1568,25 @@ def _row_role_match_modes(
     fallback_within_role: str | None = None,
     enable_declared_equivalences: bool = False,
 ) -> dict[str, str]:
+    def self_contained_scope_visible(within_role: str, match_kind: str) -> bool:
+        """Admit an exact child label that embeds its structural parent.
+
+        Some source tables flatten a structural carrier and its child into one
+        self-contained row instead of emitting a separate hierarchy ancestor.
+        This is safe only for an exact child match whose label starts with one
+        complete, nontrivial declared parent alias.  Generic child fragments
+        such as ``Bằng VND`` therefore cannot claim an unrelated population.
+        """
+
+        if not match_kind.startswith("EXACT_NORMALIZED"):
+            return False
+        label = _normalized(row.get("label_exact"))
+        return any(
+            len(alias.split()) >= 3 and (label == alias or label.startswith(alias + " "))
+            for raw_alias in aliases_by_role[within_role]
+            if (alias := _normalized(raw_alias))
+        )
+
     scoped: dict[str, list[str]] = defaultdict(list)
     unscoped: dict[str, list[str]] = defaultdict(list)
     for child in topology["children"]:
@@ -1583,10 +1602,14 @@ def _row_role_match_modes(
             within = matcher["within_role"]
             if within is None:
                 unscoped[role].append(match_kind)
-            elif within == fallback_within_role or _path_has_role(
-                row.get("hierarchy_path_exact"),
-                aliases=aliases_by_role[within],
-                label_exact=row.get("label_exact"),
+            elif (
+                within == fallback_within_role
+                or _path_has_role(
+                    row.get("hierarchy_path_exact"),
+                    aliases=aliases_by_role[within],
+                    label_exact=row.get("label_exact"),
+                )
+                or self_contained_scope_visible(within, match_kind)
             ):
                 scoped[role].append(match_kind)
     selected = scoped or unscoped

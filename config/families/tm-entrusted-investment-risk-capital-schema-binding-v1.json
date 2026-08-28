@@ -1,0 +1,16 @@
+{
+  "family_id": "ENTRUSTED_INVESTMENT_RISK_CAPITAL",
+  "family_root_report_norm_id": 1092,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1093, "role": "ORGANIZATION_OR_INDIVIDUAL"},
+    {"report_norm_id": 1094, "role": "VND_RECEIVED_SOURCE"},
+    {"report_norm_id": 1095, "role": "FOREIGN_CURRENCY_RECEIVED_SOURCE"},
+    {"report_norm_id": 1096, "role": "DIRECT_INTERNATIONAL_ORGANIZATION"},
+    {"report_norm_id": 1097, "role": "DIRECT_INTERNATIONAL_ORGANIZATION_VND"},
+    {"report_norm_id": 1098, "role": "DIRECT_INTERNATIONAL_ORGANIZATION_FOREIGN_CURRENCY"},
+    {"report_norm_id": 1099, "role": "OTHER_RECEIVED_SOURCE"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}

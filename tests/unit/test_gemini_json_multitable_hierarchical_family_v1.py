@@ -45,6 +45,14 @@ def _government_compiled() -> dict:
     )
 
 
+def _entrusted_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-entrusted-investment-risk-capital-topology-v1.json"),
+        _json("tm-entrusted-investment-risk-capital-evaluation-v1.json"),
+        _json("tm-entrusted-investment-risk-capital-schema-binding-v1.json"),
+    )
+
+
 def _columns(current: str = "31/12/2025", comparative: str = "31/12/2024") -> list[dict]:
     return [
         {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
@@ -1330,3 +1338,158 @@ def test_derived_role_equation_rejects_duplicate_component_roles() -> None:
             evaluation,
             _json("tm-other-assets-schema-binding-v1.json"),
         )
+
+
+def test_self_contained_scoped_children_close_entrusted_international_branch() -> None:
+    table = _table(
+        None,
+        [
+            _row(
+                "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng Đồng Việt Nam (i)",
+                ["8", "15"],
+            ),
+            _row(
+                "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng ngoại tệ (ii)",
+                ["11", "13"],
+            ),
+            _row(None, ["19", "28"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section(
+            "18. VỐN TÀI TRỢ, ỦY THÁC ĐẦU TƯ, CHO VAY TỔ CHỨC TÍN DỤNG CHỊU RỦI RO",
+            table,
+        )
+    )
+    compiled = _entrusted_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    assert set(by_role) == {
+        "DIRECT_INTERNATIONAL_ORGANIZATION",
+        "DIRECT_INTERNATIONAL_ORGANIZATION_FOREIGN_CURRENCY",
+        "DIRECT_INTERNATIONAL_ORGANIZATION_VND",
+        "FAMILY_ROOT_TOTAL",
+    }
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        19,
+        28,
+    ]
+
+
+def test_generic_currency_rows_cannot_claim_entrusted_structural_scope() -> None:
+    table = _table(
+        "Thuyết minh theo loại tiền gửi",
+        [
+            _row("Tiền gửi không kỳ hạn", ["20", "10"], kind="GROUP"),
+            _row("- Bằng VND", ["12", "6"]),
+            _row("- Bằng ngoại tệ", ["8", "4"]),
+            _row(None, ["20", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(_section("TIỀN GỬI CỦA KHÁCH HÀNG", table)),
+        _section("TIỀN GỬI CỦA KHÁCH HÀNG", table),
+        table,
+        compiled_specs=_entrusted_compiled(),
+    )
+    assert classification["role_hits"] == []
+    assert classification["family_presence_anchor_visible"] is False
+
+
+def test_label_only_group_projects_exact_multi_child_frontier_after_total_closure() -> None:
+    table = _table(
+        None,
+        [
+            _row(
+                "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng ngoại tệ",
+                [None, None],
+                kind="GROUP",
+            ),
+            _row(
+                "Chương trình A",
+                ["3", "4"],
+                hierarchy=[
+                    "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng ngoại tệ",
+                    "Chương trình A",
+                ],
+            ),
+            _row(
+                "Chương trình B",
+                ["5", "6"],
+                hierarchy=[
+                    "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng ngoại tệ",
+                    "Chương trình B",
+                ],
+            ),
+            _row(None, ["8", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("21. VỐN TÀI TRỢ, ỦY THÁC ĐẦU TƯ, CHO VAY TCTD CHỊU RỦI RO", table))
+    compiled = _entrusted_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    assert candidate["status"] == READY
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    assert [
+        cell["coefficient"] for cell in by_role["FOREIGN_CURRENCY_RECEIVED_SOURCE"]["values"]
+    ] == [8, 10]
+    projection = candidate["closure_receipt"]["table_receipts"][0][
+        "label_only_structural_group_receipts"
+    ][0]
+    assert projection["child_row_ordinals"] == [2, 3]
+
+    forged = copy.deepcopy(candidate)
+    forged["closure_receipt"]["table_receipts"][0]["label_only_structural_group_receipts"][0][
+        "child_row_ordinals"
+    ] = [2]
+    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in forged.items() if key != "candidate_id"}
+    )
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="candidate replay drifted",
+    ):
+        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+            forged,
+            regions=cluster["component_regions"],
+            page_json_by_version={VERSION_ID: page},
+            compiled_specs=compiled,
+            query_receipt=receipt,
+        )
+
+    broken = copy.deepcopy(page)
+    broken["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "9"
+    broken_cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(broken)], compiled_specs=compiled
+    )
+    broken_candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=broken_cluster["component_regions"],
+        page_json_by_version={VERSION_ID: broken},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            broken_cluster["component_regions"]
+        ),
+    )
+    assert broken_candidate["status"] == UNRESOLVED

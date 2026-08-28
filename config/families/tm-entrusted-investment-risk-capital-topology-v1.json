@@ -1,0 +1,68 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Vốn nhận của các tổ chức, cá nhân", "Vốn nhận của tổ chức, cá nhân", "Vốn nhận của tổ chức, cá nhân khác", "Vốn nhận của tổ chức khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "ORGANIZATION_OR_INDIVIDUAL", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận bằng VND", "Vốn nhận của các tổ chức, cá nhân khác bằng VND"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "VND_RECEIVED_SOURCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn tài trợ, ủy thác đầu tư, cho vay bằng ngoại tệ", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng ngoại tệ", "Vốn nhận bằng ngoại tệ", "Vốn nhận của các tổ chức, cá nhân khác bằng ngoại tệ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FOREIGN_CURRENCY_RECEIVED_SOURCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn nhận trực tiếp của các tổ chức quốc tế", "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản", "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DIRECT_INTERNATIONAL_ORGANIZATION", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng Đồng Việt Nam", "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng Đồng Việt Nam (i)", "Vốn nhận trực tiếp của các tổ chức quốc tế bằng tiền VNĐ", "Vốn nhận trực tiếp của các tổ chức quốc tế bằng VND"], "within_role": "DIRECT_INTERNATIONAL_ORGANIZATION"}],
+      "presence": "OPTIONAL", "role": "DIRECT_INTERNATIONAL_ORGANIZATION_VND", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng ngoại tệ", "Vốn nhận từ Ngân hàng Hợp tác Quốc tế Nhật Bản bằng ngoại tệ (ii)", "Vốn nhận trực tiếp của các tổ chức quốc tế bằng ngoại tệ"], "within_role": "DIRECT_INTERNATIONAL_ORGANIZATION"}],
+      "presence": "OPTIONAL", "role": "DIRECT_INTERNATIONAL_ORGANIZATION_FOREIGN_CURRENCY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND từ Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 7 tháng 1 năm 2013", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 07 tháng 01 năm 2013", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng vàng và ngoại tệ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_RECEIVED_SOURCE", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "ENTRUSTED_INVESTMENT_RISK_CAPITAL",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Các khoản nợ Chính phủ và NHNN",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Các khoản phải trả và công nợ khác",
+    "Vốn và các quỹ"
+  ],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 1024, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro", "Các khoản vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "ENTRUSTED_INVESTMENT_RISK_CAPITAL_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["ORGANIZATION_OR_INDIVIDUAL"],
+    ["VND_RECEIVED_SOURCE"],
+    ["FOREIGN_CURRENCY_RECEIVED_SOURCE"],
+    ["DIRECT_INTERNATIONAL_ORGANIZATION"],
+    ["DIRECT_INTERNATIONAL_ORGANIZATION_VND"],
+    ["DIRECT_INTERNATIONAL_ORGANIZATION_FOREIGN_CURRENCY"],
+    ["OTHER_RECEIVED_SOURCE"]
+  ],
+  "structural_reset_aliases": [
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Các khoản nợ Chính phủ và NHNN",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Các khoản phải trả và công nợ khác",
+    "Vốn và các quỹ"
+  ]
+}

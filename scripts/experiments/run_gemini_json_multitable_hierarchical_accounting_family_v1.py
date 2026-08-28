@@ -146,6 +146,29 @@ PINNED_GOVERNMENT_SBV_LIABILITIES_HISTORICAL_ORACLES = (
         "size_bytes": 148324,
     },
 )
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_HISTORICAL_ORACLES = (
+    {
+        "format_version": "ENTRUSTED_INVESTMENT_RISK_CAPITAL_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0075-entrusted-investment-risk-capital-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "72b9058963274d3a9a3fe509d183c46bcdbaf15f8220ae2e6b09a11a0862403e",
+        "size_bytes": 39614,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_ENTRUSTED_INVESTMENT_RISK_CAPITAL_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0130-annual-2025-entrusted-investment-risk-capital-8bank-"
+            "codex-verified-mapping-v1.json"
+        ),
+        "sha256": "2ce4fe69f7e8a0c73f2169fde63da1b067e68192efbaf95697d175a0dc219b14",
+        "size_bytes": 81492,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -194,6 +217,55 @@ PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AXIS_SHA256 = {
     "equations": "f2684f572e744bcda4f1a61b8256348b529d27dff5b76a34a8422f210677ae26",
     "historical_comparator": ("5dd650fc8d33d024990b98cf743ceb3a178aa095dbd46ffac32394a43368246f"),
     "mappings": "1fbb965bf98a05fa59b00cb2ba96b8f49ac73938b952dbbe601375f79993578c",
+}
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "b6ac9de71f72508a99ab1888807209f318e2de610b489f0d79d339a01a50dd16"
+    ),
+    "accepted_cluster_count": 76,
+    "accepted_fragment_count": 76,
+    "candidate_disposition_axis_sha256": (
+        "d103fb00f844c66a419624cd8f03727ca39dad3b4dd3a993067c548206f3fba6"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 64, READY: 76, UNRESOLVED: 0},
+    "query_policy_sha256": "f9a0fc4c4ddb7f8bc65c4f6499ad7813307bfee3ff3c06ed97227a65981f36bc",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 174,
+    "not_observed_count": 64,
+    "ready_count": 76,
+    "unresolved_count": 0,
+}
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AUDIT_METRICS = {
+    "equation_count": 117,
+    "historical_comparator_exact_count": 42,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 26,
+    "historical_mapping_record_count": 26,
+    "mapping_count": 174,
+}
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AXIS_COUNTS = {
+    "clusters": 76,
+    "equations": 117,
+    "historical_comparator": 42,
+    "mappings": 174,
+}
+PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AXIS_SHA256 = {
+    "clusters": "179b0f2771e28300e38c180d96144fd186c77b32855dfd8aec0d00e3f1b5da70",
+    "equations": "baa4e5a6337dacec9edd8ca4dccaec71b818020b5f0bb5aff85ccc1a76026b40",
+    "historical_comparator": ("6e4a1eccf284b716b6e840fc9e180624bff707bdb9ff35ad531fdb9887081714"),
+    "mappings": "01d7eb41b11f0463be239a29e01157127492efce028b37f265c43f55eccc117e",
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
@@ -402,6 +474,8 @@ def _historical_oracle_refs(
         return PINNED_HISTORICAL_ORACLES
     if family_id == "GOVERNMENT_SBV_LIABILITIES":
         return PINNED_GOVERNMENT_SBV_LIABILITIES_HISTORICAL_ORACLES
+    if family_id == "ENTRUSTED_INVESTMENT_RISK_CAPITAL":
+        return PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -427,6 +501,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT,
             "sweep_metrics": PINNED_GOVERNMENT_SBV_LIABILITIES_RELEASE_METRICS,
+        }
+    if family_id == "ENTRUSTED_INVESTMENT_RISK_CAPITAL":
+        return {
+            "axis_counts": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AXIS_SHA256,
+            "audit_metrics": (PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
