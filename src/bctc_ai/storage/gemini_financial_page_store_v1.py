@@ -473,11 +473,17 @@ def page_json_region_repair_lineages_v1(
             rows = connection.execute(
                 "SELECT s.selection_ordinal,o.merged_page_json_version_id AS observed_id,"
                 "r.repair_id,r.base_page_json_version_id,r.merged_page_json_version_id,"
-                "r.receipt_sha256,r.receipt_json "
+                "r.receipt_sha256,r.receipt_json,"
+                "base.canonical_json_bytes AS base_page_json_bytes,"
+                "merged.canonical_json_bytes AS merged_page_json_bytes "
                 "FROM selected_region_repair_lineage AS s "
                 "JOIN page_json_region_repair_observation AS o "
                 "ON o.merged_page_json_version_id=s.page_json_version_id "
                 "JOIN page_json_region_repair AS r USING(repair_id) "
+                "JOIN page_json_version AS base "
+                "ON base.page_json_version_id=r.base_page_json_version_id "
+                "JOIN page_json_version AS merged "
+                "ON merged.page_json_version_id=r.merged_page_json_version_id "
                 "ORDER BY s.selection_ordinal"
             ).fetchall()
         except sqlite3.OperationalError as exc:
@@ -488,16 +494,38 @@ def page_json_region_repair_lineages_v1(
     for expected, row in zip(version_ids, rows, strict=True):
         try:
             receipt = json.loads(row["receipt_json"])
-        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            base_page_json = validate_financial_page_json_v1(
+                json.loads(row["base_page_json_bytes"])
+            )
+            merged_page_json = validate_financial_page_json_v1(
+                json.loads(row["merged_page_json_bytes"])
+            )
+        except (TypeError, UnicodeDecodeError, ValueError) as exc:
             raise _error("region repair lineage receipt JSON is invalid") from exc
+        required = {
+            "base_page_json_sha256",
+            "base_page_json_version_id",
+            "changes",
+            "format_version",
+            "merged_page_json_sha256",
+            "repair_id",
+            "repair_response_sha256",
+        }
         receipt_bytes = canonical_json_bytes_v1(receipt) + b"\n"
         material = {key: receipt[key] for key in receipt if key != "repair_id"}
         if (
-            row["observed_id"] != expected
+            type(receipt) is not dict
+            or set(receipt) != required
+            or receipt.get("format_version") != "GEMINI_JSON_REGION_REPAIR_V1"
+            or row["observed_id"] != expected
             or sha256(receipt_bytes).hexdigest() != row["receipt_sha256"]
             or receipt.get("repair_id") != row["repair_id"]
             or receipt.get("repair_id") != "gjfrrv1:repair:" + canonical_json_sha256_v1(material)
             or receipt.get("base_page_json_version_id") != row["base_page_json_version_id"]
+            or canonical_json_bytes_v1(base_page_json) + b"\n" != row["base_page_json_bytes"]
+            or canonical_json_bytes_v1(merged_page_json) + b"\n" != row["merged_page_json_bytes"]
+            or receipt.get("base_page_json_sha256") != canonical_json_sha256_v1(base_page_json)
+            or receipt.get("merged_page_json_sha256") != canonical_json_sha256_v1(merged_page_json)
         ):
             raise _error("region repair lineage receipt does not replay")
         result.append(

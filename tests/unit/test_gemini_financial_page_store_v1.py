@@ -4,6 +4,7 @@ import json
 import sqlite3
 from copy import deepcopy
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,10 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     merge_region_repair_v1,
     region_repair_targets_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
@@ -201,6 +206,72 @@ def test_page_json_provenance_rejects_nonselectable_prompt_without_repair_lineag
         load_page_json_versions_v1(
             path,
             page_json_version_ids=[unbound["page_json_version_id"]],
+        )
+
+
+def test_page_json_provenance_rejects_coherently_rehashed_lineage_content_drift(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    base = _ingest(path)
+    page = _page()
+    targets = region_repair_targets_v1(page, target_ids=["s1:t1:r2"])
+    merged, receipt = merge_region_repair_v1(
+        page,
+        base_page_json_version_id=base["page_json_version_id"],
+        targets=targets,
+        repair={
+            "all_targets_transcribed": True,
+            "rows": [
+                {
+                    "label_exact": targets[0]["label_exact"],
+                    "target_id": "s1:t1:r2",
+                    "values_exact": ["21", "11"],
+                }
+            ],
+            "uncertainty_exact": [],
+        },
+    )
+    repaired = _ingest(
+        path,
+        prompt_sha256="f" * 64,
+        prompt_variant="sealed-legacy-target-observation-revalidation",
+        page_json=merged,
+    )
+    initialize_region_repair_extension_v1(path)
+    record_page_json_region_repair_v1(
+        path,
+        merged_page_json_version_id=repaired["page_json_version_id"],
+        receipt=receipt,
+    )
+
+    forged = deepcopy(receipt)
+    forged["merged_page_json_sha256"] = "0" * 64
+    forged_material = {key: forged[key] for key in forged if key != "repair_id"}
+    forged["repair_id"] = "gjfrrv1:repair:" + canonical_json_sha256_v1(forged_material)
+    forged_bytes = canonical_json_bytes_v1(forged) + b"\n"
+    with sqlite3.connect(path) as connection:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute(
+            "UPDATE page_json_region_repair_observation SET repair_id=? WHERE repair_id=?",
+            (forged["repair_id"], receipt["repair_id"]),
+        )
+        connection.execute(
+            "UPDATE page_json_region_repair "
+            "SET repair_id=?,receipt_sha256=?,receipt_json=? WHERE repair_id=?",
+            (
+                forged["repair_id"],
+                sha256(forged_bytes).hexdigest(),
+                forged_bytes,
+                receipt["repair_id"],
+            ),
+        )
+        connection.commit()
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="does not replay"):
+        page_json_region_repair_lineages_v1(
+            path,
+            observed_page_json_version_ids=[repaired["page_json_version_id"]],
         )
 
 
