@@ -3,10 +3,14 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 from test_gemini_financial_page_store_v1 import _ingest
+from test_gemini_json_rollforward_indexed_wiring_v1 import (
+    _bind_sweep_to_authenticated_corpus,
+)
 
 from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
     READY,
@@ -20,6 +24,11 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.storage.gemini_accounting_family_store_v1 import (
+    GeminiAccountingFamilyStoreV1Error,
+    ingest_gemini_accounting_family_sweep_v1,
+    load_gemini_accounting_family_sweep_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     initialize_gemini_financial_page_store_v1,
@@ -369,6 +378,96 @@ def test_optional_only_page_and_partial_seed_are_unresolved_not_absent(tmp_path:
     )
     assert indexed["candidate_dispositions"][0]["disposition"] == "UNRESOLVED_CLUSTER"
     assert indexed["query_receipt"]["indexed_seed_hit_count"] == 1
+
+
+def test_store_requires_exact_sqlite_candidate_replay_from_authenticated_snapshot(
+    tmp_path: Path,
+) -> None:
+    page_database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(page_database)
+    page_json = _target_page()
+    selected = _ingest(page_database, page_json=page_json)
+    selected_ids = [selected["page_json_version_id"]]
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        page_database,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page_json},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "4" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        indexed_query_evidence=indexed,
+        trials=[
+            _trial(
+                indexed["selected_document_axis"][0],
+                candidate=candidate,
+                status=READY,
+                reasons=[],
+            )
+        ],
+    )
+    corpus_ref, sweep = _bind_sweep_to_authenticated_corpus(
+        artifact_root=tmp_path,
+        page_database=page_database,
+        selected_ids=selected_ids,
+        sweep=sweep,
+    )
+    source_snapshot = tmp_path / "private-source-snapshot.sqlite3"
+    shutil.copyfile(page_database, source_snapshot)
+    results_database = tmp_path / "families.sqlite3"
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        results_database,
+        sweep=sweep,
+        corpus_index_ref=corpus_ref,
+        implementation_refs=[{"path": "engine.py", "sha256": "5" * 64, "size_bytes": 1}],
+        run_kind="EXPERIMENTAL",
+        source_page_database=source_snapshot,
+        selected_page_json_version_ids=selected_ids,
+        corpus_artifact_root=tmp_path,
+    )
+    assert (
+        load_gemini_accounting_family_sweep_v1(results_database, stored["family_run_id"]) == sweep
+    )
+
+    attacked = copy.deepcopy(sweep)
+    attacked_candidate = attacked["trials"][0]["candidates"][0]
+    attacked_candidate["closure_receipt"]["source_inventory"][0]["row_axis"][0]["label_exact"] = (
+        "coherently forged source receipt"
+    )
+    candidate_material = {
+        key: value for key, value in attacked_candidate.items() if key != "candidate_id"
+    }
+    attacked_candidate["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(
+        candidate_material
+    )
+    attacked["trials"][0]["selected_candidate_id"] = attacked_candidate["candidate_id"]
+    sweep_material = {key: value for key, value in attacked.items() if key != "sweep_id"}
+    attacked["sweep_id"] = "gjfafsv1:sweep:" + canonical_json_sha256_v1(sweep_material)
+    assert validate_gemini_json_flat_family_sweep_v1(attacked) == attacked
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="query and candidates do not replay",
+    ):
+        ingest_gemini_accounting_family_sweep_v1(
+            tmp_path / "attacked-families.sqlite3",
+            sweep=attacked,
+            corpus_index_ref=corpus_ref,
+            implementation_refs=[{"path": "engine.py", "sha256": "5" * 64, "size_bytes": 1}],
+            run_kind="EXPERIMENTAL",
+            source_page_database=source_snapshot,
+            selected_page_json_version_ids=selected_ids,
+            corpus_artifact_root=tmp_path,
+        )
 
 
 def test_mixed_foreign_population_with_nonincidental_declared_role_is_unresolved(

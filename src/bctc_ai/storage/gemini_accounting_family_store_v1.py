@@ -787,9 +787,10 @@ def _selected_corpus_page_frontier_v1(
         ]
 
     authenticated_database = _artifact_content_path_v1(root, expected_database_ref)
-    if source_page_database.resolve() != authenticated_database.resolve():
-        raise _error("roll-forward source page store differs from corpus authority")
     _authenticate_file_ref_v1(authenticated_database, expected_database_ref)
+    # A runner may query an immutable private snapshot instead of reopening the
+    # corpus pathname.  Exact bytes, not pathname identity, are the authority.
+    _authenticate_file_ref_v1(source_page_database, expected_database_ref)
     return selected_ids
 
 
@@ -809,7 +810,11 @@ def ingest_gemini_accounting_family_sweep_v1(
     if run_kind not in {"EXPERIMENTAL", "OFFICIAL"}:
         raise _error("family run kind must be EXPERIMENTAL or OFFICIAL")
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
-    if checked_sweep["format_version"] == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1":
+    source_replay_format = checked_sweep["format_version"]
+    if source_replay_format in {
+        "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1",
+        "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1",
+    }:
         if (
             source_page_database is None
             or corpus_artifact_root is None
@@ -817,10 +822,7 @@ def ingest_gemini_accounting_family_sweep_v1(
             or not selected_page_json_version_ids
             or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
         ):
-            raise _error("roll-forward family ingest requires its canonical selected page frontier")
-        from bctc_ai.storage.gemini_financial_page_store_v1 import (
-            validate_selected_rollforward_family_query_evidence_v1,
-        )
+            raise _error("source-replayed family ingest requires its canonical page frontier")
 
         compiled_specs = compile_gemini_json_flat_family_specs_v1(
             checked_sweep["specs"]["topology"]["value"],
@@ -835,21 +837,36 @@ def ingest_gemini_accounting_family_sweep_v1(
                 source_page_database=source_page_database,
             )
             if list(selected_page_json_version_ids) != authoritative_selected_ids:
-                raise _error(
-                    "roll-forward caller page frontier differs from authenticated corpus authority"
+                raise _error("caller page frontier differs from authenticated corpus authority")
+            if source_replay_format == "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1":
+                from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                    validate_selected_rollforward_family_query_evidence_v1,
                 )
-            validate_selected_rollforward_family_query_evidence_v1(
-                source_page_database,
-                selected_page_json_version_ids=authoritative_selected_ids,
-                compiled_specs=compiled_specs,
-                indexed_query_evidence=checked_sweep["indexed_query_evidence"],
-                trials=checked_sweep["trials"],
-            )
+
+                validate_selected_rollforward_family_query_evidence_v1(
+                    source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                    trials=checked_sweep["trials"],
+                )
+            else:
+                from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                    validate_selected_dual_component_family_candidate_replays_v1,
+                )
+
+                validate_selected_dual_component_family_candidate_replays_v1(
+                    source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                    trials=checked_sweep["trials"],
+                )
         except GeminiAccountingFamilyStoreV1Error:
             raise
         except (RuntimeError, ValueError) as exc:
             raise _error(
-                "roll-forward family selected query and candidates do not replay from page store"
+                "family selected query and candidates do not replay from page store"
             ) from exc
     checked_index_ref = _checked_ref(corpus_index_ref)
     checked_implementation = _checked_implementation_refs(implementation_refs)
@@ -1037,8 +1054,18 @@ def record_gemini_accounting_family_export_v1(
             "SELECT sweep_sha256, sweep_bytes FROM family_run WHERE family_run_id=?",
             (family_run_id,),
         ).fetchone()
-        if run is None or bytes(run["sweep_bytes"]) != payload:
+        if run is None:
             raise _error("family export does not equal its stored sweep")
+        stored_payload = bytes(run["sweep_bytes"])
+        if stored_payload != payload:
+            try:
+                exported = validate_gemini_json_flat_family_sweep_v1(json.loads(payload))
+                stored = validate_gemini_json_flat_family_sweep_v1(json.loads(stored_payload))
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+                raise _error("family export does not equal its stored sweep") from exc
+            canonical_export = canonical_json_bytes_v1(exported)
+            if payload != canonical_export or canonical_json_bytes_v1(stored) != canonical_export:
+                raise _error("family export does not equal its stored sweep")
         connection.execute(
             "INSERT OR IGNORE INTO family_export"
             "(family_run_id, output_path, output_sha256, output_size_bytes) VALUES (?,?,?,?)",

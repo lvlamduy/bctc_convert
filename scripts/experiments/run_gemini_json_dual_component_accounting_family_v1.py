@@ -36,6 +36,11 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     same_typed_json_v1,
 )
+from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
+    ingest_gemini_accounting_family_sweep_v1,
+    load_gemini_accounting_family_sweep_v1,
+    record_gemini_accounting_family_export_v1,
+)
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
@@ -123,6 +128,18 @@ def _sha256(path: Path) -> str:
         while block := stream.read(1024 * 1024):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _file_ref(path: Path, *, root: Path | None = None) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise _error(f"traceable input is absent or not regular: {path}")
+    resolved = path.resolve()
+    logical = str(resolved.relative_to(root.resolve())) if root is not None else str(resolved)
+    return {
+        "path": logical,
+        "sha256": _sha256(resolved),
+        "size_bytes": resolved.stat().st_size,
+    }
 
 
 def _validate_pinned_compiled_specs(compiled_specs: dict[str, Any]) -> None:
@@ -1017,7 +1034,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
-    parser.add_argument("--run-kind", choices=("EXPERIMENTAL",), required=True)
+    parser.add_argument("--results-database", type=Path, required=True)
+    parser.add_argument("--run-kind", choices=("EXPERIMENTAL", "OFFICIAL"), required=True)
     parser.add_argument("--output", type=Path, required=True)
     return parser
 
@@ -1143,8 +1161,36 @@ def _run_with_authenticated_database(
     )
     audit_output = args.output.with_suffix(".audit.json")
     database_guard.validate()
-    _write_once(args.output, sweep)
+    implementation_paths = (
+        ROOT / "scripts/experiments/run_gemini_json_dual_component_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_dual_component_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+    )
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        args.results_database,
+        sweep=sweep,
+        corpus_index_ref=_file_ref(args.corpus_index),
+        implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
+        run_kind=args.run_kind,
+        source_page_database=database,
+        selected_page_json_version_ids=selected_ids,
+        corpus_artifact_root=args.artifact_root.resolve(),
+    )
+    stored_sweep = load_gemini_accounting_family_sweep_v1(
+        args.results_database, stored["family_run_id"]
+    )
+    if not same_typed_json_v1(stored_sweep, sweep):
+        raise _error("dual-component stored sweep differs from authenticated evaluation")
+    _write_once(args.output, stored_sweep)
     _write_once(audit_output, audit)
+    output_ref = record_gemini_accounting_family_export_v1(
+        args.results_database,
+        family_run_id=stored["family_run_id"],
+        output_path=args.output,
+    )
     return {
         "audit_id": audit["audit_id"],
         "audit_output": str(audit_output),
@@ -1153,16 +1199,16 @@ def _run_with_authenticated_database(
         "disposition": "SUCCEEDED",
         "metrics": sweep["metrics"],
         "output": str(args.output),
-        "run_kind": "EXPERIMENTAL",
+        "family_run_id": stored["family_run_id"],
+        "output_ref": output_ref,
+        "results_database": str(args.results_database),
+        "run_kind": args.run_kind,
         "sweep_id": sweep["sweep_id"],
     }
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    """Evaluate locally selected JSON only; no provider or OFFICIAL path exists."""
-
-    if args.run_kind != "EXPERIMENTAL":
-        raise _error("dual-component runner is EXPERIMENTAL-only")
+    """Evaluate selected JSON and optionally advance the OFFICIAL family pointer."""
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
     source_database = _content_ref(artifact_root, index["database_ref"])

@@ -158,6 +158,15 @@ def test_family_sweep_is_stored_before_export_with_full_trace(tmp_path: Path) ->
     )
     assert export["size_bytes"] == output.stat().st_size
 
+    canonical_output = tmp_path / "family-canonical.json"
+    canonical_output.write_bytes(canonical_json_bytes_v1(sweep))
+    canonical_export = record_gemini_accounting_family_export_v1(
+        database,
+        family_run_id=stored["family_run_id"],
+        output_path=canonical_output,
+    )
+    assert canonical_export["size_bytes"] == canonical_output.stat().st_size
+
 
 def test_experimental_history_does_not_replace_current_and_tamper_fails(
     tmp_path: Path,
