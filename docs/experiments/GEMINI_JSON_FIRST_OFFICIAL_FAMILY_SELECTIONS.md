@@ -42,9 +42,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 20 | `INTANGIBLE_FIXED_ASSETS_ROLLFORWARD` | 72 | 68 | 0 | 829 | `gjfafstorev1:run:9bfd9b098cf14d5c7d39e356e5c2626ac2b964d32fe1e22da9ea7de3dbb8072c` |
 | 21 | `INVESTMENT_PROPERTY_ROLLFORWARD` | 12 | 128 | 0 | 105 | `gjfafstorev1:run:b06b23729d51a3282e419de7e607ba394f4b85d2650f925fc808821256396ba1` |
 | 22 | `OTHER_ASSETS` | 78 | 62 | 0 | 1.290 | `gjfafstorev1:run:a405aebffe52ca4a61ece9a918d6ba9af8cab81e34b626ab5278461252b5b531` |
+| 23 | `GOVERNMENT_SBV_LIABILITIES` | 140 | 0 | 0 | 739 | `gjfafstorev1:run:96f56c6a071bd4dca415411ea8073f52e80dace6628d7c59f5295e7a18356dbf` |
 
-Tại checkpoint này database có đủ đúng hai mươi hai current selection liên tục
-từ Family 1 đến Family 22. Family 23 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng hai mươi ba current selection liên tục
+từ Family 1 đến Family 23. Family 24 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -325,15 +326,46 @@ Artifact OFFICIAL:
   compile and JSON/diff checks passed. A separate public SQLite audit replay
   reproduced all four semantic axes, and the cumulative results DB now has 22
   current selections, passes `quick_check` and has no foreign-key failures.
+- Family 23 `GOVERNMENT_SBV_LIABILITIES`: `READY=140`,
+  `NOT_OBSERVED=0`, `UNRESOLVED=0`, 739 mappings and 411 exact closure
+  equations. The existing generic multi-table hierarchical engine was extended
+  only through declarative, opt-in owner surfaces, hierarchy-path role scope,
+  canonical top-level frontier and structural-label projection. It covers
+  aggregate-only, central-bank facility, Treasury currency/tenor, repo and
+  other-liability layouts without bank/file/page routing. A family root may be
+  derived only from a complete canonical top-level frontier; nested components
+  are excluded from that sum, preventing double counting. All graph, period,
+  unit, equation and schema decisions remain deterministic local code and no
+  Gemini prompt contains ReportNormIds or accounting equations. Exact SQLite
+  replay covers all 8.947 selected page versions and rebuilds 140 fragments in
+  140 accepted clusters. E-0074/E-0128 match 16/16 historical dispositions and
+  70/75 historical mappings. The five transparent refinements preserve source
+  evidence while correcting legacy conflation: VCB's VND payment and term
+  deposits are no longer merged; BID's Finance-Ministry deposit uses dedicated
+  RNID 6072; one ACB repo keeps its source-semantic role; and CTG's previously
+  combined borrowing/repo value is represented by its two visible source rows.
+  The OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family23-government-sbv-liabilities/sweep.json`,
+  SHA-256
+  `371508e82913ae03b8ec002e6c006daf1667d1a1a0cbf3089a3bcedb029007f3`;
+  audit SHA-256
+  `a92637d40a4703ee8d092f06856bea4286b2e1a0ec73d9bb243157fd63d9b9d9`.
+  Implementation commit `522f0b2`; 95 focused/adjacent tests, Ruff, format,
+  compile, JSON and diff checks passed. Family 22's public SQLite replay stayed
+  exact. The cumulative results DB now has 23 current selections, passes
+  `quick_check`, has no foreign-key failures or SQLite sidecars, and is sealed
+  at SHA-256
+  `44c7c33669a940ca1f59fad961390cadfa963798eb883ca3ec918130fdf39d8d`.
 
 ## Next gate
 
-Family 23 là `GOVERNMENT_SBV_LIABILITIES` bắt đầu tại ReportNormId 1024. Đo mức
-tái sử dụng của primitive owner/reset-fenced, multi-table và aggregate-role hiện
-có trên full-corpus indexed census 8.947 trang, rồi khóa comparator E-0074 và
-E-0128. Thuật toán phải bao quát aggregate-only, facility, Treasury
-currency/tenor, repo và other-liability variants bằng cấu hình khai báo; không
-đưa graph/schema/ReportNormId vào prompt và không route theo bank/file/page.
-Chỉ promote OFFICIAL sau khi exhaustive source inventory, period/unit,
-equations, query/candidate SQLite replay và toàn bộ disposition của 140 tài
-liệu đều khép với `UNRESOLVED=0`.
+Family 24 là `ENTRUSTED_INVESTMENT_RISK_CAPITAL` bắt đầu tại ReportNormId 1092.
+Đo mức tái sử dụng của primitive owner/reset-fenced, multi-table và
+aggregate-role hiện có trên full-corpus indexed census 8.947 trang, rồi khóa
+comparator E-0075 và E-0130. Thuật toán phải bao quát owner có hoặc không có số
+note, organization/person aggregate, currency branches, multiline ODA,
+NHNN-programme và explicit residual rows bằng cấu hình khai báo; không đưa
+graph/schema/ReportNormId vào prompt và không route theo bank/file/page. Chỉ
+promote OFFICIAL sau khi exhaustive source inventory, period/unit, equations,
+query/candidate SQLite replay và toàn bộ disposition của 140 tài liệu đều khép
+với `UNRESOLVED=0`.
