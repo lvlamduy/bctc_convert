@@ -815,6 +815,7 @@ def ingest_gemini_accounting_family_sweep_v1(
         "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_INVESTMENT_SECURITIES_ACCOUNTING_FAMILY_V1",
+        "GEMINI_JSON_OTHER_LONG_TERM_INVESTMENTS_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_ROLLFORWARD_ACCOUNTING_FAMILY_V1",
     }:
         if (
@@ -858,6 +859,21 @@ def ingest_gemini_accounting_family_sweep_v1(
                 )
 
                 validate_selected_investment_securities_family_candidate_replays_v1(
+                    source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                    trials=checked_sweep["trials"],
+                )
+            elif (
+                source_replay_format
+                == "GEMINI_JSON_OTHER_LONG_TERM_INVESTMENTS_ACCOUNTING_FAMILY_V1"
+            ):
+                from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                    validate_selected_other_long_term_investments_family_candidate_replays_v1,
+                )
+
+                validate_selected_other_long_term_investments_family_candidate_replays_v1(
                     source_page_database,
                     selected_page_json_version_ids=authoritative_selected_ids,
                     compiled_specs=compiled_specs,

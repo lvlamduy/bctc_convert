@@ -1,0 +1,43 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_OPTIONAL_CHILD_DETAIL_SUBTOTAL_PROVISION_AND_NET_ALL_LANES",
+  "component_policy": "ONE_OWNER_RESET_FENCE_WITH_MAIN_TABLE_AND_OPTIONAL_DETAIL_OR_CONTINUATION_TABLES",
+  "family_id": "OTHER_LONG_TERM_INVESTMENTS",
+  "format_version": "ACCOUNTING_OTHER_LONG_TERM_INVESTMENTS_FAMILY_EVALUATION_SPEC_V1",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_TWO_ORDERED_PERIOD_TABLES_WITH_EXACT_CARRYING_VALUE_LANE",
+  "money_unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": ["Triệu VND", "Triệu đồng", "Million VND"],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": false,
+      "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": false,
+      "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": ["VND", "Đồng"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ],
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "typed_control_exclusions": [
+    "PRIMARY_FINANCIAL_STATEMENT_SUMMARY",
+    "PROVISION_MOVEMENT",
+    "FAIR_VALUE_OR_FINANCIAL_INSTRUMENT_VIEW",
+    "PERCENTAGE_ONLY_VIEW",
+    "OPERATING_EXPENSE_OR_INCOME_VIEW",
+    "RELATED_PARTY_TRANSACTION_OR_BALANCE_VIEW"
+  ]
+}

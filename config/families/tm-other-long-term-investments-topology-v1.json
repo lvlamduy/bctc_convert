@@ -1,0 +1,139 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đầu tư vào công ty liên doanh",
+            "Các khoản đầu tư vào công ty liên doanh",
+            "Góp vốn liên doanh",
+            "Vốn góp liên doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "JOINT_VENTURE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đầu tư vào công ty liên kết",
+            "Đầu tư vào các công ty liên kết",
+            "Các khoản đầu tư vào công ty liên kết",
+            "Các khoản đầu tư vào các công ty liên kết",
+            "Góp vốn vào công ty liên kết"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ASSOCIATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đầu tư dài hạn khác",
+            "Các khoản đầu tư dài hạn khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_LONG_TERM",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đầu tư vào tổ chức kinh tế, dự án dài hạn",
+            "Đầu tư vào các tổ chức kinh tế, đầu tư vào các dự án dài hạn",
+            "Đầu tư vào các tổ chức kinh tế",
+            "Đầu tư vào tổ chức kinh tế",
+            "Đầu tư vào các TCKT trong nước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ORGANIZATION_PROJECT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đầu tư vào các quỹ đầu tư",
+            "Đầu tư vào quỹ đầu tư"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INVESTMENT_FUND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng giảm giá đầu tư dài hạn",
+            "Dự phòng giảm giá các khoản đầu tư dài hạn khác",
+            "Dự phòng giảm giá đầu tư dài hạn khác",
+            "Dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Dự phòng đầu tư dài hạn"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "OTHER_LONG_TERM_INVESTMENTS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chứng khoán đầu tư",
+    "Tài sản cố định hữu hình",
+    "Chi phí hoạt động",
+    "Phân loại tài sản tài chính, nợ phải trả tài chính và thuyết minh về giá trị hợp lý",
+    "Các thông tin khác",
+    "Thu nhập từ góp vốn, mua cổ phần",
+    "Thuế TNDN hiện hành"
+  ],
+  "limits": {
+    "max_continuation_pages": 3,
+    "max_cluster_span_lines": 512,
+    "max_label_line_span": 4
+  },
+  "parent": {
+    "aliases": [
+      "Góp vốn, đầu tư dài hạn"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "OTHER_LONG_TERM_INVESTMENTS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["OTHER_LONG_TERM", "PROVISION"],
+    ["JOINT_VENTURE", "ASSOCIATE"],
+    ["JOINT_VENTURE", "OTHER_LONG_TERM"],
+    ["ASSOCIATE", "OTHER_LONG_TERM"],
+    ["JOINT_VENTURE"],
+    ["ASSOCIATE"],
+    ["OTHER_LONG_TERM"],
+    ["ORGANIZATION_PROJECT"],
+    ["INVESTMENT_FUND"]
+  ],
+  "structural_reset_aliases": [
+    "Tài sản cố định hữu hình",
+    "Tài sản cố định vô hình",
+    "Bất động sản đầu tư"
+  ]
+}

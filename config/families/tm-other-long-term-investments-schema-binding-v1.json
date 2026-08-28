@@ -1,0 +1,15 @@
+{
+  "family_id": "OTHER_LONG_TERM_INVESTMENTS",
+  "family_root_report_norm_id": 862,
+  "format_version": "ACCOUNTING_OTHER_LONG_TERM_INVESTMENTS_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 6066, "role": "JOINT_VENTURE"},
+    {"report_norm_id": 6067, "role": "ASSOCIATE"},
+    {"report_norm_id": 867, "role": "OTHER_LONG_TERM"},
+    {"report_norm_id": 5960, "role": "ORGANIZATION_PROJECT"},
+    {"report_norm_id": 5961, "role": "INVESTMENT_FUND"},
+    {"report_norm_id": 5959, "role": "PROVISION"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_NET_TOTAL",
+  "schema_period_type": "SNAPSHOT"
+}
