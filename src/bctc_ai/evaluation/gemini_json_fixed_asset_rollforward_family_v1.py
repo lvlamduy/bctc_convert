@@ -68,6 +68,10 @@ _DATE_DMY = re.compile(
 )
 _DASHES = {"-", "_", "–", "—", "−"}
 _BRANCH_KINDS = {"SIGNED_ADDITIVE", "COST_AND_DEPRECIATION_CONTROL"}
+_CLOSURE_POLICIES = {
+    "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT",
+    "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_EQUATIONS_EXACT_WITH_OPTIONAL_CARRYING_CONTROL",
+}
 
 
 class GeminiJsonFixedAssetRollforwardFamilyV1Error(ValueError):
@@ -163,8 +167,7 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         or set(evaluation_spec) != evaluation_fields
         or evaluation_spec.get("format_version") != EVALUATION_FORMAT_VERSION
         or evaluation_spec.get("family_id") != topology["family_id"]
-        or evaluation_spec.get("closure_policy")
-        != "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT"
+        or evaluation_spec.get("closure_policy") not in _CLOSURE_POLICIES
         or evaluation_spec.get("layout_policy")
         != "ONE_CURRENT_TOTAL_COLUMN_TABLE_WITH_OPTIONAL_TYPED_COMPARATIVE_CONTROL_TABLES"
         or evaluation_spec.get("period_policy")
@@ -174,7 +177,7 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         or evaluation_spec.get("subtotal_policy")
         != "VISIBLE_SUBTOTAL_AND_DIRECT_CHILDREN_COEXIST_BUT_VERTICAL_CONSUMES_EXACTLY_ONE_FRONTIER"
         or type(evaluation_spec.get("minimum_distinct_asset_header_aliases")) is not int
-        or evaluation_spec["minimum_distinct_asset_header_aliases"] < 2
+        or evaluation_spec["minimum_distinct_asset_header_aliases"] < 1
     ):
         raise _error("fixed-asset evaluation spec is invalid")
     asset_aliases = _normalized_aliases(
@@ -227,14 +230,31 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
             }
         )
     if (
-        len(branch_layouts) != 3
+        len(branch_layouts) not in {2, 3}
         or sum(item["rollforward_kind"] == "SIGNED_ADDITIVE" for item in branch_layouts) != 2
         or sum(
             item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL" for item in branch_layouts
         )
-        != 1
+        not in {0, 1}
     ):
-        raise _error("fixed-asset needs two signed branches and one carrying control")
+        raise _error("fixed-asset needs two signed branches and at most one carrying control")
+    carrying_count = sum(
+        item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL" for item in branch_layouts
+    )
+    signed_branch_layouts = [
+        item for item in branch_layouts if item["rollforward_kind"] == "SIGNED_ADDITIVE"
+    ]
+    if (
+        sum(layout["opening_role"].startswith("COST_") for layout in signed_branch_layouts) != 1
+        or sum(layout["opening_role"].startswith("DEP_") for layout in signed_branch_layouts) != 1
+    ):
+        raise _error("fixed-asset signed branches need one cost and one depreciation role")
+    if (
+        evaluation_spec["closure_policy"]
+        == "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT"
+        and carrying_count != 1
+    ):
+        raise _error("fixed-asset carrying closure policy needs one carrying control")
     schema_fields = {
         "context_only_roles",
         "family_id",
@@ -601,6 +621,11 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         item["branch_role"] for item in compiled_specs["evaluation"]["branch_layouts"]
     }
     owner = _owner_visible(section, table, compiled_specs=compiled_specs)
+    variant_hard_negative_visible = any(
+        _contains_alias(surface, alias)
+        for surface in _surface_axis(section, table)
+        for alias in compiled_specs["evaluation"]["header_hard_negative_aliases"]
+    )
     two_period_non_rollforward_control = bool(
         owner
         and branch_hits != required_branches
@@ -623,6 +648,7 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
                 branch_hits == required_branches
                 and len(family_header_ordinals) >= min_headers
                 and not negative_header_hits
+                and not variant_hard_negative_visible
             )
         )
     )
@@ -630,6 +656,8 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     reasons = []
     if negative_header_hits and has_family_signal:
         reasons.append("HARD_NEGATIVE_ASSET_HEADER_VISIBLE")
+    if variant_hard_negative_visible and owner:
+        reasons.append("HARD_NEGATIVE_FIXED_ASSET_VARIANT_SURFACE_VISIBLE")
     if branch_hits and branch_hits != required_branches:
         reasons.append("THREE_BRANCH_SEED_FRONTIER_INCOMPLETE")
     if branch_hits == required_branches and not owner:
@@ -1566,9 +1594,12 @@ def _extract_table_records(
         if item["rollforward_kind"] == "SIGNED_ADDITIVE"
     ]
     carrying_layout = next(
-        item
-        for item in compiled_specs["evaluation"]["branch_layouts"]
-        if item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL"
+        (
+            item
+            for item in compiled_specs["evaluation"]["branch_layouts"]
+            if item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL"
+        ),
+        None,
     )
     endpoint_by_role: dict[str, list[str]] = defaultdict(list)
     for record in records:
@@ -1612,12 +1643,17 @@ def _extract_table_records(
                     ],
                 }
             )
-    if all(
+    if carrying_layout is not None and all(
         len(endpoint_by_role[layout[endpoint]]) == 1
         for layout in [*signed_layouts, carrying_layout]
         for endpoint in ("opening_role", "ending_role")
     ):
-        cost_layout, depreciation_layout = signed_layouts
+        cost_layout = next(
+            layout for layout in signed_layouts if layout["opening_role"].startswith("COST_")
+        )
+        depreciation_layout = next(
+            layout for layout in signed_layouts if layout["opening_role"].startswith("DEP_")
+        )
         dep_values = [
             row_by_id[endpoint_by_role[depreciation_layout[key]][0]]["cells"][total_id][
                 "coefficient"

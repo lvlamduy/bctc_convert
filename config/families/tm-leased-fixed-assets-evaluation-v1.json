@@ -1,0 +1,79 @@
+{
+  "asset_header_aliases": [
+    "Nhà cửa, vật kiến trúc",
+    "Nhà cửa và vật kiến trúc",
+    "Máy móc, thiết bị",
+    "Phương tiện vận tải",
+    "Thiết bị, dụng cụ quản lý",
+    "Thiết bị văn phòng",
+    "Tài sản thuê tài chính",
+    "TSCĐ thuê tài chính khác",
+    "Tài sản cố định thuê tài chính khác"
+  ],
+  "branch_layouts": [
+    {
+      "branch_role": "COST_BRANCH",
+      "ending_role": "COST_ENDING",
+      "hierarchy_aliases": ["Nguyên giá", "Nguyên giá TSCĐ thuê tài chính"],
+      "opening_role": "COST_OPENING",
+      "rollforward_kind": "SIGNED_ADDITIVE",
+      "subtotal_roles": []
+    },
+    {
+      "branch_role": "DEPRECIATION_BRANCH",
+      "ending_role": "DEP_ENDING",
+      "hierarchy_aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế", "Giá trị hao mòn lũy kế"],
+      "opening_role": "DEP_OPENING",
+      "rollforward_kind": "SIGNED_ADDITIVE",
+      "subtotal_roles": []
+    }
+  ],
+  "closure_policy": "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_EQUATIONS_EXACT_WITH_OPTIONAL_CARRYING_CONTROL",
+  "family_id": "LEASED_FIXED_ASSETS_ROLLFORWARD",
+  "format_version": "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
+  "header_hard_negative_aliases": [
+    "Tài sản cố định hữu hình",
+    "TSCĐ hữu hình",
+    "Tài sản cố định vô hình",
+    "TSCĐ vô hình",
+    "Bất động sản đầu tư",
+    "Phần mềm",
+    "Quyền sử dụng đất",
+    "Quyền thuê đất",
+    "Bản quyền",
+    "Cho thuê tài chính khách hàng",
+    "Phải thu cho thuê tài chính"
+  ],
+  "layout_policy": "ONE_CURRENT_TOTAL_COLUMN_TABLE_WITH_OPTIONAL_TYPED_COMPARATIVE_CONTROL_TABLES",
+  "minimum_distinct_asset_header_aliases": 1,
+  "money_unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": ["Nghìn đồng", "Nghìn VND", "Thousand VND"],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": true,
+      "aliases": ["Triệu đồng", "Triệu VND", "Million VND"],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": true,
+      "aliases": ["Tỷ đồng", "Tỷ VND", "Billion VND"],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": ["Đồng", "VND"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ],
+  "period_policy": "UNIQUE_SOURCE_VISIBLE_OR_TYPED_DOCUMENT_REPORTING_DATE_WITH_COMPARATIVE_ENDPOINT_CONTINUITY",
+  "row_width_policy": "UNIQUE_RIGHT_EDGE_TOTAL_WITH_ALL_EQUATION_SEALED_RELOCATION_ONLY",
+  "subtotal_policy": "VISIBLE_SUBTOTAL_AND_DIRECT_CHILDREN_COEXIST_BUT_VERTICAL_CONSUMES_EXACTLY_ONE_FRONTIER",
+  "total_column_aliases": ["Tổng cộng", "Tổng"]
+}

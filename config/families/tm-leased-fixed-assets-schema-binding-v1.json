@@ -1,0 +1,28 @@
+{
+  "context_only_roles": {
+    "COST_BRANCH": 897,
+    "DEPRECIATION_BRANCH": 905,
+    "LEASED_FIXED_ASSETS_ROOT": 896
+  },
+  "family_id": "LEASED_FIXED_ASSETS_ROLLFORWARD",
+  "family_root_report_norm_id": 896,
+  "format_version": "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 898, "role": "COST_OPENING"},
+    {"report_norm_id": 899, "role": "COST_LEASED_ADDITION"},
+    {"report_norm_id": 900, "role": "COST_OTHER_INCREASE"},
+    {"report_norm_id": 901, "role": "COST_BUYOUT"},
+    {"report_norm_id": 902, "role": "COST_RETURN"},
+    {"report_norm_id": 903, "role": "COST_OTHER_DECREASE"},
+    {"report_norm_id": 904, "role": "COST_ENDING"},
+    {"report_norm_id": 906, "role": "DEP_OPENING"},
+    {"report_norm_id": 907, "role": "DEP_CHARGE"},
+    {"report_norm_id": 908, "role": "DEP_OTHER_INCREASE"},
+    {"report_norm_id": 909, "role": "DEP_BUYOUT"},
+    {"report_norm_id": 910, "role": "DEP_RETURN"},
+    {"report_norm_id": 911, "role": "DEP_OTHER_DECREASE"},
+    {"report_norm_id": 912, "role": "DEP_ENDING"}
+  ],
+  "schema_period_role": "CURRENT_PERIOD",
+  "structural_root_mapping_policy": "CONTEXT_ONLY_NO_NUMERIC_MAPPING"
+}

@@ -1,0 +1,127 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Nguyên giá", "Nguyên giá TSCĐ thuê tài chính"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "COST_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế", "Giá trị hao mòn lũy kế"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DEPRECIATION_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu kỳ", "Số dư đầu năm", "Số đầu kỳ", "Số đầu năm", "Tại ngày đầu kỳ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OPENING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuê tài chính trong kỳ", "Tăng do thuê tài chính trong kỳ", "Tài sản thuê tài chính tăng trong kỳ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_LEASED_ADDITION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OTHER_INCREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_BUYOUT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả lại TSCĐ thuê tài chính", "Trả lại tài sản cố định thuê tài chính", "Trả lại tài sản thuê tài chính"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_RETURN",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm khác"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OTHER_DECREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối kỳ", "Số dư cuối năm", "Số cuối kỳ", "Số cuối năm", "Tại ngày cuối kỳ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_ENDING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu kỳ", "Số dư đầu năm", "Số đầu kỳ", "Số đầu năm", "Tại ngày đầu kỳ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OPENING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Khấu hao trong kỳ", "Khấu hao trong năm", "Khấu hao"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_CHARGE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OTHER_INCREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_BUYOUT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả lại TSCĐ thuê tài chính", "Trả lại tài sản cố định thuê tài chính", "Trả lại tài sản thuê tài chính"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_RETURN",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OTHER_DECREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối kỳ", "Số dư cuối năm", "Số cuối kỳ", "Số cuối năm", "Tại ngày cuối kỳ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_ENDING",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LEASED_FIXED_ASSETS_ROLLFORWARD",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản cố định hữu hình",
+    "Tài sản cố định vô hình",
+    "Bất động sản đầu tư",
+    "Các khoản phải thu từ cho thuê tài chính",
+    "Thu nhập lãi cho thuê tài chính"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 256,
+    "max_continuation_pages": 1,
+    "max_label_line_span": 4
+  },
+  "parent": {
+    "aliases": ["Tài sản cố định thuê tài chính", "TSCĐ thuê tài chính", "Tài sản thuê tài chính"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "LEASED_FIXED_ASSETS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["COST_BRANCH", "DEPRECIATION_BRANCH"]],
+  "structural_reset_aliases": [
+    "Tài sản cố định hữu hình",
+    "Tài sản cố định vô hình",
+    "Bất động sản đầu tư",
+    "Xây dựng cơ bản dở dang"
+  ]
+}

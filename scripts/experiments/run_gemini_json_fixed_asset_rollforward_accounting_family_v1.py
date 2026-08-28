@@ -124,6 +124,62 @@ PINNED_HISTORICAL_ORACLES = (
         "size_bytes": 234208,
     },
 )
+PINNED_LEASED_HISTORICAL_ORACLES = (
+    {
+        "format_version": "LEASED_FIXED_ASSETS_8BANK_BOUND_REPORT_ABSENCE_V1",
+        "path": "docs/experiments/E-0070-leased-fixed-assets-8bank-bound-report-absence-v1.json",
+        "sha256": "fe02fb3a1413bf3ddd08d75c3f492a22eaae86554d070533eeab6c5a7274fa83",
+        "size_bytes": 19948,
+    },
+    {
+        "format_version": "ANNUAL_2025_LEASED_FIXED_ASSETS_8BANK_BOUND_REPORT_ABSENCE_V1",
+        "path": "docs/experiments/E-0124-annual-2025-leased-fixed-assets-8bank-bound-report-absence-v1.json",
+        "sha256": "603274c90736a9acc451ab11665a11dee9ecb75fbbd5c3d938a665e29c5da0f3",
+        "size_bytes": 27448,
+    },
+)
+PINNED_LEASED_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    ),
+    "accepted_cluster_count": 0,
+    "accepted_control_region_count": 0,
+    "accepted_current_region_count": 0,
+    "candidate_disposition_axis_sha256": (
+        "8126225cc942a0e31e799f4f92e49f6d818b1499257c8a10c6c1aa2bf848fea5"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 140, READY: 0, UNRESOLVED: 0},
+    "query_policy_sha256": "5378b494dfc013ed83e2e1868945521a3924b7a8821e46f62b74c0d7368aebec",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_LEASED_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 0,
+    "not_observed_count": 140,
+    "ready_count": 0,
+    "unresolved_count": 0,
+}
+PINNED_LEASED_RELEASE_AUDIT_METRICS = {
+    "equation_count": 0,
+    "historical_document_match_count": 16,
+    "historical_value_match_count": 0,
+    "mapping_count": 0,
+}
+PINNED_LEASED_RELEASE_AXIS_SHA256 = {
+    "clusters": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "equations": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "historical_comparator": ("f4f8a10f7deca884492e0423e41d2c4cecd8fd8eadfd281785beac2819dbd1cb"),
+    "mappings": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -323,9 +379,18 @@ def _selected_page_axis(*, index: Mapping[str, Any], artifact_root: Path) -> lis
     return version_ids
 
 
-def _historical_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
+def _historical_oracles(
+    *, compiled_specs: Mapping[str, Any]
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    family_id = compiled_specs.get("topology", {}).get("family_id")
+    if family_id == "TANGIBLE_FIXED_ASSETS_ROLLFORWARD":
+        pinned_oracles = PINNED_HISTORICAL_ORACLES
+    elif family_id == "LEASED_FIXED_ASSETS_ROLLFORWARD":
+        pinned_oracles = PINNED_LEASED_HISTORICAL_ORACLES
+    else:
+        raise _error("fixed-asset-rollforward release family is not pinned")
     result = []
-    for pinned in PINNED_HISTORICAL_ORACLES:
+    for pinned in pinned_oracles:
         path = ROOT / pinned["path"]
         value = _json(path)
         metrics = value.get("metrics")
@@ -367,7 +432,7 @@ def _historical_comparator_axis(
     oracle_refs = []
     joined_sources = set()
     expected_mapping_count = 0
-    for oracle_ref, oracle in _historical_oracles():
+    for oracle_ref, oracle in _historical_oracles(compiled_specs=compiled_specs):
         oracle_refs.append(oracle_ref)
         expected_mapping_count += oracle["metrics"]["mapping_verified_count"]
         for oracle_trial in oracle["trials"]:
@@ -667,6 +732,31 @@ def _assert_release_pins(
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
 ) -> None:
+    family_id = sweep.get("specs", {}).get("topology", {}).get("value", {}).get("family_id")
+    if family_id == "TANGIBLE_FIXED_ASSETS_ROLLFORWARD":
+        pinned_query_receipt = PINNED_QUERY_RECEIPT
+        pinned_metrics = PINNED_RELEASE_METRICS
+        pinned_audit_metrics = PINNED_RELEASE_AUDIT_METRICS
+        pinned_axis_sha256 = PINNED_RELEASE_AXIS_SHA256
+        expected_axis_counts = {
+            "clusters": 72,
+            "equations": 1247,
+            "historical_comparator": 156,
+            "mappings": 875,
+        }
+    elif family_id == "LEASED_FIXED_ASSETS_ROLLFORWARD":
+        pinned_query_receipt = PINNED_LEASED_QUERY_RECEIPT
+        pinned_metrics = PINNED_LEASED_RELEASE_METRICS
+        pinned_audit_metrics = PINNED_LEASED_RELEASE_AUDIT_METRICS
+        pinned_axis_sha256 = PINNED_LEASED_RELEASE_AXIS_SHA256
+        expected_axis_counts = {
+            "clusters": 0,
+            "equations": 0,
+            "historical_comparator": 16,
+            "mappings": 0,
+        }
+    else:
+        raise _error("fixed-asset-rollforward release family is not pinned")
     actual = {
         "audit_metrics": audit.get("audit_metrics"),
         "axis_counts": audit.get("axis_counts"),
@@ -681,20 +771,14 @@ def _assert_release_pins(
         mismatches.append("corpus_manifest_index_id")
     if actual["selected_page_json_frontier_sha256"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256:
         mismatches.append("selected_page_json_frontier_sha256")
-    if not same_typed_json_v1(actual["query_receipt"], PINNED_QUERY_RECEIPT):
+    if not same_typed_json_v1(actual["query_receipt"], pinned_query_receipt):
         mismatches.append("query_receipt")
-    if not same_typed_json_v1(actual["sweep_metrics"], PINNED_RELEASE_METRICS):
+    if not same_typed_json_v1(actual["sweep_metrics"], pinned_metrics):
         mismatches.append("sweep_metrics")
-    if not same_typed_json_v1(actual["audit_metrics"], PINNED_RELEASE_AUDIT_METRICS):
+    if not same_typed_json_v1(actual["audit_metrics"], pinned_audit_metrics):
         mismatches.append("audit_metrics")
-    if not same_typed_json_v1(audit.get("axis_sha256"), PINNED_RELEASE_AXIS_SHA256):
+    if not same_typed_json_v1(audit.get("axis_sha256"), pinned_axis_sha256):
         mismatches.append("axis_sha256")
-    expected_axis_counts = {
-        "clusters": 72,
-        "equations": 1247,
-        "historical_comparator": 156,
-        "mappings": 875,
-    }
     if any(
         actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
     ):

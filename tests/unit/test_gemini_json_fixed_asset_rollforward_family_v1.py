@@ -35,6 +35,19 @@ def _compiled():
     )
 
 
+def _compiled_leased():
+    return compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
+        *[
+            json.loads((ROOT / path).read_bytes())
+            for path in (
+                "config/families/tm-leased-fixed-assets-topology-v1.json",
+                "config/families/tm-leased-fixed-assets-evaluation-v1.json",
+                "config/families/tm-leased-fixed-assets-schema-binding-v1.json",
+            )
+        ]
+    )
+
+
 def _row(label, branch, values, *, row_kind="ITEM", path=None):
     return {
         "hierarchy_path_exact": path or [branch, label],
@@ -171,6 +184,27 @@ def _page(table=None):
         ],
         "status": "FINANCIAL_NOTE_CONTENT",
     }
+
+
+def _leased_table():
+    table = _table()
+    table["rows"] = [
+        row
+        for row in table["rows"]
+        if row.get("hierarchy_path_exact", [None])[0] != "Giá trị còn lại"
+    ]
+    for row in table["rows"]:
+        if row["label_exact"] == "Mua trong kỳ":
+            row["label_exact"] = "Thuê tài chính trong kỳ"
+            row["hierarchy_path_exact"][-1] = "Thuê tài chính trong kỳ"
+    table["title_exact"] = "Tài sản cố định thuê tài chính năm 2025"
+    return table
+
+
+def _leased_page(*, owner="Tài sản cố định thuê tài chính"):
+    page = _page(_leased_table())
+    page["sections"][0]["title_exact"] = owner
+    return page
 
 
 def _page_record(page_json, *, selected_page_ordinal=1, physical_page=10):
@@ -497,6 +531,89 @@ def test_hard_negative_fixed_asset_family_is_not_captured():
     page["sections"][0]["title_exact"] = "Tài sản cố định vô hình"
     cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
         page_records=[_page_record(page)], compiled_specs=_compiled()
+    )
+    assert cluster["status"] == NOT_OBSERVED
+
+
+def test_two_signed_branch_leased_variant_closes_without_carrying_control():
+    compiled = _compiled_leased()
+    page = _leased_page()
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+        cluster["component_regions"], control_regions=[]
+    )
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=[],
+        page_json_by_version={cluster["component_regions"][0]["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    assert candidate["status"] == READY
+    assert len(candidate["mappings"]) == 6
+    assert {item["role"] for item in candidate["mappings"]} == {
+        "COST_OPENING",
+        "COST_LEASED_ADDITION",
+        "COST_ENDING",
+        "DEP_OPENING",
+        "DEP_CHARGE",
+        "DEP_ENDING",
+    }
+    assert not any(
+        equation["equation_id"].startswith("carrying:")
+        for equation in candidate["closure_receipt"]["table_receipt"]["equations"]
+    )
+
+
+def test_leased_variant_rejects_tangible_owner_context_as_not_observed():
+    page = _leased_page(owner="Thuyết minh báo cáo tài chính")
+    page["sections"][0]["narratives_exact"] = [
+        "15. Tài sản cố định",
+        "15.1 Tài sản cố định hữu hình",
+        "Biến động của tài sản cố định hữu hình trong kỳ như sau:",
+    ]
+    page["sections"][0]["tables"][0]["title_exact"] = None
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_leased()
+    )
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["reasons"] == []
+
+
+def test_leased_variant_missing_owner_without_variant_context_stays_unresolved():
+    page = _leased_page(owner="Thuyết minh báo cáo tài chính")
+    page["sections"][0]["tables"][0]["title_exact"] = None
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_leased()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "EXPLICIT_FIXED_ASSET_OWNER_NOT_VISIBLE" in cluster["reasons"]
+
+
+def test_leased_owner_and_conflicting_tangible_variant_context_fail_closed():
+    page = _leased_page()
+    page["sections"][0]["narratives_exact"] = [
+        "15.1 Tài sản cố định hữu hình",
+        "15.2 Tài sản cố định thuê tài chính",
+    ]
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_leased()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert "HARD_NEGATIVE_FIXED_ASSET_VARIANT_SURFACE_VISIBLE" in cluster["reasons"]
+
+
+def test_finance_lease_policy_text_is_not_a_fixed_asset_owner():
+    page = _leased_page(owner="Chính sách kế toán")
+    page["sections"][0]["narratives_exact"] = [
+        "Một khoản thuê được xem là thuê tài chính khi phần lớn rủi ro và lợi ích được chuyển giao."
+    ]
+    page["sections"][0]["tables"] = []
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_leased()
     )
     assert cluster["status"] == NOT_OBSERVED
 
