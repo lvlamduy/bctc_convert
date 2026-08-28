@@ -41,9 +41,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 19 | `LEASED_FIXED_ASSETS_ROLLFORWARD` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:d7172f4b3b197e96be5a3b6c58543de7d69c5b5bdc76703cfa427ed2b12d11bc` |
 | 20 | `INTANGIBLE_FIXED_ASSETS_ROLLFORWARD` | 72 | 68 | 0 | 829 | `gjfafstorev1:run:9bfd9b098cf14d5c7d39e356e5c2626ac2b964d32fe1e22da9ea7de3dbb8072c` |
 | 21 | `INVESTMENT_PROPERTY_ROLLFORWARD` | 12 | 128 | 0 | 105 | `gjfafstorev1:run:b06b23729d51a3282e419de7e607ba394f4b85d2650f925fc808821256396ba1` |
+| 22 | `OTHER_ASSETS` | 78 | 62 | 0 | 1.290 | `gjfafstorev1:run:a405aebffe52ca4a61ece9a918d6ba9af8cab81e34b626ab5278461252b5b531` |
 
-Tại checkpoint này database có đủ đúng hai mươi mốt current selection liên tục
-từ Family 1 đến Family 21. Family 22 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng hai mươi hai current selection liên tục
+từ Family 1 đến Family 22. Family 23 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -184,7 +185,7 @@ Artifact OFFICIAL:
   Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
   nguyên byte.
 
-## Families 13–21 closure
+## Families 13–22 closure
 
 - Family 13 `PROVISION_MOVEMENT_ROLLFORWARD`: `READY=140`, `UNRESOLVED=0`,
   1.281 mappings. Full selected-frontier/query/candidate SQLite replay, exact
@@ -300,14 +301,39 @@ Artifact OFFICIAL:
   tests, lint/format/compile/diff/fsck, and reproduced both artifact hashes
   byte-for-byte. The cumulative results DB now has 21 current selections,
   passes `quick_check` and has no foreign-key failures.
+- Family 22 `OTHER_ASSETS`: `READY=78`, `NOT_OBSERVED=62`,
+  `UNRESOLVED=0`, 1.290 mappings and 374 exact closure equations. One generic
+  multi-table hierarchical engine inventories every declared-role table inside
+  the authenticated owner/reset fence, handles same-table, sibling-table,
+  multi-page, repeated-period and bare-year source layouts, and keeps source
+  rows with no exact schema leaf typed but unmapped. Blank source cells are
+  promoted to zero only through an exact visible equation; label-only
+  `GROUP`/`SUBTOTAL`/`TOTAL` rows are structural carriers and never become
+  invented zero mappings. All period/unit resolution, duplicate-role
+  aggregation, graph closure and schema mapping remain deterministic local
+  code; no Gemini prompt, bank/file/page route or source-value rule was added.
+  Exact SQLite replay covers all 8.947 selected page versions and rebuilds 297
+  fragments in 78 accepted clusters. E-0073/E-0127 match 16/16 historical
+  document dispositions and 192/192 mappings; the combined comparator is
+  208/208 exact. The OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family22-other-assets/sweep.json`,
+  SHA-256
+  `f03b49fedb5d9cba1efe73c17e4cdee9afb80df637fd05d476894814ae2189c8`;
+  audit SHA-256
+  `3805feb2728267068e5668bc4d0b54074637508f72bf407e515acdb40f7036f1`.
+  Implementation commit `db43481`; 145 focused/adjacent tests, Ruff, format,
+  compile and JSON/diff checks passed. A separate public SQLite audit replay
+  reproduced all four semantic axes, and the cumulative results DB now has 22
+  current selections, passes `quick_check` and has no foreign-key failures.
 
 ## Next gate
 
-Family 22 là `OTHER_ASSETS` bắt đầu tại ReportNormId 966. Trước hết tái dựng
-generic multi-table/multi-page owner graph trên full-corpus indexed census 8.947
-trang và bounded historical oracles E-0073/E-0127. Các source row gộp khái niệm
-hoặc không có schema leaf tương đương phải được giữ có kiểu và không map; không
-đưa đáp án graph/schema vào prompt, không tạo routing theo bank/file/page. Chỉ
-promote OFFICIAL sau khi exhaustive inventory, period/unit, subtotal/root
-equations, query/candidate SQLite replay và toàn bộ disposition của 140 tài liệu
-đều khép với `UNRESOLVED=0`.
+Family 23 là `GOVERNMENT_SBV_LIABILITIES` bắt đầu tại ReportNormId 1024. Đo mức
+tái sử dụng của primitive owner/reset-fenced, multi-table và aggregate-role hiện
+có trên full-corpus indexed census 8.947 trang, rồi khóa comparator E-0074 và
+E-0128. Thuật toán phải bao quát aggregate-only, facility, Treasury
+currency/tenor, repo và other-liability variants bằng cấu hình khai báo; không
+đưa graph/schema/ReportNormId vào prompt và không route theo bank/file/page.
+Chỉ promote OFFICIAL sau khi exhaustive source inventory, period/unit,
+equations, query/candidate SQLite replay và toàn bộ disposition của 140 tài
+liệu đều khép với `UNRESOLVED=0`.
