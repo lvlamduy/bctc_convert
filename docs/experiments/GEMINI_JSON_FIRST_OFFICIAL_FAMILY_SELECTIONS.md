@@ -36,9 +36,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 14 | `PURCHASED_DEBT_ACTIVITY` | 64 | 76 | 0 | 254 | `gjfafstorev1:run:661c164d6298807f8030cf33ab6772145586360f815aaa6b29aeddbb5c102210` |
 | 15 | `CUSTOMER_DEPOSIT_CLASSIFICATION` | 140 | 0 | 0 | 2.206 | `gjfafstorev1:run:db06abbffa2072b6988c06c6878549a4fff2467ff9751bd55f62f567d966b838` |
 | 16 | `INVESTMENT_SECURITIES` | 140 | 0 | 0 | 2.149 | `gjfafstorev1:run:e53706dab2ac9695d30524070b4568223c99a78fd7a83d9af7d1d65c1b7ba1e1` |
+| 17 | `OTHER_LONG_TERM_INVESTMENTS` | 140 | 0 | 0 | 429 | `gjfafstorev1:run:c7b8dba996e04c3f70468c54ca0104937360ae09c1ffa6e89f5a3faec71c203b` |
 
-Tại checkpoint này database có đủ đúng mười sáu current selection liên tục từ
-Family 1 đến Family 16. Family 17 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng mười bảy current selection liên tục từ
+Family 1 đến Family 17. Family 18 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -179,7 +180,7 @@ Artifact OFFICIAL:
   Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
   nguyên byte.
 
-## Families 13–16 closure
+## Families 13–17 closure
 
 - Family 13 `PROVISION_MOVEMENT_ROLLFORWARD`: `READY=140`, `UNRESOLVED=0`,
   1.281 mappings. Full selected-frontier/query/candidate SQLite replay, exact
@@ -202,13 +203,30 @@ Artifact OFFICIAL:
   It replays all 8.947 selected page versions and matches all 112 comparable
   historical values. Code commit `bc8f164`; cumulative results DB has 16
   current selections, passes `quick_check` and has no foreign-key failures.
+- Family 17 `OTHER_LONG_TERM_INVESTMENTS`: `READY=140`, `UNRESOLVED=0`,
+  429 mappings and 458 exact closure receipts. One owner/reset-fenced resolver
+  handles optional direct children, repeated-period summary/detail tables,
+  same-page/adjacent continuation, carrying/reporting-currency metric columns,
+  provision signs, anonymous gross/net totals and equation-proven blank zeros
+  without bank/file/page routing. The OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family17-other-long-term-investments/sweep.json`,
+  SHA-256
+  `6ca7d36b4187f3b049f22d42671f464ab7338b7521c8096793a5e4bd839c32f9`;
+  audit SHA-256
+  `023c59caa66fa56d7dc3881ee02883f3f7419951a4d2cd73a04785cf9a177154`.
+  Full SQLite replay covers all 8.947 selected page versions and 292 accepted
+  fragments; both E-0068 and E-0122 match exactly (57/57 mappings). Code commit
+  `b10b054`; detached audit passed 171 tests, lint/format and exact artifact
+  reproduction. The cumulative results DB now has 17 current selections,
+  passes `quick_check` and has no foreign-key failures.
 
 ## Next gate
 
-Family 17 là `OTHER_LONG_TERM_INVESTMENTS`, bắt đầu tại ReportNormId 862. Giữ
-Gemini ở vai trò source reader với prompt/schema chung tối giản; owner, optional
-children, period/unit, continuation, trailing totals, blank/dash và mapping phải
-được resolver/equation code xử lý. Bắt đầu từ full-corpus indexed census và
-oracle E-0122, sau đó khóa focused/adversarial gates, chạy EXP 140 tài liệu,
-audit độc lập và chỉ promote OFFICIAL khi `UNRESOLVED=0`; không tạo engine hay
-prompt riêng theo từng ngân hàng.
+Family 18 là `TANGIBLE_FIXED_ASSETS_ROLLFORWARD`, bắt đầu tại ReportNormId 868.
+Giữ Gemini ở vai trò source reader với prompt/schema chung tối giản; thuật toán
+local phải tự xử lý owner, cost/accumulated-depreciation/carrying-value graph,
+movement rows, period/unit, repeated cycles, continuation, rotated-table JSON,
+blank/dash và phương trình. Bắt đầu từ full-corpus indexed census và oracle
+E-0069/E-0123, sau đó khóa focused/adversarial gates, chạy EXP 140 tài liệu,
+audit độc lập và chỉ promote OFFICIAL khi `UNRESOLVED=0`; không tạo prompt hay
+route riêng theo từng ngân hàng, file hoặc trang.
