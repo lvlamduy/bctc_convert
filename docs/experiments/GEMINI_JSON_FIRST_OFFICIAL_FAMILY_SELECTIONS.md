@@ -32,9 +32,13 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 10 | `LOAN_CURRENCY_CLASSIFICATION` | 10 | 130 | 0 | 20 | `gjfafstorev1:run:9cfa45e2a2dbc6da2e8227e6b7baf6ce09a5b6b0955b83e580ac3145221cd8b5` |
 | 11 | `LOAN_GEOGRAPHIC_CLASSIFICATION` | 41 | 99 | 0 | 82 | `gjfafstorev1:run:a2723ed4c4b6108ab66bffd5d19006eca1abf7cb31ec3895d09a392d3ace62f7` |
 | 12 | `LOAN_ENTERPRISE_FAMILY12` | 84 | 56 | 0 | 903 | `gjfafstorev1:run:4d953adc4d8fd66f85b612488ee5f7225db1cfa2f4bb48853d993e040c90fb98` |
+| 13 | `PROVISION_MOVEMENT_ROLLFORWARD` | 140 | 0 | 0 | 1.281 | `gjfafstorev1:run:f682b2a8a0387028620afdf85d9f06d7b1720818a078a00803d8e4f09968ff73` |
+| 14 | `PURCHASED_DEBT_ACTIVITY` | 64 | 76 | 0 | 254 | `gjfafstorev1:run:661c164d6298807f8030cf33ab6772145586360f815aaa6b29aeddbb5c102210` |
+| 15 | `CUSTOMER_DEPOSIT_CLASSIFICATION` | 140 | 0 | 0 | 2.206 | `gjfafstorev1:run:db06abbffa2072b6988c06c6878549a4fff2467ff9751bd55f62f567d966b838` |
+| 16 | `INVESTMENT_SECURITIES` | 140 | 0 | 0 | 2.149 | `gjfafstorev1:run:e53706dab2ac9695d30524070b4568223c99a78fd7a83d9af7d1d65c1b7ba1e1` |
 
-Tại checkpoint này database có đủ đúng mười hai current selection liên tục từ
-Family 1 đến Family 12. Family 13 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng mười sáu current selection liên tục từ
+Family 1 đến Family 16. Family 17 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -175,10 +179,36 @@ Artifact OFFICIAL:
   Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
   nguyên byte.
 
+## Families 13–16 closure
+
+- Family 13 `PROVISION_MOVEMENT_ROLLFORWARD`: `READY=140`, `UNRESOLVED=0`,
+  1.281 mappings. Full selected-frontier/query/candidate SQLite replay, exact
+  period/unit/continuity/equation receipts and the bounded table-repair
+  projection are sealed; Gemini repair uses only the minimal observation
+  contract and all graph/equation decisions remain local code.
+- Family 14 `PURCHASED_DEBT_ACTIVITY`: `READY=64`, `NOT_OBSERVED=76`,
+  `UNRESOLVED=0`, 254 mappings. Exact sibling-component, period, unit and total
+  closures replay from the frozen page store; the 76 absence cases emit no
+  candidate or mapping.
+- Family 15 `CUSTOMER_DEPOSIT_CLASSIFICATION`: `READY=140`, `UNRESOLVED=0`,
+  2.206 mappings. One declarative owner/type/currency/customer resolver handles
+  row/column, stacked, nested and continuation layouts without bank/file/page
+  routing.
+- Family 16 `INVESTMENT_SECURITIES`: `READY=140`, `UNRESOLVED=0`, 2.149
+  mappings and 995 exact closure receipts. The OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family16-investment-securities/sweep.json`,
+  SHA-256
+  `4032d2308683865dec34d17f92558e380dbca0fa7b2ded00460227693c2b2be1`.
+  It replays all 8.947 selected page versions and matches all 112 comparable
+  historical values. Code commit `bc8f164`; cumulative results DB has 16
+  current selections, passes `quick_check` and has no foreign-key failures.
+
 ## Next gate
 
-Family 13 là `PROVISION_MOVEMENT_ROLLFORWARD`. Trước khi chạy family này,
-pipeline phải hoàn thiện các primitive dùng chung cho timeline endpoint-pair,
-period/lane transpose, one-unknown linear inference và bounded OWNER_ABSENT
-repair. Đồng thời document-region fragment composer được phát triển dùng chung
-cho các family nhiều bảng/trang; không tạo engine riêng theo từng ngân hàng.
+Family 17 là `OTHER_LONG_TERM_INVESTMENTS`, bắt đầu tại ReportNormId 862. Giữ
+Gemini ở vai trò source reader với prompt/schema chung tối giản; owner, optional
+children, period/unit, continuation, trailing totals, blank/dash và mapping phải
+được resolver/equation code xử lý. Bắt đầu từ full-corpus indexed census và
+oracle E-0122, sau đó khóa focused/adversarial gates, chạy EXP 140 tài liệu,
+audit độc lập và chỉ promote OFFICIAL khi `UNRESOLVED=0`; không tạo engine hay
+prompt riêng theo từng ngân hàng.
