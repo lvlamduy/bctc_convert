@@ -43,9 +43,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 21 | `INVESTMENT_PROPERTY_ROLLFORWARD` | 12 | 128 | 0 | 105 | `gjfafstorev1:run:b06b23729d51a3282e419de7e607ba394f4b85d2650f925fc808821256396ba1` |
 | 22 | `OTHER_ASSETS` | 78 | 62 | 0 | 1.290 | `gjfafstorev1:run:a405aebffe52ca4a61ece9a918d6ba9af8cab81e34b626ab5278461252b5b531` |
 | 23 | `GOVERNMENT_SBV_LIABILITIES` | 140 | 0 | 0 | 739 | `gjfafstorev1:run:96f56c6a071bd4dca415411ea8073f52e80dace6628d7c59f5295e7a18356dbf` |
+| 24 | `ENTRUSTED_INVESTMENT_RISK_CAPITAL` | 76 | 64 | 0 | 174 | `gjfafstorev1:run:c863cc895b37c038a18bdf1d013f60626394c0256f66efb96dcd5b3be4980351` |
 
-Tại checkpoint này database có đủ đúng hai mươi ba current selection liên tục
-từ Family 1 đến Family 23. Family 24 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng hai mươi bốn current selection liên tục
+từ Family 1 đến Family 24. Family 25 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -356,16 +357,39 @@ Artifact OFFICIAL:
   `quick_check`, has no foreign-key failures or SQLite sidecars, and is sealed
   at SHA-256
   `44c7c33669a940ca1f59fad961390cadfa963798eb883ca3ec918130fdf39d8d`.
+- Family 24 `ENTRUSTED_INVESTMENT_RISK_CAPITAL`: `READY=76`,
+  `NOT_OBSERVED=64`, `UNRESOLVED=0`, 174 mappings và 117 exact closure
+  equations. Cùng generic multi-table hierarchical engine xử lý owner/reset
+  fence, organization/person aggregate, currency branches, self-contained
+  structural-parent labels, multi-line ODA/NHNN programmes và label-only
+  structural group có một hoặc nhiều direct children. Group chỉ được project
+  sau khi source total đóng chính xác trên mọi lane; các currency fragment
+  chung trong family khác không thể tự claim scope. Tất cả graph, period, unit,
+  equation và schema decisions vẫn ở deterministic local code; không thêm
+  prompt Gemini, bank/file/page route hoặc source-value rule. Exact SQLite
+  replay phủ đủ 8.947 selected page versions và dựng lại 76 accepted clusters.
+  E-0075/E-0130 khớp chính xác 16/16 historical dispositions và 26/26 mappings;
+  combined comparator là 42/42 exact. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family24-entrusted-investment-risk-capital/sweep.json`,
+  SHA-256
+  `49e2fdf65c9d6b9f3a99cef34d825d2f1ba3a2b9b787d6ed6a5edb271aefade8`;
+  audit SHA-256
+  `d8cd460e774f16e2a35faf72dc6c6e1e1e850a6cf26aeaa51f9a19187eee519f`.
+  Implementation commit `728c8e4`; 45 focused và 98 focused/adjacent tests,
+  Ruff, format, compile, JSON và diff checks đều xanh. Cumulative results DB
+  có 24 current selections, `quick_check` và foreign keys sạch, không có
+  SQLite sidecar, SHA-256
+  `89b2b316d73726208101dc860bc776803e1dca472260b6eb74a5b2397af73e1c`.
 
 ## Next gate
 
-Family 24 là `ENTRUSTED_INVESTMENT_RISK_CAPITAL` bắt đầu tại ReportNormId 1092.
-Đo mức tái sử dụng của primitive owner/reset-fenced, multi-table và
-aggregate-role hiện có trên full-corpus indexed census 8.947 trang, rồi khóa
-comparator E-0075 và E-0130. Thuật toán phải bao quát owner có hoặc không có số
-note, organization/person aggregate, currency branches, multiline ODA,
-NHNN-programme và explicit residual rows bằng cấu hình khai báo; không đưa
-graph/schema/ReportNormId vào prompt và không route theo bank/file/page. Chỉ
-promote OFFICIAL sau khi exhaustive source inventory, period/unit, equations,
-query/candidate SQLite replay và toàn bộ disposition của 140 tài liệu đều khép
-với `UNRESOLVED=0`.
+Family 25 là `ISSUED_VALUABLE_PAPERS` bắt đầu tại ReportNormId 1100. Đo mức tái
+sử dụng của primitive owner/reset-fenced, multi-table và hierarchical hiện có
+trên full-corpus indexed census 8.947 trang, rồi khóa comparator E-0076 và
+E-0131. Thuật toán phải bao quát instrument parent, tenor children, optional
+valuation/currency columns, printed totals, continuation và source rows có
+tenor rộng hơn schema mà không ép chúng vào leaf hẹp; không đưa graph/schema/
+ReportNormId vào prompt và không route theo bank/file/page. Chỉ promote OFFICIAL
+sau khi exhaustive source inventory, period/unit, equations, query/candidate
+SQLite replay và toàn bộ disposition của 140 tài liệu đều khép với
+`UNRESOLVED=0`.
