@@ -199,3 +199,51 @@ def test_audit_replay_rejects_coherent_axis_and_embedded_schema_drift(
                 "trials": forged_sweep["trials"],
             },
         )
+
+
+def test_release_pins_reject_coherent_local_schema_triplet_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected_ids: list[str] = []
+    monkeypatch.setattr(
+        runner,
+        "PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256",
+        runner.canonical_json_sha256_v1(selected_ids),
+    )
+    sweep = {
+        "metrics": copy.deepcopy(runner.PINNED_INTANGIBLE_RELEASE_METRICS),
+        "specs": {"topology": {"value": {"family_id": "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD"}}},
+    }
+    index = {"corpus_manifest_index_id": runner.PINNED_CORPUS_MANIFEST_INDEX_ID}
+    indexed = {"query_receipt": copy.deepcopy(runner.PINNED_INTANGIBLE_QUERY_RECEIPT)}
+    audit = {
+        "audit_metrics": copy.deepcopy(runner.PINNED_INTANGIBLE_RELEASE_AUDIT_METRICS),
+        "axis_counts": {
+            "clusters": 72,
+            "equations": 1120,
+            "historical_comparator": 155,
+            "mappings": 829,
+        },
+        "axis_sha256": copy.deepcopy(runner.PINNED_INTANGIBLE_RELEASE_AXIS_SHA256),
+        "spec_refs": copy.deepcopy(runner.PINNED_INTANGIBLE_SPEC_REFS),
+    }
+    runner._assert_release_pins(
+        index=index,
+        selected_ids=selected_ids,
+        sweep=sweep,
+        indexed=indexed,
+        audit=audit,
+    )
+
+    audit["spec_refs"]["schema_binding"]["sha256"] = "0" * 64
+    with pytest.raises(
+        runner.RunGeminiJsonFixedAssetRollforwardAccountingFamilyV1Error,
+        match="spec_refs",
+    ):
+        runner._assert_release_pins(
+            index=index,
+            selected_ids=selected_ids,
+            sweep=sweep,
+            indexed=indexed,
+            audit=audit,
+        )

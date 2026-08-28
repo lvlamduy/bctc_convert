@@ -70,13 +70,13 @@ PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
 )
 PINNED_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "0a03a6df504113b139d98c09aa8f020f758f81fb2dbd93c0ac62892dc71adbd3"
+        "f416280d2d9d3a44e6367495d6562d1d70d7fefa5d72ae613f3eca46bf90fb06"
     ),
     "accepted_cluster_count": 72,
     "accepted_control_region_count": 20,
     "accepted_current_region_count": 72,
     "candidate_disposition_axis_sha256": (
-        "fa70db42d9fa6c6e6c10f2e4790c5e61c3b37108bf48512aaeb3ba464a35feb5"
+        "4d065065db35cdd68d3bcc2c15f8288f18ca0a0de44e575e0bf9556ef88766e4"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 68, READY: 72, UNRESOLVED: 0},
@@ -105,10 +105,27 @@ PINNED_RELEASE_AUDIT_METRICS = {
     "mapping_count": 875,
 }
 PINNED_RELEASE_AXIS_SHA256 = {
-    "clusters": "5f2c1f8f7bbe895562f1f5cb9b5f6aad702c1db6c53dc7dae1d79881fb148e19",
+    "clusters": "b569acd21d20f22a226ec25ee1a0c96c341a3ab86baa6b01d62f0ebe3581d57a",
     "equations": "ef463c03e983e32fb4cbdbd4ef440acbf8d5a0b8118c362490d21a9c8a304127",
     "historical_comparator": ("878a47309b237e1bc9dbb2ea03d954c0d966a6d1e607611cc3d8f1035b2466e1"),
     "mappings": "ca4dc6149cfff3a5e0fd84ae0c344f7cde44288508a2e75e5d0d973294dcb413",
+}
+PINNED_TANGIBLE_SPEC_REFS = {
+    "evaluation": {
+        "path": "config/families/tm-tangible-fixed-assets-evaluation-v1.json",
+        "sha256": "d4198171c3dbbf31a8ecb657821222f417265acc154b5b01d5125990d051207a",
+        "size_bytes": 2951,
+    },
+    "schema_binding": {
+        "path": "config/families/tm-tangible-fixed-assets-schema-binding-v1.json",
+        "sha256": "8e7656c268ed2e32f1cfac3390e02e6bb71b52113577a2adb37fe74fa710ffd6",
+        "size_bytes": 1893,
+    },
+    "topology": {
+        "path": "config/families/tm-tangible-fixed-assets-topology-v1.json",
+        "sha256": "7a698e17f3ed4dd6fdbcdd533b0d67963fb8e2dc90115ee7d6c41f9730196420",
+        "size_bytes": 7814,
+    },
 }
 PINNED_HISTORICAL_ORACLES = (
     {
@@ -179,6 +196,96 @@ PINNED_LEASED_RELEASE_AXIS_SHA256 = {
     "equations": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
     "historical_comparator": ("f4f8a10f7deca884492e0423e41d2c4cecd8fd8eadfd281785beac2819dbd1cb"),
     "mappings": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+}
+PINNED_LEASED_SPEC_REFS = {
+    "evaluation": {
+        "path": "config/families/tm-leased-fixed-assets-evaluation-v1.json",
+        "sha256": "8ca849a98a040ea5bef42847055e6f6f3ef04595d34a7c626efbe0f980e6a78d",
+        "size_bytes": 2840,
+    },
+    "schema_binding": {
+        "path": "config/families/tm-leased-fixed-assets-schema-binding-v1.json",
+        "sha256": "39ada7a39e85846a4c5544001e9fdae68bf9b4f59f08cd4c2104dacabee38ead",
+        "size_bytes": 1196,
+    },
+    "topology": {
+        "path": "config/families/tm-leased-fixed-assets-topology-v1.json",
+        "sha256": "15d162e2acb6a2c44f2433298590020deeb198fe11ab9204484ba794510439ee",
+        "size_bytes": 5344,
+    },
+}
+PINNED_INTANGIBLE_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INTANGIBLE_FIXED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0071-intangible-fixed-assets-8bank-codex-verified-mapping-v1.json",
+        "sha256": "d3e5d1a5609108379f3bf2618178e1b8a738e00ef7171b0615fd5bf459e2f172",
+        "size_bytes": 91222,
+    },
+    {
+        "format_version": "ANNUAL_2025_INTANGIBLE_FIXED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0125-annual-2025-intangible-fixed-assets-8bank-codex-verified-mapping-v1.json",
+        "sha256": "60bec8bfed8432e86947d081e66f0cc6eae8f60c07f80db9ac93091e8c9fb11a",
+        "size_bytes": 219131,
+    },
+)
+PINNED_INTANGIBLE_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "d6bf4945b30ed3da8277b9c4308ae538726e2395cc826893c955cc2f8a5cbf1b"
+    ),
+    "accepted_cluster_count": 72,
+    "accepted_control_region_count": 20,
+    "accepted_current_region_count": 72,
+    "candidate_disposition_axis_sha256": (
+        "0fef35ac323f2d16ff10dcc6da897d1539d26f94a58734b51460486f1c85c128"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 68, READY: 72, UNRESOLVED: 0},
+    "query_policy_sha256": "9f37f6f256e2b7d044604b5dfe363b779523f25d83ba6c48c28b0048e57df212",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_INTANGIBLE_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 829,
+    "not_observed_count": 68,
+    "ready_count": 72,
+    "unresolved_count": 0,
+}
+PINNED_INTANGIBLE_RELEASE_AUDIT_METRICS = {
+    "equation_count": 1120,
+    "historical_document_match_count": 16,
+    "historical_value_match_count": 139,
+    "mapping_count": 829,
+}
+PINNED_INTANGIBLE_RELEASE_AXIS_SHA256 = {
+    "clusters": "0114237396f501ce89588454298de40929bb626d2e8967216cec6c562a85503e",
+    "equations": "9e57b971912bf459a603fe7c0af39b429aea04819c06a6edb82640c9d55fedc1",
+    "historical_comparator": "1f0a2c42bef1e6da9c6a8767f11f06a36eb7051a901fe9e9df4818278f0f3077",
+    "mappings": "880fbae7ddc3cee58bbc097d7386d968faa4ec5d7e47c4cfc5289e01e76b1a19",
+}
+PINNED_INTANGIBLE_SPEC_REFS = {
+    "evaluation": {
+        "path": "config/families/tm-intangible-fixed-assets-evaluation-v1.json",
+        "sha256": "37387f6698a606eecb1547768630b62a96361df7c633d25c8d814bb7f5d59890",
+        "size_bytes": 5101,
+    },
+    "schema_binding": {
+        "path": "config/families/tm-intangible-fixed-assets-schema-binding-v1.json",
+        "sha256": "5fab7a4a6701a657e8fcf2ecb450b739c29bbda613d86439a146d0f70da22093",
+        "size_bytes": 2850,
+    },
+    "topology": {
+        "path": "config/families/tm-intangible-fixed-assets-topology-v1.json",
+        "sha256": "2799465474d48da39992a65b238a9434abcb68aa8b967d0f913722eff82654d8",
+        "size_bytes": 16265,
+    },
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
@@ -387,6 +494,8 @@ def _historical_oracles(
         pinned_oracles = PINNED_HISTORICAL_ORACLES
     elif family_id == "LEASED_FIXED_ASSETS_ROLLFORWARD":
         pinned_oracles = PINNED_LEASED_HISTORICAL_ORACLES
+    elif family_id == "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD":
+        pinned_oracles = PINNED_INTANGIBLE_HISTORICAL_ORACLES
     else:
         raise _error("fixed-asset-rollforward release family is not pinned")
     result = []
@@ -738,6 +847,7 @@ def _assert_release_pins(
         pinned_metrics = PINNED_RELEASE_METRICS
         pinned_audit_metrics = PINNED_RELEASE_AUDIT_METRICS
         pinned_axis_sha256 = PINNED_RELEASE_AXIS_SHA256
+        pinned_spec_refs = PINNED_TANGIBLE_SPEC_REFS
         expected_axis_counts = {
             "clusters": 72,
             "equations": 1247,
@@ -749,11 +859,24 @@ def _assert_release_pins(
         pinned_metrics = PINNED_LEASED_RELEASE_METRICS
         pinned_audit_metrics = PINNED_LEASED_RELEASE_AUDIT_METRICS
         pinned_axis_sha256 = PINNED_LEASED_RELEASE_AXIS_SHA256
+        pinned_spec_refs = PINNED_LEASED_SPEC_REFS
         expected_axis_counts = {
             "clusters": 0,
             "equations": 0,
             "historical_comparator": 16,
             "mappings": 0,
+        }
+    elif family_id == "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD":
+        pinned_query_receipt = PINNED_INTANGIBLE_QUERY_RECEIPT
+        pinned_metrics = PINNED_INTANGIBLE_RELEASE_METRICS
+        pinned_audit_metrics = PINNED_INTANGIBLE_RELEASE_AUDIT_METRICS
+        pinned_axis_sha256 = PINNED_INTANGIBLE_RELEASE_AXIS_SHA256
+        pinned_spec_refs = PINNED_INTANGIBLE_SPEC_REFS
+        expected_axis_counts = {
+            "clusters": 72,
+            "equations": 1120,
+            "historical_comparator": 155,
+            "mappings": 829,
         }
     else:
         raise _error("fixed-asset-rollforward release family is not pinned")
@@ -764,6 +887,7 @@ def _assert_release_pins(
         "corpus_manifest_index_id": index.get("corpus_manifest_index_id"),
         "query_receipt": indexed.get("query_receipt"),
         "selected_page_json_frontier_sha256": canonical_json_sha256_v1(list(selected_ids)),
+        "spec_refs": audit.get("spec_refs"),
         "sweep_metrics": sweep.get("metrics"),
     }
     mismatches = []
@@ -779,6 +903,8 @@ def _assert_release_pins(
         mismatches.append("audit_metrics")
     if not same_typed_json_v1(audit.get("axis_sha256"), pinned_axis_sha256):
         mismatches.append("axis_sha256")
+    if not same_typed_json_v1(actual["spec_refs"], pinned_spec_refs):
+        mismatches.append("spec_refs")
     if any(
         actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
     ):

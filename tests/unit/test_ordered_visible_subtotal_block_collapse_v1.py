@@ -174,6 +174,40 @@ def test_already_correct_source_parent_is_also_accepted() -> None:
     assert len(result["block_receipts"]) == 4
 
 
+def test_one_exact_direct_child_is_a_complete_subtotal_frontier() -> None:
+    source = _four_block_source()
+    source["rows"].pop(2)
+    for ordinal, row in enumerate(source["rows"]):
+        row["row_ordinal"] = ordinal
+    source["rows"][0]["cells"] = deepcopy(source["rows"][1]["cells"])
+    removed_row_id = "cost-child-2"
+    source["mappings"] = [
+        mapping for mapping in source["mappings"] if mapping["row_id"] != removed_row_id
+    ]
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "COLLAPSED_EXACT_VISIBLE_SUBTOTAL_BLOCKS"
+    receipt = next(item for item in result["block_receipts"] if item["subtotal_row_id"] == "cost")
+    assert receipt["child_row_ids"] == ["cost-child-1"]
+    assert receipt["selected_frontiers"][0]["selection_mode"] == "SUBTOTAL_FRONTIER"
+
+
+def test_one_direct_child_must_equal_its_visible_subtotal() -> None:
+    source = _four_block_source()
+    source["rows"].pop(2)
+    for ordinal, row in enumerate(source["rows"]):
+        row["row_ordinal"] = ordinal
+    source["mappings"] = [
+        mapping for mapping in source["mappings"] if mapping["row_id"] != "cost-child-2"
+    ]
+
+    result = build_ordered_visible_subtotal_block_collapse_v1(source)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "VISIBLE_SUBTOTAL_SIGNED_SUM_MISMATCH" in result["unresolved_reasons"]
+
+
 def test_parent_sensitive_cost_and_depreciation_children_never_cross() -> None:
     source = _four_block_source()
     result = build_ordered_visible_subtotal_block_collapse_v1(source)

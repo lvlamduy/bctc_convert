@@ -8,9 +8,13 @@ import pytest
 from test_gemini_financial_page_store_v1 import _ingest
 from test_gemini_json_fixed_asset_rollforward_family_v1 import (
     _compiled,
+    _compiled_intangible,
     _compiled_leased,
+    _intangible_page,
+    _intangible_table,
     _leased_page,
     _page,
+    _supplemental_table,
 )
 
 from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
@@ -107,6 +111,44 @@ def _fixture(tmp_path):
                 cluster["component_regions"],
                 control_regions=cluster["control_regions"],
             )
+        ),
+    )
+    trials = [
+        _trial(evidence["selected_document_axis"][0], candidate, READY),
+        _trial(evidence["selected_document_axis"][1], None, NOT_OBSERVED),
+    ]
+    return database, selected, evidence, trials, compiled
+
+
+def _intangible_fixture(tmp_path):
+    database = tmp_path / "intangible-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    target_page = _intangible_page(tables=[_intangible_table(), _supplemental_table()])
+    target = _ingest(database, page_json=target_page)
+    absent = _ingest(
+        database,
+        image_sha256="a" * 64,
+        physical_page=1,
+        prompt_sha256="b" * 64,
+        source_logical_name="intangible-absent.pdf",
+        source_sha256="c" * 64,
+        page_json=_empty_page(),
+    )
+    selected = [target["page_json_version_id"], absent["page_json_version_id"]]
+    compiled = _compiled_intangible()
+    evidence = query_selected_fixed_asset_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected,
+        compiled_specs=compiled,
+    )
+    cluster = evidence["accepted_clusters"][0]
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=cluster["control_regions"],
+        page_json_by_version={target["page_json_version_id"]: target_page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+            cluster["component_regions"], control_regions=cluster["control_regions"]
         ),
     )
     trials = [
@@ -326,4 +368,64 @@ def test_zero_accepted_leased_frontier_rejects_foreign_ready_candidate(tmp_path)
             schema_binding_spec=_json("tm-leased-fixed-assets-schema-binding-v1.json"),
             trials=forged_trials,
             indexed_query_evidence=empty_evidence,
+        )
+
+
+def test_indexed_intangible_query_and_full_candidate_replay_include_supplemental_role(
+    tmp_path,
+) -> None:
+    database, selected, evidence, trials, compiled = _intangible_fixture(tmp_path)
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 1,
+        READY: 1,
+        "UNRESOLVED_GEMINI_JSON_FAMILY": 0,
+    }
+    supplemental = [
+        mapping
+        for mapping in trials[0]["mappings"]
+        if mapping["role"] == "FULLY_AMORTIZED_STILL_IN_USE"
+    ]
+    assert [
+        (mapping["report_norm_id"], mapping["cell"]["coefficient"]) for mapping in supplemental
+    ] == [(6069, 1234)]
+    assert (
+        validate_selected_fixed_asset_rollforward_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=trials,
+        )
+        == trials
+    )
+
+
+def test_sqlite_replay_rejects_coherent_supplemental_source_locator_drift(tmp_path) -> None:
+    database, selected, evidence, trials, compiled = _intangible_fixture(tmp_path)
+    forged = copy.deepcopy(trials)
+    candidate = forged[0]["candidates"][0]
+    observation = candidate["closure_receipt"]["supplemental_disclosure_receipt"]["observations"][0]
+    observation["source_locator"]["table_id"] = "t999"
+    mapping = next(
+        item for item in candidate["mappings"] if item["role"] == "FULLY_AMORTIZED_STILL_IN_USE"
+    )
+    mapping["source_refs"][0]["source_locator"]["table_id"] = "t999"
+    mapping_material = {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+    mapping["item_mapping_id"] = "gjffarimv1:item:" + canonical_json_sha256_v1(mapping_material)
+    candidate_material = {key: value for key, value in candidate.items() if key != "candidate_id"}
+    candidate["candidate_id"] = "gjffarcv1:candidate:" + canonical_json_sha256_v1(
+        candidate_material
+    )
+    forged[0]["selected_candidate_id"] = candidate["candidate_id"]
+    forged[0]["mappings"] = copy.deepcopy(candidate["mappings"])
+    with pytest.raises(
+        GeminiJsonFixedAssetRollforwardFamilyV1Error,
+        match="candidate does not replay exactly",
+    ):
+        validate_selected_fixed_asset_rollforward_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=forged,
         )

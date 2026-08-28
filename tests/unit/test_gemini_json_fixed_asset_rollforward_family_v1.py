@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from bctc_ai.evaluation import gemini_json_fixed_asset_rollforward_family_v1 as fixed_asset_v1
 from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
     NOT_OBSERVED,
     READY,
@@ -43,6 +44,19 @@ def _compiled_leased():
                 "config/families/tm-leased-fixed-assets-topology-v1.json",
                 "config/families/tm-leased-fixed-assets-evaluation-v1.json",
                 "config/families/tm-leased-fixed-assets-schema-binding-v1.json",
+            )
+        ]
+    )
+
+
+def _compiled_intangible():
+    return compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
+        *[
+            json.loads((ROOT / path).read_bytes())
+            for path in (
+                "config/families/tm-intangible-fixed-assets-topology-v1.json",
+                "config/families/tm-intangible-fixed-assets-evaluation-v1.json",
+                "config/families/tm-intangible-fixed-assets-schema-binding-v1.json",
             )
         ]
     )
@@ -205,6 +219,64 @@ def _leased_page(*, owner="Tài sản cố định thuê tài chính"):
     page = _page(_leased_table())
     page["sections"][0]["title_exact"] = owner
     return page
+
+
+def _intangible_table(*, current_year=2025, subtotal=False):
+    table = _table(current_year=current_year, subtotal=subtotal)
+    table["columns"][0]["header_path_exact"] = ["Phần mềm máy tính", "Triệu VND"]
+    table["columns"][1]["header_path_exact"] = ["Quyền sử dụng đất", "Triệu VND"]
+    table["title_exact"] = f"Tài sản cố định vô hình năm {current_year}"
+    return table
+
+
+def _supplemental_table(*, current="1.234", comparative="1.000", unit="Triệu VND"):
+    return {
+        "columns": [
+            {"header_path_exact": ["31/12/2025"], "value_kind": "MONEY"},
+            {"header_path_exact": ["31/12/2024"], "value_kind": "MONEY"},
+        ],
+        "continuation": "NONE",
+        "rows": [
+            {
+                "hierarchy_path_exact": [
+                    "Nguyên giá TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng"
+                ],
+                "label_exact": "Nguyên giá TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng",
+                "row_kind": "ITEM",
+                "values_exact": [current, comparative],
+            }
+        ],
+        "title_exact": "TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng",
+        "unit_exact": unit,
+    }
+
+
+def _intangible_page(*, tables=None, narratives=None):
+    page = _page(_intangible_table())
+    section = page["sections"][0]
+    section["title_exact"] = "Tài sản cố định vô hình"
+    section["tables"] = [_intangible_table()] if tables is None else tables
+    section["narratives_exact"] = [] if narratives is None else narratives
+    return page
+
+
+def _intangible_candidate(page):
+    compiled = _compiled_intangible()
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+        cluster["component_regions"], control_regions=cluster["control_regions"]
+    )
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=cluster["control_regions"],
+        page_json_by_version={cluster["component_regions"][0]["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, receipt, candidate
 
 
 def _page_record(page_json, *, selected_page_ordinal=1, physical_page=10):
@@ -620,6 +692,237 @@ def test_finance_lease_policy_text_is_not_a_fixed_asset_owner():
         page_records=[_page_record(page)], compiled_specs=_compiled_leased()
     )
     assert cluster["status"] == NOT_OBSERVED
+
+
+def test_intangible_supplemental_table_maps_only_current_period_value():
+    page = _intangible_page(tables=[_intangible_table(), _supplemental_table()])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == READY
+    supplemental = [
+        item for item in candidate["mappings"] if item["role"] == "FULLY_AMORTIZED_STILL_IN_USE"
+    ]
+    assert [(item["report_norm_id"], item["cell"]["coefficient"]) for item in supplemental] == [
+        (6069, 1234)
+    ]
+    assert supplemental[0]["source_refs"][0]["source_locator"]["column_id"] == "c1"
+
+
+def test_supplemental_row_inside_core_table_is_consumed_without_hiding_core_graph():
+    table = _intangible_table()
+    table["rows"].append(
+        {
+            "hierarchy_path_exact": [
+                "Nguyên giá TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng"
+            ],
+            "label_exact": "Nguyên giá TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng",
+            "row_kind": "ITEM",
+            "values_exact": ["100", "200", "300"],
+        }
+    )
+    page = _intangible_page(tables=[table])
+    _compiled_specs, cluster, _receipt, candidate = _intangible_candidate(page)
+    assert cluster["component_regions"][0]["table_id"] == "t1"
+    assert candidate["status"] == READY
+    mapping = next(
+        item for item in candidate["mappings"] if item["role"] == "FULLY_AMORTIZED_STILL_IN_USE"
+    )
+    assert mapping["cell"]["coefficient"] == 300
+    assert mapping["source_refs"][0]["source_locator"]["column_id"] == "c3"
+
+
+def test_intangible_supplemental_narrative_is_projected_by_local_algorithm():
+    narrative = (
+        "Tại ngày 31/12/2025, nguyên giá của các tài sản cố định vô hình "
+        "đã khấu hao hết nhưng vẫn còn sử dụng là 1.234 triệu VND."
+    )
+    page = _intangible_page(narratives=[narrative])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    mapping = next(
+        item for item in candidate["mappings"] if item["role"] == "FULLY_AMORTIZED_STILL_IN_USE"
+    )
+    assert candidate["status"] == READY
+    assert mapping["cell"]["coefficient"] == 1234
+    assert mapping["source_refs"][0]["source_kind"] == "DATED_NARRATIVE_CURRENT_VALUE"
+
+
+def test_intangible_supplemental_narrative_conflicting_unit_fails_closed():
+    narrative = (
+        "Tại ngày 31/12/2025, nguyên giá của các tài sản cố định vô hình "
+        "đã khấu hao hết nhưng vẫn còn sử dụng là 1.234 tỷ VND."
+    )
+    page = _intangible_page(narratives=[narrative])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "SUPPLEMENTAL_NARRATIVE_UNIT_NOT_UNIQUE_OR_CONFLICTING:"
+        "FULLY_AMORTIZED_STILL_IN_USE" in candidate["reasons"]
+    )
+
+
+def test_intangible_conflicting_duplicate_supplemental_values_fail_closed():
+    page = _intangible_page(
+        tables=[
+            _intangible_table(),
+            _supplemental_table(current="1.234"),
+            _supplemental_table(current="1.235"),
+        ]
+    )
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "SUPPLEMENTAL_DISCLOSURE_VALUES_CONFLICT:FULLY_AMORTIZED_STILL_IN_USE"
+        in candidate["reasons"]
+    )
+
+
+def test_supplemental_table_conflicting_dates_on_one_column_fail_closed():
+    supplemental = _supplemental_table()
+    supplemental["columns"][0]["header_path_exact"] = ["31/12/2025", "31/12/2024"]
+    page = _intangible_page(tables=[_intangible_table(), supplemental])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "SUPPLEMENTAL_TABLE_PERIOD_EVIDENCE_CONFLICT:FULLY_AMORTIZED_STILL_IN_USE"
+        in candidate["reasons"]
+    )
+
+
+def test_supplemental_table_cannot_fallback_when_only_comparative_period_is_visible():
+    supplemental = _supplemental_table()
+    supplemental["columns"][0]["header_path_exact"] = ["Nguyên giá", "31/12/2024"]
+    supplemental["columns"][1]["header_path_exact"] = ["31/12/2023"]
+    page = _intangible_page(tables=[_intangible_table(), supplemental])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert (
+        "SUPPLEMENTAL_TABLE_CURRENT_PERIOD_NOT_VISIBLE:FULLY_AMORTIZED_STILL_IN_USE"
+        in candidate["reasons"]
+    )
+
+
+def test_generic_other_role_uses_visible_subtotal_ancestor_direction():
+    table = _intangible_table(subtotal=True)
+    other = next(
+        row
+        for row in table["rows"]
+        if row["label_exact"] == "Tăng khác" and row["hierarchy_path_exact"][0] == "Nguyên giá"
+    )
+    other["label_exact"] = "Khác"
+    other["hierarchy_path_exact"] = ["Nguyên giá", "Tăng trong kỳ", "Khác"]
+    purchase = next(
+        row
+        for row in table["rows"]
+        if row["label_exact"] == "Mua trong kỳ" and row["hierarchy_path_exact"][0] == "Nguyên giá"
+    )
+    purchase["hierarchy_path_exact"] = ["Nguyên giá", "Tăng trong kỳ", "Mua trong kỳ"]
+    page = _intangible_page(tables=[table])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == READY
+    assert any(item["role"] == "COST_OTHER_INCREASE" for item in candidate["mappings"])
+
+
+def test_declared_direct_role_fallback_uses_structure_not_document_routing():
+    table = _intangible_table()
+    movement = next(row for row in table["rows"] if row["label_exact"] == "Mua trong kỳ")
+    movement["label_exact"] = "Phân loại lại"
+    movement["hierarchy_path_exact"] = ["Nguyên giá", "Phân loại lại"]
+    page = _intangible_page(tables=[table])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == READY
+    assert any(item["role"] == "COST_OTHER_NET" for item in candidate["mappings"])
+    assert not any(item["role"] == "COST_RECLASSIFICATION" for item in candidate["mappings"])
+
+    compiled = _compiled_intangible()
+    row = _row(
+        "Phân loại lại",
+        "Nguyên giá",
+        ["10", "20", "30"],
+        path=["Nguyên giá", "Giảm trong kỳ", "Phân loại lại"],
+    )
+    layout = fixed_asset_v1._branch_layout_for_row(row, compiled_specs=compiled)
+    assert layout is not None
+    assert fixed_asset_v1._role_for_row(row, layout, compiled_specs=compiled) == (
+        "COST_RECLASSIFICATION"
+    )
+
+
+def test_direct_fallback_does_not_merge_a_separate_explicit_fallback_population():
+    table = _intangible_table()
+    movement = next(row for row in table["rows"] if row["label_exact"] == "Mua trong kỳ")
+    movement["label_exact"] = "Phân loại lại"
+    movement["hierarchy_path_exact"] = ["Nguyên giá", "Phân loại lại"]
+    ending_index = next(
+        index
+        for index, row in enumerate(table["rows"])
+        if row["label_exact"] == "Tại ngày 31 tháng 12 năm 2025"
+        and row["hierarchy_path_exact"][0] == "Nguyên giá"
+    )
+    table["rows"].insert(
+        ending_index,
+        _row("Biến động khác", "Nguyên giá", ["-", "-", "-"]),
+    )
+    page = _intangible_page(tables=[table])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == READY
+    assert {item["role"] for item in candidate["mappings"]} >= {
+        "COST_OTHER_NET",
+        "COST_RECLASSIFICATION",
+    }
+    assert candidate["closure_receipt"]["table_receipt"]["direct_role_fallback_receipts"] == []
+
+
+def test_exact_one_child_visible_subtotal_is_a_valid_frontier():
+    table = _intangible_table(subtotal=True)
+    table["rows"] = [
+        row
+        for row in table["rows"]
+        if not (
+            row["label_exact"] == "Tăng khác" and row["hierarchy_path_exact"][0] == "Nguyên giá"
+        )
+    ]
+    for row in table["rows"]:
+        if row["label_exact"] == "Tăng trong kỳ" and row["hierarchy_path_exact"][0] == "Nguyên giá":
+            row["values_exact"] = ["4", "6", "10"]
+        elif row["label_exact"] == "Tại ngày 31 tháng 12 năm 2025":
+            branch = row["hierarchy_path_exact"][0]
+            if branch == "Nguyên giá":
+                row["values_exact"] = ["104", "206", "310"]
+            elif branch == "Giá trị còn lại":
+                row["values_exact"] = ["82", "162", "244"]
+    page = _intangible_page(tables=[table])
+    _compiled_specs, _cluster, _receipt, candidate = _intangible_candidate(page)
+    assert candidate["status"] == READY
+    blocks = candidate["closure_receipt"]["subtotal_collapse"]["block_receipts"]
+    assert any(len(block["child_row_ids"]) == 1 for block in blocks)
+
+
+def test_money_normalizer_accepts_repeated_dash_and_one_ocr_glyph_only():
+    locator = {"column_id": "c1", "row_id": "r1"}
+    repeated_dash = fixed_asset_v1._money("-\n-", source_locator=locator)
+    contaminated_number = fixed_asset_v1._money("(18.000)单", source_locator=locator)
+    assert (repeated_dash["state"], repeated_dash["coefficient"]) == ("DASH_ZERO", 0)
+    assert contaminated_number["coefficient"] == -18000
+    with pytest.raises(
+        GeminiJsonFixedAssetRollforwardFamilyV1Error,
+        match="money text is not one exact signed integer",
+    ):
+        fixed_asset_v1._money("100triệu", source_locator=locator)
+
+
+def test_two_period_tables_under_one_section_select_by_endpoint_period():
+    page = _intangible_page(
+        tables=[_intangible_table(current_year=2025), _intangible_table(current_year=2024)]
+    )
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled_intangible()
+    )
+    assert cluster["status"] == READY
+    assert cluster["component_regions"][0]["period_end_date"] == "2025-12-31"
+    assert cluster["control_regions"][0]["period_end_date"] == "2024-12-31"
 
 
 def test_coherent_candidate_mapping_tamper_rejects_exact_page_replay():

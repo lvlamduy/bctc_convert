@@ -16,6 +16,7 @@ without changing the algorithm or the provider prompt boundary.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import date
@@ -53,8 +54,8 @@ UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_FIXED_ASSET_OWNER_HEADER_"
     "CONFIGURED_BRANCH_CURRENT_PERIOD_TOTAL_COLUMN_ALL_ROW_HORIZONTAL_SIGNED_"
-    "BRANCH_OPTIONAL_CARRYING_CONTROL_VISIBLE_SUBTOTAL_AND_UNIQUE_ALL_EQUATION_"
-    "WIDTH_SEAL_SCHEMA_"
+    "BRANCH_OPTIONAL_CARRYING_CONTROL_AND_CONFIGURED_SUPPLEMENTAL_DISCLOSURE_"
+    "CURRENT_PERIOD_VISIBLE_SUBTOTAL_AND_UNIQUE_ALL_EQUATION_WIDTH_SEAL_SCHEMA_"
     "MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_OCR_BANK_FILE_PAGE_NOTE_VALUE_OR_PROMPT_"
     "ROUTING_CANONICAL_SQLITE_QUERY_AND_CANDIDATE_REPLAY_REQUIRED_FOR_PERSISTENCE"
 )
@@ -69,6 +70,7 @@ _DATE_DMY = re.compile(
     r"([01]?\d)(?:[./-]|\s+(?:nam\s+)?)((?:19|20)\d{2})(?!\d)"
 )
 _DASHES = {"-", "_", "–", "—", "−"}
+_GROUPED_MONEY = re.compile(r"(?<!\d)\(?\d{1,3}(?:[.\s]\d{3})+\)?(?!\d)")
 _BRANCH_KINDS = {"SIGNED_ADDITIVE", "COST_AND_DEPRECIATION_CONTROL"}
 _CLOSURE_POLICIES = {
     "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT",
@@ -164,9 +166,11 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "subtotal_policy",
         "total_column_aliases",
     }
+    optional_evaluation_fields = {"direct_role_fallbacks", "supplemental_disclosure_roles"}
     if (
         type(evaluation_spec) is not dict
-        or set(evaluation_spec) != evaluation_fields
+        or not evaluation_fields <= set(evaluation_spec)
+        or set(evaluation_spec) - evaluation_fields - optional_evaluation_fields
         or evaluation_spec.get("format_version") != EVALUATION_FORMAT_VERSION
         or evaluation_spec.get("family_id") != topology["family_id"]
         or evaluation_spec.get("closure_policy") not in _CLOSURE_POLICIES
@@ -193,6 +197,56 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
     )
     units, unit_by_alias = _compile_units(evaluation_spec["money_unit_bindings"])
     child_by_role = {child["role"]: child for child in topology["children"]}
+    direct_role_fallback_by_role = {}
+    raw_direct_role_fallbacks = evaluation_spec.get("direct_role_fallbacks", [])
+    if type(raw_direct_role_fallbacks) is not list:
+        raise _error("fixed-asset direct-role fallback axis is invalid")
+    for raw in raw_direct_role_fallbacks:
+        if (
+            type(raw) is not dict
+            or set(raw) != {"fallback_role", "source_role"}
+            or raw["source_role"] not in child_by_role
+            or raw["fallback_role"] not in child_by_role
+            or raw["source_role"] in direct_role_fallback_by_role
+            or raw["source_role"] == raw["fallback_role"]
+        ):
+            raise _error("fixed-asset direct-role fallback drifted")
+        direct_role_fallback_by_role[raw["source_role"]] = raw["fallback_role"]
+    supplemental_disclosure_roles = []
+    supplemental_role_names = set()
+    raw_supplemental_roles = evaluation_spec.get("supplemental_disclosure_roles", [])
+    if type(raw_supplemental_roles) is not list:
+        raise _error("fixed-asset supplemental disclosure role axis is invalid")
+    for raw in raw_supplemental_roles:
+        if (
+            type(raw) is not dict
+            or set(raw) != {"aliases", "required_token_groups", "role", "value_header_aliases"}
+            or raw.get("role") not in child_by_role
+            or raw["role"] in supplemental_role_names
+            or type(raw["required_token_groups"]) is not list
+            or not raw["required_token_groups"]
+        ):
+            raise _error("fixed-asset supplemental disclosure role drifted")
+        supplemental_role_names.add(raw["role"])
+        supplemental_disclosure_roles.append(
+            {
+                "aliases": _normalized_aliases(
+                    raw["aliases"], label=raw["role"] + " supplemental disclosure"
+                ),
+                "required_token_groups": [
+                    _normalized_aliases(
+                        group,
+                        label=raw["role"] + f" supplemental token group {ordinal}",
+                    )
+                    for ordinal, group in enumerate(raw["required_token_groups"], start=1)
+                ],
+                "role": raw["role"],
+                "value_header_aliases": _normalized_aliases(
+                    raw["value_header_aliases"],
+                    label=raw["role"] + " supplemental value header",
+                ),
+            }
+        )
     branch_layouts = []
     branch_roles: set[str] = set()
     endpoint_roles: set[str] = set()
@@ -306,9 +360,23 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         bindings[raw["role"]] = raw["report_norm_id"]
         output_role_order.append(raw["role"])
         seen_ids.add(raw["report_norm_id"])
-    if endpoint_roles - set(bindings) or subtotal_roles - set(bindings):
+    if (
+        endpoint_roles - set(bindings)
+        or subtotal_roles - set(bindings)
+        or supplemental_role_names - set(bindings)
+    ):
         raise _error("fixed-asset endpoint/subtotal schema frontier is incomplete")
     role_aliases = {role: _aliases(child) for role, child in child_by_role.items()}
+    role_matchers = {
+        role: [
+            {
+                "aliases": [_normalized(alias) for alias in matcher["aliases"]],
+                "within_role": matcher["within_role"],
+            }
+            for matcher in child["matchers"]
+        ]
+        for role, child in child_by_role.items()
+    }
     output_roles_by_branch = {}
     for layout in branch_layouts:
         prefix = (
@@ -320,12 +388,24 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         if set((layout["opening_role"], layout["ending_role"])) - set(roles):
             raise _error("fixed-asset branch output role frontier drifted")
         output_roles_by_branch[layout["branch_role"]] = roles
+    role_branch = {
+        role: branch_role for branch_role, roles in output_roles_by_branch.items() for role in roles
+    }
+    if any(
+        source_role not in role_branch
+        or fallback_role not in role_branch
+        or role_branch[source_role] != role_branch[fallback_role]
+        for source_role, fallback_role in direct_role_fallback_by_role.items()
+    ):
+        raise _error("fixed-asset direct-role fallback crosses a branch boundary")
     evaluation = {
         **canonical_clone_v1(evaluation_spec),
         "asset_header_aliases": asset_aliases,
         "branch_layouts": branch_layouts,
+        "direct_role_fallback_by_role": direct_role_fallback_by_role,
         "header_hard_negative_aliases": hard_negative_aliases,
         "money_unit_bindings": units,
+        "supplemental_disclosure_roles": supplemental_disclosure_roles,
         "total_column_aliases": total_aliases,
     }
     schema = canonical_clone_v1(schema_binding_spec)
@@ -340,6 +420,10 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "structural_reset_aliases": canonical_clone_v1(topology["structural_reset_aliases"]),
         "total_column_aliases": total_aliases,
     }
+    if supplemental_disclosure_roles:
+        query_policy["supplemental_disclosure_roles"] = canonical_clone_v1(
+            supplemental_disclosure_roles
+        )
     return {
         "bindings": bindings,
         "claim_boundary": CLAIM_BOUNDARY,
@@ -349,6 +433,7 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "output_roles_by_branch": output_roles_by_branch,
         "query_policy": query_policy,
         "role_aliases": role_aliases,
+        "role_matchers": role_matchers,
         "schema": schema,
         "topology": topology,
         "unit_binding_by_alias": unit_by_alias,
@@ -439,6 +524,29 @@ def _owner_visible(
     )
 
 
+def _supplemental_disclosure_role_hits(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> list[str]:
+    surfaces = [table.get("title_exact")]
+    rows = table.get("rows")
+    if type(rows) is list:
+        surfaces.extend(row.get("label_exact") for row in rows if type(row) is dict)
+    return sorted(
+        {
+            disclosure["role"]
+            for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+            if any(_supplemental_surface_matches(surface, disclosure) for surface in surfaces)
+        }
+    )
+
+
+def _supplemental_surface_matches(value: Any, disclosure: Mapping[str, Any]) -> bool:
+    return any(_contains_alias(value, alias) for alias in disclosure["aliases"]) or all(
+        any(_contains_alias(value, alias) for alias in group)
+        for group in disclosure["required_token_groups"]
+    )
+
+
 def _branch_layout_for_row(
     row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any] | None:
@@ -488,22 +596,63 @@ def _role_for_row(
     endpoint = _endpoint_role(row.get("label_exact"), layout, compiled_specs=compiled_specs)
     if endpoint is not None:
         return endpoint
+    path = row.get("hierarchy_path_exact")
+    ancestors = path[:-1] if type(path) is list else []
     candidates = []
     for role in compiled_specs["output_roles_by_branch"][layout["branch_role"]]:
         if role in {layout["opening_role"], layout["ending_role"]}:
             continue
-        matching_aliases = [
-            alias
-            for alias in compiled_specs["role_aliases"][role]
-            if _contains_alias(row.get("label_exact"), alias)
-        ]
+        matching_aliases = []
+        for matcher in compiled_specs["role_matchers"][role]:
+            within_role = matcher["within_role"]
+            if within_role not in {None, layout["branch_role"]} and not any(
+                _contains_alias(surface, alias)
+                for surface in ancestors
+                for alias in compiled_specs["role_aliases"].get(within_role, [])
+            ):
+                continue
+            matching_aliases.extend(
+                alias
+                for alias in matcher["aliases"]
+                if _contains_alias(row.get("label_exact"), alias)
+            )
         if matching_aliases:
             candidates.append((max(map(len, matching_aliases)), role))
     if not candidates:
         return None
     longest = max(item[0] for item in candidates)
     roles = {role for length, role in candidates if length == longest}
+    ancestor_subtotal_roles = _visible_subtotal_ancestor_roles(
+        row, layout, compiled_specs=compiled_specs
+    )
+    directions = {
+        direction
+        for direction in ("INCREASE", "DECREASE")
+        if any(role.endswith("_" + direction) for role in ancestor_subtotal_roles)
+    }
+    if len(roles) > 1 and len(directions) == 1:
+        direction = next(iter(directions))
+        roles = {role for role in roles if role.endswith("_" + direction)}
     return next(iter(roles)) if len(roles) == 1 else None
+
+
+def _visible_subtotal_ancestor_roles(
+    row: Mapping[str, Any],
+    layout: Mapping[str, Any],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> set[str]:
+    path = row.get("hierarchy_path_exact")
+    ancestors = path[:-1] if type(path) is list else []
+    return {
+        subtotal_role
+        for subtotal_role in layout["subtotal_roles"]
+        if any(
+            _contains_alias(surface, alias)
+            for surface in ancestors
+            for alias in compiled_specs["role_aliases"][subtotal_role]
+        )
+    }
 
 
 def _table_period_receipt(
@@ -525,30 +674,31 @@ def _table_period_receipt(
                 ending_dates.update(_surface_dates(row.get("label_exact")))
     local_governed_dates = {
         item
-        for surface in [
-            table.get("title_exact"),
-            *(section.get("narratives_exact") or []),
-        ]
+        for surface in [table.get("title_exact")]
         if (item := _governed_period_end_from_surface(surface)) is not None
     }
     section_context_dates = {
         item
-        for surface in [section.get("title_exact")]
+        for surface in [section.get("title_exact"), *(section.get("narratives_exact") or [])]
         if (item := _governed_period_end_from_surface(surface)) is not None
     }
     # Table-local narratives and endpoint rows outrank a page/section report
     # heading.  This lets a comparative table retain its prior-year date when
     # it appears under a current-period report header, while still rejecting
     # contradictions inside the table's own source boundary.
-    distinct_dates = ending_dates | local_governed_dates
-    if not distinct_dates:
-        distinct_dates = section_context_dates
-    if len(distinct_dates) > 1:
+    local_dates = ending_dates | local_governed_dates
+    if len(local_dates) > 1:
         status = "CONFLICTING_SOURCE_VISIBLE_PERIOD_END_DATES"
         period_end_date = None
-    elif len(distinct_dates) == 1:
+    elif len(local_dates) == 1:
         status = "UNIQUE_SOURCE_VISIBLE_PERIOD_END_DATE"
-        period_end_date = next(iter(distinct_dates)).isoformat()
+        period_end_date = next(iter(local_dates)).isoformat()
+    elif len(section_context_dates) == 1:
+        status = "UNIQUE_SECTION_CONTEXT_PERIOD_END_DATE"
+        period_end_date = next(iter(section_context_dates)).isoformat()
+    elif len(section_context_dates) > 1:
+        status = "MULTIPLE_SECTION_CONTEXT_PERIOD_END_DATES_REQUIRE_TABLE_RELATION"
+        period_end_date = None
     else:
         status = "NO_EXACT_PERIOD_END_DATE"
         period_end_date = None
@@ -601,6 +751,11 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     for ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
             continue
+        if any(
+            _supplemental_surface_matches(row.get("label_exact"), disclosure)
+            for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+        ):
+            continue
         values = row.get("values_exact")
         has_money = type(values) is list and any(
             index - 1 < len(values) and values[index - 1] not in {None, ""}
@@ -638,12 +793,19 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
             for ordinal in money_ordinals
         )
     )
+    supplemental_disclosure_roles = _supplemental_disclosure_role_hits(
+        table, compiled_specs=compiled_specs
+    )
+    supplemental_only_control = bool(
+        supplemental_disclosure_roles and branch_hits != required_branches
+    )
     # A section owner can legitimately govern a two-period informational
     # control table (for example fully-depreciated assets).  Such a table is
     # not a roll-forward fragment.
     min_headers = compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
     has_family_signal = bool(
         not two_period_non_rollforward_control
+        and not supplemental_only_control
         and (
             (owner and (family_header_ordinals or branch_hits))
             or (
@@ -976,7 +1138,14 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
         current = complete[0]
     elif len(complete) > 1:
         period_dates = [item["classification"]["period_end_date"] for item in complete]
-        if not any(value is None for value in period_dates):
+        local_periods = all(
+            item["classification"]["period_receipt"]["status"]
+            == "UNIQUE_SOURCE_VISIBLE_PERIOD_END_DATE"
+            for item in complete
+        )
+        if not any(value is None for value in period_dates) and (
+            len(set(period_dates)) > 1 or local_periods
+        ):
             latest = max(period_dates)
             selected = [
                 item for item in complete if item["classification"]["period_end_date"] == latest
@@ -1238,13 +1407,19 @@ def _money(value: Any, *, source_locator: Mapping[str, Any]) -> dict[str, Any]:
             "source_text": source_text,
             "state": "BLANK",
         }
-    if text in _DASHES:
+    if text in _DASHES or (
+        any(character in _DASHES for character in text)
+        and all(character in _DASHES or character.isspace() for character in text)
+    ):
         return {
             "coefficient": 0,
             "source_locator": canonical_clone_v1(source_locator),
             "source_text": source_text,
             "state": "DASH_ZERO",
         }
+    suffix = re.fullmatch(r"(.+?)([^\x00-\x7f])", text)
+    if suffix is not None and unicodedata.category(suffix.group(2)) == "Lo":
+        text = suffix.group(1).strip()
     negative = text.startswith("(") and text.endswith(")")
     if negative:
         text = text[1:-1].strip()
@@ -1376,6 +1551,322 @@ def _unit_axis(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -
     }
 
 
+def _dated_money_pairs(value: Any) -> list[tuple[date, str]]:
+    folded = _normalized(value)
+    if not folded:
+        return []
+    date_matches = []
+    for match in _DATE_DMY.finditer(folded):
+        try:
+            parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        except ValueError:
+            continue
+        date_matches.append((match.start(), match.end(), parsed))
+    money_matches = [
+        match
+        for match in _GROUPED_MONEY.finditer(folded)
+        if not any(start <= match.start() < end for start, end, _parsed in date_matches)
+    ]
+    result = []
+    for index, (_start, end, parsed) in enumerate(date_matches):
+        next_start = date_matches[index + 1][0] if index + 1 < len(date_matches) else len(folded)
+        candidates = [match for match in money_matches if end <= match.start() < next_start]
+        if candidates:
+            result.append((parsed, candidates[0].group(0)))
+    return result
+
+
+def _surface_unit_bindings(
+    value: Any, *, compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    folded = _normalized(value)
+    occurrences = [
+        (match.start(), match.end(), alias)
+        for alias in compiled_specs["unit_binding_by_alias"]
+        for match in re.finditer(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded)
+    ]
+    maximal = [
+        occurrence
+        for occurrence in occurrences
+        if not any(
+            other[0] <= occurrence[0]
+            and occurrence[1] <= other[1]
+            and other[1] - other[0] > occurrence[1] - occurrence[0]
+            for other in occurrences
+        )
+    ]
+    return [
+        canonical_clone_v1(compiled_specs["unit_binding_by_alias"][alias])
+        for _start, _end, alias in sorted(maximal)
+    ]
+
+
+def _supplemental_disclosure_projection(
+    *,
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    region: Mapping[str, Any],
+    bound_unit: str | None,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    disclosures = compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+    if not disclosures:
+        return {"mappings": [], "observations": [], "reasons": []}
+    current_date = date.fromisoformat(region["period_end_date"])
+    observations = []
+    reasons = []
+
+    def append_observation(
+        *, role: str, source_kind: str, source_locator: Mapping[str, Any], source_text: str
+    ) -> None:
+        try:
+            cell = _money(source_text, source_locator=source_locator)
+        except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+            reasons.append(f"SUPPLEMENTAL_DISCLOSURE_MONEY_INVALID:{role}")
+            return
+        if cell["state"] == "BLANK":
+            reasons.append(f"SUPPLEMENTAL_DISCLOSURE_CURRENT_VALUE_IS_BLANK:{role}")
+            return
+        observations.append(
+            {
+                "bound_unit": bound_unit,
+                "cell": cell,
+                "role": role,
+                "source_kind": source_kind,
+                "source_locator": canonical_clone_v1(source_locator),
+            }
+        )
+
+    for page_json_version_id, page_json in page_json_by_version.items():
+        sections = page_json.get("sections")
+        if type(sections) is not list:
+            continue
+        for section_ordinal, section in enumerate(sections, start=1):
+            if type(section) is not dict:
+                continue
+            narratives = section.get("narratives_exact")
+            if type(narratives) is list:
+                for narrative_ordinal, narrative in enumerate(narratives, start=1):
+                    if type(narrative) is not str:
+                        continue
+                    for disclosure in disclosures:
+                        if not _supplemental_surface_matches(narrative, disclosure):
+                            continue
+                        pairs = [
+                            token
+                            for parsed, token in _dated_money_pairs(narrative)
+                            if parsed == current_date
+                        ]
+                        if len(pairs) != 1:
+                            reasons.append(
+                                "SUPPLEMENTAL_NARRATIVE_CURRENT_VALUE_NOT_UNIQUE:"
+                                + disclosure["role"]
+                            )
+                            continue
+                        unit_bindings = _surface_unit_bindings(
+                            narrative, compiled_specs=compiled_specs
+                        )
+                        unit_identities = {
+                            (item["accepted"], item["canonical_unit"]) for item in unit_bindings
+                        }
+                        if len(unit_identities) != 1 or next(iter(unit_identities)) != (
+                            True,
+                            bound_unit,
+                        ):
+                            reasons.append(
+                                "SUPPLEMENTAL_NARRATIVE_UNIT_NOT_UNIQUE_OR_CONFLICTING:"
+                                + disclosure["role"]
+                            )
+                            continue
+                        append_observation(
+                            role=disclosure["role"],
+                            source_kind="DATED_NARRATIVE_CURRENT_VALUE",
+                            source_locator={
+                                "narrative_ordinal": narrative_ordinal,
+                                "page_json_version_id": page_json_version_id,
+                                "section_id": f"s{section_ordinal}",
+                            },
+                            source_text=pairs[0],
+                        )
+            tables = section.get("tables")
+            if type(tables) is not list:
+                continue
+            for table_ordinal, table in enumerate(tables, start=1):
+                if type(table) is not dict:
+                    continue
+                columns = table.get("columns")
+                rows = table.get("rows")
+                if type(columns) is not list or type(rows) is not list:
+                    continue
+                money_ordinals = [
+                    ordinal
+                    for ordinal, column in enumerate(columns, start=1)
+                    if type(column) is dict and column.get("value_kind") == "MONEY"
+                ]
+                table_title = table.get("title_exact")
+                for disclosure in disclosures:
+                    title_hit = _supplemental_surface_matches(table_title, disclosure)
+                    matched_rows = []
+                    for row_ordinal, row in enumerate(rows, start=1):
+                        if type(row) is not dict:
+                            continue
+                        row_hit = _supplemental_surface_matches(row.get("label_exact"), disclosure)
+                        dated_title_row = bool(
+                            title_hit and current_date in _surface_dates(row.get("label_exact"))
+                        )
+                        if row_hit or dated_title_row or (title_hit and len(rows) == 1):
+                            matched_rows.append((row_ordinal, row))
+                    if not matched_rows:
+                        continue
+                    unit_axis = _unit_axis(table, compiled_specs=compiled_specs)
+                    if unit_axis["reasons"]:
+                        reasons.append("SUPPLEMENTAL_DISCLOSURE_UNIT_INVALID:" + disclosure["role"])
+                        continue
+                    if (
+                        unit_axis["canonical_unit"] is not None
+                        and bound_unit is not None
+                        and unit_axis["canonical_unit"] != bound_unit
+                    ):
+                        reasons.append(
+                            "SUPPLEMENTAL_DISCLOSURE_UNIT_CONFLICT:" + disclosure["role"]
+                        )
+                        continue
+                    for row_ordinal, row in matched_rows:
+                        values = row.get("values_exact")
+                        if type(values) is not list or len(values) != len(columns):
+                            reasons.append(
+                                "SUPPLEMENTAL_DISCLOSURE_CELL_AXIS_INVALID:" + disclosure["role"]
+                            )
+                            continue
+                        date_axis_by_column = {
+                            ordinal: _surface_dates(_header_text(columns[ordinal - 1]))
+                            for ordinal in money_ordinals
+                        }
+                        conflicting_period_columns = [
+                            ordinal
+                            for ordinal, dates in date_axis_by_column.items()
+                            if len(dates) > 1
+                        ]
+                        period_columns = [
+                            ordinal for ordinal, dates in date_axis_by_column.items() if dates
+                        ]
+                        current_columns = [
+                            ordinal
+                            for ordinal, dates in date_axis_by_column.items()
+                            if current_date in dates
+                        ]
+                        metric_columns = [
+                            ordinal
+                            for ordinal in money_ordinals
+                            if any(
+                                _contains_alias(_header_text(columns[ordinal - 1]), alias)
+                                for alias in disclosure["value_header_aliases"]
+                            )
+                        ]
+                        total_columns = [
+                            ordinal
+                            for ordinal in money_ordinals
+                            if any(
+                                _contains_alias(_header_text(columns[ordinal - 1]), alias)
+                                for alias in compiled_specs["evaluation"]["total_column_aliases"]
+                            )
+                        ]
+                        nonblank_columns = [
+                            ordinal
+                            for ordinal in money_ordinals
+                            if values[ordinal - 1] not in {None, ""}
+                        ]
+                        selected = []
+                        if conflicting_period_columns or len(current_columns) > 1:
+                            reasons.append(
+                                "SUPPLEMENTAL_TABLE_PERIOD_EVIDENCE_CONFLICT:" + disclosure["role"]
+                            )
+                        elif len(current_columns) == 1:
+                            selected = current_columns
+                        elif period_columns:
+                            reasons.append(
+                                "SUPPLEMENTAL_TABLE_CURRENT_PERIOD_NOT_VISIBLE:"
+                                + disclosure["role"]
+                            )
+                        elif len(metric_columns) > 1:
+                            reasons.append(
+                                "SUPPLEMENTAL_TABLE_METRIC_COLUMN_NOT_UNIQUE:" + disclosure["role"]
+                            )
+                        elif len(metric_columns) == 1:
+                            selected = metric_columns
+                        elif len(total_columns) > 1:
+                            reasons.append(
+                                "SUPPLEMENTAL_TABLE_TOTAL_COLUMN_NOT_UNIQUE:" + disclosure["role"]
+                            )
+                        elif len(total_columns) == 1:
+                            selected = total_columns
+                        elif len(nonblank_columns) == 1:
+                            selected = nonblank_columns
+                        if len(selected) != 1:
+                            if not any(
+                                reason.endswith(":" + disclosure["role"])
+                                for reason in reasons
+                                if reason.startswith("SUPPLEMENTAL_TABLE_")
+                            ):
+                                reasons.append(
+                                    "SUPPLEMENTAL_TABLE_CURRENT_VALUE_NOT_UNIQUE:"
+                                    + disclosure["role"]
+                                )
+                            continue
+                        column_ordinal = selected[0]
+                        append_observation(
+                            role=disclosure["role"],
+                            source_kind="TYPED_SUPPLEMENTAL_TABLE_VALUE",
+                            source_locator={
+                                "column_id": f"c{column_ordinal}",
+                                "page_json_version_id": page_json_version_id,
+                                "row_id": f"r{row_ordinal}",
+                                "section_id": f"s{section_ordinal}",
+                                "table_id": f"t{table_ordinal}",
+                            },
+                            source_text=values[column_ordinal - 1],
+                        )
+    mappings = []
+    for disclosure in disclosures:
+        role = disclosure["role"]
+        role_observations = [item for item in observations if item["role"] == role]
+        coefficients = {item["cell"]["coefficient"] for item in role_observations}
+        if len(coefficients) > 1:
+            reasons.append("SUPPLEMENTAL_DISCLOSURE_VALUES_CONFLICT:" + role)
+            continue
+        if not role_observations:
+            continue
+        coefficient = next(iter(coefficients))
+        material = {
+            "bound_unit": bound_unit,
+            "cell": {
+                "coefficient": coefficient,
+                "state": (
+                    role_observations[0]["cell"]["state"]
+                    if len(role_observations) == 1
+                    else "CORROBORATED_DUPLICATE_EXACT"
+                ),
+            },
+            "period_date": region["period_end_date"],
+            "report_norm_id": compiled_specs["bindings"][role],
+            "role": role,
+            "row_id": "supplemental:" + role,
+            "source_refs": canonical_clone_v1(role_observations),
+        }
+        mappings.append(
+            {
+                **material,
+                "item_mapping_id": "gjffarimv1:item:" + canonical_json_sha256_v1(material),
+            }
+        )
+    if reasons:
+        mappings = []
+    return {
+        "mappings": mappings,
+        "observations": observations,
+        "reasons": sorted(set(reasons)),
+    }
+
+
 def _effective_blank(cell: Any, *, fallback: Mapping[str, Any]) -> dict[str, Any]:
     if cell is not None:
         return canonical_clone_v1(cell)
@@ -1444,6 +1935,11 @@ def _extract_table_records(
         if type(row) is not dict:
             reasons.append("SOURCE_ROW_IS_NOT_AN_OBJECT")
             continue
+        if any(
+            _supplemental_surface_matches(row.get("label_exact"), disclosure)
+            for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+        ):
+            continue
         layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
         if layout is None or row.get("row_kind") == "GROUP":
             continue
@@ -1489,12 +1985,41 @@ def _extract_table_records(
         records.append(record)
         branch_records[layout["branch_role"]].append(record)
         row_by_id[row_id] = record
-    block_by_subtotal: dict[str, list[str]] = {}
-    parent_by_child: dict[str, str] = {}
-    direct_by_branch: dict[str, list[str]] = defaultdict(list)
+    direct_role_fallback_receipts = []
     branch_layout_by_role = {
         item["branch_role"]: item for item in compiled_specs["evaluation"]["branch_layouts"]
     }
+    for source_role, fallback_role in compiled_specs["evaluation"][
+        "direct_role_fallback_by_role"
+    ].items():
+        source_records = [record for record in records if record["role"] == source_role]
+        for branch_role in {record["branch_role"] for record in source_records}:
+            branch_sources = [
+                record for record in source_records if record["branch_role"] == branch_role
+            ]
+            if any(
+                record["branch_role"] == branch_role and record["role"] == fallback_role
+                for record in records
+            ):
+                continue
+            layout = branch_layout_by_role[branch_role]
+            for record in branch_sources:
+                if record["flattened_child"] or _visible_subtotal_ancestor_roles(
+                    record, layout, compiled_specs=compiled_specs
+                ):
+                    continue
+                record["role"] = fallback_role
+                direct_role_fallback_receipts.append(
+                    {
+                        "fallback_role": fallback_role,
+                        "reason": "DIRECT_SOURCE_ROLE_WITH_NO_SEPARATE_FALLBACK_ROLE_POPULATION",
+                        "row_id": record["row_id"],
+                        "source_role": source_role,
+                    }
+                )
+    block_by_subtotal: dict[str, list[str]] = {}
+    parent_by_child: dict[str, str] = {}
+    direct_by_branch: dict[str, list[str]] = defaultdict(list)
     for branch_role, branch_axis in branch_records.items():
         layout = branch_layout_by_role[branch_role]
         current_subtotal = None
@@ -1518,10 +2043,6 @@ def _extract_table_records(
             current_subtotal = None
             if record["role"] not in {layout["opening_role"], layout["ending_role"]}:
                 direct_by_branch[branch_role].append(record["row_id"])
-    # One-child subtotals are neither a complete visible block nor an
-    # independent direct movement frontier.
-    if any(len(children) == 1 for children in block_by_subtotal.values()):
-        reasons.append("VISIBLE_SUBTOTAL_REQUIRES_AT_LEAST_TWO_DIRECT_CHILDREN")
     equations = []
     for record in records:
         detail_numeric = [
@@ -1573,7 +2094,7 @@ def _extract_table_records(
             }
         )
     for subtotal_id, child_ids in block_by_subtotal.items():
-        if len(child_ids) < 2:
+        if not child_ids:
             continue
         for column_id in money_ids:
             involved = [row_by_id[subtotal_id], *(row_by_id[child_id] for child_id in child_ids)]
@@ -1778,7 +2299,7 @@ def _extract_table_records(
                 for column_id in money_ids
                 if all(
                     _effective_blank(
-                        effective_by_row[item["row_id"]].get(column_id),
+                        effective_by_row.get(item["row_id"], item["cells"]).get(column_id),
                         fallback=item["cells"][column_id],
                     )["state"]
                     != "BLANK"
@@ -1794,7 +2315,7 @@ def _extract_table_records(
                 for column_id in money_ids
                 if all(
                     _effective_blank(
-                        effective_by_row[item["row_id"]].get(column_id),
+                        effective_by_row.get(item["row_id"], item["cells"]).get(column_id),
                         fallback=item["cells"][column_id],
                     )["state"]
                     != "BLANK"
@@ -1824,9 +2345,7 @@ def _extract_table_records(
                 "root_id": branch_role,
                 "row_id": record["row_id"],
                 "row_kind": (
-                    "DETAIL"
-                    if parent_id is not None
-                    else ("SUBTOTAL" if len(children) >= 2 else "PEER")
+                    "DETAIL" if parent_id is not None else ("SUBTOTAL" if children else "PEER")
                 ),
                 "row_ordinal": len(collapse_input_rows),
                 "source_parent_row_id": source_parent,
@@ -1838,7 +2357,7 @@ def _extract_table_records(
         collapse_mappings.append(
             {"mapping_id": mapping_id, "role_id": record["role"], "row_id": record["row_id"]}
         )
-        if len(children) >= 2:
+        if children:
             collapse_frontiers.append(
                 {
                     "equation_id": f"branch:{branch_role}",
@@ -1913,6 +2432,7 @@ def _extract_table_records(
             )
     table_receipt = {
         "classification": classification,
+        "direct_role_fallback_receipts": direct_role_fallback_receipts,
         "equations": equations,
         "raw_row_inventory": [
             {
@@ -1970,8 +2490,14 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
         region=region,
         compiled_specs=compiled_specs,
     )
-    reasons = extracted["reasons"]
-    mappings = extracted["mappings"] if not reasons else []
+    supplemental = _supplemental_disclosure_projection(
+        page_json_by_version=page_json_by_version,
+        region=region,
+        bound_unit=extracted["unit_axis"]["canonical_unit"],
+        compiled_specs=compiled_specs,
+    )
+    reasons = sorted(set([*extracted["reasons"], *supplemental["reasons"]]))
+    mappings = [*extracted["mappings"], *supplemental["mappings"]] if not reasons else []
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
         "closure_receipt": {
@@ -1983,6 +2509,7 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
                 "report_norm_id": compiled_specs["schema"]["family_root_report_norm_id"],
                 "role": compiled_specs["topology"]["parent"]["role"],
             },
+            "supplemental_disclosure_receipt": supplemental,
             "subtotal_collapse": extracted["subtotal_collapse"],
             "table_receipt": extracted["table_receipt"],
             "width_seal": extracted["width_seal"],

@@ -1,6 +1,6 @@
 """Collapse exact visible subtotal blocks without mutating source rows.
 
-A block is one visible subtotal followed immediately by at least two direct,
+A block is one visible subtotal followed immediately by one or more direct,
 more-indented children.  Every typed MONEY lane must close exactly using the
 signed integer coefficients.  The output contains only effective-parent and
 block receipts; subtotal and child mappings may coexist, while each declared
@@ -269,9 +269,7 @@ def _discover_blocks(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list
             row["source_parent_row_id"] == subtotal["row_id"] for row in rows[cursor:]
         ):
             reasons.append("NONCONTIGUOUS_CHILD_AFTER_PEER_OR_RESET_VETO")
-        if len(children) == 1:
-            reasons.append("SUBTOTAL_REQUIRES_AT_LEAST_TWO_CONTIGUOUS_CHILDREN")
-        if len(children) < 2:
+        if not children:
             continue
         parent_modes = set(observed_parent_modes)
         if len(parent_modes) != 1:
