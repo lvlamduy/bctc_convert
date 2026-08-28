@@ -4,7 +4,8 @@ Gemini is only the source reader.  Deterministic code inventories every
 family-bearing table, selects the unique current presentation, normalizes the
 row hierarchy, proves each horizontal total, seals a bounded right-edge total
 shift only through all affected equations, collapses visible subtotal blocks,
-and closes cost, depreciation and carrying-value equations.  The primitive
+and closes every declared signed branch plus any declared carrying-value
+control equation.  The primitive
 contains no bank, filename, note, page, value, or prompt route.
 
 The engine is intentionally family-parameterized.  Tangible, leased and
@@ -51,8 +52,9 @@ NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_FIXED_ASSET_OWNER_HEADER_"
-    "THREE_BRANCH_CURRENT_PERIOD_TOTAL_COLUMN_ALL_ROW_HORIZONTAL_SIGNED_BRANCH_"
-    "CARRYING_VALUE_VISIBLE_SUBTOTAL_AND_UNIQUE_ALL_EQUATION_WIDTH_SEAL_SCHEMA_"
+    "CONFIGURED_BRANCH_CURRENT_PERIOD_TOTAL_COLUMN_ALL_ROW_HORIZONTAL_SIGNED_"
+    "BRANCH_OPTIONAL_CARRYING_CONTROL_VISIBLE_SUBTOTAL_AND_UNIQUE_ALL_EQUATION_"
+    "WIDTH_SEAL_SCHEMA_"
     "MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_OCR_BANK_FILE_PAGE_NOTE_VALUE_OR_PROMPT_"
     "ROUTING_CANONICAL_SQLITE_QUERY_AND_CANDIDATE_REPLAY_REQUIRED_FOR_PERSISTENCE"
 )
@@ -659,7 +661,7 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     if variant_hard_negative_visible and owner:
         reasons.append("HARD_NEGATIVE_FIXED_ASSET_VARIANT_SURFACE_VISIBLE")
     if branch_hits and branch_hits != required_branches:
-        reasons.append("THREE_BRANCH_SEED_FRONTIER_INCOMPLETE")
+        reasons.append("CONFIGURED_BRANCH_SEED_FRONTIER_INCOMPLETE")
     if branch_hits == required_branches and not owner:
         reasons.append("EXPLICIT_FIXED_ASSET_OWNER_NOT_VISIBLE")
     if (

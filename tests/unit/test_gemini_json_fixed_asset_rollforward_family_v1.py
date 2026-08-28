@@ -537,6 +537,9 @@ def test_hard_negative_fixed_asset_family_is_not_captured():
 
 def test_two_signed_branch_leased_variant_closes_without_carrying_control():
     compiled = _compiled_leased()
+    assert "CONFIGURED_BRANCH" in compiled["claim_boundary"]
+    assert "OPTIONAL_CARRYING_CONTROL" in compiled["claim_boundary"]
+    assert "THREE_BRANCH" not in compiled["claim_boundary"]
     page = _leased_page()
     cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
         page_records=[_page_record(page)], compiled_specs=compiled
@@ -553,6 +556,7 @@ def test_two_signed_branch_leased_variant_closes_without_carrying_control():
         query_receipt=receipt,
     )
     assert candidate["status"] == READY
+    assert candidate["claim_boundary"] == compiled["claim_boundary"]
     assert len(candidate["mappings"]) == 6
     assert {item["role"] for item in candidate["mappings"]} == {
         "COST_OPENING",
