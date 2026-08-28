@@ -1,0 +1,201 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Nguyên giá"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "COST_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DEPRECIATION_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Giá trị còn lại"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CARRYING_BRANCH",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu kỳ", "Số dư đầu năm", "Số đầu kỳ", "Số đầu năm", "Tại ngày đầu kỳ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OPENING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng trong kỳ", "Tăng trong năm"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_TOTAL_INCREASE",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Mua trong kỳ", "Mua trong năm", "Mua mới"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_PURCHASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Đầu tư xây dựng cơ bản hoàn thành", "Đầu tư XDCB hoàn thành", "Xây dựng cơ bản hoàn thành", "Chuyển từ chi phí xây dựng cơ bản dở dang và mua sắm tài sản cố định"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_XDCB_COMPLETED",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OTHER_INCREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm trong kỳ", "Giảm trong năm"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_TOTAL_DECREASE",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Phân loại lại"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_RECLASSIFICATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thanh lý", "Thanh lý, nhượng bán", "Xóa sổ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_DISPOSAL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm khác"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OTHER_DECREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng/(giảm) khác", "Biến động khác"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_OTHER_NET",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_FOREIGN_EXCHANGE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối kỳ", "Số dư cuối năm", "Số cuối kỳ", "Số cuối năm", "Tại ngày cuối kỳ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_ENDING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu kỳ", "Số dư đầu năm", "Số đầu kỳ", "Số đầu năm", "Tại ngày đầu kỳ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OPENING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng trong kỳ", "Tăng trong năm"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_TOTAL_INCREASE",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Khấu hao trong kỳ", "Khấu hao trong năm", "Khấu hao"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_CHARGE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác", "Điều chỉnh theo Kiểm toán Nhà nước"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OTHER_INCREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm trong kỳ", "Giảm trong năm"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_TOTAL_DECREASE",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Phân loại lại"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_RECLASSIFICATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thanh lý", "Thanh lý, nhượng bán", "Xóa sổ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_DISPOSAL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OTHER_DECREASE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng/(giảm) khác", "Biến động khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_OTHER_NET",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_FOREIGN_EXCHANGE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối kỳ", "Số dư cuối năm", "Số cuối kỳ", "Số cuối năm", "Tại ngày cuối kỳ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_ENDING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư đầu kỳ", "Số dư đầu năm", "Số đầu kỳ", "Số đầu năm", "Tại ngày đầu kỳ"], "within_role": "CARRYING_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "CARRY_OPENING",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Số dư cuối kỳ", "Số dư cuối năm", "Số cuối kỳ", "Số cuối năm", "Tại ngày cuối kỳ"], "within_role": "CARRYING_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "CARRY_ENDING",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "TANGIBLE_FIXED_ASSETS_ROLLFORWARD",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản cố định vô hình",
+    "Tài sản cố định thuê tài chính",
+    "Bất động sản đầu tư"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 256,
+    "max_continuation_pages": 1,
+    "max_label_line_span": 4
+  },
+  "parent": {
+    "aliases": ["Tài sản cố định hữu hình", "TSCĐ hữu hình"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "TANGIBLE_FIXED_ASSETS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [[
+    "COST_BRANCH",
+    "DEPRECIATION_BRANCH",
+    "CARRYING_BRANCH"
+  ]],
+  "structural_reset_aliases": [
+    "Tài sản cố định vô hình",
+    "Tài sản cố định thuê tài chính",
+    "Bất động sản đầu tư",
+    "Xây dựng cơ bản dở dang"
+  ]
+}

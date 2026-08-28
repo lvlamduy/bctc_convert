@@ -2928,6 +2928,226 @@ def validate_selected_other_long_term_investments_family_candidate_replays_v1(
     return checked_trials
 
 
+def query_selected_fixed_asset_rollforward_family_regions_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Rebuild exhaustive fixed-asset document dispositions from SQLite JSON."""
+
+    from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
+        ENGINE_FORMAT_VERSION as FIXED_ASSET_ENGINE_FORMAT_VERSION,
+    )
+    from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
+        build_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1,
+        coalesce_gemini_json_fixed_asset_rollforward_document_v1,
+        validate_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1,
+    )
+
+    if (
+        compiled_specs.get("engine_format_version") != FIXED_ASSET_ENGINE_FORMAT_VERSION
+        or type(selected_page_json_version_ids) not in {list, tuple}
+        or not selected_page_json_version_ids
+        or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
+    ):
+        raise _error("selected fixed-asset family query is invalid")
+    selected_page_extraction_receipts_v1(path, page_json_version_ids=selected_page_json_version_ids)
+    documents = []
+    selected_page_axis = []
+    clusters = []
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_fixed_asset_rollforward_page("
+            "selection_ordinal INTEGER PRIMARY KEY, "
+            "page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_fixed_asset_rollforward_page VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        cursor = connection.execute(
+            """
+            SELECT selected.selection_ordinal, selected.page_json_version_id,
+                   document.document_id, document.source_logical_name,
+                   document.source_sha256, page.physical_page,
+                   version.canonical_json_bytes
+            FROM selected_fixed_asset_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id)
+            JOIN document USING(document_id)
+            ORDER BY selected.selection_ordinal
+            """
+        )
+        current_document_id = None
+        current_document = None
+        current_pages = []
+        seen_document_ids = set()
+        document_ordinal = 0
+
+        def seal_document() -> None:
+            if current_document is None:
+                return
+            documents.append(canonical_clone_v1(current_document))
+            clusters.append(
+                coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+                    page_records=current_pages,
+                    compiled_specs=compiled_specs,
+                )
+            )
+
+        row_count = 0
+        for row in cursor:
+            row_count += 1
+            if row["document_id"] != current_document_id:
+                seal_document()
+                if row["document_id"] in seen_document_ids:
+                    raise _error("selected fixed-asset pages are not document-contiguous")
+                seen_document_ids.add(row["document_id"])
+                document_ordinal += 1
+                current_document_id = row["document_id"]
+                current_document = {
+                    "document_id": row["document_id"],
+                    "document_ordinal": document_ordinal,
+                    "source_logical_name": row["source_logical_name"],
+                    "source_sha256": row["source_sha256"],
+                }
+                current_pages = []
+            selected_page_ordinal = len(current_pages) + 1
+            try:
+                page_json = json.loads(bytes(row["canonical_json_bytes"]))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("selected fixed-asset page JSON is invalid") from exc
+            if type(page_json) is not dict:
+                raise _error("selected fixed-asset page is not an object")
+            page_axis_record = {
+                **current_document,
+                "page_json_version_id": row["page_json_version_id"],
+                "physical_page": row["physical_page"],
+                "selected_page_ordinal": selected_page_ordinal,
+            }
+            selected_page_axis.append(canonical_clone_v1(page_axis_record))
+            current_pages.append({**page_axis_record, "page_json": page_json})
+        seal_document()
+    if row_count != len(selected_page_json_version_ids):
+        raise _error("selected fixed-asset page frontier is incomplete")
+    evidence = build_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1(
+        selected_document_axis=documents,
+        selected_page_axis=selected_page_axis,
+        document_clusters=clusters,
+        query_policy_sha256=canonical_json_sha256_v1(compiled_specs["query_policy"]),
+    )
+    return validate_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1(
+        evidence, compiled_specs=compiled_specs
+    )
+
+
+def validate_selected_fixed_asset_rollforward_family_query_evidence_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+) -> dict[str, Any]:
+    """Re-query SQLite and exact-compare fixed-asset indexed evidence."""
+
+    from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
+        validate_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1,
+    )
+
+    supplied = validate_gemini_json_indexed_fixed_asset_rollforward_query_evidence_v1(
+        indexed_query_evidence, compiled_specs=compiled_specs
+    )
+    replayed = query_selected_fixed_asset_rollforward_family_regions_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+    )
+    if not same_typed_json_v1(supplied, replayed):
+        raise _error("selected fixed-asset query evidence does not replay")
+    return replayed
+
+
+def validate_selected_fixed_asset_rollforward_family_candidate_replays_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Any,
+    trials: Any,
+) -> list[dict[str, Any]]:
+    """Replay every fixed-asset candidate from canonical selected page bytes."""
+
+    from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
+        build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1,
+        validate_gemini_json_fixed_asset_rollforward_family_candidate_replay_v1,
+        validate_gemini_json_fixed_asset_rollforward_sweep_query_bindings_v1,
+    )
+
+    evidence = validate_selected_fixed_asset_rollforward_family_query_evidence_v1(
+        path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs,
+        indexed_query_evidence=indexed_query_evidence,
+    )
+    checked_trials = validate_gemini_json_fixed_asset_rollforward_sweep_query_bindings_v1(
+        trials=trials,
+        indexed_query_evidence=evidence,
+        compiled_specs=compiled_specs,
+    )
+    page_axis_by_version = {
+        item["page_json_version_id"]: item for item in evidence["selected_page_axis"]
+    }
+    page_json_by_document: dict[int, dict[str, dict[str, Any]]] = {}
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE replay_fixed_asset_rollforward_page("
+            "selection_ordinal INTEGER PRIMARY KEY, "
+            "page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO replay_fixed_asset_rollforward_page VALUES (?,?)",
+            enumerate(selected_page_json_version_ids, start=1),
+        )
+        rows = connection.execute(
+            """
+            SELECT selected.page_json_version_id, version.canonical_json_bytes
+            FROM replay_fixed_asset_rollforward_page AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            ORDER BY selected.selection_ordinal
+            """
+        )
+        for row in rows:
+            axis = page_axis_by_version.get(row["page_json_version_id"])
+            if axis is None:
+                raise _error("fixed-asset replay page is outside selected evidence")
+            try:
+                page_json = json.loads(bytes(row["canonical_json_bytes"]))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("fixed-asset replay page JSON is invalid") from exc
+            page_json_by_document.setdefault(axis["document_ordinal"], {})[
+                row["page_json_version_id"]
+            ] = page_json
+    cluster_by_ordinal = {item["document_ordinal"]: item for item in evidence["accepted_clusters"]}
+    for trial in checked_trials:
+        if not trial["candidates"]:
+            continue
+        cluster = cluster_by_ordinal[trial["document_ordinal"]]
+        regions = cluster["component_regions"]
+        controls = cluster["control_regions"]
+        validate_gemini_json_fixed_asset_rollforward_family_candidate_replay_v1(
+            trial["candidates"][0],
+            regions=regions,
+            control_regions=controls,
+            page_json_by_version=page_json_by_document[trial["document_ordinal"]],
+            compiled_specs=compiled_specs,
+            query_receipt=build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+                regions, control_regions=controls
+            ),
+        )
+    return checked_trials
+
+
 def query_selected_rollforward_family_regions_v1(
     path: Path,
     *,

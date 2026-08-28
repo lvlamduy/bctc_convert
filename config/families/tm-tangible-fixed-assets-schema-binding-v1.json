@@ -1,0 +1,40 @@
+{
+  "context_only_roles": {
+    "CARRYING_BRANCH": 5964,
+    "COST_BRANCH": 869,
+    "DEPRECIATION_BRANCH": 883,
+    "TANGIBLE_FIXED_ASSETS_ROOT": 868
+  },
+  "family_id": "TANGIBLE_FIXED_ASSETS_ROLLFORWARD",
+  "family_root_report_norm_id": 868,
+  "format_version": "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 870, "role": "COST_OPENING"},
+    {"report_norm_id": 5991, "role": "COST_TOTAL_INCREASE"},
+    {"report_norm_id": 871, "role": "COST_PURCHASE"},
+    {"report_norm_id": 872, "role": "COST_XDCB_COMPLETED"},
+    {"report_norm_id": 875, "role": "COST_OTHER_INCREASE"},
+    {"report_norm_id": 5992, "role": "COST_TOTAL_DECREASE"},
+    {"report_norm_id": 879, "role": "COST_RECLASSIFICATION"},
+    {"report_norm_id": 880, "role": "COST_DISPOSAL"},
+    {"report_norm_id": 881, "role": "COST_OTHER_DECREASE"},
+    {"report_norm_id": 5993, "role": "COST_OTHER_NET"},
+    {"report_norm_id": 5962, "role": "COST_FOREIGN_EXCHANGE"},
+    {"report_norm_id": 882, "role": "COST_ENDING"},
+    {"report_norm_id": 884, "role": "DEP_OPENING"},
+    {"report_norm_id": 5994, "role": "DEP_TOTAL_INCREASE"},
+    {"report_norm_id": 885, "role": "DEP_CHARGE"},
+    {"report_norm_id": 887, "role": "DEP_OTHER_INCREASE"},
+    {"report_norm_id": 5995, "role": "DEP_TOTAL_DECREASE"},
+    {"report_norm_id": 891, "role": "DEP_RECLASSIFICATION"},
+    {"report_norm_id": 892, "role": "DEP_DISPOSAL"},
+    {"report_norm_id": 894, "role": "DEP_OTHER_DECREASE"},
+    {"report_norm_id": 5996, "role": "DEP_OTHER_NET"},
+    {"report_norm_id": 5963, "role": "DEP_FOREIGN_EXCHANGE"},
+    {"report_norm_id": 895, "role": "DEP_ENDING"},
+    {"report_norm_id": 5965, "role": "CARRY_OPENING"},
+    {"report_norm_id": 5966, "role": "CARRY_ENDING"}
+  ],
+  "schema_period_role": "CURRENT_PERIOD",
+  "structural_root_mapping_policy": "CONTEXT_ONLY_NO_NUMERIC_MAPPING"
+}
