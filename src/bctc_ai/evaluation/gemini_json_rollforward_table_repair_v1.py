@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import unicodedata
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
@@ -56,12 +57,32 @@ TABLE_SPEC_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1"
 REPAIR_SPEC_AUTHORITY_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_REPAIR_SPEC_AUTHORITY_V1"
 SOURCE_IMAGE_RESOLUTION_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_SOURCE_IMAGE_RESOLUTION_V1"
 REPAIR_SCOPE = "TABLE_ROLLFORWARD_CELLS"
+TARGET_OBSERVATION_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATIONS_V1"
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _NODE = re.compile(r"^([strc])([1-9][0-9]*)$")
-_DASH = re.compile(r"^\s*[-–—_](?:\s*[-–—_])*\s*$")
+_LOOSE_CELL = re.compile(r"^\s*[Rr]\s*0*([1-9][0-9]*)\s*:\s*[Cc]\s*0*([1-9][0-9]*)\s*$")
+_CELL_REFERENCE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])R\s*0*([1-9][0-9]*)\s*:\s*C\s*0*([1-9][0-9]*)(?![A-Za-z0-9])"
+)
+_DASH = re.compile(r"^\s*[-−–—_](?:\s*[-−–—_])*\s*$")
 _FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL | re.IGNORECASE)
 _VISUAL_STATES = frozenset({"BLANK", "DASH", "PRINTED_ZERO", "VALUE"})
+_VISUAL_STATE_ALIASES = {
+    "ACCOUNTING_DASH": "DASH",
+    "BLANK": "BLANK",
+    "DASH": "DASH",
+    "EMPTY": "BLANK",
+    "HYPHEN": "DASH",
+    "NONE": "BLANK",
+    "NUMBER": "VALUE",
+    "NUMERIC": "VALUE",
+    "NUMERIC_ZERO": "PRINTED_ZERO",
+    "PRINTED_0": "PRINTED_ZERO",
+    "PRINTED_ZERO": "PRINTED_ZERO",
+    "VALUE": "VALUE",
+    "ZERO": "PRINTED_ZERO",
+}
 _AFTER_POLICIES = frozenset({"DASH_ZERO", "SIGNED_INTEGER"})
 _CHANGE_POLICIES = frozenset({"MAY_CHANGE", "MUST_CHANGE"})
 _EVIDENCE_KINDS = frozenset({"ATOMIC_TABLE_COLLATERAL", "UNRESOLVED_FRONTIER"})
@@ -208,6 +229,17 @@ def _cell_id(value: Any) -> tuple[int, int]:
     )
 
 
+def _canonical_cell_id(value: Any) -> str | None:
+    """Normalize harmless model spelling drift without widening the cell authority."""
+
+    if type(value) is not str:
+        return None
+    match = _LOOSE_CELL.fullmatch(unicodedata.normalize("NFKC", value))
+    if match is None:
+        return None
+    return f"r{int(match.group(1))}:c{int(match.group(2))}"
+
+
 def _table(page_json: Any, section_id: str, table_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     checked = validate_financial_page_json_v1(page_json)
     section_index = _node_ordinal(section_id, "s", "repair section ID")
@@ -221,13 +253,13 @@ def _table(page_json: Any, section_id: str, table_id: str) -> tuple[dict[str, An
 def _signed_integer(value: Any) -> int | None:
     if type(value) is not str:
         return None
-    text = value.strip()
+    text = unicodedata.normalize("NFKC", value).strip()
     if _DASH.fullmatch(text):
         return 0
     negative = text.startswith("(") and text.endswith(")")
     if negative:
         text = text[1:-1].strip()
-    elif text.startswith("-") and text[1:].strip():
+    elif text.startswith(("-", "−")) and text[1:].strip():
         negative = True
         text = text[1:].strip()
     digits = re.sub(r"[.,\s]", "", text)
@@ -242,12 +274,116 @@ def _visual_state(source_text: Any) -> str:
         return "BLANK"
     if type(source_text) is not str:
         raise _error("table repair cell source_text is invalid")
-    if _DASH.fullmatch(source_text):
+    if _DASH.fullmatch(unicodedata.normalize("NFKC", source_text)):
         return "DASH"
     coefficient = _signed_integer(source_text)
     if coefficient is None:
         raise _error("table repair money cell is not an exact signed integer")
     return "PRINTED_ZERO" if coefficient == 0 else "VALUE"
+
+
+def _normalized_visual_state(value: Any) -> str | None:
+    if type(value) is not str:
+        return None
+    key = re.sub(r"[\s-]+", "_", unicodedata.normalize("NFKC", value).strip().upper())
+    return _VISUAL_STATE_ALIASES.get(key)
+
+
+def _normalized_anchor(value: Any) -> str | None:
+    if value is None:
+        return None
+    if type(value) is not str:
+        raise _error("roll-forward legacy table anchor is invalid")
+    normalized = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).casefold()).strip()
+    decomposed = unicodedata.normalize("NFD", normalized)
+    folded = "".join(character for character in decomposed if not unicodedata.combining(character))
+    return folded.replace("đ", "d")
+
+
+def _normalized_header_anchor(value: Any, *, unit_exact: Any) -> str:
+    """Flatten harmless legacy header segmentation and strip repeated unit suffixes."""
+
+    if type(value) is not list or not value or any(type(item) is not str for item in value):
+        raise _error("roll-forward legacy table header anchor is invalid")
+    normalized = _normalized_anchor(" ".join(value))
+    unit = _normalized_anchor(unit_exact)
+    if normalized is None or not normalized:
+        raise _error("roll-forward legacy table header anchor is invalid")
+    if unit:
+        while normalized == unit or normalized.endswith(" " + unit):
+            normalized = normalized[: -len(unit)].rstrip()
+    return normalized
+
+
+def _cell_semantic(source_text: Any, visual_state: Any = None) -> tuple[str, int | None]:
+    """Return the typed financial-cell meaning while preserving visual zero states."""
+
+    derived = _visual_state(source_text)
+    if visual_state is not None and visual_state != derived:
+        raise _error("roll-forward table cell visual state conflicts with source_text")
+    coefficient = _signed_integer(source_text)
+    return derived, coefficient
+
+
+def _normalized_observed_source_text(
+    value: Any,
+    *,
+    declared_visual_state: Any = None,
+) -> tuple[str | None, str, str | None]:
+    """Return one stable financial-cell observation from tolerant JSON variants.
+
+    JSON numbers are accepted for defensive replay even though the provider schema asks
+    for strings.  Textual numbers remain source-exact (apart from surrounding whitespace),
+    while JSON numbers and accounting-dash glyphs receive one canonical representation.
+    A legacy ``visual_state`` may corroborate the derived state, but never overrides it.
+    """
+
+    declared = (
+        None if declared_visual_state is None else _normalized_visual_state(declared_visual_state)
+    )
+    if declared_visual_state is not None and declared is None:
+        raise _error("roll-forward target observation visual state is invalid")
+    normalization = None
+    if value is None and declared == "DASH":
+        # Gemini occasionally emitted null while separately and correctly classifying the
+        # visible accounting dash.  This is one harmless representation variant, not an
+        # arithmetic inference; the local DASH_ZERO/equation gates still decide authority.
+        source_text = "-"
+        normalization = "LEGACY_NULL_WITH_DASH_STATE_TO_ASCII_DASH"
+    elif value is None:
+        source_text: str | None = None
+    elif type(value) is bool:
+        raise _error("roll-forward target observation source_text is invalid")
+    elif type(value) is int:
+        source_text = str(value)
+        normalization = "JSON_INTEGER_TO_TEXT"
+    elif type(value) is float:
+        if not value.is_integer():
+            raise _error("roll-forward target observation is not an exact integer")
+        source_text = str(int(value))
+        normalization = "JSON_INTEGRAL_NUMBER_TO_TEXT"
+    elif type(value) is str:
+        stripped = value.strip()
+        source_text = stripped or None
+        if source_text != value:
+            normalization = "TRIMMED_SOURCE_TEXT"
+        if (
+            source_text is not None
+            and unicodedata.normalize("NFKC", source_text) != source_text
+            and not _DASH.fullmatch(unicodedata.normalize("NFKC", source_text))
+        ):
+            normalization = "NFKC_SEMANTIC_VARIANT_PRESERVED"
+    else:
+        raise _error("roll-forward target observation source_text is invalid")
+    if source_text is not None and _DASH.fullmatch(unicodedata.normalize("NFKC", source_text)):
+        if source_text != "-":
+            normalization = "ACCOUNTING_DASH_TO_ASCII_DASH"
+        source_text = "-"
+    derived = _visual_state(source_text)
+    if declared_visual_state is not None:
+        if declared != derived:
+            raise _error("roll-forward target observation visual state conflicts with source_text")
+    return source_text, derived, normalization
 
 
 def _source_binding(value: Any) -> dict[str, Any]:
@@ -464,8 +600,14 @@ def load_rollforward_table_page_evidence_v1(
         )
     ):
         raise _error("table repair page evidence version frontier is invalid")
-    path = Path(page_store_path).resolve()
-    if page_store_path.is_symlink() or not path.is_file():
+    supplied_path = Path(page_store_path)
+    descriptor_path = (
+        len(supplied_path.parts) == 5
+        and supplied_path.parts[:4] == ("/", "proc", "self", "fd")
+        and supplied_path.parts[4].isdigit()
+    )
+    path = supplied_path if descriptor_path else supplied_path.resolve()
+    if (supplied_path.is_symlink() and not descriptor_path) or not path.is_file():
         raise _error("table repair frozen page store is absent or not regular")
     try:
         connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
@@ -683,12 +825,28 @@ def _build_rollforward_table_cell_repair_plans_v1(
             raise _error("table repair frontier repeats one base table")
         locations.add(location)
         shape_gate = _shape_gate(table)
+        target_cells = []
+        for allowed in allowlist:
+            row_index, column_index = _cell_id(allowed["cell_id"])
+            target_cells.append(
+                {
+                    "after_policy": allowed["after_policy"],
+                    "cell_id": allowed["cell_id"],
+                    "change_policy": allowed["change_policy"],
+                    "column_header_exact": canonical_clone_v1(
+                        table["columns"][column_index]["header_path_exact"]
+                    ),
+                    "evidence_kind": allowed["evidence_kind"],
+                    "row_label_exact": table["rows"][row_index]["label_exact"],
+                }
+            )
         target = {
             "column_headers_exact": [
                 canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
             ],
             "column_value_kinds": [column["value_kind"] for column in table["columns"]],
             "row_labels_exact": [row["label_exact"] for row in table["rows"]],
+            "target_cells": target_cells,
             "target_id": f"{frontier['section_id']}:{frontier['table_id']}",
             "table_title_exact": table["title_exact"],
             "unit_exact": table["unit_exact"],
@@ -702,9 +860,11 @@ def _build_rollforward_table_cell_repair_plans_v1(
             "acceptance_policy": {
                 "all_other_cells_byte_equal": True,
                 "forbid_arithmetic_backsolve": True,
-                "require_all_allowlisted_cells_transcribed": True,
+                "ignore_non_authoritative_observations": True,
+                "preserve_omitted_may_change_cells": True,
+                "require_must_change_and_collateral_observations": True,
                 "require_all_declared_equations_exact": True,
-                "require_exact_shape_order_and_unit": True,
+                "require_immutable_shape_period_and_unit": True,
             },
             "base_page_json_sha256": frontier["base_page_json_sha256"],
             "base_page_json_version_id": version_id,
@@ -1664,9 +1824,11 @@ def _validated_plan(plan: Any) -> dict[str, Any]:
         != {
             "all_other_cells_byte_equal": True,
             "forbid_arithmetic_backsolve": True,
-            "require_all_allowlisted_cells_transcribed": True,
+            "ignore_non_authoritative_observations": True,
+            "preserve_omitted_may_change_cells": True,
+            "require_must_change_and_collateral_observations": True,
             "require_all_declared_equations_exact": True,
-            "require_exact_shape_order_and_unit": True,
+            "require_immutable_shape_period_and_unit": True,
         }
         or plan.get("repair_policy")
         != {
@@ -1786,7 +1948,7 @@ def _validated_plan(plan: Any) -> dict[str, Any]:
 def rollforward_table_repair_target_v1(
     page_json: Any, *, plan: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Return response-blind table labels/header context for one crop request."""
+    """Return response-blind labels plus the exact cells the model may observe."""
 
     checked_plan = _validated_plan(plan)
     checked_page, table = _table(page_json, checked_plan["section_id"], checked_plan["table_id"])
@@ -1795,12 +1957,28 @@ def rollforward_table_repair_target_v1(
         or _shape_gate(table) != checked_plan["shape_gate"]
     ):
         raise _error("roll-forward table repair plan does not bind the base table")
+    target_cells = []
+    for allowed in checked_plan["cell_allowlist"]:
+        row_index, column_index = _cell_id(allowed["cell_id"])
+        target_cells.append(
+            {
+                "after_policy": allowed["after_policy"],
+                "cell_id": allowed["cell_id"],
+                "change_policy": allowed["change_policy"],
+                "column_header_exact": canonical_clone_v1(
+                    table["columns"][column_index]["header_path_exact"]
+                ),
+                "evidence_kind": allowed["evidence_kind"],
+                "row_label_exact": table["rows"][row_index]["label_exact"],
+            }
+        )
     return {
         "column_headers_exact": [
             canonical_clone_v1(column["header_path_exact"]) for column in table["columns"]
         ],
         "column_value_kinds": [column["value_kind"] for column in table["columns"]],
         "row_labels_exact": [row["label_exact"] for row in table["rows"]],
+        "target_cells": target_cells,
         "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
         "table_title_exact": table["title_exact"],
         "unit_exact": table["unit_exact"],
@@ -1822,95 +2000,53 @@ def build_rollforward_table_repair_prompt_v1(
         "column_value_kinds",
         "row_labels_exact",
         "table_title_exact",
+        "target_cells",
         "target_id",
         "unit_exact",
     }
     checked = _exact_keys(dict(target), required, "roll-forward table repair target")
     context = {
-        "column_headers_exact": checked["column_headers_exact"],
-        "column_value_kinds": checked["column_value_kinds"],
-        "row_labels_exact": checked["row_labels_exact"],
-        "target_id": checked["target_id"],
         "table_title_exact": checked["table_title_exact"],
+        "target_cells": [
+            {
+                "cell_id": item["cell_id"],
+                "column_header_exact": item["column_header_exact"],
+                "row_label_exact": item["row_label_exact"],
+            }
+            for item in checked["target_cells"]
+        ],
         "unit_exact": checked["unit_exact"],
     }
     return (
-        "Ảnh chỉ chứa một bảng biến động dự phòng rủi ro cho vay. Chép nguyên toàn bộ "
-        "bảng vào JSON: đủ tiêu đề, đơn vị, mọi cột, mọi dòng và mọi ô theo đúng thứ tự. "
-        "Không bỏ ô, không dịch giá trị sang cột kế bên, không dùng phép tính để suy ra hoặc "
-        "sửa nội dung. Với mỗi ô: BLANK chỉ khi hoàn toàn không có dấu; DASH khi nhìn thấy "
-        "dấu gạch kế toán; PRINTED_ZERO khi in số 0; VALUE cho số khác. Giữ source_text "
-        "đúng như ảnh, gồm ngoặc và dấu âm. Mỗi dòng phải có đúng số cell bằng số cột. "
-        "Thông tin context chỉ để định vị và không chứa đáp án ô. Nếu không chắc bất kỳ ô "
-        "nào, ghi uncertainty_exact; không đoán. Trả duy nhất JSON theo schema.\n"
+        "Ảnh chứa một bảng tài chính. Chỉ đọc các ô được liệt kê trong target_cells. "
+        "Với mỗi ô nhìn thấy rõ, trả một phần tử {cell_id, source_text}; giữ source_text "
+        "đúng như ảnh, gồm ngoặc, dấu âm hoặc dấu gạch kế toán. Dùng null chỉ khi ô thật sự "
+        "trống. Không chép lại tiêu đề, đơn vị, nhãn dòng, toàn bảng hay ô ngoài danh sách; "
+        "không tính toán hoặc suy ra giá trị. Trả duy nhất JSON theo schema.\n"
         f"base_page_json_version_id={base_page_json_version_id}\n"
         "target_table_context=" + canonical_json_bytes_v1(context).decode("utf-8")
     )
 
 
 def rollforward_table_repair_response_schema_v1() -> dict[str, Any]:
-    nullable_string = {"type": ["string", "null"]}
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": False,
         "properties": {
-            "all_cells_transcribed": {"type": "boolean"},
-            "columns": {
+            "observations": {
                 "items": {
                     "additionalProperties": False,
                     "properties": {
-                        "header_path_exact": {
-                            "items": nullable_string,
-                            "minItems": 1,
-                            "type": "array",
-                        },
-                        "value_kind": {"type": "string"},
+                        "cell_id": {"type": "string"},
+                        "source_text": {"type": ["string", "null"]},
                     },
-                    "required": ["header_path_exact", "value_kind"],
+                    "required": ["cell_id", "source_text"],
                     "type": "object",
                 },
                 "type": "array",
             },
-            "rows": {
-                "items": {
-                    "additionalProperties": False,
-                    "properties": {
-                        "cells": {
-                            "items": {
-                                "additionalProperties": False,
-                                "properties": {
-                                    "source_text": nullable_string,
-                                    "visual_state": {
-                                        "enum": sorted(_VISUAL_STATES),
-                                        "type": "string",
-                                    },
-                                },
-                                "required": ["source_text", "visual_state"],
-                                "type": "object",
-                            },
-                            "type": "array",
-                        },
-                        "label_exact": nullable_string,
-                    },
-                    "required": ["label_exact", "cells"],
-                    "type": "object",
-                },
-                "type": "array",
-            },
-            "table_title_exact": nullable_string,
-            "target_id": {"type": "string"},
-            "uncertainty_exact": {"items": {"type": "string"}, "type": "array"},
-            "unit_exact": nullable_string,
         },
-        "required": [
-            "all_cells_transcribed",
-            "target_id",
-            "table_title_exact",
-            "unit_exact",
-            "columns",
-            "rows",
-            "uncertainty_exact",
-        ],
+        "required": ["observations"],
         "type": "object",
     }
 
@@ -1918,7 +2054,7 @@ def rollforward_table_repair_response_schema_v1() -> dict[str, Any]:
 def decode_rollforward_table_repair_text_v1(
     text: str, *, target: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Decode one complete table response without silently filling any cell."""
+    """Project one tolerant response onto the immutable authoritative target-cell axis."""
 
     if type(text) is not str:
         raise _error("roll-forward table repair response is not text")
@@ -1928,60 +2064,230 @@ def decode_rollforward_table_repair_text_v1(
         value = json.loads(payload)
     except json.JSONDecodeError as exc:
         raise _error("roll-forward table repair response is not JSON") from exc
-    required = {
-        "all_cells_transcribed",
-        "columns",
-        "rows",
+    if type(value) is not dict:
+        raise _error("roll-forward table repair response is not one JSON object")
+    required_target = {
+        "column_headers_exact",
+        "column_value_kinds",
+        "row_labels_exact",
         "table_title_exact",
+        "target_cells",
         "target_id",
-        "uncertainty_exact",
         "unit_exact",
     }
-    checked = _exact_keys(value, required, "roll-forward table repair response")
-    expected_columns = target["column_headers_exact"]
-    expected_rows = target["row_labels_exact"]
-    if (
-        type(checked["all_cells_transcribed"]) is not bool
-        or type(checked["uncertainty_exact"]) is not list
-        or any(type(item) is not str or not item for item in checked["uncertainty_exact"])
-        or checked["target_id"] != target["target_id"]
-        or type(checked["table_title_exact"]) not in {str, type(None)}
-        or type(checked["unit_exact"]) not in {str, type(None)}
-        or type(checked["columns"]) is not list
-        or len(checked["columns"]) != len(expected_columns)
-        or type(checked["rows"]) is not list
-        or len(checked["rows"]) != len(expected_rows)
-    ):
-        raise _error("roll-forward table repair completion, identity, or shape is invalid")
-    for column in checked["columns"]:
-        if (
-            type(column) is not dict
-            or set(column) != {"header_path_exact", "value_kind"}
-            or type(column["header_path_exact"]) is not list
-            or not column["header_path_exact"]
-            or any(type(item) not in {str, type(None)} for item in column["header_path_exact"])
-            or type(column["value_kind"]) is not str
+    checked_target = _exact_keys(dict(target), required_target, "roll-forward table repair target")
+    target_ids = []
+    for item in checked_target["target_cells"]:
+        if type(item) is not dict or type(item.get("cell_id")) is not str:
+            raise _error("roll-forward table repair target-cell axis is invalid")
+        canonical = _canonical_cell_id(item["cell_id"])
+        if canonical != item["cell_id"] or canonical in target_ids:
+            raise _error("roll-forward table repair target-cell axis is invalid")
+        target_ids.append(canonical)
+    target_id_set = set(target_ids)
+    if value.get("all_cells_transcribed") is False:
+        raise _error("roll-forward response declares incomplete target evidence")
+    for uncertainty_field in ("uncertainty_exact", "uncertain_refs"):
+        uncertainty = value.get(uncertainty_field)
+        if uncertainty in (None, []):
+            continue
+        uncertainty_text = canonical_json_bytes_v1(uncertainty).decode("utf-8")
+        uncertain_cell_ids = {
+            f"r{int(match.group(1))}:c{int(match.group(2))}"
+            for match in _CELL_REFERENCE.finditer(unicodedata.normalize("NFKC", uncertainty_text))
+        }
+        if not uncertain_cell_ids:
+            raise _error("roll-forward response declares unscoped incomplete evidence")
+        if target_id_set & uncertain_cell_ids:
+            raise _error("roll-forward response declares uncertainty for a target cell")
+
+    # Idempotent canonical projections are used internally by merge/attempt replay.
+    if set(value) == {
+        "format_version",
+        "observations",
+        "projection_diagnostics",
+        "projection_sha256",
+        "source_response",
+    }:
+        source_response = value["source_response"]
+        if type(source_response) is not dict or set(source_response) == set(value):
+            raise _error("roll-forward target-observation projection identity drifted")
+        replayed = decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(source_response).decode("utf-8"),
+            target=checked_target,
+        )
+        if not same_typed_json_v1(replayed, value):
+            raise _error("roll-forward target-observation projection identity drifted")
+        return replayed
+
+    ignored_top_level_fields = []
+    if type(value.get("observations")) is list:
+        input_contract = "TARGET_OBSERVATIONS_V1"
+        raw_observations = value["observations"]
+        ignored_top_level_fields = sorted(key for key in value if key != "observations")
+    elif type(value.get("rows")) is list:
+        input_contract = "LEGACY_FULL_TABLE_V1"
+        raw_observations = []
+        ignored_top_level_fields = sorted(key for key in value if key != "rows")
+        legacy_uncertainty = value.get("uncertainty_exact")
+        legacy_uncertainty_refs = (
+            set()
+            if legacy_uncertainty in (None, [])
+            else {
+                f"r{int(match.group(1))}:c{int(match.group(2))}"
+                for match in _CELL_REFERENCE.finditer(
+                    unicodedata.normalize(
+                        "NFKC", canonical_json_bytes_v1(legacy_uncertainty).decode("utf-8")
+                    )
+                )
+            }
+        )
+        if value.get("all_cells_transcribed") is False or (
+            legacy_uncertainty not in (None, []) and not legacy_uncertainty_refs
         ):
-            raise _error("roll-forward table repair column axis is invalid")
-    for row in checked["rows"]:
+            raise _error("roll-forward legacy response declares incomplete target evidence")
+        expected_row_count = len(checked_target["row_labels_exact"])
+        expected_column_count = len(checked_target["column_headers_exact"])
+        columns = value.get("columns")
         if (
-            type(row) is not dict
-            or set(row) != {"cells", "label_exact"}
-            or type(row["label_exact"]) not in {str, type(None)}
-            or type(row["cells"]) is not list
-            or len(row["cells"]) != len(expected_columns)
+            ("target_id" in value and value["target_id"] != checked_target["target_id"])
+            or len(value["rows"]) != expected_row_count
+            or type(columns) is not list
+            or len(columns) != expected_column_count
+            or any(
+                type(row) is not dict
+                or type(row.get("cells")) is not list
+                or len(row["cells"]) != expected_column_count
+                for row in value["rows"]
+            )
         ):
-            raise _error("roll-forward table repair row or cell shape is invalid")
-        for cell in row["cells"]:
+            raise _error("roll-forward legacy full-table shape or target identity drifted")
+        for cell_id in target_ids:
+            row_index, column_index = _cell_id(cell_id)
+            row = value["rows"][row_index]
+            column = columns[column_index]
             if (
-                type(cell) is not dict
-                or set(cell) != {"source_text", "visual_state"}
-                or type(cell["source_text"]) not in {str, type(None)}
-                or cell["visual_state"] not in _VISUAL_STATES
-                or _visual_state(cell["source_text"]) != cell["visual_state"]
+                _normalized_anchor(row.get("label_exact"))
+                != _normalized_anchor(checked_target["row_labels_exact"][row_index])
+                or type(column) is not dict
+                or type(column.get("header_path_exact")) is not list
+                or _normalized_header_anchor(
+                    column["header_path_exact"], unit_exact=checked_target["unit_exact"]
+                )
+                != _normalized_header_anchor(
+                    checked_target["column_headers_exact"][column_index],
+                    unit_exact=checked_target["unit_exact"],
+                )
             ):
-                raise _error("roll-forward table repair visual cell state is invalid")
-    return canonical_clone_v1(checked)
+                raise _error("roll-forward legacy target row/column anchors drifted")
+        for row_ordinal, row in enumerate(value["rows"], start=1):
+            for column_ordinal, cell in enumerate(row["cells"], start=1):
+                if type(cell) is not dict:
+                    raw_observations.append(
+                        {
+                            "cell_id": f"r{row_ordinal}:c{column_ordinal}",
+                            "source_text": cell,
+                        }
+                    )
+                    continue
+                raw_observations.append(
+                    {
+                        "cell_id": f"r{row_ordinal}:c{column_ordinal}",
+                        **({"source_text": cell["source_text"]} if "source_text" in cell else {}),
+                        **(
+                            {"visual_state": cell["visual_state"]} if "visual_state" in cell else {}
+                        ),
+                    }
+                )
+    else:
+        raise _error("roll-forward table repair response has no observations")
+
+    authoritative: dict[str, dict[str, Any]] = {}
+    authoritative_raw_hashes: dict[str, str] = {}
+    corroborated = 0
+    corroborated_observations = []
+    ignored = []
+    normalized = []
+    for raw in raw_observations:
+        raw_hash = canonical_json_sha256_v1(raw)
+        raw_cell_id = raw.get("cell_id") if type(raw) is dict else None
+        cell_id = _canonical_cell_id(raw_cell_id)
+        if cell_id not in target_id_set:
+            ignored.append(
+                {
+                    "cell_id_exact": raw_cell_id if type(raw_cell_id) is str else None,
+                    "observation_sha256": raw_hash,
+                }
+            )
+            continue
+        if type(raw) is not dict or "source_text" not in raw:
+            raise _error("roll-forward target observation omits source_text")
+        source_text, visual_state, normalization = _normalized_observed_source_text(
+            raw["source_text"],
+            declared_visual_state=raw.get("visual_state"),
+        )
+        if normalization is not None:
+            normalized.append(
+                {
+                    "cell_id": cell_id,
+                    "normalization_kind": normalization,
+                    "observation_sha256": raw_hash,
+                }
+            )
+        observation = {
+            "cell_id": cell_id,
+            "source_text": source_text,
+            "visual_state": visual_state,
+        }
+        prior = authoritative.get(cell_id)
+        if prior is not None:
+            if _cell_semantic(prior["source_text"], prior["visual_state"]) != _cell_semantic(
+                observation["source_text"], observation["visual_state"]
+            ):
+                raise _error("roll-forward target observations conflict for one cell")
+            prior_hash = authoritative_raw_hashes[cell_id]
+            chosen = min(
+                (prior, observation),
+                key=lambda item: canonical_json_bytes_v1(item),
+            )
+            chosen_hash = raw_hash if chosen is observation else prior_hash
+            authoritative[cell_id] = chosen
+            authoritative_raw_hashes[cell_id] = chosen_hash
+            corroborated_observations.append(
+                {
+                    "cell_id": cell_id,
+                    "chosen_observation_sha256": chosen_hash,
+                    "observation_sha256_axis": sorted([prior_hash, raw_hash]),
+                    "semantic_equivalence": {
+                        "signed_integer": _signed_integer(observation["source_text"]),
+                        "visual_state": observation["visual_state"],
+                    },
+                }
+            )
+            corroborated += 1
+            continue
+        authoritative[cell_id] = observation
+        authoritative_raw_hashes[cell_id] = raw_hash
+    observations = sorted(authoritative.values(), key=lambda item: _cell_id(item["cell_id"]))
+    diagnostics = {
+        "corroborated_duplicate_count": corroborated,
+        "corroborated_observations": corroborated_observations,
+        "ignored_observation_count": len(ignored),
+        "ignored_observations": ignored,
+        "ignored_top_level_fields": ignored_top_level_fields,
+        "input_contract": input_contract,
+        "normalized_observation_count": len(normalized),
+        "normalized_observations": normalized,
+        "raw_response_sha256": canonical_json_sha256_v1(value),
+        "target_axis_sha256": canonical_json_sha256_v1(checked_target["target_cells"]),
+    }
+    material = {
+        "format_version": TARGET_OBSERVATION_FORMAT_VERSION,
+        "observations": observations,
+        "projection_diagnostics": diagnostics,
+        "source_response": canonical_clone_v1(value),
+    }
+    return {**material, "projection_sha256": canonical_json_sha256_v1(material)}
 
 
 def _matrix_rank(rows: Sequence[Sequence[int]]) -> int:
@@ -2105,58 +2411,58 @@ def merge_rollforward_table_repair_v1(
     decoded = decode_rollforward_table_repair_text_v1(
         canonical_json_bytes_v1(dict(repair)).decode("utf-8"), target=target
     )
-    if not decoded["all_cells_transcribed"] or decoded["uncertainty_exact"]:
-        raise _error("roll-forward table repair is incomplete or uncertain")
-    if (
-        decoded["table_title_exact"] != table["title_exact"]
-        or decoded["unit_exact"] != table["unit_exact"]
-        or decoded["columns"] != table["columns"]
-        or [row["label_exact"] for row in decoded["rows"]]
-        != [row["label_exact"] for row in table["rows"]]
-    ):
-        raise _error("roll-forward table repair shape, order, header, or unit gate failed")
-
     allow_by_id = {item["cell_id"]: item for item in checked_plan["cell_allowlist"]}
+    observed_by_id = {item["cell_id"]: item for item in decoded["observations"]}
+    required_ids = {
+        item["cell_id"]
+        for item in checked_plan["cell_allowlist"]
+        if item["change_policy"] == "MUST_CHANGE"
+        or item["evidence_kind"] == "ATOMIC_TABLE_COLLATERAL"
+    }
+    missing_required = sorted(required_ids - set(observed_by_id), key=_cell_id)
+    if missing_required:
+        raise _error("roll-forward target observations omit a required repair or collateral cell")
     merged = canonical_clone_v1(checked_page)
     merged_table = merged["sections"][_node_ordinal(checked_plan["section_id"], "s", "section")][
         "tables"
     ][_node_ordinal(checked_plan["table_id"], "t", "table")]
     changes = []
-    for row_index, (base_row, response_row) in enumerate(
-        zip(table["rows"], decoded["rows"], strict=True), start=1
-    ):
-        for column_index, (before, response_cell) in enumerate(
-            zip(base_row["values_exact"], response_row["cells"], strict=True), start=1
-        ):
-            cell_id = f"r{row_index}:c{column_index}"
-            allowed = allow_by_id.get(cell_id)
-            if allowed is None:
-                if response_cell != {
-                    "source_text": before,
-                    "visual_state": _visual_state(before),
-                }:
-                    raise _error("roll-forward table repair changed a cell outside the allowlist")
-                continue
-            if response_cell["source_text"] == before:
-                if allowed["change_policy"] == "MUST_CHANGE":
-                    raise _error("roll-forward table repair left a must-change cell unchanged")
-                continue
-            _after_policy(response_cell, allowed["after_policy"])
-            merged_table["rows"][row_index - 1]["values_exact"][column_index - 1] = response_cell[
-                "source_text"
-            ]
-            changes.append(
-                {
-                    "after_exact": response_cell["source_text"],
-                    "after_policy": allowed["after_policy"],
-                    "after_visual_state": response_cell["visual_state"],
-                    "before_exact": before,
-                    "before_visual_state": _visual_state(before),
-                    "cell_id": cell_id,
-                    "change_policy": allowed["change_policy"],
-                    "evidence_kind": allowed["evidence_kind"],
-                }
-            )
+    for cell_id, response_cell in observed_by_id.items():
+        allowed = allow_by_id[cell_id]
+        row_index, column_index = _cell_id(cell_id)
+        before = table["rows"][row_index]["values_exact"][column_index]
+        _after_policy(response_cell, allowed["after_policy"])
+        before_semantic = _cell_semantic(before)
+        after_semantic = _cell_semantic(response_cell["source_text"], response_cell["visual_state"])
+        if after_semantic == before_semantic:
+            if allowed["change_policy"] == "MUST_CHANGE":
+                raise _error(
+                    "roll-forward table repair left a must-change cell semantically unchanged"
+                )
+            continue
+        merged_table["rows"][row_index]["values_exact"][column_index] = response_cell["source_text"]
+        changes.append(
+            {
+                "after_exact": response_cell["source_text"],
+                "after_policy": allowed["after_policy"],
+                "after_visual_state": response_cell["visual_state"],
+                "before_exact": before,
+                "before_visual_state": _visual_state(before),
+                "cell_id": cell_id,
+                "change_policy": allowed["change_policy"],
+                "evidence_kind": allowed["evidence_kind"],
+                "semantic_delta": {
+                    "after": {
+                        "signed_integer": after_semantic[1],
+                        "visual_state": after_semantic[0],
+                    },
+                    "before": {
+                        "signed_integer": before_semantic[1],
+                        "visual_state": before_semantic[0],
+                    },
+                },
+            }
+        )
     changed_ids = {item["cell_id"] for item in changes}
     must_change_ids = {
         item["cell_id"]
@@ -2184,6 +2490,7 @@ def merge_rollforward_table_repair_v1(
         "merged_table_sha256": canonical_json_sha256_v1(merged_table),
         "repair_scope": REPAIR_SCOPE,
         "repair_spec_authority_manifest_sha256": checked_spec_authority["manifest_sha256"],
+        "response_projection": canonical_clone_v1(decoded["projection_diagnostics"]),
         "shape_gate": canonical_clone_v1(checked_plan["shape_gate"]),
         "source_binding": canonical_clone_v1(checked_plan["source_binding"]),
         "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
@@ -2588,6 +2895,7 @@ def _repair_receipt_for_plan(
         "merged_table_sha256",
         "repair_scope",
         "repair_spec_authority_manifest_sha256",
+        "response_projection",
         "shape_gate",
         "source_binding",
         "target_id",
@@ -2604,6 +2912,26 @@ def _repair_receipt_for_plan(
         or change["source_binding"] != plan["source_binding"]
         or change["equation_inventory_sha256"] != plan["equation_inventory_sha256"]
         or change["target_id"] != f"{plan['section_id']}:{plan['table_id']}"
+        or type(change["response_projection"]) is not dict
+        or set(change["response_projection"])
+        != {
+            "corroborated_duplicate_count",
+            "corroborated_observations",
+            "ignored_observation_count",
+            "ignored_observations",
+            "ignored_top_level_fields",
+            "input_contract",
+            "normalized_observation_count",
+            "normalized_observations",
+            "raw_response_sha256",
+            "target_axis_sha256",
+        }
+        or change["response_projection"]["ignored_observation_count"]
+        != len(change["response_projection"]["ignored_observations"])
+        or change["response_projection"]["corroborated_duplicate_count"]
+        != len(change["response_projection"]["corroborated_observations"])
+        or change["response_projection"]["normalized_observation_count"]
+        != len(change["response_projection"]["normalized_observations"])
         or change["validated_allowlist_cell_count"] != len(plan["cell_allowlist"])
         or type(change["cell_changes"]) is not list
         or change["changed_cell_count"] != len(change["cell_changes"])
@@ -2712,21 +3040,15 @@ def build_rollforward_table_repair_attempt_v1(
     if raw_response_bytes is not None:
         try:
             response_text = raw_response_bytes.decode("utf-8")
-            shape = checked_plan["shape_gate"]
+            base_evidence = load_rollforward_table_page_evidence_v1(
+                page_store_path,
+                page_json_version_ids=[checked_plan["base_page_json_version_id"]],
+            )[0]
             decoded = decode_rollforward_table_repair_text_v1(
                 response_text,
-                target={
-                    "column_headers_exact": [
-                        column["header_path_exact"] for column in shape["columns_exact"]
-                    ],
-                    "column_value_kinds": [
-                        column["value_kind"] for column in shape["columns_exact"]
-                    ],
-                    "row_labels_exact": [row["label_exact"] for row in shape["row_axis_exact"]],
-                    "table_title_exact": shape["table_title_exact"],
-                    "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
-                    "unit_exact": shape["unit_exact"],
-                },
+                target=rollforward_table_repair_target_v1(
+                    base_evidence["page_json"], plan=checked_plan
+                ),
             )
             decoded_response_sha = canonical_json_sha256_v1(decoded)
         except (UnicodeDecodeError, GeminiJsonRollforwardTableRepairV1Error):

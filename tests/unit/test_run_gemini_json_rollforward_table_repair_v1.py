@@ -255,6 +255,16 @@ def test_dry_run_builds_exact_six_immutable_requests_without_provider(
         "sha256": inputs["runner_implementation_sha256"],
         "size_bytes": _SCRIPT.stat().st_size,
     }
+    projector_path = _ROOT / target.PROJECTOR_IMPLEMENTATION_PATH
+    assert target.PROJECTOR_IMPLEMENTATION_SHA256 == sha256(projector_path.read_bytes()).hexdigest()
+    assert run_contract["projector_implementation_ref"] == {
+        "path": target.PROJECTOR_IMPLEMENTATION_PATH,
+        "sha256": sha256(projector_path.read_bytes()).hexdigest(),
+        "size_bytes": projector_path.stat().st_size,
+    }
+    assert run_contract["deterministic_projection_schema_sha256"] == canonical_json_sha256_v1(
+        target._deterministic_projection_schema_v1()
+    )
     assert run_contract["effective_page_frontier_artifact_root"] == str(tmp_path)
     repair_authority = json.loads((output / "authority/repair-spec-authority.json").read_bytes())
     assert repair_authority["source_image_resolver"]["mupdf_version"] == fitz.mupdf_version
@@ -271,6 +281,17 @@ def test_dry_run_builds_exact_six_immutable_requests_without_provider(
             artifact_dir=output,
             dry_run=True,
         )
+
+
+def test_projector_pin_covers_local_normalizer_implementation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(target, "PROJECTOR_IMPLEMENTATION_SHA256", "0" * 64)
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="differs from its runner pin",
+    ):
+        target._projector_pin(_ROOT)
 
 
 def test_fake_openrouter_escalates_one_sibling_and_records_exact_overlay(
@@ -925,3 +946,201 @@ def test_cross_store_failure_is_terminal_and_seals_replay_without_provider_recal
     )
     assert checked == recovered_frontier
     assert len(effective_ids) == 6
+
+
+def test_in_place_source_mutation_is_detected_before_provider_or_publish(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    source_copy = tmp_path / "source-page-store.sqlite3"
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], source_copy)
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    inputs["source_page_store"] = source_copy
+    inputs["source_page_store_sha256"] = sha256(source_copy.read_bytes()).hexdigest()
+    source_before = source_copy.read_bytes()
+    page_before = writable.read_bytes()
+    results_before = writable_results.read_bytes()
+    original_core = target._run_rollforward_table_repair_on_private_sqlite_v1
+    provider_calls = []
+
+    def mutate_before_core(**kwargs):
+        with source_copy.open("r+b") as stream:
+            original = stream.read(1)
+            stream.seek(0)
+            stream.write(bytes([original[0] ^ 1]))
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            return original_core(**kwargs)
+        finally:
+            source_copy.write_bytes(source_before)
+
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        mutate_before_core,
+    )
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="bytes do not match the caller pin",
+    ):
+        target.run_rollforward_table_repair_v1(
+            **inputs,
+            artifact_dir=tmp_path / "source-in-place-mutation",
+            dry_run=False,
+            writable_page_store=writable,
+            writable_results_database=writable_results,
+            openrouter_api_key="x" * 32,
+            provider_call=lambda **kwargs: provider_calls.append(kwargs),
+        )
+    assert provider_calls == []
+    assert source_copy.read_bytes() == source_before
+    assert writable.read_bytes() == page_before
+    assert writable_results.read_bytes() == results_before
+
+
+def test_mixed_terminal_statuses_never_publish_and_create_only_two_work_databases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    page_before = writable.read_bytes()
+    results_before = writable_results.read_bytes()
+    copied_destinations = []
+    original_copy = target._copy_descriptor_to_new_file
+
+    def counted_copy(descriptor, destination, *, mode):
+        copied_destinations.append(Path(destination).name)
+        return original_copy(descriptor, destination, mode=mode)
+
+    monkeypatch.setattr(target, "_copy_descriptor_to_new_file", counted_copy)
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        lambda **_kwargs: {
+            "disposition": "REPAIR_FRONTIER_COMPLETE",
+            "job_count": 6,
+            "job_status_counts": {"ABSTAINED": 1, "RESOLVED": 5},
+        },
+    )
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="all-planned-jobs-resolved",
+    ):
+        target.run_rollforward_table_repair_v1(
+            **inputs,
+            artifact_dir=tmp_path / "mixed-live",
+            dry_run=False,
+            writable_page_store=writable,
+            writable_results_database=writable_results,
+            openrouter_api_key="x" * 32,
+        )
+    assert sorted(copied_destinations) == [
+        "writable-family-results.sqlite3",
+        "writable-page-store.sqlite3",
+    ]
+    assert writable.read_bytes() == page_before
+    assert writable_results.read_bytes() == results_before
+    assert not (tmp_path / "mixed-live/run-result.json").exists()
+
+    copied_destinations.clear()
+    monkeypatch.setattr(
+        target,
+        "_replay_sealed_rollforward_table_repair_on_private_sqlite_v1",
+        lambda **_kwargs: {
+            "disposition": "REPAIR_FRONTIER_RECOVERED",
+            "job_count": 6,
+            "job_status_counts": {"ABSTAINED": 1, "RESOLVED": 5},
+        },
+    )
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="all-planned-jobs-resolved",
+    ):
+        target.replay_sealed_rollforward_table_repair_v1(
+            **inputs,
+            sealed_artifact_dir=tmp_path / "unused-sealed",
+            sealed_run_result_sha256="f" * 64,
+            replay_artifact_dir=tmp_path / "mixed-replay",
+            writable_page_store=writable,
+            writable_results_database=writable_results,
+        )
+    assert sorted(copied_destinations) == [
+        "writable-family-results.sqlite3",
+        "writable-page-store.sqlite3",
+    ]
+    assert writable.read_bytes() == page_before
+    assert writable_results.read_bytes() == results_before
+    assert not (tmp_path / "mixed-replay/run-result.json").exists()
+
+
+def test_second_database_publish_failure_rolls_back_both_caller_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    page_before = writable.read_bytes()
+    results_before = writable_results.read_bytes()
+
+    def completed_core(**kwargs):
+        with sqlite3.connect(kwargs["writable_page_store"]) as connection:
+            connection.execute("PRAGMA user_version = 101")
+        with sqlite3.connect(kwargs["writable_results_database"]) as connection:
+            connection.execute("PRAGMA user_version = 202")
+        page_sha, page_size = target._sha_file(kwargs["writable_page_store"])
+        results_sha, results_size = target._sha_file(kwargs["writable_results_database"])
+        return {
+            "disposition": "REPAIR_FRONTIER_COMPLETE",
+            "job_count": 6,
+            "job_status_counts": {"ABSTAINED": 0, "RESOLVED": 6},
+            "writable_page_store": {"sha256": page_sha, "size_bytes": page_size},
+            "writable_results_database": {
+                "sha256": results_sha,
+                "size_bytes": results_size,
+            },
+        }
+
+    monkeypatch.setattr(
+        target,
+        "_run_rollforward_table_repair_on_private_sqlite_v1",
+        completed_core,
+    )
+    original_publish = target._publish_private_sqlite
+    publish_calls = 0
+
+    def fail_second_publish(boundary):
+        nonlocal publish_calls
+        publish_calls += 1
+        if publish_calls == 2:
+            raise OSError("injected second publish failure")
+        return original_publish(boundary)
+
+    monkeypatch.setattr(target, "_publish_private_sqlite", fail_second_publish)
+    with pytest.raises(OSError, match="injected second publish failure"):
+        target.run_rollforward_table_repair_v1(
+            **inputs,
+            artifact_dir=tmp_path / "publish-failure",
+            dry_run=False,
+            writable_page_store=writable,
+            writable_results_database=writable_results,
+            openrouter_api_key="x" * 32,
+        )
+    assert publish_calls == 2
+    assert writable.read_bytes() == page_before
+    assert writable_results.read_bytes() == results_before
+    assert not (tmp_path / "publish-failure/run-result.json").exists()

@@ -15,7 +15,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import sqlite3
 import stat
 import sys
@@ -96,6 +95,11 @@ _FAMILY_RUN_ID = re.compile(r"^gjfafstorev1:run:[0-9a-f]{64}$")
 _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
+PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
+PROJECTOR_IMPLEMENTATION_SHA256 = "ce175855cb14032dd4a38cb87b16da975d40860c01853f683c08b1924c6ea707"
+DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
+    "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
+)
 _CONFIG_FIELDS = {
     "authority_kind",
     "authority_ref",
@@ -151,6 +155,7 @@ class _PreparedRun:
     jobs: list[_PreparedJob]
     pinned_inputs: dict[str, _PinnedJson]
     baseline_run_receipt: dict[str, Any]
+    projector_implementation_ref: dict[str, Any]
     runner_implementation_ref: dict[str, Any]
 
 
@@ -175,6 +180,17 @@ class _SqliteBoundary:
 
 def _error(message: str) -> RunGeminiJsonRollforwardTableRepairV1Error:
     return RunGeminiJsonRollforwardTableRepairV1Error(message)
+
+
+def _require_all_planned_jobs_resolved(result: Mapping[str, Any], *, disposition: str) -> None:
+    job_count = result.get("job_count")
+    if (
+        result.get("disposition") != disposition
+        or type(job_count) is not int
+        or job_count <= 0
+        or result.get("job_status_counts") != {"ABSTAINED": 0, "RESOLVED": job_count}
+    ):
+        raise _error("terminal repair result is not an all-planned-jobs-resolved frontier")
 
 
 def _sha_file(path: Path) -> tuple[str, int]:
@@ -207,10 +223,15 @@ def _reject_sqlite_sidecars(path: Path, *, label: str) -> None:
 
 def _regular_file(path: Path, *, label: str) -> Path:
     candidate = Path(path)
+    descriptor_path = (
+        len(candidate.parts) == 5
+        and candidate.parts[:4] == ("/", "proc", "self", "fd")
+        and candidate.parts[4].isdigit()
+    )
     resolved = candidate.resolve()
-    if candidate.is_symlink() or not resolved.is_file():
+    if (candidate.is_symlink() and not descriptor_path) or not resolved.is_file():
         raise _error(f"{label} must be one regular, non-symlink file")
-    return resolved
+    return candidate if descriptor_path else resolved
 
 
 def _expected_hash(value: str, *, label: str) -> str:
@@ -258,6 +279,7 @@ def _establish_sqlite_boundary(
     label: str,
     private_path: Path,
     writable: bool,
+    copy_to_private: bool = True,
 ) -> _SqliteBoundary:
     if not hasattr(os, "O_NOFOLLOW"):
         raise _error("this platform cannot establish a no-follow SQLite boundary")
@@ -282,15 +304,20 @@ def _establish_sqlite_boundary(
             raise _error(f"{label} file identity changed while opening")
         _reject_sqlite_sidecars(resolved, label=label)
         expected = _expected_hash(expected_sha256, label=f"{label} expected SHA-256")
-        actual, size = _copy_descriptor_to_new_file(
-            descriptor,
-            private_path,
-            mode=0o600 if writable else 0o400,
-        )
+        if copy_to_private:
+            actual, size = _copy_descriptor_to_new_file(
+                descriptor,
+                private_path,
+                mode=0o600 if writable else 0o400,
+            )
+            working_path = private_path
+        else:
+            actual, size = _sha_descriptor(descriptor)
+            working_path = Path(f"/proc/self/fd/{descriptor}")
         if actual != expected or size != descriptor_stat.st_size:
             raise _error(f"{label} bytes do not match the caller pin")
-        if _sha_file(private_path) != (actual, size):
-            raise _error(f"{label} private snapshot differs from its held descriptor")
+        if _sha_file(working_path) != (actual, size):
+            raise _error(f"{label} stable view or work copy differs from its held descriptor")
         return _SqliteBoundary(
             descriptor=descriptor,
             identity=identity,
@@ -298,7 +325,7 @@ def _establish_sqlite_boundary(
             initial_size_bytes=size,
             label=label,
             original_path=resolved,
-            private_path=private_path,
+            private_path=working_path,
             writable=writable,
         )
     except Exception:
@@ -372,6 +399,70 @@ def _publish_private_sqlite(boundary: _SqliteBoundary) -> tuple[str, int]:
         expected_size_bytes=private_size,
     )
     return private_sha256, private_size
+
+
+def _overwrite_descriptor_from_descriptor(destination: int, source: int, *, label: str) -> None:
+    os.ftruncate(destination, 0)
+    offset = 0
+    while chunk := os.pread(source, 1024 * 1024, offset):
+        written = 0
+        while written < len(chunk):
+            count = os.pwrite(destination, chunk[written:], offset + written)
+            if count <= 0:
+                raise _error(f"{label} rollback made no progress")
+            written += count
+        offset += len(chunk)
+    os.fsync(destination)
+
+
+def _rollback_published_sqlite_pair(
+    writable_store: _SqliteBoundary,
+    writable_results: _SqliteBoundary,
+    source_store: _SqliteBoundary,
+    source_results: _SqliteBoundary,
+) -> None:
+    errors = []
+    for writable, source in (
+        (writable_store, source_store),
+        (writable_results, source_results),
+    ):
+        try:
+            _overwrite_descriptor_from_descriptor(
+                writable.descriptor,
+                source.descriptor,
+                label=writable.label,
+            )
+            _assert_sqlite_boundary_current(
+                writable,
+                expected_sha256=writable.initial_sha256,
+                expected_size_bytes=writable.initial_size_bytes,
+            )
+        except Exception as exc:  # pragma: no cover - catastrophic I/O is not safely maskable.
+            errors.append(f"{writable.label}: {type(exc).__name__}: {exc}")
+    if errors:
+        raise _error("SQLite pair rollback failed: " + "; ".join(errors))
+
+
+def _publish_private_sqlite_pair(
+    writable_store: _SqliteBoundary,
+    writable_results: _SqliteBoundary,
+    source_store: _SqliteBoundary,
+    source_results: _SqliteBoundary,
+) -> tuple[tuple[str, int], tuple[str, int]]:
+    """Publish both work databases or restore both caller files to their pinned baseline."""
+
+    try:
+        published_store = _publish_private_sqlite(writable_store)
+        published_results = _publish_private_sqlite(writable_results)
+    except Exception:
+        _rollback_published_sqlite_pair(
+            writable_store,
+            writable_results,
+            source_store,
+            source_results,
+        )
+        raise
+    return published_store, published_results
 
 
 def _close_sqlite_boundaries(boundaries: Sequence[_SqliteBoundary]) -> None:
@@ -518,6 +609,48 @@ def _runner_pin(workspace_root: Path, expected_sha256: str) -> dict[str, Any]:
     return {"path": RUNNER_IMPLEMENTATION_PATH, "sha256": actual, "size_bytes": size}
 
 
+def _projector_pin(workspace_root: Path) -> dict[str, Any]:
+    root = Path(workspace_root).resolve()
+    expected = root.joinpath(*PurePosixPath(PROJECTOR_IMPLEMENTATION_PATH).parts).resolve()
+    executed = Path(decode_rollforward_table_repair_text_v1.__code__.co_filename).resolve()
+    if (
+        not expected.is_relative_to(root)
+        or expected.is_symlink()
+        or not expected.is_file()
+        or executed != expected
+    ):
+        raise _error("executed target-observation projector differs from its workspace path")
+    actual, size = _sha_file(expected)
+    if actual != PROJECTOR_IMPLEMENTATION_SHA256:
+        raise _error("executed target-observation projector differs from its runner pin")
+    return {"path": PROJECTOR_IMPLEMENTATION_PATH, "sha256": actual, "size_bytes": size}
+
+
+def _deterministic_projection_schema_v1() -> dict[str, Any]:
+    """Schema for stored algorithm output, distinct from the Gemini request schema."""
+
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": False,
+        "properties": {
+            "format_version": {"type": "string"},
+            "observations": {"type": "array"},
+            "projection_diagnostics": {"type": "object"},
+            "projection_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+            "source_response": {"type": "object"},
+        },
+        "required": [
+            "format_version",
+            "observations",
+            "projection_diagnostics",
+            "projection_sha256",
+            "source_response",
+        ],
+        "title": DETERMINISTIC_PROJECTION_CONTRACT_VERSION,
+        "type": "object",
+    }
+
+
 def _validate_baseline_family_run(
     results_database: Path,
     *,
@@ -525,9 +658,7 @@ def _validate_baseline_family_run(
     config: Mapping[str, Any],
 ) -> dict[str, Any]:
     try:
-        connection = sqlite3.connect(
-            f"file:{results_database.resolve()}?mode=ro&immutable=1", uri=True
-        )
+        connection = sqlite3.connect(f"file:{results_database}?mode=ro&immutable=1", uri=True)
         connection.row_factory = sqlite3.Row
         identity = connection.execute(
             "SELECT format_version FROM store_identity WHERE singleton=1"
@@ -596,6 +727,7 @@ def _prepare(
         workspace_root,
         runner_implementation_sha256,
     )
+    projector_implementation_ref = _projector_pin(workspace_root)
     compiled_spec_sources = {
         "evaluation": sweep.value["specs"]["evaluation"]["value"],
         "schema_binding": sweep.value["specs"]["schema_binding"]["value"],
@@ -708,6 +840,7 @@ def _prepare(
             "repair-spec-config.json": repair_config,
         },
         baseline_run_receipt=baseline_run_receipt,
+        projector_implementation_ref=projector_implementation_ref,
         runner_implementation_ref=runner_implementation_ref,
     )
 
@@ -1050,6 +1183,7 @@ def _write_static_artifacts(
     source_results_database_sha256: str,
     source_results_database_size_bytes: int,
     effective_artifact_root: Path,
+    contract_extensions: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, bytes], dict[str, bytes]]:
     input_refs = {}
     for name, pinned in prepared.pinned_inputs.items():
@@ -1115,14 +1249,26 @@ def _write_static_artifacts(
         "mode": mode,
         "official_selection": "NOT_PERFORMED",
         "plan_axis_sha256": canonical_json_sha256_v1(prepared.plans),
-        "provider_failure_recovery": {
-            "database_apply_is_cross_store": True,
-            "on_incomplete": (
-                "DISCARD_BOTH_WRITABLE_DATABASE_COPIES_AND_REPLAY_THE_SEALED_"
-                "ATTEMPT_AXIS_TO_FRESH_EXACT_COPIES_WITHOUT_PROVIDER_RECALL"
-            ),
-            "provider_recall_on_incomplete": "FORBIDDEN",
-        },
+        "projector_implementation_ref": prepared.projector_implementation_ref,
+        "deterministic_projection_schema_sha256": canonical_json_sha256_v1(
+            _deterministic_projection_schema_v1()
+        ),
+        "provider_failure_recovery": (
+            {
+                "database_apply_is_cross_store": True,
+                "on_incomplete": (
+                    "DISCARD_BOTH_WRITABLE_DATABASE_COPIES_AND_REPLAY_THE_SEALED_"
+                    "ATTEMPT_AXIS_TO_FRESH_EXACT_COPIES_WITHOUT_PROVIDER_RECALL"
+                ),
+                "provider_recall_on_incomplete": "FORBIDDEN",
+            }
+            if mode != "SEALED_RESPONSE_REVALIDATION"
+            else {
+                "database_apply_is_cross_store": True,
+                "on_incomplete": "DISCARD_BOTH_WORK_DATABASES_WITHOUT_PUBLISH",
+                "provider_recall_on_incomplete": "NOT_APPLICABLE_PROVIDER_CALL_COUNT_ZERO",
+            }
+        ),
         "repair_spec_authority_manifest_sha256": prepared.repair_spec_authority["manifest_sha256"],
         "runner_implementation_ref": prepared.runner_implementation_ref,
         "source_family_results_database": {
@@ -1134,6 +1280,10 @@ def _write_static_artifacts(
             "size_bytes": source_store_size_bytes,
         },
     }
+    if contract_extensions is not None:
+        if type(contract_extensions) is not dict or set(contract) & set(contract_extensions):
+            raise _error("run-contract extensions collide with the base contract")
+        contract = {**contract, **json.loads(canonical_json_bytes_v1(contract_extensions))}
     _write_json(output / "run-contract.json", contract)
     return contract, source_artifacts, crop_artifacts
 
@@ -1956,6 +2106,14 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         and writable_results is not None
         and openrouter_api_key is not None
     )
+    initialize_region_repair_extension_v1(writable_store)
+    enqueued = enqueue_gemini_family_region_repair_plans_v1(
+        writable_results,
+        family_run_id=prepared.config["repair_source_family_run_id"],
+        plans=prepared.plans,
+    )
+    if enqueued != [plan["repair_job_id"] for plan in prepared.plans]:
+        raise _error("standard family-results queue does not preserve the authoritative plan axis")
     attempts_by_job: dict[str, list[dict[str, Any]]] = {
         job.plan["repair_job_id"]: [] for job in prepared.jobs
     }
@@ -1964,13 +2122,13 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
     capture_checkpoint_ref: dict[str, Any] | None = None
     capture_failures: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(
-        prefix="family13-table-repair-capture-",
+        prefix="family13-table-repair-execution-",
         dir=output.parent,
-    ) as capture_directory:
-        capture_store = Path(capture_directory) / "page-store.sqlite3"
-        shutil.copyfile(source_store, capture_store)
-        os.chmod(capture_store, 0o600)
-        initialize_region_repair_extension_v1(capture_store)
+    ):
+        # One private page/results pair is the entire transaction.  Provider capture,
+        # validation, lineage, and canonical attempt recording all happen on that pair;
+        # the public targets remain byte-identical until the all-resolved publish gate.
+        capture_store = writable_store
         active = list(prepared.jobs)
         for thinking_level in _THINKING_LEVELS:
             next_active_ids: set[str] = set()
@@ -2102,24 +2260,31 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         for job in prepared.jobs
     ):
         raise _error("sealed capture phase did not reach one terminal attempt per job")
-    _assert_frozen_database_unchanged(
-        writable_store,
-        (source_sha, source_size),
-        label="fresh writable page-store copy",
-    )
-    _assert_frozen_database_unchanged(
-        writable_results,
-        (source_results_sha, source_results_size),
-        label="fresh writable family-results database copy",
-    )
-    initialize_region_repair_extension_v1(writable_store)
-    enqueued = enqueue_gemini_family_region_repair_plans_v1(
-        writable_results,
-        family_run_id=prepared.config["repair_source_family_run_id"],
-        plans=prepared.plans,
-    )
-    if enqueued != [plan["repair_job_id"] for plan in prepared.plans]:
-        raise _error("standard family-results queue does not preserve the authoritative plan axis")
+    terminal_status_counts = {
+        status: sum(
+            attempts_by_job[job.plan["repair_job_id"]][-1]["next_status"] == status
+            for job in prepared.jobs
+        )
+        for status in ("ABSTAINED", "RESOLVED")
+    }
+    if terminal_status_counts != {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}:
+        incomplete = {
+            "attempt_artifact_axis": attempt_axis_ref,
+            "capture_checkpoint": capture_checkpoint_ref,
+            "disposition": "REPAIR_FRONTIER_INCOMPLETE",
+            "format_version": FORMAT_VERSION,
+            "job_status_counts": terminal_status_counts,
+            "mode": mode,
+            "official_selection": "NOT_PERFORMED",
+            "provider_recall": "FORBIDDEN",
+            "recovery_action": (
+                "REVALIDATE_AUTHENTICATED_SEALED_RESPONSES_ON_ONE_FRESH_BASELINE_"
+                "DATABASE_PAIR_WITHOUT_PROVIDER_RECALL"
+            ),
+            "run_contract_sha256": run_contract_sha256,
+        }
+        _write_json(output / "run-result.json", incomplete)
+        return incomplete
     manifest_artifacts = {}
     for entry in attempt_artifact_manifests:
         manifest = _validate_attempt_artifact_manifest(
@@ -2203,6 +2368,13 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         crop_image_artifacts_by_sha256=crop_artifacts,
         response_artifacts_by_sha256=response_artifacts,
     )
+    if (
+        overlay.get("job_status_counts") != {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}
+        or len(overlay.get("replacements", [])) != len(prepared.jobs)
+        or {item.get("repair_job_id") for item in overlay.get("replacements", [])}
+        != {job.plan["repair_job_id"] for job in prepared.jobs}
+    ):
+        raise _error("complete repair frontier does not contain one resolved replacement per job")
     overlay_payload = canonical_json_bytes_v1(overlay) + b"\n"
     overlay_path = output / "repair-overlay.json"
     _write_new(overlay_path, overlay_payload)
@@ -2339,7 +2511,7 @@ def run_rollforward_table_repair_v1(
     timeout_seconds: int = 900,
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
 ) -> dict[str, Any]:
-    """Run against descriptor-pinned private SQLite snapshots and work copies."""
+    """Run from held read-only sources with exactly one private page/results work pair."""
 
     boundaries: list[_SqliteBoundary] = []
     with tempfile.TemporaryDirectory(prefix="family13-table-repair-sqlite-boundary-") as directory:
@@ -2351,6 +2523,7 @@ def run_rollforward_table_repair_v1(
                 label="frozen source page store",
                 private_path=private_root / "source-page-store.sqlite3",
                 writable=False,
+                copy_to_private=False,
             )
             boundaries.append(source_store_boundary)
             source_results_boundary = _establish_sqlite_boundary(
@@ -2359,6 +2532,7 @@ def run_rollforward_table_repair_v1(
                 label="frozen source family-results database",
                 private_path=private_root / "source-family-results.sqlite3",
                 writable=False,
+                copy_to_private=False,
             )
             boundaries.append(source_results_boundary)
             writable_store_boundary = None
@@ -2451,18 +2625,10 @@ def run_rollforward_table_repair_v1(
                     expected_size_bytes=writable_results_boundary.initial_size_bytes,
                 )
                 if result.get("disposition") == "REPAIR_FRONTIER_COMPLETE":
-                    published_store = _publish_private_sqlite(writable_store_boundary)
-                    published_results = _publish_private_sqlite(writable_results_boundary)
-                    if result.get("writable_page_store") != {
-                        "sha256": published_store[0],
-                        "size_bytes": published_store[1],
-                    }:
-                        raise _error("published page-store bytes differ from the run result")
-                    if result.get("writable_results_database") != {
-                        "sha256": published_results[0],
-                        "size_bytes": published_results[1],
-                    }:
-                        raise _error("published family-results bytes differ from the run result")
+                    _require_all_planned_jobs_resolved(
+                        result,
+                        disposition="REPAIR_FRONTIER_COMPLETE",
+                    )
                     _bind_published_database_refs(
                         artifact_root=artifact_root,
                         repair_spec_config_path=repair_spec_config_path,
@@ -2471,26 +2637,896 @@ def run_rollforward_table_repair_v1(
                         writable_results_boundary=writable_results_boundary,
                         label_prefix="published effective-frontier",
                     )
+                    published = False
+                    try:
+                        published_store, published_results = _publish_private_sqlite_pair(
+                            writable_store_boundary,
+                            writable_results_boundary,
+                            source_store_boundary,
+                            source_results_boundary,
+                        )
+                        published = True
+                        if result.get("writable_page_store") != {
+                            "sha256": published_store[0],
+                            "size_bytes": published_store[1],
+                        }:
+                            raise _error("published page-store bytes differ from the run result")
+                        if result.get("writable_results_database") != {
+                            "sha256": published_results[0],
+                            "size_bytes": published_results[1],
+                        }:
+                            raise _error(
+                                "published family-results bytes differ from the run result"
+                            )
+                        _assert_sqlite_boundary_current(
+                            source_store_boundary,
+                            expected_sha256=source_store_boundary.initial_sha256,
+                            expected_size_bytes=source_store_boundary.initial_size_bytes,
+                        )
+                        _assert_sqlite_boundary_current(
+                            source_results_boundary,
+                            expected_sha256=source_results_boundary.initial_sha256,
+                            expected_size_bytes=source_results_boundary.initial_size_bytes,
+                        )
+                        _write_json(Path(artifact_dir).resolve() / "run-result.json", result)
+                    except Exception:
+                        if published:
+                            _rollback_published_sqlite_pair(
+                                writable_store_boundary,
+                                writable_results_boundary,
+                                source_store_boundary,
+                                source_results_boundary,
+                            )
+                        (Path(artifact_dir).resolve() / "run-result.json").unlink(missing_ok=True)
+                        raise
                 elif result.get("disposition") not in {
                     "REPAIR_CAPTURE_INCOMPLETE",
                     "REPAIR_FRONTIER_INCOMPLETE",
                 }:
                     raise _error("bounded provider run returned an unknown terminal disposition")
-            _assert_sqlite_boundary_current(
-                source_store_boundary,
-                expected_sha256=source_store_boundary.initial_sha256,
-                expected_size_bytes=source_store_boundary.initial_size_bytes,
-            )
-            _assert_sqlite_boundary_current(
-                source_results_boundary,
-                expected_sha256=source_results_boundary.initial_sha256,
-                expected_size_bytes=source_results_boundary.initial_size_bytes,
-            )
-            if result.get("disposition") == "REPAIR_FRONTIER_COMPLETE":
-                _write_json(Path(artifact_dir).resolve() / "run-result.json", result)
             return result
         finally:
             _close_sqlite_boundaries(boundaries)
+
+
+def _legacy_plan_semantic_projection(plan: Any) -> dict[str, Any]:
+    if type(plan) is not dict or type(plan.get("repair_job_id")) is not str:
+        raise _error("quarantined legacy plan is invalid")
+    material = {key: plan[key] for key in plan if key != "repair_job_id"}
+    if plan["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material):
+        raise _error("quarantined legacy plan identity does not replay")
+    excluded = {"acceptance_policy", "repair_job_id", "request_contract"}
+    return {key: plan[key] for key in sorted(plan) if key not in excluded}
+
+
+def _validate_quarantined_legacy_attempt(
+    sealed_output: Path,
+    *,
+    entry: Mapping[str, Any],
+    manifest: Mapping[str, Any],
+    legacy_plan: Mapping[str, Any],
+) -> dict[str, Any]:
+    artifacts = manifest["artifacts"]
+    attempt = _json_artifact(
+        sealed_output,
+        artifacts["attempt.json"],
+        label="quarantined legacy repair attempt",
+    )
+    if type(attempt) is not dict or type(attempt.get("attempt_id")) is not str:
+        raise _error("quarantined legacy attempt is invalid")
+    material = {key: attempt[key] for key in attempt if key != "attempt_id"}
+    if (
+        attempt["attempt_id"] != "gjfrtav1:attempt:" + canonical_json_sha256_v1(material)
+        or attempt["attempt_id"] != entry["attempt_id"]
+        or attempt.get("repair_job_id") != legacy_plan["repair_job_id"]
+        or attempt.get("repair_job_id") != manifest["repair_job_id"]
+        or attempt.get("attempt_ordinal") != entry["attempt_ordinal"]
+        or attempt.get("thinking_level") != entry["thinking_level"]
+        or attempt.get("thinking_level") != _THINKING_LEVELS[attempt.get("attempt_ordinal", 0) - 1]
+        or attempt.get("sibling_base_page_json_version_id")
+        != legacy_plan["base_page_json_version_id"]
+        or attempt.get("request_contract_sha256")
+        != canonical_json_sha256_v1(legacy_plan["request_contract"])
+        or attempt.get("outcome")
+        not in {
+            "PROVIDER_OR_VALIDATION_FAILURE",
+            "RESOLVED",
+            "RETRYABLE_VALIDATION_FAILURE",
+        }
+        or attempt.get("next_status") not in {"ABSTAINED", "PENDING", "RESOLVED"}
+    ):
+        raise _error("quarantined legacy attempt lineage is incoherent")
+    for artifact_name, attempt_field in (
+        ("provider.json", "provider"),
+        ("usage.json", "usage"),
+    ):
+        if not same_typed_json_v1(
+            _json_artifact(
+                sealed_output,
+                artifacts[artifact_name],
+                label=f"quarantined legacy {artifact_name}",
+            ),
+            attempt[attempt_field],
+        ):
+            raise _error("quarantined legacy attempt artifacts disagree")
+    legacy_validation = _json_artifact(
+        sealed_output,
+        artifacts["validation.json"],
+        label="quarantined legacy validation.json",
+    )
+    if (
+        type(legacy_validation) is not dict
+        or {
+            "reason_codes": legacy_validation.get("reason_codes"),
+            "status": legacy_validation.get("status"),
+        }
+        != attempt["validation"]
+    ):
+        raise _error("quarantined legacy validation summary disagrees")
+    response_ref = attempt.get("response_artifact_ref")
+    manifest_response_ref = artifacts.get("table-response.json") or artifacts.get(
+        "provider-envelope.bin"
+    )
+    if (response_ref is None) != (manifest_response_ref is None) or (
+        response_ref is not None and response_ref != manifest_response_ref
+    ):
+        raise _error("quarantined legacy response authority is incoherent")
+    return attempt
+
+
+def _validate_quarantined_legacy_source_v1(
+    *,
+    sealed_output: Path,
+    sealed_result: Mapping[str, Any],
+    contract: Mapping[str, Any],
+    prepared: _PreparedRun,
+    source_sha: str,
+    source_size: int,
+    source_results_sha: str,
+    source_results_size: int,
+    page_store_path: Path,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    expected_count = len(prepared.jobs)
+    if (
+        sealed_result.get("disposition") != "REPAIR_FRONTIER_COMPLETE"
+        or sealed_result.get("job_count") != expected_count
+        or sealed_result.get("job_status_counts") != {"ABSTAINED": 3, "RESOLVED": 3}
+        or sealed_result.get("official_selection") != "NOT_PERFORMED"
+    ):
+        raise _error("sealed source is not the exact quarantined mixed-status legacy root")
+    if (
+        contract.get("format_version") != FORMAT_VERSION
+        or contract.get("mode") != "OPENROUTER_BOUNDED"
+        or contract.get("official_selection") != "NOT_PERFORMED"
+        or contract.get("expected_plan_count") != expected_count
+        or contract.get("expected_selected_page_count") != len(prepared.selected_ids)
+        or contract.get("source_page_store") != {"sha256": source_sha, "size_bytes": source_size}
+        or contract.get("source_family_results_database")
+        != {"sha256": source_results_sha, "size_bytes": source_results_size}
+    ):
+        raise _error("quarantined legacy contract differs from the current pinned baseline")
+    legacy_runner_ref = contract.get("runner_implementation_ref")
+    if (
+        type(legacy_runner_ref) is not dict
+        or set(legacy_runner_ref) != {"path", "sha256", "size_bytes"}
+        or legacy_runner_ref.get("path") != RUNNER_IMPLEMENTATION_PATH
+        or _expected_hash(
+            legacy_runner_ref.get("sha256"),
+            label="quarantined legacy runner implementation SHA-256",
+        )
+        != legacy_runner_ref["sha256"]
+        or type(legacy_runner_ref.get("size_bytes")) is not int
+        or legacy_runner_ref["size_bytes"] <= 0
+    ):
+        raise _error("quarantined legacy runner implementation reference drifted")
+    expected_inputs = {
+        name: {"sha256": pinned.sha256, "size_bytes": len(pinned.raw)}
+        for name, pinned in prepared.pinned_inputs.items()
+    }
+    for name, reference in contract.get("input_artifacts", {}).items():
+        if name not in expected_inputs:
+            raise _error("quarantined legacy contract contains an unknown pinned input")
+        path = _authenticated_artifact_ref(sealed_output, reference)
+        if (reference["sha256"], reference["size_bytes"]) != (
+            expected_inputs[name]["sha256"],
+            expected_inputs[name]["size_bytes"],
+        ) or path.read_bytes() != prepared.pinned_inputs[name].raw:
+            raise _error("quarantined legacy input differs from the current pin")
+    if set(contract.get("input_artifacts", {})) != set(expected_inputs):
+        raise _error("quarantined legacy input authority is incomplete")
+    authority_refs = contract.get("authority_artifacts")
+    if type(authority_refs) is not dict or set(authority_refs) != {
+        "plan_axis",
+        "plan_replay",
+        "repair_spec",
+        "source_family_run",
+    }:
+        raise _error("quarantined legacy authority artifact axis drifted")
+    legacy_plans = _json_artifact(
+        sealed_output,
+        authority_refs["plan_axis"],
+        label="quarantined legacy plan axis",
+    )
+    legacy_replay_authority = _json_artifact(
+        sealed_output,
+        authority_refs["plan_replay"],
+        label="quarantined legacy plan replay authority",
+    )
+    legacy_repair_authority = _json_artifact(
+        sealed_output,
+        authority_refs["repair_spec"],
+        label="quarantined legacy repair-spec authority",
+    )
+    legacy_baseline = _json_artifact(
+        sealed_output,
+        authority_refs["source_family_run"],
+        label="quarantined legacy family-run authority",
+    )
+    if (
+        type(legacy_plans) is not list
+        or len(legacy_plans) != expected_count
+        or contract.get("plan_axis_sha256") != canonical_json_sha256_v1(legacy_plans)
+        or legacy_replay_authority != prepared.authority
+        or legacy_baseline != prepared.baseline_run_receipt
+    ):
+        raise _error("quarantined legacy plan authority does not replay")
+    legacy_repair_authority_fields = {
+        "authority",
+        "authenticity",
+        "format_version",
+        "manifest_sha256",
+        "plan_axis_sha256",
+        "repair_spec_axis_sha256",
+        "source_image_bindings",
+        "source_image_bindings_sha256",
+        "source_image_resolver",
+    }
+    legacy_repair_authority_material = (
+        {
+            key: legacy_repair_authority[key]
+            for key in legacy_repair_authority
+            if key != "manifest_sha256"
+        }
+        if type(legacy_repair_authority) is dict
+        else {}
+    )
+    if (
+        type(legacy_repair_authority) is not dict
+        or set(legacy_repair_authority) != legacy_repair_authority_fields
+        or type(legacy_repair_authority.get("source_image_bindings")) is not list
+        or legacy_repair_authority.get("manifest_sha256")
+        != canonical_json_sha256_v1(legacy_repair_authority_material)
+        or legacy_repair_authority.get("plan_axis_sha256") != canonical_json_sha256_v1(legacy_plans)
+        or legacy_repair_authority.get("repair_spec_axis_sha256")
+        != canonical_json_sha256_v1(prepared.config["table_repair_specs"])
+        or legacy_repair_authority.get("source_image_bindings_sha256")
+        != canonical_json_sha256_v1(legacy_repair_authority.get("source_image_bindings"))
+    ):
+        raise _error("quarantined legacy repair-spec authority identity drifted")
+    legacy_by_semantic = {
+        canonical_json_sha256_v1(_legacy_plan_semantic_projection(plan)): plan
+        for plan in legacy_plans
+    }
+    new_by_semantic = {
+        canonical_json_sha256_v1(_legacy_plan_semantic_projection(plan)): job
+        for plan, job in zip(prepared.plans, prepared.jobs, strict=True)
+    }
+    if set(legacy_by_semantic) != set(new_by_semantic) or len(legacy_by_semantic) != expected_count:
+        raise _error("quarantined legacy and minimal-observation plan semantics differ")
+    old_binding_axis = [
+        {key: value for key, value in binding.items() if key != "repair_job_id"}
+        for binding in legacy_repair_authority.get("source_image_bindings", [])
+    ]
+    new_binding_axis = [
+        {key: value for key, value in binding.items() if key != "repair_job_id"}
+        for binding in prepared.repair_spec_authority["source_image_bindings"]
+    ]
+    for field in (
+        "authenticity",
+        "authority",
+        "format_version",
+        "repair_spec_axis_sha256",
+        "source_image_resolver",
+    ):
+        if legacy_repair_authority.get(field) != prepared.repair_spec_authority[field]:
+            raise _error("quarantined legacy repair-spec authority differs semantically")
+    if old_binding_axis != new_binding_axis:
+        raise _error("quarantined legacy source-image binding axis differs")
+    contract_jobs = contract.get("jobs")
+    if type(contract_jobs) is not list or len(contract_jobs) != expected_count:
+        raise _error("quarantined legacy job artifact axis is invalid")
+    old_job_to_new: dict[str, _PreparedJob] = {}
+    legacy_static_artifacts_by_job: dict[str, dict[str, Any]] = {}
+    expected_static_artifact_names = {
+        "crop-image.png",
+        "crop-receipt.json",
+        "plan.json",
+        "prompt.txt",
+        "response-schema.json",
+        "source-image.png",
+        "source-resolution-receipt.json",
+    }
+    for legacy_plan, contract_job in zip(legacy_plans, contract_jobs, strict=True):
+        if (
+            type(contract_job) is not dict
+            or contract_job.get("repair_job_id") != legacy_plan["repair_job_id"]
+            or contract_job.get("document_ordinal") != legacy_plan["document_ordinal"]
+            or contract_job.get("physical_page") != legacy_plan["physical_page"]
+        ):
+            raise _error("quarantined legacy job axis differs from its plans")
+        artifacts = contract_job.get("artifacts")
+        if type(artifacts) is not dict or set(artifacts) != expected_static_artifact_names:
+            raise _error("quarantined legacy static job artifact axis drifted")
+        for reference in artifacts.values():
+            _authenticated_artifact_ref(sealed_output, reference)
+        stored_plan = _json_artifact(
+            sealed_output,
+            artifacts["plan.json"],
+            label="quarantined legacy job plan",
+        )
+        if stored_plan != legacy_plan:
+            raise _error("quarantined legacy static job plan differs")
+        prompt_path = _authenticated_artifact_ref(sealed_output, artifacts["prompt.txt"])
+        schema = _json_artifact(
+            sealed_output,
+            artifacts["response-schema.json"],
+            label="quarantined legacy response schema",
+        )
+        if (
+            sha256(prompt_path.read_bytes()).hexdigest()
+            != legacy_plan["request_contract"]["prompt_sha256"]
+            or canonical_json_sha256_v1(schema)
+            != legacy_plan["request_contract"]["response_schema_sha256"]
+        ):
+            raise _error("quarantined legacy prompt/schema differs from its request contract")
+        semantic = canonical_json_sha256_v1(_legacy_plan_semantic_projection(legacy_plan))
+        new_job = new_by_semantic[semantic]
+        if (
+            artifacts["source-image.png"]["sha256"] != sha256(new_job.source_image).hexdigest()
+            or artifacts["crop-image.png"]["sha256"] != sha256(new_job.crop_image).hexdigest()
+        ):
+            raise _error("quarantined legacy source/crop pixels differ from current replay")
+        old_job_to_new[legacy_plan["repair_job_id"]] = new_job
+        legacy_static_artifacts_by_job[legacy_plan["repair_job_id"]] = artifacts
+
+    axis = _json_artifact(
+        sealed_output,
+        sealed_result.get("attempt_artifact_axis"),
+        label="quarantined legacy attempt artifact axis",
+    )
+    if (
+        type(axis) is not dict
+        or axis.get("format_version") != ATTEMPT_ARTIFACT_AXIS_FORMAT_VERSION
+        or axis.get("manifest_axis_sha256") != canonical_json_sha256_v1(axis.get("manifests"))
+        or sealed_result["attempt_artifact_axis"]["sha256"]
+        != sha256((sealed_output / "attempt-artifact-axis.json").read_bytes()).hexdigest()
+    ):
+        raise _error("quarantined legacy attempt axis identity drifted")
+    checkpoint = _validate_capture_checkpoint(
+        sealed_output,
+        _json_artifact(
+            sealed_output,
+            sealed_result.get("capture_checkpoint"),
+            label="quarantined legacy terminal checkpoint",
+        ),
+    )
+    if (
+        checkpoint["run_contract_sha256"] != sealed_result["run_contract_sha256"]
+        or sorted(checkpoint["attempt_artifact_manifests"], key=lambda item: item["attempt_id"])
+        != sorted(axis["manifests"], key=lambda item: item["attempt_id"])
+        or checkpoint["checkpoint_ordinal"] != len(axis["manifests"])
+        or {state["next_status"] for state in checkpoint["job_states"]} != {"ABSTAINED", "RESOLVED"}
+        or {
+            status: sum(state["next_status"] == status for state in checkpoint["job_states"])
+            for status in ("ABSTAINED", "RESOLVED")
+        }
+        != sealed_result["job_status_counts"]
+    ):
+        raise _error("quarantined legacy checkpoint does not prove the mixed-status contradiction")
+    plan_by_old_id = {plan["repair_job_id"]: plan for plan in legacy_plans}
+    attempts_by_old_job: dict[str, list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]]] = {
+        job_id: [] for job_id in plan_by_old_id
+    }
+    for entry in axis["manifests"]:
+        manifest = _validate_attempt_artifact_manifest(
+            sealed_output,
+            _json_artifact(
+                sealed_output,
+                entry["attempt_artifact_manifest_ref"],
+                label="quarantined legacy attempt manifest",
+            ),
+        )
+        if (
+            entry["manifest_sha256"] != manifest["manifest_sha256"]
+            or entry["repair_job_id"] not in plan_by_old_id
+        ):
+            raise _error("quarantined legacy manifest axis differs from its content")
+        attempt = _validate_quarantined_legacy_attempt(
+            sealed_output,
+            entry=entry,
+            manifest=manifest,
+            legacy_plan=plan_by_old_id[entry["repair_job_id"]],
+        )
+        attempts_by_old_job[entry["repair_job_id"]].append((attempt, manifest, dict(entry)))
+    selected = []
+    for old_job_id, old_attempts in attempts_by_old_job.items():
+        old_attempts.sort(key=lambda item: item[0]["attempt_ordinal"])
+        state = next(
+            item for item in checkpoint["job_states"] if item["repair_job_id"] == old_job_id
+        )
+        if (
+            [item[0]["attempt_ordinal"] for item in old_attempts]
+            != list(range(1, len(old_attempts) + 1))
+            or len(old_attempts) != state["attempt_count"]
+            or old_attempts[-1][0]["next_status"] != state["next_status"]
+        ):
+            raise _error("quarantined legacy per-job attempt frontier is incoherent")
+        new_job = old_job_to_new[old_job_id]
+        chosen = None
+        rejection_hashes = []
+        for attempt, manifest, entry in old_attempts:
+            artifacts = manifest["artifacts"]
+            if not {
+                "provider-attempts.json",
+                "provider-envelope.bin",
+                "provider-result.json",
+                "request.json",
+                "table-response.json",
+            } <= set(artifacts):
+                continue
+            provider_result = _provider_result_from_sealed_artifacts(sealed_output, artifacts)
+            request = _json_artifact(
+                sealed_output,
+                artifacts["request.json"],
+                label="quarantined legacy provider request",
+            )
+            legacy_plan = plan_by_old_id[old_job_id]
+            expected_request_fields = {
+                "allow_fallbacks",
+                "crop_image_sha256",
+                "execution_policy",
+                "output_contract_mode",
+                "prompt_sha256",
+                "repair_job_id",
+                "request_id_sha256",
+                "requested_model",
+                "requested_provider",
+                "response_schema_sha256",
+                "service_tier",
+                "thinking_level",
+            }
+            request_material = (
+                {key: request[key] for key in request if key != "request_id_sha256"}
+                if type(request) is dict
+                else {}
+            )
+            if (
+                type(request) is not dict
+                or set(request) != expected_request_fields
+                or request.get("request_id_sha256") != canonical_json_sha256_v1(request_material)
+                or request.get("repair_job_id") != old_job_id
+                or request.get("thinking_level") != attempt["thinking_level"]
+                or request.get("crop_image_sha256")
+                != legacy_static_artifacts_by_job[old_job_id]["crop-image.png"]["sha256"]
+                or request.get("allow_fallbacks") is not False
+                or request.get("execution_policy") != "OPENROUTER_PILOT"
+                or request.get("output_contract_mode") != "JSON_SCHEMA"
+                or request.get("requested_model") != OPENROUTER_MODEL
+                or request.get("requested_provider") != OPENROUTER_PROVIDER
+                or request.get("service_tier") != OPENROUTER_SERVICE_TIER
+                or request.get("prompt_sha256") != legacy_plan["request_contract"]["prompt_sha256"]
+                or request.get("response_schema_sha256")
+                != legacy_plan["request_contract"]["response_schema_sha256"]
+                or request.get("request_id_sha256") != attempt["provider"]["request_id_sha256"]
+                or provider_result.provider_model != attempt["provider"]["provider_model"]
+                or provider_result.response_id_sha256 != attempt["provider"]["response_id_sha256"]
+                or provider_result.service_tier != attempt["provider"]["service_tier"]
+                or provider_result.provider_name.casefold() != "google"
+                or attempt["provider"].get("provider_name") != "openrouter"
+                or _repair_usage(provider_result) != attempt["usage"]
+            ):
+                raise _error("quarantined legacy provider request/result lineage drifted")
+            response_bytes = _authenticated_artifact_ref(
+                sealed_output, artifacts["table-response.json"]
+            ).read_bytes()
+            try:
+                decoded = decode_rollforward_table_repair_text_v1(
+                    response_bytes.decode("utf-8"), target=new_job.target
+                )
+                merge_rollforward_table_repair_v1(
+                    new_job.base_page_json,
+                    plan=new_job.plan,
+                    repair=decoded,
+                    page_store_path=page_store_path,
+                    authority=prepared.authority,
+                    repair_spec_authority=prepared.repair_spec_authority,
+                )
+            except (UnicodeDecodeError, GeminiJsonRollforwardTableRepairV1Error):
+                rejection_hashes.append(artifacts["table-response.json"]["sha256"])
+                continue
+            chosen = {
+                "artifacts": artifacts,
+                "legacy_attempt": attempt,
+                "legacy_entry": entry,
+                "legacy_manifest": manifest,
+                "legacy_static_artifacts": legacy_static_artifacts_by_job[old_job_id],
+                "new_job": new_job,
+                "rejected_earlier_response_sha256": rejection_hashes,
+            }
+            break
+        if chosen is None:
+            raise _error("quarantined legacy job has no projection-valid sealed response")
+        selected.append(chosen)
+    selected.sort(key=lambda item: item["new_job"].ordinal)
+    authority_material = {
+        "deterministic_projection_schema_sha256": canonical_json_sha256_v1(
+            _deterministic_projection_schema_v1()
+        ),
+        "format_version": "GEMINI_JSON_ROLLFORWARD_LEGACY_REVALIDATION_AUTHORITY_V1",
+        "legacy_attempt_axis_sha256": sealed_result["attempt_artifact_axis"]["sha256"],
+        "legacy_capture_checkpoint_sha256": sealed_result["capture_checkpoint"]["sha256"],
+        "legacy_job_status_counts": sealed_result["job_status_counts"],
+        "legacy_run_contract_sha256": sealed_result["run_contract_sha256"],
+        "legacy_run_result_sha256": sha256(
+            (sealed_output / "run-result.json").read_bytes()
+        ).hexdigest(),
+        "legacy_runner_implementation_ref": legacy_runner_ref,
+        "plan_semantic_mapping": [
+            {
+                "legacy_repair_job_id": item["legacy_attempt"]["repair_job_id"],
+                "minimal_repair_job_id": item["new_job"].plan["repair_job_id"],
+                "semantic_sha256": canonical_json_sha256_v1(
+                    _legacy_plan_semantic_projection(item["new_job"].plan)
+                ),
+                "selected_legacy_attempt_id": item["legacy_attempt"]["attempt_id"],
+                "selected_legacy_attempt_ordinal": item["legacy_attempt"]["attempt_ordinal"],
+                "selected_legacy_prompt_sha256": item["legacy_static_artifacts"]["prompt.txt"][
+                    "sha256"
+                ],
+                "selected_legacy_response_schema_artifact_sha256": item["legacy_static_artifacts"][
+                    "response-schema.json"
+                ]["sha256"],
+                "selected_response_sha256": item["artifacts"]["table-response.json"]["sha256"],
+            }
+            for item in selected
+        ],
+        "provider_call_count": 0,
+        "projector_implementation_ref": prepared.projector_implementation_ref,
+        "quarantine_reason": "FALSE_COMPLETE_WITH_MIXED_RESOLVED_AND_ABSTAINED_JOBS",
+    }
+    return selected, {
+        **authority_material,
+        "authority_sha256": canonical_json_sha256_v1(authority_material),
+    }
+
+
+def _execute_quarantined_legacy_revalidation_v1(
+    *,
+    sealed_output: Path,
+    selected: Sequence[Mapping[str, Any]],
+    source_authority: Mapping[str, Any],
+    prepared: _PreparedRun,
+    replay_artifact_dir: Path,
+    effective_artifact_root: Path,
+    writable_store: Path,
+    writable_results: Path,
+    source_sha: str,
+    source_size: int,
+    source_results_sha: str,
+    source_results_size: int,
+) -> dict[str, Any]:
+    output = _claim_output(replay_artifact_dir)
+    source_authority_payload = canonical_json_bytes_v1(dict(source_authority)) + b"\n"
+    source_authority_path = output / "authority" / "legacy-revalidation-authority.json"
+    _write_new(source_authority_path, source_authority_payload)
+    source_authority_ref = _ref(output, source_authority_path, source_authority_payload)
+    contract, source_artifacts, crop_artifacts = _write_static_artifacts(
+        output,
+        prepared,
+        mode="SEALED_RESPONSE_REVALIDATION",
+        source_store_sha256=source_sha,
+        source_store_size_bytes=source_size,
+        source_results_database_sha256=source_results_sha,
+        source_results_database_size_bytes=source_results_size,
+        effective_artifact_root=effective_artifact_root,
+        contract_extensions={
+            "legacy_revalidation_authority": source_authority_ref,
+            "provider_call_count": 0,
+        },
+    )
+    contract_sha = sha256((output / "run-contract.json").read_bytes()).hexdigest()
+    initialize_region_repair_extension_v1(writable_store)
+    enqueued = enqueue_gemini_family_region_repair_plans_v1(
+        writable_results,
+        family_run_id=prepared.config["repair_source_family_run_id"],
+        plans=prepared.plans,
+    )
+    if enqueued != [plan["repair_job_id"] for plan in prepared.plans]:
+        raise _error("legacy revalidation queue does not preserve the minimal plan axis")
+    derived_records = []
+    derived_record_refs = []
+    replacements = []
+    for selected_item in selected:
+        job = selected_item["new_job"]
+        legacy_attempt = selected_item["legacy_attempt"]
+        legacy_manifest = selected_item["legacy_manifest"]
+        response_ref = selected_item["artifacts"]["table-response.json"]
+        response_bytes = _authenticated_artifact_ref(sealed_output, response_ref).read_bytes()
+        try:
+            decoded = decode_rollforward_table_repair_text_v1(
+                response_bytes.decode("utf-8"), target=job.target
+            )
+        except UnicodeDecodeError as exc:
+            raise _error("selected quarantined legacy response is not UTF-8") from exc
+        merged, receipt = merge_rollforward_table_repair_v1(
+            job.base_page_json,
+            plan=job.plan,
+            repair=decoded,
+            page_store_path=writable_store,
+            authority=prepared.authority,
+            repair_spec_authority=prepared.repair_spec_authority,
+        )
+        source_link = {
+            "deterministic_projection_contract_version": (
+                DETERMINISTIC_PROJECTION_CONTRACT_VERSION
+            ),
+            "deterministic_projection_schema_sha256": canonical_json_sha256_v1(
+                _deterministic_projection_schema_v1()
+            ),
+            "format_version": "GEMINI_JSON_ROLLFORWARD_DERIVED_REVALIDATION_SOURCE_V1",
+            "legacy_attempt_id": legacy_attempt["attempt_id"],
+            "legacy_attempt_ordinal": legacy_attempt["attempt_ordinal"],
+            "legacy_manifest_sha256": legacy_manifest["manifest_sha256"],
+            "legacy_provider": legacy_attempt["provider"],
+            "legacy_provider_artifact_refs": {
+                name: selected_item["artifacts"][name]
+                for name in (
+                    "provider-attempts.json",
+                    "provider-envelope.bin",
+                    "provider-result.json",
+                    "request.json",
+                    "table-response.json",
+                )
+            },
+            "legacy_repair_job_id": legacy_attempt["repair_job_id"],
+            "legacy_request_contract_sha256": legacy_attempt["request_contract_sha256"],
+            "legacy_response_ref": response_ref,
+            "legacy_static_request_artifact_refs": {
+                name: selected_item["legacy_static_artifacts"][name]
+                for name in ("prompt.txt", "response-schema.json")
+            },
+            "legacy_thinking_level": legacy_attempt["thinking_level"],
+            "legacy_usage": legacy_attempt["usage"],
+            "legacy_revalidation_authority_sha256": source_authority["authority_sha256"],
+            "minimal_repair_job_id": job.plan["repair_job_id"],
+            "minimal_response_projection_sha256": decoded["projection_sha256"],
+            "provider_call_count": 0,
+            "projector_implementation_ref": prepared.projector_implementation_ref,
+            "rejected_earlier_response_sha256": selected_item["rejected_earlier_response_sha256"],
+            "usage_reaccounted": False,
+        }
+        derived_envelope = canonical_json_bytes_v1(
+            {
+                "base_page_json_version_id": job.plan["base_page_json_version_id"],
+                "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+                "repair_id": receipt["repair_id"],
+                "source": source_link,
+            }
+        )
+        derived_provider_result = ProviderResultV1(
+            output_text=canonical_json_bytes_v1(decoded).decode("utf-8"),
+            raw_response_bytes=derived_envelope + b"\n",
+            provider_name="SEALED_RESPONSE_REVALIDATION",
+            provider_model="algorithm/rollforward-target-observation-projector-v1",
+            service_tier="offline",
+            attempts=(),
+            usage={
+                "actual_cost_usd": "0",
+                "billing_disposition": "NO_PROVIDER_CALL_SEALED_REVALIDATION",
+                "cached_input_tokens": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "thought_tokens": 0,
+                "total_tokens": 0,
+            },
+            response_id_sha256=sha256(derived_envelope).hexdigest(),
+        )
+        binding = job.plan["source_binding"]
+        identities = ingest_financial_page_extraction_v1(
+            writable_store,
+            document={
+                "source_logical_name": binding["source_logical_name"],
+                "source_sha256": binding["source_sha256"],
+                "source_size_bytes": binding["source_size_bytes"],
+            },
+            page={
+                "physical_page": binding["physical_page"],
+                "image_sha256": binding["image_sha256"],
+                "image_size_bytes": binding["image_size_bytes"],
+                "pixel_width": binding["pixel_width"],
+                "pixel_height": binding["pixel_height"],
+                "render_dpi": binding["render_dpi"],
+                "media_type": binding["media_type"],
+            },
+            prompt_variant="sealed-legacy-target-observation-revalidation",
+            output_contract_mode="DETERMINISTIC_PROJECTION",
+            prompt_sha256=canonical_json_sha256_v1(
+                {
+                    "legacy_revalidation_authority_sha256": source_authority["authority_sha256"],
+                    "minimal_repair_job_id": job.plan["repair_job_id"],
+                    "projection_sha256": decoded["projection_sha256"],
+                }
+            ),
+            response_schema_sha256=canonical_json_sha256_v1(_deterministic_projection_schema_v1()),
+            requested_model="algorithm/rollforward-target-observation-projector-v1",
+            requested_service_tier="offline",
+            thinking_level="deterministic",
+            provider_result=derived_provider_result,
+            page_json=merged,
+        )
+        lineage = record_page_json_region_repair_v1(
+            writable_store,
+            merged_page_json_version_id=identities["page_json_version_id"],
+            receipt=receipt,
+        )
+        standard_attempt = record_gemini_family_region_repair_attempt_v1(
+            writable_results,
+            repair_job_id=job.plan["repair_job_id"],
+            thinking_level="low",
+            outcome="STABLE_SOURCE_EVIDENCE",
+            page_json_version_id=lineage["observed_page_json_version_id"],
+            usage=None,
+            reasons=["AUTHENTICATED_SEALED_RESPONSE_REVALIDATED_WITHOUT_PROVIDER_CALL"],
+        )
+        if standard_attempt != {
+            "attempt_ordinal": 1,
+            "next_status": "RESOLVED",
+            "outcome": "STABLE_SOURCE_EVIDENCE",
+            "repair_job_id": job.plan["repair_job_id"],
+            "thinking_level": "low",
+        }:
+            raise _error("legacy revalidation stable-evidence queue transition drifted")
+        record_material = {
+            "format_version": "GEMINI_JSON_ROLLFORWARD_DERIVED_REVALIDATION_RECORD_V1",
+            "identities": identities,
+            "lineage": lineage,
+            "receipt": receipt,
+            "source": source_link,
+            "standard_attempt": standard_attempt,
+        }
+        record = {
+            **record_material,
+            "record_sha256": canonical_json_sha256_v1(record_material),
+        }
+        record_payload = canonical_json_bytes_v1(record) + b"\n"
+        record_path = output / "derived-revalidations" / f"job-{job.ordinal:03d}.json"
+        _write_new(record_path, record_payload)
+        derived_records.append(record)
+        derived_record_refs.append(_ref(output, record_path, record_payload))
+        replacements.append(
+            {
+                "base_page_json_version_id": job.plan["base_page_json_version_id"],
+                "candidate_id": job.plan["candidate_id"],
+                "document_ordinal": job.plan["document_ordinal"],
+                "physical_page": job.plan["physical_page"],
+                "repair_id": receipt["repair_id"],
+                "repair_job_id": job.plan["repair_job_id"],
+                "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+                "selected_page_json_version_id": lineage["observed_page_json_version_id"],
+            }
+        )
+    expected_counts = {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}
+    if len(replacements) != len(prepared.jobs) or {
+        item["repair_job_id"] for item in replacements
+    } != {job.plan["repair_job_id"] for job in prepared.jobs}:
+        raise _error("legacy revalidation is not one resolved replacement per planned job")
+    derived_axis_material = {
+        "format_version": "GEMINI_JSON_ROLLFORWARD_DERIVED_REVALIDATION_AXIS_V1",
+        "record_refs": derived_record_refs,
+        "record_sha256_axis": [record["record_sha256"] for record in derived_records],
+    }
+    derived_axis = {
+        **derived_axis_material,
+        "axis_sha256": canonical_json_sha256_v1(derived_axis_material),
+    }
+    derived_axis_payload = canonical_json_bytes_v1(derived_axis) + b"\n"
+    derived_axis_path = output / "derived-revalidation-axis.json"
+    _write_new(derived_axis_path, derived_axis_payload)
+    derived_axis_ref = _ref(output, derived_axis_path, derived_axis_payload)
+    overlay_material = {
+        "derived_revalidation_axis_sha256": derived_axis["axis_sha256"],
+        "family_id": prepared.plans[0]["family_id"],
+        "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REVALIDATION_OVERLAY_V1",
+        "job_status_counts": expected_counts,
+        "provider_call_count": 0,
+        "repair_source_family_run_id": prepared.config["repair_source_family_run_id"],
+        "repair_spec_authority": prepared.repair_spec_authority,
+        "replacements": replacements,
+    }
+    overlay = {
+        **overlay_material,
+        "overlay_id": "gjfrtrov1:overlay:" + canonical_json_sha256_v1(overlay_material),
+    }
+    standard_overlay = resolved_gemini_family_region_repair_overlay_v1(
+        writable_results,
+        family_run_id=prepared.config["repair_source_family_run_id"],
+    )
+    expected_standard = [
+        {
+            key: replacement[key]
+            for key in (
+                "base_page_json_version_id",
+                "candidate_id",
+                "document_ordinal",
+                "physical_page",
+                "repair_job_id",
+                "selected_page_json_version_id",
+            )
+        }
+        for replacement in overlay["replacements"]
+    ]
+    if (
+        standard_overlay.get("job_status_counts") != expected_counts
+        or standard_overlay.get("replacements") != expected_standard
+    ):
+        raise _error("legacy revalidation standard/audited overlays differ")
+    overlay_payload = canonical_json_bytes_v1(overlay) + b"\n"
+    overlay_path = output / "repair-overlay.json"
+    _write_new(overlay_path, overlay_payload)
+    overlay_ref = _ref(output, overlay_path, overlay_payload)
+    _reject_sqlite_sidecars(writable_store, label="legacy revalidation page work database")
+    _reject_sqlite_sidecars(writable_results, label="legacy revalidation results work database")
+    writable_sha, writable_size = _sha_file(writable_store)
+    writable_results_sha, writable_results_size = _sha_file(writable_results)
+    frontier = build_gemini_family_effective_page_frontier_v1(
+        base_corpus_manifest_index_id=prepared.config["base_corpus_manifest_index_id"],
+        base_page_json_version_ids=prepared.selected_ids,
+        database_ref={
+            "path": prepared.config["writable_page_store_ref_path"],
+            "sha256": writable_sha,
+            "size_bytes": writable_size,
+        },
+        family_id=overlay["family_id"],
+        job_status_counts=overlay["job_status_counts"],
+        repair_source_family_run_id=prepared.config["repair_source_family_run_id"],
+        replacements=overlay["replacements"],
+        results_database_ref={
+            "path": prepared.config["writable_results_database_ref_path"],
+            "sha256": writable_results_sha,
+            "size_bytes": writable_results_size,
+        },
+    )
+    checked_frontier, effective_ids = apply_gemini_family_effective_page_frontier_v1(
+        frontier,
+        base_page_json_version_ids=prepared.selected_ids,
+    )
+    if checked_frontier != frontier or len(effective_ids) != len(prepared.selected_ids):
+        raise _error("legacy revalidation effective frontier does not replay")
+    frontier_payload = canonical_json_bytes_v1(frontier) + b"\n"
+    frontier_path = output / "effective-page-frontier.json"
+    _write_new(frontier_path, frontier_payload)
+    frontier_ref = _ref(output, frontier_path, frontier_payload)
+    return {
+        "derived_revalidation_axis": derived_axis_ref,
+        "derived_revalidation_records": derived_record_refs,
+        "disposition": "REPAIR_FRONTIER_RECOVERED",
+        "effective_page_frontier": frontier_ref,
+        "effective_page_frontier_id": frontier["effective_page_frontier_id"],
+        "format_version": FORMAT_VERSION,
+        "job_count": len(prepared.jobs),
+        "job_status_counts": expected_counts,
+        "legacy_revalidation_authority": source_authority_ref,
+        "official_selection": "NOT_PERFORMED",
+        "overlay_id": overlay["overlay_id"],
+        "provider_call_count": 0,
+        "repair_overlay": overlay_ref,
+        "run_contract_sha256": contract_sha,
+        "writable_page_store": {"sha256": writable_sha, "size_bytes": writable_size},
+        "writable_results_database": {
+            "sha256": writable_results_sha,
+            "size_bytes": writable_results_size,
+        },
+    }
 
 
 def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
@@ -2587,12 +3623,18 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
         sealed_run_result_sha256,
         label="sealed incomplete run result",
     ).value
-    if (
-        type(sealed_result) is not dict
-        or sealed_result.get("disposition") != "REPAIR_FRONTIER_INCOMPLETE"
-        or sealed_result.get("provider_recall") != "FORBIDDEN"
-    ):
-        raise _error("sealed replay source is not one terminal incomplete run")
+    standard_incomplete = (
+        type(sealed_result) is dict
+        and sealed_result.get("disposition") == "REPAIR_FRONTIER_INCOMPLETE"
+        and sealed_result.get("provider_recall") == "FORBIDDEN"
+    )
+    quarantined_legacy = (
+        type(sealed_result) is dict
+        and sealed_result.get("disposition") == "REPAIR_FRONTIER_COMPLETE"
+        and sealed_result.get("job_status_counts") == {"ABSTAINED": 3, "RESOLVED": 3}
+    )
+    if not standard_incomplete and not quarantined_legacy:
+        raise _error("sealed replay source is neither incomplete nor the quarantined legacy root")
     contract_path = _regular_file(
         sealed_output / "run-contract.json",
         label="sealed run contract",
@@ -2604,11 +3646,40 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
         contract = json.loads(contract_raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise _error("sealed run contract is invalid JSON") from exc
+    if quarantined_legacy:
+        selected_legacy, legacy_authority = _validate_quarantined_legacy_source_v1(
+            sealed_output=sealed_output,
+            sealed_result=sealed_result,
+            contract=contract,
+            prepared=prepared,
+            source_sha=source_sha,
+            source_size=source_size,
+            source_results_sha=source_results_sha,
+            source_results_size=source_results_size,
+            page_store_path=writable_store,
+        )
+        return _execute_quarantined_legacy_revalidation_v1(
+            sealed_output=sealed_output,
+            selected=selected_legacy,
+            source_authority=legacy_authority,
+            prepared=prepared,
+            replay_artifact_dir=replay_artifact_dir,
+            effective_artifact_root=effective_artifact_root,
+            writable_store=writable_store,
+            writable_results=writable_results,
+            source_sha=source_sha,
+            source_size=source_size,
+            source_results_sha=source_results_sha,
+            source_results_size=source_results_size,
+        )
     if (
         contract.get("format_version") != FORMAT_VERSION
         or contract.get("mode") != "OPENROUTER_BOUNDED"
         or contract.get("plan_axis_sha256") != canonical_json_sha256_v1(prepared.plans)
         or contract.get("runner_implementation_ref") != prepared.runner_implementation_ref
+        or contract.get("projector_implementation_ref") != prepared.projector_implementation_ref
+        or contract.get("deterministic_projection_schema_sha256")
+        != canonical_json_sha256_v1(_deterministic_projection_schema_v1())
         or contract.get("source_page_store") != {"sha256": source_sha, "size_bytes": source_size}
         or contract.get("source_family_results_database")
         != {"sha256": source_results_sha, "size_bytes": source_results_size}
@@ -2836,8 +3907,13 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
         }
         for replacement in overlay["replacements"]
     ]
+    expected_counts = {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}
     if (
-        standard_overlay["job_status_counts"] != overlay["job_status_counts"]
+        overlay.get("job_status_counts") != expected_counts
+        or len(overlay.get("replacements", [])) != len(prepared.jobs)
+        or {item.get("repair_job_id") for item in overlay.get("replacements", [])}
+        != {job.plan["repair_job_id"] for job in prepared.jobs}
+        or standard_overlay["job_status_counts"] != overlay["job_status_counts"]
         or standard_overlay["replacements"] != expected_replacements
     ):
         raise _error("fresh replay standard overlay differs from the audited overlay")
@@ -2896,6 +3972,7 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
         "disposition": "REPAIR_FRONTIER_RECOVERED",
         "effective_page_frontier_id": frontier["effective_page_frontier_id"],
         "format_version": FORMAT_VERSION,
+        "job_count": len(prepared.jobs),
         "job_status_counts": overlay["job_status_counts"],
         "official_selection": "NOT_PERFORMED",
         "overlay_id": overlay["overlay_id"],
@@ -2942,7 +4019,7 @@ def replay_sealed_rollforward_table_repair_v1(
     writable_page_store: Path,
     writable_results_database: Path,
 ) -> dict[str, Any]:
-    """Replay sealed artifacts on descriptor-pinned private SQLite work copies."""
+    """Replay sealed artifacts on exactly one private page/results work pair."""
 
     boundaries: list[_SqliteBoundary] = []
     with tempfile.TemporaryDirectory(prefix="family13-table-repair-replay-sqlite-") as directory:
@@ -2954,6 +4031,7 @@ def replay_sealed_rollforward_table_repair_v1(
                 label="frozen source page store",
                 private_path=private_root / "source-page-store.sqlite3",
                 writable=False,
+                copy_to_private=False,
             )
             boundaries.append(source_store_boundary)
             source_results_boundary = _establish_sqlite_boundary(
@@ -2962,6 +4040,7 @@ def replay_sealed_rollforward_table_repair_v1(
                 label="frozen source family-results database",
                 private_path=private_root / "source-family-results.sqlite3",
                 writable=False,
+                copy_to_private=False,
             )
             boundaries.append(source_results_boundary)
             writable_store_boundary = _establish_sqlite_boundary(
@@ -3031,18 +4110,10 @@ def replay_sealed_rollforward_table_repair_v1(
                 expected_sha256=writable_results_boundary.initial_sha256,
                 expected_size_bytes=writable_results_boundary.initial_size_bytes,
             )
-            published_store = _publish_private_sqlite(writable_store_boundary)
-            published_results = _publish_private_sqlite(writable_results_boundary)
-            if result.get("writable_page_store") != {
-                "sha256": published_store[0],
-                "size_bytes": published_store[1],
-            }:
-                raise _error("published replay page-store bytes differ from the run result")
-            if result.get("writable_results_database") != {
-                "sha256": published_results[0],
-                "size_bytes": published_results[1],
-            }:
-                raise _error("published replay family-results bytes differ from the run result")
+            _require_all_planned_jobs_resolved(
+                result,
+                disposition="REPAIR_FRONTIER_RECOVERED",
+            )
             _bind_published_database_refs(
                 artifact_root=artifact_root,
                 repair_spec_config_path=repair_spec_config_path,
@@ -3051,17 +4122,46 @@ def replay_sealed_rollforward_table_repair_v1(
                 writable_results_boundary=writable_results_boundary,
                 label_prefix="published replay effective-frontier",
             )
-            _assert_sqlite_boundary_current(
-                source_store_boundary,
-                expected_sha256=source_store_boundary.initial_sha256,
-                expected_size_bytes=source_store_boundary.initial_size_bytes,
-            )
-            _assert_sqlite_boundary_current(
-                source_results_boundary,
-                expected_sha256=source_results_boundary.initial_sha256,
-                expected_size_bytes=source_results_boundary.initial_size_bytes,
-            )
-            _write_json(Path(replay_artifact_dir).resolve() / "run-result.json", result)
+            published = False
+            try:
+                published_store, published_results = _publish_private_sqlite_pair(
+                    writable_store_boundary,
+                    writable_results_boundary,
+                    source_store_boundary,
+                    source_results_boundary,
+                )
+                published = True
+                if result.get("writable_page_store") != {
+                    "sha256": published_store[0],
+                    "size_bytes": published_store[1],
+                }:
+                    raise _error("published replay page-store bytes differ from the run result")
+                if result.get("writable_results_database") != {
+                    "sha256": published_results[0],
+                    "size_bytes": published_results[1],
+                }:
+                    raise _error("published replay family-results bytes differ from the run result")
+                _assert_sqlite_boundary_current(
+                    source_store_boundary,
+                    expected_sha256=source_store_boundary.initial_sha256,
+                    expected_size_bytes=source_store_boundary.initial_size_bytes,
+                )
+                _assert_sqlite_boundary_current(
+                    source_results_boundary,
+                    expected_sha256=source_results_boundary.initial_sha256,
+                    expected_size_bytes=source_results_boundary.initial_size_bytes,
+                )
+                _write_json(Path(replay_artifact_dir).resolve() / "run-result.json", result)
+            except Exception:
+                if published:
+                    _rollback_published_sqlite_pair(
+                        writable_store_boundary,
+                        writable_results_boundary,
+                        source_store_boundary,
+                        source_results_boundary,
+                    )
+                (Path(replay_artifact_dir).resolve() / "run-result.json").unlink(missing_ok=True)
+                raise
             return result
         finally:
             _close_sqlite_boundaries(boundaries)

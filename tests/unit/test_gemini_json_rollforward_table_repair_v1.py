@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import replace
 from hashlib import sha256
@@ -89,6 +90,9 @@ PRODUCTION_AXIS = [
         "table_id": "t3",
     },
 ]
+_CAPTURED_RESPONSES = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "family13_captured_table_responses_v1.json"
+)
 
 
 def _row(label: str, values: list[str | None], *, total: bool = False) -> dict:
@@ -223,6 +227,20 @@ def _response(page: dict, plan: dict, *, corrected: bool = True) -> dict:
         "uncertainty_exact": [],
         "unit_exact": table["unit_exact"],
     }
+
+
+def _target_response(page: dict, plan: dict, *, corrected: bool = True) -> dict:
+    legacy = _response(page, plan, corrected=corrected)
+    observations = []
+    for allowed in plan["cell_allowlist"]:
+        row, column = (int(part[1:]) - 1 for part in allowed["cell_id"].split(":"))
+        observations.append(
+            {
+                "cell_id": allowed["cell_id"],
+                "source_text": legacy["rows"][row]["cells"][column]["source_text"],
+            }
+        )
+    return {"observations": observations}
 
 
 def _source_record(region: dict, movement_role: str, row_id: str) -> dict:
@@ -665,12 +683,383 @@ def test_prompt_is_structural_complete_and_response_blind(corpus: dict) -> None:
         base_page_json_version_id=plan["base_page_json_version_id"],
         target=rollforward_table_repair_target_v1(page, plan=plan),
     )
-    assert "column_value_kinds" in prompt
-    assert "DASH" in prompt and "BLANK" in prompt and "PRINTED_ZERO" in prompt
-    assert "không dùng phép tính để suy ra" in prompt
+    assert "cell_id" in prompt and "column_header_exact" in prompt and "row_label_exact" in prompt
+    assert "{cell_id, source_text}" in prompt
+    assert "không tính toán hoặc suy ra" in prompt
+    assert "visual_state" not in prompt
+    assert "uncertainty_exact" not in prompt
+    for forbidden in (
+        "after_policy",
+        "change_policy",
+        "evidence_kind",
+        "DASH_ZERO",
+        "MUST_CHANGE",
+        "MAY_CHANGE",
+        "equation",
+        "collateral",
+    ):
+        assert forbidden not in prompt
+    assert set(subject.rollforward_table_repair_response_schema_v1()["properties"]) == {
+        "observations"
+    }
     assert "18.417.106" not in prompt
     assert "before_exact" not in prompt
     assert sha256(prompt.encode()).hexdigest() == plan["request_contract"]["prompt_sha256"]
+
+
+def test_minimal_observations_ignore_outside_drift_and_normalize_cell_ids(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _target_response(page, plan)
+    for observation in repair["observations"]:
+        row, column = observation["cell_id"].split(":")
+        observation["cell_id"] = f" R 0{row[1:]} : C 0{column[1:]} "
+    repair["observations"].append({"cell_id": "r1:c1", "source_text": "999999999"})
+    repair["legacy_full_table_echo"] = {"changed": True}
+
+    merged, receipt = merge_rollforward_table_repair_v1(
+        page,
+        plan=plan,
+        repair=repair,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+
+    projection = receipt["changes"][0]["response_projection"]
+    assert projection["input_contract"] == "TARGET_OBSERVATIONS_V1"
+    assert projection["ignored_observation_count"] == 1
+    assert projection["ignored_top_level_fields"] == ["legacy_full_table_echo"]
+    assert receipt["changes"][0]["changed_cell_count"] == 4
+    assert page["sections"][2]["tables"][0]["rows"][0]["values_exact"][0] == "100"
+    assert merged["sections"][2]["tables"][0]["rows"][0]["values_exact"][0] == "100"
+
+    uncertain = _target_response(page, plan)
+    uncertain["uncertainty_exact"] = ["Không đọc chắc R02:C03"]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="uncertainty for a target"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(uncertain).decode("utf-8"),
+            target=rollforward_table_repair_target_v1(page, plan=plan),
+        )
+    unscoped = _target_response(page, plan)
+    unscoped["uncertain_refs"] = ["không chắc"]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="unscoped incomplete"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(unscoped).decode("utf-8"),
+            target=rollforward_table_repair_target_v1(page, plan=plan),
+        )
+    outside_uncertainty = _target_response(page, plan)
+    outside_uncertainty["uncertainty_exact"] = ["Không đọc chắc Ｒ０１：Ｃ０１"]
+    outside_projection = subject.decode_rollforward_table_repair_text_v1(
+        canonical_json_bytes_v1(outside_uncertainty).decode("utf-8"),
+        target=rollforward_table_repair_target_v1(page, plan=plan),
+    )
+    assert (
+        "uncertainty_exact"
+        in outside_projection["projection_diagnostics"]["ignored_top_level_fields"]
+    )
+    explicitly_incomplete = _target_response(page, plan)
+    explicitly_incomplete["all_cells_transcribed"] = False
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="incomplete target"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(explicitly_incomplete).decode("utf-8"),
+            target=rollforward_table_repair_target_v1(page, plan=plan),
+        )
+
+
+def test_semantic_duplicate_corroborates_but_true_target_conflict_vetoes(corpus: dict) -> None:
+    plan = corpus["plans"][-1]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _target_response(page, plan)
+    repair["observations"].append({"cell_id": "R03:C03", "source_text": "−18 417 106"})
+    merged, receipt = merge_rollforward_table_repair_v1(
+        page,
+        plan=plan,
+        repair=repair,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+    projection = receipt["changes"][0]["response_projection"]
+    assert projection["corroborated_duplicate_count"] == 1
+    assert projection["corroborated_observations"][0]["semantic_equivalence"] == {
+        "signed_integer": -18_417_106,
+        "visual_state": "VALUE",
+    }
+    assert merged["sections"][0]["tables"][2]["rows"][2]["values_exact"][2] in {
+        "(18.417.106)",
+        "−18 417 106",
+    }
+
+    conflict = deepcopy(repair)
+    conflict["observations"][-1]["source_text"] = "-18 417 105"
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="conflict"):
+        merge_rollforward_table_repair_v1(
+            page,
+            plan=plan,
+            repair=conflict,
+            page_store_path=corpus["store"],
+            authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
+        )
+
+    acb_plan = corpus["plans"][0]
+    acb_page = corpus["pages"][acb_plan["base_page_json_version_id"]]
+    acb_target = rollforward_table_repair_target_v1(acb_page, plan=acb_plan)
+    dash_zero_conflict = _target_response(acb_page, acb_plan)
+    dash_zero_conflict["observations"].append({"cell_id": "r2:c3", "source_text": "0"})
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="conflict"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(dash_zero_conflict).decode("utf-8"), target=acb_target
+        )
+    declared_state_conflict = {
+        "observations": [{"cell_id": "r2:c3", "source_text": "-", "visual_state": "PRINTED_ZERO"}]
+    }
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="visual state conflicts"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(declared_state_conflict).decode("utf-8"),
+            target=acb_target,
+        )
+
+
+def test_nfkc_observation_variants_preserve_typed_semantics(corpus: dict) -> None:
+    acb_plan = corpus["plans"][0]
+    acb_page = corpus["pages"][acb_plan["base_page_json_version_id"]]
+    dash = subject.decode_rollforward_table_repair_text_v1(
+        '{"observations":[{"cell_id":"Ｒ０２：Ｃ０３","source_text":"－",'
+        '"visual_state":"ＤＡＳＨ"}]}',
+        target=rollforward_table_repair_target_v1(acb_page, plan=acb_plan),
+    )
+    assert dash["observations"] == [
+        {"cell_id": "r2:c3", "source_text": "-", "visual_state": "DASH"}
+    ]
+    assert (
+        dash["projection_diagnostics"]["normalized_observations"][0]["normalization_kind"]
+        == "ACCOUNTING_DASH_TO_ASCII_DASH"
+    )
+
+    ctg_plan = corpus["plans"][-1]
+    ctg_page = corpus["pages"][ctg_plan["base_page_json_version_id"]]
+    numeric = subject.decode_rollforward_table_repair_text_v1(
+        '{"observations":[{"cell_id":"Ｒ０３：Ｃ０３",'
+        '"source_text":"（１８．４１７．１０６）","visual_state":"ＶＡＬＵＥ"}]}',
+        target=rollforward_table_repair_target_v1(ctg_page, plan=ctg_plan),
+    )
+    assert numeric["observations"] == [
+        {
+            "cell_id": "r3:c3",
+            "source_text": "（１８．４１７．１０６）",
+            "visual_state": "VALUE",
+        }
+    ]
+    assert (
+        numeric["projection_diagnostics"]["normalized_observations"][0]["normalization_kind"]
+        == "NFKC_SEMANTIC_VARIANT_PRESERVED"
+    )
+    assert subject._signed_integer(numeric["observations"][0]["source_text"]) == -18_417_106
+
+
+def test_required_observations_and_may_change_semantics_are_local(corpus: dict) -> None:
+    acb_plan = corpus["plans"][0]
+    acb_page = corpus["pages"][acb_plan["base_page_json_version_id"]]
+    incomplete = _target_response(acb_page, acb_plan)
+    incomplete["observations"].pop()
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="omit a required"):
+        merge_rollforward_table_repair_v1(
+            acb_page,
+            plan=acb_plan,
+            repair=incomplete,
+            page_store_path=corpus["store"],
+            authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
+        )
+    target = rollforward_table_repair_target_v1(acb_page, plan=acb_plan)
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="omits source_text"):
+        subject.decode_rollforward_table_repair_text_v1(
+            '{"observations":[{"cell_id":"r2:c3"}]}', target=target
+        )
+    malformed_legacy = _response(acb_page, acb_plan)
+    malformed_legacy["rows"][1]["cells"][2].pop("source_text")
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="omits source_text"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(malformed_legacy).decode("utf-8"), target=target
+        )
+
+    ctg_plan = corpus["plans"][-1]
+    ctg_page = corpus["pages"][ctg_plan["base_page_json_version_id"]]
+    repair = _target_response(ctg_page, ctg_plan)
+    repair["observations"] = [
+        observation
+        for observation in repair["observations"]
+        if observation["cell_id"] in {"r1:c2", "r3:c2", "r3:c3"}
+    ]
+    repair["observations"][0]["source_text"] = "10 860 006"
+    merged, receipt = merge_rollforward_table_repair_v1(
+        ctg_page,
+        plan=ctg_plan,
+        repair=repair,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+    table = merged["sections"][0]["tables"][2]
+    assert table["rows"][0]["values_exact"][1] == "10.860.006"
+    assert [item["cell_id"] for item in receipt["changes"][0]["cell_changes"]] == [
+        "r3:c2",
+        "r3:c3",
+    ]
+
+
+def test_legacy_projection_accepts_header_segmentation_and_null_dash(corpus: dict) -> None:
+    plan = corpus["plans"][-1]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _response(page, plan)
+    repair["columns"][1]["header_path_exact"] = ["Dự phòng\nchung\nTriệu đồng"]
+    repair["rows"][2]["cells"][1] = {"source_text": None, "visual_state": "DASH"}
+    _, receipt = merge_rollforward_table_repair_v1(
+        page,
+        plan=plan,
+        repair=repair,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+    projection = receipt["changes"][0]["response_projection"]
+    assert projection["input_contract"] == "LEGACY_FULL_TABLE_V1"
+    assert any(
+        item["normalization_kind"] == "LEGACY_NULL_WITH_DASH_STATE_TO_ASCII_DASH"
+        for item in projection["normalized_observations"]
+    )
+
+    uncertain = _response(page, plan)
+    uncertain["uncertainty_exact"] = ["Không đọc chắc ô r3:c2"]
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="uncertainty for a target"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(uncertain).decode("utf-8"),
+            target=rollforward_table_repair_target_v1(page, plan=plan),
+        )
+    outside_uncertainty = _response(page, plan)
+    outside_uncertainty["uncertainty_exact"] = ["Không đọc chắc ô Ｒ０１：Ｃ０１"]
+    outside_projection = subject.decode_rollforward_table_repair_text_v1(
+        canonical_json_bytes_v1(outside_uncertainty).decode("utf-8"),
+        target=rollforward_table_repair_target_v1(page, plan=plan),
+    )
+    assert (
+        "uncertainty_exact"
+        in outside_projection["projection_diagnostics"]["ignored_top_level_fields"]
+    )
+
+
+@pytest.mark.parametrize("attack", ["insert_row", "swap_rows", "swap_columns"])
+def test_legacy_positional_projection_locks_shape_order_and_anchors(
+    corpus: dict, attack: str
+) -> None:
+    plan = corpus["plans"][-1]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    repair = _response(page, plan)
+    if attack == "insert_row":
+        repair["rows"].insert(0, deepcopy(repair["rows"][0]))
+    elif attack == "swap_rows":
+        repair["rows"][0], repair["rows"][1] = repair["rows"][1], repair["rows"][0]
+    else:
+        repair["columns"][1], repair["columns"][2] = (
+            repair["columns"][2],
+            repair["columns"][1],
+        )
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error,
+        match="shape or target identity|anchors drifted",
+    ):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(repair).decode("utf-8"),
+            target=rollforward_table_repair_target_v1(page, plan=plan),
+        )
+
+
+def test_canonical_projection_recomputes_source_diagnostics_and_target_axis(corpus: dict) -> None:
+    plan = corpus["plans"][0]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    target = rollforward_table_repair_target_v1(page, plan=plan)
+    projected = subject.decode_rollforward_table_repair_text_v1(
+        canonical_json_bytes_v1(_target_response(page, plan)).decode("utf-8"),
+        target=target,
+    )
+    forged = deepcopy(projected)
+    forged["projection_diagnostics"]["input_contract"] = "FORGED"
+    forged["projection_diagnostics"]["raw_response_sha256"] = "f" * 64
+    material = {key: value for key, value in forged.items() if key != "projection_sha256"}
+    forged["projection_sha256"] = canonical_json_sha256_v1(material)
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="identity drifted"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(forged).decode("utf-8"), target=target
+        )
+
+    drifted_target = deepcopy(target)
+    drifted_target["target_cells"][0]["row_label_exact"] += " giả"
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="identity drifted"):
+        subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(projected).decode("utf-8"), target=drifted_target
+        )
+
+
+def test_all_twelve_captured_legacy_responses_project_to_the_golden_target_axis() -> None:
+    fixture = json.loads(_CAPTURED_RESPONSES.read_bytes())
+    assert fixture["format_version"] == "FAMILY13_CAPTURED_TARGET_OBSERVATION_FIXTURE_V1"
+    assert fixture["source_authority"] == {
+        "attempt_artifact_axis_sha256": (
+            "b52a2782c74fcd9d4e3c4fdab1be74787ceab7c1b98e288f5feff4fb7ce7957a"
+        ),
+        "capture_checkpoint_sha256": (
+            "28aa6e3a4e0e4502e21e9193644dbb71585504edfca95ecd04f1d3cafdbb8722"
+        ),
+        "quarantined_job_status_counts": {"ABSTAINED": 3, "RESOLVED": 3},
+        "run_contract_sha256": ("6090d9fb78302eb2af73ed229f6fae1c9a79942709557d414e40ae28b7163c58"),
+        "run_result_sha256": ("151651b757fee937b3493a752bb31e2e1c27184b49071f10691087af266c15d7"),
+    }
+    assert len(fixture["cases"]) == 12
+    assert fixture["earliest_projection_valid_case_axis"] == [
+        "jobs/job-001/attempt-01-low/table-response.json",
+        "jobs/job-002/attempt-01-low/table-response.json",
+        "jobs/job-003/attempt-02-medium/table-response.json",
+        "jobs/job-004/attempt-01-low/table-response.json",
+        "jobs/job-005/attempt-01-low/table-response.json",
+        "jobs/job-006/attempt-01-low/table-response.json",
+    ]
+    projected_by_case = {}
+    for case in fixture["cases"]:
+        projected = subject.decode_rollforward_table_repair_text_v1(
+            canonical_json_bytes_v1(case["response"]).decode("utf-8"),
+            target=case["target"],
+        )
+        projected_by_case[case["case_id"]] = projected
+        assert projected["observations"] == case["expected"]["observations"]
+        assert projected["projection_sha256"] == case["expected"]["projection_sha256"]
+        assert (
+            projected["projection_diagnostics"]["ignored_observation_count"]
+            == case["expected"]["ignored_observation_count"]
+        )
+        assert [
+            item["normalization_kind"]
+            for item in projected["projection_diagnostics"]["normalized_observations"]
+        ] == case["expected"]["normalization_kinds"]
+    assert any(
+        item["normalization_kind"] == "LEGACY_NULL_WITH_DASH_STATE_TO_ASCII_DASH"
+        for item in projected_by_case["jobs/job-006/attempt-03-high/table-response.json"][
+            "projection_diagnostics"
+        ]["normalized_observations"]
+    )
+    job_five_low = next(
+        case
+        for case in fixture["cases"]
+        if case["case_id"] == "jobs/job-005/attempt-01-low/table-response.json"
+    )
+    assert job_five_low["response"]["columns"][0]["header_path_exact"] == [
+        "Dự phòng\nchung\nTriệu đồng"
+    ]
+    assert job_five_low["target"]["column_headers_exact"][0] == [
+        "Dự phòng chung",
+        "Triệu đồng",
+    ]
 
 
 def test_acb_dash_and_ctg_shifted_total_merge_only_exact_changed_cells(corpus: dict) -> None:
@@ -712,11 +1101,8 @@ def test_acb_dash_and_ctg_shifted_total_merge_only_exact_changed_cells(corpus: d
 @pytest.mark.parametrize(
     ("attack", "match"),
     [
-        ("blank_as_zero", "must-change"),
-        ("partial", "shape"),
-        ("outside", "outside the allowlist"),
-        ("unit", "shape, order, header, or unit"),
-        ("order", "shape, order, header, or unit"),
+        ("blank_as_zero", "dash zero"),
+        ("partial", "shape or target identity"),
         ("two_unknown_inference", "dash zero"),
     ],
 )
@@ -729,13 +1115,7 @@ def test_atomic_validator_rejects_incomplete_inferred_or_outside_drift(
     if attack == "blank_as_zero":
         repair = _response(page, plan, corrected=False)
     elif attack == "partial":
-        repair["rows"].pop()
-    elif attack == "outside":
-        repair["rows"][0]["cells"][0] = {"source_text": "999", "visual_state": "VALUE"}
-    elif attack == "unit":
-        repair["unit_exact"] = "Đồng"
-    elif attack == "order":
-        repair["rows"][0], repair["rows"][1] = repair["rows"][1], repair["rows"][0]
+        repair["rows"][6]["cells"].pop()
     else:
         repair["rows"][1]["cells"][2] = {"source_text": "1", "visual_state": "VALUE"}
         repair["rows"][2]["cells"][2] = {"source_text": "(1)", "visual_state": "VALUE"}
@@ -755,9 +1135,7 @@ def test_shifted_total_must_close_both_lane_and_row_equations(corpus: dict) -> N
     page = corpus["pages"][plan["base_page_json_version_id"]]
     repair = _response(page, plan)
     repair["rows"][2]["cells"][2] = {"source_text": None, "visual_state": "BLANK"}
-    with pytest.raises(
-        GeminiJsonRollforwardTableRepairV1Error, match="equation contains an unknown"
-    ):
+    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="source-transcribed integer"):
         merge_rollforward_table_repair_v1(
             page,
             plan=plan,

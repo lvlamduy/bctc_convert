@@ -1,0 +1,3357 @@
+{
+  "cases": [
+    {
+      "case_id": "jobs/job-001/attempt-01-low/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "2c636280009aaeee94e237d396b974f947d073b12383b43522d049e4bc8e313c"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng\nchung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng\ncụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng\nrủi ro cho vay\ngiao dịch\nký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "131.504",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "494.953",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(990.908)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.370.580",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.887.049",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 3 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s3:t1",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 3 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s3:t1",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-001/attempt-02-medium/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "75918e6fb85f228457e108b7bcae47d2ea718aeea5933793b9d804ae2b456c8b"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "131.504",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "494.953",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(990.908)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.370.580",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.887.049",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 3 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s3:t1",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 3 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s3:t1",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-002/attempt-01-low/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "51841e7d6bea967c5759181d0f79ef2cc8ebc6e55a54d5affcfbf947ef5dc373"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "383.393",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "699.663",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.743.325)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.622.469",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.339.342",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 6 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 6 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-002/attempt-02-medium/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "51841e7d6bea967c5759181d0f79ef2cc8ebc6e55a54d5affcfbf947ef5dc373"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "383.393",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "699.663",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.743.325)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.622.469",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.339.342",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 6 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 6 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-002/attempt-03-high/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "51841e7d6bea967c5759181d0f79ef2cc8ebc6e55a54d5affcfbf947ef5dc373"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "383.393",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "699.663",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.743.325)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.622.469",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.339.342",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 6 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 6 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-003/attempt-02-medium/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "24da0a1eda564b903e11ed036af2ae3320c9e5b54bf8ffb852cab0419d822e3c"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "616.674",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "753.780",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.954.302)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.855.750",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.182.482",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 9 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 9 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-004/attempt-01-low/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "1cc78a592d225944b1c6bebf7e9abd5202821aa7923bea0bf08b0e629864b30a"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "743.174",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.592.268",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(2.450.269)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.982.250",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.525.003",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "3.592.322",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.657.154",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "646.754",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "958.730",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(232.880)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2025",
+          "Tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2024"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-005/attempt-01-low/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "35c3ac118280427bad622dea877d55d6dec208104cc47da16cbe050519486dff"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng\nchung\nTriệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng\ncụ thể\nTriệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng\nrủi ro cho vay\ngiao dịch\nký quỹ\nTriệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.982.250",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.525.003",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2026"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "418.853",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.327.192",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.305.430)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "5.401.103",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.546.765",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 6 năm 2026"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "743.174",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.592.268",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(2.450.269)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.982.250",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.525.003",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2025"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s3:t1",
+        "uncertainty_exact": [],
+        "unit_exact": null
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2026",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 6 năm 2026",
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2025"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s3:t1",
+        "unit_exact": null
+      }
+    },
+    {
+      "case_id": "jobs/job-005/attempt-02-medium/table-response.json",
+      "expected": {
+        "ignored_observation_count": 20,
+        "normalization_kinds": [
+          "ACCOUNTING_DASH_TO_ASCII_DASH",
+          "ACCOUNTING_DASH_TO_ASCII_DASH",
+          "ACCOUNTING_DASH_TO_ASCII_DASH",
+          "ACCOUNTING_DASH_TO_ASCII_DASH"
+        ],
+        "observations": [
+          {
+            "cell_id": "r2:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r6:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r7:c3",
+            "source_text": "-",
+            "visual_state": "DASH"
+          }
+        ],
+        "projection_sha256": "8749a2947bf2742b1bf5357b378642df58294ead387b9c26027d1e4aa4caec85"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "4.982.250",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.525.003",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2026"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "418.853",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.327.192",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(1.305.430)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "5.401.103",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.546.765",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 30 tháng 6 năm 2026"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.239.076",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.383.004",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 1 tháng 1 năm 2025"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "743.174",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.592.268",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(2.450.269)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "_",
+                "visual_state": "DASH"
+              }
+            ],
+            "label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "4.982.250",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.525.003",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "117.476",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Tại ngày 31 tháng 12 năm 2025"
+          }
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_id": "s3:t1",
+        "uncertainty_exact": [],
+        "unit_exact": null
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Tại ngày 1 tháng 1 năm 2026",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 30 tháng 6 năm 2026",
+          "Tại ngày 1 tháng 1 năm 2025",
+          "Trích lập trong kỳ/(Hoàn nhập trong kỳ)",
+          "Sử dụng trong kỳ",
+          "Tại ngày 31 tháng 12 năm 2025"
+        ],
+        "table_title_exact": "5. DỰ PHÒNG RỦI RO CHO VAY KHÁCH HÀNG:",
+        "target_cells": [
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r2:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r6:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong kỳ/(Hoàn nhập trong kỳ)"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r7:c3",
+            "change_policy": "MUST_CHANGE",
+            "column_header_exact": [
+              "Dự phòng rủi ro cho vay giao dịch ký quỹ",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong kỳ"
+          }
+        ],
+        "target_id": "s3:t1",
+        "unit_exact": null
+      }
+    },
+    {
+      "case_id": "jobs/job-006/attempt-01-low/table-response.json",
+      "expected": {
+        "ignored_observation_count": 16,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r1:c2",
+            "source_text": "10.860.006",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r2:c2",
+            "source_text": "1.825.755",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r3:c2",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "(18.417.106)",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r4:c2",
+            "source_text": "12.685.761",
+            "visual_state": "VALUE"
+          }
+        ],
+        "projection_sha256": "b6564e7b429f4177f4cface80c478e01ace67dda4357c4ccd9374e68de265102"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "16.638.548",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "10.860.006",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.498.554",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "25.424.264",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.825.755",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.250.019",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "23.645.706",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "12.685.761",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "36.331.467",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "15.248.173",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.009.598",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "17.257.771",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "19.907.866",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "14.695.359",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "34.603.225",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2025"
+          }
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Tổng cộng",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Số dư tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2025"
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_cells": [
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r1:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r2:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong năm"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r3:c3",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "ATOMIC_TABLE_COLLATERAL",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r4:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-006/attempt-02-medium/table-response.json",
+      "expected": {
+        "ignored_observation_count": 16,
+        "normalization_kinds": [],
+        "observations": [
+          {
+            "cell_id": "r1:c2",
+            "source_text": "10.860.006",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r2:c2",
+            "source_text": "1.825.755",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r3:c2",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "(18.417.106)",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r4:c2",
+            "source_text": "12.685.761",
+            "visual_state": "VALUE"
+          }
+        ],
+        "projection_sha256": "b6564e7b429f4177f4cface80c478e01ace67dda4357c4ccd9374e68de265102"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "16.638.548",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "10.860.006",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.498.554",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "25.424.264",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.825.755",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.250.019",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "23.645.706",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "12.685.761",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "36.331.467",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "15.248.173",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.009.598",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "17.257.771",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "-",
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "19.907.866",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "14.695.359",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "34.603.225",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2025"
+          }
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Tổng cộng",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Số dư tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2025"
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_cells": [
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r1:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r2:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong năm"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r3:c3",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "ATOMIC_TABLE_COLLATERAL",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r4:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    },
+    {
+      "case_id": "jobs/job-006/attempt-03-high/table-response.json",
+      "expected": {
+        "ignored_observation_count": 16,
+        "normalization_kinds": [
+          "LEGACY_NULL_WITH_DASH_STATE_TO_ASCII_DASH"
+        ],
+        "observations": [
+          {
+            "cell_id": "r1:c2",
+            "source_text": "10.860.006",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r2:c2",
+            "source_text": "1.825.755",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r3:c2",
+            "source_text": "-",
+            "visual_state": "DASH"
+          },
+          {
+            "cell_id": "r3:c3",
+            "source_text": "(18.417.106)",
+            "visual_state": "VALUE"
+          },
+          {
+            "cell_id": "r4:c2",
+            "source_text": "12.685.761",
+            "visual_state": "VALUE"
+          }
+        ],
+        "projection_sha256": "c6a4d25e12449f811aefe12b56cc3b6bf277af750716c62ae67d1996edad0f33"
+      },
+      "response": {
+        "all_cells_transcribed": true,
+        "columns": [
+          {
+            "header_path_exact": [
+              "Dự phòng cụ thể",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "source_text": "16.638.548",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "10.860.006",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.498.554",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "25.424.264",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "1.825.755",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "27.250.019",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": null,
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.417.106)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "23.645.706",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "12.685.761",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "36.331.467",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "15.248.173",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "2.009.598",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "17.257.771",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Trích lập trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": null,
+                "visual_state": "DASH"
+              },
+              {
+                "source_text": "(18.986.013)",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Sử dụng trong năm"
+          },
+          {
+            "cells": [
+              {
+                "source_text": "19.907.866",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "14.695.359",
+                "visual_state": "VALUE"
+              },
+              {
+                "source_text": "34.603.225",
+                "visual_state": "VALUE"
+              }
+            ],
+            "label_exact": "Số dư tại ngày 31 tháng 12 năm 2025"
+          }
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_id": "s1:t3",
+        "uncertainty_exact": [],
+        "unit_exact": "Triệu đồng"
+      },
+      "target": {
+        "column_headers_exact": [
+          [
+            "Dự phòng cụ thể",
+            "Triệu đồng"
+          ],
+          [
+            "Dự phòng chung",
+            "Triệu đồng"
+          ],
+          [
+            "Tổng cộng",
+            "Triệu đồng"
+          ]
+        ],
+        "column_value_kinds": [
+          "MONEY",
+          "MONEY",
+          "MONEY"
+        ],
+        "row_labels_exact": [
+          "Số dư tại ngày 1 tháng 1 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2024",
+          "Trích lập trong năm",
+          "Sử dụng trong năm",
+          "Số dư tại ngày 31 tháng 12 năm 2025"
+        ],
+        "table_title_exact": "7.6 Dự phòng rủi ro cho vay khách hàng",
+        "target_cells": [
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r1:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 1 tháng 1 năm 2024"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r2:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Trích lập trong năm"
+          },
+          {
+            "after_policy": "DASH_ZERO",
+            "cell_id": "r3:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r3:c3",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Tổng cộng",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "ATOMIC_TABLE_COLLATERAL",
+            "row_label_exact": "Sử dụng trong năm"
+          },
+          {
+            "after_policy": "SIGNED_INTEGER",
+            "cell_id": "r4:c2",
+            "change_policy": "MAY_CHANGE",
+            "column_header_exact": [
+              "Dự phòng chung",
+              "Triệu đồng"
+            ],
+            "evidence_kind": "UNRESOLVED_FRONTIER",
+            "row_label_exact": "Số dư tại ngày 31 tháng 12 năm 2024"
+          }
+        ],
+        "target_id": "s1:t3",
+        "unit_exact": "Triệu đồng"
+      }
+    }
+  ],
+  "earliest_projection_valid_case_axis": [
+    "jobs/job-001/attempt-01-low/table-response.json",
+    "jobs/job-002/attempt-01-low/table-response.json",
+    "jobs/job-003/attempt-02-medium/table-response.json",
+    "jobs/job-004/attempt-01-low/table-response.json",
+    "jobs/job-005/attempt-01-low/table-response.json",
+    "jobs/job-006/attempt-01-low/table-response.json"
+  ],
+  "format_version": "FAMILY13_CAPTURED_TARGET_OBSERVATION_FIXTURE_V1",
+  "source_authority": {
+    "attempt_artifact_axis_sha256": "b52a2782c74fcd9d4e3c4fdab1be74787ceab7c1b98e288f5feff4fb7ce7957a",
+    "capture_checkpoint_sha256": "28aa6e3a4e0e4502e21e9193644dbb71585504edfca95ecd04f1d3cafdbb8722",
+    "quarantined_job_status_counts": {
+      "ABSTAINED": 3,
+      "RESOLVED": 3
+    },
+    "run_contract_sha256": "6090d9fb78302eb2af73ed229f6fae1c9a79942709557d414e40ae28b7163c58",
+    "run_result_sha256": "151651b757fee937b3493a752bb31e2e1c27184b49071f10691087af266c15d7"
+  }
+}
