@@ -1,0 +1,167 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Tiền gửi không kỳ hạn", "Tiền gửi thanh toán", "Tiền, vàng gửi không kỳ hạn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "NO_TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi có kỳ hạn", "Tiền, vàng gửi có kỳ hạn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "TERM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi tiết kiệm không kỳ hạn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SAVINGS_NO_TERM",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi tiết kiệm có kỳ hạn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SAVINGS_TERM",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi ký quỹ", "Tiền ký quỹ"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "ESCROW",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi vốn chuyên dùng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "DEDICATED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tiền gửi của các tổ chức kinh tế", "Tiền gửi của TCKT", "Các tổ chức kinh tế", "Tổ chức kinh tế"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_TCKT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Doanh nghiệp Nhà nước", "Công ty Nhà nước"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_COMPANY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty trách nhiệm hữu hạn", "Công ty TNHH"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "TNHH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ", "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ", "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ", "Công ty TNHH MTV vốn Nhà nước 100%"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_100_TNHH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty TNHH MTV vốn Nhà nước trên 50%"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_OVER_50_ONE_MEMBER_TNHH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty TNHH hai thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối", "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_OVER_50_MULTI_MEMBER_TNHH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty TNHH khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_TNHH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết hoặc Nhà nước giữ quyền chi phối", "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty", "Công ty cổ phần có vốn cổ phần", "Công ty cổ phần vốn Nhà nước trên 50%", "Công ty cổ phần có vốn Nhà nước trên 50%"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_OVER_50_JSC",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty cổ phần khác", "Công ty cổ phần"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_JSC",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Doanh nghiệp tư nhân"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "PRIVATE_ENTERPRISE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty cổ phần, công ty TNHH và doanh nghiệp khác", "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "COMBINED_COMPANY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Hợp tác xã", "Hợp tác xã và liên hiệp hợp tác xã", "Hợp tác xã và liên hợp tác xã"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "COOPERATIVE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty hợp danh", "Công ty liên doanh, hợp doanh"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "PARTNERSHIP",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Doanh nghiệp có vốn đầu tư nước ngoài", "Công ty vốn nước ngoài"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_INVESTED",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Hộ kinh doanh, cá nhân", "Cá nhân và hộ kinh doanh", "Hộ kinh doanh và tiền gửi của cá nhân", "Hộ kinh doanh", "Tiền gửi của cá nhân", "Khách hàng cá nhân", "Cá nhân"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "HOUSEHOLD_INDIVIDUAL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội", "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "ADMIN_ASSOCIATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các đối tượng khác", "Khách hàng khác", "Thành phần kinh tế khác", "Khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_CUSTOMER",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CUSTOMER_DEPOSIT_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền gửi tại các tổ chức tín dụng khác",
+    "Mức lãi suất tiền gửi của khách hàng",
+    "Rủi ro thanh khoản",
+    "Giao dịch với các bên liên quan"
+  ],
+  "limits": {"max_cluster_span_lines": 96, "max_continuation_pages": 1, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Tiền gửi của khách hàng", "Tiền gửi của khách hàng (tiếp theo)"],
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "role": "CUSTOMER_DEPOSIT_ROOT"
+  },
+  "presence_evidence_mode": "GLOBAL_CORE_HITS",
+  "required_role_combinations": [["NO_TERM", "TERM", "DEDICATED"], ["NO_TERM", "TERM", "ESCROW"]],
+  "structural_reset_aliases": [
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro",
+    "Phát hành giấy tờ có giá",
+    "Các khoản nợ khác",
+    "Giao dịch với các bên liên quan"
+  ]
+}

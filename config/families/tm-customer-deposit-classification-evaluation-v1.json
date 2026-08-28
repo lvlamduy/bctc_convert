@@ -1,0 +1,26 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_TYPE_CURRENCY_AND_OPTIONAL_CUSTOMER_VIEW_ALL_LANES",
+  "customer_view_policy": "OPTIONAL_ONLY_WITHIN_SAME_OWNER_OR_EXPLICIT_CONTINUATION_FENCE",
+  "family_id": "CUSTOMER_DEPOSIT_CLASSIFICATION",
+  "format_version": "ACCOUNTING_CUSTOMER_DEPOSIT_FAMILY_EVALUATION_SPEC_V1",
+  "layout_policy": "ONE_TWO_PERIOD_TABLE_OR_TWO_STACKED_PERIOD_CURRENCY_TABLES",
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["Đồng", "VND"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "type_parent_shorthand_aliases": {
+    "NO_TERM": ["KKH"],
+    "TERM": ["CKH"]
+  },
+  "stacked_currency_aliases": {
+    "FOREIGN": ["Bằng ngoại tệ", "Ngoại tệ"],
+    "TOTAL": ["Tổng cộng", "Tổng"],
+    "VND": ["Bằng tiền đồng", "Bằng Đồng Việt Nam", "Bằng VND", "VND"]
+  },
+  "type_direct_roles": ["NO_TERM", "TERM", "ESCROW", "DEDICATED"],
+  "type_savings_source_roles": ["SAVINGS_NO_TERM", "SAVINGS_TERM"]
+}
