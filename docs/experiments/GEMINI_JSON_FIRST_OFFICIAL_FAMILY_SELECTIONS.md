@@ -40,9 +40,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 18 | `TANGIBLE_FIXED_ASSETS_ROLLFORWARD` | 72 | 68 | 0 | 875 | `gjfafstorev1:run:72c996032c969c655a69d28d2a1fcf213c0d264b658c3fed72d1e7300656c92f` |
 | 19 | `LEASED_FIXED_ASSETS_ROLLFORWARD` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:d7172f4b3b197e96be5a3b6c58543de7d69c5b5bdc76703cfa427ed2b12d11bc` |
 | 20 | `INTANGIBLE_FIXED_ASSETS_ROLLFORWARD` | 72 | 68 | 0 | 829 | `gjfafstorev1:run:9bfd9b098cf14d5c7d39e356e5c2626ac2b964d32fe1e22da9ea7de3dbb8072c` |
+| 21 | `INVESTMENT_PROPERTY_ROLLFORWARD` | 12 | 128 | 0 | 105 | `gjfafstorev1:run:b06b23729d51a3282e419de7e607ba394f4b85d2650f925fc808821256396ba1` |
 
-Tại checkpoint này database có đủ đúng hai mươi current selection liên tục từ
-Family 1 đến Family 20. Family 21 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng hai mươi mốt current selection liên tục
+từ Family 1 đến Family 21. Family 22 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -183,7 +184,7 @@ Artifact OFFICIAL:
   Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
   nguyên byte.
 
-## Families 13–20 closure
+## Families 13–21 closure
 
 - Family 13 `PROVISION_MOVEMENT_ROLLFORWARD`: `READY=140`, `UNRESOLVED=0`,
   1.281 mappings. Full selected-frontier/query/candidate SQLite replay, exact
@@ -277,14 +278,36 @@ Artifact OFFICIAL:
   Family 18/19 corpus regressions retained their exact semantic axes. The
   cumulative results DB now has 20 current selections, passes `quick_check`
   and has no foreign-key failures.
+- Family 21 `INVESTMENT_PROPERTY_ROLLFORWARD`: `READY=12`,
+  `NOT_OBSERVED=128`, `UNRESOLVED=0`, 105 mappings and 185 exact closure
+  equations. The shared declarative fixed-asset engine now covers complete
+  investment-property roll-forwards, cost-only fragments, contiguous sibling
+  populations, note-level carrying summaries and typed balance-sheet carrying
+  controls. All aggregation, period/unit resolution, graph closure and schema
+  mapping remain deterministic local code; no prompt contains family equations
+  or ReportNormIds. Exact SQLite replay covers all 8.947 selected page versions
+  and rebuilds every accepted source receipt. E-0072/E-0126 match 16/16
+  historical document dispositions and 26/27 values; the one transparent
+  refinement maps source label `Khấu hao trong năm` to the specific
+  depreciation-charge leaf instead of the older increase subtotal. The
+  OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family21-investment-property/sweep.json`,
+  SHA-256
+  `bbf1540a7a3b4bb4732a618c25b3166e6010c5c00dbe07c07c27e08a25554766`;
+  audit SHA-256
+  `6d5e629c07c22caf501d84bcbe3ba27206e5de505dfbb48757a33bdd33cac82e`.
+  Implementation commit `7a18647`; detached audit passed 122 focused/adjacent
+  tests, lint/format/compile/diff/fsck, and reproduced both artifact hashes
+  byte-for-byte. The cumulative results DB now has 21 current selections,
+  passes `quick_check` and has no foreign-key failures.
 
 ## Next gate
 
-Family 21 là investment-property roll-forward bắt đầu tại ReportNormId 942.
-Trước hết đo mức tái sử dụng của shared fixed-asset engine trên full-corpus
-indexed census 8.947 trang và bounded historical oracles E-0072/E-0126. Chỉ mở
-rộng generic component/aggregation primitive khi source graph thực sự yêu cầu;
-không tạo prompt hay thuật toán theo bank/file/page. Sau khi khóa declarative
-schema/query/candidate replay, adversarial gates và EXP 140 tài liệu, chỉ promote
-OFFICIAL khi typed disposition, graph, equations và mappings đều replay chính
-xác, `UNRESOLVED=0`.
+Family 22 là `OTHER_ASSETS` bắt đầu tại ReportNormId 966. Trước hết tái dựng
+generic multi-table/multi-page owner graph trên full-corpus indexed census 8.947
+trang và bounded historical oracles E-0073/E-0127. Các source row gộp khái niệm
+hoặc không có schema leaf tương đương phải được giữ có kiểu và không map; không
+đưa đáp án graph/schema vào prompt, không tạo routing theo bank/file/page. Chỉ
+promote OFFICIAL sau khi exhaustive inventory, period/unit, subtotal/root
+equations, query/candidate SQLite replay và toàn bộ disposition của 140 tài liệu
+đều khép với `UNRESOLVED=0`.
