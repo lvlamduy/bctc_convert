@@ -38,9 +38,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 16 | `INVESTMENT_SECURITIES` | 140 | 0 | 0 | 2.149 | `gjfafstorev1:run:e53706dab2ac9695d30524070b4568223c99a78fd7a83d9af7d1d65c1b7ba1e1` |
 | 17 | `OTHER_LONG_TERM_INVESTMENTS` | 140 | 0 | 0 | 429 | `gjfafstorev1:run:c7b8dba996e04c3f70468c54ca0104937360ae09c1ffa6e89f5a3faec71c203b` |
 | 18 | `TANGIBLE_FIXED_ASSETS_ROLLFORWARD` | 72 | 68 | 0 | 875 | `gjfafstorev1:run:72c996032c969c655a69d28d2a1fcf213c0d264b658c3fed72d1e7300656c92f` |
+| 19 | `LEASED_FIXED_ASSETS_ROLLFORWARD` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:d7172f4b3b197e96be5a3b6c58543de7d69c5b5bdc76703cfa427ed2b12d11bc` |
 
-Tại checkpoint này database có đủ đúng mười tám current selection liên tục từ
-Family 1 đến Family 18. Family 19 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng mười chín current selection liên tục từ
+Family 1 đến Family 19. Family 20 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -181,7 +182,7 @@ Artifact OFFICIAL:
   Family 4/9/10/11 revalidate với SHA không đổi, và legacy Family 12 giữ
   nguyên byte.
 
-## Families 13–18 closure
+## Families 13–19 closure
 
 - Family 13 `PROVISION_MOVEMENT_ROLLFORWARD`: `READY=140`, `UNRESOLVED=0`,
   1.281 mappings. Full selected-frontier/query/candidate SQLite replay, exact
@@ -238,14 +239,30 @@ Artifact OFFICIAL:
   `c0c1978`; 217 focused/adjacent tests passed. The cumulative results DB now
   has 18 current selections, passes `quick_check` and has no foreign-key
   failures.
+- Family 19 `LEASED_FIXED_ASSETS_ROLLFORWARD`: `READY=0`,
+  `NOT_OBSERVED=140`, `UNRESOLVED=0`, 0 mappings. Đây là absence closure có
+  thẩm quyền, không phải family bị bỏ qua: indexed query đã replay toàn bộ
+  8.947 selected page versions, mọi document đều có typed disposition và
+  không có accepted cluster. E-0070/E-0124 khớp chính xác 16/16 bounded
+  absence records. Cùng fixed-asset engine của Family 18 được cấu hình thành
+  hai signed branch và optional carrying control; không thêm bank/file/page
+  route hay prompt Gemini riêng. The OFFICIAL sweep is
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family19-leased-fixed-assets/sweep.json`,
+  SHA-256
+  `8bef6a9d7656cb5a6190620e670e9f2637dfb4beab709ff3db15412d1e10900d`;
+  audit SHA-256
+  `e657c27e230403e92c4d891dc2767df7643de9a07531f62e03dff25d68121b21`.
+  Implementation commit `b568bd9`, generic claim-boundary follow-up
+  `d7412c0`; 31 focused tests and 178 adjacent family tests passed. The
+  cumulative results DB now has 19 current selections, passes `quick_check`
+  and has no foreign-key failures.
 
 ## Next gate
 
-Family 19 là `LEASED_FIXED_ASSETS_ROLLFORWARD`, bắt đầu tại ReportNormId 896.
-Tái sử dụng cùng fixed-asset engine khai báo bằng data, mở rộng topology branch
-theo schema thay vì viết prompt hoặc thuật toán riêng cho từng tài liệu. Bắt đầu
-từ full-corpus indexed census 8.947 trang và oracle E-0070/E-0124; các absence
-lịch sử chỉ là bounded comparator, không được suy rộng thành absence của toàn
-corpus. Sau khi khóa schema/query/candidate replay, adversarial gates và EXP 140
-tài liệu, chỉ promote OFFICIAL khi typed disposition và mapping đều được replay
-chính xác, `UNRESOLVED=0`, không có bank/file/page routing.
+Family 20 là `INTANGIBLE_FIXED_ASSETS_ROLLFORWARD`. Tái sử dụng cùng fixed-asset
+engine khai báo bằng data; chỉ topology/evaluation/schema aliases thay đổi,
+không tạo prompt hay thuật toán riêng cho từng tài liệu. Bắt đầu từ full-corpus
+indexed census 8.947 trang và bounded historical oracles tương ứng. Sau khi khóa
+schema/query/candidate replay, adversarial gates và EXP 140 tài liệu, chỉ promote
+OFFICIAL khi typed disposition, graph, equations và mappings đều replay chính
+xác, `UNRESOLVED=0`, không có bank/file/page routing.
