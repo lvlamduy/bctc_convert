@@ -1,0 +1,172 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Bình quân số cán bộ, nhân viên (người)",
+            "Số lượng cán bộ, công nhân viên bình quân trong năm (người)",
+            "Số lượng nhân viên bình quân (người)",
+            "Tổng số cán bộ, công nhân viên bình quân (người)",
+            "Tổng số cán bộ, công nhân viên bình quân trong kỳ (người)",
+            "Tổng số cán bộ, công nhân viên bình quân trong năm (người)",
+            "Tổng số cán bộ, nhân viên bình quân trong năm (người)",
+            "Tổng số nhân viên bình quân (người)",
+            "Tổng số nhân viên bình quân trong kỳ (người)"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_COUNT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập của cán bộ, công nhân viên",
+            "Thu nhập của cán bộ, nhân viên",
+            "Thu nhập của nhân viên"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_INCOME",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tiền lương",
+            "Tổng quỹ lương",
+            "Tổng quỹ lương và phụ cấp"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SALARY_FUND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản tiền thưởng",
+            "Tiền thưởng",
+            "Tổng quỹ thưởng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BONUS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản phụ cấp và thu nhập khác",
+            "Phụ cấp và thu nhập khác",
+            "Thu nhập khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_INCOME",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng thu nhập",
+            "Tổng thu nhập của cán bộ, công nhân viên",
+            "Tổng thu nhập của cán bộ, nhân viên",
+            "Tổng thu nhập của nhân viên"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TOTAL_INCOME",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tiền lương bình quân",
+            "Tiền lương bình quân hàng tháng",
+            "Tiền lương bình quân tháng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "AVERAGE_SALARY_MONTH",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập bình quân",
+            "Thu nhập bình quân hàng tháng",
+            "Thu nhập bình quân tháng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "AVERAGE_INCOME_MONTH",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "EMPLOYEE_INCOME",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chi phí cho nhân viên",
+    "Chi phí nhân viên",
+    "Giao dịch với cán bộ nhân viên",
+    "Thu nhập của Hội đồng quản trị và Ban điều hành"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 4096,
+    "max_continuation_pages": 2,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Tình hình thu nhập của cán bộ, công nhân viên",
+      "Tình hình thu nhập của cán bộ, nhân viên",
+      "Tình hình thu nhập của nhân viên"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "EMPLOYEE_INCOME_DISCLOSURE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "EMPLOYEE_COUNT",
+      "EMPLOYEE_INCOME",
+      "AVERAGE_INCOME_MONTH"
+    ],
+    [
+      "EMPLOYEE_COUNT",
+      "TOTAL_INCOME",
+      "AVERAGE_INCOME_MONTH"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Chi phí cho nhân viên",
+    "Chi phí nhân viên",
+    "Giao dịch với cán bộ nhân viên",
+    "Thu nhập của Hội đồng quản trị và Ban điều hành"
+  ]
+}

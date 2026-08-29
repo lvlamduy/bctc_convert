@@ -1,0 +1,41 @@
+{
+  "family_id": "EMPLOYEE_INCOME",
+  "family_root_report_norm_id": 1260,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {
+      "report_norm_id": 1261,
+      "role": "EMPLOYEE_COUNT"
+    },
+    {
+      "report_norm_id": 1262,
+      "role": "EMPLOYEE_INCOME"
+    },
+    {
+      "report_norm_id": 1263,
+      "role": "SALARY_FUND"
+    },
+    {
+      "report_norm_id": 1264,
+      "role": "BONUS"
+    },
+    {
+      "report_norm_id": 1265,
+      "role": "OTHER_INCOME"
+    },
+    {
+      "report_norm_id": 1266,
+      "role": "TOTAL_INCOME"
+    },
+    {
+      "report_norm_id": 1267,
+      "role": "AVERAGE_SALARY_MONTH"
+    },
+    {
+      "report_norm_id": 1268,
+      "role": "AVERAGE_INCOME_MONTH"
+    }
+  ],
+  "root_mapping_policy": "STRUCTURAL_CONTEXT_ONLY",
+  "schema_period_type": "DURATION"
+}

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import stat
 import sys
@@ -481,6 +482,23 @@ PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_HISTORICAL_ORACLES = (
         ),
         "sha256": "143d48819f38f90cb9eaa5b6e7b5f6a020d9b4b18adf402c965cbb4c2aced1ab",
         "size_bytes": 14864,
+    },
+)
+PINNED_EMPLOYEE_INCOME_HISTORICAL_ORACLES = (
+    {
+        "format_version": "EMPLOYEE_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0094-employee-income-8bank-codex-verified-mapping-v1.json",
+        "sha256": "9e5ccefaa58769ed126fee71eb78d1c66d50ba0699006b2736de54e191d9300d",
+        "size_bytes": 51670,
+    },
+    {
+        "format_version": "ANNUAL_2025_EMPLOYEE_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0149-annual-2025-employee-income-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "711c25952f2df29474733c0a6acc8b954d313dc40aeea9c5a94d4a96f1ab32ad",
+        "size_bytes": 62687,
     },
 )
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
@@ -1367,6 +1385,55 @@ PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("51dd33edf55179beadc4567fd40255ca7f14518f3591fb78d90a0a656882ef00"),
     "mappings": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
 }
+PINNED_EMPLOYEE_INCOME_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "9283079dcb8a2f3d10f17289fa5911ddc238dc33076aa4fd7ceb2d0c8050c4bb"
+    ),
+    "accepted_cluster_count": 66,
+    "accepted_fragment_count": 66,
+    "candidate_disposition_axis_sha256": (
+        "34676acf705d664662f3ef3aa555df1ece74c3ed37e8202d62162a49172adc5c"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 74, READY: 66, UNRESOLVED: 0},
+    "query_policy_sha256": "28e21c4882ff1c570d3b1a963b34e9ceb1ca21b54958b41a55f37236440ac48c",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_EMPLOYEE_INCOME_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 300,
+    "not_observed_count": 74,
+    "ready_count": 60,
+    "unresolved_count": 6,
+}
+PINNED_EMPLOYEE_INCOME_RELEASE_AUDIT_METRICS = {
+    "equation_count": 140,
+    "historical_comparator_exact_count": 43,
+    "historical_disposition_exact_count": 12,
+    "historical_mapping_exact_count": 31,
+    "historical_mapping_record_count": 31,
+    "mapping_count": 300,
+}
+PINNED_EMPLOYEE_INCOME_RELEASE_AXIS_COUNTS = {
+    "clusters": 60,
+    "equations": 140,
+    "historical_comparator": 47,
+    "mappings": 300,
+}
+PINNED_EMPLOYEE_INCOME_RELEASE_AXIS_SHA256 = {
+    "clusters": "30d97d14248bba1031715a014a5066291df890399235fa476faf5597ec0931a3",
+    "equations": "5024b63dcb2378bbab085a721feb70a1efa1c0f34f12c781bbc8e107b6cb0f0d",
+    "historical_comparator": "d7e9805cfc699171cc97bdf55551befaa54282f4e1fec5ab759dd42548f4fad4",
+    "mappings": "c325b1197a4783664cb131ee6c4800d7e42252bcb5200d61c19ed795d3227059",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1608,6 +1675,8 @@ def _historical_oracle_refs(
         return PINNED_CASH_EQUIVALENTS_HISTORICAL_ORACLES
     if family_id == "SUBSIDIARY_ACQUISITION_DISPOSAL":
         return PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_HISTORICAL_ORACLES
+    if family_id == "EMPLOYEE_INCOME":
+        return PINNED_EMPLOYEE_INCOME_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1773,6 +1842,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "query_receipt": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_QUERY_RECEIPT,
             "sweep_metrics": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_METRICS,
         }
+    if family_id == "EMPLOYEE_INCOME":
+        return {
+            "axis_counts": PINNED_EMPLOYEE_INCOME_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_EMPLOYEE_INCOME_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_EMPLOYEE_INCOME_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_EMPLOYEE_INCOME_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_EMPLOYEE_INCOME_RELEASE_METRICS,
+        }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
 
@@ -1811,6 +1888,26 @@ def _trial_by_source(trials: Sequence[dict[str, Any]]) -> dict[str, dict[str, An
             raise _error("multi-table trial source axis is ambiguous")
         result[source_sha256] = trial
     return result
+
+
+def _canonical_comparator_decimal(value: Any, declared_scale: Any) -> tuple[str, int] | None:
+    """Canonicalize one already-normalized historical/current decimal.
+
+    Older employee-income oracles sometimes omitted ``decimal_scale`` while
+    preserving a fixed-point ``normalized_decimal_value``.  Infer only the
+    visible number of fractional digits in that case.  This is comparator
+    normalization and never supplies a value to the family evaluator.
+    """
+
+    if type(value) is not str or re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", value) is None:
+        return None
+    fraction = value.partition(".")[2]
+    visible_scale = len(fraction)
+    scale = visible_scale if declared_scale is None else declared_scale
+    if type(scale) is not int or not 0 <= scale <= 6 or visible_scale > scale:
+        return None
+    whole = value.partition(".")[0]
+    return (whole if scale == 0 else whole + "." + fraction.ljust(scale, "0"), scale)
 
 
 def _historical_comparator_axis(
@@ -1889,9 +1986,12 @@ def _historical_comparator_axis(
                     binding.get("report_norm_id") if type(binding) is dict else None
                 )
                 historical_coefficients = None
+                historical_decimals = None
+                historical_decimal_scale = None
                 normalized_blank_axes: set[str] = set()
                 if type(source_values) is list:
-                    period_role_items = []
+                    integer_period_role_items = []
+                    decimal_period_role_items = []
                     for value in source_values:
                         if type(value) is not dict:
                             continue
@@ -1905,15 +2005,31 @@ def _historical_comparator_axis(
                             continue
                         role = period_role if type(period_role) is str else axis_role
                         if type(role) is str:
-                            period_role_items.append((role, value.get("normalized_value")))
+                            normalized_value = value.get("normalized_value")
+                            normalized_decimal = _canonical_comparator_decimal(
+                                value.get("normalized_decimal_value"), value.get("decimal_scale")
+                            )
+                            if type(normalized_value) is int and normalized_decimal is None:
+                                integer_period_role_items.append((role, normalized_value))
+                            elif normalized_value is None and normalized_decimal is not None:
+                                decimal_period_role_items.append((role, normalized_decimal))
                     by_period_role = {
-                        role: normalized_value for role, normalized_value in period_role_items
+                        role: normalized_value
+                        for role, normalized_value in integer_period_role_items
                     }
-                    if len(by_period_role) == len(source_values) and set(by_period_role) in (
+                    decimal_by_period_role = {
+                        role: normalized_decimal
+                        for role, normalized_decimal in decimal_period_role_items
+                    }
+                    valid_roles = (
                         {"CURRENT"},
                         {"CURRENT", "COMPARATIVE"},
                         {"CURRENT_PERIOD"},
                         {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"},
+                    )
+                    if (
+                        len(by_period_role) == len(source_values)
+                        and set(by_period_role) in valid_roles
                     ):
                         current_key = "CURRENT" if "CURRENT" in by_period_role else "CURRENT_PERIOD"
                         comparative_key = (
@@ -1924,6 +2040,29 @@ def _historical_comparator_axis(
                         historical_coefficients = [by_period_role[current_key]]
                         if comparative_key in by_period_role:
                             historical_coefficients.append(by_period_role[comparative_key])
+                    elif (
+                        len(decimal_by_period_role) == len(source_values)
+                        and set(decimal_by_period_role) in valid_roles
+                        and len(
+                            {
+                                scale
+                                for _normalized_decimal, scale in decimal_by_period_role.values()
+                            }
+                        )
+                        == 1
+                    ):
+                        current_key = (
+                            "CURRENT" if "CURRENT" in decimal_by_period_role else "CURRENT_PERIOD"
+                        )
+                        comparative_key = (
+                            "COMPARATIVE"
+                            if "COMPARATIVE" in decimal_by_period_role
+                            else "COMPARATIVE_PERIOD"
+                        )
+                        historical_decimal_scale = decimal_by_period_role[current_key][1]
+                        historical_decimals = [decimal_by_period_role[current_key][0]]
+                        if comparative_key in decimal_by_period_role:
+                            historical_decimals.append(decimal_by_period_role[comparative_key][0])
                     blank_axes = historical.get("blank_axes")
                     normalized_period_values = {
                         (
@@ -1974,6 +2113,21 @@ def _historical_comparator_axis(
                     if type(current) is dict
                     else None
                 )
+                full_current_decimals = None
+                if historical_decimals is not None and type(current) is dict:
+                    normalized_current_decimals = [
+                        _canonical_comparator_decimal(
+                            value.get("normalized_decimal"), value.get("decimal_scale")
+                        )
+                        for value in current["values"]
+                    ]
+                    if all(
+                        item is not None and item[1] == historical_decimal_scale
+                        for item in normalized_current_decimals
+                    ):
+                        full_current_decimals = [
+                            item[0] for item in normalized_current_decimals if item is not None
+                        ]
                 current_role = current.get("role") if type(current) is dict else None
                 bond_report_norm_id = compiled_specs["bindings"].get("BOND")
                 other_report_norm_id = compiled_specs["bindings"].get("OTHER_ISSUED_PAPER")
@@ -2048,6 +2202,11 @@ def _historical_comparator_axis(
                     and type(historical_coefficients) is list
                     else full_current_coefficients
                 )
+                current_decimals = (
+                    full_current_decimals[: len(historical_decimals)]
+                    if type(full_current_decimals) is list and type(historical_decimals) is list
+                    else full_current_decimals
+                )
                 current_blank_zero_state_exact = bool(
                     not normalized_blank_axes
                     or type(current) is dict
@@ -2063,32 +2222,51 @@ def _historical_comparator_axis(
                         if role in normalized_blank_axes
                     )
                 )
+                decimal_comparison = type(historical_decimals) is list
                 exact = (
                     type(old_report_norm_id) is int
-                    and type(historical_coefficients) is list
-                    and len(historical_coefficients) in {1, 2}
-                    and all(type(value) is int for value in historical_coefficients)
                     and current is not None
-                    and current_coefficients == historical_coefficients
-                    and current_blank_zero_state_exact
+                    and (
+                        decimal_comparison
+                        and len(historical_decimals) in {1, 2}
+                        and current_decimals == historical_decimals
+                        or not decimal_comparison
+                        and type(historical_coefficients) is list
+                        and len(historical_coefficients) in {1, 2}
+                        and all(type(value) is int for value in historical_coefficients)
+                        and current_coefficients == historical_coefficients
+                        and current_blank_zero_state_exact
+                    )
                 )
-                axis.append(
-                    {
-                        "bank_provenance": oracle_trial.get("document_provenance"),
-                        "canonical_name": (
-                            binding.get("canonical_name") if type(binding) is dict else None
-                        ),
-                        "current_coefficients": current_coefficients,
-                        "current_role": current_role,
-                        "declared_role": current_role_by_id.get(old_report_norm_id),
-                        "disposition": "EXACT" if exact else "MISMATCH",
-                        "historical_coefficients": historical_coefficients,
-                        "historical_report_norm_id": old_report_norm_id,
-                        "oracle_format_version": oracle["format_version"],
-                        "record_kind": "MAPPING_VALUE",
-                        "source_sha256": source_sha256,
-                    }
-                )
+                record = {
+                    "bank_provenance": oracle_trial.get("document_provenance"),
+                    "canonical_name": (
+                        binding.get("canonical_name") if type(binding) is dict else None
+                    ),
+                    "current_role": current_role,
+                    "declared_role": current_role_by_id.get(old_report_norm_id),
+                    "disposition": "EXACT" if exact else "MISMATCH",
+                    "historical_report_norm_id": old_report_norm_id,
+                    "oracle_format_version": oracle["format_version"],
+                    "record_kind": "MAPPING_VALUE",
+                    "source_sha256": source_sha256,
+                }
+                if decimal_comparison:
+                    record.update(
+                        {
+                            "current_decimals": current_decimals,
+                            "decimal_scale": historical_decimal_scale,
+                            "historical_decimals": historical_decimals,
+                        }
+                    )
+                else:
+                    record.update(
+                        {
+                            "current_coefficients": current_coefficients,
+                            "historical_coefficients": historical_coefficients,
+                        }
+                    )
+                axis.append(record)
     if len(axis) != expected_mapping_count + 16:
         raise _error("historical multi-table comparator denominator drifted")
     return axis, oracle_refs
@@ -2120,17 +2298,36 @@ def _audit_axes(
             }
         )
         for mapping in candidate["mappings"]:
-            mappings.append(
-                {
-                    **document,
-                    "coefficients": [value["coefficient"] for value in mapping["values"]],
-                    "report_norm_id": mapping["report_norm_id"],
-                    "role": mapping["role"],
-                    "row_id": mapping["row_id"],
-                    "states": [value["state"] for value in mapping["values"]],
-                    "unit": mapping["unit"],
-                }
-            )
+            record = {
+                **document,
+                "coefficients": [value["coefficient"] for value in mapping["values"]],
+                "report_norm_id": mapping["report_norm_id"],
+                "role": mapping["role"],
+                "row_id": mapping["row_id"],
+                "states": [value["state"] for value in mapping["values"]],
+                "unit": mapping["unit"],
+            }
+            decimal_cells = [
+                value
+                for value in mapping["values"]
+                if "decimal_scale" in value or "normalized_decimal" in value
+            ]
+            if decimal_cells:
+                if len(decimal_cells) != len(mapping["values"]) or any(
+                    type(value.get("decimal_scale")) is not int
+                    or type(value.get("normalized_decimal")) is not str
+                    for value in decimal_cells
+                ):
+                    raise _error("multi-table audit decimal mapping axis is incomplete")
+                record.update(
+                    {
+                        "decimal_scales": [value["decimal_scale"] for value in decimal_cells],
+                        "normalized_decimals": [
+                            value["normalized_decimal"] for value in decimal_cells
+                        ],
+                    }
+                )
+            mappings.append(record)
         for equation in candidate["closure_receipt"]["equations"]:
             equations.append({**document, "equation": equation})
     comparator, oracle_refs = _historical_comparator_axis(

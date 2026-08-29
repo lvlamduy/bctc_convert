@@ -14,6 +14,7 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from itertools import product
 from typing import Any
 
@@ -32,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
     _path_has_role,
     _row_role_match_modes,
+    _without_leading_ordinal,
 )
 from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import (
     _global_records,
@@ -156,6 +158,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "structural_parent_derivation_policy",
         "unmapped_direct_family_row_policy",
         "validation_only_roles",
+        "accepted_value_column_kinds",
+        "duration_month_resolution_policy",
+        "ratio_metric_equations",
     }
     if (
         type(evaluation_spec) is not dict
@@ -457,6 +462,58 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     )
     if not set(non_money_metric_roles) <= set(validation_only_roles):
         raise _error("multi-table hierarchical non-money roles are not validation-only")
+    accepted_value_column_kinds = evaluation_spec.get("accepted_value_column_kinds", ["MONEY"])
+    if (
+        type(accepted_value_column_kinds) is not list
+        or "MONEY" not in accepted_value_column_kinds
+        or len(accepted_value_column_kinds) != len(set(accepted_value_column_kinds))
+        or any(kind not in {"MONEY", "UNKNOWN"} for kind in accepted_value_column_kinds)
+    ):
+        raise _error("multi-table hierarchical accepted value-column kinds are invalid")
+    duration_month_resolution_policy = evaluation_spec.get(
+        "duration_month_resolution_policy", "DISABLED"
+    )
+    if duration_month_resolution_policy not in {
+        "DISABLED",
+        "SOURCE_VISIBLE_HEADER_OR_TYPED_DOCUMENT_DURATION_CONTEXT",
+    }:
+        raise _error("multi-table hierarchical duration-month policy is invalid")
+    ratio_metric_equations = []
+    ratio_result_roles = set()
+    for equation in evaluation_spec.get("ratio_metric_equations", []):
+        if (
+            type(equation) is not dict
+            or set(equation)
+            != {
+                "decimal_scale",
+                "denominator_role",
+                "numerator_roles",
+                "result_role",
+            }
+            or equation.get("result_role") not in roles
+            or equation["result_role"] in ratio_result_roles
+            or equation.get("denominator_role") not in roles
+            or equation["denominator_role"] == equation["result_role"]
+            or type(equation.get("numerator_roles")) is not list
+            or not equation["numerator_roles"]
+            or len(equation["numerator_roles"]) != len(set(equation["numerator_roles"]))
+            or any(
+                role not in roles or role in {equation["result_role"], equation["denominator_role"]}
+                for role in equation["numerator_roles"]
+            )
+            or type(equation.get("decimal_scale")) is not int
+            or not 0 <= equation["decimal_scale"] <= 6
+        ):
+            raise _error("multi-table hierarchical ratio metric equation is invalid")
+        ratio_result_roles.add(equation["result_role"])
+        ratio_metric_equations.append(canonical_clone_v1(equation))
+    if bool(ratio_metric_equations) != (
+        duration_month_resolution_policy
+        == "SOURCE_VISIBLE_HEADER_OR_TYPED_DOCUMENT_DURATION_CONTEXT"
+    ):
+        raise _error("multi-table hierarchical ratio and duration policies disagree")
+    if ratio_result_roles.intersection(validation_only_roles):
+        raise _error("multi-table hierarchical ratio result role is validation-only")
     ordered_role_scopes = []
     ordered_role_scope_ids = set()
     supplied_ordered_role_scopes = evaluation_spec.get("ordered_role_scopes", [])
@@ -797,6 +854,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["role_anchored_supplemental_roles"] = role_anchored_supplemental_roles
     if "non_money_metric_roles" in evaluation_spec:
         query_policy["non_money_metric_roles"] = non_money_metric_roles
+    if "accepted_value_column_kinds" in evaluation_spec:
+        query_policy["accepted_value_column_kinds"] = accepted_value_column_kinds
+    if "ratio_metric_equations" in evaluation_spec:
+        query_policy["ratio_metric_roles"] = sorted(ratio_result_roles)
     if "ordered_role_scopes" in evaluation_spec:
         query_policy["ordered_role_scopes"] = canonical_clone_v1(ordered_role_scopes)
     if "supplemental_owner_aliases" in evaluation_spec:
@@ -815,6 +876,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["row_population_context_policy"] = row_population_context_policy
     return {
         "aggregate_duplicate_roles": aggregate_duplicate_roles,
+        **(
+            {"accepted_value_column_kinds": accepted_value_column_kinds}
+            if "accepted_value_column_kinds" in evaluation_spec
+            else {}
+        ),
         "aliases_by_role": aliases_by_role,
         "bindings": bindings,
         "claim_boundary": CLAIM_BOUNDARY,
@@ -846,6 +912,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "label_only_structural_group_policy": label_only_structural_group_policy,
         "money_metric_policy": money_metric_policy,
         "non_money_metric_roles": non_money_metric_roles,
+        **(
+            {"duration_month_resolution_policy": duration_month_resolution_policy}
+            if "duration_month_resolution_policy" in evaluation_spec
+            else {}
+        ),
         "ordered_role_scopes": ordered_role_scopes,
         "ordered_role_scope_projections": ordered_role_scope_projections,
         "mapped_source_subtotal_policy": mapped_source_subtotal_policy,
@@ -863,6 +934,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "role_anchored_supplemental_roles": role_anchored_supplemental_roles,
         "row_population_context_policy": row_population_context_policy,
         "role_unit_overrides": role_unit_overrides,
+        **(
+            {
+                "ratio_metric_equations": ratio_metric_equations,
+                "ratio_metric_roles": sorted(ratio_result_roles),
+            }
+            if "ratio_metric_equations" in evaluation_spec
+            else {}
+        ),
         "row_alias_prefix_roles": row_alias_prefix_roles,
         "schema": canonical_clone_v1(schema_binding_spec),
         "source_result_query_policy": source_result_query_policy,
@@ -1002,6 +1081,25 @@ def _owner_marker_matches(
     return sorted({alias for surface in surfaces for alias in aliases if _matches(surface, alias)})
 
 
+def _value_column_ordinals(
+    columns: Sequence[Any], *, compiled_specs: Mapping[str, Any]
+) -> list[int]:
+    """Return declared numeric columns without trusting Gemini's soft kind alone.
+
+    ``UNKNOWN`` is opt-in for families whose tables contain a heterogeneous
+    metric axis (people, money, and per-person ratios).  Ownership, row roles,
+    period evidence, and unit evidence still have to close independently; this
+    helper never promotes an arbitrary unknown table by itself.
+    """
+
+    accepted = set(compiled_specs.get("accepted_value_column_kinds", ["MONEY"]))
+    return [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") in accepted
+    ]
+
+
 def _typed_control_disposition(
     page_json: Mapping[str, Any],
     section: Mapping[str, Any],
@@ -1054,9 +1152,7 @@ def _typed_control_disposition(
                 )
                 continue
             return exclusion["disposition"], override_receipts
-    if type(columns) is list and not any(
-        type(column) is dict and column.get("value_kind") == "MONEY" for column in columns
-    ):
+    if type(columns) is list and not _value_column_ordinals(columns, compiled_specs=compiled_specs):
         return "NO_MONEY_VALUE_AXIS", override_receipts
     return None, override_receipts
 
@@ -1211,11 +1307,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     rows = table.get("rows")
     if type(columns) is not list or type(rows) is not list:
         raise _error("multi-table hierarchical source axes are invalid")
-    money_ordinals = [
-        ordinal
-        for ordinal, column in enumerate(columns, start=1)
-        if type(column) is dict and column.get("value_kind") == "MONEY"
-    ]
+    money_ordinals = _value_column_ordinals(columns, compiled_specs=compiled_specs)
     transposed_column_role_hits = _transposed_column_role_hits(
         columns, compiled_specs=compiled_specs
     )
@@ -1289,7 +1381,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                     # declared alias prefix, never from document identity or
                     # values.  Scoped child aliases remain eligible only in
                     # their authenticated structural parent.
-                    label = _normalized(source_row.get("label_exact"))
+                    label = _without_leading_ordinal(_normalized(source_row.get("label_exact")))
                     prefix_matches = [
                         (len(_normalized(alias)), role)
                         for role, matchers in compiled_specs["matchers_by_role"].items()
@@ -2995,7 +3087,9 @@ def _duration_semantic_period_roles(value: str) -> list[str]:
     return _semantic_period_roles(folded)
 
 
-def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
+def _duration_multitable_lane_axis(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> dict[str, Any]:
     """Resolve source-visible duration columns without fabricating intervals.
 
     A duration header may expose a full start/end range, one visible ending
@@ -3006,11 +3100,7 @@ def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
 
     columns = table.get("columns")
     assert type(columns) is list
-    all_money_ordinals = [
-        ordinal
-        for ordinal, column in enumerate(columns, start=1)
-        if type(column) is dict and column.get("value_kind") == "MONEY"
-    ]
+    all_money_ordinals = _value_column_ordinals(columns, compiled_specs=compiled_specs)
     money_ordinals = list(all_money_ordinals)
     excluded_parallel_money_ordinals = []
     if len(money_ordinals) > 2:
@@ -3220,6 +3310,505 @@ def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+_DURATION_MONTH_TOKEN = re.compile(
+    r"(?<![a-z0-9])(?P<count>3|6|9|12|ba|sau|chin|muoi\s+hai|three|six|nine|twelve)"
+    r"\s+(?:thang|months?)(?![a-z0-9])"
+)
+_DURATION_MONTH_VALUES = {
+    "3": 3,
+    "ba": 3,
+    "three": 3,
+    "6": 6,
+    "sau": 6,
+    "six": 6,
+    "9": 9,
+    "chin": 9,
+    "nine": 9,
+    "12": 12,
+    "muoi hai": 12,
+    "twelve": 12,
+}
+
+
+def _explicit_duration_month_counts(value: Any) -> list[int]:
+    folded = _normalized(value)
+    return sorted(
+        {
+            _DURATION_MONTH_VALUES[re.sub(r"\s+", " ", match.group("count"))]
+            for match in _DURATION_MONTH_TOKEN.finditer(folded)
+        }
+    )
+
+
+def _document_duration_month_context_axis(
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Inventory governed reporting-duration phrases across immutable JSON.
+
+    Only titles of typed primary income/cash-flow statements can provide
+    document context, and the visible phrase must bind ``N months`` to an
+    ended reporting period.  Maturity buckets, legal dates, loan tenors, and
+    arbitrary note narratives therefore cannot establish this axis.  A local
+    note may use symbolic ``Kỳ này/Kỳ trước`` while the primary statement
+    supplies the exact duration independently.
+    """
+
+    evidence = []
+    conflicts = []
+
+    def observe(
+        value: Any,
+        *,
+        page_json_version_id: str,
+        section_id: str,
+        source_kind: str,
+        table_id: str | None = None,
+    ) -> None:
+        folded = _normalized(value)
+        if not (
+            re.search(
+                r"\b(?:cho|trong)\s+(?:ky|giai\s+doan)\b.*"
+                r"\b(?:thang|months?)\b.*\b(?:ket\s+thuc|ended)\b",
+                folded,
+            )
+            or re.search(r"\b(?:three|six|nine|twelve)\s+months?\s+ended\b", folded)
+        ):
+            return
+        counts = _explicit_duration_month_counts(value)
+        if not counts:
+            return
+        item = {
+            "month_counts": counts,
+            "page_json_version_id": page_json_version_id,
+            "section_id": section_id,
+            "source_exact": value,
+            "source_kind": source_kind,
+        }
+        if table_id is not None:
+            item["table_id"] = table_id
+        if len(counts) != 1:
+            conflicts.append(item)
+        else:
+            evidence.append(item)
+
+    for page_json_version_id, page_json in sorted(page_json_by_version.items()):
+        if _PAGE_VERSION.fullmatch(page_json_version_id) is None or type(page_json) is not dict:
+            raise _error("multi-table duration context page is invalid")
+        if page_json.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+            continue
+        for section_ordinal, section in enumerate(page_json.get("sections") or [], start=1):
+            if type(section) is not dict:
+                continue
+            if section.get("content_kind") != "PRIMARY_STATEMENT" or section.get(
+                "statement_type"
+            ) not in {"INCOME_STATEMENT", "CASH_FLOW"}:
+                continue
+            section_id = f"s{section_ordinal}"
+            observe(
+                section.get("title_exact"),
+                page_json_version_id=page_json_version_id,
+                section_id=section_id,
+                source_kind="SECTION_TITLE",
+            )
+    identities = {item["month_counts"][0] for item in evidence}
+    unique = not conflicts and len(identities) == 1
+    return {
+        "conflicts": conflicts,
+        "evidence": evidence,
+        "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+        "months": next(iter(identities)) if unique else None,
+        "rule": (
+            "UNIQUE_GOVERNED_EXPLICIT_N_MONTH_DURATION_ACROSS_TYPED_PRIMARY_"
+            "INCOME_AND_CASH_FLOW_STATEMENT_TITLES"
+        ),
+        "status": "UNIQUE"
+        if unique
+        else ("ABSENT" if not evidence and not conflicts else "NOT_UNIQUE"),
+    }
+
+
+def _table_duration_month_axis(
+    table: Mapping[str, Any],
+    lane_axis: Mapping[str, Any],
+    *,
+    document_context: Mapping[str, Any],
+) -> dict[str, Any]:
+    columns = table.get("columns")
+    if type(columns) is not list or not lane_axis.get("complete"):
+        return {"complete": False, "months": [], "reasons": ["DURATION_LANE_AXIS_INVALID"]}
+    months = []
+    evidence = []
+    reasons = []
+    inherited = (
+        document_context.get("months") if document_context.get("status") == "UNIQUE" else None
+    )
+    for ordinal in lane_axis["money_column_ordinals"]:
+        header = _header_text(columns[ordinal - 1])
+        explicit = _explicit_duration_month_counts(header)
+        bare_years = re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", header)
+        folded = _normalized(header)
+        local_months = None
+        source_kind = None
+        if len(explicit) > 1:
+            reasons.append(f"MULTIPLE_DURATION_MONTH_COUNTS_IN_VALUE_COLUMN:c{ordinal}")
+        elif len(explicit) == 1:
+            local_months = explicit[0]
+            source_kind = "SOURCE_VISIBLE_EXPLICIT_MONTH_COUNT"
+        elif (
+            len(set(bare_years)) == 1
+            and not _ordered_duration_dates(header)
+            and not re.search(r"\b(?:thang|month)\b", folded)
+        ) or any(
+            marker in f" {folded} "
+            for marker in (" nam nay ", " nam truoc ", " current year ", " prior year ")
+        ):
+            local_months = 12
+            source_kind = "SOURCE_VISIBLE_ANNUAL_YEAR_HEADER"
+        elif inherited is not None:
+            local_months = inherited
+            source_kind = "TYPED_DOCUMENT_DURATION_CONTEXT"
+        else:
+            dates = _ordered_duration_dates(header)
+            if (
+                len(dates) == 1
+                and dates[0].month in {3, 6, 9, 12}
+                and any(marker in f" {folded} " for marker in (" den ", " ended ", " ket thuc "))
+            ):
+                local_months = dates[0].month
+                source_kind = "SOURCE_VISIBLE_CUMULATIVE_QUARTER_END_HEADER"
+            else:
+                reasons.append(f"DURATION_MONTH_COUNT_NOT_RESOLVED:c{ordinal}")
+        if local_months is not None:
+            if inherited is not None and local_months != inherited:
+                reasons.append(f"LOCAL_AND_DOCUMENT_DURATION_MONTH_CONFLICT:c{ordinal}")
+            months.append(local_months)
+            evidence.append(
+                {
+                    "column_ordinal": ordinal,
+                    "months": local_months,
+                    "source_exact": header,
+                    "source_kind": source_kind,
+                }
+            )
+    if len(months) != len(lane_axis["money_column_ordinals"]):
+        reasons.append("DURATION_MONTH_AXIS_INCOMPLETE")
+    if len(set(months)) > 1:
+        reasons.append("CURRENT_AND_COMPARATIVE_DURATION_MONTH_COUNTS_DIFFER")
+    return {
+        "complete": not reasons,
+        "document_duration_context": (
+            canonical_clone_v1(document_context)
+            if any(item["source_kind"] == "TYPED_DOCUMENT_DURATION_CONTEXT" for item in evidence)
+            else None
+        ),
+        "evidence": evidence,
+        "months": months if not reasons else [],
+        "reasons": sorted(set(reasons)),
+    }
+
+
+def _source_ratio_decimal(value: Any) -> dict[str, Any]:
+    if type(value) is int:
+        return {"decimal": Decimal(value), "decimal_scale": 0, "source_text": str(value)}
+    if type(value) is not str or not value.strip():
+        raise _error("ratio metric source value is not visible text")
+    source_text = value
+    body = value.strip().replace(" ", "")
+    negative = body.startswith("(") and body.endswith(")")
+    if negative:
+        body = body[1:-1]
+    if body.startswith("-"):
+        negative = True
+        body = body[1:]
+    if re.fullmatch(r"[0-9]+", body):
+        scale = 0
+        normalized = body
+    elif re.fullmatch(r"[0-9]{1,3}[.,][0-9]{1,2}", body):
+        separator = "," if "," in body else "."
+        whole, fraction = body.split(separator)
+        scale = len(fraction)
+        normalized = whole + "." + fraction
+    else:
+        raise _error("ratio metric source value is not an exact decimal")
+    try:
+        parsed = Decimal(normalized)
+    except InvalidOperation as exc:
+        raise _error("ratio metric source decimal is invalid") from exc
+    if negative:
+        parsed = -parsed
+    return {"decimal": parsed, "decimal_scale": scale, "source_text": source_text}
+
+
+def _derive_table_ratio_metric_records(
+    *,
+    rows: Sequence[Mapping[str, Any]],
+    row_records: Mapping[int, Mapping[str, Any]],
+    hit_by_row: Mapping[int, str],
+    lane_axis: Mapping[str, Any],
+    region: Mapping[str, Any],
+    table: Mapping[str, Any],
+    document_duration_context: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    ratio_metric_equations = compiled_specs.get("ratio_metric_equations", [])
+    if not ratio_metric_equations:
+        return [], [], [], []
+    duration_axis = _table_duration_month_axis(
+        table, lane_axis, document_context=document_duration_context
+    )
+    if not duration_axis["complete"]:
+        return [], [], [{"duration_month_axis": duration_axis}], duration_axis["reasons"]
+    ordinals_by_role: dict[str, list[int]] = defaultdict(list)
+    for row_ordinal, role in hit_by_row.items():
+        ordinals_by_role[role].append(row_ordinal)
+    output = []
+    equations = []
+    receipts = []
+    reasons = []
+
+    def visible_record(record: Mapping[str, Any] | None) -> bool:
+        return bool(
+            record is not None and any(cell["source_text"] is not None for cell in record["cells"])
+        )
+
+    for declaration in ratio_metric_equations:
+        result_role = declaration["result_role"]
+        result_ordinals = ordinals_by_role.get(result_role, [])
+        denominator_ordinals = ordinals_by_role.get(declaration["denominator_role"], [])
+        if not result_ordinals:
+            # Ratio rows are optional source evidence.  Their absence cannot
+            # make an otherwise complete direct mapping population unusable.
+            continue
+        if len(result_ordinals) != 1:
+            reasons.append(f"RATIO_RESULT_ROLE_NOT_UNIQUE:{result_role}")
+            continue
+        if len(denominator_ordinals) != 1:
+            reasons.append(f"RATIO_DENOMINATOR_ROLE_NOT_UNIQUE:{result_role}")
+            continue
+        result_ordinal = result_ordinals[0]
+        denominator_ordinal = denominator_ordinals[0]
+        denominator = row_records.get(denominator_ordinal)
+        if not visible_record(denominator):
+            reasons.append(f"RATIO_DENOMINATOR_SOURCE_NOT_VISIBLE:{result_role}")
+            continue
+        numerator_candidates = []
+        for numerator_role in declaration["numerator_roles"]:
+            numerator_ordinals = ordinals_by_role.get(numerator_role, [])
+            direct = (
+                row_records.get(numerator_ordinals[0]) if len(numerator_ordinals) == 1 else None
+            )
+            if visible_record(direct):
+                numerator_candidates.append((numerator_role, direct))
+                continue
+            derivations = [
+                item
+                for item in compiled_specs["derived_role_equations"]
+                if item["result_role"] == numerator_role
+            ]
+            if len(derivations) != 1:
+                continue
+            components = []
+            for component_role in derivations[0]["component_roles"]:
+                component_ordinals = ordinals_by_role.get(component_role, [])
+                component = (
+                    row_records.get(component_ordinals[0]) if len(component_ordinals) == 1 else None
+                )
+                if not visible_record(component):
+                    components = []
+                    break
+                components.append(component)
+            if not components or not _same_lane_axis(components):
+                continue
+            numerator_candidates.append(
+                (
+                    numerator_role,
+                    _local_record(
+                        numerator_role,
+                        [
+                            {
+                                "coefficient": coefficient,
+                                "source_text": None,
+                                "state": "EXACT_DECLARED_RATIO_NUMERATOR_COMPONENT_SUM",
+                            }
+                            for coefficient in _sum_records(components)
+                        ],
+                        components[0]["lane_keys"],
+                        [
+                            source_ref
+                            for component in components
+                            for source_ref in component["source_refs"]
+                        ],
+                        "DECLARED_RATIO_NUMERATOR_DERIVED_FROM_VISIBLE_COMPONENT_SUM",
+                        components[0]["valuation_basis"],
+                    ),
+                )
+            )
+        if len(numerator_candidates) != 1:
+            reasons.append(f"RATIO_NUMERATOR_ALTERNATIVE_NOT_UNIQUE:{result_role}")
+            continue
+        numerator_role, numerator = numerator_candidates[0]
+        assert denominator is not None
+        if not _same_lane_axis([numerator, denominator]):
+            reasons.append(f"RATIO_COMPONENT_LANE_AXIS_NOT_EXACT:{result_role}")
+            continue
+        source_row = rows[result_ordinal - 1]
+        source_values = source_row.get("values_exact")
+        value_ordinals = lane_axis["money_column_ordinals"]
+        if type(source_values) is not list or any(
+            ordinal > len(source_values) for ordinal in value_ordinals
+        ):
+            reasons.append(f"RATIO_VISIBLE_VALUE_AXIS_INCOMPLETE:{result_role}")
+            continue
+        try:
+            visible = [
+                _source_ratio_decimal(source_values[ordinal - 1]) for ordinal in value_ordinals
+            ]
+        except GeminiJsonMultitableHierarchicalFamilyV1Error:
+            reasons.append(f"RATIO_VISIBLE_VALUE_NOT_EXACT_DECIMAL:{result_role}")
+            continue
+        label = _normalized(source_row.get("label_exact"))
+        source_is_monthly = bool(re.search(r"\b(?:thang|month|monthly)\b", label))
+        target_quantum = Decimal(1).scaleb(-declaration["decimal_scale"])
+        mapped_cells = []
+        visible_computed = []
+        visible_rounding_intervals = []
+        comparison_rules = []
+        mapped_decimals = []
+        mismatch = False
+        for lane, months in enumerate(duration_axis["months"]):
+            numerator_value = Decimal(numerator["cells"][lane]["coefficient"])
+            denominator_value = Decimal(denominator["cells"][lane]["coefficient"])
+            # The source displays the denominator as a whole unit, so its
+            # authenticated interval is [value - 0.5, value + 0.5).  Require
+            # that entire interval to stay strictly positive before division.
+            if denominator_value <= Decimal("0.5"):
+                mismatch = True
+                break
+            nominal_monthly = numerator_value / denominator_value / Decimal(months)
+            visible_quantum = Decimal(1).scaleb(-visible[lane]["decimal_scale"])
+            source_divisor = Decimal(months) if source_is_monthly else Decimal(1)
+            nominal_visible = numerator_value / denominator_value / source_divisor
+            expected_visible = nominal_visible.quantize(visible_quantum, rounding=ROUND_HALF_UP)
+            # Both amount and average-headcount rows are printed as whole
+            # source units.  Propagate their declared half-unit display
+            # precision through the ratio instead of introducing an arbitrary
+            # epsilon.  A printed ratio is corroborated iff its own rounding
+            # bin intersects that exact possible interval.
+            half_source_unit = Decimal("0.5")
+            interval_low = (
+                max(Decimal(0), numerator_value - half_source_unit)
+                / (denominator_value + half_source_unit)
+                / source_divisor
+            )
+            interval_high = (
+                (numerator_value + half_source_unit)
+                / (denominator_value - half_source_unit)
+                / source_divisor
+            )
+            visible_half_quantum = visible_quantum / Decimal(2)
+            visible_bin_low = visible[lane]["decimal"] - visible_half_quantum
+            visible_bin_high = visible[lane]["decimal"] + visible_half_quantum
+            interval_exact = bool(
+                interval_high >= visible_bin_low and interval_low < visible_bin_high
+            )
+            if expected_visible == visible[lane]["decimal"]:
+                comparison_rule = "EXACT_DECLARED_VISIBLE_SCALE_ROUND_HALF_UP"
+            elif interval_exact:
+                comparison_rule = "EXACT_PROPAGATED_HALF_UNIT_SOURCE_DISPLAY_ROUNDING_INTERVAL"
+            else:
+                comparison_rule = "MISMATCH_OUTSIDE_SOURCE_DISPLAY_ROUNDING_INTERVAL"
+            visible_computed.append(format(expected_visible, "f"))
+            visible_rounding_intervals.append(
+                {
+                    "source_ratio_lower_bound_decimal": format(interval_low, "f"),
+                    "source_ratio_upper_bound_decimal": format(interval_high, "f"),
+                    "source_ratio_interval_rule": (
+                        "WHOLE_UNIT_NUMERATOR_AND_DENOMINATOR_HALF_OPEN_BOUNDS"
+                    ),
+                    "visible_rounding_bin_lower_decimal": format(visible_bin_low, "f"),
+                    "visible_rounding_bin_upper_decimal": format(visible_bin_high, "f"),
+                }
+            )
+            comparison_rules.append(comparison_rule)
+            mapped = (visible[lane]["decimal"] if source_is_monthly else nominal_monthly).quantize(
+                target_quantum, rounding=ROUND_HALF_UP
+            )
+            mapped_decimals.append(format(mapped, "f"))
+            if not interval_exact:
+                mismatch = True
+            scaled = mapped * (Decimal(10) ** declaration["decimal_scale"])
+            mapped_cells.append(
+                {
+                    "coefficient": int(scaled),
+                    "decimal_scale": declaration["decimal_scale"],
+                    "normalized_decimal": format(mapped, "f"),
+                    "source_text": (visible[lane]["source_text"] if source_is_monthly else None),
+                    "state": (
+                        "SOURCE_VISIBLE_MONTHLY_RATIO_CORROBORATED_BY_EXACT_"
+                        "DISPLAY_PRECISION_INTERVAL"
+                        if source_is_monthly
+                        else "DERIVED_MONTHLY_RATIO_AFTER_SOURCE_VISIBLE_CORROBORATION"
+                    ),
+                }
+            )
+        result_source_ref = _transposed_source_ref(
+            region,
+            result_ordinal,
+            source_row,
+            money_column_ordinals=value_ordinals,
+        )
+        equation_material = {
+            "component_roles": [numerator_role, declaration["denominator_role"]],
+            "component_source_refs": [
+                canonical_clone_v1(numerator["source_refs"]),
+                canonical_clone_v1(denominator["source_refs"]),
+            ],
+            "comparison_rules": comparison_rules,
+            "equation_kind": "EXACT_SOURCE_VISIBLE_RATIO_CORROBORATES_DERIVED_MONTHLY_VALUE",
+            "lane_keys": canonical_clone_v1(numerator["lane_keys"]),
+            "mapped_monthly_decimals": mapped_decimals,
+            "months": canonical_clone_v1(duration_axis["months"]),
+            "result_role": result_role,
+            "result_source_refs": [canonical_clone_v1(result_source_ref)],
+            "source_average_basis": "MONTHLY" if source_is_monthly else "PERIOD_TOTAL",
+            "status": "MISMATCH" if mismatch else "EXACT",
+            "visible_computed_decimals": visible_computed,
+            "visible_rounding_intervals": visible_rounding_intervals,
+            "visible_source_decimals": [format(item["decimal"], "f") for item in visible],
+        }
+        equation = {
+            **equation_material,
+            "equation_id": "gjmthfev1:equation:" + canonical_json_sha256_v1(equation_material),
+        }
+        equations.append(equation)
+        receipts.append(
+            {
+                "declaration": canonical_clone_v1(declaration),
+                "duration_month_axis": duration_axis,
+                "equation_id": equation["equation_id"],
+                "result_source_ref": canonical_clone_v1(result_source_ref),
+            }
+        )
+        if mismatch:
+            reasons.append(f"SOURCE_VISIBLE_RATIO_EQUATION_MISMATCH:{result_role}")
+            continue
+        output.append(
+            _local_record(
+                result_role,
+                mapped_cells,
+                numerator["lane_keys"],
+                [
+                    *canonical_clone_v1(numerator["source_refs"]),
+                    *canonical_clone_v1(denominator["source_refs"]),
+                    result_source_ref,
+                ],
+                "DERIVED_MONTHLY_RATIO_PROVEN_BY_SOURCE_VISIBLE_AVERAGE",
+                f"MONTHLY_RATIO_DECIMAL_SCALE_{declaration['decimal_scale']}",
+            )
+        )
+    return output, equations, receipts, sorted(set(reasons))
+
+
 def _multitable_lane_axis(
     section: Mapping[str, Any],
     table: Mapping[str, Any],
@@ -3230,12 +3819,8 @@ def _multitable_lane_axis(
     if type(columns) is not list:
         return _table_lane_axis(section, table)
     if compiled_specs["evaluation"]["period_semantics"] == "CURRENT_AND_COMPARATIVE_DURATION":
-        return _duration_multitable_lane_axis(table)
-    money_ordinals = [
-        ordinal
-        for ordinal, column in enumerate(columns, start=1)
-        if type(column) is dict and column.get("value_kind") == "MONEY"
-    ]
+        return _duration_multitable_lane_axis(table, compiled_specs=compiled_specs)
+    money_ordinals = _value_column_ordinals(columns, compiled_specs=compiled_specs)
     period_evidence = {}
     period_reasons = []
     for ordinal in money_ordinals:
@@ -5384,10 +5969,18 @@ def _extract_table_local_records(
     if lane_axis["complete"]:
         columns = table.get("columns")
         assert type(columns) is list
-        unit_table["columns"] = [
-            canonical_clone_v1(columns[ordinal - 1])
-            for ordinal in lane_axis["money_column_ordinals"]
-        ]
+        unit_table["columns"] = []
+        for ordinal in lane_axis["money_column_ordinals"]:
+            column = canonical_clone_v1(columns[ordinal - 1])
+            # The shared unit primitive intentionally inventories MONEY
+            # columns.  An opt-in UNKNOWN numeric column is promoted only in
+            # this private validation copy after the family owner/role/period
+            # policy selected it; immutable Gemini JSON is never changed.
+            if column.get("value_kind") in compiled_specs.get(
+                "accepted_value_column_kinds", ["MONEY"]
+            ):
+                column["value_kind"] = "MONEY"
+            unit_table["columns"].append(column)
     unit_axis = _unit_axis(
         unit_table,
         compiled_specs=compiled_specs,
@@ -5555,6 +6148,12 @@ def _extract_table_local_records(
         if hit["role"] in compiled_specs["non_money_metric_roles"]
     ]
     non_money_metric_row_ordinals = {hit["row_ordinal"] for hit in non_money_metric_hits}
+    ratio_metric_hits = [
+        hit
+        for hit in classification["role_hits"]
+        if hit["role"] in compiled_specs.get("ratio_metric_roles", [])
+    ]
+    ratio_metric_row_ordinals = {hit["row_ordinal"] for hit in ratio_metric_hits}
     if non_money_metric_hits:
         receipt["non_money_metric_source_rows"] = [
             {
@@ -5565,6 +6164,16 @@ def _extract_table_local_records(
             }
             for hit in non_money_metric_hits
         ]
+    if ratio_metric_hits:
+        receipt["ratio_metric_source_rows"] = [
+            {
+                "role": hit["role"],
+                "row": canonical_clone_v1(rows[hit["row_ordinal"] - 1]),
+                "row_ordinal": hit["row_ordinal"],
+                "rule": "DECLARED_SOURCE_RATIO_ROW_PARSED_BY_TYPED_DECIMAL_RATIO_GATE",
+            }
+            for hit in ratio_metric_hits
+        ]
     row_records: dict[int, dict[str, Any]] = {}
     parse_reasons = []
     for row_ordinal, row in enumerate(rows, start=1):
@@ -5574,7 +6183,7 @@ def _extract_table_local_records(
             continue
         if scope_to_explicit_family_root and not row_inside_explicit_family_root(row_ordinal):
             continue
-        if row_ordinal in non_money_metric_row_ordinals:
+        if row_ordinal in non_money_metric_row_ordinals | ratio_metric_row_ordinals:
             continue
         try:
             record = _row_local_record(
@@ -7000,6 +7609,25 @@ def _extract_table_local_records(
                 }
             )
 
+    ratio_records, ratio_equations, ratio_receipts, ratio_reasons = (
+        _derive_table_ratio_metric_records(
+            rows=rows,
+            row_records=row_records,
+            hit_by_row=hit_by_row,
+            lane_axis=lane_axis,
+            region=region,
+            table=table,
+            document_duration_context=document_period_context,
+            compiled_specs=compiled_specs,
+        )
+    )
+    local_records.extend(ratio_records)
+    equations.extend(ratio_equations)
+    proven_roles.update(record["role"] for record in ratio_records)
+    if ratio_receipts:
+        receipt["ratio_metric_receipts"] = ratio_receipts
+    receipt["ratio_metric_reasons"] = ratio_reasons
+
     source_only_rows = []
     validation_only_roles = set(compiled_specs["validation_only_roles"])
     for ordinal, record in sorted(row_records.items()):
@@ -7208,6 +7836,8 @@ def _extract_table_local_records(
         unconsumed_reason = "AMBIGUOUS_DECLARED_TABLE_CONTEXT_ROLE"
     elif parse_reasons and not standalone_exact_source_result:
         unconsumed_reason = "INVALID_VISIBLE_SOURCE_MONEY_CELL"
+    elif ratio_reasons:
+        unconsumed_reason = "SOURCE_RATIO_METRIC_NOT_EXACTLY_RESOLVED"
     elif document_source_result_carrier and not source_visible_family_root_ordinals:
         unconsumed_reason = "PRIMARY_SOURCE_RESULT_EQUATION_NOT_EXACT"
     elif unproven_conditional_zero_rows:
@@ -7331,9 +7961,13 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         compiled_specs["money_metric_policy"]
         == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
     )
-    document_period_context = (
-        _document_reporting_period_context_axis(page_json_by_version) if transposed_policy else {}
-    )
+    ratio_duration_policy = bool(compiled_specs.get("ratio_metric_equations", []))
+    if ratio_duration_policy:
+        document_period_context = _document_duration_month_context_axis(page_json_by_version)
+    elif transposed_policy:
+        document_period_context = _document_reporting_period_context_axis(page_json_by_version)
+    else:
+        document_period_context = {}
     local_records = []
     equations = []
     proven_roles: set[str] = set()
@@ -7585,7 +8219,7 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         },
         "table_receipts": table_receipts,
     }
-    if transposed_policy:
+    if transposed_policy or ratio_duration_policy:
         closure_receipt["document_period_context"] = document_period_context
     if compiled_specs["validation_only_roles"]:
         closure_receipt["validation_only_roles"] = canonical_clone_v1(

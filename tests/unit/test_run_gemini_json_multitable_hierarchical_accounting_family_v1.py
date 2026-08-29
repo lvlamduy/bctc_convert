@@ -26,6 +26,47 @@ runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
 
+def test_employee_income_release_profile_decimal_oracles_and_axes_are_pinned() -> None:
+    compiled = runner.compile_gemini_json_flat_family_specs_v1(
+        _family_spec("tm-employee-income-topology-v1.json"),
+        _family_spec("tm-employee-income-evaluation-v1.json"),
+        _family_spec("tm-employee-income-schema-binding-v1.json"),
+    )
+    profile = runner._release_profile(compiled)
+    assert profile["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 300,
+        "not_observed_count": 74,
+        "ready_count": 60,
+        "unresolved_count": 6,
+    }
+    assert profile["audit_metrics"] == {
+        "equation_count": 140,
+        "historical_comparator_exact_count": 43,
+        "historical_disposition_exact_count": 12,
+        "historical_mapping_exact_count": 31,
+        "historical_mapping_record_count": 31,
+        "mapping_count": 300,
+    }
+    assert profile["axis_counts"] == {
+        "clusters": 60,
+        "equations": 140,
+        "historical_comparator": 47,
+        "mappings": 300,
+    }
+    assert profile["query_receipt"]["accepted_cluster_count"] == 66
+    assert profile["query_receipt"]["selected_page_count"] == 8947
+    assert [
+        item[0]["format_version"] for item in runner._historical_oracles(compiled_specs=compiled)
+    ] == [
+        "EMPLOYEE_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "ANNUAL_2025_EMPLOYEE_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+    ]
+    assert runner._canonical_comparator_decimal("30.30", 2) == ("30.30", 2)
+    assert runner._canonical_comparator_decimal("13.94", None) == ("13.94", 2)
+    assert runner._canonical_comparator_decimal("13.940", 2) is None
+
+
 def test_subsidiary_acquisition_release_profile_and_absence_oracles_are_pinned() -> None:
     compiled = runner.compile_gemini_json_flat_family_specs_v1(
         _family_spec("tm-subsidiary-acquisition-disposal-topology-v1.json"),
