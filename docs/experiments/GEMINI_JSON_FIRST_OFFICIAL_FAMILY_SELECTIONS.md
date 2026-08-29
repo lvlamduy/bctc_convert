@@ -407,17 +407,45 @@ Artifact OFFICIAL:
   current selections, `quick_check` và foreign keys sạch, không có SQLite
   sidecar, SHA-256
   `ec043ab2956900adabdec60805e4ebf6e9a43be505304b7ca56e59fc8b086d28`.
+- Family 26 `OTHER_PAYABLES_LIABILITIES`: `READY=140`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=0`, 809 mappings và 334 exact closure equations. Cùng generic
+  multi-table hierarchical engine xử lý family root, internal/external
+  structural groups, employee/tax/other-payable/risk-provision/welfare leaves,
+  source-only residual rows và nhiều detail table trong một owner/reset fence.
+  Source-visible root chỉ được nhận khi đúng một table-local direct-frontier
+  equation đóng; residual không alias chỉ được project khi đã được exact source
+  equation tiêu thụ và table có residual anchor. Structural context total bị
+  loại trước khi cộng các residual leaf có nhãn và source table disjoint, nên
+  parent/detail không bị double-count. Hierarchy path do Gemini gộp
+  `parent\n- child` được canonicalize theo exact visible line, không ép model
+  trả lại một serialization riêng. Tất cả graph, period, unit, equation,
+  residual projection và ReportNormId mapping vẫn là deterministic local code;
+  không thay prompt hoặc route theo bank/file/page/value. Exact SQLite replay
+  phủ đủ 8.947 selected page versions và dựng lại 220 fragments trong 140
+  accepted clusters. E-0077/E-0132 khớp 16/16 historical dispositions và 92/92
+  mappings; combined comparator là 108/108 exact. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family26-other-payables-liabilities/sweep.json`,
+  SHA-256
+  `9c991f01b45c27224b71cdca9802dd92b41d5fa8cfb730ad2e74f91db62e0f81`;
+  audit SHA-256
+  `2295c1ce570e83c7ccf36dd416cc3b3a405e6f5d2a611a85df8eb8576a05fc3a`.
+  Implementation commit `68f602b`; detached audit tái tạo hai artifact
+  byte-for-byte, 139 focused/adjacent tests, Ruff, format, compile, JSON và diff
+  checks đều xanh. Cumulative results DB có 26 current selections,
+  `quick_check` và foreign keys sạch, không có SQLite sidecar, SHA-256
+  `4cdb15ae7260d45476c24a50f57aa3e6b2c1437e016e75a1498e0cb801035957`.
 
 ## Next gate
 
-Family 26 là `OTHER_PAYABLES_LIABILITIES` bắt đầu tại ReportNormId 1118. Đo mức
-tái sử dụng của primitive owner/reset-fenced, multi-table và hierarchical hiện
-có trên full-corpus indexed census 8.947 trang, rồi khóa comparator E-0077 và
-E-0132. Thuật toán phải bao quát family total, internal/external payable
-branches, employee/tax/other-payable/risk-provision/welfare optional children,
-direct source rows chưa có leaf riêng, printed group totals và continuation mà
-không cộng đồng thời parent với descendants. Gemini tiếp tục chỉ cung cấp page
-JSON theo prompt tối giản; graph/schema/ReportNormId/equations phải ở local
-code và không route theo bank/file/page. Chỉ promote OFFICIAL sau khi exhaustive
-source inventory, period/unit, equations, query/candidate SQLite replay và toàn
-bộ disposition của 140 tài liệu đều khép với `UNRESOLVED=0`.
+Family 27 là `CAPITAL_AND_FUNDS` bắt đầu tại ReportNormId 1128. Đo mức tái sử
+dụng của ordered-period, transposed-axis và multi-level direct-frontier
+primitives trên full-corpus indexed census 8.947 trang, rồi khóa comparator
+E-0078 và E-0133. Thuật toán phải bao quát opening/closing equity totals,
+charter capital, share premium, capital/financial/other reserves, other capital,
+FX difference, retained earnings và non-controlling interest; optional source
+columns không có schema leaf phải giữ source-only mà không double-count trong
+equity total. Bảng xoay hoặc Gemini JSON đổi hướng phải được canonicalize bằng
+graph/axis local, không dùng geometry/OCR cũ và không thêm prompt phức tạp.
+Chỉ promote OFFICIAL sau exhaustive source inventory, period/unit, horizontal
+và vertical equations, query/candidate SQLite replay và toàn bộ disposition
+140 tài liệu khép theo gate đã công bố.
