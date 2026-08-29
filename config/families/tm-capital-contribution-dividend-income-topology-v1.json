@@ -1,0 +1,165 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong năm từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được từ các khoản góp vốn, mua cổ phần",
+            "Cổ tức nhận được và lợi nhuận được chia trong kỳ từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được; lãi được chia trong kỳ từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được; lãi được chia trong năm từ góp vốn, mua cổ phần",
+            "Cổ tức bằng tiền nhận được từ góp vốn, mua cổ phần",
+            "Cổ tức, lợi tức nhận được từ góp vốn mua cổ phần",
+            "Thu từ cổ tức, lợi tức",
+            "Thu từ cổ tức",
+            "Thu cổ tức",
+            "Cổ tức"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DIRECT_DIVIDEND",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ chứng khoán vốn kinh doanh",
+            "Cổ tức nhận trong kỳ từ chứng khoán vốn kinh doanh",
+            "Cổ tức nhận được từ chứng khoán vốn kinh doanh",
+            "Cổ tức từ chứng khoán vốn kinh doanh đã nhận"
+          ],
+          "within_role": "DIRECT_DIVIDEND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TRADING_EQUITY_DIVIDEND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ chứng khoán vốn đầu tư",
+            "Cổ tức nhận được từ chứng khoán vốn đầu tư"
+          ],
+          "within_role": "DIRECT_DIVIDEND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INVESTMENT_EQUITY_DIVIDEND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ góp vốn, đầu tư dài hạn",
+            "Từ các khoản góp vốn, đầu tư dài hạn",
+            "Cổ tức nhận trong kỳ từ góp vốn đầu tư dài hạn",
+            "Cổ tức nhận trong năm từ góp vốn, đầu tư dài hạn",
+            "Cổ tức nhận được từ góp vốn, đầu tư dài hạn",
+            "Cổ tức từ các khoản góp vốn, mua cổ phần đã nhận",
+            "Cổ tức nhận được; lãi được chia trong kỳ từ góp vốn, mua cổ phần: - Từ góp vốn, đầu tư dài hạn",
+            "Cổ tức nhận được, lãi được chia trong năm từ góp vốn, mua cổ phần: - Từ góp vốn, đầu tư dài hạn",
+            "Thu từ góp vốn, đầu tư dài hạn"
+          ],
+          "within_role": "DIRECT_DIVIDEND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LONG_TERM_CAPITAL_DIVIDEND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ chứng khoán vốn",
+            "Thu từ chứng khoán vốn"
+          ],
+          "within_role": "DIRECT_DIVIDEND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "COMBINED_EQUITY_DIVIDEND_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phân chia lãi/lỗ theo phương pháp vốn CSH của các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Phân chia lãi/lỗ theo phương pháp VCSH của các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Phân chia lãi lỗ theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết",
+            "Phân chia lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Phân chia lãi theo phương pháp vốn chủ sở hữu các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Phân chia lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên doanh",
+            "Hạch toán lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào các công ty liên doanh, liên kết"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_METHOD",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản thu nhập khác",
+            "Thu khác từ góp vốn, mua cổ phần",
+            "Lãi từ việc bán các khoản góp vốn, mua cổ phần",
+            "Thu nhập từ thanh lý các khoản đầu tư góp vốn, mua cổ phần",
+            "Thu nhập từ thanh lý các khoản góp vốn, mua cổ phần",
+            "Thu nhập thanh lý, thoái vốn đầu tư vào đơn vị khác",
+            "Thu nhập từ hợp nhất kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_INCOME",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+    "Cổ tức phải thu",
+    "Cổ tức trả cho cổ đông, lợi nhuận đã chia",
+    "Góp vốn, đầu tư dài hạn"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Thu nhập từ góp vốn, mua cổ phần",
+      "Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["DIRECT_DIVIDEND"],
+    ["EQUITY_METHOD"],
+    ["OTHER_INCOME"]
+  ],
+  "structural_reset_aliases": [
+    "Chi phí hoạt động",
+    "Thu nhập từ hoạt động khác",
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chi phí thuế thu nhập"
+  ]
+}

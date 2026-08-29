@@ -347,6 +347,29 @@ PINNED_COMBINED_SECURITIES_NET_HISTORICAL_ORACLES = (
         "size_bytes": 10803,
     },
 )
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_HISTORICAL_ORACLES = (
+    {
+        "format_version": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0087-capital-contribution-dividend-income-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "362f7538a1f52e9390337aee122ec1d772e93bd3c1c100abe11b20c8292841d7",
+        "size_bytes": 93030,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0142-annual-2025-capital-contribution-dividend-income-8bank-"
+            "codex-verified-mapping-v1.json"
+        ),
+        "sha256": "119c2430655e7264d8b5be4d5cb5abe29e5c7601ef3a7378248c9986972ac781",
+        "size_bytes": 91880,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -888,6 +911,55 @@ PINNED_COMBINED_SECURITIES_NET_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "c393c8cae9ca78a5090f37446cd0a110737f33c93eabc22fbc2624e6d36532e1",
     "mappings": "15b63c810403094504df94c9062c83ca2ddd3ed63d604ed583114f1f4aa525c3",
 }
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "c7c162404310937555328afb855e20706490ddba48f17a91ec54fc90b96e66c2"
+    ),
+    "accepted_cluster_count": 118,
+    "accepted_fragment_count": 118,
+    "candidate_disposition_axis_sha256": (
+        "224737ec3138e52f93ba10cba59c73aa2ad80f66e525fcb1b3fc4c758ced1b21"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 22, READY: 118, UNRESOLVED: 0},
+    "query_policy_sha256": "cbecc6b3e93fb2c3017d1f0cb118d4eb7af0dfa9e49b3045c569281e1506953e",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 428,
+    "not_observed_count": 22,
+    "ready_count": 118,
+    "unresolved_count": 0,
+}
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AUDIT_METRICS = {
+    "equation_count": 192,
+    "historical_comparator_exact_count": 71,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 55,
+    "historical_mapping_record_count": 55,
+    "mapping_count": 428,
+}
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AXIS_COUNTS = {
+    "clusters": 118,
+    "equations": 192,
+    "historical_comparator": 71,
+    "mappings": 428,
+}
+PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AXIS_SHA256 = {
+    "clusters": "54fbb2fadbd2db789dbbd8db38967bdfb1f5bd389600273e6c39bf32bb825222",
+    "equations": "743ddf853e7fc01ffc7cc8c4c7dc930efd63b789174732e30c15b68005b8e5bb",
+    "historical_comparator": "f75e22988ff9cb5c4b454efdd4683fd7ce4904192f479b13321b85edd67a79be",
+    "mappings": "2315d7036a6405caed1ab20b4d0cabf13998da9b12b32da36232cc4e3a21677a",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1115,6 +1187,8 @@ def _historical_oracle_refs(
         return PINNED_INVESTMENT_SECURITIES_ACTIVITY_HISTORICAL_ORACLES
     if family_id == "COMBINED_SECURITIES_NET":
         return PINNED_COMBINED_SECURITIES_NET_HISTORICAL_ORACLES
+    if family_id == "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME":
+        return PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1223,6 +1297,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_COMBINED_SECURITIES_NET_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_COMBINED_SECURITIES_NET_QUERY_RECEIPT,
             "sweep_metrics": PINNED_COMBINED_SECURITIES_NET_RELEASE_METRICS,
+        }
+    if family_id == "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME":
+        return {
+            "axis_counts": (PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AXIS_COUNTS),
+            "axis_sha256": (PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AXIS_SHA256),
+            "audit_metrics": (PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -1400,6 +1482,54 @@ def _historical_comparator_axis(
                         for left, right in zip(current["values"], other["values"], strict=True)
                     ]
                     current_role = "BOND_PLUS_OTHER_ISSUED_PAPER_LEGACY_PROJECTION"
+                direct_dividend_report_norm_id = compiled_specs["bindings"].get("DIRECT_DIVIDEND")
+                long_term_dividend_report_norm_id = compiled_specs["bindings"].get(
+                    "LONG_TERM_CAPITAL_DIVIDEND"
+                )
+                derived_direct_receipts = [
+                    receipt
+                    for table_receipt in (
+                        candidate.get("closure_receipt", {}).get("table_receipts", [])
+                        if candidate is not None
+                        else []
+                    )
+                    for receipt in table_receipt.get("derived_structural_parent_receipts", [])
+                    if receipt.get("parent_role") == "DIRECT_DIVIDEND"
+                    and set(receipt.get("component_roles", []))
+                    == {
+                        "COMBINED_EQUITY_DIVIDEND_SOURCE_ONLY",
+                        "LONG_TERM_CAPITAL_DIVIDEND",
+                    }
+                ]
+                if (
+                    compiled_specs["topology"]["family_id"]
+                    == "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME"
+                    and old_report_norm_id == direct_dividend_report_norm_id
+                    and type(current) is dict
+                    and type(long_term := actual_by_id.get(long_term_dividend_report_norm_id))
+                    is dict
+                    and current.get("state")
+                    == "STRUCTURAL_PARENT_DERIVED_FROM_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER"
+                    and len(derived_direct_receipts) == 1
+                    and len(current["values"]) == len(long_term["values"])
+                ):
+                    # The earlier CTG comparator assigned one source-only
+                    # combined equity-dividend row to RNID 1199 because the
+                    # printed intermediate subtotal was absent.  The current
+                    # graph correctly keeps that row source-only and derives
+                    # DIRECT_DIVIDEND from its complete child frontier.  This
+                    # subtraction is a comparator-only projection back to the
+                    # old source row; it never changes a released mapping.
+                    full_current_coefficients = [
+                        parent["coefficient"] - child["coefficient"]
+                        for parent, child in zip(
+                            current["values"], long_term["values"], strict=True
+                        )
+                    ]
+                    current_role = (
+                        "DIRECT_DIVIDEND_MINUS_LONG_TERM_CAPITAL_DIVIDEND_"
+                        "LEGACY_SOURCE_ONLY_PROJECTION"
+                    )
                 current_coefficients = (
                     full_current_coefficients[: len(historical_coefficients)]
                     if type(full_current_coefficients) is list

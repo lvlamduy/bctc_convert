@@ -155,22 +155,30 @@ def _matches(value: Any, alias: str) -> bool:
         "iv",
         "v",
     }
+
+    def is_note_reference_suffix(suffix: str) -> bool:
+        tokens = suffix.split()
+        if tokens[:2] != ["thuyet", "minh"]:
+            return False
+        reference = tokens[2:]
+        if reference[:1] == ["so"]:
+            reference = reference[1:]
+        return bool(
+            1 <= len(reference) <= 3
+            and reference[0].isdigit()
+            and all(
+                token.isdigit()
+                or re.fullmatch(r"[a-z]", token)
+                or re.fullmatch(r"[ivxlcdm]+", token)
+                for token in reference[1:]
+            )
+        )
+
     return bool(suffixes) and all(
         suffix
         and (
             all(token in allowed_suffix_tokens for token in suffix.split())
-            or (
-                suffix.split()[:2] == ["thuyet", "minh"]
-                and len(suffix.split()) > 2
-                and (
-                    all(token.isdigit() for token in suffix.split()[2:])
-                    or (
-                        suffix.split()[2] == "so"
-                        and len(suffix.split()) > 3
-                        and all(token.isdigit() for token in suffix.split()[3:])
-                    )
-                )
-            )
+            or is_note_reference_suffix(suffix)
         )
         for suffix in suffixes
     )

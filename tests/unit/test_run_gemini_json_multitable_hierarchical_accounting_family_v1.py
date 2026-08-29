@@ -26,6 +26,35 @@ runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
 
+def test_capital_contribution_release_profile_and_historical_oracles_are_pinned() -> None:
+    compiled = runner.compile_gemini_json_flat_family_specs_v1(
+        _family_spec("tm-capital-contribution-dividend-income-topology-v1.json"),
+        _family_spec("tm-capital-contribution-dividend-income-evaluation-v1.json"),
+        _family_spec("tm-capital-contribution-dividend-income-schema-binding-v1.json"),
+    )
+    profile = runner._release_profile(compiled)
+    assert profile["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 428,
+        "not_observed_count": 22,
+        "ready_count": 118,
+        "unresolved_count": 0,
+    }
+    assert profile["axis_counts"] == {
+        "clusters": 118,
+        "equations": 192,
+        "historical_comparator": 71,
+        "mappings": 428,
+    }
+    assert profile["query_receipt"]["selected_page_count"] == 8947
+    assert [
+        item[0]["format_version"] for item in runner._historical_oracles(compiled_specs=compiled)
+    ] == [
+        "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "ANNUAL_2025_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+    ]
+
+
 def test_combined_securities_release_profile_and_historical_oracles_are_pinned() -> None:
     compiled = runner.compile_gemini_json_flat_family_specs_v1(
         _family_spec("tm-combined-securities-net-topology-v1.json"),

@@ -140,6 +140,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "supplemental_detail_residuals",
         "source_result_query_policy",
         "source_reference_identity_policy",
+        "structural_parent_derivation_policy",
         "unmapped_direct_family_row_policy",
         "validation_only_roles",
     }
@@ -221,6 +222,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "SINGLE_DIRECT_CHILD_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
     }:
         raise _error("multi-table hierarchical label-only structural group policy is invalid")
+    structural_parent_derivation_policy = evaluation_spec.get(
+        "structural_parent_derivation_policy", "TRANSPOSED_METRIC_ONLY"
+    )
+    if structural_parent_derivation_policy not in {
+        "TRANSPOSED_METRIC_ONLY",
+        "DECLARED_CONTEXT_CHILD_FRONTIER",
+    }:
+        raise _error("multi-table hierarchical structural parent derivation policy is invalid")
     structural_marker_policy = evaluation_spec.get("structural_marker_policy", "WHOLE_SURFACE_ONLY")
     if structural_marker_policy not in {
         "WHOLE_SURFACE_ONLY",
@@ -635,6 +644,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "schema": canonical_clone_v1(schema_binding_spec),
         "source_result_query_policy": source_result_query_policy,
         "source_reference_identity_policy": source_reference_identity_policy,
+        "structural_parent_derivation_policy": structural_parent_derivation_policy,
         "supplemental_detail_residuals": supplemental_detail_residuals,
         "table_context_roles": table_context_roles,
         "topology": topology,
@@ -3356,8 +3366,97 @@ def _derive_complete_top_level_family_root(
             )
         return False
 
+    validation_only_source_roles = set(compiled_specs["child_by_role"]) - set(
+        compiled_specs["bindings"]
+    )
+
+    def is_declared_source_row(source_only: Mapping[str, Any]) -> bool:
+        source_ref = source_only["source_ref"]
+        surfaces = {
+            _normalized(source_ref.get("label_exact")),
+            *{
+                _normalized(value)
+                for value in source_ref.get("hierarchy_path_exact", [])
+                if _normalized(value)
+            },
+        }
+        matched_roles = {
+            role
+            for role in compiled_specs["child_by_role"]
+            if any(
+                surface in set(compiled_specs["aliases_by_role"][role])
+                for surface in surfaces
+                if surface
+            )
+        }
+        parent_visible = any(
+            surface in set(compiled_specs["topology"]["parent"]["aliases"])
+            for surface in surfaces
+            if surface
+        )
+        return bool(
+            parent_visible
+            or len(matched_roles & validation_only_source_roles) == 1
+            or (source_ref.get("label_exact") is None and len(matched_roles) == 1)
+        )
+
+    unresolved_top_level_source_only = [
+        source_only
+        for source_only in source_only_axis
+        if compiled_specs["equation_consumed_unmatched_residual_role"] is None
+        if source_only["source_ref"].get("row_kind") != "GROUP"
+        and not (
+            source_only.get("consumed_by_exact_equation")
+            and source_only["source_ref"].get("row_kind") in {"SUBTOTAL", "TOTAL"}
+        )
+        if len(
+            [
+                value
+                for value in source_only["source_ref"].get("hierarchy_path_exact", [])
+                if _normalized(value)
+            ]
+        )
+        <= 1
+        and not (
+            source_only.get("consumed_by_exact_equation") and is_declared_source_row(source_only)
+        )
+    ]
+    if unresolved_top_level_source_only:
+        return (
+            output,
+            [],
+            [],
+            ["UNMAPPED_TOP_LEVEL_SOURCE_ONLY_ROW_NOT_DECLARED_VALIDATION_ROLE"],
+        )
+
     existing_roots = [record for record in output if record["role"] == "FAMILY_ROOT_TOTAL"]
     if existing_roots:
+        if (
+            len(existing_roots) == 1
+            and len(output) == 1
+            and existing_roots[0]["state"] == "SOURCE_VISIBLE_EXACT_FAMILY_ROOT_ONLY_ROW"
+            and not source_result_component_evidence_roles
+            and not source_only_axis
+        ):
+            # One owner-fenced table containing exactly one source-visible
+            # family-root row is already the complete source population.  A
+            # self-equation would be tautological and supplies no additional
+            # accounting evidence, so preserve the source row directly.
+            root = existing_roots[0]
+            return (
+                output,
+                [],
+                [
+                    {
+                        "coefficients": _coefficients(root),
+                        "component_roles": [],
+                        "result_role": "FAMILY_ROOT_TOTAL",
+                        "rule": "SOLE_SOURCE_VISIBLE_FAMILY_ROOT_ROW_NO_SELF_EQUATION",
+                        "source_refs": canonical_clone_v1(root["source_refs"]),
+                    }
+                ],
+                [],
+            )
 
         def source_identity_axis(source_refs: Sequence[Mapping[str, Any]]) -> set[tuple[str, ...]]:
             return {
@@ -3366,6 +3465,7 @@ def _derive_complete_top_level_family_root(
                     source_ref["locator"]["section_id"],
                     source_ref["locator"]["table_id"],
                     source_ref["row_id"],
+                    canonical_json_sha256_v1(source_ref.get("money_column_ordinals", [])),
                 )
                 for source_ref in source_refs
             }
@@ -3536,19 +3636,6 @@ def _derive_complete_top_level_family_root(
         for record in output
     ):
         return output, [], [], []
-    if any(
-        len(
-            [
-                value
-                for value in source_only["source_ref"].get("hierarchy_path_exact", [])
-                if _normalized(value)
-            ]
-        )
-        <= 1
-        for source_only in source_only_axis
-    ):
-        return output, [], [], []
-
     by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in output:
         by_role[record["role"]].append(record)
@@ -5493,6 +5580,12 @@ def _extract_table_local_records(
             and not root_total_emitted
             and context_roles[0] in compiled_specs["context_total_mapping_roles"]
             and not any(record["role"] == context_roles[0] for record in local_records)
+            and (
+                not component_hit_roles
+                or all(
+                    role_is_declared_within(role, context_roles[0]) for role in component_hit_roles
+                )
+            )
         ):
             local_records.append(
                 _local_record(
@@ -5546,6 +5639,33 @@ def _extract_table_local_records(
             )
         )
         source_visible_family_root_ordinals.add(root_ordinal)
+        proven_roles.add("FAMILY_ROOT_TOTAL")
+
+    if (
+        not source_visible_family_root_ordinals
+        and len(row_records) == 1
+        and set(row_records) == family_root_ordinals
+        and len(rows) == 1
+    ):
+        # A bounded note may disclose the family as one exact source-visible
+        # result row and no component rows.  The row itself is authoritative;
+        # requiring a fabricated self-equation would add no evidence.  This
+        # path is deliberately narrower than statement-row discovery: the
+        # query has already authenticated one exact owner/reset fence and the
+        # exhaustive table inventory contains no second row to ignore.
+        root_ordinal, root = next(iter(row_records.items()))
+        local_records.append(
+            _local_record(
+                "FAMILY_ROOT_TOTAL",
+                root["cells"],
+                root["lane_keys"],
+                root["source_refs"],
+                "SOURCE_VISIBLE_EXACT_FAMILY_ROOT_ONLY_ROW",
+                root["valuation_basis"],
+            )
+        )
+        source_visible_family_root_ordinals.add(root_ordinal)
+        consumed_ordinals.add(root_ordinal)
         proven_roles.add("FAMILY_ROOT_TOTAL")
 
     derived_structural_parent_receipts = []
@@ -5614,8 +5734,10 @@ def _extract_table_local_records(
                     ),
                 }
             )
-    if compiled_specs["money_metric_policy"] == (
-        "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    if compiled_specs["table_context_roles"] and (
+        compiled_specs["structural_parent_derivation_policy"] == "DECLARED_CONTEXT_CHILD_FRONTIER"
+        or compiled_specs["money_metric_policy"]
+        == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
     ):
         existing_roles = {record["role"] for record in local_records}
         for parent_role in compiled_specs["table_context_roles"]:
@@ -5685,6 +5807,73 @@ def _extract_table_local_records(
                     "source_refs": canonical_clone_v1(source_refs),
                 }
             )
+
+    if not source_visible_family_root_ordinals and derived_structural_parent_receipts:
+        # The source may omit one structural subtotal while still printing a
+        # terminal family total.  Derive the subtotal only from its complete
+        # declared child frontier above, then accept the printed root only
+        # when those derived/visible top-level roles reproduce it and the raw
+        # table already supplies exactly one exact source equation for that
+        # same result row.  The equation frontier, not values, selects scope.
+        root_components = [
+            record
+            for record in local_records
+            if record["role"] in compiled_specs["root_component_roles"]
+        ]
+        root_matches = []
+        if root_components and _same_lane_axis(root_components):
+            for total_ordinal in sorted(total_ordinals):
+                if any(ordinal > total_ordinal for ordinal in row_records):
+                    continue
+                if any(
+                    source_ref.get("row_ordinal") not in consumed_ordinals
+                    or source_ref.get("row_ordinal", total_ordinal) >= total_ordinal
+                    for component in root_components
+                    for source_ref in component["source_refs"]
+                ):
+                    continue
+                source_root_equations = [
+                    equation
+                    for equation in equations
+                    if equation["status"] == "EXACT"
+                    and {
+                        source_ref.get("row_ordinal")
+                        for source_ref in equation["result_source_refs"]
+                    }
+                    == {total_ordinal}
+                ]
+                if len(source_root_equations) != 1:
+                    continue
+                derived_equation = _exact_equation(
+                    kind=(
+                        "EXACT_DERIVED_STRUCTURAL_PARENT_AND_VISIBLE_ROOT_"
+                        "COMPONENTS_EQUAL_PRINTED_TOTAL"
+                    ),
+                    components=root_components,
+                    result=row_records[total_ordinal],
+                )
+                if derived_equation is not None:
+                    root_matches.append(total_ordinal)
+        if len(root_matches) == 1:
+            total_ordinal = root_matches[0]
+            total = row_records[total_ordinal]
+            local_records.append(
+                _local_record(
+                    "FAMILY_ROOT_TOTAL",
+                    total["cells"],
+                    total["lane_keys"],
+                    total["source_refs"],
+                    (
+                        "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_AFTER_"
+                        "DERIVED_STRUCTURAL_PARENT_CLOSURE"
+                    ),
+                    total["valuation_basis"],
+                )
+            )
+            source_visible_family_root_ordinals.add(total_ordinal)
+            consumed_ordinals.add(total_ordinal)
+            proven_roles.add("FAMILY_ROOT_TOTAL")
+            proven_roles.update(component["role"] for component in root_components)
 
     context_roles = classification["context_roles"]
     if (
@@ -5837,9 +6026,7 @@ def _extract_table_local_records(
         )
     if compiled_specs["label_only_structural_group_policy"] != "DISABLED":
         receipt["label_only_structural_group_receipts"] = label_only_structural_group_receipts
-    if compiled_specs["money_metric_policy"] == (
-        "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
-    ):
+    if derived_structural_parent_receipts:
         receipt["derived_structural_parent_receipts"] = derived_structural_parent_receipts
     receipt["source_only_rows"] = source_only_rows
     if source_result_row_receipt is not None:

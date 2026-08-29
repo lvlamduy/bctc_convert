@@ -1,0 +1,15 @@
+{
+  "family_id": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME",
+  "family_root_report_norm_id": 1198,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1199, "role": "DIRECT_DIVIDEND"},
+    {"report_norm_id": 1200, "role": "TRADING_EQUITY_DIVIDEND"},
+    {"report_norm_id": 1201, "role": "INVESTMENT_EQUITY_DIVIDEND"},
+    {"report_norm_id": 1202, "role": "LONG_TERM_CAPITAL_DIVIDEND"},
+    {"report_norm_id": 1203, "role": "EQUITY_METHOD"},
+    {"report_norm_id": 1204, "role": "OTHER_INCOME"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "DURATION"
+}
