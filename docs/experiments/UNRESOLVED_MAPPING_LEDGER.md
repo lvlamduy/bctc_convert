@@ -3286,6 +3286,29 @@ net label, period conflict, unit conflict and coherent receipt/schema attacks
 remain authoritative regression gates. Every incomplete or conflicting graph
 must return `UNRESOLVED` with `mappings=[]`.
 
+## Family 32 current corpus — trading securities activity (`TRADING_SECURITIES_ACTIVITY`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family32-trading-securities-activity/sweep.json`
+
+- Census: 140 documents, `READY=103`, `NOT_OBSERVED=37`, `UNRESOLVED=0`,
+  371 mappings and 103 exact source equations. Family32 adds no unresolved
+  mapping entry.
+- Role inventory is exact: income 103, expense 100, provision 65 and
+  source-visible family root 103. Missing expense/provision rows are source
+  absence, never invented zero mappings; every accepted root still closes from
+  the complete visible component frontier in both period lanes.
+- Combined trading-and-investment tables are bounded to the explicit trading
+  root subtree. Investment sibling rows remain source evidence outside the
+  selected population and are never silently assigned to trading schema roles.
+
+The single-component exact-root positive case and source-net mismatch,
+duplicate complete population with equal or different optional role inventory,
+unknown direct money child, foreign dimension table, period conflict, unit
+conflict and coherent candidate receipt drift remain authoritative regression
+gates. Every incomplete or conflicting graph must return `UNRESOLVED` with
+`mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

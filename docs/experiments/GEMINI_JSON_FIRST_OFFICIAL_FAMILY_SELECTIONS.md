@@ -602,16 +602,49 @@ Artifact OFFICIAL:
   đều xanh. Cumulative results DB có 31 current selections, `quick_check` và
   foreign keys sạch, không SQLite sidecar, SHA-256
   `0583f07a646f723c85b00ee443ff2cf5d484cc408dfdaae9be4e7fd6b9f4962f`.
+- Family 32 `TRADING_SECURITIES_ACTIVITY`: `READY=103`, `NOT_OBSERVED=37`,
+  `UNRESOLVED=0`, 371 mappings và 103 exact source equations. Generic
+  explicit-root subtree resolver bao quát cả bảng riêng và bảng gộp
+  trading/investment: chỉ population nằm dưới source-visible trading root được
+  dùng, còn investment sibling vẫn nằm trong receipt nhưng không thể đi vào
+  mapping. Labeled total, unlabeled subtotal, `Lãi/Lỗ`, `Thu nhập/Chi phí`,
+  direct gain/loss rows và các cách viết provision có qualifier đều được giải
+  bằng declarative aliases/prefix scope, không route bank/file/page/value.
+
+  Provision là optional source role, không được tự tạo zero. 35 documents đóng
+  bằng income+expense, 65 documents có thêm provision, và ba VCB disclosures
+  chỉ in income cùng source total; trường hợp một component chỉ được nhận khi
+  đúng một source-visible root, không có direct money row chưa map và exact
+  equation đóng ở cả hai lane. Duplicate complete table population kể cả khi
+  optional-role inventory khác nhau, unknown direct child, source-net mismatch,
+  period conflict và unit conflict đều trả U với `mappings=[]`. Không gọi
+  Gemini và không thay đổi prompt.
+
+  Exact query census là 103 accepted clusters/103 fragments và 37 typed absence
+  dispositions trên đủ 8.947 selected page versions. E-0084/E-0139 khớp 16/16
+  historical dispositions và 55/55 mappings; comparator 71/71 exact. Public
+  SQLite candidate replay từ chối coherent receipt drift; audit replay bind
+  embedded schema/specs; detached audit có 157 focused/adjacent tests. Family
+  31 được full-corpus replay lại và giữ exact sweep SHA lịch sử. OFFICIAL sweep
+  là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family32-trading-securities-activity/sweep.json`,
+  SHA-256
+  `380cfd72eaf25f7880025e293ea5bdca3e9dbeafa0112a59e6a676d4097d5ab7`;
+  audit SHA-256
+  `dd80e0f9552f280ffde162bc0b2ddd96ee3e30d41b7af094274c7c13ecfaf15b`.
+  Implementation commit `470100e`; Ruff, format, JSON, diff, detached EXP,
+  SQLite quick-check và foreign-key checks đều xanh. Cumulative results DB có
+  32 current selections, không SQLite sidecar, SHA-256
+  `c3fd8e8ac91bd5fb3bfdb06b6a66638a802eecbf023a88a7d6a556df47cc66bb`.
 
 ## Next gate
 
-Family 32 là `TRADING_SECURITIES_ACTIVITY`, bắt đầu tại ReportNormId 1188.
-Tái sử dụng signed income/expense/net graph nhưng thêm optional provision role
-và bao quát labelled/unlabelled net, wrapped provision label, shared trading-
-and-investment umbrella và tables không có provision row. Source-visible net
-phải bằng income cộng expense/provision theo một hướng dấu duy nhất ở mọi lane;
-optional absence không được biến thành zero nếu equation chưa đóng. Khóa
-comparator E-0084/E-0139, giữ prompt Gemini tối giản/cố định và để code tự xử lý
-period, unit, hierarchy, equations và ReportNormId mapping. Chỉ promote
-OFFICIAL sau exhaustive 8.947-page inventory, SQLite query/candidate replay,
-historical comparator và đủ 140 dispositions.
+Family 33 là `INVESTMENT_SECURITIES_ACTIVITY`, bắt đầu tại ReportNormId 1193.
+Tái sử dụng signed activity graph nhưng giữ riêng income, expense, provision
+và other/long-term-investment component theo exact schema scope. Shared
+trading/investment umbrella, labelled/unlabelled net, optional source roles và
+combined source rows phải được xử lý bằng declarative graph/equations, không
+split hoặc backsolve. Khóa comparator E-0085/E-0140, giữ prompt Gemini tối giản
+và cố định; code tự xử lý period, unit, hierarchy và ReportNormId mapping. Chỉ
+promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite query/candidate
+replay, historical comparator và đủ 140 dispositions.
