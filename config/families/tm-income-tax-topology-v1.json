@@ -1,0 +1,382 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Lợi nhuận kế toán hợp nhất trước thuế",
+            "Lợi nhuận kế toán hợp nhất trước thuế TNDN",
+            "Lợi nhuận kế toán trước thuế",
+            "Lợi nhuận kế toán trước thuế TNDN",
+            "Lợi nhuận thuần hợp nhất trước thuế",
+            "Lợi nhuận thuần trước thuế",
+            "Lợi nhuận thuần trước thuế TNDN",
+            "Lợi nhuận trước thuế",
+            "Lợi nhuận trước thuế TNDN",
+            "Tổng lợi nhuận kế toán trước thuế",
+            "Tổng lợi nhuận theo kế toán trước thuế hợp nhất",
+            "Tổng lợi nhuận trước thuế",
+            "Thu nhập từ hoạt động kinh doanh trước thuế"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROFIT_BEFORE_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập không chịu thuế",
+            "Thu nhập không chịu thuế (bao gồm cổ tức, KQKD của CN nước ngoài) và các khoản khác",
+            "Thu nhập không chịu thuế (bao gồm cổ tức, Lợi nhuận từ các đơn vị, các khoản điều chỉnh hợp nhất không chịu thuế) và các khoản khác",
+            "Thu nhập từ cổ tức",
+            "Thu nhập từ cổ tức không chịu thuế",
+            "Thu nhập từ cổ tức và lợi nhuận được chia không chịu thuế",
+            "Thu nhập từ góp vốn, mua cổ phần",
+            "Thu nhập từ thoái vốn tại công ty con",
+            "Lợi nhuận của công ty con",
+            "Lợi nhuận của các chi nhánh nước ngoài",
+            "Lợi nhuận kế toán của các công ty con",
+            "Lợi nhuận kế toán trước thuế của các công ty con",
+            "Lợi nhuận trước thuế của các công ty con",
+            "Lỗ từ Công ty con",
+            "Lãi thuần của các chi nhánh nước ngoài",
+            "Thu nhập thuần của chi nhánh nước ngoài",
+            "Các bút toán điều chỉnh hợp nhất",
+            "Các bút toán điều chỉnh hợp nhất không chịu thuế",
+            "Các khoản doanh thu đã tính thuế các năm trước",
+            "Các khoản doanh thu đã tính thuế năm trước",
+            "Các khoản điều chỉnh giảm",
+            "Các khoản điều chỉnh hợp nhất",
+            "Các khoản điều chỉnh khác",
+            "Điều chỉnh liên quan đến hợp nhất",
+            "Cổ tức nhận được",
+            "Hoàn nhập chi phí không được khấu trừ thuế của năm trước",
+            "Lợi nhuận tính thuế của các công ty con",
+            "Phân chia lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Thu nhập chịu thuế tương ứng khoản lợi nhuận từ VFC chuyển về",
+            "Thu nhập từ lợi ích tăng lên tại các công ty liên doanh",
+            "Biến động dự phòng/đánh giá lại cho các khoản cho vay và trái phiếu khi hợp nhất báo cáo tài chính",
+            "Khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "NON_TAXABLE_AGGREGATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí không được khấu trừ",
+            "Chi phí không được khấu trừ khi tính thuế",
+            "Chi phí không được khấu trừ thuế",
+            "Chi phí không được trừ",
+            "Chi phí không được tính trừ khi tính thuế",
+            "Chi phí khác không được khấu trừ thuế",
+            "Các chi phí không được khấu trừ",
+            "Các chi phí không được khấu trừ của riêng Ngân hàng",
+            "Các khoản chi phí không được khấu trừ trong năm",
+            "Cộng (+) Chi phí không được khấu trừ khi xác định thu nhập chịu thuế"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "NON_DEDUCTIBLE_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập chịu thuế",
+            "Thu nhập chịu thuế TNDN",
+            "Thu nhập chịu thuế TNDN của Ngân hàng mẹ",
+            "Thu nhập chịu thuế TNDN hiện hành của Ngân hàng mẹ",
+            "Thu nhập chịu thuế TNDN ước tính tại Việt Nam",
+            "Thu nhập chịu thuế ước tính của Ngân hàng mẹ",
+            "Thu nhập chịu thuế ước tính trong kỳ",
+            "Thu nhập chịu thuế ước tính trong kỳ của Ngân hàng tại Việt Nam",
+            "Thu nhập chịu thuế ước tính trong kỳ tại Việt Nam",
+            "Thu nhập chịu thuế ước tính trong năm",
+            "Thu nhập chịu thuế ước tính trong năm của Ngân hàng tại Việt Nam",
+            "Thu nhập chịu thuế ước tính trong năm tại Việt Nam"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TAXABLE_INCOME",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN theo thuế suất",
+            "Chi phí thuế TNDN theo thuế suất hiện hành",
+            "Chi phí thuế TNDN tính trên thu nhập chịu thuế",
+            "Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành"
+          ],
+          "within_role": null
+        },
+        {
+          "aliases": ["Năm hiện hành"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_TAX_AT_RATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN hiện hành (20%) của Ngân hàng (i)",
+            "Chi phí thuế TNDN hiện hành riêng Ngân hàng (i)",
+            "Chi phí thuế TNDN hiện hành ước tính của Ngân hàng",
+            "Chi phí thuế TNDN hiện hành ước tính của Ngân hàng mẹ",
+            "Chi phí thuế TNDN của Ngân hàng mẹ tính trên thu nhập chịu thuế trong nước",
+            "Chi phí thuế TNDN hiện hành của Ngân hàng mẹ tính trên thu nhập chịu thuế trong nước",
+            "Chi phí thuế TNDN hiện hành của Ngân hàng mẹ tính trên thu nhập chịu thuế ở trong nước",
+            "Thuế TNDN của Ngân hàng tại Việt Nam",
+            "Thuế TNDN của Ngân hàng tại Việt Nam (20%)"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_TAX_BANK",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN chi nhánh nước ngoài (iii)",
+            "Chi phí thuế TNDN của chi nhánh nước ngoài kỳ này (iii)",
+            "Chi phí thuế TNDN của Ngân hàng mẹ tính trên thu nhập chịu thuế ở nước ngoài",
+            "Chi phí thuế TNDN hiện hành của Ngân hàng mẹ tính trên thu nhập chịu thuế ở nước ngoài",
+            "Chi phí thuế TNDN hiện hành của Ngân hàng tính trên thu nhập chịu thuế ở nước ngoài",
+            "Chi phí thuế TNDN hiện hành tính trên thu nhập chịu thuế ở nước ngoài",
+            "Thuế TNDN của chi nhánh nước ngoài",
+            "Thuế TNDN của các chi nhánh nước ngoài",
+            "Thuế TNDN đã nộp ở nước ngoài trong kỳ tính thuế (VFC)"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_BRANCH_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN của các công ty con (iv)",
+            "Chi phí thuế TNDN của công ty con",
+            "Chi phí thuế TNDN hiện hành của các công ty con",
+            "Chi phí thuế TNDN hiện hành của công ty con",
+            "Thuế TNDN của công ty con"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SUBSIDIARY_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Điều chỉnh chi phí thuế TNDN của các năm trước vào chi phí thuế TNDN hiện hành năm nay",
+            "Điều chỉnh chênh lệch thuế thu nhập doanh nghiệp của các năm trước",
+            "Điều chỉnh số thuế phải nộp các kỳ trước",
+            "Điều chỉnh theo quyết toán thuế",
+            "Điều chỉnh thuế TNDN các năm trước",
+            "Điều chỉnh thuế TNDN của các kỳ trước",
+            "Điều chỉnh thuế TNDN năm trước",
+            "Điều chỉnh thuế bổ sung theo quyết toán năm",
+            "Điều chỉnh trong năm cho thuế thu nhập hiện hành của các năm trước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PRIOR_PERIOD_TAX_ADJUSTMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN hiện hành",
+            "Chi phí thuế TNDN hiện hành trong kỳ",
+            "Chi phí thuế TNDN hiện hành tính trên thu nhập chịu thuế",
+            "Chi phí thuế TNDN phải trả trong kỳ",
+            "Chi phí thuế TNDN trong kỳ",
+            "Chi phí thuế TNDN trong năm",
+            "Chi phí thuế TNDN trong năm của toàn hệ thống",
+            "Chi phí thuế thu nhập hiện hành",
+            "Tổng chi phí thuế TNDN hiện hành",
+            "Tổng chi phí thuế TNDN phát sinh trong kỳ",
+            "Tổng chi phí thuế TNDN phát sinh trong năm",
+            "Tổng chi phí thuế thu nhập doanh nghiệp hiện hành",
+            "Thuế thu nhập doanh nghiệp hiện hành theo thuế suất áp dụng",
+            "Thuế TNDN trong kỳ",
+            "Thuế TNDN trong năm"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_TAX_PARENT",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí/(hoàn nhập) thuế TNDN hoãn lại (v)",
+            "Chi phí/(hoàn nhập) thuế TNDN hoãn lại (vi)"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_TAX_COMPONENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí/(hoàn nhập) thuế thu nhập hoãn lại"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_TAX_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế thu nhập doanh nghiệp hoãn lại",
+            "Chi phí thuế thu nhập hoãn lại",
+            "Chi phí/(thu nhập) thuế thu nhập hoãn lại",
+            "(Chi phí)/thu nhập thuế thu nhập doanh nghiệp hoãn lại",
+            "(Chi phí)/thu nhập thuế thu nhập doanh nghiệp hoãn lại phát sinh từ các khoản chênh lệch tạm thời phải chịu thuế",
+            "(Chi phí)/thu nhập thuế TNDN hoãn lại liên quan đến khoản chênh lệch tạm thời được khấu trừ thuế"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEFERRED_TAX_NET",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí thuế TNDN (i+ii+iii+iv+v)",
+            "Chi phí thuế TNDN (i+ii+iii+iv+v+vi)"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TOTAL_TAX_COMPONENTS",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Lợi nhuận trước thuế của Ngân hàng mẹ"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROFIT_BEFORE_TAX_BANK_SOURCE_ONLY",
+      "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thuế suất thuế TNDN",
+            "Thuế suất thuế thu nhập doanh nghiệp"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TAX_RATE_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản điều chỉnh làm giảm thu nhập chịu thuế khác",
+            "Các khoản điều chỉnh làm tăng/(giảm) thu nhập chịu thuế khác",
+            "Chênh lệch tạm thời chi phí dự phòng đầu tư dài hạn theo quy định tại Thông tư 48",
+            "Chênh lệch tạm thời được khấu trừ",
+            "Các khoản điều chỉnh tính thuế thu nhập hoãn lại",
+            "Điều chỉnh (giảm)/tăng thu nhập chịu thuế",
+            "Điều chỉnh giảm thu nhập chịu thuế",
+            "Điều chỉnh thu nhập từ cổ tức không chịu thuế",
+            "Điều chỉnh khác"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_EQUATION_COMPONENT",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "INCOME_TAX",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản thuế thu nhập hoãn lại",
+    "Thuế thu nhập hoãn lại phải trả",
+    "Thuế và các khoản phải nộp Nhà nước"
+  ],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Chi phí thuế thu nhập",
+      "Chi phí thuế thu nhập doanh nghiệp"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "INCOME_TAX_DISCLOSURE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["PROFIT_BEFORE_TAX", "TAXABLE_INCOME"]
+  ],
+  "structural_reset_aliases": [
+    "Tài sản thuế thu nhập hoãn lại",
+    "Thuế thu nhập hoãn lại phải trả",
+    "Thuế và các khoản phải nộp Nhà nước"
+  ]
+}

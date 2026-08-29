@@ -118,6 +118,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     }
     optional_evaluation_fields = {
         "direct_frontier_policy",
+        "declared_result_role_policy",
         "document_source_result_signal_policy",
         "document_cluster_policy",
         "context_residual_bindings",
@@ -129,6 +130,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "hierarchy_role_scope_policy",
         "label_only_structural_group_policy",
         "money_metric_policy",
+        "non_money_metric_roles",
+        "ordered_role_scopes",
+        "ordered_role_scope_projections",
         "mapped_source_subtotal_policy",
         "minimum_declared_detail_role_count",
         "minimum_source_visible_root_component_count",
@@ -136,6 +140,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "owner_surface_kinds",
         "period_lane_policy",
         "query_owner_aliases",
+        "role_anchored_owner_fallback_policy",
+        "role_anchored_supplemental_roles",
         "root_component_equation_policy",
         "root_only_source_result_policy",
         "row_population_context_policy",
@@ -203,6 +209,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER",
     }:
         raise _error("multi-table hierarchical direct frontier policy is invalid")
+    declared_result_role_policy = evaluation_spec.get(
+        "declared_result_role_policy", "SOURCE_ROW_KIND_ONLY"
+    )
+    if declared_result_role_policy not in {
+        "SOURCE_ROW_KIND_ONLY",
+        "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE",
+    }:
+        raise _error("multi-table hierarchical declared result role policy is invalid")
     mapped_source_subtotal_policy = evaluation_spec.get(
         "mapped_source_subtotal_policy", "REQUIRE_EXACT_DIRECT_FRONTIER"
     )
@@ -392,12 +406,96 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     detail_context_roles = role_axis("detail_context_roles", allow_empty=True)
     context_total_mapping_roles = role_axis("context_total_mapping_roles", allow_empty=True)
     root_component_roles = role_axis("root_component_roles")
+    role_anchored_owner_fallback_policy = evaluation_spec.get(
+        "role_anchored_owner_fallback_policy", "DISABLED"
+    )
+    if role_anchored_owner_fallback_policy not in {
+        "DISABLED",
+        "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
+    }:
+        raise _error("multi-table hierarchical role-anchored owner fallback is invalid")
+    role_anchored_supplemental_roles = (
+        role_axis("role_anchored_supplemental_roles", allow_empty=True)
+        if "role_anchored_supplemental_roles" in evaluation_spec
+        else []
+    )
+    if role_anchored_owner_fallback_policy == "DISABLED" and role_anchored_supplemental_roles:
+        raise _error("multi-table hierarchical disabled role fallback has supplemental roles")
     validation_only_roles = (
         role_axis("validation_only_roles", allow_empty=True)
         if "validation_only_roles" in evaluation_spec
         else []
     )
+    non_money_metric_roles = (
+        role_axis("non_money_metric_roles", allow_empty=True)
+        if "non_money_metric_roles" in evaluation_spec
+        else []
+    )
+    if not set(non_money_metric_roles) <= set(validation_only_roles):
+        raise _error("multi-table hierarchical non-money roles are not validation-only")
+    ordered_role_scopes = []
+    ordered_role_scope_ids = set()
+    supplied_ordered_role_scopes = evaluation_spec.get("ordered_role_scopes", [])
+    if type(supplied_ordered_role_scopes) is not list:
+        raise _error("multi-table hierarchical ordered role scopes are invalid")
+    for scope in supplied_ordered_role_scopes:
+        if (
+            type(scope) is not dict
+            or set(scope) != {"scope_id", "scoped_roles", "start_after_roles", "terminal_roles"}
+            or type(scope.get("scope_id")) is not str
+            or not scope["scope_id"]
+            or scope["scope_id"] in ordered_role_scope_ids
+        ):
+            raise _error("multi-table hierarchical ordered role scope is invalid")
+        axes = {}
+        for field in ("scoped_roles", "start_after_roles", "terminal_roles"):
+            axis = scope.get(field)
+            if (
+                type(axis) is not list
+                or (field != "start_after_roles" and not axis)
+                or any(type(role) is not str or role not in roles for role in axis)
+                or len(axis) != len(set(axis))
+            ):
+                raise _error("multi-table hierarchical ordered role scope axis is invalid")
+            axes[field] = list(axis)
+        if not set(axes["terminal_roles"]) <= set(axes["scoped_roles"]):
+            raise _error("multi-table hierarchical ordered terminal is outside its scope")
+        ordered_role_scope_ids.add(scope["scope_id"])
+        ordered_role_scopes.append({"scope_id": scope["scope_id"], **axes})
     aggregate_duplicate_roles = role_axis("aggregate_duplicate_roles", allow_empty=True)
+    ordered_role_scope_projections = []
+    supplied_scope_projections = evaluation_spec.get("ordered_role_scope_projections", [])
+    if type(supplied_scope_projections) is not list:
+        raise _error("multi-table hierarchical ordered role projections are invalid")
+    scope_by_id = {scope["scope_id"]: scope for scope in ordered_role_scopes}
+    projection_keys = set()
+    for projection in supplied_scope_projections:
+        if (
+            type(projection) is not dict
+            or set(projection) != {"scope_id", "source_role", "target_role"}
+            or projection.get("scope_id") not in scope_by_id
+            or projection.get("source_role") not in validation_only_roles
+            or projection["source_role"] not in scope_by_id[projection["scope_id"]]["scoped_roles"]
+            or projection.get("target_role") not in roles
+            or projection["target_role"] in validation_only_roles
+            or projection["target_role"] not in aggregate_duplicate_roles
+            or projection["source_role"] == projection["target_role"]
+            or (
+                projection["scope_id"],
+                projection["source_role"],
+                projection["target_role"],
+            )
+            in projection_keys
+        ):
+            raise _error("multi-table hierarchical ordered role projection is invalid")
+        projection_keys.add(
+            (
+                projection["scope_id"],
+                projection["source_role"],
+                projection["target_role"],
+            )
+        )
+        ordered_role_scope_projections.append(canonical_clone_v1(projection))
     context_residual_bindings = []
     context_residual_context_roles = set()
     context_residual_roles = set()
@@ -531,12 +629,20 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         surface_kinds = item.get(
             "surface_kinds", ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"]
         )
+        unless_declared_roles = item.get("unless_declared_roles", [])
         if (
             type(item) is not dict
             or set(item)
             not in (
                 {"aliases", "disposition"},
                 {"aliases", "disposition", "surface_kinds"},
+                {"aliases", "disposition", "unless_declared_roles"},
+                {
+                    "aliases",
+                    "disposition",
+                    "surface_kinds",
+                    "unless_declared_roles",
+                },
             )
             or type(item.get("disposition")) is not str
             or not item["disposition"]
@@ -550,6 +656,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
                 kind not in {"SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE", "COLUMN_HEADER"}
                 for kind in surface_kinds
             )
+            or type(unless_declared_roles) is not list
+            or len(unless_declared_roles) != len(set(unless_declared_roles))
+            or any(type(role) is not str or role not in roles for role in unless_declared_roles)
         ):
             raise _error("multi-table hierarchical typed control exclusion is invalid")
         exclusion = {
@@ -558,6 +667,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         }
         if "surface_kinds" in item:
             exclusion["surface_kinds"] = sorted(surface_kinds)
+        if "unless_declared_roles" in item:
+            exclusion["unless_declared_roles"] = sorted(unless_declared_roles)
         exclusions.append(exclusion)
     try:
         unit_bindings, unit_binding_by_alias = _compile_units(
@@ -618,6 +729,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         bindings
     ):
         raise _error("multi-table hierarchical schema frontier is incomplete")
+    if any(
+        projection["target_role"] not in bindings for projection in ordered_role_scope_projections
+    ):
+        raise _error("multi-table hierarchical ordered projection target is not mapped")
     aliases_by_role = {role: _aliases(child) for role, child in child_by_role.items()}
     presence_anchor_roles = sorted(
         role
@@ -649,6 +764,16 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["structural_marker_policy"] = structural_marker_policy
     if "row_alias_prefix_roles" in evaluation_spec:
         query_policy["row_alias_prefix_roles"] = row_alias_prefix_roles
+    if "declared_result_role_policy" in evaluation_spec:
+        query_policy["declared_result_role_policy"] = declared_result_role_policy
+    if "role_anchored_owner_fallback_policy" in evaluation_spec:
+        query_policy["role_anchored_owner_fallback_policy"] = role_anchored_owner_fallback_policy
+    if "role_anchored_supplemental_roles" in evaluation_spec:
+        query_policy["role_anchored_supplemental_roles"] = role_anchored_supplemental_roles
+    if "non_money_metric_roles" in evaluation_spec:
+        query_policy["non_money_metric_roles"] = non_money_metric_roles
+    if "ordered_role_scopes" in evaluation_spec:
+        query_policy["ordered_role_scopes"] = canonical_clone_v1(ordered_role_scopes)
     if "supplemental_owner_aliases" in evaluation_spec:
         query_policy["supplemental_owner_aliases"] = supplemental_owner_aliases
     if "query_owner_aliases" in evaluation_spec:
@@ -678,6 +803,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
             else {}
         ),
         "derived_role_equations": derived_role_equations,
+        "declared_result_role_policy": declared_result_role_policy,
         "detail_context_roles": detail_context_roles,
         "direct_frontier_policy": direct_frontier_policy,
         "document_cluster_policy": document_cluster_policy,
@@ -694,6 +820,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "output_role_order": [item["role"] for item in schema_binding_spec["role_bindings"]],
         "label_only_structural_group_policy": label_only_structural_group_policy,
         "money_metric_policy": money_metric_policy,
+        "non_money_metric_roles": non_money_metric_roles,
+        "ordered_role_scopes": ordered_role_scopes,
+        "ordered_role_scope_projections": ordered_role_scope_projections,
         "mapped_source_subtotal_policy": mapped_source_subtotal_policy,
         "minimum_declared_detail_role_count": minimum_declared_detail_role_count,
         "period_lane_policy": period_lane_policy,
@@ -701,6 +830,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "query_policy": query_policy,
         "root_component_roles": root_component_roles,
         "root_component_equation_policy": root_component_equation_policy,
+        "role_anchored_owner_fallback_policy": role_anchored_owner_fallback_policy,
+        "role_anchored_supplemental_roles": role_anchored_supplemental_roles,
         "row_population_context_policy": row_population_context_policy,
         "role_unit_overrides": role_unit_overrides,
         "row_alias_prefix_roles": row_alias_prefix_roles,
@@ -848,13 +979,15 @@ def _typed_control_disposition(
     table: Mapping[str, Any],
     *,
     compiled_specs: Mapping[str, Any],
-) -> str | None:
+    declared_roles: Sequence[str] = (),
+) -> tuple[str | None, list[dict[str, Any]]]:
     if page_json.get("status") == "PRIMARY_FINANCIAL_STATEMENT" or (
         section.get("content_kind") == "PRIMARY_STATEMENT"
         and section.get("statement_type") == "BALANCE_SHEET"
     ):
-        return "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+        return "PRIMARY_FINANCIAL_STATEMENT_SUMMARY", []
     columns = table.get("columns")
+    override_receipts = []
     for exclusion in compiled_specs["typed_control_exclusions"]:
         kinds = exclusion.get(
             "surface_kinds", ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"]
@@ -879,12 +1012,24 @@ def _typed_control_disposition(
             surface and any(alias in surface for alias in exclusion["aliases"])
             for surface in surfaces
         ):
-            return exclusion["disposition"]
+            overrides = sorted(
+                set(declared_roles).intersection(exclusion.get("unless_declared_roles", []))
+            )
+            if overrides:
+                override_receipts.append(
+                    {
+                        "control_disposition": exclusion["disposition"],
+                        "declared_roles": overrides,
+                        "rule": "DECLARED_ROLE_EXPLICITLY_OVERRIDES_BROAD_CONTROL_SURFACE",
+                    }
+                )
+                continue
+            return exclusion["disposition"], override_receipts
     if type(columns) is list and not any(
         type(column) is dict and column.get("value_kind") == "MONEY" for column in columns
     ):
-        return "NO_MONEY_VALUE_AXIS"
-    return None
+        return "NO_MONEY_VALUE_AXIS", override_receipts
+    return None, override_receipts
 
 
 def _context_roles(
@@ -1488,6 +1633,94 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                     "source_order": row_ordinal,
                 }
             )
+    ordered_role_scope_receipts = []
+    outside_ordered_role_scope_rows = []
+    resolved_scope_intervals: list[dict[str, Any]] = []
+    resolved_terminal_hits_by_role: dict[str, dict[str, Any]] = {}
+    for scope in compiled_specs["ordered_role_scopes"]:
+        start_hits = [
+            resolved_terminal_hits_by_role[role]
+            for role in scope["start_after_roles"]
+            if role in resolved_terminal_hits_by_role
+        ]
+        if scope["start_after_roles"] and not start_hits:
+            start_hits = [hit for hit in role_hits if hit["role"] in scope["start_after_roles"]]
+        if scope["start_after_roles"] and len(start_hits) != 1:
+            ordered_role_scope_receipts.append(
+                {
+                    "scope_id": scope["scope_id"],
+                    "start_row_ordinal": None,
+                    "status": "START_ROLE_NOT_UNIQUE_SCOPE_NOT_APPLIED",
+                    "terminal_row_ordinal": None,
+                }
+            )
+            continue
+        start_ordinal = start_hits[0]["row_ordinal"] if start_hits else 0
+        terminal_hits = [
+            hit
+            for hit in role_hits
+            if hit["role"] in scope["terminal_roles"] and hit["row_ordinal"] > start_ordinal
+        ]
+        if not terminal_hits:
+            ordered_role_scope_receipts.append(
+                {
+                    "scope_id": scope["scope_id"],
+                    "start_row_ordinal": start_ordinal,
+                    "status": "TERMINAL_ROLE_NOT_VISIBLE_SCOPE_NOT_APPLIED",
+                    "terminal_row_ordinal": None,
+                }
+            )
+            continue
+        terminal_hit = min(terminal_hits, key=lambda hit: hit["row_ordinal"])
+        terminal_ordinal = terminal_hit["row_ordinal"]
+        out_of_interval_hits = [
+            hit
+            for hit in role_hits
+            if hit["role"] in scope["scoped_roles"]
+            and not start_ordinal < hit["row_ordinal"] <= terminal_ordinal
+        ]
+        resolved_scope_intervals.append(
+            {
+                "scope_id": scope["scope_id"],
+                "scoped_roles": set(scope["scoped_roles"]),
+                "start_row_ordinal": start_ordinal,
+                "terminal_row_ordinal": terminal_ordinal,
+            }
+        )
+        resolved_terminal_hits_by_role[terminal_hit["role"]] = terminal_hit
+        ordered_role_scope_receipts.append(
+            {
+                "out_of_interval_role_hits": canonical_clone_v1(out_of_interval_hits),
+                "scope_id": scope["scope_id"],
+                "start_row_ordinal": start_ordinal,
+                "status": "UNIQUE_ORDERED_ROLE_SCOPE_APPLIED",
+                "terminal_row_ordinal": terminal_ordinal,
+            }
+        )
+    retained_role_hits = []
+    for hit in role_hits:
+        memberships = [
+            interval
+            for interval in resolved_scope_intervals
+            if hit["role"] in interval["scoped_roles"]
+        ]
+        if not memberships or any(
+            interval["start_row_ordinal"] < hit["row_ordinal"] <= interval["terminal_row_ordinal"]
+            for interval in memberships
+        ):
+            retained_role_hits.append(hit)
+            continue
+        outside_ordered_role_scope_rows.append(
+            {
+                "original_role": hit["role"],
+                "row_ordinal": hit["row_ordinal"],
+                "scope_ids": sorted(interval["scope_id"] for interval in memberships),
+                "rule": "DECLARED_ROLE_OUTSIDE_ALL_ORDERED_SOURCE_STAGES_RETAINED_SOURCE_ONLY",
+            }
+        )
+        if hit["row_ordinal"] not in unbound_money_rows:
+            unbound_money_rows.append(hit["row_ordinal"])
+    role_hits = retained_role_hits
     declared_within_roles = {
         scope
         for hit in role_hits
@@ -1576,8 +1809,18 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         and len(transposed_total_column_ordinals) == 1
         and total_rows
     )
-    typed_control_disposition = _typed_control_disposition(
-        page_json, section, table, compiled_specs=compiled_specs
+    typed_control_disposition, typed_control_override_receipts = _typed_control_disposition(
+        page_json,
+        section,
+        table,
+        compiled_specs=compiled_specs,
+        declared_roles=sorted(
+            {
+                *context_roles,
+                *(hit["role"] for hit in role_hits),
+                *(hit["role"] for hit in transposed_row_role_hits),
+            }
+        ),
     )
     column_header_control_dispositions = {
         exclusion["disposition"]
@@ -1615,6 +1858,8 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         # role.  Preserve both signals and force the owner-fenced cluster to U
         # instead of silently excluding the table.
         material["typed_control_conflict_disposition"] = typed_control_conflict_disposition
+    if typed_control_override_receipts:
+        material["typed_control_override_receipts"] = typed_control_override_receipts
     if (
         compiled_specs["money_metric_policy"]
         == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
@@ -1634,6 +1879,9 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         material["ordered_root_scope_resolutions"] = ordered_root_scope_resolutions
     if hierarchy_path_scope_resolutions:
         material["hierarchy_path_scope_resolutions"] = hierarchy_path_scope_resolutions
+    if compiled_specs["ordered_role_scopes"]:
+        material["ordered_role_scope_receipts"] = ordered_role_scope_receipts
+        material["outside_ordered_role_scope_rows"] = outside_ordered_role_scope_rows
     return {
         **material,
         "classification_id": "gjmthfcv1:classification:" + canonical_json_sha256_v1(material),
@@ -2261,6 +2509,71 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 )
     if intervals and selected is None and not reasons and not rootless_source_result_control:
         reasons.append("COMPLETE_OWNER_CLUSTER_NOT_RESOLVED")
+
+    role_fallback_policy = compiled_specs["role_anchored_owner_fallback_policy"]
+    role_anchored_population_not_observed = False
+    if (
+        selected is None
+        and role_fallback_policy
+        == "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES"
+        and set(reasons) <= {"COMPLETE_OWNER_CLUSTER_NOT_RESOLVED"}
+    ):
+        required_role_combinations = [
+            set(combination)
+            for combination in compiled_specs["topology"]["required_role_combinations"]
+        ]
+
+        def item_roles(item: Mapping[str, Any]) -> set[str]:
+            return set(_classification_roles(item["classification"]))
+
+        role_anchors = [
+            item
+            for item in table_axis
+            if item["classification"]["typed_control_disposition"] is None
+            and any(required <= item_roles(item) for required in required_role_combinations)
+        ]
+        if len(role_anchors) == 1:
+            anchor = role_anchors[0]
+            supplemental_roles = set(compiled_specs["role_anchored_supplemental_roles"])
+            supplemental_items = [
+                item
+                for item in table_axis
+                if item is not anchor
+                and item["record"]["page_json_version_id"]
+                == anchor["record"]["page_json_version_id"]
+                and item["classification"]["typed_control_disposition"] is None
+                and item_roles(item).intersection(supplemental_roles)
+                and not any(required <= item_roles(item) for required in required_role_combinations)
+            ]
+            fallback_items = sorted(
+                [anchor, *supplemental_items], key=lambda item: item["position"]
+            )
+            selected = {
+                "family_items": fallback_items,
+                "items": fallback_items,
+                "leading_items": [],
+                "owner": {
+                    "alias": "DECLARED_REQUIRED_ROLE_TABLE",
+                    "outline_top_level_number": None,
+                    "position": anchor["position"],
+                    "source_exact": None,
+                },
+                "reset": None,
+                "role_anchored_fallback": True,
+                "roles": sorted({role for item in fallback_items for role in item_roles(item)}),
+                "skipped_same_section_items": [],
+            }
+            reasons = []
+        elif len(role_anchors) > 1:
+            reasons = ["MULTIPLE_REQUIRED_ROLE_TABLE_POPULATIONS"]
+        else:
+            # A source may expose only a primary-statement tax line or a tax
+            # payable control table under an otherwise matching heading.  The
+            # family is not observed unless one table carries the complete
+            # declarative role combination; an incomplete heading is neither
+            # a candidate nor an unresolved accounting graph.
+            reasons = []
+            role_anchored_population_not_observed = True
     selected_keys = (
         {
             (item["record"]["page_json_version_id"], item["section_id"], item["table_id"])
@@ -2293,8 +2606,12 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             )
         ):
             disposition = "SOURCE_RESULT_OWNER_WITHOUT_EXACT_RESULT_ROW"
-        elif selected is not None and item_inside_owner_interval(
-            item, selected["owner"], selected["reset"]
+        elif selected is not None and (
+            (selected.get("role_anchored_fallback") is True and key in selected_keys)
+            or (
+                selected.get("role_anchored_fallback") is not True
+                and item_inside_owner_interval(item, selected["owner"], selected["reset"])
+            )
         ):
             if rootless_source_result_control:
                 disposition = "SOURCE_RESULT_OWNER_WITHOUT_EXACT_RESULT_ROW"
@@ -2331,7 +2648,9 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         READY
         if regions and not reasons
         else NOT_OBSERVED
-        if rootless_source_result_control or not intervals
+        if rootless_source_result_control
+        or role_anchored_population_not_observed
+        or (not intervals and not reasons)
         else UNRESOLVED
     )
     material = {
@@ -2348,7 +2667,9 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                     item["position"] for item in selected["leading_items"]
                 ],
                 "leading_component_rule": (
-                    "CONTIGUOUS_SAME_PAGE_DECLARED_ROOT_COMPONENT_SUFFIX_BEFORE_OWNER"
+                    "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES"
+                    if selected.get("role_anchored_fallback") is True
+                    else "CONTIGUOUS_SAME_PAGE_DECLARED_ROOT_COMPONENT_SUFFIX_BEFORE_OWNER"
                 ),
             }
         ),
@@ -5059,6 +5380,22 @@ def _extract_table_local_records(
         and scope_to_explicit_family_root
         and not row_inside_explicit_family_root(row_ordinal)
     ]
+    non_money_metric_hits = [
+        hit
+        for hit in classification["role_hits"]
+        if hit["role"] in compiled_specs["non_money_metric_roles"]
+    ]
+    non_money_metric_row_ordinals = {hit["row_ordinal"] for hit in non_money_metric_hits}
+    if non_money_metric_hits:
+        receipt["non_money_metric_source_rows"] = [
+            {
+                "role": hit["role"],
+                "row": canonical_clone_v1(rows[hit["row_ordinal"] - 1]),
+                "row_ordinal": hit["row_ordinal"],
+                "rule": "DECLARED_VALIDATION_ONLY_NON_MONEY_METRIC_ROW",
+            }
+            for hit in non_money_metric_hits
+        ]
     row_records: dict[int, dict[str, Any]] = {}
     parse_reasons = []
     for row_ordinal, row in enumerate(rows, start=1):
@@ -5067,6 +5404,8 @@ def _extract_table_local_records(
         if document_source_result_carrier and row_ordinal not in source_result_population_ordinals:
             continue
         if scope_to_explicit_family_root and not row_inside_explicit_family_root(row_ordinal):
+            continue
+        if row_ordinal in non_money_metric_row_ordinals:
             continue
         try:
             record = _row_local_record(
@@ -5100,6 +5439,8 @@ def _extract_table_local_records(
 
     hit_by_row: dict[int, str] = {}
     for hit in classification["role_hits"]:
+        if hit["role"] in compiled_specs["non_money_metric_roles"]:
+            continue
         ordinal = hit["row_ordinal"]
         if ordinal in hit_by_row and hit_by_row[ordinal] != hit["role"]:
             raise _error("multi-table hierarchical source row role repeated")
@@ -5387,9 +5728,38 @@ def _extract_table_local_records(
         ordinal
         for ordinal, row in enumerate(rows, start=1)
         if type(row) is dict
-        and row.get("row_kind") in {"SUBTOTAL", "TOTAL"}
         and ordinal in row_records
+        and (
+            (
+                row.get("row_kind") in {"SUBTOTAL", "TOTAL"}
+                and (
+                    hit_by_row.get(ordinal) is None
+                    or compiled_specs["child_by_role"][hit_by_row[ordinal]]["role_kind"]
+                    in {"STRUCTURAL_GROUP", "SUBTOTAL", "TOTAL"}
+                )
+            )
+            or (
+                compiled_specs["declared_result_role_policy"]
+                == "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE"
+                and hit_by_row.get(ordinal) is not None
+                and compiled_specs["child_by_role"][hit_by_row[ordinal]]["role_kind"]
+                in {"SUBTOTAL", "TOTAL"}
+            )
+        )
     }
+    declared_result_row_kind_overrides = [
+        {
+            "declared_role": hit_by_row[ordinal],
+            "declared_role_kind": compiled_specs["child_by_role"][hit_by_row[ordinal]]["role_kind"],
+            "row_ordinal": ordinal,
+            "source_row_kind": rows[ordinal - 1].get("row_kind"),
+            "rule": "DECLARED_SUBTOTAL_OR_TOTAL_ROLE_SUPPLEMENTS_GEMINI_ROW_KIND",
+        }
+        for ordinal in sorted(total_ordinals)
+        if rows[ordinal - 1].get("row_kind") not in {"SUBTOTAL", "TOTAL"} and ordinal in hit_by_row
+    ]
+    if declared_result_row_kind_overrides:
+        receipt["declared_result_row_kind_overrides"] = declared_result_row_kind_overrides
     # First prove visible hierarchy carriers from their exact direct children.
     for carrier_ordinal, carrier in sorted(row_records.items()):
         label = _normalized(rows[carrier_ordinal - 1].get("label_exact"))
@@ -5532,6 +5902,15 @@ def _extract_table_local_records(
     # Then prove each printed subtotal/total against exactly one source frontier.
     for total_ordinal in sorted(total_ordinals):
         total = row_records[total_ordinal]
+        ordered_stage_starts = {
+            item["start_row_ordinal"]
+            for item in classification.get("ordered_role_scope_receipts", [])
+            if item["status"] == "UNIQUE_ORDERED_ROLE_SCOPE_APPLIED"
+            and item["terminal_row_ordinal"] == total_ordinal
+        }
+        ordered_stage_start = (
+            next(iter(ordered_stage_starts)) if len(ordered_stage_starts) == 1 else 0
+        )
         candidates: list[tuple[str, list[tuple[int, dict[str, Any]]]]] = []
         preceding = [
             (
@@ -5539,12 +5918,17 @@ def _extract_table_local_records(
                 label_only_group_proxies.get(ordinal, ([], record))[1],
             )
             for ordinal, record in row_records.items()
-            if ordinal < total_ordinal and ordinal not in total_ordinals
+            if ordered_stage_start < ordinal < total_ordinal and ordinal not in total_ordinals
         ]
         if preceding:
             candidates.append(("ALL_PRECEDING_NON_TOTAL_ROWS", preceding))
         prior_total = max(
-            (ordinal for ordinal in total_ordinals if ordinal < total_ordinal), default=0
+            (
+                ordinal
+                for ordinal in total_ordinals
+                if ordered_stage_start < ordinal < total_ordinal
+            ),
+            default=ordered_stage_start,
         )
         interval = [
             (ordinal, record)
@@ -5560,7 +5944,7 @@ def _extract_table_local_records(
             prior_total
             if compiled_specs["document_cluster_policy"]
             == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
-            else 0
+            else ordered_stage_start
         )
         labelled_hierarchy_carriers = [
             (ordinal, row_records[ordinal])
@@ -5779,6 +6163,9 @@ def _extract_table_local_records(
             continue
         _kind, component_axis, equation = next(iter(unique.values()))
         equations.append(equation)
+        proven_carrier_children[total_ordinal].update(
+            ordinal for ordinal, _record in component_axis
+        )
         consumed_ordinals.update(ordinal for ordinal, _record in component_axis)
         consumed_ordinals.add(total_ordinal)
         for ordinal, proxy_record in component_axis:
@@ -6373,6 +6760,57 @@ def _extract_table_local_records(
         if only_ordinal in hit_by_row:
             proven_roles.add(hit_by_row[only_ordinal])
 
+    ordered_role_scope_projection_receipts = []
+    applied_scope_by_id = {
+        item["scope_id"]: item
+        for item in classification.get("ordered_role_scope_receipts", [])
+        if item["status"] == "UNIQUE_ORDERED_ROLE_SCOPE_APPLIED"
+    }
+    for projection in compiled_specs["ordered_role_scope_projections"]:
+        scope = applied_scope_by_id.get(projection["scope_id"])
+        if scope is None:
+            continue
+        projected_records = []
+        retained_records = []
+        for record in local_records:
+            row_ordinals = {source_ref.get("row_ordinal") for source_ref in record["source_refs"]}
+            if (
+                record["role"] != projection["source_role"]
+                or None in row_ordinals
+                or not row_ordinals
+                or not all(
+                    scope["start_row_ordinal"] < row_ordinal <= scope["terminal_row_ordinal"]
+                    for row_ordinal in row_ordinals
+                )
+                or not row_ordinals <= consumed_ordinals
+            ):
+                retained_records.append(record)
+                continue
+            projected = canonical_clone_v1(record)
+            projected["role"] = projection["target_role"]
+            projected["state"] = (
+                "SOURCE_VALIDATION_ROLE_PROJECTED_TO_MAPPED_ROLE_AFTER_ORDERED_STAGE_"
+                "EXACT_EQUATION_CLOSURE"
+            )
+            projected_records.append(projected)
+            proven_roles.add(projection["target_role"])
+        local_records = [*retained_records, *projected_records]
+        if projected_records:
+            ordered_role_scope_projection_receipts.append(
+                {
+                    "projected_source_refs": [
+                        source_ref
+                        for record in projected_records
+                        for source_ref in canonical_clone_v1(record["source_refs"])
+                    ],
+                    "rule": (
+                        "VALIDATION_ROLE_PROJECTS_TO_DECLARED_MAPPED_AGGREGATE_ONLY_"
+                        "INSIDE_ONE_ORDERED_STAGE_AFTER_EXACT_EQUATION_CONSUMPTION"
+                    ),
+                    **canonical_clone_v1(projection),
+                }
+            )
+
     source_only_rows = []
     validation_only_roles = set(compiled_specs["validation_only_roles"])
     for ordinal, record in sorted(row_records.items()):
@@ -6503,6 +6941,8 @@ def _extract_table_local_records(
         receipt["equation_consumed_residual_projection_receipts"] = (
             equation_consumed_residual_projection_receipts
         )
+    if ordered_role_scope_projection_receipts:
+        receipt["ordered_role_scope_projection_receipts"] = ordered_role_scope_projection_receipts
     if context_residual_projection_receipts:
         receipt["context_residual_projection_receipts"] = context_residual_projection_receipts
     if compiled_specs.get("context_residual_bindings"):

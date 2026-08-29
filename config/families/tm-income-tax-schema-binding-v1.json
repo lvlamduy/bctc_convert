@@ -1,0 +1,23 @@
+{
+  "family_id": "INCOME_TAX",
+  "family_root_report_norm_id": 5727,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 5728, "role": "PROFIT_BEFORE_TAX"},
+    {"report_norm_id": 5729, "role": "NON_TAXABLE_AGGREGATE"},
+    {"report_norm_id": 5730, "role": "NON_DEDUCTIBLE_EXPENSE"},
+    {"report_norm_id": 5731, "role": "TAXABLE_INCOME"},
+    {"report_norm_id": 5724, "role": "CURRENT_TAX_AT_RATE"},
+    {"report_norm_id": 5732, "role": "CURRENT_TAX_BANK"},
+    {"report_norm_id": 5734, "role": "FOREIGN_BRANCH_TAX"},
+    {"report_norm_id": 5735, "role": "SUBSIDIARY_TAX"},
+    {"report_norm_id": 5733, "role": "PRIOR_PERIOD_TAX_ADJUSTMENT"},
+    {"report_norm_id": 5723, "role": "CURRENT_TAX_PARENT"},
+    {"report_norm_id": 5736, "role": "DEFERRED_TAX_COMPONENT"},
+    {"report_norm_id": 5725, "role": "DEFERRED_TAX_PARENT"},
+    {"report_norm_id": 5726, "role": "DEFERRED_TAX_NET"},
+    {"report_norm_id": 5737, "role": "TOTAL_TAX_COMPONENTS"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "DURATION"
+}

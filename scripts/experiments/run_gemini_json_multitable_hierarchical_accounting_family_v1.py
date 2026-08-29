@@ -427,6 +427,22 @@ PINNED_OTHER_ACTIVITY_HISTORICAL_ORACLES = (
         "size_bytes": 202080,
     },
 )
+PINNED_INCOME_TAX_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INCOME_TAX_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0091-income-tax-8bank-codex-verified-mapping-v1.json",
+        "sha256": "b432405303d4402f66d3e8483b6d2ce643c1ed9e96a6a5883b240a32e1703a1c",
+        "size_bytes": 98273,
+    },
+    {
+        "format_version": "ANNUAL_2025_INCOME_TAX_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0146-annual-2025-income-tax-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "3a902a5a12724f1042e6b45b6d39ae638aaa999ae5f100764e2a0af297fe521b",
+        "size_bytes": 232015,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1164,6 +1180,55 @@ PINNED_OTHER_ACTIVITY_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("3fee435c88d3356fed09e42aa2541ecbf7e2c831b2172f0f7611677f3491541f"),
     "mappings": "ad2de239f56343978c034bcababc4a3625447a675885dd7775b2d8c157db04c0",
 }
+PINNED_INCOME_TAX_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "8ae2e2964f91ff002ad02c0ed901a68ae016a40f541cf727fcf64a1c53fcc854"
+    ),
+    "accepted_cluster_count": 69,
+    "accepted_fragment_count": 88,
+    "candidate_disposition_axis_sha256": (
+        "85f49e8160580756ac8791f4ed0caf21a65b8d1b1fb8a784b3ac9743c5375e88"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 71, READY: 69, UNRESOLVED: 0},
+    "query_policy_sha256": "6b73b3004f05dde88ef04e745272051f30f1dafa919918b2af27320a0ecdc6df",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_INCOME_TAX_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 499,
+    "not_observed_count": 71,
+    "ready_count": 69,
+    "unresolved_count": 0,
+}
+PINNED_INCOME_TAX_RELEASE_AUDIT_METRICS = {
+    "equation_count": 152,
+    "historical_comparator_exact_count": 105,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 89,
+    "historical_mapping_record_count": 89,
+    "mapping_count": 499,
+}
+PINNED_INCOME_TAX_RELEASE_AXIS_COUNTS = {
+    "clusters": 69,
+    "equations": 152,
+    "historical_comparator": 105,
+    "mappings": 499,
+}
+PINNED_INCOME_TAX_RELEASE_AXIS_SHA256 = {
+    "clusters": "51783ccc8b6ddeb237b26d584f63a1ec3806287f5c2c614b59ceea45e1931ada",
+    "equations": "d16931d313ca50bd43f6e209b317b72ba86b0699fcccb2d9cd342db75574a1f1",
+    "historical_comparator": "84d02d604e3a6341b6ece85eb6ab78574e107b02b5f193992116d4e337e43fbd",
+    "mappings": "8751d877c041046b54055485d8b1f5660d9d69ea475df3d5f7ec24666b96dc00",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1399,6 +1464,8 @@ def _historical_oracle_refs(
         return PINNED_CREDIT_RISK_PROVISION_EXPENSE_HISTORICAL_ORACLES
     if family_id == "OTHER_ACTIVITY":
         return PINNED_OTHER_ACTIVITY_HISTORICAL_ORACLES
+    if family_id == "INCOME_TAX":
+        return PINNED_INCOME_TAX_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1539,6 +1606,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_OTHER_ACTIVITY_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_OTHER_ACTIVITY_QUERY_RECEIPT,
             "sweep_metrics": PINNED_OTHER_ACTIVITY_RELEASE_METRICS,
+        }
+    if family_id == "INCOME_TAX":
+        return {
+            "axis_counts": PINNED_INCOME_TAX_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_INCOME_TAX_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_INCOME_TAX_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_INCOME_TAX_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_INCOME_TAX_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

@@ -1,0 +1,139 @@
+{
+  "aggregate_duplicate_roles": [
+    "PROFIT_BEFORE_TAX",
+    "NON_TAXABLE_AGGREGATE",
+    "NON_DEDUCTIBLE_EXPENSE",
+    "TAXABLE_INCOME",
+    "CURRENT_TAX_AT_RATE",
+    "CURRENT_TAX_BANK",
+    "FOREIGN_BRANCH_TAX",
+    "SUBSIDIARY_TAX",
+    "PRIOR_PERIOD_TAX_ADJUSTMENT",
+    "CURRENT_TAX_PARENT",
+    "DEFERRED_TAX_COMPONENT",
+    "DEFERRED_TAX_PARENT",
+    "DEFERRED_TAX_NET",
+    "TOTAL_TAX_COMPONENTS",
+    "TAX_RATE_SOURCE_ONLY",
+    "SOURCE_ONLY_EQUATION_COMPONENT"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "context_total_mapping_roles": ["DEFERRED_TAX_NET"],
+  "corroboration_pairs": [],
+  "declared_result_role_policy": "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE",
+  "derived_role_equations": [],
+  "detail_context_roles": [],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_POPULATION",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "equation_consumed_unmatched_residual_role": "SOURCE_ONLY_EQUATION_COMPONENT",
+  "family_id": "INCOME_TAX",
+  "family_root_population_policy": "WHOLE_TABLE",
+  "family_root_requirement": "OPTIONAL",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "minimum_declared_detail_role_count": 2,
+  "minimum_source_visible_root_component_count": 2,
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "non_money_metric_roles": ["TAX_RATE_SOURCE_ONLY"],
+  "ordered_role_scopes": [
+    {
+      "scope_id": "TAXABLE_INCOME_RECONCILIATION",
+      "scoped_roles": [
+        "PROFIT_BEFORE_TAX",
+        "PROFIT_BEFORE_TAX_BANK_SOURCE_ONLY",
+        "NON_TAXABLE_AGGREGATE",
+        "NON_DEDUCTIBLE_EXPENSE",
+        "SOURCE_ONLY_EQUATION_COMPONENT",
+        "TAXABLE_INCOME"
+      ],
+      "start_after_roles": [],
+      "terminal_roles": ["TAXABLE_INCOME"]
+    },
+    {
+      "scope_id": "CURRENT_TAX_EXPENSE",
+      "scoped_roles": [
+        "CURRENT_TAX_AT_RATE",
+        "CURRENT_TAX_BANK",
+        "FOREIGN_BRANCH_TAX",
+        "SUBSIDIARY_TAX",
+        "PRIOR_PERIOD_TAX_ADJUSTMENT",
+        "SOURCE_ONLY_EQUATION_COMPONENT",
+        "CURRENT_TAX_PARENT",
+        "TOTAL_TAX_COMPONENTS"
+      ],
+      "start_after_roles": ["TAXABLE_INCOME"],
+      "terminal_roles": ["CURRENT_TAX_PARENT", "TOTAL_TAX_COMPONENTS"]
+    }
+  ],
+  "ordered_role_scope_projections": [
+    {
+      "scope_id": "TAXABLE_INCOME_RECONCILIATION",
+      "source_role": "SOURCE_ONLY_EQUATION_COMPONENT",
+      "target_role": "NON_TAXABLE_AGGREGATE"
+    }
+  ],
+  "owner_match_policy": "CONTAINS_ALIAS",
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
+  "query_owner_aliases": [
+    "Chi phí thuế thu nhập doanh nghiệp",
+    "Chi phí thuế thu nhập doanh nghiệp hiện hành",
+    "Thuế thu nhập doanh nghiệp",
+    "Thuế thu nhập doanh nghiệp hiện hành",
+    "Thuế TNDN hiện hành",
+    "Đối chiếu thuế suất thực tế"
+  ],
+  "role_anchored_owner_fallback_policy": "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
+  "role_anchored_supplemental_roles": [
+    "DEFERRED_TAX_COMPONENT",
+    "DEFERRED_TAX_PARENT",
+    "DEFERRED_TAX_NET",
+    "TOTAL_TAX_COMPONENTS"
+  ],
+  "row_alias_prefix_roles": [
+    "CURRENT_TAX_BANK",
+    "NON_DEDUCTIBLE_EXPENSE",
+    "NON_TAXABLE_AGGREGATE"
+  ],
+  "root_component_equation_policy": "DECLARED_DIRECT_SUM",
+  "root_component_roles": [
+    "CURRENT_TAX_PARENT",
+    "DEFERRED_TAX_PARENT",
+    "DEFERRED_TAX_NET",
+    "TOTAL_TAX_COMPONENTS"
+  ],
+  "role_unit_overrides": [],
+  "source_reference_identity_policy": "EXACT_UNIQUE_SOURCE_IDENTITIES",
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "supplemental_owner_aliases": [],
+  "table_context_roles": ["DEFERRED_TAX_NET"],
+  "typed_control_exclusions": [
+    {
+      "aliases": ["thuế thu nhập doanh nghiệp hoãn lại"],
+      "disposition": "DEFERRED_TAX_BALANCE_CONTROL_OUTSIDE_INCOME_TAX_EXPENSE",
+      "surface_kinds": ["SECTION_TITLE"],
+      "unless_declared_roles": [
+        "DEFERRED_TAX_COMPONENT",
+        "DEFERRED_TAX_NET",
+        "DEFERRED_TAX_PARENT"
+      ]
+    }
+  ],
+  "unmapped_direct_family_row_policy": "IGNORE",
+  "validation_only_roles": [
+    "TAX_RATE_SOURCE_ONLY",
+    "PROFIT_BEFORE_TAX_BANK_SOURCE_ONLY",
+    "SOURCE_ONLY_EQUATION_COMPONENT"
+  ]
+}
