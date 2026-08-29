@@ -3182,6 +3182,41 @@ Annual-2025 resolving result: E-0120
 | ASEG-016 | BID | 38 | Trong nước / Nước ngoài | Không tương đương với ba trục Bắc/Trung/Nam của schema. |
 | ASEG-017 | VIB | 61 | Tài sản cố định — Miền Trung | Ô nguồn nhìn thấy là trống, không phải dấu `-` hay số 0. |
 
+## Family 28 current corpus — interest income (`INTEREST_INCOME`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family28-interest-income/sweep.json`
+
+- Census: 140 documents, `READY=136`, `NOT_OBSERVED=0`, `UNRESOLVED=4`,
+  882 mappings and 310 exact source/derived equations. Every unresolved trial
+  has `mappings=[]`.
+- `F28-II-001` — BID ordinal 26, physical page 44, H1/2025: source
+  `SECURITIES_INTEREST=4.973.626`, while visible components
+  `126.852 + 4.846.773 = 4.973.625`. Machine reasons are
+  `DECLARED_SOURCE_RESULT_COMPONENT_EQUATION_MISMATCH:SECURITIES_INTEREST`
+  and `REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN`. Status:
+  `NEEDS_ACCOUNTING_RECONCILIATION`; a fixed minimal observation prompt may
+  reread the bounded cells, but code must not backsolve the missing unit.
+- `F28-II-002` — MBB ordinal 78, physical page 46, H1/2025: comparative
+  direct children sum to `33.113.197`, while the visible family subtotal is
+  `33.213.197`. Machine reason is
+  `REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN`. The malformed expense
+  sibling `(8.656:569)` lies outside the exact family-root subtree and is not
+  the cause. Status: `NEEDS_ACCOUNTING_RECONCILIATION`; reread only the bounded
+  income cells/subtotal, never the equation-derived answer.
+- `F28-II-003` — VPB ordinal 139, physical page 61, H1/2026 parent report; and
+  `F28-II-004` — VPB ordinal 140, physical page 71, H1/2026 consolidated
+  report: direct row `Thu nhập lãi tiền gửi và cho vay TCTD khác` participates
+  in the exact family total but has no schema leaf with identical scope.
+  Splitting it into deposit/customer-loan leaves or assigning it to the broader
+  customer-plus-other-CI RNID 6075 would invent an allocation. Machine reason
+  is `UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW`; status for both is
+  `NEEDS_SCHEMA_DECISION`.
+
+These four records remain source-authoritative negative gates. A later generic
+repair/schema result may resolve them, but must retain this history and cite
+its independent replay ID and commit.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

@@ -463,19 +463,51 @@ Artifact OFFICIAL:
   results DB có 27 current selections, `quick_check` và foreign keys sạch,
   không có SQLite sidecar, SHA-256
   `b6f6e49aca7539ed683f353561569f56bced9f4ad3748d341cb0e051b75dcf4e`.
+- Family 28 `INTEREST_INCOME`: `READY=136`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=4`, 882 mappings và 310 exact source/derived closure equations.
+  Generic multi-table hierarchical engine nay nhận duration axis dưới bốn
+  dạng source-visible: `from–to` range, ending date, bare year hoặc explicit
+  current/comparative role. Parser giữ nguyên thứ tự ngày nguồn, bác range đảo,
+  multi-date không được grammar quản trị, date–bare-year và date–semantic
+  conflict; cụm `6/9 tháng đầu năm` chỉ được loại khỏi opening-period alias,
+  không che một dấu hiệu `năm trước` khác trên cùng header. Family root có thể
+  đứng đầu, cuối hoặc trong combined interest-income/net-interest table, nhưng
+  subtree của root được inventory riêng và expense/net sibling không thể được
+  tái dùng làm root hay làm hỏng số family. Hai component chứng khoán chỉ tạo
+  một `SECURITIES_INTEREST` khi phương trình khai báo đóng; 76 source-visible
+  component equations trước đây chưa có receipt nay được exact-bind thêm mà
+  không đổi mapping. Mọi period, unit, hierarchy, graph, equation và
+  ReportNormId mapping đều do deterministic local code xử lý; không thêm prompt
+  Gemini, không route theo bank/file/page/value.
+
+  Bốn U đều có `mappings=[]`: BID ordinal 26 lệch 1 giữa securities total và
+  hai detail rows; MBB ordinal 78 lệch 100.000 ở comparative family subtotal;
+  VPB ordinal 139/140 có direct source row gộp `Thu nhập lãi tiền gửi và cho
+  vay TCTD khác` nhưng không có schema leaf đồng nghĩa để map hoặc phân bổ an
+  toàn. Exact SQLite replay phủ đủ 8.947 selected page versions, dựng lại 140
+  fragments trong 140 accepted clusters. E-0079/E-0134 khớp 16/16 historical
+  dispositions và 109/109 mappings; combined comparator là 125/125 exact.
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family28-interest-income/sweep.json`,
+  SHA-256
+  `d6d283b59ae0a4b80895a76b695b5ee209431270ede6c9768f2004bf9d9ef97c`;
+  audit SHA-256
+  `be5f2122a46be536923d39c63f1c448624fcba3422aeb89cc187263662a523db`.
+  Implementation commit `993af4f`; 113 focused/adjacent tests, public
+  immutable SQLite audit replay, coherent embedded-schema attack, Ruff,
+  format, compile, JSON, diff và fsck checks đều xanh. Cumulative results DB có
+  28 current selections, `quick_check` và foreign keys sạch, không có SQLite
+  sidecar, SHA-256
+  `17c4e82787bd38906fb1eb4842b45eec7ac51dc5a03f8d07fc522ed2d7b60cb0`.
 
 ## Next gate
 
-Family 28 là `INTEREST_INCOME` bắt đầu tại ReportNormId 1143. Đo khả năng tái sử
-dụng của generic owner/reset-fenced two-period hierarchy engine trên full-corpus
-indexed census 8.947 trang, rồi khóa comparator E-0079 và E-0134. Thuật toán
-phải bao quát interest income total cùng các khoản tiền gửi, cho vay, đầu tư
-chứng khoán nợ, bảo lãnh, mua bán nợ và hoạt động tín dụng khác; parent total có
-thể đứng trước, đứng sau hoặc ở table sibling nhưng không được cộng trùng với
-children. Period, unit, dấu âm/dash, table continuation, source-only residual và
-equation phải do deterministic local code xử lý. Gemini tiếp tục dùng page JSON
-prompt tối giản; chỉ typed missing-row/column/context mới được tự động chuyển
-sang một prompt version bounded đã khai báo, không route theo bank/file/page.
+Family 29 là `INTEREST_EXPENSE` bắt đầu tại ReportNormId 1151. Tái sử dụng
+duration-axis, explicit-owner/root-subtree và exact component-total primitives
+trên full-corpus census 8.947 trang, rồi khóa comparator E-0081/E-0135. Thuật
+toán phải tự xử lý tiền gửi, tiền vay, giấy tờ có giá, thuê tài chính và chi phí
+tín dụng khác; combined net-interest table không được làm expense total cộng
+trùng với income sibling. Prompt Gemini vẫn tối giản và cố định; chỉ typed
+missing row/column/context mới được tự động nâng sang bounded context prompt.
 Chỉ promote OFFICIAL sau exhaustive inventory, query/candidate SQLite replay,
-equation receipts, historical comparator và toàn bộ disposition 140 tài liệu
-được niêm phong rõ ràng.
+duration/unit/equation receipts, historical comparator và đủ 140 dispositions.
