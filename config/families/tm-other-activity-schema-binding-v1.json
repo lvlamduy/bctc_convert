@@ -1,0 +1,28 @@
+{
+  "family_id": "OTHER_ACTIVITY",
+  "family_root_report_norm_id": 6029,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 6030, "role": "NET_OTHER"},
+    {"report_norm_id": 1229, "role": "INCOME_PARENT"},
+    {"report_norm_id": 1230, "role": "INCOME_BAD_DEBT_PROCESSED"},
+    {"report_norm_id": 1231, "role": "INCOME_ASSET_DISPOSAL"},
+    {"report_norm_id": 1232, "role": "INCOME_DERIVATIVE"},
+    {"report_norm_id": 1233, "role": "INCOME_LAND_AND_FIXED_ASSET_DISPOSAL"},
+    {"report_norm_id": 1234, "role": "INCOME_DEBT_RECOVERY"},
+    {"report_norm_id": 1235, "role": "INCOME_REAL_ESTATE"},
+    {"report_norm_id": 1236, "role": "INCOME_TRUST"},
+    {"report_norm_id": 1237, "role": "INCOME_DEBT_SALE"},
+    {"report_norm_id": 1238, "role": "INCOME_PROVISION_REVERSAL"},
+    {"report_norm_id": 1239, "role": "INCOME_OTHER"},
+    {"report_norm_id": 1240, "role": "EXPENSE_PARENT"},
+    {"report_norm_id": 1241, "role": "EXPENSE_DERIVATIVE"},
+    {"report_norm_id": 1242, "role": "EXPENSE_ASSET_DISPOSAL"},
+    {"report_norm_id": 1243, "role": "EXPENSE_DEBT_SALE"},
+    {"report_norm_id": 1244, "role": "EXPENSE_SOCIAL"},
+    {"report_norm_id": 1245, "role": "EXPENSE_DEBT_RECOVERY"},
+    {"report_norm_id": 1246, "role": "EXPENSE_OTHER"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "DURATION"
+}

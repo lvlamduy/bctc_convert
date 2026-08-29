@@ -120,6 +120,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "direct_frontier_policy",
         "document_source_result_signal_policy",
         "document_cluster_policy",
+        "context_residual_bindings",
         "duplicate_role_aggregation_policy",
         "duplicate_complete_table_population_policy",
         "equation_consumed_unmatched_residual_role",
@@ -397,6 +398,31 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         else []
     )
     aggregate_duplicate_roles = role_axis("aggregate_duplicate_roles", allow_empty=True)
+    context_residual_bindings = []
+    context_residual_context_roles = set()
+    context_residual_roles = set()
+    supplied_context_residual_bindings = evaluation_spec.get("context_residual_bindings", [])
+    if type(supplied_context_residual_bindings) is not list:
+        raise _error("multi-table hierarchical context residual bindings are invalid")
+    for binding in supplied_context_residual_bindings:
+        if (
+            type(binding) is not dict
+            or set(binding) != {"context_role", "residual_role"}
+            or binding.get("context_role") not in roles
+            or binding["context_role"] in context_residual_context_roles
+            or binding.get("residual_role") not in roles
+            or binding["residual_role"] in context_residual_roles
+            or binding["context_role"] == binding["residual_role"]
+            or binding["context_role"]
+            not in set(table_context_roles) | set(context_total_mapping_roles)
+            or child_by_role[binding["context_role"]]["role_kind"] != "STRUCTURAL_GROUP"
+            or child_by_role[binding["residual_role"]]["role_kind"] != "ADDITIVE_CHILD"
+            or binding["residual_role"] not in aggregate_duplicate_roles
+        ):
+            raise _error("multi-table hierarchical context residual binding is invalid")
+        context_residual_context_roles.add(binding["context_role"])
+        context_residual_roles.add(binding["residual_role"])
+        context_residual_bindings.append(canonical_clone_v1(binding))
     equation_consumed_unmatched_residual_role = evaluation_spec.get(
         "equation_consumed_unmatched_residual_role"
     )
@@ -646,6 +672,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "currency_aliases": {},
         "corroboration_pairs": corroboration_pairs,
         "context_total_mapping_roles": context_total_mapping_roles,
+        **(
+            {"context_residual_bindings": context_residual_bindings}
+            if context_residual_bindings
+            else {}
+        ),
         "derived_role_equations": derived_role_equations,
         "detail_context_roles": detail_context_roles,
         "direct_frontier_policy": direct_frontier_policy,
@@ -6093,6 +6124,84 @@ def _extract_table_local_records(
                     ),
                 }
             )
+    context_residual_projection_receipts = []
+    unresolved_context_residual_rows = []
+    if compiled_specs.get("context_residual_bindings"):
+        exact_component_ordinals = {
+            source_ref["row_ordinal"]
+            for equation in equations
+            if equation["status"] == "EXACT"
+            for source_refs in equation["component_source_refs"]
+            for source_ref in source_refs
+        }
+        exact_result_ordinals = {
+            source_ref["row_ordinal"]
+            for equation in equations
+            if equation["status"] == "EXACT"
+            for source_ref in equation["result_source_refs"]
+        }
+        for binding in compiled_specs["context_residual_bindings"]:
+            context_role = binding["context_role"]
+            residual_role = binding["residual_role"]
+            carrier_ordinals = [
+                ordinal for ordinal, role in hit_by_row.items() if role == context_role
+            ]
+            if len(carrier_ordinals) != 1:
+                continue
+            carrier_ordinal = carrier_ordinals[0]
+            projected_source_refs = []
+            for ordinal, record in sorted(row_records.items()):
+                if (
+                    ordinal in hit_by_row
+                    or rows[ordinal - 1].get("row_kind") != "ITEM"
+                    or not _row_is_strict_descendant(rows, ordinal, carrier_ordinal)
+                    or any(
+                        other_ordinal not in {ordinal, carrier_ordinal}
+                        and _normalized(rows[other_ordinal - 1].get("label_exact"))
+                        and _row_is_strict_descendant(rows, other_ordinal, carrier_ordinal)
+                        and _row_is_strict_descendant(rows, ordinal, other_ordinal)
+                        for other_ordinal in row_records
+                    )
+                ):
+                    continue
+                if ordinal not in exact_component_ordinals or ordinal in exact_result_ordinals:
+                    unresolved_context_residual_rows.append(
+                        {
+                            "context_carrier_row_ordinal": carrier_ordinal,
+                            "context_role": context_role,
+                            "residual_role": residual_role,
+                            "source_ref": canonical_clone_v1(record["source_refs"][0]),
+                        }
+                    )
+                    continue
+                local_records.append(
+                    _local_record(
+                        residual_role,
+                        record["cells"],
+                        record["lane_keys"],
+                        record["source_refs"],
+                        "SOURCE_CONTEXT_DIRECT_CHILD_PROJECTED_TO_DECLARED_RESIDUAL_AFTER_"
+                        "EXACT_CONTEXT_TOTAL_CLOSURE",
+                        record["valuation_basis"],
+                    )
+                )
+                hit_by_row[ordinal] = residual_role
+                proven_roles.add(residual_role)
+                projected_source_refs.append(canonical_clone_v1(record["source_refs"][0]))
+            if projected_source_refs:
+                context_residual_projection_receipts.append(
+                    {
+                        "context_carrier_row_ordinal": carrier_ordinal,
+                        "context_role": context_role,
+                        "projected_source_refs": projected_source_refs,
+                        "residual_role": residual_role,
+                        "rule": (
+                            "UNMATCHED_DIRECT_CHILDREN_OF_ONE_DECLARED_STRUCTURAL_CONTEXT_"
+                            "PROJECT_TO_ITS_DECLARED_RESIDUAL_ONLY_AFTER_EXACT_CONTEXT_TOTAL_"
+                            "CLOSURE"
+                        ),
+                    }
+                )
     if compiled_specs["table_context_roles"] and (
         compiled_specs["structural_parent_derivation_policy"] == "DECLARED_CONTEXT_CHILD_FRONTIER"
         or compiled_specs["money_metric_policy"]
@@ -6394,6 +6503,10 @@ def _extract_table_local_records(
         receipt["equation_consumed_residual_projection_receipts"] = (
             equation_consumed_residual_projection_receipts
         )
+    if context_residual_projection_receipts:
+        receipt["context_residual_projection_receipts"] = context_residual_projection_receipts
+    if compiled_specs.get("context_residual_bindings"):
+        receipt["unresolved_context_residual_rows"] = unresolved_context_residual_rows
     if compiled_specs["label_only_structural_group_policy"] != "DISABLED":
         receipt["label_only_structural_group_receipts"] = label_only_structural_group_receipts
     if derived_structural_parent_receipts:
@@ -6424,6 +6537,8 @@ def _extract_table_local_records(
         unconsumed_reason = "UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW"
     elif unsealed_duplicate_roles:
         unconsumed_reason = "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED"
+    elif unresolved_context_residual_rows:
+        unconsumed_reason = "CONTEXT_RESIDUAL_SOURCE_ROW_NOT_PROVEN_BY_EXACT_CONTEXT_TOTAL"
     elif unmapped_direct_family_rows:
         unconsumed_reason = "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW"
     else:

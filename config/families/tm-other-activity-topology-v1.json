@@ -1,0 +1,288 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {"aliases": ["Thu nhập/(Chi phí) khác"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "NET_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Thu nhập từ hoạt động khác", "Thu nhập hoạt động khác"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Nợ xấu đã được xử lý"], "within_role": "INCOME_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_BAD_DEBT_PROCESSED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chuyển nhượng, thanh lý tài sản",
+            "Thu lãi trả chậm từ thanh lý tài sản",
+            "Thu nhập từ chuyển nhượng, thanh lý tài sản",
+            "Thu nhập từ thanh lý tài sản cố định",
+            "Thu nhập từ thanh lý tài sản khác",
+            "Thu từ thanh lý tài sản cố định",
+            "Thu từ thanh lý tài sản khác"
+          ],
+          "within_role": "INCOME_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_ASSET_DISPOSAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công cụ phái sinh khác",
+            "Thu nhập từ công cụ phái sinh khác",
+            "Thu nhập về các công cụ tài chính phái sinh khác",
+            "Thu từ các công cụ tài chính phái sinh khác",
+            "Thu từ các giao dịch phái sinh hàng hóa và lãi suất",
+            "Thu từ nghiệp vụ hoán đổi lãi suất"
+          ],
+          "within_role": "INCOME_PARENT"
+        },
+        {
+          "aliases": [
+            "Lãi từ các công cụ tài chính phái sinh khác",
+            "Thu nhập/(Chi phí) từ các công cụ tài chính phái sinh khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_DERIVATIVE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Thanh lý Quyền sử dụng đất và TSCĐ khác"], "within_role": "INCOME_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_LAND_AND_FIXED_ASSET_DISPOSAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu hồi nợ xấu,nợ đã xử lý, nợ đã xóa sổ trước đây",
+            "Thu hồi nợ xấu đã sử dụng dự phòng để xử lý rủi ro",
+            "Thu hồi nợ đã xử lý rủi ro",
+            "Thu nhập từ các khoản cho vay đã xử lý bằng quỹ dự phòng rủi ro",
+            "Thu nhập từ nợ xấu đã được xử lý",
+            "Thu nhập từ nợ đã xử lý rủi ro",
+            "Thu từ các khoản nợ đã xử lý",
+            "Thu từ nợ xấu đã được xử lý",
+            "Thu từ nợ đã xử lý rủi ro"
+          ],
+          "within_role": "INCOME_PARENT"
+        },
+        {
+          "aliases": [
+            "Thu từ các khoản nợ đã xử lý",
+            "Thu từ nợ xấu đã được xử lý",
+            "Thu từ nợ đã xử lý rủi ro"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_DEBT_RECOVERY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Thu từ hoạt động kinh doanh bất động sản"], "within_role": "INCOME_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_REAL_ESTATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Thu từ hoạt động ủy thác"], "within_role": "INCOME_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_TRUST",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu từ hoạt động bán nợ",
+            "Thu từ hoạt động mua bán nợ",
+            "Thu nhập từ nghiệp vụ bán nợ",
+            "Thu từ nghiệp vụ mua bán nợ"
+          ],
+          "within_role": "INCOME_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_DEBT_SALE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Hoàn nhập dự phòng", "Thu từ hoàn nhập dự phòng"], "within_role": "INCOME_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_PROVISION_REVERSAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Thu khác",
+            "Thu nhập khác",
+            "Thu nhập hỗ trợ và thu nhập khác",
+            "Thu nhập từ hoạt động kinh doanh khác",
+            "Thu từ hoạt động kinh doanh khác",
+            "Thu từ phạt vi phạm hợp đồng"
+          ],
+          "within_role": "INCOME_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chi phí từ hoạt động khác", "Chi phí hoạt động khác", "Chi phí cho hoạt động khác"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công cụ phái sinh khác",
+            "Chi cho các công cụ tài chính phái sinh khác",
+            "Chi phí cho nghiệp vụ hoán đổi lãi suất",
+            "Chi phí từ công cụ phái sinh khác",
+            "Chi phí từ giao dịch phái sinh hàng hóa và lãi suất",
+            "Chi từ các công cụ phái sinh khác",
+            "Chi từ các công cụ tài chính phái sinh khác",
+            "Chi về các công cụ tài chính phái sinh khác"
+          ],
+          "within_role": "EXPENSE_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_DERIVATIVE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chuyển nhượng, thanh lý tài sản",
+            "Chi phí từ chuyển nhượng, thanh lý tài sản",
+            "Chi về thanh lý tài sản cố định",
+            "Chi về thanh lý tài sản khác"
+          ],
+          "within_role": "EXPENSE_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_ASSET_DISPOSAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chi từ nghiệp vụ mua bán nợ", "Chi về nghiệp vụ bán nợ"], "within_role": "EXPENSE_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_DEBT_SALE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chi công tác xã hội", "Chi hỗ trợ công tác xã hội"], "within_role": "EXPENSE_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_SOCIAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chi phí thu hồi nợ", "Chi thu hồi nợ"], "within_role": "EXPENSE_PARENT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_DEBT_RECOVERY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Chi khác",
+            "Chi phí khác",
+            "Chi phí tài trợ khác",
+            "Chi về hoạt động kinh doanh khác"
+          ],
+          "within_role": "EXPENSE_PARENT"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "OTHER_ACTIVITY",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ mua bán chứng khoán đầu tư",
+    "Chi phí hoạt động"
+  ],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Lãi thuần từ hoạt động khác",
+      "Lãi/lỗ thuần từ hoạt động khác",
+      "Lỗ/lãi thuần từ hoạt động khác",
+      "Lỗ thuần từ hoạt động khác",
+      "Lãi thuần từ hoạt động kinh doanh khác",
+      "Lãi/lỗ thuần từ hoạt động kinh doanh khác",
+      "Lãi thuần"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "NET_OTHER_ACTIVITY"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["INCOME_PARENT", "EXPENSE_PARENT"],
+    ["INCOME_DEBT_RECOVERY", "INCOME_DERIVATIVE", "NET_OTHER"]
+  ],
+  "structural_reset_aliases": [
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ mua bán chứng khoán đầu tư",
+    "Chi phí hoạt động"
+  ]
+}
