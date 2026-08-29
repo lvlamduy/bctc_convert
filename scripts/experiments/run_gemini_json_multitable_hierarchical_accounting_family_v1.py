@@ -244,6 +244,23 @@ PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES = (
         "size_bytes": 114053,
     },
 )
+PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES = (
+    {
+        "format_version": "SERVICE_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0082-service-activity-8bank-codex-verified-mapping-v1.json",
+        "sha256": "a49d6f3c8704faaf1e586aef6a8641a934ff0ba720c837c823e7e4395745c327",
+        "size_bytes": 107708,
+    },
+    {
+        "format_version": "ANNUAL_2025_SERVICE_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0137-annual-2025-service-activity-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "99b47e270fce24884c19c524d72e972feda530098618b6cad0cde02588d20f86",
+        "size_bytes": 238146,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -538,6 +555,55 @@ PINNED_INTEREST_EXPENSE_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "a5c67153914dc233d191373559d01e8d896d0a6632e079071827d2ffbd90150e",
     "mappings": "e5e1afac7053bae79597a52594b97cfe960941f2f4ec775ea402fda320e64203",
 }
+PINNED_SERVICE_ACTIVITY_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "3aba5b4db43e39cee7d34ac9b8692be99c718a34db4db8df9554a74c067d05d3"
+    ),
+    "accepted_cluster_count": 68,
+    "accepted_fragment_count": 139,
+    "candidate_disposition_axis_sha256": (
+        "1a8e084668152fcdd4b13d76b26b580c7135d0db35e92bb96b3aafe5cced09b1"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 72, READY: 68, UNRESOLVED: 0},
+    "query_policy_sha256": "cf3cddf0257154edf53f5d89084aa58a0b4778d2d899066bd5c5e34f0e557072",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_SERVICE_ACTIVITY_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 869,
+    "not_observed_count": 72,
+    "ready_count": 68,
+    "unresolved_count": 0,
+}
+PINNED_SERVICE_ACTIVITY_RELEASE_AUDIT_METRICS = {
+    "equation_count": 289,
+    "historical_comparator_exact_count": 160,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 144,
+    "historical_mapping_record_count": 144,
+    "mapping_count": 869,
+}
+PINNED_SERVICE_ACTIVITY_RELEASE_AXIS_COUNTS = {
+    "clusters": 68,
+    "equations": 289,
+    "historical_comparator": 160,
+    "mappings": 869,
+}
+PINNED_SERVICE_ACTIVITY_RELEASE_AXIS_SHA256 = {
+    "clusters": "756eb6669e5d7a2faa1891c8ebe3bfba45b901a175346b54f67e7fd527fd5b94",
+    "equations": "1a95f36b9a461de9b5ed0d4cc8132fe444d5c0052652213e60cb1d279fe9725e",
+    "historical_comparator": "877ef3a3aa48059abb8014bfeebcbed8e9d59823933d6a293ab288e5033c337f",
+    "mappings": "a18ee4e8f5b7e00f76eafda633c3b25b1152fd97a2420b9bfd42db735e6bf310",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -755,6 +821,8 @@ def _historical_oracle_refs(
         return PINNED_INTEREST_INCOME_HISTORICAL_ORACLES
     if family_id == "INTEREST_EXPENSE":
         return PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES
+    if family_id == "SERVICE_ACTIVITY":
+        return PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -820,6 +888,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_INTEREST_EXPENSE_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_INTEREST_EXPENSE_QUERY_RECEIPT,
             "sweep_metrics": PINNED_INTEREST_EXPENSE_RELEASE_METRICS,
+        }
+    if family_id == "SERVICE_ACTIVITY":
+        return {
+            "axis_counts": PINNED_SERVICE_ACTIVITY_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_SERVICE_ACTIVITY_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_SERVICE_ACTIVITY_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_SERVICE_ACTIVITY_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_SERVICE_ACTIVITY_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

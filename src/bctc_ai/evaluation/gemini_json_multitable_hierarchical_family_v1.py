@@ -117,6 +117,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     }
     optional_evaluation_fields = {
         "direct_frontier_policy",
+        "document_cluster_policy",
         "duplicate_role_aggregation_policy",
         "equation_consumed_unmatched_residual_role",
         "family_root_population_policy",
@@ -126,6 +127,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "money_metric_policy",
         "owner_surface_kinds",
         "period_lane_policy",
+        "query_owner_aliases",
+        "root_component_equation_policy",
+        "row_population_context_policy",
         "row_alias_prefix_roles",
         "structural_marker_policy",
         "supplemental_owner_aliases",
@@ -230,6 +234,30 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "CURRENT_REQUIRED_COMPARATIVE_IF_SOURCE_VISIBLE",
     }:
         raise _error("multi-table hierarchical period lane policy is invalid")
+    document_cluster_policy = evaluation_spec.get(
+        "document_cluster_policy", "ONE_EXPLICIT_OWNER_RESET_FENCE"
+    )
+    if document_cluster_policy not in {
+        "ONE_EXPLICIT_OWNER_RESET_FENCE",
+        "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT",
+    }:
+        raise _error("multi-table hierarchical document cluster policy is invalid")
+    row_population_context_policy = evaluation_spec.get(
+        "row_population_context_policy", "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES"
+    )
+    if row_population_context_policy not in {
+        "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES",
+        "AT_LEAST_TWO_DECLARED_CHILD_ROLES",
+    }:
+        raise _error("multi-table hierarchical row population context policy is invalid")
+    root_component_equation_policy = evaluation_spec.get(
+        "root_component_equation_policy", "DECLARED_DIRECT_SUM"
+    )
+    if root_component_equation_policy not in {
+        "DECLARED_DIRECT_SUM",
+        "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
+    }:
+        raise _error("multi-table hierarchical root component equation policy is invalid")
     duplicate_role_aggregation_policy = evaluation_spec.get(
         "duplicate_role_aggregation_policy", "DECLARED_SAME_ROLE_SOURCE_ROW_SUM"
     )
@@ -291,6 +319,15 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     supplemental_owner_aliases = sorted(
         {_normalized(alias) for alias in supplemental_owner_aliases}
     )
+    query_owner_aliases = evaluation_spec.get("query_owner_aliases")
+    if query_owner_aliases is not None and (
+        type(query_owner_aliases) is not list
+        or not query_owner_aliases
+        or any(type(alias) is not str or not _normalized(alias) for alias in query_owner_aliases)
+    ):
+        raise _error("multi-table hierarchical query owner aliases are invalid")
+    if query_owner_aliases is not None:
+        query_owner_aliases = sorted({_normalized(alias) for alias in query_owner_aliases})
     role_unit_overrides = {}
     for item in evaluation_spec.get("role_unit_overrides", []):
         if (
@@ -462,7 +499,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "hard_negative_aliases": canonical_clone_v1(topology["hard_negative_aliases"]),
         "leading_component_policy": evaluation_spec["component_policy"],
         "owner_aliases": sorted(
-            {
+            query_owner_aliases
+            if query_owner_aliases is not None
+            else {
                 *topology["parent"]["aliases"],
                 *supplemental_owner_aliases,
             }
@@ -481,6 +520,12 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["row_alias_prefix_roles"] = row_alias_prefix_roles
     if "supplemental_owner_aliases" in evaluation_spec:
         query_policy["supplemental_owner_aliases"] = supplemental_owner_aliases
+    if "query_owner_aliases" in evaluation_spec:
+        query_policy["query_owner_aliases"] = query_owner_aliases
+    if "document_cluster_policy" in evaluation_spec:
+        query_policy["document_cluster_policy"] = document_cluster_policy
+    if "row_population_context_policy" in evaluation_spec:
+        query_policy["row_population_context_policy"] = row_population_context_policy
     return {
         "aggregate_duplicate_roles": aggregate_duplicate_roles,
         "aliases_by_role": aliases_by_role,
@@ -493,6 +538,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "derived_role_equations": derived_role_equations,
         "detail_context_roles": detail_context_roles,
         "direct_frontier_policy": direct_frontier_policy,
+        "document_cluster_policy": document_cluster_policy,
         "duplicate_role_aggregation_policy": duplicate_role_aggregation_policy,
         "engine_format_version": ENGINE_FORMAT_VERSION,
         "equation_consumed_unmatched_residual_role": (equation_consumed_unmatched_residual_role),
@@ -509,6 +555,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "presence_anchor_roles": presence_anchor_roles,
         "query_policy": query_policy,
         "root_component_roles": root_component_roles,
+        "root_component_equation_policy": root_component_equation_policy,
+        "row_population_context_policy": row_population_context_policy,
         "role_unit_overrides": role_unit_overrides,
         "row_alias_prefix_roles": row_alias_prefix_roles,
         "schema": canonical_clone_v1(schema_binding_spec),
@@ -831,6 +879,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     matched_scopes_by_hit: dict[tuple[int, str], set[str]] = {}
     ambiguous_rows = []
     inverted_hierarchy_scope_rows = []
+    ordered_root_scope_resolutions = []
     unscoped_shared_child_rows = []
     unbound_money_rows = []
     total_rows = []
@@ -847,9 +896,11 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         if type(row) is not dict or type(row.get("values_exact")) is not list:
             continue
         values = row["values_exact"]
-        if "owner_surface_kinds" in compiled_specs["query_policy"] and _normalized(
-            row.get("label_exact")
-        ) in set(compiled_specs["topology"]["parent"]["aliases"]):
+        root_label = _normalized(row.get("label_exact"))
+        root_label = re.sub(r"^(?:[ivxlcdm]+|[0-9]+)\s+", "", root_label)
+        if "owner_surface_kinds" in compiled_specs["query_policy"] and root_label in set(
+            compiled_specs["topology"]["parent"]["aliases"]
+        ):
             family_root_row_ordinals.append(row_ordinal)
         visible = any(
             ordinal <= len(values) and values[ordinal - 1] is not None for ordinal in money_ordinals
@@ -1058,6 +1109,40 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                     matched = additive
                 else:
                     matched = structural
+        if (
+            len(matched) > 1
+            and compiled_specs["row_population_context_policy"]
+            == "AT_LEAST_TWO_DECLARED_CHILD_ROLES"
+        ):
+            preceding_root_hits = [
+                hit
+                for hit in role_hits
+                if hit["role"] in compiled_specs["root_component_roles"]
+                and hit["row_ordinal"] < row_ordinal
+                and hit["row_kind"] in {"GROUP", "SUBTOTAL", "TOTAL"}
+            ]
+            if preceding_root_hits:
+                nearest = max(preceding_root_hits, key=lambda hit: hit["row_ordinal"])
+                scoped = [
+                    role
+                    for role in matched
+                    if any(
+                        matcher["within_role"] == nearest["role"]
+                        for matcher in compiled_specs["matchers_by_role"][role]
+                    )
+                ]
+                if len(scoped) == 1:
+                    ordered_root_scope_resolutions.append(
+                        {
+                            "candidate_roles": sorted(matched),
+                            "preceding_root_role": nearest["role"],
+                            "preceding_root_row_ordinal": nearest["row_ordinal"],
+                            "resolved_role": scoped[0],
+                            "row_ordinal": row_ordinal,
+                            "rule": "NEAREST_PRECEDING_VISIBLE_STRUCTURAL_ROOT_SCOPES_CHILD",
+                        }
+                    )
+                    matched = scoped
         if len(matched) > 1:
             declared_scopes = {
                 role: {
@@ -1127,16 +1212,21 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         for hit in role_hits
         for scope in matched_scopes_by_hit[(hit["row_ordinal"], hit["role"])]
     }
-    anchored_within_roles = {
-        scope
-        for hit in role_hits
-        if hit["role"] in compiled_specs["presence_anchor_roles"]
-        for scope in matched_scopes_by_hit[(hit["row_ordinal"], hit["role"])]
-        if any(
-            matcher["within_role"] == scope and matcher["presence_anchor"]
-            for matcher in compiled_specs["matchers_by_role"][hit["role"]]
-        )
-    }
+    anchored_within_roles = (
+        {
+            scope
+            for hit in role_hits
+            if hit["role"] in compiled_specs["presence_anchor_roles"]
+            for scope in matched_scopes_by_hit[(hit["row_ordinal"], hit["role"])]
+            if any(
+                matcher["within_role"] == scope and matcher["presence_anchor"]
+                for matcher in compiled_specs["matchers_by_role"][hit["role"]]
+            )
+        }
+        if compiled_specs["row_population_context_policy"]
+        == "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES"
+        else set()
+    )
     continuation_heading = any(
         re.search(r"\b(?:tiep theo|continued)\b", _normalized(value))
         for value in (table.get("title_exact"), section.get("title_exact"))
@@ -1259,6 +1349,8 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         )
     if "owner_surface_kinds" in compiled_specs["query_policy"]:
         material["family_root_row_ordinals"] = family_root_row_ordinals
+    if compiled_specs["row_population_context_policy"] == "AT_LEAST_TWO_DECLARED_CHILD_ROLES":
+        material["ordered_root_scope_resolutions"] = ordered_root_scope_resolutions
     return {
         **material,
         "classification_id": "gjmthfcv1:classification:" + canonical_json_sha256_v1(material),
@@ -1293,6 +1385,224 @@ def _region(item: Mapping[str, Any], fragment_ordinal: int) -> dict[str, Any]:
         "source_logical_name": record["source_logical_name"],
         "source_sha256": record["source_sha256"],
         "table_id": item["table_id"],
+    }
+
+
+def _coalesce_document_declared_root_components_v1(
+    *,
+    pages: Sequence[Mapping[str, Any]],
+    table_axis: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compose one document graph from declared component roots and result.
+
+    Some disclosures print two independently totalled sibling populations and
+    their source-visible result in separate sections.  An owner interval cannot
+    represent that graph without either dropping one sibling or swallowing the
+    remainder of the document.  This policy therefore inventories every MONEY
+    table, selects only tables carrying a declared family role/result signal,
+    and requires the complete configured root-component set plus the visible
+    result.  Values never select a table; the evaluator still proves every
+    local subtotal and the final equation afterwards.
+    """
+
+    root_roles = set(compiled_specs["root_component_roles"])
+
+    def declared_root_ancestors(role: str) -> set[str]:
+        pending = [role]
+        seen = set()
+        roots = set()
+        while pending:
+            current = pending.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            if current in root_roles:
+                roots.add(current)
+            pending.extend(
+                matcher["within_role"]
+                for matcher in compiled_specs["matchers_by_role"].get(current, [])
+                if matcher["within_role"] is not None
+            )
+        return roots
+
+    def authenticated_table_roots(item: Mapping[str, Any]) -> set[str]:
+        classification = item["classification"]
+        return root_roles.intersection(_classification_roles(classification))
+
+    def detailed_table_roots(item: Mapping[str, Any]) -> set[str]:
+        classification = item["classification"]
+        roles = _classification_roles(classification)
+        table_roots = authenticated_table_roots(item)
+        return {
+            root
+            for root in table_roots
+            if len({role for role in roles - root_roles if root in declared_root_ancestors(role)})
+            >= 2
+        }
+
+    def declared_signal(item: Mapping[str, Any]) -> bool:
+        classification = item["classification"]
+        roles = _classification_roles(classification)
+        table_roots = authenticated_table_roots(item)
+        # A generic child alias outside an authenticated family population is
+        # not document-level family evidence.  For example, an unrelated
+        # operating-expense note may contain a row labelled ``Chi khac``.  The
+        # child becomes evidence only when the same table has an explicit root
+        # carrier or a context resolved from at least two declared siblings.
+        scoped_children = {
+            role
+            for role in roles - root_roles
+            if declared_root_ancestors(role).intersection(table_roots)
+        }
+        return bool(
+            table_roots
+            or scoped_children
+            or classification.get("family_root_row_ordinals")
+            or classification.get("ambiguous_rows")
+            and table_roots
+            or classification.get("typed_control_conflict_disposition")
+            and table_roots
+        )
+
+    signalled_items = [item for item in table_axis if declared_signal(item)]
+
+    def eligible_family_component(item: Mapping[str, Any]) -> bool:
+        classification = item["classification"]
+        disposition = classification.get("typed_control_disposition")
+        return bool(
+            disposition is None
+            or (
+                disposition == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+                and classification.get("family_root_row_ordinals")
+            )
+        )
+
+    def source_result_carrier(item: Mapping[str, Any]) -> bool:
+        classification = item["classification"]
+        return bool(
+            classification.get("typed_control_disposition") == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+            and classification.get("family_root_row_ordinals")
+        )
+
+    family_items = [
+        item
+        for item in signalled_items
+        if eligible_family_component(item)
+        and (detailed_table_roots(item) or source_result_carrier(item))
+    ]
+    roles = {
+        role for item in family_items for role in _classification_roles(item["classification"])
+    }
+    result_visible = any(
+        item["classification"].get("family_root_row_ordinals") for item in family_items
+    )
+
+    detailed_roots = {root for item in family_items for root in detailed_table_roots(item)}
+    reasons = []
+    missing_roots = sorted(root_roles - roles)
+    if signalled_items and missing_roots:
+        reasons.append("DOCUMENT_DECLARED_ROOT_COMPONENTS_INCOMPLETE:" + ",".join(missing_roots))
+    if signalled_items and not result_visible:
+        reasons.append("DOCUMENT_SOURCE_VISIBLE_RESULT_NOT_OBSERVED")
+    missing_detailed_roots = sorted(root_roles - detailed_roots)
+    summary_only = bool(not detailed_roots and not missing_roots and result_visible)
+    if signalled_items and detailed_roots and missing_detailed_roots:
+        reasons.append(
+            "DOCUMENT_DECLARED_ROOT_DETAIL_POPULATIONS_INCOMPLETE:"
+            + ",".join(missing_detailed_roots)
+        )
+    for item in signalled_items:
+        conflict = item["classification"].get("typed_control_conflict_disposition")
+        if conflict is not None and not eligible_family_component(item):
+            reasons.append(
+                "TYPED_CONTROL_AND_DECLARED_FAMILY_ROLE_CONFLICT:"
+                + conflict
+                + ":"
+                + ":".join(
+                    (
+                        item["record"]["page_json_version_id"],
+                        item["section_id"],
+                        item["table_id"],
+                    )
+                )
+            )
+
+    selected_keys = {
+        (item["record"]["page_json_version_id"], item["section_id"], item["table_id"])
+        for item in family_items
+    }
+    inventory = []
+    for item in table_axis:
+        key = (item["record"]["page_json_version_id"], item["section_id"], item["table_id"])
+        classification = item["classification"]
+        if key in selected_keys:
+            disposition = "SELECTED_DOCUMENT_DECLARED_FAMILY_COMPONENT"
+        elif classification.get("typed_control_disposition") is not None:
+            disposition = "EXCLUDED_TYPED_CONTROL"
+        elif key in {
+            (
+                candidate["record"]["page_json_version_id"],
+                candidate["section_id"],
+                candidate["table_id"],
+            )
+            for candidate in signalled_items
+        }:
+            disposition = "EXCLUDED_NONDETAILED_DECLARED_ROOT_POPULATION"
+        else:
+            disposition = "OUTSIDE_DOCUMENT_DECLARED_FAMILY_GRAPH"
+        inventory.append(
+            {
+                "classification": canonical_clone_v1(classification),
+                "disposition": disposition,
+                "page_json_version_id": item["record"]["page_json_version_id"],
+                "physical_page": item["record"]["physical_page"],
+                "position": item["position"],
+                "section_id": item["section_id"],
+                "table_id": item["table_id"],
+            }
+        )
+
+    complete = bool(
+        family_items
+        and not missing_roots
+        and not missing_detailed_roots
+        and result_visible
+        and not reasons
+    )
+    regions = (
+        [_region(item, ordinal) for ordinal, item in enumerate(family_items, start=1)]
+        if complete
+        else []
+    )
+    status = (
+        READY if regions else NOT_OBSERVED if summary_only or not signalled_items else UNRESOLVED
+    )
+    material = {
+        "component_regions": regions,
+        "declared_money_table_inventory": inventory,
+        "document_id": pages[0]["document_id"],
+        "document_ordinal": pages[0]["document_ordinal"],
+        "owner_receipt": (
+            None
+            if not signalled_items
+            else {
+                "component_roles": sorted(roles),
+                "detailed_root_roles": sorted(detailed_roots),
+                "policy": "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT",
+                "result_role": compiled_specs["topology"]["parent"]["role"],
+                "root_component_roles": sorted(root_roles),
+                "selected_component_positions": [item["position"] for item in family_items],
+            }
+        ),
+        "reasons": sorted(set(reasons)),
+        "source_logical_name": pages[0]["source_logical_name"],
+        "source_sha256": pages[0]["source_sha256"],
+        "status": status,
+    }
+    return {
+        **material,
+        "cluster_id": "gjmthfcv1:cluster:" + canonical_json_sha256_v1(material),
     }
 
 
@@ -1428,6 +1738,15 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                             "table_id": f"t{table_ordinal}",
                         }
                     )
+
+    if compiled_specs["document_cluster_policy"] == (
+        "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
+    ):
+        return _coalesce_document_declared_root_components_v1(
+            pages=pages,
+            table_axis=table_axis,
+            compiled_specs=compiled_specs,
+        )
 
     intervals = []
     for owner in sorted(owner_markers, key=lambda item: item["position"]):
@@ -1817,6 +2136,11 @@ def _duration_semantic_period_roles(value: str) -> list[str]:
     # phrase and a genuine comparative marker.  The latter must survive and
     # conflict with the current-year date/year evidence below.
     folded = re.sub(r"\bthang\s+dau\s+nam\b", " ", _normalized(value))
+    folded = re.sub(
+        r"\b(?:luy\s+ke\s+)?(?:tu\s+)?dau\s+nam(?:\s+den\s+cuoi\s+quy(?:\s+nay)?)?\b",
+        " ",
+        folded,
+    )
     return _semantic_period_roles(folded)
 
 
@@ -1831,21 +2155,37 @@ def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
 
     columns = table.get("columns")
     assert type(columns) is list
-    money_ordinals = [
+    all_money_ordinals = [
         ordinal
         for ordinal, column in enumerate(columns, start=1)
         if type(column) is dict and column.get("value_kind") == "MONEY"
     ]
+    money_ordinals = list(all_money_ordinals)
+    excluded_parallel_money_ordinals = []
+    if len(money_ordinals) > 2:
+        cumulative_ordinals = [
+            ordinal
+            for ordinal in money_ordinals
+            if any(
+                marker in _normalized(_header_text(columns[ordinal - 1]))
+                for marker in ("luy ke", "tu dau nam", "den cuoi quy")
+            )
+        ]
+        if len(money_ordinals) == 4 and len(cumulative_ordinals) == 2:
+            excluded_parallel_money_ordinals = [
+                ordinal for ordinal in money_ordinals if ordinal not in cumulative_ordinals
+            ]
+            money_ordinals = cumulative_ordinals
     if not 1 <= len(money_ordinals) <= 2:
         return {
             "complete": False,
             "lane_keys": [],
             "layout_kind": None,
-            "money_column_ordinals": money_ordinals,
+            "money_column_ordinals": all_money_ordinals,
             "reasons": ["DURATION_MONEY_COLUMN_CARDINALITY_NOT_ONE_OR_TWO"],
             "source_period_axis": {
                 "complete": False,
-                "money_column_ordinals": money_ordinals,
+                "money_column_ordinals": all_money_ordinals,
                 "reasons": ["DURATION_MONEY_COLUMN_CARDINALITY_NOT_ONE_OR_TWO"],
             },
         }
@@ -2000,7 +2340,7 @@ def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
             source_lane_keys.append(["DURATION_BARE_YEAR", str(item["year"])])
         else:
             source_lane_keys.append(["SEMANTIC_ALIAS", item["semantic_roles"][0]])
-    return {
+    result = {
         "complete": True,
         "lane_keys": [
             ["SEMANTIC_ALIAS", role]
@@ -2019,6 +2359,14 @@ def _duration_multitable_lane_axis(table: Mapping[str, Any]) -> dict[str, Any]:
             "rule": "SOURCE_VISIBLE_DURATION_RANGE_END_DATE_BARE_YEAR_OR_SEMANTIC_ROLE",
         },
     }
+    if excluded_parallel_money_ordinals:
+        result["excluded_parallel_duration_money_column_ordinals"] = (
+            excluded_parallel_money_ordinals
+        )
+        result["source_period_axis"]["selection_rule"] = (
+            "EXACT_TWO_CUMULATIVE_DURATION_COLUMNS_FROM_PARALLEL_QUARTER_AND_YTD_AXIS"
+        )
+    return result
 
 
 def _multitable_lane_axis(
@@ -2730,6 +3078,7 @@ def _derive_declared_role_equations(
 def _derive_complete_top_level_family_root(
     records: Sequence[Mapping[str, Any]],
     *,
+    proven_roles: set[str],
     source_only_axis: Sequence[Mapping[str, Any]],
     source_equations: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
@@ -2787,7 +3136,11 @@ def _derive_complete_top_level_family_root(
             (canonical_json_sha256_v1(root["lane_keys"]), root["valuation_basis"])
             for root in existing_roots
         ]
-        if len(set(root_population_keys)) != len(root_population_keys):
+        signed_policy = (
+            compiled_specs["root_component_equation_policy"]
+            == "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE"
+        )
+        if not signed_policy and len(set(root_population_keys)) != len(root_population_keys):
             return output, [], [], ["FAMILY_ROOT_SOURCE_POPULATION_IS_AMBIGUOUS"]
 
         equation_by_root_population = []
@@ -2810,6 +3163,26 @@ def _derive_complete_top_level_family_root(
             if len(root_equations) != 1:
                 return output, [], [], ["FAMILY_ROOT_SOURCE_EQUATION_IS_NOT_UNIQUE"]
             equation_by_root_population.append((root, root_equations[0]))
+        reconciled_roots = []
+        for key in dict.fromkeys(root_population_keys):
+            population = [
+                root
+                for root, root_key in zip(existing_roots, root_population_keys, strict=True)
+                if root_key == key
+            ]
+            if len({tuple(_coefficients(root)) for root in population}) != 1:
+                return output, [], [], ["FAMILY_ROOT_CORROBORATING_SOURCE_VALUES_CONFLICT"]
+            selected = canonical_clone_v1(population[0])
+            if len(population) > 1:
+                selected["source_refs"] = [
+                    source_ref for root in population for source_ref in root["source_refs"]
+                ]
+                selected["state"] = "CORROBORATED_SOURCE_VISIBLE_FAMILY_ROOT_PRESENTATIONS"
+            reconciled_roots.append(selected)
+        if signed_policy:
+            output = [record for record in output if record["role"] != "FAMILY_ROOT_TOTAL"]
+            output.extend(reconciled_roots)
+
         equation_result_axes = [
             source_identity_axis(equation.get("result_source_refs", []))
             for equation in source_equations
@@ -2841,29 +3214,82 @@ def _derive_complete_top_level_family_root(
                     for role in unproven_subtotal_roles
                 ],
             )
-        return (
-            output,
-            [],
-            [
-                {
-                    "coefficients": canonical_clone_v1(source_equation["result_coefficients"]),
-                    "component_source_refs": canonical_clone_v1(
-                        source_equation["component_source_refs"]
-                    ),
-                    "result_state": (
-                        "SOURCE_VISIBLE_FAMILY_ROOT_BOUND_TO_UNIQUE_EXACT_TABLE_FRONTIER"
-                    ),
-                    "rule": (
-                        "SOURCE_VISIBLE_FAMILY_ROOT_USES_UNIQUE_EXACT_TABLE_LOCAL_"
-                        "DIRECT_FRONTIER_DISCLOSURE_MAPPINGS_ARE_NOT_ASSUMED_ADDITIVE"
-                    ),
-                    "source_equation_id": source_equation["equation_id"],
-                    "source_refs": canonical_clone_v1(root["source_refs"]),
-                }
-                for root, source_equation in equation_by_root_population
-            ],
-            [],
+        receipts = [
+            {
+                "coefficients": canonical_clone_v1(source_equation["result_coefficients"]),
+                "component_source_refs": canonical_clone_v1(
+                    source_equation["component_source_refs"]
+                ),
+                "result_state": ("SOURCE_VISIBLE_FAMILY_ROOT_BOUND_TO_UNIQUE_EXACT_TABLE_FRONTIER"),
+                "rule": (
+                    "SOURCE_VISIBLE_FAMILY_ROOT_USES_UNIQUE_EXACT_TABLE_LOCAL_"
+                    "DIRECT_FRONTIER_DISCLOSURE_MAPPINGS_ARE_NOT_ASSUMED_ADDITIVE"
+                ),
+                "source_equation_id": source_equation["equation_id"],
+                "source_refs": canonical_clone_v1(root["source_refs"]),
+            }
+            for root, source_equation in equation_by_root_population
+        ]
+        if not signed_policy:
+            return output, [], receipts, []
+        if len(reconciled_roots) != 1:
+            return output, [], receipts, ["FAMILY_ROOT_SIGNED_POPULATION_IS_NOT_UNIQUE"]
+        root = reconciled_roots[0]
+        components = []
+        for role in compiled_specs["root_component_roles"]:
+            matches = [
+                record
+                for record in output
+                if record["role"] == role
+                and record["lane_keys"] == root["lane_keys"]
+                and record["valuation_basis"] == root["valuation_basis"]
+            ]
+            if len(matches) != 1 or role not in proven_roles:
+                return (
+                    output,
+                    [],
+                    receipts,
+                    ["FAMILY_ROOT_DECLARED_COMPONENT_POPULATION_NOT_EXACT:" + role],
+                )
+            components.append(matches[0])
+        multiplier_candidates = [
+            [1, *suffix]
+            for suffix in product((-1, 1), repeat=max(0, len(components) - 1))
+            if _local_equation(
+                equation_kind="EXACT_UNIQUE_DECLARED_ROOT_COMPONENT_SIGN_ORIENTATION",
+                components=components,
+                result=root,
+                multipliers=[1, *suffix],
+            )["status"]
+            == "EXACT"
+        ]
+        if len(multiplier_candidates) != 1:
+            return (
+                output,
+                [],
+                receipts,
+                [
+                    "FAMILY_ROOT_DECLARED_COMPONENT_SIGN_ORIENTATION_"
+                    + ("NOT_UNIQUE" if multiplier_candidates else "MISMATCH")
+                ],
+            )
+        multipliers = multiplier_candidates[0]
+        signed_equation = _local_equation(
+            equation_kind="EXACT_UNIQUE_DECLARED_ROOT_COMPONENT_SIGN_ORIENTATION",
+            components=components,
+            result=root,
+            multipliers=multipliers,
         )
+        receipts.append(
+            {
+                "component_roles": canonical_clone_v1(compiled_specs["root_component_roles"]),
+                "multipliers": multipliers,
+                "result_role": "FAMILY_ROOT_TOTAL",
+                "rule": "UNIQUE_PLUS_MINUS_ONE_ORIENTATION_FIRST_DECLARED_COMPONENT_POSITIVE",
+                "source_equation_id": signed_equation["equation_id"],
+            }
+        )
+        return output, [signed_equation], receipts, []
 
     if any(
         record["role"] != "FAMILY_ROOT_TOTAL" and not reaches_root(record["role"])
@@ -3900,6 +4326,17 @@ def _extract_table_local_records(
     assert type(rows) is list
     family_root_ordinals = set(classification.get("family_root_row_ordinals", []))
     declared_role_ordinals = {hit["row_ordinal"] for hit in classification["role_hits"]}
+    document_source_result_carrier = bool(
+        compiled_specs["document_cluster_policy"]
+        == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
+        and classification.get("typed_control_disposition") == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+        and family_root_ordinals
+    )
+    source_result_population_ordinals = family_root_ordinals | {
+        hit["row_ordinal"]
+        for hit in classification["role_hits"]
+        if hit["role"] in compiled_specs["root_component_roles"]
+    }
     flat_family_row_ordinals: set[int] = set()
     for root_ordinal in family_root_ordinals:
         root_row = rows[root_ordinal - 1]
@@ -4000,6 +4437,8 @@ def _extract_table_local_records(
     parse_reasons = []
     for row_ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
+            continue
+        if document_source_result_carrier and row_ordinal not in source_result_population_ordinals:
             continue
         if scope_to_explicit_family_root and not row_inside_explicit_family_root(row_ordinal):
             continue
@@ -4342,6 +4781,12 @@ def _extract_table_local_records(
                     carrier_ordinal in family_root_ordinals
                     and rows[carrier_ordinal - 1].get("row_kind") == "TOTAL"
                 )
+                and not (
+                    compiled_specs["document_cluster_policy"]
+                    == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
+                    and hit_by_row.get(carrier_ordinal) in compiled_specs["root_component_roles"]
+                    and rows[carrier_ordinal - 1].get("row_kind") == "TOTAL"
+                )
             )
             or not _normalized(rows[carrier_ordinal - 1].get("label_exact"))
         ):
@@ -4422,13 +4867,39 @@ def _extract_table_local_records(
         # Suppress descendants of a visible-valued ancestor from the table's
         # top-level direct frontier; their own hierarchy equation above is the
         # sole consumer of those descendants.
+        frontier_lower_bound = (
+            prior_total
+            if compiled_specs["document_cluster_policy"]
+            == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
+            else 0
+        )
         labelled_hierarchy_carriers = [
             (ordinal, row_records[ordinal])
             for ordinal in total_ordinals
-            if ordinal < total_ordinal and proven_carrier_children.get(ordinal)
+            if frontier_lower_bound < ordinal < total_ordinal
+            and proven_carrier_children.get(ordinal)
+        ]
+        # ``interval`` deliberately retains the raw source rows for the
+        # ordinary SINCE_PRIOR_TOTAL candidate above.  The canonical
+        # top-level frontier, however, must use the already authenticated
+        # direct-child proxy for a label-only structural GROUP.  Otherwise a
+        # second sibling population after a printed subtotal contributes an
+        # all-blank carrier instead of its exact child sum, while the first
+        # population (which happens to use ``preceding``) succeeds.  Apply the
+        # same projection symmetrically on both sides of a prior total.
+        top_level_preceding = [
+            (
+                ordinal,
+                label_only_group_proxies.get(ordinal, ([], record))[1],
+            )
+            for ordinal, record in (
+                interval
+                if frontier_lower_bound and interval
+                else [item for item in preceding if item[0] > frontier_lower_bound]
+            )
         ]
         top_level_source = sorted(
-            [*preceding, *labelled_hierarchy_carriers], key=lambda item: item[0]
+            [*top_level_preceding, *labelled_hierarchy_carriers], key=lambda item: item[0]
         )
 
         def proven_descendants(carrier_ordinal: int) -> set[int]:
@@ -4489,11 +4960,68 @@ def _extract_table_local_records(
             ]
         matches = []
         for kind, component_axis in candidates:
-            equation = _exact_equation(
-                kind="EXACT_" + kind + "_EQUAL_PRINTED_TOTAL",
-                components=[record for _ordinal, record in component_axis],
-                result=total,
+            signed_source_root = bool(
+                document_source_result_carrier
+                and total_ordinal in family_root_ordinals
+                and compiled_specs["root_component_equation_policy"]
+                == "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE"
             )
+            if signed_source_root:
+                # An income statement may print service expense either as a
+                # negative coefficient or as a positive magnitude.  The
+                # source-visible net row selects neither convention by label
+                # or value.  Require the already-selected direct frontier to
+                # contain each declared root component exactly once, order it
+                # by the declarative graph, and accept only one +/-1
+                # orientation with the first component positive.  This is a
+                # source equation veto/proof, not a backsolve.
+                by_root_role: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
+                for ordinal, record in component_axis:
+                    role = hit_by_row.get(ordinal)
+                    if role in compiled_specs["root_component_roles"]:
+                        by_root_role[role].append((ordinal, record))
+                if any(
+                    len(by_root_role.get(role, [])) != 1
+                    for role in compiled_specs["root_component_roles"]
+                ) or len(component_axis) != len(compiled_specs["root_component_roles"]):
+                    continue
+                ordered_component_axis = [
+                    by_root_role[role][0] for role in compiled_specs["root_component_roles"]
+                ]
+                multiplier_candidates = [
+                    [1, *suffix]
+                    for suffix in product(
+                        (-1, 1),
+                        repeat=max(0, len(ordered_component_axis) - 1),
+                    )
+                    if _local_equation(
+                        equation_kind=(
+                            "EXACT_UNIQUE_DECLARED_ROOT_COMPONENT_SIGN_ORIENTATION_"
+                            "EQUAL_PRINTED_TOTAL"
+                        ),
+                        components=[record for _ordinal, record in ordered_component_axis],
+                        result=total,
+                        multipliers=[1, *suffix],
+                    )["status"]
+                    == "EXACT"
+                ]
+                if len(multiplier_candidates) != 1:
+                    continue
+                component_axis = ordered_component_axis
+                equation = _local_equation(
+                    equation_kind=(
+                        "EXACT_UNIQUE_DECLARED_ROOT_COMPONENT_SIGN_ORIENTATION_EQUAL_PRINTED_TOTAL"
+                    ),
+                    components=[record for _ordinal, record in component_axis],
+                    result=total,
+                    multipliers=multiplier_candidates[0],
+                )
+            else:
+                equation = _exact_equation(
+                    kind="EXACT_" + kind + "_EQUAL_PRINTED_TOTAL",
+                    components=[record for _ordinal, record in component_axis],
+                    result=total,
+                )
             if equation is not None:
                 matches.append((kind, component_axis, equation))
         unique = {
@@ -4685,6 +5213,7 @@ def _extract_table_local_records(
                     total["valuation_basis"],
                 )
             )
+            source_visible_family_root_ordinals.add(total_ordinal)
             proven_roles.add("FAMILY_ROOT_TOTAL")
         if (
             len(context_roles) == 1
@@ -4879,7 +5408,11 @@ def _extract_table_local_records(
             "source_ref": canonical_clone_v1(record["source_refs"][0]),
         }
         for ordinal, record in sorted(row_records.items())
-        if (ordinal not in hit_by_row or ordinal in shadowed_role_ordinals)
+        if (
+            ordinal not in hit_by_row
+            or hit_by_row[ordinal] not in compiled_specs["bindings"]
+            or ordinal in shadowed_role_ordinals
+        )
         and ordinal not in total_ordinals
     ]
     unmapped_direct_family_rows = []
@@ -4954,6 +5487,24 @@ def _extract_table_local_records(
         compiled_specs=compiled_specs,
         consumed_ordinals=consumed_ordinals,
     )
+    if document_source_result_carrier:
+        # The primary statement authenticates the requested result and its
+        # exact local equation.  Detailed note populations remain the sole
+        # source of schema component mappings, preventing a repeated summary,
+        # segment table, or related-party carrier from replacing detail rows.
+        local_records = [
+            record for record in local_records if record["role"] == "FAMILY_ROOT_TOTAL"
+        ]
+        receipt["document_source_result_carrier_receipt"] = {
+            "family_root_row_ordinals": sorted(family_root_ordinals),
+            "root_component_row_ordinals": sorted(
+                source_result_population_ordinals - family_root_ordinals
+            ),
+            "rule": (
+                "PRIMARY_STATEMENT_EXACT_ROOT_COMPONENT_EQUATION_SUPPLIES_RESULT_ONLY_"
+                "DETAIL_COMPONENT_MAPPINGS_REMAIN_NOTE_LOCAL"
+            ),
+        }
     receipt["aggregation_receipts"] = aggregation_receipts
     receipt["hierarchical_duplicate_receipts"] = hierarchical_duplicate_receipts
     if supplemental_residual_projection_receipts:
@@ -4986,6 +5537,8 @@ def _extract_table_local_records(
         unconsumed_reason = "AMBIGUOUS_DECLARED_TABLE_CONTEXT_ROLE"
     elif parse_reasons:
         unconsumed_reason = "INVALID_VISIBLE_SOURCE_MONEY_CELL"
+    elif document_source_result_carrier and not source_visible_family_root_ordinals:
+        unconsumed_reason = "PRIMARY_SOURCE_RESULT_EQUATION_NOT_EXACT"
     elif unproven_conditional_zero_rows:
         unconsumed_reason = "UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW"
     elif unsealed_duplicate_roles:
@@ -5159,6 +5712,7 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         root_component_reasons,
     ) = _derive_complete_top_level_family_root(
         local_records,
+        proven_roles=proven_roles,
         source_only_axis=source_only_axis,
         source_equations=equations,
         compiled_specs=compiled_specs,
