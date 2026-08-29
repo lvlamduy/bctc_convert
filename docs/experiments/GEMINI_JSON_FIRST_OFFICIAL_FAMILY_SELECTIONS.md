@@ -60,9 +60,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 38 | `OTHER_ACTIVITY` | 72 | 68 | 0 | 587 | `gjfafstorev1:run:950f420a48368122686d77d4d2a7a9b22a3ad788a53b06c54242f1b3061e7ef5` |
 | 39 | `INCOME_TAX` | 69 | 71 | 0 | 499 | `gjfafstorev1:run:ebe7179dd4fe83c5809edf225e8969b440214a91bc1348d1bafd1aa54ff919c3` |
 | 40 | `CASH_EQUIVALENTS` | 105 | 35 | 0 | 548 | `gjfafstorev1:run:b46dbf68ed1e3d57bf8f041e408e4aa74f09139931e1942148bc387befb03b6d` |
+| 41 | `SUBSIDIARY_ACQUISITION_DISPOSAL` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:e07acd6ce0416c2af8ddcf5df43f3eff2729cc62441b1ab30e9a45063d75af91` |
 
-Tại checkpoint này database có đủ đúng bốn mươi current selection liên tục từ
-Family 1 đến Family 40. Family 41 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi mốt current selection liên tục
+từ Family 1 đến Family 41. Family 42 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -909,15 +910,46 @@ Artifact OFFICIAL:
   Cumulative results DB có 40 current selections, `quick_check` và foreign keys
   sạch, không SQLite sidecar, SHA-256
   `b9393db95bbfe81bce772176e036b2459feccaa8ba525e1fdb79c5e759c3c25e`.
+- Family 41 `SUBSIDIARY_ACQUISITION_DISPOSAL`: `READY=0`,
+  `NOT_OBSERVED=140`, `UNRESOLVED=0` và 0 mappings. Generic hierarchical
+  resolver yêu cầu đúng một explicit owner/reset fence và trọn tổ hợp ba dòng
+  numeric: total consideration RNID 1256, cash settlement RNID 1257 và tiền
+  thuộc acquired/disposed business RNID 1258. Root RNID 1255 chỉ là structural
+  context, không bao giờ được tổng hợp hoặc phát thành numeric mapping. Partial
+  graph, unknown owner-fenced money row, duplicate role/population và
+  period/unit conflict đều fail closed; không backsolve role còn thiếu.
+
+  Exact query inventory phủ đủ 8.947 selected page versions và 140 document
+  dispositions. Corpus hiện hành không có detailed three-role graph; toàn bộ
+  policy text, consolidation narrative và broad investment cash-flow caption
+  được giữ làm controls thay vì biến thành zero hoặc mapping giả. E-0093/E-0148
+  khớp 16/16 historical absence comparator records. Synthetic positive và
+  adversarial tests chứng minh complete graph map đúng ba child, không map
+  structural root, và public SQLite candidate replay loại cả coherent rehash
+  của mapping/candidate. Prompt Gemini không thay đổi và không nhận logic
+  family, graph hay phương trình.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family41-subsidiary-acquisition-disposal/sweep.json`,
+  SHA-256
+  `2e0a1355349c7d6152a4d65244664fd1f4ea175cf677844600e623fffb983cc4`;
+  audit SHA-256
+  `6c45342c79f567b01b777301ea2dfa8cfe0ce4fff5cb364c79a0da9ff7ea0c3a`.
+  Implementation commits `76dd440` và `36b02f7`; 259 shared-engine tests,
+  focused coherent-tamper regression, Ruff, format, compile, JSON, diff,
+  EXP/OFFICIAL public SQLite replay và integrity gates đều xanh. Cumulative
+  results DB có 41 current selections, `quick_check` và foreign keys sạch,
+  không SQLite sidecar, SHA-256
+  `55a8bf8c54911db7598ca4592740d349caeaa0b5091055ac42ce084c14089fef`.
 
 ## Next gate
 
-Family 41 là `SUBSIDIARY_ACQUISITION_DISPOSAL`. Khóa comparator E-0093/E-0148,
-giữ prompt Gemini tối giản và cố định; code phải tự inventory graph detailed
-subsidiary transaction gồm total consideration, cash settlement và cash held by
-the acquired/disposed business cùng period/unit/numeric axes. Policy text,
-consolidation narrative và broad investment cash-flow caption chỉ là controls,
-không phải mapping evidence. Không được hard-code bounded absences cũ theo
-bank/file/page, bỏ qua near controls hoặc ép Gemini trả một serialization
-family-specific. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
-SQLite query/candidate replay, historical comparator và đủ 140 dispositions.
+Family 42 là `EMPLOYEE_INCOME`. Khóa comparator E-0094/E-0149 và tiếp tục dùng
+prompt Gemini tối giản, cố định. Code phải tự inventory employee-count,
+salary/other/total-income, average-income, period và unit graph; phân biệt
+printed monthly average với whole-period/annual average, chỉ quy đổi về schema
+monthly sau khi numerator, employee count, source period và ratio cùng đóng
+chính xác. Không route theo bank/file/page, không ép Gemini tính tỷ lệ hay sinh
+schema family-specific, không biến policy/isolated employee count thành detailed
+note. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
+query/candidate replay, historical comparator và đủ 140 dispositions.
