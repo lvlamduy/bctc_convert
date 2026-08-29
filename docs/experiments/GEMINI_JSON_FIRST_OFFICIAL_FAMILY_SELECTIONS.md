@@ -55,9 +55,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 33 | `INVESTMENT_SECURITIES_ACTIVITY` | 112 | 28 | 0 | 424 | `gjfafstorev1:run:492e6e499ce9454e1b93fcd7deb2d6a62a19a7fcfa8dcd1971a03d6e428e36b1` |
 | 34 | `COMBINED_SECURITIES_NET` | 12 | 128 | 0 | 12 | `gjfafstorev1:run:b99ee75ed77f5f6459a05905ab8a9b25355cbfb288d9a2afea209d9726fd6f34` |
 | 35 | `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME` | 118 | 22 | 0 | 428 | `gjfafstorev1:run:d3b6d61d18c29318c11bbaea2e4a1a82209286eef69981e16be3d3803e01962c` |
+| 36 | `OPERATING_EXPENSE` | 138 | 0 | 2 | 1.648 | `gjfafstorev1:run:546ea624e42555a47a266fdd676f095786fa65897c62f8eff5d7de558a805a1d` |
 
-Tại checkpoint này database có đủ đúng ba mươi lăm current selection liên tục
-từ Family 1 đến Family 35. Family 36 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi sáu current selection liên tục
+từ Family 1 đến Family 36. Family 37 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -733,14 +734,46 @@ Artifact OFFICIAL:
   selections, `quick_check` và foreign keys sạch, không SQLite sidecar,
   SHA-256
   `92475df0a65d368f1cae96cd19e12be8601800872a518b4fe6547a5aac544fe6`.
+- Family 36 `OPERATING_EXPENSE`: `READY=138`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=2` và 1.648 mappings. Generic hierarchical resolver inventory
+  toàn bộ direct và nested population dưới một owner/reset fence, gồm employee,
+  asset, administration, tax/fee, deposit-insurance, provision và other
+  expense roles. Wrapper `Trong đó`, note/ordinal suffix, nearest-root scope và
+  source-visible partial subtotals đều được xử lý bằng code/config declarative;
+  không đổi prompt, không gọi Gemini và không route theo bank/file/page/value.
+
+  Exact query census là 140 accepted clusters/146 fragments trên đủ 8.947
+  selected page versions. Role axis READY có 138 source roots và bảy core role
+  ở cả 138 documents; các nested/optional role chỉ phát khi source nhìn thấy.
+  Toàn bộ 334 equation receipts đều `EXACT`. E-0088/E-0143 khớp 16/16
+  historical dispositions và 215/218 comparator records. Ba historical rows
+  provision gộp từng bị oracle cũ gán hẹp vào `OTHER_ASSET_PROVISION` được giữ
+  source-only vì Gemini source không chứng minh qualifier đó; không tái tạo
+  semantic overassignment cũ.
+
+  Hai trial U giữ `mappings=[]`: HDB ordinal 55 có comparative union-activity
+  cell trống nhưng không có rank proof để suy zero; VPB ordinal 138 có money
+  source hỏng `494带有` nên family root không thể chứng minh. Không backsolve,
+  sửa source hay gọi repair để cưỡng ép READY. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family36-operating-expense/sweep.json`,
+  SHA-256
+  `a61e9e5403c004203bf45a1b49605a31268845fc9e7f788eade1de415f98bc9b`;
+  audit SHA-256
+  `782d4459682ab7802cc62bdfc9201ffe988fa2b61b54498f9f9b1da560a659ad`.
+  Implementation commit `d9bc5cd`; 203 focused/adjacent/regression tests,
+  Ruff, format, compile, diff, EXP/OFFICIAL replay và SQLite integrity đều
+  xanh. Cumulative results DB có 36 current selections, `quick_check` và
+  foreign keys sạch, không SQLite sidecar, SHA-256
+  `0cbdf07c4c4cb9a6c1f0fa9899d8248bf75b751c82c213604aae2293766aba77`.
 
 ## Next gate
 
-Family 36 là `OPERATING_EXPENSE`, source schema root ReportNormId 1205 và các
-declared children 1206–1220. Khóa comparator E-0088/E-0143, giữ prompt Gemini
-tối giản và cố định; code phải tự inventory owner, nested employee/asset/admin
-frontiers, source-only schema gaps, source total, period, unit, dash/blank và
-phương trình ở cả hai lane. Không được bỏ một source row chưa có schema leaf,
-gộp provision aggregates với component mappings hoặc suy ra một child vắng
-mặt. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
+Family 37 là `CREDIT_RISK_PROVISION_EXPENSE`, source schema root ReportNormId
+1221 và các declared roles 1224–1228, 6031–6033. Khóa comparator E-0089/E-0144,
+giữ prompt Gemini tối giản và cố định; code phải tự inventory owner, trailing
+total, direct/wrapped component roles, nested general/specific frontier,
+source-only schema gaps, period, unit, dash/blank và phương trình ở cả hai lane.
+Không được biến policy text hoặc primary-statement aggregate thành detailed-note
+population, bỏ source row chưa có schema leaf, hay suy một optional component
+vắng mặt. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
 query/candidate replay, historical comparator và đủ 140 dispositions.

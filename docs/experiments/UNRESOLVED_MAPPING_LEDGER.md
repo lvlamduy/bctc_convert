@@ -3377,6 +3377,38 @@ unit conflict, cash-flow lookalike and coherent candidate-receipt drift remain
 authoritative regression gates. Every incomplete or conflicting graph must
 return `UNRESOLVED` with `mappings=[]`.
 
+## Family 36 current corpus — operating expense (`OPERATING_EXPENSE`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family36-operating-expense/sweep.json`
+
+- Census: 140 documents, `READY=138`, `NOT_OBSERVED=0`, `UNRESOLVED=2`,
+  1.648 mappings and 334 exact source/graph equations.
+- HDB ordinal 55 remains U because the comparative union-activity-expense cell
+  is source blank without a complete equation frontier or unique-rank zero
+  proof. Exact reasons are `UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW` and
+  `UNPROVEN_CONDITIONAL_SOURCE_CELL_IN_MAPPING_ROLE:UNION_ACTIVITY_EXPENSE`.
+  Trial and candidate mappings are both empty.
+- VPB ordinal 138 remains U because the source money token `494带有` is not a
+  valid visible accounting number, the exact family root cannot be proven and
+  a top-level source-only row cannot be silently discarded. Exact reasons are
+  `INVALID_VISIBLE_SOURCE_MONEY_CELL`,
+  `REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN` and
+  `UNMAPPED_TOP_LEVEL_SOURCE_ONLY_ROW_NOT_DECLARED_VALIDATION_ROLE`. Trial and
+  candidate mappings are both empty.
+- E-0088/E-0143 match all 16 historical document dispositions and 215/218
+  mapping records. The three differences are old-oracle assignments of generic
+  provision aggregates to the narrower RNID 1220 `OTHER_ASSET_PROVISION` for
+  CTG/BID sources that do not visibly prove the `other asset` qualifier. The
+  current algorithm preserves those rows as source-only evidence rather than
+  recreating a semantic overassignment.
+
+No prompt change, Gemini/API call, bank/file/page route, source-digit repair or
+backsolve was used. Unknown direct rows, duplicate populations, mixed roots,
+unproven blank zero, invalid money, period/unit conflicts and coherently drifted
+candidate receipts remain authoritative adversarial gates; every incomplete or
+conflicting graph must return `UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
