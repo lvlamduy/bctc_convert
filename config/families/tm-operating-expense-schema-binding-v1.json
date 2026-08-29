@@ -1,0 +1,24 @@
+{
+  "family_id": "OPERATING_EXPENSE",
+  "family_root_report_norm_id": 1205,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1206, "role": "TAX_FEES"},
+    {"report_norm_id": 1207, "role": "EMPLOYEE_EXPENSE"},
+    {"report_norm_id": 1208, "role": "SALARY_ALLOWANCE"},
+    {"report_norm_id": 1209, "role": "PAYROLL_CONTRIBUTIONS"},
+    {"report_norm_id": 1210, "role": "EMPLOYEE_BENEFIT"},
+    {"report_norm_id": 1211, "role": "OTHER_EMPLOYEE_EXPENSE"},
+    {"report_norm_id": 1212, "role": "ASSET_EXPENSE"},
+    {"report_norm_id": 1213, "role": "DEPRECIATION_EXPENSE"},
+    {"report_norm_id": 1214, "role": "ADMIN_EXPENSE"},
+    {"report_norm_id": 1215, "role": "TRAVEL_EXPENSE"},
+    {"report_norm_id": 1216, "role": "UNION_ACTIVITY_EXPENSE"},
+    {"report_norm_id": 1217, "role": "DEPOSIT_INSURANCE_EXPENSE"},
+    {"report_norm_id": 1218, "role": "LONG_TERM_BAD_DEBT_PROVISION"},
+    {"report_norm_id": 1219, "role": "OTHER_OPERATING_EXPENSE"},
+    {"report_norm_id": 1220, "role": "OTHER_ASSET_PROVISION"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "DURATION"
+}

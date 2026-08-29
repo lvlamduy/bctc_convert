@@ -158,19 +158,40 @@ def _matches(value: Any, alias: str) -> bool:
 
     def is_note_reference_suffix(suffix: str) -> bool:
         tokens = suffix.split()
+        if tokens[:1] == ["xem"]:
+            tokens = tokens[1:]
         if tokens[:2] != ["thuyet", "minh"]:
             return False
         reference = tokens[2:]
         if reference[:1] == ["so"]:
             reference = reference[1:]
+        if not reference:
+            return False
+        groups = []
+        current = []
+        for token in reference:
+            if token == "va":
+                if not current:
+                    return False
+                groups.append(current)
+                current = []
+            else:
+                current.append(token)
+        if not current:
+            return False
+        groups.append(current)
         return bool(
-            1 <= len(reference) <= 3
-            and reference[0].isdigit()
+            1 <= len(groups) <= 3
             and all(
-                token.isdigit()
-                or re.fullmatch(r"[a-z]", token)
-                or re.fullmatch(r"[ivxlcdm]+", token)
-                for token in reference[1:]
+                1 <= len(group) <= 3
+                and group[0].isdigit()
+                and all(
+                    token.isdigit()
+                    or re.fullmatch(r"[a-z]", token)
+                    or re.fullmatch(r"[ivxlcdm]+", token)
+                    for token in group[1:]
+                )
+                for group in groups
             )
         )
 

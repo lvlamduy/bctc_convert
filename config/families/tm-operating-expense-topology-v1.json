@@ -1,0 +1,455 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi nộp thuế và các khoản phí, lệ phí",
+            "Chi nộp thuế và các khoản lệ phí",
+            "Chi phí thuế, lệ phí và phí",
+            "Thuế và các loại phí"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TAX_FEES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí cho nhân viên",
+            "Chi phí nhân viên",
+            "Chi cho nhân viên"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_EXPENSE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi lương và phụ cấp",
+            "Trong đó: Chi lương và phụ cấp"
+          ],
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SALARY_ALLOWANCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản chi đóng góp theo lương"
+          ],
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PAYROLL_CONTRIBUTIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi trợ cấp",
+            "Chi trợ cấp thôi việc, mất việc làm"
+          ],
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_BENEFIT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi khác",
+            "Chi khác cho nhân viên",
+            "Các khoản chi khác",
+            "Khác"
+          ],
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_EMPLOYEE_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi về tài sản"],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ASSET_EXPENSE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khấu hao tài sản cố định",
+            "Chi phí khấu hao tài sản cố định",
+            "Chi phí khấu hao và khấu trừ",
+            "Khấu hao và hao mòn tài sản cố định",
+            "Chi khấu hao tài sản cố định",
+            "Chi khấu hao TSCĐ",
+            "Khấu hao TSCĐ",
+            "Chi phí khấu hao TSCĐ",
+            "Trong đó: Khấu hao tài sản cố định",
+            "Trong đó: Chi phí khấu hao tài sản cố định",
+            "Trong đó: Chi phí khấu hao TSCĐ"
+          ],
+          "within_role": "ASSET_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPRECIATION_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi thuê tài sản",
+            "Chi thuê văn phòng và tài sản",
+            "Chi về bảo dưỡng và sửa chữa tài sản",
+            "Chi khác về tài sản",
+            "Chi khác về TSCĐ",
+            "Chi khác",
+            "Khác"
+          ],
+          "presence_anchor": false,
+          "within_role": "ASSET_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ASSET_SCHEMA_GAP_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi cho hoạt động quản lý công vụ",
+            "Chi phí cho hoạt động quản lý công vụ",
+            "Chi cho hoạt động quản lý"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ADMIN_EXPENSE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công tác phí",
+            "Chi công tác phí",
+            "Trong đó: Công tác phí"
+          ],
+          "within_role": "ADMIN_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TRAVEL_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi về các hoạt động đoàn thể của TCTD",
+            "Chi phí về các hoạt động đoàn thể của TCTD",
+            "Chi phí về các hoạt động đoàn thể",
+            "Chi hoạt động đoàn thể của TCTD",
+            "Chi về các hoạt động đoàn thể",
+            "Chi hoạt động đoàn thể"
+          ],
+          "within_role": "ADMIN_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "UNION_ACTIVITY_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi khác cho hoạt động quản lý",
+            "Chi phí hoạt động khác",
+            "Chi khác"
+          ],
+          "within_role": "ADMIN_EXPENSE"
+        },
+        {
+          "aliases": [
+            "Chi phí hoạt động khác",
+            "Chi khác cho hoạt động quản lý"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_OPERATING_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí quảng cáo, tiếp thị, khuyến mại",
+            "Chi phí hội nghị, lễ tân, khánh tiết",
+            "Chi phí điện, nước, vệ sinh cơ quan"
+          ],
+          "presence_anchor": false,
+          "within_role": "ADMIN_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ADMIN_SCHEMA_GAP_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi nộp phí bảo hiểm, bảo toàn tiền gửi của khách hàng",
+            "Chi nộp phí bảo hiểm, bảo toàn tiền gửi",
+            "Chi nộp phí bảo hiểm tiền gửi của khách hàng",
+            "Chi nộp phí bảo hiểm tiền gửi của khách",
+            "Chi phí bảo hiểm tiền gửi của khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPOSIT_INSURANCE_EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng rủi ro khác",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro khác",
+            "(Hoàn nhập)/trích lập dự phòng rủi ro khác",
+            "Hoàn nhập dự phòng rủi ro khác",
+            "Dự phòng giảm giá các khoản đầu tư dài hạn và chi phí dự phòng nợ khó đòi"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_GROUP_SOURCE_ONLY",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi dự phòng giảm giá đầu tư dài hạn và rủi ro tài sản khác",
+            "Trích lập dự phòng giảm giá các khoản đầu tư dài hạn",
+            "Trích lập dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập/trích lập chi phí dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập chi phí dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập dự phòng giảm giá đầu tư dài hạn",
+            "(Hoàn nhập)/trích lập dự phòng giảm giá đầu tư dài hạn",
+            "Trích lập/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
+            "(Hoàn nhập) dự phòng giảm giá khoản đầu tư, mua cổ phần",
+            "Hoàn nhập dự phòng cho các khoản đầu tư dài hạn khác",
+            "Trích lập dự phòng nợ phải thu khó đòi",
+            "Hoàn nhập dự phòng nợ phải thu khó đòi",
+            "Hoàn nhập dự phòng các khoản phải thu khó đòi",
+            "Trích lập/(Hoàn nhập) dự phòng nợ phải thu khó đòi",
+            "(Hoàn nhập)/trích lập dự phòng nợ phải thu khó đòi"
+          ],
+          "within_role": "PROVISION_GROUP_SOURCE_ONLY"
+        },
+        {
+          "aliases": [
+            "Chi dự phòng giảm giá đầu tư dài hạn và rủi ro tài sản khác",
+            "Trích lập dự phòng giảm giá các khoản đầu tư dài hạn",
+            "Trích lập dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập/trích lập chi phí dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập chi phí dự phòng giảm giá đầu tư dài hạn",
+            "Hoàn nhập dự phòng giảm giá đầu tư dài hạn",
+            "(Hoàn nhập)/trích lập dự phòng giảm giá đầu tư dài hạn",
+            "Trích lập/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
+            "(Hoàn nhập) dự phòng giảm giá khoản đầu tư, mua cổ phần",
+            "Hoàn nhập dự phòng cho các khoản đầu tư dài hạn khác",
+            "Trích lập dự phòng nợ phải thu khó đòi",
+            "Hoàn nhập dự phòng nợ phải thu khó đòi",
+            "Hoàn nhập dự phòng các khoản phải thu khó đòi",
+            "Trích lập/(Hoàn nhập) dự phòng nợ phải thu khó đòi",
+            "(Hoàn nhập)/trích lập dự phòng nợ phải thu khó đòi"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LONG_TERM_BAD_DEBT_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Chi dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Trích lập/(Hoàn nhập) dự phòng cho các tài sản Có nội bảng khác",
+            "(Hoàn nhập)/trích lập dự phòng cho các tài sản Có nội bảng khác",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Hoàn nhập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "(Hoàn nhập)/trích lập các khoản dự phòng",
+            "Trích lập/(Hoàn nhập) chi phí dự phòng khác",
+            "Chi phí/(Hoàn nhập) dự phòng khác",
+            "(Hoàn nhập)/trích lập dự phòng khác",
+            "(Hoàn nhập) dự phòng khác",
+            "(Hoàn nhập) dự phòng",
+            "Hoàn nhập chi phí dự phòng khác"
+          ],
+          "within_role": "PROVISION_GROUP_SOURCE_ONLY"
+        },
+        {
+          "aliases": [
+            "Trích lập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Chi dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Trích lập/(Hoàn nhập) dự phòng cho các tài sản Có nội bảng khác",
+            "(Hoàn nhập)/trích lập dự phòng cho các tài sản Có nội bảng khác",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Hoàn nhập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "(Hoàn nhập)/trích lập các khoản dự phòng",
+            "Trích lập/(Hoàn nhập) chi phí dự phòng khác",
+            "Chi phí/(Hoàn nhập) dự phòng khác",
+            "(Hoàn nhập)/trích lập dự phòng khác",
+            "(Hoàn nhập) dự phòng khác",
+            "(Hoàn nhập) dự phòng",
+            "Hoàn nhập chi phí dự phòng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_ASSET_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí dự phòng",
+            "Chi phí dự phòng (i)",
+            "Trích lập/(Hoàn nhập) các khoản dự phòng",
+            "Hoàn nhập chi phí dự phòng (i)",
+            "(Hoàn nhập)/trích lập chi phí dự phòng (i)",
+            "Chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Chi phí/(Hoàn nhập) dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Chi phí dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
+            "Hoàn nhập dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
+            "(Hoàn nhập)/Chi phí dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
+            "(Hoàn nhập) dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
+            "Chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
+            "(Hoàn nhập) chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "GENERIC_PROVISION_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí công nghệ thông tin"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "IT_EXPENSE_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi về thuế GTGT đầu vào không được khấu trừ",
+            "Chi về thuế GTGT đầu vào không được"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "NONDEDUCTIBLE_VAT_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Lợi thế thương mại phân bổ trong kỳ"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "GOODWILL_AMORTIZATION_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "OPERATING_EXPENSE",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chi phí hoạt động dịch vụ",
+    "Thu nhập từ hoạt động khác",
+    "Lãi thuần từ hoạt động khác",
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chi phí thuế thu nhập doanh nghiệp"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Chi phí hoạt động",
+      "Chi phí quản lý chung",
+      "Chi phí quản lý chung (Chi phí hoạt động)"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "OPERATING_EXPENSE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["TAX_FEES", "EMPLOYEE_EXPENSE", "ASSET_EXPENSE"]
+  ],
+  "structural_reset_aliases": [
+    "Chi phí hoạt động dịch vụ",
+    "Thu nhập từ hoạt động khác",
+    "Lãi thuần từ hoạt động khác",
+    "Chi phí dự phòng rủi ro tín dụng",
+    "Chi phí thuế thu nhập doanh nghiệp"
+  ]
+}

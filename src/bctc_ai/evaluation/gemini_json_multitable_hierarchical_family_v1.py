@@ -28,6 +28,7 @@ from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
 )
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _header_text,
+    _matches,
     _normalized,
     _path_has_role,
     _row_role_match_modes,
@@ -127,8 +128,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "hierarchy_role_scope_policy",
         "label_only_structural_group_policy",
         "money_metric_policy",
+        "mapped_source_subtotal_policy",
         "minimum_declared_detail_role_count",
         "minimum_source_visible_root_component_count",
+        "owner_match_policy",
         "owner_surface_kinds",
         "period_lane_policy",
         "query_owner_aliases",
@@ -183,14 +186,29 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         )
     ):
         raise _error("multi-table hierarchical owner surface kinds are invalid")
+    owner_match_policy = evaluation_spec.get("owner_match_policy", "CONTAINS_ALIAS")
+    if owner_match_policy not in {
+        "CONTAINS_ALIAS",
+        "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX",
+    }:
+        raise _error("multi-table hierarchical owner match policy is invalid")
     direct_frontier_policy = evaluation_spec.get(
         "direct_frontier_policy", "ALL_EXACT_SOURCE_FRONTIERS_UNIQUE"
     )
     if direct_frontier_policy not in {
         "ALL_EXACT_SOURCE_FRONTIERS_UNIQUE",
         "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+        "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER",
     }:
         raise _error("multi-table hierarchical direct frontier policy is invalid")
+    mapped_source_subtotal_policy = evaluation_spec.get(
+        "mapped_source_subtotal_policy", "REQUIRE_EXACT_DIRECT_FRONTIER"
+    )
+    if mapped_source_subtotal_policy not in {
+        "REQUIRE_EXACT_DIRECT_FRONTIER",
+        "ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION",
+    }:
+        raise _error("multi-table hierarchical mapped subtotal policy is invalid")
     hierarchy_role_scope_policy = evaluation_spec.get(
         "hierarchy_role_scope_policy", "UNSCOPED_CONTEXT_FALLBACK"
     )
@@ -561,7 +579,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
             raise _error("multi-table hierarchical schema role binding is invalid")
         bindings[raw["role"]] = raw["report_norm_id"]
         identities.add(raw["report_norm_id"])
-    if not bindings or not set(root_component_roles) <= set(bindings):
+    if not bindings or not (set(root_component_roles) - set(validation_only_roles)) <= set(
+        bindings
+    ):
         raise _error("multi-table hierarchical schema frontier is incomplete")
     aliases_by_role = {role: _aliases(child) for role, child in child_by_role.items()}
     presence_anchor_roles = sorted(
@@ -586,6 +606,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         # Preserve the exact compiled policy/hash of existing released families
         # while binding every family that opts into a narrower source surface.
         query_policy["owner_surface_kinds"] = list(owner_surface_kinds)
+    if "owner_match_policy" in evaluation_spec:
+        query_policy["owner_match_policy"] = owner_match_policy
     if "hierarchy_role_scope_policy" in evaluation_spec:
         query_policy["hierarchy_role_scope_policy"] = hierarchy_role_scope_policy
     if "structural_marker_policy" in evaluation_spec:
@@ -632,6 +654,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "output_role_order": [item["role"] for item in schema_binding_spec["role_bindings"]],
         "label_only_structural_group_policy": label_only_structural_group_policy,
         "money_metric_policy": money_metric_policy,
+        "mapped_source_subtotal_policy": mapped_source_subtotal_policy,
         "minimum_declared_detail_role_count": minimum_declared_detail_role_count,
         "period_lane_policy": period_lane_policy,
         "presence_anchor_roles": presence_anchor_roles,
@@ -748,11 +771,35 @@ def _contains_alias(value: Any, alias: str) -> bool:
 def _owner_visible(
     section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> bool:
+    matcher = (
+        _matches
+        if compiled_specs["query_policy"].get("owner_match_policy")
+        == "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX"
+        else _contains_alias
+    )
     return any(
-        _contains_alias(value, alias)
+        matcher(value, alias)
         for value in _owner_surface_axis(section, table, compiled_specs=compiled_specs)
         for alias in compiled_specs["query_policy"]["owner_aliases"]
     )
+
+
+def _owner_marker_matches(
+    value: Any, aliases: Sequence[str], *, compiled_specs: Mapping[str, Any]
+) -> list[str]:
+    if (
+        compiled_specs["query_policy"].get("owner_match_policy")
+        != "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX"
+    ):
+        return _heading_surface_matches(value, aliases, compiled_specs=compiled_specs)
+    surfaces = [value]
+    if (
+        compiled_specs["query_policy"].get("structural_marker_policy")
+        == "WHOLE_SURFACE_AND_INDIVIDUAL_LINES"
+        and type(value) is str
+    ):
+        surfaces.extend(line for line in value.splitlines() if line.strip())
+    return sorted({alias for surface in surfaces for alias in aliases if _matches(surface, alias)})
 
 
 def _typed_control_disposition(
@@ -965,6 +1012,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     matched_scopes_by_hit: dict[tuple[int, str], set[str]] = {}
     ambiguous_rows = []
     inverted_hierarchy_scope_rows = []
+    hierarchy_path_scope_resolutions = []
     ordered_root_scope_resolutions = []
     unscoped_shared_child_rows = []
     unbound_money_rows = []
@@ -1197,6 +1245,105 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                     matched = additive
                 else:
                     matched = structural
+        if (
+            len(matched) > 1
+            and compiled_specs["query_policy"].get("hierarchy_role_scope_policy")
+            == "PATH_DECLARED_ROLES_FIRST"
+        ):
+            path = [
+                _normalized(value)
+                for value in (row.get("hierarchy_path_exact") or [])[:-1]
+                if _normalized(value)
+            ]
+            structural_ancestors = sorted(
+                role
+                for role, child in compiled_specs["child_by_role"].items()
+                if child["role_kind"] == "STRUCTURAL_GROUP"
+                and any(surface in set(compiled_specs["aliases_by_role"][role]) for surface in path)
+            )
+
+            def declared_under(role: str, ancestor: str) -> bool:
+                pending = [role]
+                seen = set()
+                while pending:
+                    current = pending.pop()
+                    if current == ancestor:
+                        return True
+                    if current in seen:
+                        continue
+                    seen.add(current)
+                    pending.extend(
+                        matcher["within_role"]
+                        for matcher in compiled_specs["matchers_by_role"].get(current, [])
+                        if matcher["within_role"] is not None
+                    )
+                return False
+
+            if len(structural_ancestors) == 1:
+                scoped = [role for role in matched if declared_under(role, structural_ancestors[0])]
+                if len(scoped) == 1:
+                    hierarchy_path_scope_resolutions.append(
+                        {
+                            "candidate_roles": sorted(matched),
+                            "resolved_role": scoped[0],
+                            "row_ordinal": row_ordinal,
+                            "structural_ancestor_role": structural_ancestors[0],
+                            "rule": "EXACT_HIERARCHY_PATH_STRUCTURAL_ANCESTOR_SCOPES_CHILD",
+                        }
+                    )
+                    matched = scoped
+        if (
+            len(matched) > 1
+            and compiled_specs["query_policy"].get("hierarchy_role_scope_policy")
+            == "PATH_DECLARED_ROLES_FIRST"
+        ):
+            preceding_roots = [
+                hit
+                for hit in role_hits
+                if hit["role"] in compiled_specs["root_component_roles"]
+                and hit["row_ordinal"] < row_ordinal
+            ]
+            nearest_root = (
+                max(preceding_roots, key=lambda hit: hit["row_ordinal"])
+                if preceding_roots
+                else None
+            )
+            path = {
+                _normalized(value)
+                for value in (row.get("hierarchy_path_exact") or [])[:-1]
+                if _normalized(value)
+            }
+            transparent_wrappers = [
+                ordinal
+                for ordinal in range(
+                    1 if nearest_root is None else nearest_root["row_ordinal"] + 1,
+                    row_ordinal,
+                )
+                if type(rows[ordinal - 1]) is dict
+                and rows[ordinal - 1].get("row_kind") == "GROUP"
+                and _normalized(rows[ordinal - 1].get("label_exact"))
+                in {"trong do", "bao gom", "of which", "including"}
+                and _normalized(rows[ordinal - 1].get("label_exact")) in path
+                and type(rows[ordinal - 1].get("values_exact")) is list
+                and all(value is None for value in rows[ordinal - 1]["values_exact"])
+            ]
+            if nearest_root is not None and len(transparent_wrappers) == 1:
+                scoped = [role for role in matched if declared_under(role, nearest_root["role"])]
+                if len(scoped) == 1:
+                    hierarchy_path_scope_resolutions.append(
+                        {
+                            "candidate_roles": sorted(matched),
+                            "resolved_role": scoped[0],
+                            "row_ordinal": row_ordinal,
+                            "structural_ancestor_role": nearest_root["role"],
+                            "transparent_wrapper_row_ordinal": transparent_wrappers[0],
+                            "rule": (
+                                "NEAREST_PRECEDING_DECLARED_ROOT_PLUS_EXACT_BLANK_"
+                                "DISCLOSURE_WRAPPER_SCOPES_CHILD"
+                            ),
+                        }
+                    )
+                    matched = scoped
         if (
             len(matched) > 1
             and compiled_specs["row_population_context_policy"]
@@ -1439,6 +1586,8 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         material["family_root_row_ordinals"] = family_root_row_ordinals
     if compiled_specs["row_population_context_policy"] == "AT_LEAST_TWO_DECLARED_CHILD_ROLES":
         material["ordered_root_scope_resolutions"] = ordered_root_scope_resolutions
+    if hierarchy_path_scope_resolutions:
+        material["hierarchy_path_scope_resolutions"] = hierarchy_path_scope_resolutions
     return {
         **material,
         "classification_id": "gjmthfcv1:classification:" + canonical_json_sha256_v1(material),
@@ -1751,7 +1900,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 for alias in (
                     []
                     if primary
-                    else _heading_surface_matches(
+                    else _owner_marker_matches(
                         value,
                         compiled_specs["query_policy"]["owner_aliases"],
                         compiled_specs=compiled_specs,
@@ -1777,6 +1926,18 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                         "source_exact": section.get("title_exact"),
                     }
                 )
+            if type(narratives) is list:
+                for value in narratives:
+                    narrative_outline = _outline_top_level_number(value)
+                    if narrative_outline is not None:
+                        outline_markers.append(
+                            {
+                                "alias": f"SOURCE_OUTLINE_TOP_LEVEL:{narrative_outline}",
+                                "outline_top_level_number": narrative_outline,
+                                "position": section_position,
+                                "source_exact": value,
+                            }
+                        )
             section_boundary_surfaces = [section.get("title_exact")]
             if type(narratives) is list:
                 section_boundary_surfaces.extend(narratives)
@@ -1819,26 +1980,22 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                             }
                         )
                 for value in [table.get("title_exact")]:
-                    if (
-                        not primary
-                        and "TABLE_TITLE" in owner_surface_kinds
-                        and (
-                            alias := _marker_matches(
-                                value, compiled_specs["query_policy"]["owner_aliases"]
+                    if not primary and "TABLE_TITLE" in owner_surface_kinds:
+                        for alias in _owner_marker_matches(
+                            value,
+                            compiled_specs["query_policy"]["owner_aliases"],
+                            compiled_specs=compiled_specs,
+                        ):
+                            owner_markers.append(
+                                {
+                                    "alias": alias,
+                                    "outline_top_level_number": _outline_top_level_number(
+                                        value, governing_alias=alias
+                                    ),
+                                    "position": position,
+                                    "source_exact": value,
+                                }
                             )
-                        )
-                        is not None
-                    ):
-                        owner_markers.append(
-                            {
-                                "alias": alias,
-                                "outline_top_level_number": _outline_top_level_number(
-                                    value, governing_alias=alias
-                                ),
-                                "position": position,
-                                "source_exact": value,
-                            }
-                        )
                     table_outline = _outline_top_level_number(value)
                     if table_outline is not None:
                         outline_markers.append(
@@ -1928,7 +2085,16 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 item
                 for item in table_axis
                 if item["position"][0] == owner["position"][0]
-                and (prior_reset is None or prior_reset["position"] < item["position"])
+                and (
+                    prior_reset is None
+                    or (
+                        prior_reset["position"] < item["position"]
+                        and not (
+                            prior_reset["position"][2] == 0
+                            and prior_reset["position"][:2] == item["position"][:2]
+                        )
+                    )
+                )
                 and item["position"] < owner["position"]
             ]
         )
@@ -2072,16 +2238,28 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             disposition = "EXCLUDED_PRE_OWNER_SAME_SECTION_TABLE"
         elif classification["typed_control_disposition"] is not None:
             disposition = "EXCLUDED_TYPED_CONTROL"
-        elif any(
-            item_inside_owner_interval(item, interval["owner"], interval["reset"])
-            for interval in intervals
+        elif (
+            selected is None
+            and rootless_source_result_control
+            and any(
+                item_inside_owner_interval(item, interval["owner"], interval["reset"])
+                for interval in intervals
+            )
+        ):
+            disposition = "SOURCE_RESULT_OWNER_WITHOUT_EXACT_RESULT_ROW"
+        elif selected is not None and item_inside_owner_interval(
+            item, selected["owner"], selected["reset"]
         ):
             if rootless_source_result_control:
                 disposition = "SOURCE_RESULT_OWNER_WITHOUT_EXACT_RESULT_ROW"
             else:
                 disposition = "UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE"
-                # An owner-fenced MONEY table with no typed exclusion must never
-                # disappear merely because none of its rows maps to the schema.
+                # Only the uniquely selected owner interval is authoritative.
+                # A different heading that happens to contain the owner words
+                # may form a non-family interval (for example service expense
+                # before operating expense); its tables must not contaminate
+                # the selected exhaustive inventory.  Multiple complete owner
+                # intervals are already vetoed above.
                 reasons.append(
                     "UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE:" + ":".join(map(str, key))
                 )
@@ -3372,6 +3550,13 @@ def _derive_complete_top_level_family_root(
 
     def is_declared_source_row(source_only: Mapping[str, Any]) -> bool:
         source_ref = source_only["source_ref"]
+        # Reuse the exact source-row classifier instead of comparing folded
+        # strings a second, narrower way.  The shared classifier safely
+        # handles source-visible outline ordinals, ``Trong đó`` wrappers and
+        # bounded note-reference suffixes.  Otherwise a row can be correctly
+        # classified as a declared validation-only role during extraction but
+        # later be falsely reported as an unmapped top-level row merely due to
+        # presentation syntax.
         surfaces = {
             _normalized(source_ref.get("label_exact")),
             *{
@@ -3380,6 +3565,14 @@ def _derive_complete_top_level_family_root(
                 if _normalized(value)
             },
         }
+        fallback_scopes = [
+            None,
+            *[
+                role
+                for role in source_ref.get("locator", {}).get("component_roles", [])
+                if role in compiled_specs["child_by_role"]
+            ],
+        ]
         matched_roles = {
             role
             for role in compiled_specs["child_by_role"]
@@ -3389,10 +3582,26 @@ def _derive_complete_top_level_family_root(
                 if surface
             )
         }
+        for scope in fallback_scopes:
+            try:
+                matched_roles.update(
+                    _row_role_match_modes(
+                        source_ref,
+                        topology=compiled_specs["topology"],
+                        aliases_by_role=compiled_specs["aliases_by_role"],
+                        fallback_within_role=scope,
+                        enable_declared_equivalences=True,
+                    )
+                )
+            except ValueError:
+                # One incompatible fallback scope cannot invalidate an exact
+                # source alias or another uniquely scoped classification.
+                continue
+        label = _normalized(source_ref.get("label_exact"))
+        label_without_outline = re.sub(r"^(?:[ivxlcdm]+|[0-9]+)\s+", "", label)
         parent_visible = any(
-            surface in set(compiled_specs["topology"]["parent"]["aliases"])
-            for surface in surfaces
-            if surface
+            label_without_outline == alias or alias in surfaces
+            for alias in compiled_specs["topology"]["parent"]["aliases"]
         )
         return bool(
             parent_visible
@@ -3527,6 +3736,32 @@ def _derive_complete_top_level_family_root(
             for equation in source_equations
             if equation.get("status") == "EXACT"
         ]
+        equation_component_axes = [
+            source_identity_axis(component_source_refs)
+            for equation in source_equations
+            if equation.get("status") == "EXACT"
+            for component_source_refs in equation.get("component_source_refs", [])
+        ]
+        independently_proven_subtotal_records = [
+            record
+            for record in output
+            if compiled_specs["mapped_source_subtotal_policy"]
+            == "ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION"
+            and record["role"] in set(compiled_specs["root_component_roles"])
+            and record["state"] == "SOURCE_OBSERVED_ROLE_ROW"
+            and any(
+                source_ref.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}
+                for source_ref in record["source_refs"]
+            )
+            and any(
+                source_identity_axis(record["source_refs"]) == component_axis
+                for component_axis in equation_component_axes
+            )
+        ]
+        independently_proven_subtotal_axes = {
+            frozenset(source_identity_axis(record["source_refs"]))
+            for record in independently_proven_subtotal_records
+        }
         unproven_subtotal_roles = sorted(
             {
                 record["role"]
@@ -3541,6 +3776,8 @@ def _derive_complete_top_level_family_root(
                     source_identity_axis(record["source_refs"]) == result_axis
                     for result_axis in equation_result_axes
                 )
+                and frozenset(source_identity_axis(record["source_refs"]))
+                not in independently_proven_subtotal_axes
             }
         )
         if unproven_subtotal_roles:
@@ -3570,6 +3807,20 @@ def _derive_complete_top_level_family_root(
             for root, source_equation in equation_by_root_population
             if source_equation is not None
         ]
+        receipts.extend(
+            {
+                "coefficients": _coefficients(record),
+                "component_roles": [record["role"]],
+                "result_role": record["role"],
+                "rule": (
+                    "SOURCE_VISIBLE_STRUCTURAL_ROOT_COMPONENT_IS_INDEPENDENTLY_"
+                    "MAPPABLE_AFTER_EXACT_FAMILY_ROOT_EQUATION_CONSUMPTION_"
+                    "DISCLOSED_DESCENDANTS_ARE_NOT_ASSUMED_EXHAUSTIVE"
+                ),
+                "source_refs": canonical_clone_v1(record["source_refs"]),
+            }
+            for record in independently_proven_subtotal_records
+        )
         if not signed_policy:
             return output, [], receipts, []
         if len(reconciled_roots) != 1:
@@ -5018,6 +5269,54 @@ def _extract_table_local_records(
     deferred_hierarchy_family_roots: list[tuple[int, dict[str, Any]]] = []
     label_only_structural_group_receipts = []
     projected_label_only_groups: set[int] = set()
+
+    def transparent_disclosure_wrapper(row_ordinal: int) -> bool:
+        """Return whether a blank GROUP only carries disclosure hierarchy.
+
+        Gemini commonly preserves ``Trong đó / Bao gồm / Of which`` as an
+        intermediate row.  It is neither a numeric component nor a subtotal;
+        treating it as the carrier's sole direct child hides the actual
+        children one level below and prevents an otherwise exact source
+        equation from closing.  Only a typed GROUP with no visible MONEY cell
+        and an exact structural marker is transparent.
+        """
+
+        row = rows[row_ordinal - 1]
+        record = row_records.get(row_ordinal)
+        return bool(
+            type(row) is dict
+            and record is not None
+            and row.get("row_kind") == "GROUP"
+            and all(cell["source_text"] is None for cell in record["cells"])
+            and _normalized(row.get("label_exact"))
+            in {"trong do", "bao gom", "of which", "including"}
+        )
+
+    def effective_direct_descendants(
+        carrier_ordinal: int,
+    ) -> list[tuple[int, dict[str, Any]]]:
+        descendants = [
+            (ordinal, record)
+            for ordinal, record in row_records.items()
+            if ordinal != carrier_ordinal
+            and _row_is_strict_descendant(rows, ordinal, carrier_ordinal)
+        ]
+        direct = [
+            (ordinal, record)
+            for ordinal, record in descendants
+            if not any(
+                other_ordinal != ordinal and _row_is_strict_descendant(rows, ordinal, other_ordinal)
+                for other_ordinal, _other in descendants
+            )
+        ]
+        expanded = []
+        for ordinal, record in direct:
+            if transparent_disclosure_wrapper(ordinal):
+                expanded.extend(effective_direct_descendants(ordinal))
+            else:
+                expanded.append((ordinal, record))
+        return expanded
+
     if optional_component_veto_source_result and len(family_root_ordinals) == 1:
         root_ordinal = next(iter(family_root_ordinals))
         root = row_records.get(root_ordinal)
@@ -5048,24 +5347,9 @@ def _extract_table_local_records(
         label = _normalized(rows[carrier_ordinal - 1].get("label_exact"))
         if not label:
             continue
-        descendants = [
-            (ordinal, record)
-            for ordinal, record in row_records.items()
-            if ordinal != carrier_ordinal
-            and _row_is_strict_descendant(rows, ordinal, carrier_ordinal)
-        ]
-        if not descendants:
+        direct = effective_direct_descendants(carrier_ordinal)
+        if not direct:
             continue
-        direct = []
-        for ordinal, record in descendants:
-            intervening_ordinals = {
-                other_ordinal
-                for other_ordinal, _other in descendants
-                if other_ordinal != ordinal
-                and _row_is_strict_descendant(rows, ordinal, other_ordinal)
-            }
-            if not intervening_ordinals:
-                direct.append((ordinal, record))
         equation = _exact_equation(
             kind="EXACT_VISIBLE_HIERARCHY_DIRECT_CHILDREN_EQUAL_CARRIER",
             components=[record for _ordinal, record in direct],
@@ -5234,7 +5518,17 @@ def _extract_table_local_records(
             (ordinal, row_records[ordinal])
             for ordinal in total_ordinals
             if frontier_lower_bound < ordinal < total_ordinal
-            and proven_carrier_children.get(ordinal)
+            and (
+                proven_carrier_children.get(ordinal)
+                or (
+                    compiled_specs["mapped_source_subtotal_policy"]
+                    == ("ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION")
+                    and _normalized(rows[ordinal - 1].get("label_exact"))
+                    and any(
+                        cell["source_text"] is not None for cell in row_records[ordinal]["cells"]
+                    )
+                )
+            )
         ]
         # ``interval`` deliberately retains the raw source rows for the
         # ordinary SINCE_PRIOR_TOTAL candidate above.  The canonical
@@ -5290,22 +5584,70 @@ def _extract_table_local_records(
                 # total. It remains independently mappable when declared.
                 continue
             if any(
-                other_ordinal != ordinal and ordinal in proven_descendants(other_ordinal)
+                other_ordinal != ordinal
+                and (
+                    ordinal in proven_descendants(other_ordinal)
+                    or (
+                        compiled_specs["mapped_source_subtotal_policy"]
+                        == ("ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION")
+                        and any(
+                            cell["source_text"] is not None
+                            for cell in row_records[other_ordinal]["cells"]
+                        )
+                        and _row_is_strict_descendant(rows, ordinal, other_ordinal)
+                    )
+                )
                 for other_ordinal, _other in top_level_source
             ):
                 continue
             top_level.append((ordinal, record))
         if top_level and top_level != preceding:
             top_level_candidate = ("VISIBLE_TOP_LEVEL_DIRECT_FRONTIER", top_level)
-            if (
-                compiled_specs["direct_frontier_policy"]
-                == "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER"
-            ):
+            if compiled_specs["direct_frontier_policy"] in {
+                "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+                "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER",
+            }:
                 candidates = [top_level_candidate]
             else:
                 candidates.append(top_level_candidate)
+
+        # Some notes expose the exhaustive top level through a visible
+        # ``1. ...`` through ``N. ...`` sequence while subordinate disclosure
+        # rows are unnumbered or dash-prefixed and Gemini does not preserve a
+        # usable hierarchy path for them.  The contiguous source ordinals are
+        # structural evidence independent of values.  Use that frontier only
+        # when it starts at one, has no gaps/duplicates, and its already chosen
+        # rows later close the printed total on every lane.
+        numbered_top_level = []
+        numbered_values = []
+        for ordinal, record in preceding:
+            raw_label = rows[ordinal - 1].get("label_exact")
+            match = (
+                re.match(r"^\s*(?P<ordinal>[1-9][0-9]?)\s*[.)]\s+\S", raw_label)
+                if type(raw_label) is str
+                else None
+            )
+            if match is None:
+                continue
+            numbered_top_level.append((ordinal, record))
+            numbered_values.append(int(match.group("ordinal")))
         if (
-            compiled_specs["direct_frontier_policy"] == "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER"
+            compiled_specs["direct_frontier_policy"]
+            == "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER"
+            and len(numbered_top_level) >= 2
+            and numbered_values == list(range(1, len(numbered_values) + 1))
+        ):
+            numbered_candidate = (
+                "SOURCE_VISIBLE_CONTIGUOUS_NUMBERED_TOP_LEVEL_FRONTIER",
+                numbered_top_level,
+            )
+            candidates = [numbered_candidate]
+        if (
+            compiled_specs["direct_frontier_policy"]
+            in {
+                "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+                "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER",
+            }
             and prior_total in set(classification.get("family_root_row_ordinals", []))
             and prior_total < total_ordinal
         ):

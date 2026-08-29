@@ -370,6 +370,23 @@ PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_HISTORICAL_ORACLES = (
         "size_bytes": 91880,
     },
 )
+PINNED_OPERATING_EXPENSE_HISTORICAL_ORACLES = (
+    {
+        "format_version": "OPERATING_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": ("docs/experiments/E-0088-operating-expense-8bank-codex-verified-mapping-v1.json"),
+        "sha256": "d5693651b7194885a173f4bb2cbdd64386486c5c559001f67f250608e6555c19",
+        "size_bytes": 245520,
+    },
+    {
+        "format_version": "ANNUAL_2025_OPERATING_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0143-annual-2025-operating-expense-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "b15d553298131f3471588b62f7b595ea965dd8dc8df0d42df73c7a3b50fb9f38",
+        "size_bytes": 273876,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -960,6 +977,55 @@ PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "f75e22988ff9cb5c4b454efdd4683fd7ce4904192f479b13321b85edd67a79be",
     "mappings": "2315d7036a6405caed1ab20b4d0cabf13998da9b12b32da36232cc4e3a21677a",
 }
+PINNED_OPERATING_EXPENSE_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "5ede5f0cbbec5c4c73c8067f59a5f6caf969fcf20c142b588bbe843b2e825dba"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 146,
+    "candidate_disposition_axis_sha256": (
+        "91de58e5938ab0cdec852fd5be88273eef98c26673d44c323c164d7b1fd2fc4a"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "a93b04deaf7fc642fedb8b3600b7dae5f56385f8bb0069244073592956fec809",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_OPERATING_EXPENSE_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 1648,
+    "not_observed_count": 0,
+    "ready_count": 138,
+    "unresolved_count": 2,
+}
+PINNED_OPERATING_EXPENSE_RELEASE_AUDIT_METRICS = {
+    "equation_count": 334,
+    "historical_comparator_exact_count": 215,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 199,
+    "historical_mapping_record_count": 202,
+    "mapping_count": 1648,
+}
+PINNED_OPERATING_EXPENSE_RELEASE_AXIS_COUNTS = {
+    "clusters": 138,
+    "equations": 334,
+    "historical_comparator": 218,
+    "mappings": 1648,
+}
+PINNED_OPERATING_EXPENSE_RELEASE_AXIS_SHA256 = {
+    "clusters": "c90f81a7f1f253e45a70fa10b53481d3a503dd32c627e4fed2272f342027946b",
+    "equations": "14464bfb51d97dd5e015fb9f365db4ad53e9293a0592ac3cb613473d4098f625",
+    "historical_comparator": ("cebe514214d8830c0721ee2ddcf93fd7a5e90e48ad9e352e3812f8e3544ccd6f"),
+    "mappings": "7f3ce3f694db66211698c931377d57f78e1324326c0b1c94dfe8066dd4d39d4b",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1189,6 +1255,8 @@ def _historical_oracle_refs(
         return PINNED_COMBINED_SECURITIES_NET_HISTORICAL_ORACLES
     if family_id == "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME":
         return PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_HISTORICAL_ORACLES
+    if family_id == "OPERATING_EXPENSE":
+        return PINNED_OPERATING_EXPENSE_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1305,6 +1373,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": (PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_AUDIT_METRICS),
             "query_receipt": PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_QUERY_RECEIPT,
             "sweep_metrics": PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_RELEASE_METRICS,
+        }
+    if family_id == "OPERATING_EXPENSE":
+        return {
+            "axis_counts": PINNED_OPERATING_EXPENSE_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_OPERATING_EXPENSE_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_OPERATING_EXPENSE_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_OPERATING_EXPENSE_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_OPERATING_EXPENSE_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
