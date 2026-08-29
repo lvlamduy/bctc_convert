@@ -56,9 +56,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 34 | `COMBINED_SECURITIES_NET` | 12 | 128 | 0 | 12 | `gjfafstorev1:run:b99ee75ed77f5f6459a05905ab8a9b25355cbfb288d9a2afea209d9726fd6f34` |
 | 35 | `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME` | 118 | 22 | 0 | 428 | `gjfafstorev1:run:d3b6d61d18c29318c11bbaea2e4a1a82209286eef69981e16be3d3803e01962c` |
 | 36 | `OPERATING_EXPENSE` | 138 | 0 | 2 | 1.648 | `gjfafstorev1:run:546ea624e42555a47a266fdd676f095786fa65897c62f8eff5d7de558a805a1d` |
+| 37 | `CREDIT_RISK_PROVISION_EXPENSE` | 64 | 76 | 0 | 300 | `gjfafstorev1:run:d0423fdd934fc17844504f95885dc6901c6338842d7844dce0ab1141af4964f3` |
 
-Tại checkpoint này database có đủ đúng ba mươi sáu current selection liên tục
-từ Family 1 đến Family 36. Family 37 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi bảy current selection liên tục
+từ Family 1 đến Family 37. Family 38 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -765,15 +766,48 @@ Artifact OFFICIAL:
   xanh. Cumulative results DB có 36 current selections, `quick_check` và
   foreign keys sạch, không SQLite sidecar, SHA-256
   `0cbdf07c4c4cb9a6c1f0fa9899d8248bf75b751c82c213604aae2293766aba77`.
+- Family 37 `CREDIT_RISK_PROVISION_EXPENSE`: `READY=64`,
+  `NOT_OBSERVED=76`, `UNRESOLVED=0` và 300 mappings. Generic hierarchical
+  resolver inventory một source-visible family root RNID 1221 cùng các
+  component customer, interbank, purchased-debt, VAMC, off-balance và other
+  provision expense dưới đúng một owner/reset fence. Một declared structural
+  group do Gemini ghi `ITEM` vẫn chỉ được dùng làm ordered carrier sau khi
+  full-table classifier, source order, direct frontier và printed total cùng
+  xác nhận; prompt Gemini không đổi và không chứa graph, phương trình hay đáp
+  án family.
+
+  Exact query census là 64 accepted clusters/64 fragments và 76 typed absence
+  dispositions trên đủ 8.947 selected page versions. Role axis gồm 64 roots,
+  29 customer-general, 53 customer-provision, 29 customer-specific, 13
+  interbank, 54 purchased-debt, 4 VAMC, 7 off-balance và 47 other mappings.
+  Có 118 exact equation receipts: 43 trailing-total, 33 contiguous-dash,
+  21 visible-hierarchy và 21 visible-top-level equations. Mọi READY candidate
+  có đúng một root, inventory đầy đủ, unit `MILLION_VND` và ít nhất một
+  printed-total proof; không dùng value, bank, file hay page để chọn graph.
+
+  E-0089/E-0144 khớp đủ 56/56 historical comparator records. Unknown direct
+  row, root-only aggregate, generic detail ngoài scope, duplicate/partial
+  population, period/unit conflict và coherent receipt drift đều fail closed
+  với `mappings=[]`. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family37-credit-risk-provision-expense/sweep.json`,
+  SHA-256
+  `eb3e9ea37c15b6745dad51dac9f8694ed28aff8822fb6d8d0a9ec98318b3d5f2`;
+  audit SHA-256
+  `ed392d76538c91c4a5e8a04b0957d88c8f63e7d31f7a95c4cd5e5d60a5ff3dd0`.
+  Implementation commit `d5f7ecd`; 210 focused/adjacent/regression tests,
+  repeated detached byte-identical EXP, SQLite query/candidate replay, Ruff,
+  format, compile, JSON và diff đều xanh. Cumulative results DB có 37 current
+  selections, `quick_check` và foreign keys sạch, không SQLite sidecar,
+  SHA-256
+  `93c21f9a4ff73443427d343c53e763a4c4fb31966642658aa978f8ba1df228e0`.
 
 ## Next gate
 
-Family 37 là `CREDIT_RISK_PROVISION_EXPENSE`, source schema root ReportNormId
-1221 và các declared roles 1224–1228, 6031–6033. Khóa comparator E-0089/E-0144,
-giữ prompt Gemini tối giản và cố định; code phải tự inventory owner, trailing
-total, direct/wrapped component roles, nested general/specific frontier,
-source-only schema gaps, period, unit, dash/blank và phương trình ở cả hai lane.
-Không được biến policy text hoặc primary-statement aggregate thành detailed-note
-population, bỏ source row chưa có schema leaf, hay suy một optional component
-vắng mặt. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
-query/candidate replay, historical comparator và đủ 140 dispositions.
+Family 38 là `OTHER_ACTIVITY`. Khóa comparator E-0090/E-0145, giữ prompt Gemini
+tối giản và cố định; code phải tự inventory source-visible owner, income,
+expense, catch-all và mọi declared child population, rồi dựng graph, scope,
+period, unit và phương trình ở cả hai lane bằng thuật toán/config declarative.
+Không được route theo bank/file/page/value, hấp thụ row của family lân cận hay
+ép Gemini trả một serialization family-specific. Chỉ promote OFFICIAL sau
+exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
+comparator và đủ 140 dispositions.
