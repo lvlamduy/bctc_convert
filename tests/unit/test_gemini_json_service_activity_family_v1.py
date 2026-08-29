@@ -142,7 +142,11 @@ def _evaluate(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     primary = _page(_table(primary_rows, columns=primary_columns), primary=True)
     detail = _page(_table(detail_rows))
-    records = [_record(primary, ordinal=1), _record(detail, ordinal=2)]
+    return _evaluate_pages([primary, detail])
+
+
+def _evaluate_pages(pages: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+    records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate(pages, start=1)]
     compiled = _compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=records, compiled_specs=compiled
@@ -286,3 +290,81 @@ def test_service_activity_partial_declared_root_graph_is_unresolved() -> None:
     )
     assert cluster["status"] == UNRESOLVED
     assert cluster["component_regions"] == []
+
+
+def test_service_activity_primary_summary_without_detail_is_not_observed() -> None:
+    page = _page(_table(_primary_rows()), primary=True)
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page, ordinal=1)], compiled_specs=_compiled()
+    )
+    assert cluster["status"].startswith("NOT_OBSERVED")
+    assert cluster["component_regions"] == []
+
+
+def test_service_activity_generic_child_alias_without_root_is_not_observed() -> None:
+    page = _page(
+        {
+            **_table([_row("Chi phí khác", ["20", "15"])]),
+            "title_exact": "Chi phí hoạt động khác",
+        }
+    )
+    page["sections"][0]["title_exact"] = "Chi phí hoạt động khác"
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page, ordinal=1)], compiled_specs=_compiled()
+    )
+    assert cluster["status"].startswith("NOT_OBSERVED")
+    assert cluster["component_regions"] == []
+
+
+def test_service_activity_duplicate_complete_detail_population_is_unresolved() -> None:
+    primary = _page(_table(_primary_rows()), primary=True)
+    detail = _page(_table(_detail_rows()))
+    _cluster, candidate = _evaluate_pages([primary, detail, detail])
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def test_service_activity_unmapped_direct_money_child_is_unresolved() -> None:
+    rows = _detail_rows()
+    rows.insert(
+        6,
+        _row(
+            "Khoản dịch vụ chưa khai báo",
+            ["1", "1"],
+            parent="Chi phí hoạt động dịch vụ",
+        ),
+    )
+    # Preserve both printed equations after adding the unknown direct row.
+    rows[3]["values_exact"] = ["31", "21"]
+    rows[-1]["values_exact"] = ["69", "59"]
+    primary = _primary_rows(expense=("31", "21"), net=("69", "59"))
+    _cluster, candidate = _evaluate(primary_rows=primary, detail_rows=rows)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+def test_service_activity_conflicting_local_money_units_are_unresolved() -> None:
+    primary = _page(_table(_primary_rows()), primary=True)
+    detail_table = _table(_detail_rows())
+    detail_table["unit_exact"] = "Triệu đồng; Nghìn đồng"
+    _cluster, candidate = _evaluate_pages([primary, _page(detail_table)])
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def test_service_activity_conflicting_period_evidence_is_unresolved() -> None:
+    primary = _page(_table(_primary_rows()), primary=True)
+    detail_table = _table(
+        _detail_rows(),
+        columns=[
+            {
+                "header_path_exact": ["Năm 2025", "Năm trước", "Triệu đồng"],
+                "value_kind": "MONEY",
+            },
+            {"header_path_exact": ["Năm 2024", "Triệu đồng"], "value_kind": "MONEY"},
+        ],
+    )
+    _cluster, candidate = _evaluate_pages([primary, _page(detail_table)])
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
