@@ -44,9 +44,18 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 22 | `OTHER_ASSETS` | 78 | 62 | 0 | 1.290 | `gjfafstorev1:run:a405aebffe52ca4a61ece9a918d6ba9af8cab81e34b626ab5278461252b5b531` |
 | 23 | `GOVERNMENT_SBV_LIABILITIES` | 140 | 0 | 0 | 739 | `gjfafstorev1:run:96f56c6a071bd4dca415411ea8073f52e80dace6628d7c59f5295e7a18356dbf` |
 | 24 | `ENTRUSTED_INVESTMENT_RISK_CAPITAL` | 76 | 64 | 0 | 174 | `gjfafstorev1:run:c863cc895b37c038a18bdf1d013f60626394c0256f66efb96dcd5b3be4980351` |
+| 25 | `ISSUED_VALUABLE_PAPERS` | 140 | 0 | 0 | 1.228 | `gjfafstorev1:run:9caa0e0b61e3fb319abd2024339b82017051f1b0deee7eb78d26672f17708cba` |
+| 26 | `OTHER_PAYABLES_LIABILITIES` | 140 | 0 | 0 | 809 | `gjfafstorev1:run:1422a31225bf9dd8773d0078eb42d623258750b65868b13c09d33d9af21a1bbf` |
+| 27 | `CAPITAL_AND_FUNDS` | 137 | 0 | 3 | 1.295 | `gjfafstorev1:run:a46fe9371df05da479bcfb5eece2880278d2cff44d5461a32edf12f9f75dd05f` |
+| 28 | `INTEREST_INCOME` | 136 | 0 | 4 | 882 | `gjfafstorev1:run:1ed2f05d22f93e3b69cde0777d438ec70b0db71d6fb756f7b102eaacd4098a88` |
+| 29 | `INTEREST_EXPENSE` | 140 | 0 | 0 | 701 | `gjfafstorev1:run:8fe437e17566d1ddab8c0eb2b00933ec23ff72d5a0a6367a4a71ea6657dae854` |
+| 30 | `SERVICE_ACTIVITY` | 68 | 72 | 0 | 869 | `gjfafstorev1:run:78b61661c4386e3f22eccb330a8a2d6ca3d7ddf49c24c4f8ed61405dc8894e19` |
+| 31 | `FX_GOLD_ACTIVITY` | 72 | 68 | 0 | 580 | `gjfafstorev1:run:ace7f6911cba2fd74ac7968170f7b9c5e8bcf8ba66cf9f2b8840ea1d74e0f02d` |
+| 32 | `TRADING_SECURITIES_ACTIVITY` | 103 | 37 | 0 | 371 | `gjfafstorev1:run:ad3e0992f63f89e2dcf5e17ff9e455dfb5b4513b09c8924872ad733aa57ad343` |
+| 33 | `INVESTMENT_SECURITIES_ACTIVITY` | 112 | 28 | 0 | 424 | `gjfafstorev1:run:492e6e499ce9454e1b93fcd7deb2d6a62a19a7fcfa8dcd1971a03d6e428e36b1` |
 
-Tại checkpoint này database có đủ đúng hai mươi bốn current selection liên tục
-từ Family 1 đến Family 24. Family 25 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi ba current selection liên tục
+từ Family 1 đến Family 33. Family 34 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -636,15 +645,44 @@ Artifact OFFICIAL:
   SQLite quick-check và foreign-key checks đều xanh. Cumulative results DB có
   32 current selections, không SQLite sidecar, SHA-256
   `c3fd8e8ac91bd5fb3bfdb06b6a66638a802eecbf023a88a7d6a556df47cc66bb`.
+- Family 33 `INVESTMENT_SECURITIES_ACTIVITY`: `READY=112`,
+  `NOT_OBSERVED=28`, `UNRESOLVED=0`, 424 mappings và 128 exact source
+  equations. Generic explicit-root subtree resolver giữ tách biệt income,
+  expense, investment provision, long-term-investment provision và optional
+  other role. Bảng riêng lẫn shared trading/investment umbrella chỉ được dùng
+  trong source-visible investment root; mọi direct money child phải được tiêu
+  thụ đúng một lần và source net phải đóng ở cả hai lane.
+
+  Một trang nguồn thiếu structural total và có một money cell không dùng được
+  được đọc lại bằng đúng prompt `items` cố định. Thuật toán local chỉ project
+  population của đúng một table khi title/column/unit/ordered row anchors là
+  duy nhất, mọi non-target row không đổi và row thêm là structural; không chọn
+  cả retry page, không thêm prompt family-specific và không gọi provider ở bước
+  projection. Retry prompt/schema/provider lineage và merged content đều được
+  SQLite semantic replay; effective frontier chỉ thay đúng một page version.
+
+  Exact query census là 112 accepted clusters/112 fragments và 28 typed
+  absence dispositions trên đủ 8.947 selected page versions. E-0085/E-0140
+  khớp 16/16 historical dispositions và 60/60 mappings; comparator 76/76
+  exact. Duplicate population, unknown direct child, source-net mismatch,
+  period/unit conflict, non-target retry drift, added ITEM, ambiguous target
+  table và coherent lineage drift đều fail closed. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family33-investment-securities-activity/sweep.json`,
+  SHA-256
+  `0c7de0d40e8b7a04351182121e3af3c7bbd48f05d4423a90f2f830b96af4a920`;
+  audit SHA-256
+  `1a9192e8c57884ed743b2feb656be56600c80daa31443e12cb1d047792fd5edb`.
+  Implementation commit `82c979a`; 142 focused tests, Ruff, format, compile,
+  JSON, diff, full EXP/OFFICIAL replay và SQLite integrity đều xanh. Cumulative
+  results DB có 33 current selections, không SQLite sidecar, SHA-256
+  `d640d4dfa5315a537708eea1d06d35a628bb5952313a7dee73ef3debd9e68a8f`.
 
 ## Next gate
 
-Family 33 là `INVESTMENT_SECURITIES_ACTIVITY`, bắt đầu tại ReportNormId 1193.
-Tái sử dụng signed activity graph nhưng giữ riêng income, expense, provision
-và other/long-term-investment component theo exact schema scope. Shared
-trading/investment umbrella, labelled/unlabelled net, optional source roles và
-combined source rows phải được xử lý bằng declarative graph/equations, không
-split hoặc backsolve. Khóa comparator E-0085/E-0140, giữ prompt Gemini tối giản
-và cố định; code tự xử lý period, unit, hierarchy và ReportNormId mapping. Chỉ
-promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite query/candidate
-replay, historical comparator và đủ 140 dispositions.
+Family 34 là `COMBINED_SECURITIES_NET`, source schema root ReportNormId 5990.
+Chỉ map một source-visible combined trading-and-investment net row có đủ hai
+period values; section umbrella hoặc hai bảng component riêng không được cộng
+để tạo số không in trên nguồn. Khóa comparator E-0086/E-0141, giữ prompt Gemini
+tối giản và cố định; code tự inventory same-row values, period, unit, owner và
+negative controls. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
+SQLite query/candidate replay, historical comparator và đủ 140 dispositions.

@@ -3309,6 +3309,30 @@ conflict and coherent candidate receipt drift remain authoritative regression
 gates. Every incomplete or conflicting graph must return `UNRESOLVED` with
 `mappings=[]`.
 
+## Family 33 current corpus — investment securities activity (`INVESTMENT_SECURITIES_ACTIVITY`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family33-investment-securities-activity/sweep.json`
+
+- Census: 140 documents, `READY=112`, `NOT_OBSERVED=28`, `UNRESOLVED=0`,
+  424 mappings and 128 exact source equations. Family33 adds no unresolved
+  mapping entry.
+- The exact role inventory is source root 112, income 107, expense 108,
+  investment provision 88 and long-term-investment provision 9. Optional
+  missing roles are source absence, never invented zero mappings.
+- One bounded standard `items` reread repaired an unusable visible money cell
+  and a missing structural total without introducing a family-specific prompt.
+  The local algorithm projected only the uniquely anchored table population;
+  non-target rows and the remainder of the base page stayed byte-semantically
+  unchanged. The standard retry and derived lineage both replay from SQLite.
+
+The shared trading/investment umbrella, single-component exact root,
+unlabelled total, duplicate population, unknown direct child, source-net
+mismatch, period/unit conflict, retry non-target drift, added ITEM and
+coherently rehashed lineage fixtures remain authoritative regression gates.
+Every incomplete or conflicting graph must return `UNRESOLVED` with
+`mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
