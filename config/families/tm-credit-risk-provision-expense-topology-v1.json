@@ -1,0 +1,341 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay TCTD",
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro tiền gửi và cho vay các TCTD khác",
+            "Chi phí dự phòng rủi ro cho vay TCTD",
+            "Dự phòng rủi ro tiền gửi và cho vay các TCTD khác",
+            "Dự phòng cụ thể rủi ro cho vay các tổ chức tín dụng khác",
+            "Trích lập dự phòng rủi ro cho vay TCTD",
+            "Trích lập dự phòng rủi ro cho vay TCTD trong năm"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_PROVISION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hoàn nhập dự phòng chung tiền gửi và cho vay các TCTD khác",
+            "Hoàn nhập dự phòng chung cho vay TCTD"
+          ],
+          "within_role": "INTERBANK_PROVISION"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_GENERAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng cụ thể tiền gửi và cho vay các tổ chức tín dụng khác",
+            "Trích lập dự phòng cụ thể cho vay TCTD"
+          ],
+          "within_role": "INTERBANK_PROVISION"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_SPECIFIC",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng",
+            "Hoàn nhập dự phòng",
+            "(Hoàn nhập)/Trích lập dự phòng"
+          ],
+          "presence_anchor": false,
+          "within_role": "INTERBANK_PROVISION"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTERBANK_DETAIL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay khách hàng",
+            "Chi phí dự phòng rủi ro cho vay khách hàng",
+            "Biến động dự phòng rủi ro cho vay khách hàng",
+            "Dự phòng rủi ro cho vay khách hàng",
+            "Trích lập dự phòng rủi ro cho vay khách hàng",
+            "Trích lập dự phòng rủi ro cho vay khách hàng trong năm",
+            "Trích lập dự phòng cho vay khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_PROVISION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng chung cho vay khách hàng",
+            "Trích lập/(Hoàn nhập) dự phòng chung",
+            "(Hoàn nhập)/Trích lập dự phòng chung",
+            "Trích lập dự phòng chung",
+            "Dự phòng chung"
+          ],
+          "within_role": "CUSTOMER_PROVISION"
+        },
+        {
+          "aliases": [
+            "Dự phòng chung cho vay khách hàng",
+            "Dự phòng chung rủi ro cho vay khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_GENERAL",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng cụ thể cho vay khách hàng",
+            "Trích lập/(Hoàn nhập) dự phòng cụ thể",
+            "(Hoàn nhập)/Trích lập dự phòng cụ thể",
+            "Trích lập dự phòng cụ thể",
+            "Dự phòng cụ thể"
+          ],
+          "within_role": "CUSTOMER_PROVISION"
+        },
+        {
+          "aliases": [
+            "Dự phòng cụ thể cho vay khách hàng",
+            "Dự phòng cụ thể rủi ro cho vay khách hàng"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_SPECIFIC",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng",
+            "Hoàn nhập dự phòng",
+            "(Hoàn nhập)/Trích lập dự phòng"
+          ],
+          "presence_anchor": false,
+          "within_role": "CUSTOMER_GENERAL"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_GENERAL_DETAIL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng",
+            "Hoàn nhập dự phòng",
+            "(Hoàn nhập)/Trích lập dự phòng"
+          ],
+          "presence_anchor": false,
+          "within_role": "CUSTOMER_SPECIFIC"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CUSTOMER_SPECIFIC_DETAIL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí/(Hoàn nhập) dự phòng mua nợ",
+            "Chi phí dự phòng mua nợ",
+            "Biến động dự phòng rủi ro hoạt động mua nợ",
+            "Dự phòng rủi ro hoạt động mua nợ",
+            "Chi phí dự phòng rủi ro hoạt động mua nợ",
+            "Trích lập dự phòng rủi ro cho các khoản mua nợ",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro cho các khoản mua nợ",
+            "Trích lập dự phòng rủi ro cho khoản mua nợ",
+            "Trích lập/(Hoàn nhập) dự phòng mua nợ",
+            "Trích lập dự phòng mua nợ",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro hoạt động mua nợ",
+            "Hoàn nhập dự phòng rủi ro hoạt động mua nợ",
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro hoạt động mua nợ",
+            "(Hoàn nhập)/Trích lập chi phí dự phòng rủi ro hoạt động mua nợ",
+            "Biến động dự phòng các khoản phải thu từ hợp đồng mua nợ",
+            "Hoàn nhập dự phòng chung hoạt động mua nợ",
+            "Hoàn nhập dự phòng cụ thể hoạt động mua nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASED_DEBT_PROVISION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng rủi ro",
+            "Hoàn nhập dự phòng rủi ro",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro",
+            "(Hoàn nhập)/Trích lập dự phòng rủi ro"
+          ],
+          "presence_anchor": false,
+          "within_role": "PURCHASED_DEBT_PROVISION"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PURCHASED_DEBT_DETAIL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng trái phiếu đặc biệt VAMC",
+            "Chi phí dự phòng trái phiếu đặc biệt VAMC",
+            "Dự phòng trái phiếu đặc biệt VAMC",
+            "Trích lập dự phòng trái phiếu VAMC",
+            "Chi phí dự phòng trái phiếu VAMC",
+            "Dự phòng trái phiếu VAMC"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "VAMC_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hoàn nhập dự phòng rủi ro cho các cam kết ngoại bảng",
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro cho các cam kết ngoại bảng",
+            "Chi phí dự phòng rủi ro cho các cam kết ngoại bảng",
+            "Dự phòng rủi ro cho các cam kết ngoại bảng",
+            "Chi phí/(Hoàn nhập) dự phòng với các cam kết đưa ra",
+            "Trích lập dự phòng với các cam kết đưa ra"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OFF_BALANCE_COMMITMENT_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng khác",
+            "Chi phí/(Hoàn nhập) dự phòng khác",
+            "Chi phí dự phòng các khoản rủi ro khác",
+            "Chi phí/(Hoàn nhập) dự phòng các khoản rủi ro khác",
+            "Dự phòng cho vay giao dịch ký quỹ và ứng trước",
+            "Dự phòng cho tài sản Có khác có rủi ro",
+            "Dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại",
+            "Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại",
+            "Biến động dự phòng các khoản phải thu từ hoạt động tài trợ thương mại",
+            "Dự phòng trái phiếu doanh nghiệp chưa niêm yết",
+            "Dự phòng chung cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Dự phòng cụ thể cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Dự phòng chung rủi ro cho Trái phiếu Doanh nghiệp chưa niêm yết",
+            "Dự phòng cụ thể rủi ro cho Trái phiếu Doanh nghiệp chưa niêm yết",
+            "Hoàn nhập dự phòng rủi ro cho các khoản rủi ro khác",
+            "Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước",
+            "Trích lập dự phòng cho vay giao dịch ký quỹ và ứng trước",
+            "Chi phí dự phòng rủi ro cho tài sản có rủi ro tín dụng khác",
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro cho tài sản có rủi ro tín dụng",
+            "Chi phí/(Hoàn nhập) dự phòng rủi ro cho tài sản có rủi ro tín dụng khác",
+            "(Hoàn nhập)/trích lập dự phòng chung cho khoản phải thu được phân loại là tài sản có rủi ro tín dụng",
+            "Trích lập dự phòng chung cho khoản phải thu được phân loại là tài sản có rủi ro tín dụng",
+            "Hoàn nhập dự phòng chung cho khoản phải thu từ hoạt động UPAS L/C",
+            "Trích lập dự phòng chung cho khoản phải thu từ hoạt động mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng",
+            "Khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_PROVISION",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trích lập dự phòng",
+            "Hoàn nhập dự phòng",
+            "(Hoàn nhập)/Trích lập dự phòng",
+            "Trích lập dự phòng rủi ro",
+            "Hoàn nhập dự phòng rủi ro",
+            "Trích lập/(Hoàn nhập) dự phòng rủi ro",
+            "(Hoàn nhập)/Trích lập dự phòng rủi ro"
+          ],
+          "presence_anchor": false,
+          "within_role": "OTHER_PROVISION"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_DETAIL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CREDIT_RISK_PROVISION_EXPENSE",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chi phí hoạt động",
+    "Chi phí dự phòng giảm giá chứng khoán",
+    "Dự phòng rủi ro tín dụng",
+    "Chính sách dự phòng rủi ro tín dụng",
+    "Chi phí thuế thu nhập doanh nghiệp"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Chi phí dự phòng rủi ro tín dụng",
+      "Chi phí/(Hoàn nhập) dự phòng rủi ro tín dụng",
+      "Chi phí/(Hoàn nhập) dự phòng rủi ro"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CREDIT_RISK_PROVISION_EXPENSE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["CUSTOMER_PROVISION"],
+    ["INTERBANK_PROVISION"],
+    ["PURCHASED_DEBT_PROVISION"],
+    ["OFF_BALANCE_COMMITMENT_PROVISION"],
+    ["OTHER_PROVISION"]
+  ],
+  "structural_reset_aliases": [
+    "Chi phí hoạt động",
+    "Thu nhập từ hoạt động khác",
+    "Chi phí thuế thu nhập doanh nghiệp"
+  ]
+}

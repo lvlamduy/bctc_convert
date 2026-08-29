@@ -136,6 +136,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "period_lane_policy",
         "query_owner_aliases",
         "root_component_equation_policy",
+        "root_only_source_result_policy",
         "row_population_context_policy",
         "row_alias_prefix_roles",
         "structural_marker_policy",
@@ -318,6 +319,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         raise _error(
             "multi-table hierarchical minimum source-visible root component count is invalid"
         )
+    root_only_source_result_policy = evaluation_spec.get(
+        "root_only_source_result_policy", "ALLOW_EXACT_SOURCE_RESULT"
+    )
+    if root_only_source_result_policy not in {
+        "ALLOW_EXACT_SOURCE_RESULT",
+        "REQUIRE_MINIMUM_DECLARED_COMPONENTS",
+    }:
+        raise _error("multi-table hierarchical root-only source-result policy is invalid")
     row_population_context_policy = evaluation_spec.get(
         "row_population_context_policy", "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES"
     )
@@ -1354,7 +1363,13 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                 for hit in role_hits
                 if hit["role"] in compiled_specs["root_component_roles"]
                 and hit["row_ordinal"] < row_ordinal
-                and hit["row_kind"] in {"GROUP", "SUBTOTAL", "TOTAL"}
+                # Gemini row_kind is useful corroboration but is not the
+                # authority for accounting structure. A source-visible row
+                # that matched one declared STRUCTURAL_GROUP remains a valid
+                # ordered carrier even when Gemini called it ITEM. The next
+                # declared structural carrier closes the interval, so this
+                # never scopes a child by value or document identity.
+                and compiled_specs["child_by_role"][hit["role"]]["role_kind"] == "STRUCTURAL_GROUP"
             ]
             if preceding_root_hits:
                 nearest = max(preceding_root_hits, key=lambda hit: hit["row_ordinal"])
@@ -3550,6 +3565,8 @@ def _derive_complete_top_level_family_root(
 
     def is_declared_source_row(source_only: Mapping[str, Any]) -> bool:
         source_ref = source_only["source_ref"]
+        if source_only.get("declared_validation_role") in validation_only_source_roles:
+            return True
         # Reuse the exact source-row classifier instead of comparing folded
         # strings a second, narrower way.  The shared classifier safely
         # handles source-visible outline ordinals, ``Trong đó`` wrappers and
@@ -6247,20 +6264,31 @@ def _extract_table_local_records(
         if only_ordinal in hit_by_row:
             proven_roles.add(hit_by_row[only_ordinal])
 
-    source_only_rows = [
-        {
+    source_only_rows = []
+    validation_only_roles = set(compiled_specs["validation_only_roles"])
+    for ordinal, record in sorted(row_records.items()):
+        if not (
+            (
+                ordinal not in hit_by_row
+                or hit_by_row[ordinal] not in compiled_specs["bindings"]
+                or ordinal in shadowed_role_ordinals
+            )
+            and ordinal not in total_ordinals
+        ):
+            continue
+        source_only = {
             "consumed_by_exact_equation": ordinal in consumed_ordinals,
             "row_ordinal": ordinal,
             "source_ref": canonical_clone_v1(record["source_refs"][0]),
         }
-        for ordinal, record in sorted(row_records.items())
-        if (
-            ordinal not in hit_by_row
-            or hit_by_row[ordinal] not in compiled_specs["bindings"]
-            or ordinal in shadowed_role_ordinals
-        )
-        and ordinal not in total_ordinals
-    ]
+        declared_role = hit_by_row.get(ordinal)
+        if declared_role in validation_only_roles:
+            # Preserve the role resolved by the complete table classifier.
+            # Re-running a row-local matcher later loses ordered/hierarchy
+            # context and can make one generic child label appear to belong
+            # to two structural branches.
+            source_only["declared_validation_role"] = declared_role
+        source_only_rows.append(source_only)
     standalone_exact_source_result = bool(
         optional_component_veto_source_result and len(family_root_ordinals) == 1 and not hit_by_row
     )
@@ -6646,6 +6674,20 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         and "FAMILY_ROOT_TOTAL" not in records
     ):
         reasons.append("REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN")
+    minimum_root_components = compiled_specs["evaluation"].get(
+        "minimum_source_visible_root_component_count"
+    )
+    if (
+        compiled_specs["evaluation"].get(
+            "root_only_source_result_policy", "ALLOW_EXACT_SOURCE_RESULT"
+        )
+        == "REQUIRE_MINIMUM_DECLARED_COMPONENTS"
+        and type(minimum_root_components) is int
+        and "FAMILY_ROOT_TOTAL" in records
+        and len(set(compiled_specs["root_component_roles"]).intersection(records))
+        < minimum_root_components
+    ):
+        reasons.append("MINIMUM_SOURCE_VISIBLE_ROOT_COMPONENTS_NOT_PROVEN")
     if (
         not reasons
         and "FAMILY_ROOT_TOTAL" not in records

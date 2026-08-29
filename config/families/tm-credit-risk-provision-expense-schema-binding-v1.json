@@ -1,0 +1,19 @@
+{
+  "family_id": "CREDIT_RISK_PROVISION_EXPENSE",
+  "family_root_report_norm_id": 1221,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 6032, "role": "INTERBANK_PROVISION"},
+    {"report_norm_id": 1222, "role": "INTERBANK_GENERAL"},
+    {"report_norm_id": 1223, "role": "INTERBANK_SPECIFIC"},
+    {"report_norm_id": 6031, "role": "CUSTOMER_PROVISION"},
+    {"report_norm_id": 1224, "role": "CUSTOMER_GENERAL"},
+    {"report_norm_id": 1225, "role": "CUSTOMER_SPECIFIC"},
+    {"report_norm_id": 6033, "role": "PURCHASED_DEBT_PROVISION"},
+    {"report_norm_id": 1226, "role": "VAMC_PROVISION"},
+    {"report_norm_id": 1227, "role": "OFF_BALANCE_COMMITMENT_PROVISION"},
+    {"report_norm_id": 1228, "role": "OTHER_PROVISION"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "DURATION"
+}

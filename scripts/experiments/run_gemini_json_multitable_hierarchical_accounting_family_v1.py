@@ -387,6 +387,29 @@ PINNED_OPERATING_EXPENSE_HISTORICAL_ORACLES = (
         "size_bytes": 273876,
     },
 )
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_HISTORICAL_ORACLES = (
+    {
+        "format_version": "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0089-credit-risk-provision-expense-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "4cca556974e99786454526466680a0ccefb7ae5271c5523804e3e69d34e03051",
+        "size_bytes": 65025,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0144-annual-2025-credit-risk-provision-expense-8bank-"
+            "codex-verified-mapping-v1.json"
+        ),
+        "sha256": "28acc97593a083beda7eca80192d24e6a0550ebd706a40d13c916a742d799ecc",
+        "size_bytes": 99370,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1026,6 +1049,55 @@ PINNED_OPERATING_EXPENSE_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("cebe514214d8830c0721ee2ddcf93fd7a5e90e48ad9e352e3812f8e3544ccd6f"),
     "mappings": "7f3ce3f694db66211698c931377d57f78e1324326c0b1c94dfe8066dd4d39d4b",
 }
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "86ca8365e2fc171e448fea9b639b101c00b545949069de84afb9e6ca22b5c3ab"
+    ),
+    "accepted_cluster_count": 64,
+    "accepted_fragment_count": 64,
+    "candidate_disposition_axis_sha256": (
+        "e632f35e87288f60a9bf1ed56d777f1f7feddb92a6476859dac703ec95e590be"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 76, READY: 64, UNRESOLVED: 0},
+    "query_policy_sha256": "eecdf1486f78dd1460eec79423d5306dd04ef179c6918efcc1fbb627bda43d86",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 300,
+    "not_observed_count": 76,
+    "ready_count": 64,
+    "unresolved_count": 0,
+}
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AUDIT_METRICS = {
+    "equation_count": 118,
+    "historical_comparator_exact_count": 56,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 40,
+    "historical_mapping_record_count": 40,
+    "mapping_count": 300,
+}
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AXIS_COUNTS = {
+    "clusters": 64,
+    "equations": 118,
+    "historical_comparator": 56,
+    "mappings": 300,
+}
+PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AXIS_SHA256 = {
+    "clusters": "cf7a7d5c3f7b0c59a42b74ac69d778a8345244d61b0f6547deac47ac9e77569c",
+    "equations": "5db27f516c2d761703ed9bab5483415aae2cc394b7f006ae58372b765534f1d7",
+    "historical_comparator": ("933b90726161f614d34944a04ea6be41b39a2a5dcf14eb220e699c7cbda736ff"),
+    "mappings": "9148c0904c8b6f7686022c81b75596dd1a04c9fdafaf96eb1bd05a163183aa1f",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1257,6 +1329,8 @@ def _historical_oracle_refs(
         return PINNED_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_HISTORICAL_ORACLES
     if family_id == "OPERATING_EXPENSE":
         return PINNED_OPERATING_EXPENSE_HISTORICAL_ORACLES
+    if family_id == "CREDIT_RISK_PROVISION_EXPENSE":
+        return PINNED_CREDIT_RISK_PROVISION_EXPENSE_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1381,6 +1455,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_OPERATING_EXPENSE_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_OPERATING_EXPENSE_QUERY_RECEIPT,
             "sweep_metrics": PINNED_OPERATING_EXPENSE_RELEASE_METRICS,
+        }
+    if family_id == "CREDIT_RISK_PROVISION_EXPENSE":
+        return {
+            "axis_counts": PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AXIS_SHA256,
+            "audit_metrics": (PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_CREDIT_RISK_PROVISION_EXPENSE_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_CREDIT_RISK_PROVISION_EXPENSE_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
