@@ -3217,6 +3217,29 @@ These four records remain source-authoritative negative gates. A later generic
 repair/schema result may resolve them, but must retain this history and cite
 its independent replay ID and commit.
 
+## Family 29 current corpus — interest expense (`INTEREST_EXPENSE`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family29-interest-expense/sweep.json`
+
+- Census: 140 documents, `READY=140`, `NOT_OBSERVED=0`, `UNRESOLVED=0`,
+  701 mappings and 140 exact source-root equations. Family29 adds no unresolved
+  mapping entry.
+- MBB ordinal 78 raw source cell `(8.656:569)` is retained verbatim. Its typed
+  projection `-8.656.569` is accepted only because the complete direct expense
+  frontier closes the visible comparative subtotal exactly; the mapping state
+  records conditional equation provenance. This is representation
+  normalization, not an equation-derived replacement or a provider retry.
+- The release keeps exact role inventories: deposit interest 140, borrowing
+  interest 135, issued-paper interest 140, finance-lease interest 6, other
+  credit expense 140 and source-visible family root 140. Missing optional roles
+  are absence, not unresolved rows.
+
+The colon-separator and two-sided-subtotal adversarial fixtures remain
+source-authoritative regression gates. A colon-bearing value without exact
+equation closure, or a declared family role on both sides of one root carrier,
+must return `UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

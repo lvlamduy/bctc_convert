@@ -499,15 +499,49 @@ Artifact OFFICIAL:
   28 current selections, `quick_check` và foreign keys sạch, không có SQLite
   sidecar, SHA-256
   `17c4e82787bd38906fb1eb4842b45eec7ac51dc5a03f8d07fc522ed2d7b60cb0`.
+- Family 29 `INTEREST_EXPENSE`: `READY=140`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=0`, 701 mappings và 140 exact source-root equations. Generic
+  explicit-root subtree resolver phân biệt đúng hai phía của `GROUP`,
+  `SUBTOTAL` và `TOTAL`: `GROUP` chỉ sở hữu population phía sau; subtotal/total
+  chọn duy nhất population được source hierarchy hoặc declared child role xác
+  nhận. Nếu cả hai phía cùng có family role thì giữ cả hai và fail closed qua
+  duplicate/unmapped gate, không âm thầm bỏ evidence. Vì vậy các combined
+  income/expense/net-interest table không còn kéo income sibling vào expense
+  subtotal. Source alias `Chi phí phát hành giấy tờ có giá` được khai báo như
+  một biến thể exact của issued-paper interest, không có bank/file/page route.
+
+  MBB ordinal 78 chứa raw comparative value `(8.656:569)`. Code giữ nguyên raw
+  string, chiếu dấu `:` ở đúng vị trí group separator thành `8.656.569` với
+  typed state `INFERRED_COLON_GROUP_SEPARATOR_INTEGER_IF_EQUATION_EXACT`, và
+  chỉ nhận vì bốn visible expense children đóng chính xác subtotal
+  `13.619.791`. Cùng projection với subtotal lệch bị test trả U/mappings rỗng;
+  biểu diễn không hợp grammar vẫn bị từ chối. Không gọi Gemini, không đổi prompt
+  và không backsolve giá trị từ subtotal.
+
+  Exact SQLite replay phủ đủ 8.947 selected page versions, 140 accepted
+  clusters/140 fragments. E-0081/E-0135 khớp 16/16 historical dispositions và
+  80/80 mappings; combined comparator 96/96 exact. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family29-interest-expense/sweep.json`,
+  SHA-256
+  `e337d625b6c2e0e4c9fcdd17066680be1f8ae95ddb9c004f41ab6d2be2ea6b71`;
+  audit SHA-256
+  `30aab132df3685c5d4f7d93de345a5ef127e61dd1b7d085eef89cd41ec12e061`.
+  Implementation commit `e58ba8e`; 138 focused/adjacent tests, repeated
+  immutable EXP replay, coherent candidate-receipt rehash rejection by public
+  SQLite candidate replay, Ruff, format, compile, JSON, diff và fsck checks đều
+  xanh. Cumulative results DB có 29 current selections, `quick_check` và foreign
+  keys sạch, không SQLite sidecar, SHA-256
+  `9580c7ee87580625b6971d0b3d302038c9422ca383de1b2facc6cb3763daf7a6`.
 
 ## Next gate
 
-Family 29 là `INTEREST_EXPENSE` bắt đầu tại ReportNormId 1151. Tái sử dụng
-duration-axis, explicit-owner/root-subtree và exact component-total primitives
-trên full-corpus census 8.947 trang, rồi khóa comparator E-0081/E-0135. Thuật
-toán phải tự xử lý tiền gửi, tiền vay, giấy tờ có giá, thuê tài chính và chi phí
-tín dụng khác; combined net-interest table không được làm expense total cộng
-trùng với income sibling. Prompt Gemini vẫn tối giản và cố định; chỉ typed
-missing row/column/context mới được tự động nâng sang bounded context prompt.
-Chỉ promote OFFICIAL sau exhaustive inventory, query/candidate SQLite replay,
-duration/unit/equation receipts, historical comparator và đủ 140 dispositions.
+Family 30 là `SERVICE_ACTIVITY`, bắt đầu tại ReportNormId 1157. Tái sử dụng
+duration-axis và explicit-owner primitives nhưng mở rộng generic graph cho ba
+population liên quan: service income, service expense và visible net service
+result. Phải bao quát leading/trailing totals, income/expense ở table sibling,
+optional direct children và combined source rows; một giá trị gộp không được tự
+chia sang nhiều schema leaf. Khóa comparator E-0082/E-0137 và giữ nguyên mọi
+source-only unresolved row có thật. Prompt Gemini tiếp tục tối giản/cố định;
+period, unit, hierarchy, subtotal/net equations và mapping hoàn toàn do code
+xử lý. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
+query/candidate replay, historical comparator và đủ 140 dispositions.
