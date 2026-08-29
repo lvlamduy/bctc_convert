@@ -59,9 +59,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 37 | `CREDIT_RISK_PROVISION_EXPENSE` | 64 | 76 | 0 | 300 | `gjfafstorev1:run:d0423fdd934fc17844504f95885dc6901c6338842d7844dce0ab1141af4964f3` |
 | 38 | `OTHER_ACTIVITY` | 72 | 68 | 0 | 587 | `gjfafstorev1:run:950f420a48368122686d77d4d2a7a9b22a3ad788a53b06c54242f1b3061e7ef5` |
 | 39 | `INCOME_TAX` | 69 | 71 | 0 | 499 | `gjfafstorev1:run:ebe7179dd4fe83c5809edf225e8969b440214a91bc1348d1bafd1aa54ff919c3` |
+| 40 | `CASH_EQUIVALENTS` | 105 | 35 | 0 | 548 | `gjfafstorev1:run:b46dbf68ed1e3d57bf8f041e408e4aa74f09139931e1942148bc387befb03b6d` |
 
-Tại checkpoint này database có đủ đúng ba mươi chín current selection liên tục
-từ Family 1 đến Family 39. Family 40 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi current selection liên tục từ
+Family 1 đến Family 40. Family 41 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -875,16 +876,48 @@ Artifact OFFICIAL:
   đều xanh. Cumulative results DB có 39 current selections, `quick_check` và
   foreign keys sạch, không SQLite sidecar, SHA-256
   `6c9ebc9f0e38c00f02fef0b1f287f7fc3bc43593d8ae0323fb3c4be0d14ab984`.
+- Family 40 `CASH_EQUIVALENTS`: `READY=105`, `NOT_OBSERVED=35`,
+  `UNRESOLVED=0` và 548 mappings. Generic hierarchical resolver inventory đúng
+  family root cùng các component tiền mặt, tiền gửi NHNN, tiền gửi TCTD chung
+  hoặc tách không kỳ hạn/có kỳ hạn và chứng khoán đủ điều kiện. Nó phân biệt
+  detailed note với cash-flow/primary-statement control; một primary-statement
+  subtree chỉ được nhận khi có owner/group, complete direct frontier và visible
+  root total đóng chính xác ở cả hai lane.
+
+  Resolver chấp nhận các biến thể `ITEM/GROUP/TOTAL` do Gemini mô tả khi
+  hierarchy, label, scope và phương trình cùng chứng minh một graph duy nhất.
+  Mọi source-visible family row chưa tiêu thụ, duplicate population, incomplete
+  frontier, period/unit conflict hoặc cash-flow lookalike đều fail closed.
+  Blank chỉ thành zero sau rank/equation proof; dash visible được giữ đúng source.
+  Prompt Gemini không thay đổi và không chứa mapping, graph, phương trình hay
+  đáp án Family 40.
+
+  Exact query census là 105 accepted clusters/fragments và 35 typed absence
+  dispositions trên đủ 8.947 selected page versions. Có 109 exact equation
+  receipts. E-0092/E-0147 khớp 90/90 comparator records, gồm 74/74 historical
+  mappings và 16/16 dispositions. Public SQLite replay xác thực lại indexed
+  evidence và toàn bộ candidate từ canonical page JSON.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family40-cash-equivalents/sweep.json`,
+  SHA-256
+  `8293f0faa5bcf12beba76196b439c2f4f5d2c56b032c252501728bf64b345369`;
+  audit SHA-256
+  `e4e869ef0bf318fa7f991692918a99db36428c7f4626e6b6fa9525235ef71d2d`.
+  Implementation commit `c160a43`; 248 focused/adjacent/regression tests, Ruff,
+  format, compile, JSON, diff, EXP/OFFICIAL replay và SQLite integrity đều xanh.
+  Cumulative results DB có 40 current selections, `quick_check` và foreign keys
+  sạch, không SQLite sidecar, SHA-256
+  `b9393db95bbfe81bce772176e036b2459feccaa8ba525e1fdb79c5e759c3c25e`.
 
 ## Next gate
 
-Family 40 là `CASH_EQUIVALENTS`. Khóa comparator E-0092/E-0147, giữ prompt
-Gemini tối giản và cố định; code phải tự inventory total cùng các source-visible
-component cash, central-bank, interbank demand/term/general và securities,
-phân biệt cash-flow summary với detailed cash-equivalent note, rồi dựng graph,
-scope, period, unit và phương trình ở cả hai lane bằng thuật toán/config
-declarative. Không được route theo bank/file/page/value, coi ô trống là zero
-khi chưa có rank proof, hấp thụ unrelated deposit/securities tables hoặc ép
-Gemini trả một serialization family-specific. Chỉ promote OFFICIAL sau
-exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
-comparator và đủ 140 dispositions.
+Family 41 là `SUBSIDIARY_ACQUISITION_DISPOSAL`. Khóa comparator E-0093/E-0148,
+giữ prompt Gemini tối giản và cố định; code phải tự inventory graph detailed
+subsidiary transaction gồm total consideration, cash settlement và cash held by
+the acquired/disposed business cùng period/unit/numeric axes. Policy text,
+consolidation narrative và broad investment cash-flow caption chỉ là controls,
+không phải mapping evidence. Không được hard-code bounded absences cũ theo
+bank/file/page, bỏ qua near controls hoặc ép Gemini trả một serialization
+family-specific. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
+SQLite query/candidate replay, historical comparator và đủ 140 dispositions.
