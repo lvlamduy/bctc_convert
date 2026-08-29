@@ -3264,6 +3264,28 @@ money child, period conflict and unit conflict fixtures remain authoritative
 regression gates. Every incomplete/conflicting graph must return
 `UNRESOLVED` with `mappings=[]`.
 
+## Family 31 current corpus — FX and gold activity (`FX_GOLD_ACTIVITY`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family31-fx-gold-activity/sweep.json`
+
+- Census: 140 documents, `READY=72`, `NOT_OBSERVED=68`, `UNRESOLVED=0`,
+  580 mappings and 220 exact source/graph equations. Family31 adds no
+  unresolved mapping entry.
+- Combined spot-FX-and-gold rows remain exact combined schema roles RNID
+  6026/6027. They are not split into synthetic spot and gold values. Optional
+  missing gold/FX-difference/other roles remain absence rather than inferred
+  mappings.
+- Visible dash/blank zero is accepted only after its complete local equation
+  closes. Source-only rows consumed by a sealed table equation remain explicit
+  in candidate provenance and are never silently converted into schema leaves.
+
+The one-child explicit-root positive case and the partial graph, source-net
+mismatch, duplicate complete population, unknown direct child, foreign-table
+net label, period conflict, unit conflict and coherent receipt/schema attacks
+remain authoritative regression gates. Every incomplete or conflicting graph
+must return `UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
