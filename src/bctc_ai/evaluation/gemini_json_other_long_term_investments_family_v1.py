@@ -1034,6 +1034,16 @@ def _source_money(value: Any) -> dict[str, Any]:
         if type(value) is not str:
             raise
         body = value.strip()
+        signed_body = body[1:-1].strip() if body.startswith("(") and body.endswith(")") else body
+        if signed_body.startswith("-"):
+            signed_body = signed_body[1:].strip()
+        if re.fullmatch(r"[0-9]{1,3}(?:[.,][0-9]{3})*:[0-9]{3}", signed_body):
+            parsed = _money(value.replace(":", "."))
+            return {
+                **parsed,
+                "source_text": value,
+                "state": "COLON_GROUP_SEPARATOR_INTEGER_IF_EQUATION_EXACT",
+            }
         if body and all(character in "-–—−_:|·." or character.isspace() for character in body):
             return {
                 "coefficient": 0,
@@ -1934,12 +1944,12 @@ def _global_records(
             continue
         if len(cells) != 2:
             continue
-        if any(cell["state"].endswith("ZERO_IF_EQUATION_EXACT") for cell in cells):
+        if any(cell["state"].endswith("_IF_EQUATION_EXACT") for cell in cells):
             if role not in proven_roles:
-                reasons.append(f"UNPROVEN_BLANK_ZERO_IN_MAPPING_ROLE:{role}")
+                reasons.append(f"UNPROVEN_CONDITIONAL_SOURCE_CELL_IN_MAPPING_ROLE:{role}")
             else:
                 for cell in cells:
-                    if cell["state"].endswith("ZERO_IF_EQUATION_EXACT"):
+                    if cell["state"].endswith("_IF_EQUATION_EXACT"):
                         cell["state"] = "INFERRED_" + cell["state"]
         state = states[0] if len(set(states)) == 1 else "CORROBORATED_MULTI_SOURCE_PRESENTATIONS"
         records[role] = {

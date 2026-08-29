@@ -3912,7 +3912,18 @@ def _extract_table_local_records(
             "TOTAL",
         }:
             continue
-        for step in (-1, 1):
+        # A GROUP is a leading structural owner: adjacent flat children may
+        # follow it, never precede it.  Visible TOTAL/SUBTOTAL carriers can be
+        # printed before or after their components.  Keep the two bounded
+        # populations separate until source hierarchy or one declared child
+        # role uniquely selects a side; otherwise retain both and let the
+        # exhaustive unmapped/duplicate gates fail closed.  This prevents a
+        # combined income/expense table from assigning the preceding income
+        # population to a following expense subtotal merely by adjacency.
+        steps = (1,) if root_row.get("row_kind") == "GROUP" else (-1, 1)
+        populations: dict[int, list[int]] = {}
+        for step in steps:
+            population = []
             ordinal = root_ordinal + step
             while 1 <= ordinal <= len(rows):
                 row = rows[ordinal - 1]
@@ -3922,8 +3933,43 @@ def _extract_table_local_records(
                     "TOTAL",
                 }:
                     break
-                flat_family_row_ordinals.add(ordinal)
+                population.append(ordinal)
                 ordinal += step
+            populations[step] = population
+        selected_populations = list(populations.values())
+        if len(selected_populations) > 1:
+            hierarchy_scoped = [
+                population
+                for population in selected_populations
+                if any(
+                    _row_is_strict_descendant(rows, ordinal, root_ordinal) for ordinal in population
+                )
+            ]
+            declared_child_scoped = [
+                population
+                for population in selected_populations
+                if any(
+                    ordinal in declared_role_ordinals and ordinal not in family_root_ordinals
+                    for ordinal in population
+                )
+            ]
+            hierarchy_selected = hierarchy_scoped[0] if len(hierarchy_scoped) == 1 else None
+            declared_outside_hierarchy = bool(
+                hierarchy_selected is not None
+                and any(
+                    ordinal in declared_role_ordinals and ordinal not in family_root_ordinals
+                    for population in selected_populations
+                    if population is not hierarchy_selected
+                    for ordinal in population
+                )
+            )
+            if hierarchy_selected is not None and not declared_outside_hierarchy:
+                selected_populations = hierarchy_scoped
+            elif len(declared_child_scoped) == 1:
+                selected_populations = declared_child_scoped
+        flat_family_row_ordinals.update(
+            ordinal for population in selected_populations for ordinal in population
+        )
 
     def row_inside_explicit_family_root(row_ordinal: int) -> bool:
         return bool(
@@ -4875,7 +4921,7 @@ def _extract_table_local_records(
         {
             source_ref["row_ordinal"]
             for record in local_records
-            if any(cell["state"].endswith("ZERO_IF_EQUATION_EXACT") for cell in record["cells"])
+            if any(cell["state"].endswith("_IF_EQUATION_EXACT") for cell in record["cells"])
             for source_ref in record["source_refs"]
             if source_ref["row_ordinal"] not in consumed_ordinals
         }
@@ -5012,9 +5058,9 @@ def _multitable_global_records(
             continue
         selected = observations[0]
         cell = canonical_clone_v1(selected["cells"][0])
-        if cell["state"].endswith("ZERO_IF_EQUATION_EXACT"):
+        if cell["state"].endswith("_IF_EQUATION_EXACT"):
             if role not in proven_roles:
-                single_reasons.append(f"UNPROVEN_BLANK_ZERO_IN_MAPPING_ROLE:{role}")
+                single_reasons.append(f"UNPROVEN_CONDITIONAL_SOURCE_CELL_IN_MAPPING_ROLE:{role}")
                 continue
             cell["state"] = "INFERRED_" + cell["state"]
         output[role] = {

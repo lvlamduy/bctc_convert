@@ -1,0 +1,36 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Trả lãi tiền gửi", "Chi lãi tiền gửi", "Chi phí lãi tiền gửi", "Lãi tiền gửi"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả lãi tiền vay", "Chi lãi tiền vay", "Chi phí lãi tiền vay", "Lãi tiền vay", "Trả lãi tiền gửi và vay các tổ chức tín dụng khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "BORROWING_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả lãi phát hành giấy tờ có giá", "Chi lãi phát hành giấy tờ có giá", "Chi phí lãi phát hành giấy tờ có giá", "Chi phí phát hành giấy tờ có giá", "Lãi phát hành giấy tờ có giá"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "ISSUED_PAPER_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trả lãi tiền thuê tài chính", "Chi lãi thuê tài chính", "Chi phí lãi thuê tài chính"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FINANCE_LEASE_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí hoạt động tín dụng khác", "Chi phí khác cho hoạt động tín dụng", "Chi các hoạt động tín dụng khác", "Chi phí các hoạt động tín dụng khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_CREDIT_EXPENSE", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "INTEREST_EXPENSE",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": ["Thu nhập lãi và các khoản thu nhập tương tự", "Các khoản lãi, phí phải thu"],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Chi phí lãi và các chi phí tương tự", "Chi phí lãi và các khoản chi phí tương tự", "Chi phí lãi và các khoản tương tự chi phí lãi"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "INTEREST_EXPENSE_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["DEPOSIT_INTEREST", "BORROWING_INTEREST", "ISSUED_PAPER_INTEREST"], ["DEPOSIT_INTEREST", "BORROWING_INTEREST", "OTHER_CREDIT_EXPENSE"]],
+  "structural_reset_aliases": ["Thu nhập lãi và các khoản thu nhập tương tự", "Thu nhập từ hoạt động dịch vụ", "Lãi thuần từ hoạt động dịch vụ", "Kinh doanh ngoại hối", "Mua bán chứng khoán kinh doanh"]
+}

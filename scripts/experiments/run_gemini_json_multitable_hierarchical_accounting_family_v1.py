@@ -227,6 +227,23 @@ PINNED_INTEREST_INCOME_HISTORICAL_ORACLES = (
         "size_bytes": 146768,
     },
 )
+PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INTEREST_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0081-interest-expense-8bank-codex-verified-mapping-v1.json",
+        "sha256": "e9a49c0d594290da6082c42798bc1904c5a58ca23de122a3d2140cd59790c580",
+        "size_bytes": 119015,
+    },
+    {
+        "format_version": "ANNUAL_2025_INTEREST_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0135-annual-2025-interest-expense-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "52fe4c56b2d0dd1d4528752301eca771414f132f30ff3e7ef11a44189bf77774",
+        "size_bytes": 114053,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -472,6 +489,55 @@ PINNED_INTEREST_INCOME_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("4405674348550483e6cf30e67d3cb9a20526c89bf83bba843a42d1565f8cc388"),
     "mappings": "8e9173f5b9f7bba7f8e81ab349a6b285e5afcedf028ddf580953de5d9ca8fca1",
 }
+PINNED_INTEREST_EXPENSE_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "d868b479c6e9e36dddb9f2a011a8c9ca6077b14d73858921004b0d5f1c26c3b0"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 140,
+    "candidate_disposition_axis_sha256": (
+        "674877e5145ad45ee02b7eb378daf9d97b166d1897f9e5cad11139fabe933918"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "3a17f65c1feefa0c72e9229bb46100d928d1df93edc1676a80ac049f6609af34",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_INTEREST_EXPENSE_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 701,
+    "not_observed_count": 0,
+    "ready_count": 140,
+    "unresolved_count": 0,
+}
+PINNED_INTEREST_EXPENSE_RELEASE_AUDIT_METRICS = {
+    "equation_count": 140,
+    "historical_comparator_exact_count": 96,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 80,
+    "historical_mapping_record_count": 80,
+    "mapping_count": 701,
+}
+PINNED_INTEREST_EXPENSE_RELEASE_AXIS_COUNTS = {
+    "clusters": 140,
+    "equations": 140,
+    "historical_comparator": 96,
+    "mappings": 701,
+}
+PINNED_INTEREST_EXPENSE_RELEASE_AXIS_SHA256 = {
+    "clusters": "d290c7167c2b483dccfe98952b87181815be0de535288b0afaab26616b310b3a",
+    "equations": "4ad1ecf1856b100e9fa129ba75debdd191d186d7d10fafa9d9ec6b22866eb9c9",
+    "historical_comparator": "a5c67153914dc233d191373559d01e8d896d0a6632e079071827d2ffbd90150e",
+    "mappings": "e5e1afac7053bae79597a52594b97cfe960941f2f4ec775ea402fda320e64203",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -687,6 +753,8 @@ def _historical_oracle_refs(
         return PINNED_OTHER_PAYABLES_LIABILITIES_HISTORICAL_ORACLES
     if family_id == "INTEREST_INCOME":
         return PINNED_INTEREST_INCOME_HISTORICAL_ORACLES
+    if family_id == "INTEREST_EXPENSE":
+        return PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -744,6 +812,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_INTEREST_INCOME_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_INTEREST_INCOME_QUERY_RECEIPT,
             "sweep_metrics": PINNED_INTEREST_INCOME_RELEASE_METRICS,
+        }
+    if family_id == "INTEREST_EXPENSE":
+        return {
+            "axis_counts": PINNED_INTEREST_EXPENSE_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_INTEREST_EXPENSE_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_INTEREST_EXPENSE_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_INTEREST_EXPENSE_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_INTEREST_EXPENSE_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

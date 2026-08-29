@@ -61,6 +61,14 @@ def _interest_income_compiled() -> dict:
     )
 
 
+def _interest_expense_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-interest-expense-topology-v1.json"),
+        _json("tm-interest-expense-evaluation-v1.json"),
+        _json("tm-interest-expense-schema-binding-v1.json"),
+    )
+
+
 def _columns(current: str = "31/12/2025", comparative: str = "31/12/2024") -> list[dict]:
     return [
         {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
@@ -154,6 +162,24 @@ def _evaluate(page: dict) -> tuple[dict, dict, dict]:
 
 def _evaluate_interest_income(page: dict) -> tuple[dict, dict, dict]:
     compiled = _interest_income_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, candidate
+
+
+def _evaluate_interest_expense(page: dict) -> tuple[dict, dict, dict]:
+    compiled = _interest_expense_compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[_record(page)], compiled_specs=compiled
     )
@@ -1846,3 +1872,191 @@ def test_interest_income_source_group_must_equal_declared_components(
             "DECLARED_SOURCE_RESULT_COMPONENT_EQUATION_MISMATCH:SECURITIES_INTEREST"
             in candidate["reasons"]
         )
+
+
+def test_interest_expense_group_root_owns_only_following_flat_rows() -> None:
+    income_root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    expense_root = "Chi phí lãi và các chi phí tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(income_root, [None, None], kind="GROUP", hierarchy=[income_root]),
+            _row("Thu nhập lãi tiền gửi", ["9", "7"]),
+            _row(None, ["9", "7"], kind="SUBTOTAL", hierarchy=[income_root, None]),
+            _row(expense_root, [None, None], kind="GROUP", hierarchy=[expense_root]),
+            _row("Chi phí lãi tiền gửi", ["4", "3"]),
+            _row("Chi phí lãi tiền vay", ["2", "1"]),
+            _row("Chi phí lãi phát hành giấy tờ có giá", ["1", "1"]),
+            _row("Chi phí hoạt động tín dụng khác", ["1", "1"]),
+            _row(None, ["8", "6"], kind="SUBTOTAL", hierarchy=[expense_root, None]),
+            _row("Thu nhập lãi thuần", ["1", "1"], kind="TOTAL"),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_expense(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "BORROWING_INTEREST",
+        "DEPOSIT_INTEREST",
+        "FAMILY_ROOT_TOTAL",
+        "ISSUED_PAPER_INTEREST",
+        "OTHER_CREDIT_EXPENSE",
+    }
+    receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert receipt["family_root_population_receipt"]["flat_item_row_ordinals"] == [5, 6, 7, 8]
+    assert [item["row_ordinal"] for item in receipt["outside_family_root_rows"]] == [1, 2, 3, 10]
+
+
+def test_interest_expense_subtotal_selects_its_declared_child_side() -> None:
+    income_root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    expense_root = "Chi phí lãi và các chi phí tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(income_root, ["9", "7"], kind="SUBTOTAL", hierarchy=[income_root]),
+            _row(
+                "Thu nhập lãi tiền gửi",
+                ["4", "3"],
+                hierarchy=[income_root, "Thu nhập lãi tiền gửi"],
+            ),
+            _row(
+                "Thu nhập lãi cho vay",
+                ["5", "4"],
+                hierarchy=[income_root, "Thu nhập lãi cho vay"],
+            ),
+            _row(expense_root, ["-8", "-6"], kind="SUBTOTAL", hierarchy=[expense_root]),
+            _row(
+                "Chi phí lãi tiền gửi",
+                ["-4", "-3"],
+                hierarchy=[expense_root, "Chi phí lãi tiền gửi"],
+            ),
+            _row(
+                "Chi phí lãi tiền vay",
+                ["-2", "-1"],
+                hierarchy=[expense_root, "Chi phí lãi tiền vay"],
+            ),
+            _row(
+                "Chi phí phát hành giấy tờ có giá",
+                ["-1", "-1"],
+                hierarchy=[expense_root, "Chi phí phát hành giấy tờ có giá"],
+            ),
+            _row(
+                "Chi phí hoạt động tín dụng khác",
+                ["-1", "-1"],
+                hierarchy=[expense_root, "Chi phí hoạt động tín dụng khác"],
+            ),
+            _row("Thu nhập lãi thuần", ["1", "1"], kind="TOTAL"),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_expense(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "BORROWING_INTEREST",
+        "DEPOSIT_INTEREST",
+        "FAMILY_ROOT_TOTAL",
+        "ISSUED_PAPER_INTEREST",
+        "OTHER_CREDIT_EXPENSE",
+    }
+    receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert receipt["family_root_population_receipt"]["flat_item_row_ordinals"] == [5, 6, 7, 8]
+    assert [item["row_ordinal"] for item in receipt["outside_family_root_rows"]] == [1, 2, 3, 9]
+
+
+@pytest.mark.parametrize(
+    ("current_root", "expected_status"),
+    [("-8000000", READY), ("-8000001", UNRESOLVED)],
+)
+def test_interest_expense_colon_group_separator_requires_exact_root_equation(
+    current_root: str, expected_status: str
+) -> None:
+    expense_root = "Chi phí lãi và các chi phí tương tự"
+    table = _table(
+        expense_root,
+        [
+            _row(
+                expense_root,
+                [current_root, "-6"],
+                kind="SUBTOTAL",
+                hierarchy=[expense_root],
+            ),
+            _row(
+                "Chi phí lãi tiền gửi",
+                ["(4.000:000)", "-3"],
+                hierarchy=[expense_root, "Chi phí lãi tiền gửi"],
+            ),
+            _row(
+                "Chi phí lãi tiền vay",
+                ["-2000000", "-1"],
+                hierarchy=[expense_root, "Chi phí lãi tiền vay"],
+            ),
+            _row(
+                "Chi phí phát hành giấy tờ có giá",
+                ["-1000000", "-1"],
+                hierarchy=[expense_root, "Chi phí phát hành giấy tờ có giá"],
+            ),
+            _row(
+                "Chi phí hoạt động tín dụng khác",
+                ["-1000000", "-1"],
+                hierarchy=[expense_root, "Chi phí hoạt động tín dụng khác"],
+            ),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_expense(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == expected_status
+    if expected_status == READY:
+        deposit = next(
+            mapping for mapping in candidate["mappings"] if mapping["role"] == "DEPOSIT_INTEREST"
+        )
+        assert deposit["values"][0] == {
+            "coefficient": -4000000,
+            "source_text": "(4.000:000)",
+            "state": "INFERRED_COLON_GROUP_SEPARATOR_INTEGER_IF_EQUATION_EXACT",
+        }
+    else:
+        assert candidate["mappings"] == []
+
+
+def test_interest_expense_subtotal_does_not_hide_declared_role_on_other_side() -> None:
+    expense_root = "Chi phí lãi và các chi phí tương tự"
+    table = _table(
+        expense_root,
+        [
+            _row("Chi phí lãi tiền gửi", ["-4", "-3"]),
+            _row(expense_root, ["-8", "-6"], kind="SUBTOTAL", hierarchy=[expense_root]),
+            _row(
+                "Chi phí lãi tiền gửi",
+                ["-4", "-3"],
+                hierarchy=[expense_root, "Chi phí lãi tiền gửi"],
+            ),
+            _row(
+                "Chi phí lãi tiền vay",
+                ["-2", "-1"],
+                hierarchy=[expense_root, "Chi phí lãi tiền vay"],
+            ),
+            _row(
+                "Chi phí phát hành giấy tờ có giá",
+                ["-1", "-1"],
+                hierarchy=[expense_root, "Chi phí phát hành giấy tờ có giá"],
+            ),
+            _row(
+                "Chi phí hoạt động tín dụng khác",
+                ["-1", "-1"],
+                hierarchy=[expense_root, "Chi phí hoạt động tín dụng khác"],
+            ),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_expense(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED" in candidate["reasons"]

@@ -1,0 +1,14 @@
+{
+  "family_id": "INTEREST_EXPENSE",
+  "family_root_report_norm_id": 1151,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1152, "role": "DEPOSIT_INTEREST"},
+    {"report_norm_id": 1153, "role": "BORROWING_INTEREST"},
+    {"report_norm_id": 1154, "role": "ISSUED_PAPER_INTEREST"},
+    {"report_norm_id": 1155, "role": "FINANCE_LEASE_INTEREST"},
+    {"report_norm_id": 1156, "role": "OTHER_CREDIT_EXPENSE"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "DURATION"
+}
