@@ -532,16 +532,52 @@ Artifact OFFICIAL:
   xanh. Cumulative results DB có 29 current selections, `quick_check` và foreign
   keys sạch, không SQLite sidecar, SHA-256
   `9580c7ee87580625b6971d0b3d302038c9422ca383de1b2facc6cb3763daf7a6`.
+- Family 30 `SERVICE_ACTIVITY`: `READY=68`, `NOT_OBSERVED=72`,
+  `UNRESOLVED=0`, 869 mappings và 289 exact source/graph equations. Generic
+  document graph inventories toàn bộ 8.947 selected pages rồi chỉ nhận một
+  complete service graph có đủ income root, expense root, source-visible net
+  result và ít nhất hai declared children cho mỗi detailed root. Primary
+  statement chỉ cung cấp source result; summary, segment, related-party và
+  generic child alias ngoài authenticated root population không thể thay thế
+  detailed note.
+
+  Engine bao quát leading/trailing total, label-only `GROUP` theo sau bởi
+  unlabeled subtotal, income/expense ở sibling tables, four-column
+  quarter-plus-YTD presentations và source-only combined rows. Duration-axis
+  chọn đúng cumulative pair bằng source header semantics; graph của nhóm
+  label-only dùng cùng direct-child proxy ở cả hai phía của prior subtotal.
+  Source net equation tìm duy nhất hướng dấu `+/-1` với income dương đầu tiên,
+  nên expense trình bày âm dùng `[1,1]`, expense trình bày magnitude dương dùng
+  `[1,-1]`; mismatch hoặc nhiều hướng đều trả U với `mappings=[]`. Không
+  backsolve, không route theo bank/file/page/value và không gọi Gemini hay đổi
+  prompt.
+
+  Exact query census là 68 accepted clusters/139 fragments và 72 typed absence
+  dispositions. E-0082/E-0137 khớp 16/16 historical dispositions và 144/144
+  mappings; comparator 160/160 exact. Coherent candidate-receipt rehash được
+  flat envelope nhận như đúng boundary nhưng bị public canonical-page SQLite
+  replay từ chối; coherent embedded schema-root drift bị audit replay từ chối
+  trước source replay. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family30-service-activity/sweep.json`,
+  SHA-256
+  `ee3fc0578e74f6a162f1322f266b372bba87da250d0dd70560b222e22d615210`;
+  audit SHA-256
+  `aa548a2964cfd68b2197c328093fd46f460792fc4f36a7478632148461bb71db`.
+  Implementation commit `e78e782`, adversarial follow-up `6636ffa`; 138
+  focused/adjacent tests, Ruff, format, compile, JSON, diff và fsck checks đều
+  xanh. Cumulative results DB có 30 current selections, `quick_check` và
+  foreign keys sạch, không SQLite sidecar, SHA-256
+  `311bd63bee9a5d1b2a9a83a389dd6f53f98260d6a0ec8a7c1e28e5d396a78aa1`.
 
 ## Next gate
 
-Family 30 là `SERVICE_ACTIVITY`, bắt đầu tại ReportNormId 1157. Tái sử dụng
-duration-axis và explicit-owner primitives nhưng mở rộng generic graph cho ba
-population liên quan: service income, service expense và visible net service
-result. Phải bao quát leading/trailing totals, income/expense ở table sibling,
-optional direct children và combined source rows; một giá trị gộp không được tự
-chia sang nhiều schema leaf. Khóa comparator E-0082/E-0137 và giữ nguyên mọi
-source-only unresolved row có thật. Prompt Gemini tiếp tục tối giản/cố định;
-period, unit, hierarchy, subtotal/net equations và mapping hoàn toàn do code
-xử lý. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
-query/candidate replay, historical comparator và đủ 140 dispositions.
+Family 31 là `FX_GOLD_ACTIVITY`, bắt đầu tại ReportNormId 1175. Tái sử dụng
+document income/expense/net graph nhưng thêm declarative split/combined roles
+cho spot FX, gold, currency derivatives và FX-difference populations. Combined
+spot-FX-and-gold source row không được tự chia; split trading/revaluation rows
+chỉ được cộng khi exact declared graph và source totals đóng ở mọi lane. Gold
+là optional, visible dash chỉ thành zero sau equation closure. Khóa comparator
+E-0083/E-0138, giữ prompt Gemini tối giản/cố định và để code tự xử lý period,
+unit, hierarchy, signs, equations và mapping. Chỉ promote OFFICIAL sau
+exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
+comparator và đủ 140 dispositions.

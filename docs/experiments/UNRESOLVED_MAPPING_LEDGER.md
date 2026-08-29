@@ -3240,6 +3240,30 @@ source-authoritative regression gates. A colon-bearing value without exact
 equation closure, or a declared family role on both sides of one root carrier,
 must return `UNRESOLVED` with `mappings=[]`.
 
+## Family 30 current corpus — service activity (`SERVICE_ACTIVITY`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family30-service-activity/sweep.json`
+
+- Census: 140 documents, `READY=68`, `NOT_OBSERVED=72`, `UNRESOLVED=0`,
+  869 mappings and 289 exact source/graph equations. Family30 adds no
+  unresolved mapping entry.
+- The 72 absence trials contain no complete authenticated detailed service
+  graph under the declared income/expense/source-net contract. A primary
+  statement summary, isolated generic child alias, single branch, segment or
+  related-party presentation is absence or unresolved evidence rather than a
+  mapping substitute.
+- Two historical source rows remain intentionally source-only because their
+  scopes combine schema leaves: consulting-plus-trust-agency and
+  guarantee-plus-securities-agency. They participate in exact parent/root
+  equations but are never silently split into multiple ReportNormIds.
+
+The positive/negative expense orientation, mismatching source net,
+label-only second root, duplicate complete detail population, unmapped direct
+money child, period conflict and unit conflict fixtures remain authoritative
+regression gates. Every incomplete/conflicting graph must return
+`UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
