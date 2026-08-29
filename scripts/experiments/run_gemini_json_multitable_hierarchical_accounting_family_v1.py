@@ -328,6 +328,25 @@ PINNED_INVESTMENT_SECURITIES_ACTIVITY_HISTORICAL_ORACLES = (
         "size_bytes": 101812,
     },
 )
+PINNED_COMBINED_SECURITIES_NET_HISTORICAL_ORACLES = (
+    {
+        "format_version": "COMBINED_SECURITIES_NET_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0086-combined-securities-net-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "491965eff2494421c6f95334ed97ccc52333e11c7178f9410cee8cc41c4ca2cf",
+        "size_bytes": 15453,
+    },
+    {
+        "format_version": ("ANNUAL_2025_COMBINED_SECURITIES_NET_8BANK_BOUND_REPORT_ABSENCE_V1"),
+        "path": (
+            "docs/experiments/"
+            "E-0141-annual-2025-combined-securities-net-8bank-bound-report-absence-v1.json"
+        ),
+        "sha256": "fc591e1acd8a167b8d252da7eaf30073ae14b1e77630cd6210dec3407b5b6b89",
+        "size_bytes": 10803,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -820,6 +839,55 @@ PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "463ab58fadb3d04c3350cbce4f0acac7e7dc8ee13e92f38b2e0cb9d72b6e3630",
     "mappings": "fed1239c0a2b32fd05d2832f3254f3f9c857f24ff05b4b03509ecef7f482e1a1",
 }
+PINNED_COMBINED_SECURITIES_NET_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "54b827bf82be6aa986d48528569fae3086c78e5af1fc2bec293e768317ecefdf"
+    ),
+    "accepted_cluster_count": 12,
+    "accepted_fragment_count": 12,
+    "candidate_disposition_axis_sha256": (
+        "aa6290d125515a671a178be75f5a518db038362d66478bc3174823161cf29f0d"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 128, READY: 12, UNRESOLVED: 0},
+    "query_policy_sha256": "5a72a96edc619eadc18455d3b34911b0c437402deb08800585e028282eaf20d1",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_COMBINED_SECURITIES_NET_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 12,
+    "not_observed_count": 128,
+    "ready_count": 12,
+    "unresolved_count": 0,
+}
+PINNED_COMBINED_SECURITIES_NET_RELEASE_AUDIT_METRICS = {
+    "equation_count": 36,
+    "historical_comparator_exact_count": 17,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 1,
+    "historical_mapping_record_count": 1,
+    "mapping_count": 12,
+}
+PINNED_COMBINED_SECURITIES_NET_RELEASE_AXIS_COUNTS = {
+    "clusters": 12,
+    "equations": 36,
+    "historical_comparator": 17,
+    "mappings": 12,
+}
+PINNED_COMBINED_SECURITIES_NET_RELEASE_AXIS_SHA256 = {
+    "clusters": "0f495a5e881bd73c47474db9dc1af2a601cc563ec7c24526c3988c0c579edab8",
+    "equations": "6530a7051632c79bb7b7d45b52e7ae59f8650d8fa82dfb1847fe301a6eaf77fa",
+    "historical_comparator": "c393c8cae9ca78a5090f37446cd0a110737f33c93eabc22fbc2624e6d36532e1",
+    "mappings": "15b63c810403094504df94c9062c83ca2ddd3ed63d604ed583114f1f4aa525c3",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1045,6 +1113,8 @@ def _historical_oracle_refs(
         return PINNED_TRADING_SECURITIES_ACTIVITY_HISTORICAL_ORACLES
     if family_id == "INVESTMENT_SECURITIES_ACTIVITY":
         return PINNED_INVESTMENT_SECURITIES_ACTIVITY_HISTORICAL_ORACLES
+    if family_id == "COMBINED_SECURITIES_NET":
+        return PINNED_COMBINED_SECURITIES_NET_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1145,6 +1215,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
                 "5073c20d35c695aa2f8242f61f5c40abd5f8bab0cbb33bc2066bc2a01024d91b"
             ),
             "sweep_metrics": PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_METRICS,
+        }
+    if family_id == "COMBINED_SECURITIES_NET":
+        return {
+            "axis_counts": PINNED_COMBINED_SECURITIES_NET_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_COMBINED_SECURITIES_NET_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_COMBINED_SECURITIES_NET_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_COMBINED_SECURITIES_NET_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_COMBINED_SECURITIES_NET_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

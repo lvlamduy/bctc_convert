@@ -1,0 +1,97 @@
+{
+  "aggregate_duplicate_roles": [
+    "NET_TRADING_SECURITIES",
+    "INCOME_TRADING_SECURITIES",
+    "EXPENSE_TRADING_SECURITIES",
+    "PROVISION_TRADING_SECURITIES",
+    "NET_INVESTMENT_SECURITIES",
+    "INCOME_INVESTMENT_SECURITIES",
+    "EXPENSE_INVESTMENT_SECURITIES",
+    "PROVISION_INVESTMENT_SECURITIES",
+    "LONG_TERM_INVESTMENT_PROVISION",
+    "OTHER_INVESTMENT_SECURITIES"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "context_total_mapping_roles": [
+    "NET_TRADING_SECURITIES",
+    "NET_INVESTMENT_SECURITIES"
+  ],
+  "corroboration_pairs": [],
+  "derived_role_equations": [],
+  "detail_context_roles": [],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_POPULATION",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "family_id": "COMBINED_SECURITIES_NET",
+  "family_root_population_policy": "WHOLE_TABLE",
+  "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "minimum_source_visible_root_component_count": 2,
+  "money_unit_bindings": [
+    {
+      "accepted": true,
+      "aliases": ["Triệu VND", "Triệu đồng", "Million VND"],
+      "canonical_unit": "MILLION_VND",
+      "magnitude_power10": 6
+    },
+    {
+      "accepted": false,
+      "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"],
+      "canonical_unit": "THOUSAND_VND",
+      "magnitude_power10": 3
+    },
+    {
+      "accepted": false,
+      "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"],
+      "canonical_unit": "BILLION_VND",
+      "magnitude_power10": 9
+    },
+    {
+      "accepted": false,
+      "aliases": ["VND", "Đồng"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
+    }
+  ],
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
+  "root_component_equation_policy": "DECLARED_DIRECT_SUM",
+  "root_component_roles": [
+    "NET_TRADING_SECURITIES",
+    "NET_INVESTMENT_SECURITIES"
+  ],
+  "role_unit_overrides": [],
+  "row_alias_prefix_roles": [
+    "PROVISION_TRADING_SECURITIES",
+    "PROVISION_INVESTMENT_SECURITIES",
+    "LONG_TERM_INVESTMENT_PROVISION"
+  ],
+  "source_result_query_policy": "REQUIRED_EXACT_SOURCE_RESULT_ROW",
+  "source_reference_identity_policy": "EXACT_UNIQUE_SOURCE_IDENTITIES",
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "supplemental_owner_aliases": [],
+  "table_context_roles": [
+    "NET_TRADING_SECURITIES",
+    "NET_INVESTMENT_SECURITIES"
+  ],
+  "typed_control_exclusions": [],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
+  "validation_only_roles": [
+    "NET_TRADING_SECURITIES",
+    "INCOME_TRADING_SECURITIES",
+    "EXPENSE_TRADING_SECURITIES",
+    "PROVISION_TRADING_SECURITIES",
+    "NET_INVESTMENT_SECURITIES",
+    "INCOME_INVESTMENT_SECURITIES",
+    "EXPENSE_INVESTMENT_SECURITIES",
+    "PROVISION_INVESTMENT_SECURITIES",
+    "LONG_TERM_INVESTMENT_PROVISION",
+    "OTHER_INVESTMENT_SECURITIES"
+  ]
+}

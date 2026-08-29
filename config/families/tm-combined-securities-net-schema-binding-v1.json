@@ -1,0 +1,19 @@
+{
+  "family_id": "COMBINED_SECURITIES_NET",
+  "family_root_report_norm_id": 5990,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1188, "role": "NET_TRADING_SECURITIES"},
+    {"report_norm_id": 1189, "role": "INCOME_TRADING_SECURITIES"},
+    {"report_norm_id": 1190, "role": "EXPENSE_TRADING_SECURITIES"},
+    {"report_norm_id": 1191, "role": "PROVISION_TRADING_SECURITIES"},
+    {"report_norm_id": 1193, "role": "NET_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 1194, "role": "INCOME_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 1195, "role": "EXPENSE_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 1196, "role": "PROVISION_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 6028, "role": "LONG_TERM_INVESTMENT_PROVISION"},
+    {"report_norm_id": 1197, "role": "OTHER_INVESTMENT_SECURITIES"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO",
+  "schema_period_type": "DURATION"
+}

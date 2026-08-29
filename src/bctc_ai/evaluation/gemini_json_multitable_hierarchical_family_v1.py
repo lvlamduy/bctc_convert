@@ -138,7 +138,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "structural_marker_policy",
         "supplemental_owner_aliases",
         "supplemental_detail_residuals",
+        "source_result_query_policy",
+        "source_reference_identity_policy",
         "unmapped_direct_family_row_policy",
+        "validation_only_roles",
     }
     if (
         type(evaluation_spec) is not dict
@@ -254,6 +257,22 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "AUTHENTICATED_ROOT_OWNER_OR_PRIMARY",
     }:
         raise _error("multi-table hierarchical source-result signal policy is invalid")
+    source_result_query_policy = evaluation_spec.get(
+        "source_result_query_policy", "OWNER_OR_DECLARED_ROLE"
+    )
+    if source_result_query_policy not in {
+        "OWNER_OR_DECLARED_ROLE",
+        "REQUIRED_EXACT_SOURCE_RESULT_ROW",
+    }:
+        raise _error("multi-table hierarchical source-result query policy is invalid")
+    source_reference_identity_policy = evaluation_spec.get(
+        "source_reference_identity_policy", "PRESERVE_SOURCE_PRESENTATIONS"
+    )
+    if source_reference_identity_policy not in {
+        "PRESERVE_SOURCE_PRESENTATIONS",
+        "EXACT_UNIQUE_SOURCE_IDENTITIES",
+    }:
+        raise _error("multi-table hierarchical source-reference policy is invalid")
     minimum_declared_detail_role_count = evaluation_spec.get(
         "minimum_declared_detail_role_count", 2
     )
@@ -336,6 +355,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     detail_context_roles = role_axis("detail_context_roles", allow_empty=True)
     context_total_mapping_roles = role_axis("context_total_mapping_roles", allow_empty=True)
     root_component_roles = role_axis("root_component_roles")
+    validation_only_roles = (
+        role_axis("validation_only_roles", allow_empty=True)
+        if "validation_only_roles" in evaluation_spec
+        else []
+    )
     aggregate_duplicate_roles = role_axis("aggregate_duplicate_roles", allow_empty=True)
     equation_consumed_unmatched_residual_role = evaluation_spec.get(
         "equation_consumed_unmatched_residual_role"
@@ -497,6 +521,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         or schema_binding_spec["family_root_report_norm_id"] <= 0
         or schema_binding_spec.get("root_mapping_policy")
         not in {
+            "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO",
             "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
             "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
         }
@@ -566,6 +591,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["document_cluster_policy"] = document_cluster_policy
     if "document_source_result_signal_policy" in evaluation_spec:
         query_policy["document_source_result_signal_policy"] = document_source_result_signal_policy
+    if "source_result_query_policy" in evaluation_spec:
+        query_policy["source_result_query_policy"] = source_result_query_policy
     if "minimum_declared_detail_role_count" in evaluation_spec:
         query_policy["minimum_declared_detail_role_count"] = minimum_declared_detail_role_count
     if "row_population_context_policy" in evaluation_spec:
@@ -606,6 +633,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "role_unit_overrides": role_unit_overrides,
         "row_alias_prefix_roles": row_alias_prefix_roles,
         "schema": canonical_clone_v1(schema_binding_spec),
+        "source_result_query_policy": source_result_query_policy,
+        "source_reference_identity_policy": source_reference_identity_policy,
         "supplemental_detail_residuals": supplemental_detail_residuals,
         "table_context_roles": table_context_roles,
         "topology": topology,
@@ -613,6 +642,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "unit_binding_by_alias": unit_binding_by_alias,
         "unit_bindings": unit_bindings,
         "unmapped_direct_family_row_policy": unmapped_direct_family_row_policy,
+        "validation_only_roles": validation_only_roles,
     }
 
 
@@ -944,8 +974,10 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         values = row["values_exact"]
         root_label = _normalized(row.get("label_exact"))
         root_label = re.sub(r"^(?:[ivxlcdm]+|[0-9]+)\s+", "", root_label)
-        if "owner_surface_kinds" in compiled_specs["query_policy"] and root_label in set(
-            compiled_specs["topology"]["parent"]["aliases"]
+        if (
+            "owner_surface_kinds" in compiled_specs["query_policy"]
+            and section.get("statement_type") != "CASH_FLOW"
+            and root_label in set(compiled_specs["topology"]["parent"]["aliases"])
         ):
             family_root_row_ordinals.append(row_ordinal)
         visible = any(
@@ -1759,6 +1791,23 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 classification = classify_gemini_json_multitable_hierarchical_table_v1(
                     page_json, section, table, compiled_specs=compiled_specs
                 )
+                if compiled_specs[
+                    "source_result_query_policy"
+                ] == "REQUIRED_EXACT_SOURCE_RESULT_ROW" and classification.get(
+                    "family_root_row_ordinals"
+                ):
+                    rows = table.get("rows")
+                    assert type(rows) is list
+                    for row_ordinal in classification["family_root_row_ordinals"]:
+                        row = rows[row_ordinal - 1]
+                        owner_markers.append(
+                            {
+                                "alias": "EXACT_SOURCE_RESULT_ROW",
+                                "outline_top_level_number": None,
+                                "position": position,
+                                "source_exact": row.get("label_exact"),
+                            }
+                        )
                 for value in [table.get("title_exact")]:
                     if (
                         not primary
@@ -1814,15 +1863,36 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             compiled_specs=compiled_specs,
         )
 
+    def item_inside_owner_interval(
+        item: Mapping[str, Any], owner: Mapping[str, Any], reset: Mapping[str, Any] | None
+    ) -> bool:
+        if owner.get("alias") == "EXACT_SOURCE_RESULT_ROW":
+            # With no explicit heading/reset fence, the exact result row owns
+            # only its source table. Absorbing every later MONEY table on the
+            # page would turn a usable source result into a layout-specific U.
+            return item["position"] == owner["position"]
+        return bool(
+            owner["position"] <= item["position"]
+            and (reset is None or item["position"] < reset["position"])
+        )
+
     intervals = []
     for owner in sorted(owner_markers, key=lambda item: item["position"]):
         preceding_resets = [
             marker for marker in reset_markers if marker["position"] <= owner["position"]
         ]
         prior_reset = max(preceding_resets, key=lambda item: item["position"], default=None)
-        if any(
-            interval["owner"]["position"] >= (prior_reset or {"position": [-1]})["position"]
+        overlapping_intervals = [
+            interval
             for interval in intervals
+            if interval["owner"]["position"] >= (prior_reset or {"position": [-1]})["position"]
+        ]
+        if overlapping_intervals and (
+            owner.get("alias") != "EXACT_SOURCE_RESULT_ROW"
+            or any(
+                interval["owner"].get("alias") != "EXACT_SOURCE_RESULT_ROW"
+                for interval in overlapping_intervals
+            )
         ):
             # Running/repeated family headings inside the same reset-free note
             # are continuation evidence, not a second population.
@@ -1839,20 +1909,19 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 and marker["outline_top_level_number"] != owner_outline
             )
         reset = min(following_resets, key=lambda item: item["position"], default=None)
-        items = [
-            item
-            for item in table_axis
-            if owner["position"] <= item["position"]
-            and (reset is None or item["position"] < reset["position"])
-        ]
+        items = [item for item in table_axis if item_inside_owner_interval(item, owner, reset)]
         leading_items = []
-        same_page_preceding = [
-            item
-            for item in table_axis
-            if item["position"][0] == owner["position"][0]
-            and (prior_reset is None or prior_reset["position"] < item["position"])
-            and item["position"] < owner["position"]
-        ]
+        same_page_preceding = (
+            []
+            if owner.get("alias") == "EXACT_SOURCE_RESULT_ROW"
+            else [
+                item
+                for item in table_axis
+                if item["position"][0] == owner["position"][0]
+                and (prior_reset is None or prior_reset["position"] < item["position"])
+                and item["position"] < owner["position"]
+            ]
+        )
         for item in reversed(same_page_preceding):
             classification = item["classification"]
             roles = _classification_roles(classification)
@@ -1914,6 +1983,9 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             )
 
     complete = []
+    require_exact_source_result = (
+        compiled_specs["source_result_query_policy"] == "REQUIRED_EXACT_SOURCE_RESULT_ROW"
+    )
     for interval in intervals:
         family_items = [
             item
@@ -1932,10 +2004,19 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         if (
             family_items
             and (roles or family_root_row_visible)
+            and (family_root_row_visible or not require_exact_source_result)
             and span <= compiled_specs["topology"]["limits"]["max_continuation_pages"]
         ):
             complete.append({**interval, "family_items": family_items, "roles": sorted(roles)})
 
+    exact_source_result_observed = any(
+        item["classification"].get("family_root_row_ordinals")
+        for interval in intervals
+        for item in interval["items"]
+    )
+    rootless_source_result_control = bool(
+        require_exact_source_result and intervals and not exact_source_result_observed
+    )
     reasons = []
     if len(complete) > 1:
         reasons.append("MULTIPLE_COMPLETE_OWNER_CLUSTERS")
@@ -1956,7 +2037,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                         )
                     )
                 )
-    if intervals and selected is None and not reasons:
+    if intervals and selected is None and not reasons and not rootless_source_result_control:
         reasons.append("COMPLETE_OWNER_CLUSTER_NOT_RESOLVED")
     selected_keys = (
         {
@@ -1982,14 +2063,18 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         elif classification["typed_control_disposition"] is not None:
             disposition = "EXCLUDED_TYPED_CONTROL"
         elif any(
-            interval["owner"]["position"] <= item["position"]
-            and (interval["reset"] is None or item["position"] < interval["reset"]["position"])
+            item_inside_owner_interval(item, interval["owner"], interval["reset"])
             for interval in intervals
         ):
-            disposition = "UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE"
-            # An owner-fenced MONEY table with no typed exclusion must never
-            # disappear merely because none of its rows maps to the schema.
-            reasons.append("UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE:" + ":".join(map(str, key)))
+            if rootless_source_result_control:
+                disposition = "SOURCE_RESULT_OWNER_WITHOUT_EXACT_RESULT_ROW"
+            else:
+                disposition = "UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE"
+                # An owner-fenced MONEY table with no typed exclusion must never
+                # disappear merely because none of its rows maps to the schema.
+                reasons.append(
+                    "UNCONSUMED_MONEY_TABLE_INSIDE_OWNER_FENCE:" + ":".join(map(str, key))
+                )
         else:
             disposition = "OUTSIDE_SELECTED_OWNER_FENCE"
         inventory.append(
@@ -2008,7 +2093,13 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         if selected is not None and not reasons
         else []
     )
-    status = READY if regions and not reasons else UNRESOLVED if intervals else NOT_OBSERVED
+    status = (
+        READY
+        if regions and not reasons
+        else NOT_OBSERVED
+        if rootless_source_result_control or not intervals
+        else UNRESOLVED
+    )
     material = {
         "component_regions": regions if status == READY else [],
         "declared_money_table_inventory": inventory,
@@ -3147,6 +3238,7 @@ def _derive_complete_top_level_family_root(
     proven_roles: set[str],
     source_only_axis: Sequence[Mapping[str, Any]],
     source_equations: Sequence[Mapping[str, Any]],
+    source_result_component_evidence_roles: set[str],
     compiled_specs: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Derive a family root from one exhaustive structural top-level frontier.
@@ -3159,10 +3251,90 @@ def _derive_complete_top_level_family_root(
     """
 
     output = canonical_clone_v1(list(records))
-    if (
-        compiled_specs["schema"]["root_mapping_policy"]
-        != "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+    root_mapping_policy = compiled_specs["schema"]["root_mapping_policy"]
+    if root_mapping_policy == (
+        "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO"
     ):
+        existing_roots = [record for record in output if record["role"] == "FAMILY_ROOT_TOTAL"]
+        if len(existing_roots) != 1:
+            return (
+                output,
+                [],
+                [],
+                ["EXACT_SOURCE_RESULT_ROW_" + ("ABSENT" if not existing_roots else "NOT_UNIQUE")],
+            )
+        root = existing_roots[0]
+        component_records = [record for record in output if record["role"] != "FAMILY_ROOT_TOTAL"]
+        if not source_result_component_evidence_roles:
+            if any(
+                cell["source_text"] is None or cell["state"].endswith("_IF_EQUATION_EXACT")
+                for cell in root["cells"]
+            ):
+                return output, [], [], ["EXACT_SOURCE_RESULT_ROW_HAS_UNPROVEN_BLANK"]
+            root["state"] = "SOURCE_VISIBLE_EXACT_RESULT_ROW_WITHOUT_COMPONENT_EVIDENCE"
+            # Context-only or unrelated records may coexist in the same source
+            # table, but without a declared component hit they are not part of
+            # this result's authenticated graph and must not leak into mapping.
+            output = [root]
+            return (
+                output,
+                [],
+                [
+                    {
+                        "coefficients": _coefficients(root),
+                        "component_roles": [],
+                        "result_role": "FAMILY_ROOT_TOTAL",
+                        "rule": (
+                            "SOURCE_VISIBLE_EXACT_RESULT_ROW_MAPS_DIRECTLY_WHEN_NO_"
+                            "DECLARED_COMPONENT_EVIDENCE_IS_PRESENT"
+                        ),
+                        "source_refs": canonical_clone_v1(root["source_refs"]),
+                    }
+                ],
+                [],
+            )
+
+        by_role: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for record in component_records:
+            by_role[record["role"]].append(record)
+        components = []
+        for role in compiled_specs["root_component_roles"]:
+            matches = by_role.get(role, [])
+            if len(matches) != 1 or role not in proven_roles:
+                return (
+                    output,
+                    [],
+                    [],
+                    ["SOURCE_RESULT_DECLARED_COMPONENT_POPULATION_NOT_EXACT:" + role],
+                )
+            components.append(matches[0])
+        equation = _exact_equation(
+            kind="EXACT_SOURCE_RESULT_EQUALS_COMPLETE_DECLARED_ROOT_COMPONENTS",
+            components=components,
+            result=root,
+        )
+        if equation is None:
+            return output, [], [], ["SOURCE_RESULT_DECLARED_COMPONENT_EQUATION_MISMATCH"]
+        root["state"] = "SOURCE_VISIBLE_EXACT_RESULT_VALIDATED_BY_COMPLETE_COMPONENT_EQUATION"
+        return (
+            output,
+            [equation],
+            [
+                {
+                    "coefficients": _coefficients(root),
+                    "component_roles": canonical_clone_v1(compiled_specs["root_component_roles"]),
+                    "result_role": "FAMILY_ROOT_TOTAL",
+                    "rule": (
+                        "SOURCE_VISIBLE_EXACT_RESULT_ROW_IS_VETOED_BY_COMPLETE_DECLARED_"
+                        "COMPONENT_EQUATION_WHEN_COMPONENT_EVIDENCE_IS_PRESENT"
+                    ),
+                    "source_equation_id": equation["equation_id"],
+                    "source_refs": canonical_clone_v1(root["source_refs"]),
+                }
+            ],
+            [],
+        )
+    if root_mapping_policy != "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM":
         return output, [], [], []
 
     root_roles = set(compiled_specs["root_component_roles"])
@@ -4736,6 +4908,21 @@ def _extract_table_local_records(
             )
         )
 
+    optional_component_veto_source_result = bool(
+        compiled_specs["schema"]["root_mapping_policy"]
+        == "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO"
+    )
+    source_result_row_receipt = None
+    if optional_component_veto_source_result:
+        source_result_row_receipt = {
+            "declared_component_evidence_roles": sorted(set(hit_by_row.values())),
+            "family_root_row_ordinals": sorted(family_root_ordinals),
+            "rule": (
+                "EXACT_SOURCE_RESULT_ROW_MAPS_DIRECTLY_WITHOUT_COMPONENT_EVIDENCE_"
+                "OTHERWISE_COMPLETE_COMPONENT_EQUATION_IS_A_VETO"
+            ),
+        }
+
     equations = []
     proven_roles: set[str] = set()
     consumed_ordinals: set[int] = set()
@@ -4744,6 +4931,24 @@ def _extract_table_local_records(
     deferred_hierarchy_family_roots: list[tuple[int, dict[str, Any]]] = []
     label_only_structural_group_receipts = []
     projected_label_only_groups: set[int] = set()
+    if optional_component_veto_source_result and len(family_root_ordinals) == 1:
+        root_ordinal = next(iter(family_root_ordinals))
+        root = row_records.get(root_ordinal)
+        if root is not None:
+            local_records.append(
+                _local_record(
+                    "FAMILY_ROOT_TOTAL",
+                    root["cells"],
+                    root["lane_keys"],
+                    root["source_refs"],
+                    "SOURCE_VISIBLE_EXACT_RESULT_PENDING_OPTIONAL_COMPONENT_VETO",
+                    root["valuation_basis"],
+                )
+            )
+            # The cluster-level policy below is the sole authority that proves
+            # this visible result. Marking the ordinal here only prevents the
+            # ordinary subtotal scanner from emitting a second root record.
+            source_visible_family_root_ordinals.add(root_ordinal)
     total_ordinals = {
         ordinal
         for ordinal, row in enumerate(rows, start=1)
@@ -5525,9 +5730,14 @@ def _extract_table_local_records(
         )
         and ordinal not in total_ordinals
     ]
+    standalone_exact_source_result = bool(
+        optional_component_veto_source_result and len(family_root_ordinals) == 1 and not hit_by_row
+    )
     unmapped_direct_family_rows = []
-    if compiled_specs["unmapped_direct_family_row_policy"] == (
-        "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+    if (
+        compiled_specs["unmapped_direct_family_row_policy"]
+        == ("UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD")
+        and not standalone_exact_source_result
     ):
         for ordinal, record in sorted(row_records.items()):
             if ordinal in hit_by_row or ordinal in family_root_ordinals:
@@ -5632,6 +5842,8 @@ def _extract_table_local_records(
     ):
         receipt["derived_structural_parent_receipts"] = derived_structural_parent_receipts
     receipt["source_only_rows"] = source_only_rows
+    if source_result_row_receipt is not None:
+        receipt["source_result_row_receipt"] = source_result_row_receipt
     if compiled_specs["family_root_population_policy"] != "WHOLE_TABLE":
         receipt["outside_family_root_rows"] = outside_family_root_rows
     if compiled_specs["unmapped_direct_family_row_policy"] != "IGNORE":
@@ -5641,11 +5853,13 @@ def _extract_table_local_records(
         "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
     ):
         receipt["unsealed_duplicate_roles"] = unsealed_duplicate_roles
-    if classification["ambiguous_rows"]:
+    if optional_component_veto_source_result and len(family_root_ordinals) > 1:
+        unconsumed_reason = "EXACT_SOURCE_RESULT_ROW_NOT_UNIQUE"
+    elif classification["ambiguous_rows"]:
         unconsumed_reason = "AMBIGUOUS_DECLARED_SOURCE_ROW_ROLE"
     elif len(classification["context_roles"]) > 1:
         unconsumed_reason = "AMBIGUOUS_DECLARED_TABLE_CONTEXT_ROLE"
-    elif parse_reasons:
+    elif parse_reasons and not standalone_exact_source_result:
         unconsumed_reason = "INVALID_VISIBLE_SOURCE_MONEY_CELL"
     elif document_source_result_carrier and not source_visible_family_root_ordinals:
         unconsumed_reason = "PRIMARY_SOURCE_RESULT_EQUATION_NOT_EXACT"
@@ -5857,6 +6071,11 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         proven_roles=proven_roles,
         source_only_axis=source_only_axis,
         source_equations=equations,
+        source_result_component_evidence_roles={
+            hit["role"]
+            for receipt in table_receipts
+            for hit in receipt["classification"]["role_hits"]
+        },
         compiled_specs=compiled_specs,
     )
     equations.extend(root_component_equations)
@@ -5884,6 +6103,14 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         proven_roles=proven_roles,
         compiled_specs=compiled_specs,
     )
+    if compiled_specs["source_reference_identity_policy"] == "EXACT_UNIQUE_SOURCE_IDENTITIES":
+        for record in records.values():
+            unique_source_refs = {}
+            for source_ref in record["source_refs"]:
+                unique_source_refs.setdefault(
+                    canonical_json_sha256_v1(source_ref), canonical_clone_v1(source_ref)
+                )
+            record["source_refs"] = list(unique_source_refs.values())
     reasons.extend(global_reasons)
     if (
         compiled_specs["family_root_requirement"] == "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT"
@@ -5900,7 +6127,7 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
     if not reasons:
         for role in [*compiled_specs["output_role_order"], "FAMILY_ROOT_TOTAL"]:
             record = records.get(role)
-            if record is None:
+            if record is None or role in compiled_specs["validation_only_roles"]:
                 continue
             report_norm_id = (
                 compiled_specs["schema"]["family_root_report_norm_id"]
@@ -5950,10 +6177,18 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
     }
     if transposed_policy:
         closure_receipt["document_period_context"] = document_period_context
-    if (
-        compiled_specs["schema"]["root_mapping_policy"]
-        == "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
-    ):
+    if compiled_specs["validation_only_roles"]:
+        closure_receipt["validation_only_roles"] = canonical_clone_v1(
+            compiled_specs["validation_only_roles"]
+        )
+    if compiled_specs["source_reference_identity_policy"] != "PRESERVE_SOURCE_PRESENTATIONS":
+        closure_receipt["source_reference_identity_policy"] = compiled_specs[
+            "source_reference_identity_policy"
+        ]
+    if compiled_specs["schema"]["root_mapping_policy"] in {
+        "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO",
+        "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+    }:
         closure_receipt["root_component_sum_receipts"] = root_component_sum_receipts
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
