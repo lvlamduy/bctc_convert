@@ -58,9 +58,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 36 | `OPERATING_EXPENSE` | 138 | 0 | 2 | 1.648 | `gjfafstorev1:run:546ea624e42555a47a266fdd676f095786fa65897c62f8eff5d7de558a805a1d` |
 | 37 | `CREDIT_RISK_PROVISION_EXPENSE` | 64 | 76 | 0 | 300 | `gjfafstorev1:run:d0423fdd934fc17844504f95885dc6901c6338842d7844dce0ab1141af4964f3` |
 | 38 | `OTHER_ACTIVITY` | 72 | 68 | 0 | 587 | `gjfafstorev1:run:950f420a48368122686d77d4d2a7a9b22a3ad788a53b06c54242f1b3061e7ef5` |
+| 39 | `INCOME_TAX` | 69 | 71 | 0 | 499 | `gjfafstorev1:run:ebe7179dd4fe83c5809edf225e8969b440214a91bc1348d1bafd1aa54ff919c3` |
 
-Tại checkpoint này database có đủ đúng ba mươi tám current selection liên tục
-từ Family 1 đến Family 38. Family 39 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi chín current selection liên tục
+từ Family 1 đến Family 39. Family 40 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -843,15 +844,47 @@ Artifact OFFICIAL:
   Cumulative results DB có 38 current selections, `quick_check` và foreign keys
   sạch, không SQLite sidecar, SHA-256
   `331ac775a99863f5018ada5c8574521bbbd17fab60223bdc92059212dcef0cd9`.
+- Family 39 `INCOME_TAX`: `READY=69`, `NOT_OBSERVED=71`,
+  `UNRESOLVED=0` và 499 mappings. Generic hierarchical resolver inventory các
+  population thuế hiện hành, thuế hoãn lại và reconciliation từ lợi nhuận
+  trước thuế đến thu nhập chịu thuế dưới đúng owner/reset fence. Tax rate là
+  metric kiểm tra, không bị phát thành money mapping; các bảng nghĩa vụ thuế
+  và số dư tài sản/nợ thuế hoãn lại chỉ là hard-negative controls.
+
+  Resolver hỗ trợ current/deferred population trong một hoặc nhiều table,
+  ordered role scope, explicit source total và context total đã được chứng
+  minh. Hai bảng ACB có deferred-tax detail không nhãn tổng được map vào RNID
+  5726 chỉ khi toàn bộ direct detail frontier đóng đúng ở cả hai lane; detail
+  rows vẫn source-only và không bị ép vào một schema role hẹp. Prompt Gemini
+  không thay đổi và không chứa mapping, graph, phương trình hay đáp án family.
+
+  Exact query census là 69 accepted clusters/88 fragments và 71 typed absence
+  dispositions trên đủ 8.947 selected page versions. Có 152 exact equation
+  receipts. E-0091/E-0146 khớp 105/105 comparator records, gồm 89/89
+  historical mappings và 16/16 dispositions. Public SQLite replay xác thực lại
+  indexed evidence và toàn bộ candidate từ canonical page JSON.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family39-income-tax/sweep.json`,
+  SHA-256
+  `a393769d0c42744d2d6b0ae4a13e6d87308924025ca1a4a9227ba5694394d8a8`;
+  audit SHA-256
+  `4e510a10ebf0d3c008054f3e164faace6d5a4b8a4d8f7fdeb3c95f5c505ce5f7`.
+  Implementation commit `ab121a2`; 235 focused/adjacent/regression tests,
+  Ruff, format, compile, JSON, diff, EXP/OFFICIAL replay và SQLite integrity
+  đều xanh. Cumulative results DB có 39 current selections, `quick_check` và
+  foreign keys sạch, không SQLite sidecar, SHA-256
+  `6c9ebc9f0e38c00f02fef0b1f287f7fc3bc43593d8ae0323fb3c4be0d14ab984`.
 
 ## Next gate
 
-Family 39 là `INCOME_TAX`. Khóa comparator E-0091/E-0146, giữ prompt Gemini tối
-giản và cố định; code phải tự inventory profit-before-tax, adjustment,
-taxable-income, current/deferred tax và source total/reconciliation populations,
-rồi dựng graph, scope, period, unit và phương trình ở cả hai lane bằng
-thuật toán/config declarative. Không được route theo bank/file/page/value,
-backsolve ô trống, hấp thụ tax-obligation/deferred-tax-balance control table hay
-ép Gemini trả một serialization family-specific. Chỉ promote OFFICIAL sau
+Family 40 là `CASH_EQUIVALENTS`. Khóa comparator E-0092/E-0147, giữ prompt
+Gemini tối giản và cố định; code phải tự inventory total cùng các source-visible
+component cash, central-bank, interbank demand/term/general và securities,
+phân biệt cash-flow summary với detailed cash-equivalent note, rồi dựng graph,
+scope, period, unit và phương trình ở cả hai lane bằng thuật toán/config
+declarative. Không được route theo bank/file/page/value, coi ô trống là zero
+khi chưa có rank proof, hấp thụ unrelated deposit/securities tables hoặc ép
+Gemini trả một serialization family-specific. Chỉ promote OFFICIAL sau
 exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
 comparator và đủ 140 dispositions.
