@@ -3352,6 +3352,31 @@ cash-flow lookalike, period conflict, unit conflict and coherently rehashed
 receipt fixtures remain authoritative regression gates. Every incomplete or
 conflicting graph must return `UNRESOLVED` with `mappings=[]`.
 
+## Family 35 current corpus — capital contribution and dividend income (`CAPITAL_CONTRIBUTION_DIVIDEND_INCOME`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family35-capital-contribution-dividend-income/sweep.json`
+
+- Census: 140 documents, `READY=118`, `NOT_OBSERVED=22`, `UNRESOLVED=0`,
+  428 mappings and 192 exact source/component equation receipts. Family35 adds
+  no unresolved mapping entry.
+- Exact mapped role inventory is root 118, direct dividend 112, trading-equity
+  dividend 27, investment-equity dividend 36, long-term-capital dividend 80,
+  equity-method income 34 and other income 21. A missing direct subtotal is
+  derived only from its complete visible scoped child frontier; equity-method
+  income remains a separate root sibling and is never absorbed into dividend
+  income.
+- Source-only combined rows, `VCSH`, bounded note-reference suffixes and
+  multiline parent/child labels are normalized by the generic algorithm and
+  declarative aliases. No Gemini call, prompt change, bank/file/page route or
+  backsolve was used.
+
+The unknown top-level source row, duplicate complete population, source-only
+subtotal reuse, root mismatch, incomplete direct frontier, period conflict,
+unit conflict, cash-flow lookalike and coherent candidate-receipt drift remain
+authoritative regression gates. Every incomplete or conflicting graph must
+return `UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

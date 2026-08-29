@@ -54,9 +54,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 32 | `TRADING_SECURITIES_ACTIVITY` | 103 | 37 | 0 | 371 | `gjfafstorev1:run:ad3e0992f63f89e2dcf5e17ff9e455dfb5b4513b09c8924872ad733aa57ad343` |
 | 33 | `INVESTMENT_SECURITIES_ACTIVITY` | 112 | 28 | 0 | 424 | `gjfafstorev1:run:492e6e499ce9454e1b93fcd7deb2d6a62a19a7fcfa8dcd1971a03d6e428e36b1` |
 | 34 | `COMBINED_SECURITIES_NET` | 12 | 128 | 0 | 12 | `gjfafstorev1:run:b99ee75ed77f5f6459a05905ab8a9b25355cbfb288d9a2afea209d9726fd6f34` |
+| 35 | `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME` | 118 | 22 | 0 | 428 | `gjfafstorev1:run:d3b6d61d18c29318c11bbaea2e4a1a82209286eef69981e16be3d3803e01962c` |
 
-Tại checkpoint này database có đủ đúng ba mươi bốn current selection liên tục
-từ Family 1 đến Family 34. Family 35 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi lăm current selection liên tục
+từ Family 1 đến Family 35. Family 36 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -703,14 +704,43 @@ Artifact OFFICIAL:
   Cumulative results DB có 34 current selections, `quick_check` và foreign keys
   sạch, không SQLite sidecar, SHA-256
   `b1fc0d3759993d6358dbd48559649cd3a8e12d3a555528d576e08d392facd857`.
+- Family 35 `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME`: `READY=118`,
+  `NOT_OBSERVED=22`, `UNRESOLVED=0` và 428 mappings. Một explicit owner/reset
+  fence phải inventory hết direct dividend, equity-method income, other income
+  và mọi scoped dividend child trước khi map root RNID 1198 cùng các RNID
+  1199–1204. Source row gộp chỉ là validation evidence; structural subtotal
+  thiếu chỉ được suy ra từ complete visible child frontier và không được hấp
+  thụ một sibling equity-method row vào subtotal cổ tức.
+
+  Exact query census là 118 accepted clusters/118 fragments và 22 typed absence
+  dispositions trên đủ 8.947 selected page versions. Role axis gồm 118 roots,
+  112 direct-dividend subtotals, 27 trading-equity, 36 investment-equity,
+  80 long-term-capital, 34 equity-method và 21 other-income mappings. Toàn bộ
+  192 equation receipts đều `EXACT`; E-0087/E-0142 khớp 71/71 historical
+  comparator records. Các biến thể `VCSH`, hậu tố tham chiếu thuyết minh và
+  parent/child gộp nhiều dòng được chuẩn hóa trong code/config declarative,
+  không đổi prompt và không route theo bank/file/page.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family35-capital-contribution-dividend-income/sweep.json`,
+  SHA-256
+  `e6471e5af14985dc795330095b4ea3241a48db4d795b4232fbaf5ab54c1be292`;
+  audit SHA-256
+  `48b606e0e076bdd7bb01e5cb726ba5adb12522824d8c8d23a3a7b67ff3136a55`.
+  Implementation commit `4807abe`; 253 focused/adjacent/regression tests và 18
+  historical-oracle tests, Ruff, format, compile, JSON, diff, repeated detached
+  EXP và SQLite replay đều xanh. Cumulative results DB có 35 current
+  selections, `quick_check` và foreign keys sạch, không SQLite sidecar,
+  SHA-256
+  `92475df0a65d368f1cae96cd19e12be8601800872a518b4fe6547a5aac544fe6`.
 
 ## Next gate
 
-Family 35 là `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME`, source schema root
-ReportNormId 1198 và các declared children 1199–1204. Khóa comparator
-E-0087/E-0142, giữ prompt Gemini tối giản và cố định; code phải tự inventory
-owner, exhaustive direct children, source total, period, unit, dash/blank và
-phương trình ở cả hai lane. Không được suy diễn một child vắng mặt, tách một
-source row gộp hoặc dùng source-only subtotal làm mapping. Chỉ promote OFFICIAL
-sau exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
-comparator và đủ 140 dispositions.
+Family 36 là `OPERATING_EXPENSE`, source schema root ReportNormId 1205 và các
+declared children 1206–1220. Khóa comparator E-0088/E-0143, giữ prompt Gemini
+tối giản và cố định; code phải tự inventory owner, nested employee/asset/admin
+frontiers, source-only schema gaps, source total, period, unit, dash/blank và
+phương trình ở cả hai lane. Không được bỏ một source row chưa có schema leaf,
+gộp provision aggregates với component mappings hoặc suy ra một child vắng
+mặt. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, SQLite
+query/candidate replay, historical comparator và đủ 140 dispositions.
