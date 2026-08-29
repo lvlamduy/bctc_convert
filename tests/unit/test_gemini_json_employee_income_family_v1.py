@@ -11,6 +11,8 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
     GeminiJsonMultitableHierarchicalFamilyV1Error,
+    _document_duration_month_context_axis,
+    _table_duration_month_axis,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
     compile_gemini_json_multitable_hierarchical_family_specs_v1,
@@ -273,6 +275,97 @@ def test_visible_ratio_one_cent_from_nominal_is_accepted_only_by_propagated_disp
     )
 
 
+def test_only_typed_governed_primary_statement_titles_supply_document_duration() -> None:
+    def primary(title: str, statement_type: str = "INCOME_STATEMENT") -> dict[str, Any]:
+        return {
+            "sections": [
+                {
+                    "content_kind": "PRIMARY_STATEMENT",
+                    "narratives_exact": [],
+                    "statement_type": statement_type,
+                    "tables": [],
+                    "title_exact": title,
+                }
+            ],
+            "status": "PRIMARY_FINANCIAL_STATEMENT",
+        }
+
+    six_month = _document_duration_month_context_axis(
+        {
+            "gfpstorev1:json:" + "1" * 64: primary(
+                "Báo cáo kết quả hoạt động cho kỳ 6 tháng kết thúc ngày 30 tháng 6 năm 2025"
+            )
+        }
+    )
+    assert (six_month["status"], six_month["months"]) == ("UNIQUE", 6)
+    annual = _document_duration_month_context_axis(
+        {
+            "gfpstorev1:json:" + "2" * 64: primary(
+                "Báo cáo kết quả hoạt động cho năm tài chính kết thúc ngày 31 tháng 12 năm 2025"
+            )
+        }
+    )
+    assert (annual["status"], annual["months"]) == ("UNIQUE", 12)
+    unrelated = _document_duration_month_context_axis(
+        {
+            "gfpstorev1:json:" + "3" * 64: {
+                "sections": [
+                    {
+                        "content_kind": "FINANCIAL_NOTE",
+                        "narratives_exact": [
+                            "Khoản vay có kỳ hạn 6 tháng kết thúc ngày 30 tháng 6 năm 2025"
+                        ],
+                        "statement_type": "NOT_APPLICABLE",
+                        "tables": [],
+                        "title_exact": "Các khoản vay",
+                    }
+                ],
+                "status": "FINANCIAL_NOTE_CONTENT",
+            }
+        }
+    )
+    assert (unrelated["status"], unrelated["months"]) == ("ABSENT", None)
+    conflict = _document_duration_month_context_axis(
+        {
+            "gfpstorev1:json:" + "4" * 64: primary(
+                "Báo cáo kết quả hoạt động cho kỳ 3 tháng kết thúc ngày 31 tháng 3 năm 2025"
+            ),
+            "gfpstorev1:json:" + "5" * 64: primary(
+                "Báo cáo lưu chuyển tiền tệ cho kỳ 6 tháng kết thúc ngày 30 tháng 6 năm 2025",
+                "CASH_FLOW",
+            ),
+        }
+    )
+    assert (conflict["status"], conflict["months"]) == ("NOT_UNIQUE", None)
+
+
+def test_typed_interim_context_overrides_a_local_bare_year_without_overriding_explicit_year() -> (
+    None
+):
+    table = _table(_simple_rows(), current_header="2025", comparative_header="2024")
+    lane_axis = {"complete": True, "money_column_ordinals": [1, 2]}
+    interim = _table_duration_month_axis(
+        table,
+        lane_axis,
+        document_context={"months": 6, "status": "UNIQUE"},
+    )
+    assert interim["complete"] is True
+    assert interim["months"] == [6, 6]
+    assert {item["source_kind"] for item in interim["evidence"]} == {
+        "TYPED_DOCUMENT_DURATION_CONTEXT"
+    }
+    annual = _table_duration_month_axis(table, lane_axis, document_context={"status": "ABSENT"})
+    assert annual["complete"] is True
+    assert annual["months"] == [12, 12]
+    symbolic = _table(_simple_rows(), current_header="Năm nay", comparative_header="Năm trước")
+    symbolic_interim = _table_duration_month_axis(
+        symbolic,
+        lane_axis,
+        document_context={"months": 6, "status": "UNIQUE"},
+    )
+    assert symbolic_interim["months"] == [6, 6]
+
+
 @pytest.mark.parametrize(
     "rows",
     [
@@ -293,6 +386,7 @@ def test_missing_average_count_duplicate_role_or_ratio_mismatch_is_unresolved(
     ("current_header", "comparative_header", "unit"),
     [
         ("6 tháng năm 2025", "12 tháng năm 2024", "Triệu đồng"),
+        ("Quý 1 năm 2025", "Quý 1 năm 2024", "Triệu đồng"),
         ("Năm 2025", "Năm 2024", "Triệu đồng; Nghìn đồng"),
     ],
 )

@@ -3365,16 +3365,26 @@ def _document_duration_month_context_axis(
         table_id: str | None = None,
     ) -> None:
         folded = _normalized(value)
-        if not (
+        annual_reporting_period = bool(
+            re.search(r"\bnam(?:\s+tai\s+chinh)?\s+ket\s+thuc\b", folded)
+            or re.search(r"\b(?:financial\s+)?year\s+ended\b", folded)
+        )
+        explicit_reporting_period = bool(
             re.search(
                 r"\b(?:cho|trong)\s+(?:ky|giai\s+doan)\b.*"
                 r"\b(?:thang|months?)\b.*\b(?:ket\s+thuc|ended)\b",
                 folded,
             )
             or re.search(r"\b(?:three|six|nine|twelve)\s+months?\s+ended\b", folded)
-        ):
+        )
+        if not (annual_reporting_period or explicit_reporting_period):
             return
-        counts = _explicit_duration_month_counts(value)
+        counts = sorted(
+            {
+                *_explicit_duration_month_counts(value),
+                *([12] if annual_reporting_period else []),
+            }
+        )
         if not counts:
             return
         item = {
@@ -3455,18 +3465,36 @@ def _table_duration_month_axis(
             local_months = explicit[0]
             source_kind = "SOURCE_VISIBLE_EXPLICIT_MONTH_COUNT"
         elif (
-            len(set(bare_years)) == 1
+            bool(
+                re.search(r"\b(?:nam|year)\s+(?:19|20)\d{2}\b", folded)
+                or re.search(r"\bnam\s+tai\s+chinh\b", folded)
+            )
+            and not re.search(r"\b(?:quy|quarter|q[1-4])\b", folded)
             and not _ordered_duration_dates(header)
             and not re.search(r"\b(?:thang|month)\b", folded)
-        ) or any(
-            marker in f" {folded} "
-            for marker in (" nam nay ", " nam truoc ", " current year ", " prior year ")
         ):
             local_months = 12
             source_kind = "SOURCE_VISIBLE_ANNUAL_YEAR_HEADER"
         elif inherited is not None:
             local_months = inherited
             source_kind = "TYPED_DOCUMENT_DURATION_CONTEXT"
+        elif any(
+            marker in f" {folded} "
+            for marker in (" nam nay ", " nam truoc ", " current year ", " prior year ")
+        ):
+            local_months = 12
+            source_kind = "SOURCE_VISIBLE_ANNUAL_YEAR_HEADER"
+        elif (
+            len(set(bare_years)) == 1
+            and not _ordered_duration_dates(header)
+            and not re.search(r"\b(?:thang|month|quy|quarter|q[1-4])\b", folded)
+        ):
+            # A lone year is conventionally a full-year duration only when no
+            # authenticated non-annual document duration exists.  The typed
+            # document branch above therefore wins for interim reports whose
+            # local table prints only ``2025 / 2024``.
+            local_months = 12
+            source_kind = "SOURCE_VISIBLE_BARE_YEAR_WITHOUT_TYPED_NONANNUAL_CONTEXT"
         else:
             dates = _ordered_duration_dates(header)
             if (
