@@ -62,5 +62,5 @@
   "supplemental_owner_aliases": [],
   "table_context_roles": [],
   "typed_control_exclusions": [],
-  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW"
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW"
 }

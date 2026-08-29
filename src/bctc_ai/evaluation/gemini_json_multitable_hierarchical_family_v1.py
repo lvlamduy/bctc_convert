@@ -393,6 +393,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     )
     if unmapped_direct_family_row_policy not in {
         "IGNORE",
+        "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW",
         "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW",
         "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
         "UNRESOLVED_WHEN_OWNER_FENCED_WHOLE_TABLE_HAS_UNMAPPED_DIRECT_MONEY_ROW",
@@ -1245,7 +1246,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                 == ("EXACT_PARENT_GROUP_UNDER_VISIBLE_TOTAL_WITH_COMPLETE_DECLARED_CHILD_FRONTIER")
                 and page_json.get("status") == "PRIMARY_FINANCIAL_STATEMENT"
                 and section.get("content_kind") == "PRIMARY_STATEMENT"
-                and row.get("row_kind") in {"GROUP", "SUBTOTAL"}
+                and row.get("row_kind") in {"GROUP", "ITEM", "SUBTOTAL"}
                 and all(value is None for value in values)
             ):
                 primary_statement_family_root_group_ordinals.append(row_ordinal)
@@ -1769,7 +1770,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
             candidate = rows[candidate_ordinal - 1]
             if (
                 type(candidate) is not dict
-                or candidate.get("row_kind") not in {"SUBTOTAL", "TOTAL"}
+                or candidate.get("row_kind") not in {"GROUP", "ITEM", "SUBTOTAL", "TOTAL"}
                 or not _row_is_strict_descendant(rows, group_ordinal, candidate_ordinal)
             ):
                 continue
@@ -5823,8 +5824,10 @@ def _extract_table_local_records(
         intermediate row.  It is neither a numeric component nor a subtotal;
         treating it as the carrier's sole direct child hides the actual
         children one level below and prevents an otherwise exact source
-        equation from closing.  Only a typed GROUP with no visible MONEY cell
-        and an exact structural marker is transparent.
+        equation from closing.  Ordinarily this requires a typed GROUP.  An
+        authenticated primary-statement family group may carry a generic ITEM
+        row kind from Gemini, so its exact label/hierarchy/frontier receipt is
+        the stronger local structure authority.
         """
 
         row = rows[row_ordinal - 1]
@@ -5836,7 +5839,9 @@ def _extract_table_local_records(
         return bool(
             type(row) is dict
             and record is not None
-            and row.get("row_kind") == "GROUP"
+            and (
+                row.get("row_kind") == "GROUP" or row_ordinal in authenticated_family_group_ordinals
+            )
             and all(cell["source_text"] is None for cell in record["cells"])
             and (
                 _normalized(row.get("label_exact"))
@@ -7008,6 +7013,19 @@ def _extract_table_local_records(
         for item in classification.get("primary_statement_family_root_subtree_receipts", [])
     }
     if (
+        compiled_specs["unmapped_direct_family_row_policy"]
+        == "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW"
+        and scope_to_explicit_family_root
+    ):
+        for ordinal, record in sorted(row_records.items()):
+            if ordinal in hit_by_row or ordinal in family_root_ordinals:
+                continue
+            row = rows[ordinal - 1]
+            if _normalized(row.get("label_exact")) and any(
+                cell["source_text"] is not None for cell in record["cells"]
+            ):
+                unmapped_direct_family_rows.append(canonical_clone_v1(record["source_refs"][0]))
+    elif (
         (
             compiled_specs["unmapped_direct_family_row_policy"]
             == "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
@@ -7054,6 +7072,7 @@ def _extract_table_local_records(
     elif (
         compiled_specs["unmapped_direct_family_row_policy"]
         in {
+            "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW",
             "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW",
             "UNRESOLVED_WHEN_OWNER_FENCED_WHOLE_TABLE_HAS_UNMAPPED_DIRECT_MONEY_ROW",
         }
@@ -7064,7 +7083,11 @@ def _extract_table_local_records(
                 continue
             row = rows[ordinal - 1]
             if (
-                row.get("row_kind") == "ITEM"
+                (
+                    compiled_specs["unmapped_direct_family_row_policy"]
+                    == "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW"
+                    or row.get("row_kind") == "ITEM"
+                )
                 and _normalized(row.get("label_exact"))
                 and any(cell["source_text"] is not None for cell in record["cells"])
             ):

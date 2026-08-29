@@ -143,6 +143,8 @@ def _page(
 def _primary_cash_flow_page(
     *,
     include_declared_subtree: bool = True,
+    group_kind: str = "GROUP",
+    root_kind: str = "TOTAL",
     root_current: str = "60",
     unknown_child: bool = False,
 ) -> dict[str, Any]:
@@ -155,12 +157,18 @@ def _primary_cash_flow_page(
             "55",
             "50",
         ),
-        _row(root_label, root_current, "54", kind="TOTAL", hierarchy=[root_label]),
+        _row(root_label, root_current, "54", kind=root_kind, hierarchy=[root_label]),
     ]
     if include_declared_subtree:
         rows.extend(
             [
-                _row(group_label, None, None, kind="GROUP", hierarchy=[root_label, group_label]),
+                _row(
+                    group_label,
+                    None,
+                    None,
+                    kind=group_kind,
+                    hierarchy=[root_label, group_label],
+                ),
                 _row(
                     "- Tiền mặt, vàng bạc, đá quý",
                     "10",
@@ -344,6 +352,20 @@ def test_primary_cash_flow_explicit_subtree_equation_mismatch_is_unresolved() ->
     assert cluster["status"] == READY
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
+
+
+def test_primary_cash_flow_generic_item_row_kinds_still_use_source_graph() -> None:
+    candidate, cluster, _receipt = _evaluate(
+        _primary_cash_flow_page(group_kind="ITEM", root_kind="ITEM")
+    )
+    assert cluster["status"] == READY
+    assert candidate["status"] == READY
+    assert {item["role"] for item in candidate["mappings"]} == {
+        "CASH",
+        "CENTRAL_BANK",
+        "INTERBANK_GENERAL",
+        "FAMILY_ROOT_TOTAL",
+    }
 
 
 def test_primary_cash_flow_unmapped_child_inside_authenticated_group_is_unresolved() -> None:
