@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    NOT_OBSERVED,
     READY,
     UNRESOLVED,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
@@ -298,6 +299,26 @@ def test_service_activity_primary_summary_without_detail_is_not_observed() -> No
         page_records=[_record(page, ordinal=1)], compiled_specs=_compiled()
     )
     assert cluster["status"].startswith("NOT_OBSERVED")
+    assert cluster["component_regions"] == []
+
+
+def test_service_activity_root_totals_without_detail_children_are_not_observed() -> None:
+    income_parent = "Thu nhập từ hoạt động dịch vụ"
+    expense_parent = "Chi phí hoạt động dịch vụ"
+    summary_rows = [
+        _row(income_parent, ["100", "80"], kind="TOTAL"),
+        _row(expense_parent, ["30", "20"], kind="TOTAL"),
+        _row("Lãi thuần từ hoạt động dịch vụ", ["70", "60"], kind="TOTAL"),
+    ]
+    pages = [
+        _page(_table(_primary_rows()), primary=True),
+        _page(_table(summary_rows)),
+    ]
+    records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate(pages, start=1)]
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=_compiled()
+    )
+    assert cluster["status"] == NOT_OBSERVED
     assert cluster["component_regions"] == []
 
 

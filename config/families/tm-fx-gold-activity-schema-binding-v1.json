@@ -1,0 +1,23 @@
+{
+  "family_id": "FX_GOLD_ACTIVITY",
+  "family_root_report_norm_id": 1175,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1176, "role": "INCOME_PARENT"},
+    {"report_norm_id": 6026, "role": "INCOME_SPOT_FX_AND_GOLD"},
+    {"report_norm_id": 1177, "role": "INCOME_SPOT_FX"},
+    {"report_norm_id": 1178, "role": "INCOME_GOLD"},
+    {"report_norm_id": 1179, "role": "INCOME_CURRENCY_DERIVATIVES"},
+    {"report_norm_id": 1180, "role": "INCOME_FX_DIFFERENCE"},
+    {"report_norm_id": 1181, "role": "INCOME_OTHER"},
+    {"report_norm_id": 1182, "role": "EXPENSE_PARENT"},
+    {"report_norm_id": 6027, "role": "EXPENSE_SPOT_FX_AND_GOLD"},
+    {"report_norm_id": 1183, "role": "EXPENSE_SPOT_FX"},
+    {"report_norm_id": 1184, "role": "EXPENSE_GOLD"},
+    {"report_norm_id": 1185, "role": "EXPENSE_CURRENCY_DERIVATIVES"},
+    {"report_norm_id": 1186, "role": "EXPENSE_FX_DIFFERENCE"},
+    {"report_norm_id": 1187, "role": "EXPENSE_OTHER"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "DURATION"
+}

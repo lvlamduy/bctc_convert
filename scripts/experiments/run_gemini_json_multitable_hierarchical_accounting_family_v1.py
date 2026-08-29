@@ -261,6 +261,23 @@ PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES = (
         "size_bytes": 238146,
     },
 )
+PINNED_FX_GOLD_ACTIVITY_HISTORICAL_ORACLES = (
+    {
+        "format_version": "FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0083-fx-gold-activity-8bank-codex-verified-mapping-v1.json",
+        "sha256": "fcda9c3cbf06a639b375af5ef453553eefabb47a9116d91540ebcb361622cefe",
+        "size_bytes": 68488,
+    },
+    {
+        "format_version": "ANNUAL_2025_FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0138-annual-2025-fx-gold-activity-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "6dbbae7357fcfee17f3f427be649518f01bdd227151e1e39eeb08a5390647f3b",
+        "size_bytes": 195470,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -604,6 +621,55 @@ PINNED_SERVICE_ACTIVITY_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "877ef3a3aa48059abb8014bfeebcbed8e9d59823933d6a293ab288e5033c337f",
     "mappings": "a18ee4e8f5b7e00f76eafda633c3b25b1152fd97a2420b9bfd42db735e6bf310",
 }
+PINNED_FX_GOLD_ACTIVITY_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "3fd5ff6a500702b2fea8a04ce497d5211b602691c53c6ca6005e7f9b8e8b8e89"
+    ),
+    "accepted_cluster_count": 72,
+    "accepted_fragment_count": 138,
+    "candidate_disposition_axis_sha256": (
+        "7bcdbf49f396deeb0064841069a7c302b891c3ea31e0657e9dba581e8c1ae4e9"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 68, READY: 72, UNRESOLVED: 0},
+    "query_policy_sha256": "a2b3ef02b185e81d42a075bd118571e4498f20c2d4cc77392caa9ee6c41b0977",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_FX_GOLD_ACTIVITY_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 580,
+    "not_observed_count": 68,
+    "ready_count": 72,
+    "unresolved_count": 0,
+}
+PINNED_FX_GOLD_ACTIVITY_RELEASE_AUDIT_METRICS = {
+    "equation_count": 220,
+    "historical_comparator_exact_count": 108,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 92,
+    "historical_mapping_record_count": 92,
+    "mapping_count": 580,
+}
+PINNED_FX_GOLD_ACTIVITY_RELEASE_AXIS_COUNTS = {
+    "clusters": 72,
+    "equations": 220,
+    "historical_comparator": 108,
+    "mappings": 580,
+}
+PINNED_FX_GOLD_ACTIVITY_RELEASE_AXIS_SHA256 = {
+    "clusters": "53f89011bc75c13b2837a23e06de60e0336c66556a715169ee9c66710fce360e",
+    "equations": "796c9f16c0fc489a5eae1da03a9272d812e8521591db1cedd6146ecbf506124e",
+    "historical_comparator": "16cb778e84ab9c16eb37f2002a5a43a105384f6b05257ab65468532a4eb19acf",
+    "mappings": "9448338aed22d159d34fdbbfa9858f1ff7c488a8a75c386a6fbe7ee279f72114",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -823,6 +889,8 @@ def _historical_oracle_refs(
         return PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES
     if family_id == "SERVICE_ACTIVITY":
         return PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES
+    if family_id == "FX_GOLD_ACTIVITY":
+        return PINNED_FX_GOLD_ACTIVITY_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -896,6 +964,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_SERVICE_ACTIVITY_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_SERVICE_ACTIVITY_QUERY_RECEIPT,
             "sweep_metrics": PINNED_SERVICE_ACTIVITY_RELEASE_METRICS,
+        }
+    if family_id == "FX_GOLD_ACTIVITY":
+        return {
+            "axis_counts": PINNED_FX_GOLD_ACTIVITY_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_FX_GOLD_ACTIVITY_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_FX_GOLD_ACTIVITY_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_FX_GOLD_ACTIVITY_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_FX_GOLD_ACTIVITY_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

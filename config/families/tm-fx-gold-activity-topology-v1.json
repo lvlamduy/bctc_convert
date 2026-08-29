@@ -1,0 +1,72 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Thu nhập từ hoạt động kinh doanh vàng và ngoại hối", "Thu nhập từ hoạt động kinh doanh ngoại hối", "Lãi từ hoạt động kinh doanh vàng và ngoại hối", "Lãi từ hoạt động kinh doanh ngoại hối"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "INCOME_PARENT", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Thu từ kinh doanh ngoại tệ giao ngay và vàng", "Thu từ kinh doanh ngoại tệ và vàng", "Thu về kinh doanh ngoại tệ và vàng", "Thu nhập từ kinh doanh ngoại tệ giao ngay và vàng", "Thu nhập từ kinh doanh ngoại tệ và vàng"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_SPOT_FX_AND_GOLD", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu từ kinh doanh ngoại tệ giao ngay", "Thu nhập từ mua bán ngoại tệ giao ngay", "Thu nhập từ kinh doanh ngoại tệ giao ngay", "Thu từ mua bán ngoại tệ giao ngay", "Lãi từ kinh doanh ngoại tệ giao ngay"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_SPOT_FX", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu từ kinh doanh vàng", "Thu nhập từ kinh doanh vàng", "Thu từ giao dịch bán vàng", "Lãi đánh giá lại vàng"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_GOLD", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu từ các công cụ phái sinh tiền tệ", "Thu từ các công cụ tài chính phái sinh tiền tệ", "Thu từ các công cụ tài chính phái sinh", "Thu nhập từ công cụ tài chính phái sinh tiền tệ", "Thu nhập từ các công cụ tài chính phái sinh tiền tệ", "Lãi từ các công cụ tài chính phái sinh tiền tệ", "Lãi đánh giá lại các hợp đồng phái sinh"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_CURRENCY_DERIVATIVES", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá ngoại tệ kinh doanh", "Lãi chênh lệch tỷ giá ngoại tệ kinh doanh", "Thu từ chênh lệch tỷ giá ngoại tệ kinh doanh"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_FX_DIFFERENCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu khác", "Thu nhập khác", "Thu nhập từ hoạt động kinh doanh ngoại hối khác"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_OTHER", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí từ hoạt động kinh doanh vàng và ngoại hối", "Chi phí từ hoạt động kinh doanh ngoại hối", "Chi phí hoạt động kinh doanh ngoại hối", "Chi phí về hoạt động kinh doanh ngoại hối", "Lỗ từ hoạt động kinh doanh vàng và ngoại hối", "Lỗ từ hoạt động kinh doanh ngoại hối"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "EXPENSE_PARENT", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Chi về kinh doanh ngoại tệ giao ngay và vàng", "Chi về kinh doanh ngoại tệ và vàng", "Chi phí kinh doanh ngoại tệ giao ngay và vàng", "Chi phí về kinh doanh ngoại tệ và vàng", "Chi phí từ kinh doanh ngoại tệ và vàng"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_SPOT_FX_AND_GOLD", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi từ kinh doanh ngoại tệ giao ngay", "Chi về kinh doanh ngoại tệ giao ngay", "Chi cho kinh doanh ngoại tệ giao ngay", "Chi phí từ mua bán ngoại tệ giao ngay", "Chi phí kinh doanh ngoại tệ giao ngay", "Lỗ từ kinh doanh ngoại tệ giao ngay"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_SPOT_FX", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi từ kinh doanh vàng", "Chi về kinh doanh vàng", "Chi phí kinh doanh vàng"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_GOLD", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi từ các công cụ phái sinh tiền tệ", "Chi về các công cụ tài chính phái sinh tiền tệ", "Chi cho các công cụ tài chính phái sinh tiền tệ", "Chi về các công cụ tài chính phái sinh", "Chi phí từ công cụ tài chính phái sinh tiền tệ", "Chi phí về các công cụ tài chính phái sinh tiền tệ", "Lỗ từ các công cụ tài chính phái sinh tiền tệ", "Lỗ đánh giá lại các hợp đồng phái sinh"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_CURRENCY_DERIVATIVES", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá ngoại tệ kinh doanh", "Lỗ chênh lệch tỷ giá ngoại tệ kinh doanh", "Chi phí chênh lệch tỷ giá ngoại tệ kinh doanh"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_FX_DIFFERENCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi khác", "Chi phí khác", "Chi phí hoạt động kinh doanh ngoại hối khác"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_OTHER", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "FX_GOLD_ACTIVITY",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": ["Thu nhập từ hoạt động dịch vụ", "Chi phí từ hoạt động dịch vụ", "Thu nhập từ hoạt động khác", "Chi phí hoạt động khác", "Thu nhập từ mua bán chứng khoán kinh doanh", "Chi phí mua bán chứng khoán kinh doanh"],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối", "Lãi thuần từ hoạt động kinh doanh ngoại hối", "Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối", "Lỗ/lãi thuần từ hoạt động kinh doanh ngoại hối", "Lỗ thuần từ hoạt động kinh doanh ngoại hối"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "NET_FX_GOLD"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["INCOME_PARENT", "EXPENSE_PARENT"]],
+  "structural_reset_aliases": ["Lãi thuần từ hoạt động dịch vụ", "Lãi/lỗ thuần từ hoạt động dịch vụ", "Lãi thuần từ mua bán chứng khoán kinh doanh", "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh", "Lãi thuần từ hoạt động khác", "Thu nhập từ hoạt động khác"]
+}
