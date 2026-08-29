@@ -434,18 +434,48 @@ Artifact OFFICIAL:
   checks đều xanh. Cumulative results DB có 26 current selections,
   `quick_check` và foreign keys sạch, không có SQLite sidecar, SHA-256
   `4cdb15ae7260d45476c24a50f57aa3e6b2c1437e016e75a1498e0cb801035957`.
+- Family 27 `CAPITAL_AND_FUNDS`: `READY=137`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=3`, 1.295 mappings và 2.252 horizontal/vertical closure
+  equations. Generic equity-matrix engine nhận cả component-columns lẫn
+  component-rows, khóa opening/closing theo source date thay vì thứ tự trang,
+  giữ optional source-only component trong tổng nhưng không map sang schema
+  leaf, và chỉ map movement total khi source hiển thị đúng một role rõ ràng.
+  Monotone row-alignment solver chỉ tái gán những digit token đã nhìn thấy khi
+  nghiệm horizontal+vertical graph là duy nhất; 9 receipts sửa được năm tài
+  liệu mà không tạo hoặc đổi digit. Ba tài liệu BID/VIB ordinal 25/33/114 giữ
+  `UNRESOLVED` và `mappings=[]` vì JSON nguồn thật sự thiếu hoặc đặt sai token
+  khiến không tồn tại horizontal exact placement. Ảnh PDF đã xác nhận bảng
+  nguồn đọc được; follow-up chỉ được dùng observation prompt cố định
+  `cell_id + source_text` cho đúng các ô thiếu, không được backsolve chữ số,
+  route theo bank/page hay làm prompt family-specific. Exact SQLite replay phủ
+  đủ 8.947 selected page versions, 143 fragments trong 140 accepted clusters;
+  137 READY clusters có 95 period-block receipts. E-0078/E-0133 khớp 128/128
+  historical values ở 15 READY documents; 11 historical values còn lại cùng
+  thuộc BID ordinal 25 và được ghi typed `CURRENT_UNRESOLVED`, không phát sinh
+  mapping giả. OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family27-capital-and-funds/sweep.json`,
+  SHA-256
+  `55b21614c1123ea4fb4105f69f1ea1fcdfa17d32cee3eae1ba6af20955adfa47`;
+  audit SHA-256
+  `d299814d5a502f93870e2308ed1d4791f97ff37cdc3a1370e92053e0bca93dfb`.
+  Implementation commit `99eb423`; 229 focused/adjacent tests và 35 page/store
+  tests, Ruff, format, compile, JSON và diff checks đều xanh. Cumulative
+  results DB có 27 current selections, `quick_check` và foreign keys sạch,
+  không có SQLite sidecar, SHA-256
+  `b6f6e49aca7539ed683f353561569f56bced9f4ad3748d341cb0e051b75dcf4e`.
 
 ## Next gate
 
-Family 27 là `CAPITAL_AND_FUNDS` bắt đầu tại ReportNormId 1128. Đo mức tái sử
-dụng của ordered-period, transposed-axis và multi-level direct-frontier
-primitives trên full-corpus indexed census 8.947 trang, rồi khóa comparator
-E-0078 và E-0133. Thuật toán phải bao quát opening/closing equity totals,
-charter capital, share premium, capital/financial/other reserves, other capital,
-FX difference, retained earnings và non-controlling interest; optional source
-columns không có schema leaf phải giữ source-only mà không double-count trong
-equity total. Bảng xoay hoặc Gemini JSON đổi hướng phải được canonicalize bằng
-graph/axis local, không dùng geometry/OCR cũ và không thêm prompt phức tạp.
-Chỉ promote OFFICIAL sau exhaustive source inventory, period/unit, horizontal
-và vertical equations, query/candidate SQLite replay và toàn bộ disposition
-140 tài liệu khép theo gate đã công bố.
+Family 28 là `INTEREST_INCOME` bắt đầu tại ReportNormId 1143. Đo khả năng tái sử
+dụng của generic owner/reset-fenced two-period hierarchy engine trên full-corpus
+indexed census 8.947 trang, rồi khóa comparator E-0079 và E-0134. Thuật toán
+phải bao quát interest income total cùng các khoản tiền gửi, cho vay, đầu tư
+chứng khoán nợ, bảo lãnh, mua bán nợ và hoạt động tín dụng khác; parent total có
+thể đứng trước, đứng sau hoặc ở table sibling nhưng không được cộng trùng với
+children. Period, unit, dấu âm/dash, table continuation, source-only residual và
+equation phải do deterministic local code xử lý. Gemini tiếp tục dùng page JSON
+prompt tối giản; chỉ typed missing-row/column/context mới được tự động chuyển
+sang một prompt version bounded đã khai báo, không route theo bank/file/page.
+Chỉ promote OFFICIAL sau exhaustive inventory, query/candidate SQLite replay,
+equation receipts, historical comparator và toàn bộ disposition 140 tài liệu
+được niêm phong rõ ràng.
