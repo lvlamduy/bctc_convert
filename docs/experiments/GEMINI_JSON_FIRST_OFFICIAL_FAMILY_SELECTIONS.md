@@ -61,9 +61,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 39 | `INCOME_TAX` | 69 | 71 | 0 | 499 | `gjfafstorev1:run:ebe7179dd4fe83c5809edf225e8969b440214a91bc1348d1bafd1aa54ff919c3` |
 | 40 | `CASH_EQUIVALENTS` | 105 | 35 | 0 | 548 | `gjfafstorev1:run:b46dbf68ed1e3d57bf8f041e408e4aa74f09139931e1942148bc387befb03b6d` |
 | 41 | `SUBSIDIARY_ACQUISITION_DISPOSAL` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:e07acd6ce0416c2af8ddcf5df43f3eff2729cc62441b1ab30e9a45063d75af91` |
+| 42 | `EMPLOYEE_INCOME` | 60 | 74 | 6 | 300 | `gjfafstorev1:run:f8840be909af03992b2ca3e4cb84b119d1765eeb35ce5046ecf395a2bc466ee0` |
 
-Tại checkpoint này database có đủ đúng bốn mươi mốt current selection liên tục
-từ Family 1 đến Family 41. Family 42 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi hai current selection liên tục
+từ Family 1 đến Family 42. Family 43 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -941,15 +942,52 @@ Artifact OFFICIAL:
   results DB có 41 current selections, `quick_check` và foreign keys sạch,
   không SQLite sidecar, SHA-256
   `55a8bf8c54911db7598ca4592740d349caeaa0b5091055ac42ce084c14089fef`.
+- Family 42 `EMPLOYEE_INCOME`: `READY=60`, `NOT_OBSERVED=74`,
+  `UNRESOLVED=6` và 300 mappings. Generic hierarchical resolver inventory đúng
+  một owner-fenced table rồi tự chuẩn hóa hai lane duration, unit, số nhân viên
+  bình quân, quỹ lương/thu nhập khác/tổng thu nhập và hai tỷ lệ bình quân tháng.
+  Root RNID 1260 chỉ là structural context. Sáu U giữ `mappings=[]`: MBB
+  ordinals 70/76/81/84 chỉ in số nhân viên tại kỳ chứ không phải bình quân;
+  VCB ordinals 87/93 chỉ in tổng nhân viên tại ngày 31/12. Không backsolve hay
+  đổi nghĩa các dòng này.
+
+  Corpus đóng 140 phương trình, gồm tổng nguồn và tỷ lệ theo duration. 100
+  ratio mappings/200 ô thập phân bind `decimal_scale=2`; hai chênh lệch hiển
+  thị 0,01 được chứng minh bằng cách truyền khoảng làm tròn nửa đơn vị của tử
+  số và số nhân viên qua phép chia, không dùng epsilon tùy ý. Header tháng/năm,
+  bare year, `Năm nay/Năm trước`, symbolic `Kỳ này/Kỳ trước` và typed title của
+  báo cáo kết quả/lưu chuyển tiền tệ đều được giải bằng cùng primitive;
+  narrative kỳ hạn hoặc period conflict không được cấp duration. Prompt Gemini
+  không thay đổi và không nhận logic tỷ lệ, graph hoặc schema family.
+
+  E-0094/E-0149 khớp 31/31 historical mapping records; 12/16 disposition
+  records khớp. Bốn disposition khác biệt được ghi minh bạch: ba detailed
+  annual tables hiện được thuật toán tổng quát nhận ra, còn một VCB source chỉ
+  có point-in-time employee count được giữ U thay vì giả absence. Exact query
+  phủ 8.947 selected page versions, 140 document dispositions và 66 accepted
+  source clusters; public SQLite candidate/audit replay tái dựng toàn bộ từ
+  canonical JSON và loại coherent-rehashed ratio receipt.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family42-employee-income/sweep.json`,
+  SHA-256
+  `60fd7b8eed901daa33a9edda197000391dd02f8f99a4bc8d96e05aa511cf362d`;
+  audit SHA-256
+  `5c78c702836fec69a66bb5842759fe1e96b3e23471d299d4267a963b9861aed7`.
+  Implementation commits `05d56dd` và `0207adc`; 275 shared-engine tests,
+  focused duration/ratio/coherent-tamper checks, Ruff, format, compile, JSON,
+  diff, EXP/OFFICIAL replay và SQLite integrity đều xanh. Cumulative results
+  DB có 42 current selections, `quick_check` và foreign keys sạch, không SQLite
+  sidecar, SHA-256
+  `a049a0b8dfb6e4540769c0656691e821664a7fbc1ff599cc0e029e9aa32558c3`.
 
 ## Next gate
 
-Family 42 là `EMPLOYEE_INCOME`. Khóa comparator E-0094/E-0149 và tiếp tục dùng
-prompt Gemini tối giản, cố định. Code phải tự inventory employee-count,
-salary/other/total-income, average-income, period và unit graph; phân biệt
-printed monthly average với whole-period/annual average, chỉ quy đổi về schema
-monthly sau khi numerator, employee count, source period và ratio cùng đóng
-chính xác. Không route theo bank/file/page, không ép Gemini tính tỷ lệ hay sinh
-schema family-specific, không biến policy/isolated employee count thành detailed
-note. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
+Family 43 là `STATE_BUDGET_OBLIGATIONS`. Khóa comparator E-0095/E-0150 và tiếp
+tục dùng prompt Gemini tối giản, cố định. Code phải tự inventory bảng cuốn chiếu
+nghĩa vụ ngân sách, period/unit/lane, các nhánh phải nộp và ứng trước, rồi dựng
+graph có dấu và phương trình opening + incurred - paid = closing. Không route
+theo bank/file/page, không ép Gemini tính số thuần hay sinh schema
+family-specific, không biến policy/isolated tax expense thành bảng nghĩa vụ.
+Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
 query/candidate replay, historical comparator và đủ 140 dispositions.
