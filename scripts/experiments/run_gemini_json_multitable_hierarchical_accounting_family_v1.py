@@ -443,6 +443,23 @@ PINNED_INCOME_TAX_HISTORICAL_ORACLES = (
         "size_bytes": 232015,
     },
 )
+PINNED_CASH_EQUIVALENTS_HISTORICAL_ORACLES = (
+    {
+        "format_version": "CASH_EQUIVALENTS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0092-cash-equivalents-8bank-codex-verified-mapping-v1.json",
+        "sha256": "b6dc3e68842ce4441bde2edf76003a3018ba00678833fd04636e64c8159624d8",
+        "size_bytes": 101733,
+    },
+    {
+        "format_version": "ANNUAL_2025_CASH_EQUIVALENTS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0147-annual-2025-cash-equivalents-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "a84a8ce746dd114fe015587ed645fe15d0a94f32605bf0be47e94ce8ff6c4275",
+        "size_bytes": 125341,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1229,6 +1246,55 @@ PINNED_INCOME_TAX_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "84d02d604e3a6341b6ece85eb6ab78574e107b02b5f193992116d4e337e43fbd",
     "mappings": "8751d877c041046b54055485d8b1f5660d9d69ea475df3d5f7ec24666b96dc00",
 }
+PINNED_CASH_EQUIVALENTS_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "5c2d2a00d753bac441b9ef083287e406eaee4da4530bb352ed6a74e7f0c347a1"
+    ),
+    "accepted_cluster_count": 105,
+    "accepted_fragment_count": 105,
+    "candidate_disposition_axis_sha256": (
+        "2f0e1aee4efbb32f471b6054081f0c5dc896fee832f53fca74f7a6fe270d4781"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 35, READY: 105, UNRESOLVED: 0},
+    "query_policy_sha256": "32cfda078b404df77e7f3cd6c902d0641f0fd454321e86801f57fe1bc6d41efc",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_CASH_EQUIVALENTS_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 548,
+    "not_observed_count": 35,
+    "ready_count": 105,
+    "unresolved_count": 0,
+}
+PINNED_CASH_EQUIVALENTS_RELEASE_AUDIT_METRICS = {
+    "equation_count": 109,
+    "historical_comparator_exact_count": 90,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 74,
+    "historical_mapping_record_count": 74,
+    "mapping_count": 548,
+}
+PINNED_CASH_EQUIVALENTS_RELEASE_AXIS_COUNTS = {
+    "clusters": 105,
+    "equations": 109,
+    "historical_comparator": 90,
+    "mappings": 548,
+}
+PINNED_CASH_EQUIVALENTS_RELEASE_AXIS_SHA256 = {
+    "clusters": "e46c89cb3a1d441db705f876210bd4bc69d9947653c82770a0dc982af052dd23",
+    "equations": "3c3c2bb07438f478be4883093f2683c0a34e45c67d4955da979f7224a5c3eee1",
+    "historical_comparator": "a46512b4525947e56dbdd10c1fa9a092f6e4ca0abe885589adf61de7bb36e3ef",
+    "mappings": "5e271550de8a8b9cdb8d15278e944f1a55c6bfb7a4c09a7af576df15db8bfd87",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1466,6 +1532,8 @@ def _historical_oracle_refs(
         return PINNED_OTHER_ACTIVITY_HISTORICAL_ORACLES
     if family_id == "INCOME_TAX":
         return PINNED_INCOME_TAX_HISTORICAL_ORACLES
+    if family_id == "CASH_EQUIVALENTS":
+        return PINNED_CASH_EQUIVALENTS_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1615,6 +1683,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "query_receipt": PINNED_INCOME_TAX_QUERY_RECEIPT,
             "sweep_metrics": PINNED_INCOME_TAX_RELEASE_METRICS,
         }
+    if family_id == "CASH_EQUIVALENTS":
+        return {
+            "axis_counts": PINNED_CASH_EQUIVALENTS_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_CASH_EQUIVALENTS_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_CASH_EQUIVALENTS_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_CASH_EQUIVALENTS_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_CASH_EQUIVALENTS_RELEASE_METRICS,
+        }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
 
@@ -1731,6 +1807,7 @@ def _historical_comparator_axis(
                     binding.get("report_norm_id") if type(binding) is dict else None
                 )
                 historical_coefficients = None
+                normalized_blank_axes: set[str] = set()
                 if type(source_values) is list:
                     period_role_items = []
                     for value in source_values:
@@ -1765,6 +1842,50 @@ def _historical_comparator_axis(
                         historical_coefficients = [by_period_role[current_key]]
                         if comparative_key in by_period_role:
                             historical_coefficients.append(by_period_role[comparative_key])
+                    blank_axes = historical.get("blank_axes")
+                    normalized_period_values = {
+                        (
+                            "CURRENT_PERIOD"
+                            if role == "CURRENT"
+                            else "COMPARATIVE_PERIOD"
+                            if role == "COMPARATIVE"
+                            else role
+                        ): value
+                        for role, value in by_period_role.items()
+                    }
+                    normalized_blank_axes = (
+                        {
+                            (
+                                "CURRENT_PERIOD"
+                                if role == "CURRENT"
+                                else "COMPARATIVE_PERIOD"
+                                if role == "COMPARATIVE"
+                                else role
+                            )
+                            for role in blank_axes
+                        }
+                        if type(blank_axes) is list
+                        and all(type(role) is str for role in blank_axes)
+                        else set()
+                    )
+                    if (
+                        normalized_blank_axes
+                        and not normalized_blank_axes.intersection(normalized_period_values)
+                        and set(normalized_period_values) | normalized_blank_axes
+                        == {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}
+                        and all(type(value) is int for value in normalized_period_values.values())
+                    ):
+                        # Earlier verified oracles represented a source-visible
+                        # blank/dash lane in ``blank_axes`` and omitted it from
+                        # ``values``.  Reconstruct the complete two-lane
+                        # comparator as zero only when the current algorithm
+                        # independently emits the same zero after its exact
+                        # equation gate.  This is comparator normalization; it
+                        # never supplies evidence to the evaluator.
+                        historical_coefficients = [
+                            normalized_period_values.get("CURRENT_PERIOD", 0),
+                            normalized_period_values.get("COMPARATIVE_PERIOD", 0),
+                        ]
                 current = actual_by_id.get(old_report_norm_id)
                 full_current_coefficients = (
                     [value["coefficient"] for value in current["values"]]
@@ -1845,6 +1966,21 @@ def _historical_comparator_axis(
                     and type(historical_coefficients) is list
                     else full_current_coefficients
                 )
+                current_blank_zero_state_exact = bool(
+                    not normalized_blank_axes
+                    or type(current) is dict
+                    and all(
+                        len(current["values"]) > ordinal
+                        and current["values"][ordinal]["coefficient"] == 0
+                        and current["values"][ordinal]["state"]
+                        in {"DASH_ZERO", "INFERRED_BLANK_ZERO_IF_EQUATION_EXACT"}
+                        for role, ordinal in {
+                            "CURRENT_PERIOD": 0,
+                            "COMPARATIVE_PERIOD": 1,
+                        }.items()
+                        if role in normalized_blank_axes
+                    )
+                )
                 exact = (
                     type(old_report_norm_id) is int
                     and type(historical_coefficients) is list
@@ -1852,6 +1988,7 @@ def _historical_comparator_axis(
                     and all(type(value) is int for value in historical_coefficients)
                     and current is not None
                     and current_coefficients == historical_coefficients
+                    and current_blank_zero_state_exact
                 )
                 axis.append(
                     {

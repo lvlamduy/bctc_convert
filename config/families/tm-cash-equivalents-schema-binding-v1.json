@@ -1,0 +1,15 @@
+{
+  "family_id": "CASH_EQUIVALENTS",
+  "family_root_report_norm_id": 1248,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1249, "role": "CASH"},
+    {"report_norm_id": 1250, "role": "CENTRAL_BANK"},
+    {"report_norm_id": 1251, "role": "INTERBANK_GENERAL"},
+    {"report_norm_id": 1252, "role": "INTERBANK_DEMAND"},
+    {"report_norm_id": 1253, "role": "INTERBANK_TERM"},
+    {"report_norm_id": 1254, "role": "SECURITIES"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "SNAPSHOT"
+}

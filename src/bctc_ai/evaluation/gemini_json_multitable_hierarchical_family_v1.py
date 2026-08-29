@@ -139,6 +139,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "owner_match_policy",
         "owner_surface_kinds",
         "period_lane_policy",
+        "primary_statement_family_root_subtree_policy",
         "query_owner_aliases",
         "role_anchored_owner_fallback_policy",
         "role_anchored_supplemental_roles",
@@ -239,6 +240,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     if family_root_population_policy not in {
         "WHOLE_TABLE",
         "EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY",
+        "EXPLICIT_PRIMARY_STATEMENT_SOURCE_ROOT_SUBTREE_OTHERWISE_WHOLE_TABLE",
     }:
         raise _error("multi-table hierarchical family root population policy is invalid")
     family_root_requirement = evaluation_spec.get("family_root_requirement", "OPTIONAL")
@@ -247,6 +249,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
     }:
         raise _error("multi-table hierarchical family root requirement is invalid")
+    primary_statement_family_root_subtree_policy = evaluation_spec.get(
+        "primary_statement_family_root_subtree_policy", "DISABLED"
+    )
+    if primary_statement_family_root_subtree_policy not in {
+        "DISABLED",
+        "EXACT_PARENT_GROUP_UNDER_VISIBLE_TOTAL_WITH_COMPLETE_DECLARED_CHILD_FRONTIER",
+    }:
+        raise _error("multi-table hierarchical primary-statement subtree policy is invalid")
     label_only_structural_group_policy = evaluation_spec.get(
         "label_only_structural_group_policy", "DISABLED"
     )
@@ -372,6 +382,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     if duplicate_complete_table_population_policy not in {
         "ALLOW_CORROBORATING_PRESENTATIONS",
         "UNRESOLVED_EXACT_REPEATED_POPULATION",
+        "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION",
+        "UNRESOLVED_EXACT_REPEATED_OWNER_FENCED_WHOLE_TABLE_POPULATION",
     }:
         raise _error(
             "multi-table hierarchical duplicate complete table population policy is invalid"
@@ -381,7 +393,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     )
     if unmapped_direct_family_row_policy not in {
         "IGNORE",
+        "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW",
         "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
+        "UNRESOLVED_WHEN_OWNER_FENCED_WHOLE_TABLE_HAS_UNMAPPED_DIRECT_MONEY_ROW",
     }:
         raise _error("multi-table hierarchical unmapped direct family row policy is invalid")
     child_by_role = {child["role"]: child for child in topology["children"]}
@@ -826,6 +840,9 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "mapped_source_subtotal_policy": mapped_source_subtotal_policy,
         "minimum_declared_detail_role_count": minimum_declared_detail_role_count,
         "period_lane_policy": period_lane_policy,
+        "primary_statement_family_root_subtree_policy": (
+            primary_statement_family_root_subtree_policy
+        ),
         "presence_anchor_roles": presence_anchor_roles,
         "query_policy": query_policy,
         "root_component_roles": root_component_roles,
@@ -1203,6 +1220,7 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     unbound_money_rows = []
     total_rows = []
     family_root_row_ordinals = []
+    primary_statement_family_root_group_ordinals = []
     heading_context_roles = _context_roles(section, table, compiled_specs=compiled_specs)
     # Re-evaluate with an artificial sibling so only the table title can
     # contribute.  This preserves whether a role came from an explicit local
@@ -1217,12 +1235,20 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         values = row["values_exact"]
         root_label = _normalized(row.get("label_exact"))
         root_label = re.sub(r"^(?:[ivxlcdm]+|[0-9]+)\s+", "", root_label)
-        if (
-            "owner_surface_kinds" in compiled_specs["query_policy"]
-            and section.get("statement_type") != "CASH_FLOW"
-            and root_label in set(compiled_specs["topology"]["parent"]["aliases"])
+        if "owner_surface_kinds" in compiled_specs["query_policy"] and root_label in set(
+            compiled_specs["topology"]["parent"]["aliases"]
         ):
-            family_root_row_ordinals.append(row_ordinal)
+            if section.get("statement_type") != "CASH_FLOW":
+                family_root_row_ordinals.append(row_ordinal)
+            elif (
+                compiled_specs["primary_statement_family_root_subtree_policy"]
+                == ("EXACT_PARENT_GROUP_UNDER_VISIBLE_TOTAL_WITH_COMPLETE_DECLARED_CHILD_FRONTIER")
+                and page_json.get("status") == "PRIMARY_FINANCIAL_STATEMENT"
+                and section.get("content_kind") == "PRIMARY_STATEMENT"
+                and row.get("row_kind") in {"GROUP", "SUBTOTAL"}
+                and all(value is None for value in values)
+            ):
+                primary_statement_family_root_group_ordinals.append(row_ordinal)
         visible = any(
             ordinal <= len(values) and values[ordinal - 1] is not None for ordinal in money_ordinals
         )
@@ -1721,6 +1747,66 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         if hit["row_ordinal"] not in unbound_money_rows:
             unbound_money_rows.append(hit["row_ordinal"])
     role_hits = retained_role_hits
+    primary_statement_family_root_subtree_receipts = []
+    for group_ordinal in primary_statement_family_root_group_ordinals:
+        descendant_hits = [
+            hit
+            for hit in role_hits
+            if _row_is_strict_descendant(rows, hit["row_ordinal"], group_ordinal)
+        ]
+        descendant_roles = {hit["role"] for hit in descendant_hits}
+        if len(
+            descendant_roles.intersection(compiled_specs["root_component_roles"])
+        ) < compiled_specs["evaluation"].get(
+            "minimum_source_visible_root_component_count", 2
+        ) or not any(
+            set(combination) <= descendant_roles
+            for combination in compiled_specs["topology"]["required_role_combinations"]
+        ):
+            continue
+        ancestor_totals = []
+        for candidate_ordinal in range(1, group_ordinal):
+            candidate = rows[candidate_ordinal - 1]
+            if (
+                type(candidate) is not dict
+                or candidate.get("row_kind") not in {"SUBTOTAL", "TOTAL"}
+                or not _row_is_strict_descendant(rows, group_ordinal, candidate_ordinal)
+            ):
+                continue
+            if any(
+                candidate_ordinal < intermediate_ordinal < group_ordinal
+                and type(rows[intermediate_ordinal - 1]) is dict
+                and _row_is_strict_descendant(rows, group_ordinal, intermediate_ordinal)
+                and _row_is_strict_descendant(rows, intermediate_ordinal, candidate_ordinal)
+                for intermediate_ordinal in range(candidate_ordinal + 1, group_ordinal)
+            ):
+                continue
+            candidate_values = candidate.get("values_exact")
+            if type(candidate_values) is not list or not any(
+                ordinal <= len(candidate_values) and candidate_values[ordinal - 1] is not None
+                for ordinal in money_ordinals
+            ):
+                continue
+            ancestor_totals.append(candidate_ordinal)
+        if len(ancestor_totals) != 1:
+            continue
+        result_ordinal = ancestor_totals[0]
+        family_root_row_ordinals.append(result_ordinal)
+        primary_statement_family_root_subtree_receipts.append(
+            {
+                "declared_child_roles": sorted(descendant_roles),
+                "declared_child_row_ordinals": sorted(
+                    hit["row_ordinal"] for hit in descendant_hits
+                ),
+                "family_group_row_ordinal": group_ordinal,
+                "source_result_row_ordinal": result_ordinal,
+                "rule": (
+                    "EXACT_PARENT_GROUP_DIRECTLY_UNDER_VISIBLE_SOURCE_TOTAL_WITH_"
+                    "COMPLETE_DECLARED_CHILD_FRONTIER"
+                ),
+            }
+        )
+    family_root_row_ordinals = sorted(set(family_root_row_ordinals))
     declared_within_roles = {
         scope
         for hit in role_hits
@@ -1822,6 +1908,23 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
             }
         ),
     )
+    if (
+        typed_control_disposition == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+        and primary_statement_family_root_subtree_receipts
+    ):
+        typed_control_override_receipts.append(
+            {
+                "control_disposition": typed_control_disposition,
+                "family_root_subtree_receipts": canonical_clone_v1(
+                    primary_statement_family_root_subtree_receipts
+                ),
+                "rule": (
+                    "PRIMARY_STATEMENT_CONTROL_OVERRIDDEN_ONLY_BY_EXACT_VISIBLE_RESULT_"
+                    "AND_COMPLETE_DECLARED_FAMILY_SUBTREE"
+                ),
+            }
+        )
+        typed_control_disposition = None
     column_header_control_dispositions = {
         exclusion["disposition"]
         for exclusion in compiled_specs["typed_control_exclusions"]
@@ -1875,6 +1978,10 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         )
     if "owner_surface_kinds" in compiled_specs["query_policy"]:
         material["family_root_row_ordinals"] = family_root_row_ordinals
+    if primary_statement_family_root_subtree_receipts:
+        material["primary_statement_family_root_subtree_receipts"] = (
+            primary_statement_family_root_subtree_receipts
+        )
     if compiled_specs["row_population_context_policy"] == "AT_LEAST_TWO_DECLARED_CHILD_ROLES":
         material["ordered_root_scope_resolutions"] = ordered_root_scope_resolutions
     if hierarchy_path_scope_resolutions:
@@ -2256,6 +2363,19 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                 classification = classify_gemini_json_multitable_hierarchical_table_v1(
                     page_json, section, table, compiled_specs=compiled_specs
                 )
+                if classification.get("primary_statement_family_root_subtree_receipts"):
+                    for receipt in classification["primary_statement_family_root_subtree_receipts"]:
+                        result_ordinal = receipt["source_result_row_ordinal"]
+                        rows = table.get("rows")
+                        assert type(rows) is list
+                        owner_markers.append(
+                            {
+                                "alias": "EXACT_PRIMARY_STATEMENT_FAMILY_ROOT_SUBTREE",
+                                "outline_top_level_number": None,
+                                "position": position,
+                                "source_exact": rows[result_ordinal - 1].get("label_exact"),
+                            }
+                        )
                 if compiled_specs[
                     "source_result_query_policy"
                 ] == "REQUIRED_EXACT_SOURCE_RESULT_ROW" and classification.get(
@@ -2327,7 +2447,10 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
     def item_inside_owner_interval(
         item: Mapping[str, Any], owner: Mapping[str, Any], reset: Mapping[str, Any] | None
     ) -> bool:
-        if owner.get("alias") == "EXACT_SOURCE_RESULT_ROW":
+        if owner.get("alias") in {
+            "EXACT_SOURCE_RESULT_ROW",
+            "EXACT_PRIMARY_STATEMENT_FAMILY_ROOT_SUBTREE",
+        }:
             # With no explicit heading/reset fence, the exact result row owns
             # only its source table. Absorbing every later MONEY table on the
             # page would turn a usable source result into a layout-specific U.
@@ -2348,10 +2471,14 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             for interval in intervals
             if interval["owner"]["position"] >= (prior_reset or {"position": [-1]})["position"]
         ]
+        exact_row_owner_aliases = {
+            "EXACT_SOURCE_RESULT_ROW",
+            "EXACT_PRIMARY_STATEMENT_FAMILY_ROOT_SUBTREE",
+        }
         if overlapping_intervals and (
-            owner.get("alias") != "EXACT_SOURCE_RESULT_ROW"
+            owner.get("alias") not in exact_row_owner_aliases
             or any(
-                interval["owner"].get("alias") != "EXACT_SOURCE_RESULT_ROW"
+                interval["owner"].get("alias") not in exact_row_owner_aliases
                 for interval in overlapping_intervals
             )
         ):
@@ -2374,7 +2501,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         leading_items = []
         same_page_preceding = (
             []
-            if owner.get("alias") == "EXACT_SOURCE_RESULT_ROW"
+            if owner.get("alias") in exact_row_owner_aliases
             else [
                 item
                 for item in table_axis
@@ -5284,8 +5411,24 @@ def _extract_table_local_records(
         for hit in classification["role_hits"]
         if hit["role"] in compiled_specs["root_component_roles"]
     }
+    scope_to_explicit_family_root = bool(
+        family_root_ordinals
+        and (
+            compiled_specs["family_root_population_policy"] == "EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY"
+            or (
+                compiled_specs["family_root_population_policy"]
+                == "EXPLICIT_PRIMARY_STATEMENT_SOURCE_ROOT_SUBTREE_OTHERWISE_WHOLE_TABLE"
+                and classification.get("primary_statement_family_root_subtree_receipts")
+            )
+        )
+    )
+    needs_flat_family_population = bool(
+        scope_to_explicit_family_root
+        or compiled_specs["unmapped_direct_family_row_policy"]
+        == "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+    )
     flat_family_row_ordinals: set[int] = set()
-    for root_ordinal in family_root_ordinals:
+    for root_ordinal in family_root_ordinals if needs_flat_family_population else []:
         root_row = rows[root_ordinal - 1]
         # A flat ordered population needs a source-visible structural carrier.
         # An ITEM whose label happens to equal the family root cannot acquire
@@ -5322,6 +5465,12 @@ def _extract_table_local_records(
             populations[step] = population
         selected_populations = list(populations.values())
         if len(selected_populations) > 1:
+            hierarchy_descendants_visible = any(
+                other_ordinal != root_ordinal
+                and type(rows[other_ordinal - 1]) is dict
+                and _row_is_strict_descendant(rows, other_ordinal, root_ordinal)
+                for other_ordinal in range(1, len(rows) + 1)
+            )
             hierarchy_scoped = [
                 population
                 for population in selected_populations
@@ -5338,19 +5487,31 @@ def _extract_table_local_records(
                 )
             ]
             hierarchy_selected = hierarchy_scoped[0] if len(hierarchy_scoped) == 1 else None
-            declared_outside_hierarchy = bool(
-                hierarchy_selected is not None
-                and any(
-                    ordinal in declared_role_ordinals and ordinal not in family_root_ordinals
+            if classification.get("primary_statement_family_root_subtree_receipts"):
+                declared_outside_hierarchy = bool(
+                    hierarchy_descendants_visible
+                    and any(
+                        ordinal in declared_role_ordinals and ordinal not in family_root_ordinals
+                        for population in selected_populations
+                        for ordinal in population
+                        if not _row_is_strict_descendant(rows, ordinal, root_ordinal)
+                    )
+                )
+                if hierarchy_descendants_visible and not declared_outside_hierarchy:
+                    selected_populations = hierarchy_scoped
+            else:
+                declared_outside_hierarchy = any(
+                    hierarchy_selected is not None
+                    and ordinal in declared_role_ordinals
+                    and ordinal not in family_root_ordinals
                     for population in selected_populations
                     if population is not hierarchy_selected
                     for ordinal in population
                 )
-            )
-            if hierarchy_selected is not None and not declared_outside_hierarchy:
-                selected_populations = hierarchy_scoped
-            elif len(declared_child_scoped) == 1:
-                selected_populations = declared_child_scoped
+                if hierarchy_selected is not None and not declared_outside_hierarchy:
+                    selected_populations = hierarchy_scoped
+                elif len(declared_child_scoped) == 1:
+                    selected_populations = declared_child_scoped
         flat_family_row_ordinals.update(
             ordinal for population in selected_populations for ordinal in population
         )
@@ -5366,10 +5527,6 @@ def _extract_table_local_records(
             )
         )
 
-    scope_to_explicit_family_root = bool(
-        family_root_ordinals
-        and compiled_specs["family_root_population_policy"] == "EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY"
-    )
     outside_family_root_rows = [
         {
             "row": canonical_clone_v1(row),
@@ -5427,7 +5584,7 @@ def _extract_table_local_records(
             row_records[row_ordinal] = record
     if parse_reasons:
         receipt["parse_reasons"] = sorted(set(parse_reasons))
-    if compiled_specs["family_root_population_policy"] != "WHOLE_TABLE":
+    if scope_to_explicit_family_root:
         receipt["family_root_population_receipt"] = {
             "explicit_family_root_row_ordinals": sorted(family_root_ordinals),
             "flat_item_row_ordinals": sorted(flat_family_row_ordinals),
@@ -5672,13 +5829,20 @@ def _extract_table_local_records(
 
         row = rows[row_ordinal - 1]
         record = row_records.get(row_ordinal)
+        authenticated_family_group_ordinals = {
+            item["family_group_row_ordinal"]
+            for item in classification.get("primary_statement_family_root_subtree_receipts", [])
+        }
         return bool(
             type(row) is dict
             and record is not None
             and row.get("row_kind") == "GROUP"
             and all(cell["source_text"] is None for cell in record["cells"])
-            and _normalized(row.get("label_exact"))
-            in {"trong do", "bao gom", "of which", "including"}
+            and (
+                _normalized(row.get("label_exact"))
+                in {"trong do", "bao gom", "of which", "including"}
+                or row_ordinal in authenticated_family_group_ordinals
+            )
         )
 
     def effective_direct_descendants(
@@ -6245,8 +6409,7 @@ def _extract_table_local_records(
         # corroboration for that other population, never permission to reuse
         # it as this family's root.
         total_inside_explicit_family_root = bool(
-            compiled_specs["family_root_population_policy"] != ("EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY")
-            or not family_root_ordinals
+            not scope_to_explicit_family_root
             or total_ordinal in family_root_ordinals
             or any(
                 _row_is_strict_descendant(rows, total_ordinal, root_ordinal)
@@ -6840,11 +7003,22 @@ def _extract_table_local_records(
         optional_component_veto_source_result and len(family_root_ordinals) == 1 and not hit_by_row
     )
     unmapped_direct_family_rows = []
+    authenticated_primary_family_group_ordinals = {
+        item["family_group_row_ordinal"]
+        for item in classification.get("primary_statement_family_root_subtree_receipts", [])
+    }
     if (
-        compiled_specs["unmapped_direct_family_row_policy"]
-        == ("UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD")
-        and not standalone_exact_source_result
-    ):
+        (
+            compiled_specs["unmapped_direct_family_row_policy"]
+            == "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+            and family_root_ordinals
+        )
+        or (
+            compiled_specs["unmapped_direct_family_row_policy"]
+            == "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW"
+            and scope_to_explicit_family_root
+        )
+    ) and not standalone_exact_source_result:
         for ordinal, record in sorted(row_records.items()):
             if ordinal in hit_by_row or ordinal in family_root_ordinals:
                 continue
@@ -6867,6 +7041,7 @@ def _extract_table_local_records(
                 ordinal in flat_family_row_ordinals
                 or not any(
                     other_ordinal not in {ordinal, root_ordinal}
+                    and other_ordinal not in authenticated_primary_family_group_ordinals
                     and _normalized(rows[other_ordinal - 1].get("label_exact"))
                     and _row_is_strict_descendant(rows, other_ordinal, root_ordinal)
                     and _row_is_strict_descendant(rows, ordinal, other_ordinal)
@@ -6875,6 +7050,24 @@ def _extract_table_local_records(
                 for root_ordinal in owning_roots
             )
             if is_direct:
+                unmapped_direct_family_rows.append(canonical_clone_v1(record["source_refs"][0]))
+    elif (
+        compiled_specs["unmapped_direct_family_row_policy"]
+        in {
+            "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW",
+            "UNRESOLVED_WHEN_OWNER_FENCED_WHOLE_TABLE_HAS_UNMAPPED_DIRECT_MONEY_ROW",
+        }
+        and not scope_to_explicit_family_root
+    ):
+        for ordinal, record in sorted(row_records.items()):
+            if ordinal in hit_by_row or ordinal in family_root_ordinals:
+                continue
+            row = rows[ordinal - 1]
+            if (
+                row.get("row_kind") == "ITEM"
+                and _normalized(row.get("label_exact"))
+                and any(cell["source_text"] is not None for cell in record["cells"])
+            ):
                 unmapped_direct_family_rows.append(canonical_clone_v1(record["source_refs"][0]))
     unproven_conditional_zero_rows = sorted(
         {
@@ -6954,7 +7147,7 @@ def _extract_table_local_records(
     receipt["source_only_rows"] = source_only_rows
     if source_result_row_receipt is not None:
         receipt["source_result_row_receipt"] = source_result_row_receipt
-    if compiled_specs["family_root_population_policy"] != "WHOLE_TABLE":
+    if scope_to_explicit_family_root:
         receipt["outside_family_root_rows"] = outside_family_root_rows
     if compiled_specs["unmapped_direct_family_row_policy"] != "IGNORE":
         receipt["unmapped_direct_family_rows"] = unmapped_direct_family_rows
@@ -7126,28 +7319,52 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         source_only_axis.extend(extracted["source_only_rows"])
         if extracted["unconsumed_reason"] is not None:
             reasons.append(extracted["unconsumed_reason"])
-    if (
-        compiled_specs["evaluation"].get(
-            "duplicate_complete_table_population_policy",
-            "ALLOW_CORROBORATING_PRESENTATIONS",
-        )
-        == "UNRESOLVED_EXACT_REPEATED_POPULATION"
-    ):
+    duplicate_population_policy = compiled_specs["evaluation"].get(
+        "duplicate_complete_table_population_policy",
+        "ALLOW_CORROBORATING_PRESENTATIONS",
+    )
+    if duplicate_population_policy in {
+        "UNRESOLVED_EXACT_REPEATED_POPULATION",
+        "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION",
+        "UNRESOLVED_EXACT_REPEATED_OWNER_FENCED_WHOLE_TABLE_POPULATION",
+    }:
         complete_population_receipts: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
         for receipt in table_receipts:
             classification = receipt["classification"]
             lane_axis = receipt["lane_axis"]
-            roles = sorted(
+            roles = {
                 hit["role"]
                 for hit in classification["role_hits"]
                 if hit["role"] in compiled_specs["root_component_roles"]
-            )
-            if (
-                not classification.get("family_root_row_ordinals")
-                or not roles
-                or not lane_axis.get("complete")
-                or len(lane_axis.get("lane_keys", [])) != 2
+            }
+            if not lane_axis.get("complete") or len(lane_axis.get("lane_keys", [])) != 2:
+                continue
+            if duplicate_population_policy == "UNRESOLVED_EXACT_REPEATED_POPULATION":
+                complete = bool(classification.get("family_root_row_ordinals") and roles)
+            elif duplicate_population_policy == (
+                "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION"
             ):
+                complete = bool(
+                    (
+                        classification.get("family_root_row_ordinals")
+                        or classification.get("owner_visible")
+                    )
+                    and classification.get("total_rows")
+                    and any(
+                        set(combination) <= roles
+                        for combination in compiled_specs["topology"]["required_role_combinations"]
+                    )
+                )
+            else:
+                complete = bool(
+                    classification.get("owner_visible")
+                    and classification.get("total_rows")
+                    and any(
+                        set(combination) <= roles
+                        for combination in compiled_specs["topology"]["required_role_combinations"]
+                    )
+                )
+            if not complete:
                 continue
             signature = canonical_json_sha256_v1(
                 {
