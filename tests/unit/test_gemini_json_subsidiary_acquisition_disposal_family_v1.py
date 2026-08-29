@@ -18,6 +18,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_ID = "gfpstorev1:document:" + "a" * 64
@@ -244,6 +245,14 @@ def test_candidate_replay_rejects_coherent_mapping_value_tamper() -> None:
     candidate, cluster, receipt = _evaluate(page)
     tampered = deepcopy(candidate)
     tampered["mappings"][0]["values"][0]["coefficient"] += 1
+    mapping_material = {
+        key: value for key, value in tampered["mappings"][0].items() if key != "item_mapping_id"
+    }
+    tampered["mappings"][0]["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1(
+        mapping_material
+    )
+    candidate_material = {key: value for key, value in tampered.items() if key != "candidate_id"}
+    tampered["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(candidate_material)
     with pytest.raises(
         GeminiJsonMultitableHierarchicalFamilyV1Error,
         match="candidate replay drifted",
