@@ -120,6 +120,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "document_source_result_signal_policy",
         "document_cluster_policy",
         "duplicate_role_aggregation_policy",
+        "duplicate_complete_table_population_policy",
         "equation_consumed_unmatched_residual_role",
         "family_root_population_policy",
         "family_root_requirement",
@@ -127,6 +128,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "label_only_structural_group_policy",
         "money_metric_policy",
         "minimum_declared_detail_role_count",
+        "minimum_source_visible_root_component_count",
         "owner_surface_kinds",
         "period_lane_policy",
         "query_owner_aliases",
@@ -260,6 +262,16 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         or not 1 <= minimum_declared_detail_role_count <= 8
     ):
         raise _error("multi-table hierarchical minimum detail role count is invalid")
+    minimum_source_visible_root_component_count = evaluation_spec.get(
+        "minimum_source_visible_root_component_count", 2
+    )
+    if (
+        type(minimum_source_visible_root_component_count) is not int
+        or not 1 <= minimum_source_visible_root_component_count <= 8
+    ):
+        raise _error(
+            "multi-table hierarchical minimum source-visible root component count is invalid"
+        )
     row_population_context_policy = evaluation_spec.get(
         "row_population_context_policy", "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES"
     )
@@ -284,6 +296,16 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
     }:
         raise _error("multi-table hierarchical duplicate role aggregation policy is invalid")
+    duplicate_complete_table_population_policy = evaluation_spec.get(
+        "duplicate_complete_table_population_policy", "ALLOW_CORROBORATING_PRESENTATIONS"
+    )
+    if duplicate_complete_table_population_policy not in {
+        "ALLOW_CORROBORATING_PRESENTATIONS",
+        "UNRESOLVED_EXACT_REPEATED_POPULATION",
+    }:
+        raise _error(
+            "multi-table hierarchical duplicate complete table population policy is invalid"
+        )
     unmapped_direct_family_row_policy = evaluation_spec.get(
         "unmapped_direct_family_row_policy", "IGNORE"
     )
@@ -5247,7 +5269,10 @@ def _extract_table_local_records(
                     not context_total_preferred
                     and component_hit_roles
                     and component_hit_roles <= set(compiled_specs["root_component_roles"])
-                    and len(component_hit_roles) >= 2
+                    and len(component_hit_roles)
+                    >= compiled_specs["evaluation"].get(
+                        "minimum_source_visible_root_component_count", 2
+                    )
                 )
             )
         root_total_emitted = bool(
@@ -5770,6 +5795,38 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         source_only_axis.extend(extracted["source_only_rows"])
         if extracted["unconsumed_reason"] is not None:
             reasons.append(extracted["unconsumed_reason"])
+    if (
+        compiled_specs["evaluation"].get(
+            "duplicate_complete_table_population_policy",
+            "ALLOW_CORROBORATING_PRESENTATIONS",
+        )
+        == "UNRESOLVED_EXACT_REPEATED_POPULATION"
+    ):
+        complete_population_receipts: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for receipt in table_receipts:
+            classification = receipt["classification"]
+            lane_axis = receipt["lane_axis"]
+            roles = sorted(
+                hit["role"]
+                for hit in classification["role_hits"]
+                if hit["role"] in compiled_specs["root_component_roles"]
+            )
+            if (
+                not classification.get("family_root_row_ordinals")
+                or not roles
+                or not lane_axis.get("complete")
+                or len(lane_axis.get("lane_keys", [])) != 2
+            ):
+                continue
+            signature = canonical_json_sha256_v1(
+                {
+                    "lane_keys": lane_axis["lane_keys"],
+                    "valuation_basis": lane_axis.get("selected_metric_kinds"),
+                }
+            )
+            complete_population_receipts[signature].append(receipt)
+        if any(len(receipts) > 1 for receipts in complete_population_receipts.values()):
+            reasons.append("DUPLICATE_COMPLETE_SOURCE_TABLE_POPULATION")
     local_records, context_total_corroboration_receipts = _reconcile_nested_context_totals(
         local_records, compiled_specs=compiled_specs
     )

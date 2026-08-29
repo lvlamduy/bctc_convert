@@ -1,0 +1,100 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh",
+            "Thu từ mua bán chứng khoán kinh doanh",
+            "Lãi từ mua bán chứng khoán kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_TRADING_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí về mua bán chứng khoán kinh doanh",
+            "Chi phí từ mua bán chứng khoán kinh doanh",
+            "Chi phí mua bán chứng khoán kinh doanh",
+            "Chi về mua bán chứng khoán kinh doanh",
+            "Lỗ về mua bán chứng khoán kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_TRADING_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán kinh doanh",
+            "Hoàn nhập/(Trích lập) dự phòng chứng khoán kinh doanh",
+            "(Trích lập)/Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+            "(Trích lập)/Hoàn nhập dự phòng chứng khoán kinh doanh",
+            "(Chi phí)/Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+            "Trích lập dự phòng rủi ro chứng khoán kinh doanh",
+            "Trích lập dự phòng chứng khoán kinh doanh",
+            "Trích lập dự phòng giảm giá chứng khoán kinh doanh",
+            "Trích lập chi phí dự phòng giảm giá chứng khoán kinh doanh",
+            "Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh",
+            "Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+            "Hoàn nhập/(Chi phí) dự phòng giảm giá chứng khoán kinh doanh",
+            "Dự phòng rủi ro chứng khoán kinh doanh",
+            "Dự phòng giảm giá chứng khoán kinh doanh",
+            "Dự phòng rủi ro chứng khoán kinh doanh hoàn nhập trong kỳ",
+            "Dự phòng rủi ro chứng khoán kinh doanh hoàn nhập/(trích lập) trong kỳ",
+            "(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh",
+            "Trích lập dự phòng rủi ro chứng khoán đầu tư"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_TRADING_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "TRADING_SECURITIES_ACTIVITY",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Lãi thuần từ mua bán chứng khoán đầu tư",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Thu nhập từ mua bán chứng khoán đầu tư"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Lãi thuần từ mua bán chứng khoán kinh doanh",
+      "Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh",
+      "Lãi/(Lỗ) thuần từ mua bán chứng khoán kinh doanh",
+      "Lãi/(Lỗ) thuần từ hoạt động mua bán chứng khoán kinh doanh",
+      "(Lỗ)/Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh",
+      "Lãi từ hoạt động mua bán chứng khoán kinh doanh"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "NET_TRADING_SECURITIES"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["INCOME_TRADING_SECURITIES"]
+  ],
+  "structural_reset_aliases": [
+    "Lãi thuần từ mua bán chứng khoán đầu tư",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Thu nhập từ hoạt động khác"
+  ]
+}
