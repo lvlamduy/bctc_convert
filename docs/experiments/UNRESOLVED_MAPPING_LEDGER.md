@@ -3333,6 +3333,25 @@ coherently rehashed lineage fixtures remain authoritative regression gates.
 Every incomplete or conflicting graph must return `UNRESOLVED` with
 `mappings=[]`.
 
+## Family 34 current corpus — combined securities net (`COMBINED_SECURITIES_NET`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family34-combined-securities-net/sweep.json`
+
+- Census: 140 documents, `READY=12`, `NOT_OBSERVED=128`, `UNRESOLVED=0`,
+  12 mappings and 36 source/component equation receipts. Family34 adds no
+  unresolved mapping entry.
+- Only the exact source-visible combined net row maps to RNID 5990. The
+  trading and investment component roots are validation evidence and are not
+  emitted again by this family.
+- A combined result is never synthesized from Family32/Family33 outputs or
+  from two independently found component tables when the source row is absent.
+
+The duplicate source-row, partial component inventory, component mismatch,
+cash-flow lookalike, period conflict, unit conflict and coherently rehashed
+receipt fixtures remain authoritative regression gates. Every incomplete or
+conflicting graph must return `UNRESOLVED` with `mappings=[]`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
