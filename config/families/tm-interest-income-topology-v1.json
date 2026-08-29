@@ -1,0 +1,60 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Thu lãi tiền gửi", "Thu nhập lãi tiền gửi", "Thu nhập từ lãi tiền gửi", "Thu nhập lãi từ tiền gửi"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu lãi cho vay", "Thu nhập lãi cho vay", "Thu nhập lãi cho vay khách hàng", "Thu nhập lãi từ cho vay khách hàng", "Thu nhập từ lãi cho vay khách hàng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CUSTOMER_LOAN_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu nhập lãi cho vay khách hàng và các TCTD khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu lãi từ kinh doanh, đầu tư chứng khoán", "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu lãi từ đầu tư chứng khoán nợ", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu nhập lãi từ chứng khoán nợ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "SECURITIES_INTEREST", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Thu lãi từ chứng khoán kinh doanh", "Lãi thu từ chứng khoán kinh doanh", "Thu nhập lãi từ kinh doanh chứng khoán", "từ chứng khoán kinh doanh"], "within_role": "SECURITIES_INTEREST"}],
+      "presence": "OPTIONAL", "role": "TRADING_SECURITIES_INTEREST_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu lãi từ chứng khoán đầu tư", "Lãi thu từ chứng khoán đầu tư", "Thu nhập lãi từ chứng khoán đầu tư", "Thu lãi từ đầu tư chứng khoán đầu tư", "Trong đó: Thu lãi từ chứng khoán đầu tư", "từ chứng khoán đầu tư"], "within_role": "SECURITIES_INTEREST"}],
+      "presence": "OPTIONAL", "role": "INVESTMENT_SECURITIES_INTEREST_COMPONENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu nhập lãi cho thuê tài chính", "Thu lãi cho thuê tài chính", "Thu từ cho thuê tài chính"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "FINANCE_LEASE_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu phí từ nghiệp vụ bảo lãnh", "Thu từ nghiệp vụ bảo lãnh", "Thu nhập từ nghiệp vụ bảo lãnh", "Thu phí nghiệp vụ bảo lãnh", "Thu nhập từ hoạt động bảo lãnh"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "GUARANTEE_FEE_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu phí nghiệp vụ L/C", "Thu phí từ nghiệp vụ L/C", "Thu lãi từ nghiệp vụ UPAS L/C và L/C trả chậm"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "LETTER_OF_CREDIT_FEE_INCOME", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu lãi từ nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua nợ", "Thu nhập từ nghiệp vụ mua bán nợ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "PURCHASED_DEBT_INTEREST", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu khác từ hoạt động tín dụng", "Thu các hoạt động tín dụng khác", "Thu nhập khác từ hoạt động tín dụng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_CREDIT_INCOME", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "INTEREST_INCOME",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": ["Các khoản lãi, phí phải thu", "Lãi cho vay và phí phải thu chưa thu được", "Chi phí lãi và các chi phí tương tự"],
+  "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Thu nhập lãi và các khoản thu nhập tương tự"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "INTEREST_INCOME_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["DEPOSIT_INTEREST", "CUSTOMER_LOAN_INTEREST", "SECURITIES_INTEREST"], ["DEPOSIT_INTEREST", "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "SECURITIES_INTEREST"], ["CUSTOMER_LOAN_INTEREST", "SECURITIES_INTEREST", "OTHER_CREDIT_INCOME"]],
+  "structural_reset_aliases": ["Chi phí lãi và các chi phí tương tự", "Thu nhập từ hoạt động dịch vụ", "Lãi thuần từ hoạt động dịch vụ", "Kinh doanh ngoại hối", "Mua bán chứng khoán kinh doanh"]
+}

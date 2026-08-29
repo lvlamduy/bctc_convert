@@ -1,0 +1,18 @@
+{
+  "family_id": "INTEREST_INCOME",
+  "family_root_report_norm_id": 1143,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1144, "role": "DEPOSIT_INTEREST"},
+    {"report_norm_id": 1145, "role": "CUSTOMER_LOAN_INTEREST"},
+    {"report_norm_id": 6075, "role": "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST"},
+    {"report_norm_id": 1146, "role": "SECURITIES_INTEREST"},
+    {"report_norm_id": 1147, "role": "FINANCE_LEASE_INTEREST"},
+    {"report_norm_id": 6076, "role": "LETTER_OF_CREDIT_FEE_INCOME"},
+    {"report_norm_id": 1148, "role": "GUARANTEE_FEE_INTEREST"},
+    {"report_norm_id": 1149, "role": "PURCHASED_DEBT_INTEREST"},
+    {"report_norm_id": 1150, "role": "OTHER_CREDIT_INCOME"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "DURATION"
+}

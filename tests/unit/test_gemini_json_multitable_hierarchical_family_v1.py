@@ -53,6 +53,14 @@ def _entrusted_compiled() -> dict:
     )
 
 
+def _interest_income_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-interest-income-topology-v1.json"),
+        _json("tm-interest-income-evaluation-v1.json"),
+        _json("tm-interest-income-schema-binding-v1.json"),
+    )
+
+
 def _columns(current: str = "31/12/2025", comparative: str = "31/12/2024") -> list[dict]:
     return [
         {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
@@ -128,6 +136,24 @@ def _record(page: dict) -> dict:
 
 def _evaluate(page: dict) -> tuple[dict, dict, dict]:
     compiled = _compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, candidate
+
+
+def _evaluate_interest_income(page: dict) -> tuple[dict, dict, dict]:
+    compiled = _interest_income_compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[_record(page)], compiled_specs=compiled
     )
@@ -1549,3 +1575,274 @@ def test_label_only_group_projects_exact_multi_child_frontier_after_total_closur
         ),
     )
     assert broken_candidate["status"] == UNRESOLVED
+
+
+def _interest_duration_columns(
+    current: str = "Từ ngày 01/01/2025 đến ngày 31/03/2025",
+    comparative: str = "Từ ngày 01/01/2024 đến ngày 31/03/2024",
+) -> list[dict]:
+    return [
+        {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
+        {"header_path_exact": [comparative, "Triệu đồng"], "value_kind": "MONEY"},
+    ]
+
+
+def test_interest_income_combined_table_scopes_exact_family_root_subtree() -> None:
+    root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(root, [None, None], kind="GROUP", hierarchy=[root]),
+            _row(
+                "Thu nhập lãi tiền gửi",
+                ["10", "8"],
+                hierarchy=[root, "Thu nhập lãi tiền gửi"],
+            ),
+            _row(
+                "Thu nhập lãi cho vay khách hàng",
+                ["20", "12"],
+                hierarchy=[root, "Thu nhập lãi cho vay khách hàng"],
+            ),
+            _row(None, ["30", "20"], kind="SUBTOTAL", hierarchy=[root, None]),
+            _row(
+                "Chi phí lãi và các chi phí tương tự",
+                [None, None],
+                kind="GROUP",
+            ),
+            _row("Chi lãi tiền gửi", ["(broken:source)", "(9)"], hierarchy=["Chi phí"]),
+            _row("Thu nhập lãi thuần", ["15", "11"], kind="TOTAL"),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    compiled_specs, cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "CUSTOMER_LOAN_INTEREST",
+        "DEPOSIT_INTEREST",
+        "FAMILY_ROOT_TOTAL",
+    }
+    receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert [item["row_ordinal"] for item in receipt["outside_family_root_rows"]] == [5, 6, 7]
+
+    forged = copy.deepcopy(candidate)
+    forged["closure_receipt"]["table_receipts"][0]["outside_family_root_rows"][0]["row"][
+        "label_exact"
+    ] = "Coherent source receipt drift"
+    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in forged.items() if key != "candidate_id"}
+    )
+    page = _page(_section("Thuyết minh", table))
+    query_receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="candidate replay drifted",
+    ):
+        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+            forged,
+            regions=cluster["component_regions"],
+            page_json_by_version={VERSION_ID: page},
+            compiled_specs=compiled_specs,
+            query_receipt=query_receipt,
+        )
+
+
+def test_interest_income_flat_leading_root_uses_bounded_ordered_children() -> None:
+    root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(root, ["30", "20"], kind="TOTAL", hierarchy=[root]),
+            _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+            _row("Thu nhập lãi cho vay khách hàng", ["20", "12"]),
+            _row("Chi phí lãi và các chi phí tương tự", ["(7)", "(5)"], kind="TOTAL"),
+            _row("Chi lãi tiền gửi", ["(7)", "(5)"]),
+            _row("Thu nhập lãi thuần", ["23", "15"], kind="TOTAL"),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "CUSTOMER_LOAN_INTEREST",
+        "DEPOSIT_INTEREST",
+        "FAMILY_ROOT_TOTAL",
+    }
+    root_mapping = next(
+        mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"
+    )
+    assert [value["coefficient"] for value in root_mapping["values"]] == [30, 20]
+
+
+def test_interest_income_unmapped_direct_money_child_is_unresolved() -> None:
+    root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(root, [None, None], kind="GROUP", hierarchy=[root]),
+            _row(
+                "Thu nhập lãi tiền gửi",
+                ["10", "8"],
+                hierarchy=[root, "Thu nhập lãi tiền gửi"],
+            ),
+            _row(
+                "Khoản thu nhập lãi chưa có schema binding",
+                ["5", "4"],
+                hierarchy=[root, "Khoản thu nhập lãi chưa có schema binding"],
+            ),
+            _row(None, ["15", "12"], kind="SUBTOTAL", hierarchy=[root, None]),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+@pytest.mark.parametrize(
+    ("current_header", "expected_reason"),
+    [
+        (
+            "Từ ngày 01/01/2025 đến ngày 31/03/2025; đối chiếu ngày 30/06/2025",
+            "TOO_MANY_DURATION_DATES_IN_MONEY_COLUMN:c1",
+        ),
+        (
+            "Năm kết thúc 31/12/2025; ngày phê duyệt 30/03/2025",
+            "MULTIPLE_UNGOVERNED_DATES_IN_MONEY_COLUMN:c1",
+        ),
+        (
+            "Từ ngày 31/03/2025 đến ngày 01/01/2025",
+            "INVALID_DURATION_DATE_RANGE_IN_MONEY_COLUMN:c1",
+        ),
+        (
+            "Kỳ kết thúc ngày 31/03/2025; năm 2024",
+            "DATE_AND_UNBOUND_BARE_YEAR_CONFLICT:c1",
+        ),
+        ("Năm 2025; năm trước", "DATE_SEMANTIC_PERIOD_CONFLICT:c1"),
+        ("6 tháng đầu năm 2025; năm trước", "DATE_SEMANTIC_PERIOD_CONFLICT:c1"),
+    ],
+)
+def test_interest_income_duration_period_conflicts_fail_closed(
+    current_header: str, expected_reason: str
+) -> None:
+    table = _table(
+        "Thu nhập lãi và các khoản thu nhập tương tự",
+        [
+            _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+            _row("Thu nhập lãi cho vay khách hàng", ["5", "4"]),
+            _row(None, ["15", "12"], kind="TOTAL", hierarchy=[None]),
+        ],
+        columns=_interest_duration_columns(current=current_header),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == UNRESOLVED
+    lane_axis = candidate["closure_receipt"]["table_receipts"][0]["lane_axis"]
+    assert expected_reason in lane_axis["reasons"]
+
+
+def test_interest_income_months_from_year_is_duration_not_opening_alias() -> None:
+    table = _table(
+        "Thu nhập lãi và các khoản thu nhập tương tự",
+        [
+            _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+            _row("Thu nhập lãi cho vay khách hàng", ["5", "4"]),
+            _row(None, ["15", "12"], kind="TOTAL", hierarchy=[None]),
+        ],
+        columns=_interest_duration_columns(
+            current="6 tháng đầu năm 2025",
+            comparative="6 tháng đầu năm 2024",
+        ),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    lane_axis = candidate["closure_receipt"]["table_receipts"][0]["lane_axis"]
+    assert lane_axis["source_lane_keys"] == [
+        ["DURATION_BARE_YEAR", "2025"],
+        ["DURATION_BARE_YEAR", "2024"],
+    ]
+
+
+def test_interest_income_item_root_does_not_capture_adjacent_flat_items() -> None:
+    root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(root, ["30", "20"], kind="ITEM", hierarchy=[root]),
+            _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+            _row("Thu nhập lãi cho vay khách hàng", ["20", "12"]),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert receipt["family_root_population_receipt"]["flat_item_row_ordinals"] == []
+
+
+@pytest.mark.parametrize(
+    ("securities", "root", "expected_status"), [("35", "45", READY), ("36", "46", UNRESOLVED)]
+)
+def test_interest_income_source_group_must_equal_declared_components(
+    securities: str, root: str, expected_status: str
+) -> None:
+    family_root = "Thu nhập lãi và các khoản thu nhập tương tự"
+    securities_root = "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ"
+    table = _table(
+        "Thu nhập lãi thuần",
+        [
+            _row(family_root, [root, root], kind="GROUP", hierarchy=[family_root]),
+            _row(
+                "Thu nhập lãi tiền gửi",
+                ["10", "10"],
+                hierarchy=[family_root, "Thu nhập lãi tiền gửi"],
+            ),
+            _row(
+                securities_root,
+                [securities, securities],
+                kind="GROUP",
+                hierarchy=[family_root, securities_root],
+            ),
+            _row(
+                "Thu lãi từ chứng khoán kinh doanh",
+                ["15", "15"],
+                hierarchy=[family_root, securities_root, "Thu lãi từ chứng khoán kinh doanh"],
+            ),
+            _row(
+                "Thu lãi từ chứng khoán đầu tư",
+                ["20", "20"],
+                hierarchy=[family_root, securities_root, "Thu lãi từ chứng khoán đầu tư"],
+            ),
+            _row(None, [root, root], kind="SUBTOTAL", hierarchy=[family_root, None]),
+        ],
+        columns=_interest_duration_columns(),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interest_income(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == expected_status
+    if expected_status == READY:
+        assert any(
+            equation["equation_kind"] == "EXACT_DECLARED_SOURCE_RESULT_EQUALS_VISIBLE_COMPONENT_SUM"
+            for equation in candidate["closure_receipt"]["equations"]
+        )
+    else:
+        assert candidate["mappings"] == []
+        assert (
+            "DECLARED_SOURCE_RESULT_COMPONENT_EQUATION_MISMATCH:SECURITIES_INTEREST"
+            in candidate["reasons"]
+        )

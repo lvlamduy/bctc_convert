@@ -210,6 +210,23 @@ PINNED_OTHER_PAYABLES_LIABILITIES_HISTORICAL_ORACLES = (
         "size_bytes": 247155,
     },
 )
+PINNED_INTEREST_INCOME_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INTEREST_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0079-interest-income-8bank-codex-verified-mapping-v1.json",
+        "sha256": "6a3e862b0896c63f5270563bc8785a2f5bbe89a75536aad0de5bf14da1ee68fc",
+        "size_bytes": 147949,
+    },
+    {
+        "format_version": "ANNUAL_2025_INTEREST_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0134-annual-2025-interest-income-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "09b63070d3aec7af65787eb05e2bb35c7519a380d97695a103091f0b5c4613f3",
+        "size_bytes": 146768,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -405,6 +422,55 @@ PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AXIS_SHA256 = {
     "equations": "74f1398805b19474e39f18fd931875bd6ec403a6219a25741be6fd4601466997",
     "historical_comparator": ("9a00eff31bba2a9c5bff712e64e8ac7a3d5aa049d0f9c48c8d69bd18e2d90fc5"),
     "mappings": "add70a2dccdb1ab37759697090a8aaf4db5728f8f6a80cbc4c147038367c6427",
+}
+PINNED_INTEREST_INCOME_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "4833f0f9229669e2b9ab7962b14a36b7ed8d1f9f26c390e4bbae95e22c249733"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 140,
+    "candidate_disposition_axis_sha256": (
+        "952172b79cc874abef4c8492da6d15d22db52a81ea5fff412a12ed49adc932b4"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "8de63bdd8a4e061ef119cd5fe114111cb3664a285e8116d4f78af0fce52472d2",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_INTEREST_INCOME_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 882,
+    "not_observed_count": 0,
+    "ready_count": 136,
+    "unresolved_count": 4,
+}
+PINNED_INTEREST_INCOME_RELEASE_AUDIT_METRICS = {
+    "equation_count": 310,
+    "historical_comparator_exact_count": 125,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 109,
+    "historical_mapping_record_count": 109,
+    "mapping_count": 882,
+}
+PINNED_INTEREST_INCOME_RELEASE_AXIS_COUNTS = {
+    "clusters": 136,
+    "equations": 310,
+    "historical_comparator": 125,
+    "mappings": 882,
+}
+PINNED_INTEREST_INCOME_RELEASE_AXIS_SHA256 = {
+    "clusters": "d267aed5c6c05db26f42da92360a980c97bea6a72d4fcb601be7d3507d41e68c",
+    "equations": "58158027dd2172dab3cb57297a60f474791a03dcf4a2c378bf52811cfd52822a",
+    "historical_comparator": ("4405674348550483e6cf30e67d3cb9a20526c89bf83bba843a42d1565f8cc388"),
+    "mappings": "8e9173f5b9f7bba7f8e81ab349a6b285e5afcedf028ddf580953de5d9ca8fca1",
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
@@ -619,6 +685,8 @@ def _historical_oracle_refs(
         return PINNED_ISSUED_VALUABLE_PAPERS_HISTORICAL_ORACLES
     if family_id == "OTHER_PAYABLES_LIABILITIES":
         return PINNED_OTHER_PAYABLES_LIABILITIES_HISTORICAL_ORACLES
+    if family_id == "INTEREST_INCOME":
+        return PINNED_INTEREST_INCOME_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -668,6 +736,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_OTHER_PAYABLES_LIABILITIES_QUERY_RECEIPT,
             "sweep_metrics": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_METRICS,
+        }
+    if family_id == "INTEREST_INCOME":
+        return {
+            "axis_counts": PINNED_INTEREST_INCOME_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_INTEREST_INCOME_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_INTEREST_INCOME_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_INTEREST_INCOME_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_INTEREST_INCOME_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -786,18 +862,39 @@ def _historical_comparator_axis(
                 )
                 historical_coefficients = None
                 if type(source_values) is list:
+                    period_role_items = []
+                    for value in source_values:
+                        if type(value) is not dict:
+                            continue
+                        period_role = value.get("period_role")
+                        axis_role = value.get("axis_role")
+                        if (
+                            period_role is not None
+                            and axis_role is not None
+                            and period_role != axis_role
+                        ):
+                            continue
+                        role = period_role if type(period_role) is str else axis_role
+                        if type(role) is str:
+                            period_role_items.append((role, value.get("normalized_value")))
                     by_period_role = {
-                        value.get("period_role"): value.get("normalized_value")
-                        for value in source_values
-                        if type(value) is dict
+                        role: normalized_value for role, normalized_value in period_role_items
                     }
                     if len(by_period_role) == len(source_values) and set(by_period_role) in (
                         {"CURRENT"},
                         {"CURRENT", "COMPARATIVE"},
+                        {"CURRENT_PERIOD"},
+                        {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"},
                     ):
-                        historical_coefficients = [by_period_role["CURRENT"]]
-                        if "COMPARATIVE" in by_period_role:
-                            historical_coefficients.append(by_period_role["COMPARATIVE"])
+                        current_key = "CURRENT" if "CURRENT" in by_period_role else "CURRENT_PERIOD"
+                        comparative_key = (
+                            "COMPARATIVE"
+                            if "COMPARATIVE" in by_period_role
+                            else "COMPARATIVE_PERIOD"
+                        )
+                        historical_coefficients = [by_period_role[current_key]]
+                        if comparative_key in by_period_role:
+                            historical_coefficients.append(by_period_role[comparative_key])
                 current = actual_by_id.get(old_report_norm_id)
                 full_current_coefficients = (
                     [value["coefficient"] for value in current["values"]]
