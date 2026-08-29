@@ -1,0 +1,23 @@
+{
+  "component_role_bindings": [
+    {"report_norm_id": 5984, "role": "CHARTER_CAPITAL"},
+    {"report_norm_id": 6011, "role": "SHARE_PREMIUM"},
+    {"report_norm_id": 6012, "role": "OTHER_CAPITAL"},
+    {"report_norm_id": 6013, "role": "CAPITAL_RESERVE"},
+    {"report_norm_id": 6014, "role": "FINANCIAL_RESERVE"},
+    {"report_norm_id": 6015, "role": "OTHER_FUNDS"},
+    {"report_norm_id": 6016, "role": "FX_DIFFERENCE"},
+    {"report_norm_id": 6017, "role": "RETAINED_EARNINGS"},
+    {"report_norm_id": 6018, "role": "NON_CONTROLLING_INTEREST"}
+  ],
+  "family_id": "CAPITAL_AND_FUNDS",
+  "family_root_report_norm_id": 1128,
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1",
+  "movement_total_bindings": [
+    {"report_norm_id": 1129, "role": "OPENING_TOTAL"},
+    {"report_norm_id": 6019, "role": "INCREASE_TOTAL"},
+    {"report_norm_id": 6020, "role": "DECREASE_TOTAL"},
+    {"report_norm_id": 1141, "role": "CLOSING_TOTAL"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_CELLS_ONLY"
+}

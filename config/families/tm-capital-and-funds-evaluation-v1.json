@@ -1,0 +1,29 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT",
+  "closure_policy": "EXACT_HORIZONTAL_TOTALS_AND_VERTICAL_ROLLFORWARD_ALL_SELECTED_CELLS",
+  "family_id": "CAPITAL_AND_FUNDS",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["COMPONENT_COLUMNS", "COMPONENT_ROWS"],
+    "max_continuation_pages": 1,
+    "minimum_mapped_component_roles": 2,
+    "movement_role_aliases": {
+      "CLOSING": ["Dư cuối", "Số dư cuối kỳ", "Số dư cuối năm"],
+      "DECREASE": ["Giảm", "Giảm trong kỳ", "Sử dụng/Giảm", "Sử dụng/Điều chỉnh"],
+      "INCREASE": ["Tăng", "Tăng trong kỳ", "Trích lập/Tăng"],
+      "OPENING": ["Dư đầu", "Số dư đầu kỳ", "Số dư đầu kỳ (Số kiểm toán)", "Số dư đầu kỳ (trình bày lại)", "Số dư đầu năm", "Số dư đầu năm (Trình bày lại)"]
+    },
+    "source_only_component_aliases": {
+      "ASSET_REVALUATION_DIFFERENCE": ["Chênh lệch đánh giá lại TS", "Chênh lệch đánh giá lại tài sản"],
+      "BASIC_CONSTRUCTION_CAPITAL": ["Quỹ đầu tư xây dựng cơ bản", "Vốn đầu tư xây dựng cơ bản"],
+      "DEVELOPMENT_INVESTMENT_FUND": ["Quỹ đầu tư phát triển"],
+      "TREASURY_SHARES": ["Cổ phiếu quỹ"]
+    },
+    "total_aliases": ["Tổng", "Tổng cộng"],
+    "unit_bindings": [
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Đơn vị: triệu đồng", "Đơn vị tính: triệu đồng"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "document_consensus_eligible": true, "magnitude_power10": 3},
+      {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 9}
+    ]
+  }
+}

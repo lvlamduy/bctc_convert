@@ -1,0 +1,103 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Vốn điều lệ", "Vốn góp/Vốn điều lệ", "Vốn góp của chủ sở hữu"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CHARTER_CAPITAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thặng dư vốn cổ phần"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SHARE_PREMIUM",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Vốn khác", "Vốn chủ sở hữu khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_CAPITAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Quỹ dự trữ bổ sung vốn điều lệ", "Quỹ dự trữ bổ sung VĐL"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CAPITAL_RESERVE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Quỹ dự phòng tài chính"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FINANCIAL_RESERVE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Quỹ khác", "Các quỹ khác", "Quỹ khác thuộc VCSH", "Quỹ khác thuộc vốn CSH", "Quỹ khác thuộc vốn chủ sở hữu"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_FUNDS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái", "Chênh lệch tỷ giá đoái"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FX_DIFFERENCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi nhuận chưa phân phối", "Lợi nhuận sau thuế", "Lợi nhuận sau thuế chưa", "Lợi nhuận sau thuế chưa phân phối", "Lợi nhuận sau thuế chưa phân phối/lỗ lũy kế"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "RETAINED_EARNINGS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi ích cổ đông không kiểm soát", "Lợi ích của cổ đông không", "Lợi ích của cổ đông không kiểm", "Lợi ích của cổ đông không kiểm soát"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "NON_CONTROLLING_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CAPITAL_AND_FUNDS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Báo cáo tình hình tài chính",
+    "Báo cáo kết quả hoạt động",
+    "Báo cáo lưu chuyển tiền tệ",
+    "Chi tiết vốn đầu tư của Ngân hàng",
+    "Chi tiết vốn đầu tư của TCTD",
+    "Chi tiết vốn đầu tư của Tổ chức tín dụng",
+    "Chi tiết phần vốn của Ngân hàng",
+    "Chi tiết phần vốn của TCTD",
+    "Chi tiết phần vốn của Tổ chức tín dụng",
+    "Chi tiết cổ phiếu của Ngân hàng",
+    "Lãi trên mỗi cổ phiếu",
+    "Thu nhập trên mỗi cổ phiếu"
+  ],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 2048, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Vốn chủ sở hữu",
+      "Vốn và các quỹ",
+      "Vốn và quỹ",
+      "Vốn và quỹ của Tổ chức tín dụng",
+      "Vốn và các quỹ của Ngân hàng và lợi ích cổ đông không kiểm soát",
+      "Vốn và quỹ của Ngân hàng"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CAPITAL_AND_FUNDS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["CHARTER_CAPITAL", "SHARE_PREMIUM"]],
+  "structural_reset_aliases": [
+    "Chi tiết vốn đầu tư của Ngân hàng",
+    "Chi tiết vốn đầu tư của TCTD",
+    "Chi tiết vốn đầu tư của Tổ chức tín dụng",
+    "Chi tiết phần vốn của Ngân hàng",
+    "Chi tiết phần vốn của TCTD",
+    "Chi tiết phần vốn của Tổ chức tín dụng",
+    "Chi tiết cổ phiếu của Ngân hàng",
+    "Cổ phiếu",
+    "Cổ tức",
+    "Lãi trên mỗi cổ phiếu",
+    "Thu nhập trên mỗi cổ phiếu",
+    "Thu nhập lãi và các khoản thu nhập tương tự"
+  ]
+}
