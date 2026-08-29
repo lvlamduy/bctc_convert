@@ -756,6 +756,62 @@ def test_contiguous_same_page_root_component_before_explicit_owner_is_included()
     }
 
 
+def test_source_outline_number_ends_owner_scope_without_family_specific_reset_alias() -> None:
+    family = _table(
+        None,
+        [
+            _row("Các khoản phải thu", ["70", "60"]),
+            _row("Tài sản Có khác", ["30", "20"]),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    unrelated = _table(
+        None,
+        [
+            _row("Thu nhập lãi", ["999", "888"]),
+            _row(None, ["999", "888"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section("24. TÀI SẢN CÓ KHÁC", family),
+        _section("25. THU NHẬP LÃI THUẦN", unrelated),
+    )
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=_compiled()
+    )
+    assert cluster["status"] == READY
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s1", "t1")
+    ]
+    assert cluster["owner_receipt"]["outline_top_level_number"] == 24
+
+
+def test_source_outline_subheading_with_same_top_level_remains_inside_owner_scope() -> None:
+    summary = _table(
+        "24.1 Các khoản phải thu",
+        [
+            _row("Các khoản phải thu", ["70", "60"]),
+            _row(None, ["70", "60"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    sibling = _table(
+        "24.2 Tài sản Có khác",
+        [
+            _row("Tài sản Có khác", ["30", "20"]),
+            _row(None, ["30", "20"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("24. TÀI SẢN CÓ KHÁC", summary, sibling))
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=_compiled()
+    )
+    assert cluster["status"] == READY
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s1", "t1"),
+        ("s1", "t2"),
+    ]
+
+
 def test_titleless_detail_total_is_corroborated_by_visible_child_carrier() -> None:
     summary = _table(
         None,

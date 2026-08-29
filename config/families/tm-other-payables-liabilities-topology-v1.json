@@ -1,0 +1,61 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Các khoản phải trả nội bộ", "Phải trả nội bộ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "INTERNAL_PAYABLE", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Phải trả nhân viên", "Phải trả cán bộ, nhân viên", "Phải trả cán bộ công nhân viên"], "within_role": "INTERNAL_PAYABLE"}],
+      "presence": "OPTIONAL", "role": "EMPLOYEE_PAYABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Phải trả nội bộ khác", "Các khoản phải trả nội bộ khác"], "within_role": "INTERNAL_PAYABLE"}],
+      "presence": "OPTIONAL", "role": "INTERNAL_OTHER", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản phải trả bên ngoài", "Các khoản phải trả cho bên ngoài", "Phải trả bên ngoài", "Phải trả cho bên ngoài"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "EXTERNAL_PAYABLE", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Thuế và các khoản phải nộp Nhà nước", "Các khoản thuế phải nộp Nhà nước", "Các khoản phải nộp Ngân sách Nhà nước", "Thuế và các khoản phải trả ngân sách Nhà nước", "Thuế và các khoản phải trả ngân sách", "Thuế và các khoản phải trả khác cho ngân sách Nhà nước", "Phải trả thuế khác", "Thuế thu nhập doanh nghiệp phải trả", "Thuế TNDN phải trả"], "within_role": "EXTERNAL_PAYABLE"},
+        {"aliases": ["Thuế và các khoản phải nộp Nhà nước", "Các khoản thuế phải nộp Nhà nước", "Các khoản phải nộp Ngân sách Nhà nước", "Thuế và các khoản phải trả ngân sách Nhà nước", "Thuế và các khoản phải trả ngân sách", "Thuế và các khoản phải trả khác cho ngân sách Nhà nước", "Phải trả thuế khác", "Thuế thu nhập doanh nghiệp phải trả", "Thuế TNDN phải trả"], "within_role": null}
+      ],
+      "presence": "OPTIONAL", "role": "TAX_PAYABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Các khoản phải trả khác", "Phải trả khác"], "within_role": "EXTERNAL_PAYABLE"},
+        {"aliases": ["Các khoản phải trả khác", "Phải trả khác"], "within_role": null}
+      ],
+      "presence": "OPTIONAL", "role": "OTHER_PAYABLE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Dự phòng rủi ro khác", "Dự phòng rủi ro hoạt động"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_RISK_PROVISION", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Quỹ khen thưởng, phúc lợi"], "within_role": "INTERNAL_PAYABLE"},
+        {"aliases": ["Quỹ khen thưởng, phúc lợi"], "within_role": null}
+      ],
+      "presence": "OPTIONAL", "role": "WELFARE_FUND", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản lãi, phí phải trả", "Các khoản lãi và phí phải trả", "Thu nhập chưa thực hiện", "Doanh thu chờ phân bổ", "Phải trả cổ tức cho cổ đông", "Quỹ phát triển khoa học và công nghệ", "Dự phòng nghiệp vụ bảo hiểm", "Phải trả nhà cung cấp", "Phải trả và ứng trước người bán", "Phải trả về xây dựng cơ bản", "Các khoản chờ thanh toán", "Các khoản chờ thanh toán khác", "Chuyển tiền phải trả", "Phải trả chuyển tiền chờ thanh toán", "Tiền giữ hộ và chờ thanh toán", "Tiền giữ hộ và đợi thanh toán", "Phải trả về dịch vụ thanh toán", "Phải trả về hoạt động thanh toán", "Phải trả thanh toán giữa các TCTD", "Thanh toán giữa các tổ chức tín dụng", "Các khoản thu, chi hộ các tổ chức khác", "Các khoản khách hàng trả trước", "Các khoản treo chờ chuyển tiền", "Các khoản ứng trước tiền mua giấy tờ có giá", "Tạm ứng nhận được liên quan đến hoạt động bán nợ", "Phải trả liên quan đến hoạt động tài trợ thương mại", "Phải trả trong nghiệp vụ chứng khoán và bảo hiểm"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "OTHER_DIRECT_SOURCE_ROWS", "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "OTHER_PAYABLES_LIABILITIES",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": ["Phát hành giấy tờ có giá", "Vốn chủ sở hữu", "Vốn và các quỹ", "Thuế thu nhập doanh nghiệp hoãn lại phải trả", "Quản lý rủi ro tài chính", "Rủi ro thanh khoản"],
+  "limits": {"max_continuation_pages": 4, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Các khoản phải trả và công nợ khác", "Các khoản nợ khác", "Tài sản Nợ khác", "Nợ phải trả khác"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "OTHER_PAYABLES_LIABILITIES_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["INTERNAL_PAYABLE"], ["EXTERNAL_PAYABLE"], ["TAX_PAYABLE"], ["OTHER_PAYABLE"], ["OTHER_RISK_PROVISION"], ["WELFARE_FUND"], ["OTHER_DIRECT_SOURCE_ROWS"]],
+  "structural_reset_aliases": ["Phát hành giấy tờ có giá", "Vốn chủ sở hữu", "Vốn và các quỹ", "Tình hình thực hiện nghĩa vụ với Ngân sách Nhà nước", "Thuế thu nhập doanh nghiệp", "Quản lý rủi ro tài chính"]
+}

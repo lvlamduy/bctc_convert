@@ -188,6 +188,28 @@ PINNED_ISSUED_VALUABLE_PAPERS_HISTORICAL_ORACLES = (
         "size_bytes": 244921,
     },
 )
+PINNED_OTHER_PAYABLES_LIABILITIES_HISTORICAL_ORACLES = (
+    {
+        "format_version": "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0077-other-payables-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "0c5e01ee030f99a2743e65206c24ae2068424314eec0982c8693176fccea8347",
+        "size_bytes": 153436,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0132-annual-2025-other-payables-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "db7f0ee789b83fb0482562740ad5bd514a901a910d7cc5cabb36d855cc2e7121",
+        "size_bytes": 247155,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -334,6 +356,55 @@ PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_SHA256 = {
     "equations": "2b8862a72ac0bf0057a63bc00416fbf92866bd4fdbbdebe367f4dda801c917dc",
     "historical_comparator": ("8c3b19d3b7cfedfcbfb79f642502a9b404ecf567dd22c2888a89efc0a191d74c"),
     "mappings": "5174aa74075b050642b1f25179e4d210aa02336cdfe1237a12266ac57f914435",
+}
+PINNED_OTHER_PAYABLES_LIABILITIES_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "40ab764b31e9a8b3a425838e99062139028f812a656138270a76c4fdfd23f0a7"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 220,
+    "candidate_disposition_axis_sha256": (
+        "b81e68a47f14c57ae974fa1fd271285253fb5c6a68068f8db5a841095da8923d"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "31ca1748330adbde74aae5db2f40c8d1d35fc9f2ccb345c14ac95be8bc53d10c",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 809,
+    "not_observed_count": 0,
+    "ready_count": 140,
+    "unresolved_count": 0,
+}
+PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AUDIT_METRICS = {
+    "equation_count": 334,
+    "historical_comparator_exact_count": 108,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 92,
+    "historical_mapping_record_count": 92,
+    "mapping_count": 809,
+}
+PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AXIS_COUNTS = {
+    "clusters": 140,
+    "equations": 334,
+    "historical_comparator": 108,
+    "mappings": 809,
+}
+PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AXIS_SHA256 = {
+    "clusters": "dedb7b712f81d211b768deee734a789cba367048c1457fe5920d00211210e42d",
+    "equations": "74f1398805b19474e39f18fd931875bd6ec403a6219a25741be6fd4601466997",
+    "historical_comparator": ("9a00eff31bba2a9c5bff712e64e8ac7a3d5aa049d0f9c48c8d69bd18e2d90fc5"),
+    "mappings": "add70a2dccdb1ab37759697090a8aaf4db5728f8f6a80cbc4c147038367c6427",
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
@@ -546,6 +617,8 @@ def _historical_oracle_refs(
         return PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_HISTORICAL_ORACLES
     if family_id == "ISSUED_VALUABLE_PAPERS":
         return PINNED_ISSUED_VALUABLE_PAPERS_HISTORICAL_ORACLES
+    if family_id == "OTHER_PAYABLES_LIABILITIES":
+        return PINNED_OTHER_PAYABLES_LIABILITIES_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -587,6 +660,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_ISSUED_VALUABLE_PAPERS_QUERY_RECEIPT,
             "sweep_metrics": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_METRICS,
+        }
+    if family_id == "OTHER_PAYABLES_LIABILITIES":
+        return {
+            "axis_counts": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_OTHER_PAYABLES_LIABILITIES_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_OTHER_PAYABLES_LIABILITIES_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

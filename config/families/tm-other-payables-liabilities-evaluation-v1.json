@@ -1,0 +1,42 @@
+{
+  "aggregate_duplicate_roles": ["INTERNAL_PAYABLE", "EMPLOYEE_PAYABLE", "INTERNAL_OTHER", "EXTERNAL_PAYABLE", "TAX_PAYABLE", "OTHER_PAYABLE", "OTHER_RISK_PROVISION", "WELFARE_FUND", "OTHER_DIRECT_SOURCE_ROWS"],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "corroboration_pairs": [],
+  "context_total_mapping_roles": ["INTERNAL_PAYABLE", "EXTERNAL_PAYABLE", "TAX_PAYABLE", "OTHER_PAYABLE", "OTHER_RISK_PROVISION", "WELFARE_FUND", "OTHER_DIRECT_SOURCE_ROWS"],
+  "derived_role_equations": [],
+  "detail_context_roles": ["TAX_PAYABLE", "OTHER_PAYABLE", "OTHER_RISK_PROVISION", "WELFARE_FUND", "OTHER_DIRECT_SOURCE_ROWS"],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "equation_consumed_unmatched_residual_role": "OTHER_DIRECT_SOURCE_ROWS",
+  "family_id": "OTHER_PAYABLES_LIABILITIES",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_REQUIRED_COMPARATIVE_IF_SOURCE_VISIBLE",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "root_component_roles": ["INTERNAL_PAYABLE", "EMPLOYEE_PAYABLE", "INTERNAL_OTHER", "EXTERNAL_PAYABLE", "TAX_PAYABLE", "OTHER_PAYABLE", "OTHER_RISK_PROVISION", "WELFARE_FUND", "OTHER_DIRECT_SOURCE_ROWS"],
+  "role_unit_overrides": [],
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "supplemental_detail_residuals": [
+    {
+      "markers": ["Trong đó", "Trong đó:", "Of which"],
+      "residual_role": "OTHER_DIRECT_SOURCE_ROWS"
+    }
+  ],
+  "table_context_roles": ["INTERNAL_PAYABLE", "EXTERNAL_PAYABLE"],
+  "typed_control_exclusions": [
+    {"aliases": ["tình hình thực hiện nghĩa vụ với Ngân sách Nhà nước", "các khoản phải nộp ngân sách"], "disposition": "TAX_OBLIGATION_MOVEMENT_CONTROL"},
+    {"aliases": ["thuế thu nhập doanh nghiệp hoãn lại phải trả", "deferred tax liability"], "disposition": "DEFERRED_TAX_LIABILITY_OUTSIDE_FAMILY"},
+    {"aliases": ["phân tích các tài sản tài chính và nợ phải trả tài chính", "rủi ro thanh khoản", "quản lý rủi ro tài chính"], "disposition": "FINANCIAL_INSTRUMENT_OR_LIQUIDITY_CONTROL"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "family_id": "OTHER_PAYABLES_LIABILITIES",
+  "family_root_report_norm_id": 1118,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1119, "role": "INTERNAL_PAYABLE"},
+    {"report_norm_id": 1120, "role": "EMPLOYEE_PAYABLE"},
+    {"report_norm_id": 1121, "role": "INTERNAL_OTHER"},
+    {"report_norm_id": 1122, "role": "EXTERNAL_PAYABLE"},
+    {"report_norm_id": 1123, "role": "TAX_PAYABLE"},
+    {"report_norm_id": 1124, "role": "OTHER_PAYABLE"},
+    {"report_norm_id": 1125, "role": "OTHER_RISK_PROVISION"},
+    {"report_norm_id": 1126, "role": "WELFARE_FUND"},
+    {"report_norm_id": 1127, "role": "OTHER_DIRECT_SOURCE_ROWS"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}

@@ -117,6 +117,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     optional_evaluation_fields = {
         "direct_frontier_policy",
         "duplicate_role_aggregation_policy",
+        "equation_consumed_unmatched_residual_role",
         "hierarchy_role_scope_policy",
         "label_only_structural_group_policy",
         "money_metric_policy",
@@ -124,6 +125,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "period_lane_policy",
         "row_alias_prefix_roles",
         "structural_marker_policy",
+        "supplemental_detail_residuals",
     }
     if (
         type(evaluation_spec) is not dict
@@ -232,6 +234,15 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     context_total_mapping_roles = role_axis("context_total_mapping_roles")
     root_component_roles = role_axis("root_component_roles")
     aggregate_duplicate_roles = role_axis("aggregate_duplicate_roles", allow_empty=True)
+    equation_consumed_unmatched_residual_role = evaluation_spec.get(
+        "equation_consumed_unmatched_residual_role"
+    )
+    if equation_consumed_unmatched_residual_role is not None and (
+        type(equation_consumed_unmatched_residual_role) is not str
+        or equation_consumed_unmatched_residual_role not in roles
+        or equation_consumed_unmatched_residual_role not in aggregate_duplicate_roles
+    ):
+        raise _error("multi-table hierarchical unmatched residual role is invalid")
     row_alias_prefix_roles = (
         role_axis("row_alias_prefix_roles", allow_empty=True)
         if "row_alias_prefix_roles" in evaluation_spec
@@ -278,6 +289,30 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
             raise _error("multi-table hierarchical derived role equation is invalid")
         derived_result_roles.add(equation["result_role"])
         derived_role_equations.append(canonical_clone_v1(equation))
+    supplemental_detail_residuals = []
+    supplemental_residual_roles = set()
+    for declaration in evaluation_spec.get("supplemental_detail_residuals", []):
+        if (
+            type(declaration) is not dict
+            or set(declaration) != {"markers", "residual_role"}
+            or declaration.get("residual_role") not in roles
+            or declaration["residual_role"] in supplemental_residual_roles
+            or declaration["residual_role"] not in aggregate_duplicate_roles
+            or type(declaration.get("markers")) is not list
+            or not declaration["markers"]
+            or any(
+                type(marker) is not str or not _normalized(marker)
+                for marker in declaration["markers"]
+            )
+        ):
+            raise _error("multi-table hierarchical supplemental detail residual is invalid")
+        supplemental_residual_roles.add(declaration["residual_role"])
+        supplemental_detail_residuals.append(
+            {
+                "markers": sorted({_normalized(marker) for marker in declaration["markers"]}),
+                "residual_role": declaration["residual_role"],
+            }
+        )
     if any(
         child_by_role[role]["role_kind"] not in {"STRUCTURAL_GROUP", "SUBTOTAL", "TOTAL"}
         for role in table_context_roles
@@ -402,6 +437,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "direct_frontier_policy": direct_frontier_policy,
         "duplicate_role_aggregation_policy": duplicate_role_aggregation_policy,
         "engine_format_version": ENGINE_FORMAT_VERSION,
+        "equation_consumed_unmatched_residual_role": (equation_consumed_unmatched_residual_role),
         "evaluation": canonical_clone_v1(evaluation_spec),
         "matchers_by_role": {
             role: canonical_clone_v1(child["matchers"]) for role, child in child_by_role.items()
@@ -416,6 +452,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "role_unit_overrides": role_unit_overrides,
         "row_alias_prefix_roles": row_alias_prefix_roles,
         "schema": canonical_clone_v1(schema_binding_spec),
+        "supplemental_detail_residuals": supplemental_detail_residuals,
         "table_context_roles": table_context_roles,
         "topology": topology,
         "typed_control_exclusions": exclusions,
@@ -468,6 +505,43 @@ def _heading_surface_matches(
             if (alias := _heading_marker_matches(surface, aliases)) is not None
         }
     )
+
+
+def _outline_top_level_number(value: Any, *, governing_alias: str | None = None) -> int | None:
+    """Return a source-visible note number without inventing outline scope.
+
+    Financial-note pages often expose one owner as ``21. ...`` and the next
+    note as ``22. ...`` without repeating a family-specific reset alias.  The
+    top-level outline is authoritative structure, while dates and narrative
+    numbers are not.  For an owner surface, only the line governed by the
+    matched owner alias is eligible.  For a later heading, only a line-leading
+    note number is eligible; obvious date lines fail closed.
+    """
+
+    if type(value) is not str:
+        return None
+    normalized_alias = _normalized(governing_alias)
+    candidates = set()
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        normalized_line = _normalized(line)
+        if not normalized_line:
+            continue
+        if normalized_alias and not (
+            normalized_line == normalized_alias or f" {normalized_alias} " in f" {normalized_line} "
+        ):
+            continue
+        match = re.match(
+            r"^(?P<top>[1-9][0-9]{0,2})(?:\.[0-9]+)*(?:[.)])?\s+(?P<tail>.+)$",
+            line,
+        )
+        if match is None:
+            continue
+        tail = _normalized(match.group("tail"))
+        if tail.startswith(("thang ", "month ", "nam ", "year ")):
+            continue
+        candidates.add(int(match.group("top")))
+    return next(iter(candidates)) if len(candidates) == 1 else None
 
 
 def _contains_alias(value: Any, alias: str) -> bool:
@@ -1169,6 +1243,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
     pages = _page_record_axis(page_records)
     owner_markers = []
     reset_markers = []
+    outline_markers = []
     table_axis = []
     boundary_aliases = sorted(
         {
@@ -1206,10 +1281,23 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                     owner_markers.append(
                         {
                             "alias": alias,
+                            "outline_top_level_number": _outline_top_level_number(
+                                value, governing_alias=alias
+                            ),
                             "position": section_position,
                             "source_exact": value,
                         }
                     )
+            section_outline = _outline_top_level_number(section.get("title_exact"))
+            if section_outline is not None:
+                outline_markers.append(
+                    {
+                        "alias": f"SOURCE_OUTLINE_TOP_LEVEL:{section_outline}",
+                        "outline_top_level_number": section_outline,
+                        "position": section_position,
+                        "source_exact": section.get("title_exact"),
+                    }
+                )
             section_boundary_surfaces = [section.get("title_exact")]
             if type(narratives) is list:
                 section_boundary_surfaces.extend(narratives)
@@ -1246,7 +1334,24 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                         is not None
                     ):
                         owner_markers.append(
-                            {"alias": alias, "position": position, "source_exact": value}
+                            {
+                                "alias": alias,
+                                "outline_top_level_number": _outline_top_level_number(
+                                    value, governing_alias=alias
+                                ),
+                                "position": position,
+                                "source_exact": value,
+                            }
+                        )
+                    table_outline = _outline_top_level_number(value)
+                    if table_outline is not None:
+                        outline_markers.append(
+                            {
+                                "alias": f"SOURCE_OUTLINE_TOP_LEVEL:{table_outline}",
+                                "outline_top_level_number": table_outline,
+                                "position": position,
+                                "source_exact": value,
+                            }
                         )
                     if (alias := _marker_matches(value, boundary_aliases)) is not None:
                         reset_markers.append(
@@ -1279,6 +1384,14 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         following_resets = [
             marker for marker in reset_markers if marker["position"] > owner["position"]
         ]
+        owner_outline = owner.get("outline_top_level_number")
+        if type(owner_outline) is int:
+            following_resets.extend(
+                marker
+                for marker in outline_markers
+                if marker["position"] > owner["position"]
+                and marker["outline_top_level_number"] != owner_outline
+            )
         reset = min(following_resets, key=lambda item: item["position"], default=None)
         items = [
             item
@@ -1707,6 +1820,7 @@ def _path_contains_label(row: Mapping[str, Any], label: str) -> bool:
         label
         and any(
             _normalized(value) == label
+            or any(_normalized(line) == label for line in value.splitlines())
             for value in row.get("hierarchy_path_exact") or []
             if type(value) is str
         )
@@ -1754,6 +1868,84 @@ def _exact_equation(
     return equation if equation["status"] == "EXACT" else None
 
 
+def _supplemental_detail_population_key(
+    source_refs: Sequence[Mapping[str, Any]],
+    *,
+    role: str,
+    compiled_specs: Mapping[str, Any],
+) -> tuple[str, tuple[str, str, str]] | None:
+    """Bind rows to one explicit, non-exhaustive source detail population.
+
+    A source marker such as ``Trong đó``/``Of which`` is disclosure scope, not
+    an additive equation.  A configured residual leaf may collect distinct
+    rows from that scope, but only when every source ref is a direct child of
+    the same marker in the same table.  This never promotes an unscoped or
+    top-level unknown row.
+    """
+
+    declarations = [
+        item
+        for item in compiled_specs["supplemental_detail_residuals"]
+        if item["residual_role"] == role
+    ]
+    if len(declarations) != 1 or not source_refs:
+        return None
+    markers = set(declarations[0]["markers"])
+    keys = set()
+    for source_ref in source_refs:
+        path = [
+            _normalized(value)
+            for value in source_ref.get("hierarchy_path_exact", [])
+            if _normalized(value)
+        ]
+        label = _normalized(source_ref.get("label_exact"))
+        locator = source_ref.get("locator")
+        if (
+            len(path) != 2
+            or path[0] not in markers
+            or not label
+            or path[1] != label
+            or type(locator) is not dict
+        ):
+            return None
+        keys.add(
+            (
+                path[0],
+                (
+                    locator["page_json_version_id"],
+                    locator["section_id"],
+                    locator["table_id"],
+                ),
+            )
+        )
+    return next(iter(keys)) if len(keys) == 1 else None
+
+
+def _supplemental_residual_population_receipt(
+    occurrences: Sequence[Mapping[str, Any]],
+    *,
+    role: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    source_refs = [
+        source_ref for occurrence in occurrences for source_ref in occurrence["source_refs"]
+    ]
+    key = _supplemental_detail_population_key(source_refs, role=role, compiled_specs=compiled_specs)
+    if key is None or len({ref["row_id"] for ref in source_refs}) != len(source_refs):
+        return None
+    marker, table_key = key
+    return {
+        "marker": marker,
+        "role": role,
+        "rule": (
+            "ONE_EXPLICIT_NONEXHAUSTIVE_DETAIL_POPULATION_DIRECT_CHILD_ROWS_"
+            "TO_DECLARED_RESIDUAL_NO_PARENT_OR_ROOT_ADDITION"
+        ),
+        "source_refs": canonical_clone_v1(source_refs),
+        "source_table_key": list(table_key),
+    }
+
+
 def _aggregate_duplicate_roles(
     records: Sequence[Mapping[str, Any]],
     *,
@@ -1774,12 +1966,18 @@ def _aggregate_duplicate_roles(
         ):
             output.extend(canonical_clone_v1(occurrences))
             continue
-        if compiled_specs["duplicate_role_aggregation_policy"] == (
-            "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
-        ) and any(
-            source_ref.get("row_ordinal") not in consumed_ordinals
-            for occurrence in occurrences
-            for source_ref in occurrence["source_refs"]
+        supplemental_receipt = _supplemental_residual_population_receipt(
+            occurrences, role=role, compiled_specs=compiled_specs
+        )
+        if (
+            compiled_specs["duplicate_role_aggregation_policy"]
+            == ("ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER")
+            and any(
+                source_ref.get("row_ordinal") not in consumed_ordinals
+                for occurrence in occurrences
+                for source_ref in occurrence["source_refs"]
+            )
+            and supplemental_receipt is None
         ):
             output.extend(canonical_clone_v1(occurrences))
             continue
@@ -1802,18 +2000,27 @@ def _aggregate_duplicate_roles(
                 cells,
                 lane_keys,
                 source_refs,
-                "SOURCE_SAME_ROLE_ROWS_AGGREGATED_AFTER_TABLE_CLOSURE",
+                (
+                    "SOURCE_SUPPLEMENTAL_DETAIL_RESIDUAL_ROWS_AGGREGATED"
+                    if supplemental_receipt is not None
+                    else "SOURCE_SAME_ROLE_ROWS_AGGREGATED_AFTER_TABLE_CLOSURE"
+                ),
                 occurrences[0]["valuation_basis"],
             )
         )
-        receipts.append(
-            {
-                "coefficients": coefficients,
-                "role": role,
-                "rule": "SAME_ROLE_ROWS_SUM_ONLY_AFTER_SHARED_TABLE_FRONTIER_EXACT",
-                "source_refs": canonical_clone_v1(source_refs),
-            }
-        )
+        receipt = {
+            "coefficients": coefficients,
+            "role": role,
+            "rule": (
+                supplemental_receipt["rule"]
+                if supplemental_receipt is not None
+                else "SAME_ROLE_ROWS_SUM_ONLY_AFTER_SHARED_TABLE_FRONTIER_EXACT"
+            ),
+            "source_refs": canonical_clone_v1(source_refs),
+        }
+        if supplemental_receipt is not None:
+            receipt["supplemental_detail_population"] = supplemental_receipt
+        receipts.append(receipt)
     return output, receipts
 
 
@@ -1831,14 +2038,57 @@ def _aggregate_cluster_duplicate_roles(
     double-counted by this reducer.
     """
 
+    receipts = []
+    residual_roles = {
+        declaration["residual_role"]
+        for declaration in compiled_specs["supplemental_detail_residuals"]
+    }
+    if compiled_specs["equation_consumed_unmatched_residual_role"] is not None:
+        residual_roles.add(compiled_specs["equation_consumed_unmatched_residual_role"])
+
+    # A table-context total is structural, not another additive residual leaf.
+    # Remove it before grouping duplicate roles so that genuine residual leaves
+    # disclosed in two or more other tables can still be combined.  Performing
+    # this after aggregation makes the structural record poison the whole role
+    # group and leaves the remaining explicit populations unresolved.
+    suppressed_record_ids = set()
+    for role in residual_roles:
+        role_records = [record for record in records if record["role"] == role]
+        explicit_records = [
+            record for record in role_records if "CONTEXT_ROLE" not in record["state"]
+        ]
+        for context in role_records:
+            if "CONTEXT_ROLE" not in context["state"] or not any(
+                explicit["lane_keys"] == context["lane_keys"]
+                and explicit["valuation_basis"] == context["valuation_basis"]
+                for explicit in explicit_records
+            ):
+                continue
+            suppressed_record_ids.add(id(context))
+            receipts.append(
+                {
+                    "context_role": role,
+                    "detail_source_refs": canonical_clone_v1(context["source_refs"]),
+                    "explicit_residual_source_refs": [
+                        canonical_clone_v1(explicit["source_refs"]) for explicit in explicit_records
+                    ],
+                    "rule": (
+                        "STRUCTURAL_CONTEXT_TOTAL_IS_NOT_A_RESIDUAL_LEAF_WHEN_"
+                        "EXPLICIT_RESIDUAL_SOURCE_ROWS_EXIST_ON_THE_SAME_LANE_AXIS"
+                    ),
+                }
+            )
+
     by_role: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for record in records:
-        by_role[record["role"]].append(record)
+        if id(record) not in suppressed_record_ids:
+            by_role[record["role"]].append(record)
     output = []
-    receipts = []
     aggregatable_states = {
+        "SOURCE_EQUATION_CONSUMED_UNMATCHED_ROW_PROJECTED_TO_RESIDUAL",
         "SOURCE_OBSERVED_ROLE_ROW",
         "SOURCE_SAME_ROLE_ROWS_AGGREGATED_AFTER_TABLE_CLOSURE",
+        "SOURCE_SUPPLEMENTAL_DETAIL_RESIDUAL_ROWS_AGGREGATED",
     }
 
     def source_table_axis(record: Mapping[str, Any]) -> set[tuple[str, str, str]]:
@@ -2099,6 +2349,7 @@ def _derive_complete_top_level_family_root(
     records: Sequence[Mapping[str, Any]],
     *,
     source_only_axis: Sequence[Mapping[str, Any]],
+    source_equations: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """Derive a family root from one exhaustive structural top-level frontier.
@@ -2135,6 +2386,102 @@ def _derive_complete_top_level_family_root(
                 if matcher["within_role"] is not None
             )
         return False
+
+    existing_roots = [record for record in output if record["role"] == "FAMILY_ROOT_TOTAL"]
+    if existing_roots:
+
+        def source_identity_axis(source_refs: Sequence[Mapping[str, Any]]) -> set[tuple[str, ...]]:
+            return {
+                (
+                    source_ref["locator"]["page_json_version_id"],
+                    source_ref["locator"]["section_id"],
+                    source_ref["locator"]["table_id"],
+                    source_ref["row_id"],
+                )
+                for source_ref in source_refs
+            }
+
+        root_population_keys = [
+            (canonical_json_sha256_v1(root["lane_keys"]), root["valuation_basis"])
+            for root in existing_roots
+        ]
+        if len(set(root_population_keys)) != len(root_population_keys):
+            return output, [], [], ["FAMILY_ROOT_SOURCE_POPULATION_IS_AMBIGUOUS"]
+
+        equation_by_root_population = []
+        for root in existing_roots:
+            root_result_axis = source_identity_axis(root["source_refs"])
+            root_equations = [
+                equation
+                for equation in source_equations
+                if equation.get("status") == "EXACT"
+                and (
+                    equation.get("result_role") == "FAMILY_ROOT_TOTAL"
+                    or (
+                        type(equation.get("equation_kind")) is str
+                        and equation["equation_kind"].endswith("EQUAL_PRINTED_TOTAL")
+                    )
+                )
+                and source_identity_axis(equation.get("result_source_refs", [])) == root_result_axis
+                and equation.get("result_coefficients") == _coefficients(root)
+            ]
+            if len(root_equations) != 1:
+                return output, [], [], ["FAMILY_ROOT_SOURCE_EQUATION_IS_NOT_UNIQUE"]
+            equation_by_root_population.append((root, root_equations[0]))
+        equation_result_axes = [
+            source_identity_axis(equation.get("result_source_refs", []))
+            for equation in source_equations
+            if equation.get("status") == "EXACT"
+        ]
+        unproven_subtotal_roles = sorted(
+            {
+                record["role"]
+                for record in output
+                if record["role"] != "FAMILY_ROOT_TOTAL"
+                and record["state"] == "SOURCE_OBSERVED_ROLE_ROW"
+                and any(
+                    source_ref.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}
+                    for source_ref in record["source_refs"]
+                )
+                and not any(
+                    source_identity_axis(record["source_refs"]) == result_axis
+                    for result_axis in equation_result_axes
+                )
+            }
+        )
+        if unproven_subtotal_roles:
+            return (
+                output,
+                [],
+                [],
+                [
+                    "MAPPED_SOURCE_SUBTOTAL_NOT_PROVEN_BY_EXACT_DIRECT_FRONTIER:" + role
+                    for role in unproven_subtotal_roles
+                ],
+            )
+        return (
+            output,
+            [],
+            [
+                {
+                    "coefficients": canonical_clone_v1(source_equation["result_coefficients"]),
+                    "component_source_refs": canonical_clone_v1(
+                        source_equation["component_source_refs"]
+                    ),
+                    "result_state": (
+                        "SOURCE_VISIBLE_FAMILY_ROOT_BOUND_TO_UNIQUE_EXACT_TABLE_FRONTIER"
+                    ),
+                    "rule": (
+                        "SOURCE_VISIBLE_FAMILY_ROOT_USES_UNIQUE_EXACT_TABLE_LOCAL_"
+                        "DIRECT_FRONTIER_DISCLOSURE_MAPPINGS_ARE_NOT_ASSUMED_ADDITIVE"
+                    ),
+                    "source_equation_id": source_equation["equation_id"],
+                    "source_refs": canonical_clone_v1(root["source_refs"]),
+                }
+                for root, source_equation in equation_by_root_population
+            ],
+            [],
+        )
 
     if any(
         record["role"] != "FAMILY_ROOT_TOTAL" and not reaches_root(record["role"])
@@ -2230,50 +2577,31 @@ def _derive_complete_top_level_family_root(
     source_refs = [
         source_ref for component in components for source_ref in component["source_refs"]
     ]
-    existing = by_role.get("FAMILY_ROOT_TOTAL", [])
-    if len(existing) > 1:
-        return output, [], [], ["FAMILY_ROOT_SOURCE_POPULATION_IS_AMBIGUOUS"]
-    if existing:
-        result = existing[0]
-        equation = _exact_equation(
-            kind="EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_EQUALS_SOURCE_FAMILY_ROOT",
-            components=components,
-            result=result,
-        )
-        if equation is None:
-            return (
-                output,
-                [],
-                [],
-                ["SOURCE_FAMILY_ROOT_DIFFERS_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"],
-            )
-        state = "SOURCE_VISIBLE_FAMILY_ROOT_CORROBORATED_BY_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
-    else:
-        cells = [
-            {
-                "coefficient": coefficient,
-                "source_text": None,
-                "state": "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
-            }
-            for coefficient in coefficients
-        ]
-        result = _local_record(
-            "FAMILY_ROOT_TOTAL",
-            cells,
-            components[0]["lane_keys"],
-            source_refs,
-            "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
-            components[0]["valuation_basis"],
-        )
-        equation = _exact_equation(
-            kind="EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT",
-            components=components,
-            result=result,
-        )
-        if equation is None:
-            raise _error("complete top-level family root arithmetic did not close")
-        output.append(result)
-        state = result["state"]
+    cells = [
+        {
+            "coefficient": coefficient,
+            "source_text": None,
+            "state": "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+        }
+        for coefficient in coefficients
+    ]
+    result = _local_record(
+        "FAMILY_ROOT_TOTAL",
+        cells,
+        components[0]["lane_keys"],
+        source_refs,
+        "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+        components[0]["valuation_basis"],
+    )
+    equation = _exact_equation(
+        kind="EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT",
+        components=components,
+        result=result,
+    )
+    if equation is None:
+        raise _error("complete top-level family root arithmetic did not close")
+    output.append(result)
+    state = result["state"]
     receipt = {
         "coefficients": coefficients,
         "component_roles": component_roles,
@@ -3209,7 +3537,7 @@ def _extract_table_local_records(
         if record is not None and (
             any(cell["source_text"] is not None for cell in record["cells"])
             or row_ordinal in declared_role_ordinals
-            or row.get("row_kind") in {"SUBTOTAL", "TOTAL"}
+            or row.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}
         ):
             row_records[row_ordinal] = record
     if parse_reasons:
@@ -3221,6 +3549,58 @@ def _extract_table_local_records(
         if ordinal in hit_by_row and hit_by_row[ordinal] != hit["role"]:
             raise _error("multi-table hierarchical source row role repeated")
         hit_by_row[ordinal] = hit["role"]
+    supplemental_inferred_ordinals: set[int] = set()
+    supplemental_residual_projection_receipts = []
+    for declaration in compiled_specs["supplemental_detail_residuals"]:
+        residual_role = declaration["residual_role"]
+        for marker in declaration["markers"]:
+            carriers = [
+                ordinal
+                for ordinal, row in enumerate(rows, start=1)
+                if type(row) is dict
+                and _normalized(row.get("label_exact")) == marker
+                and row.get("row_kind") != "TOTAL"
+                and type(row.get("values_exact")) is list
+                and all(value is None for value in row["values_exact"])
+            ]
+            if len(carriers) != 1:
+                continue
+            carrier_ordinal = carriers[0]
+            projected = []
+            for ordinal, record in sorted(row_records.items()):
+                if ordinal in hit_by_row or ordinal == carrier_ordinal:
+                    continue
+                row = rows[ordinal - 1]
+                path = [
+                    _normalized(value)
+                    for value in row.get("hierarchy_path_exact", [])
+                    if _normalized(value)
+                ]
+                label = _normalized(row.get("label_exact"))
+                if (
+                    ordinal > carrier_ordinal
+                    and row.get("row_kind") == "ITEM"
+                    and len(path) == 2
+                    and path[0] == marker
+                    and label
+                    and path[1] == label
+                ):
+                    hit_by_row[ordinal] = residual_role
+                    supplemental_inferred_ordinals.add(ordinal)
+                    projected.append(canonical_clone_v1(record["source_refs"][0]))
+            if projected:
+                supplemental_residual_projection_receipts.append(
+                    {
+                        "carrier_row_ordinal": carrier_ordinal,
+                        "marker": marker,
+                        "projected_source_refs": projected,
+                        "residual_role": residual_role,
+                        "rule": (
+                            "UNMATCHED_DIRECT_CHILD_ROWS_OF_ONE_EXPLICIT_"
+                            "NONEXHAUSTIVE_DETAIL_MARKER_PROJECT_TO_DECLARED_RESIDUAL"
+                        ),
+                    }
+                )
     label_only_group_proxies: dict[int, tuple[list[int], dict[str, Any]]] = {}
     if compiled_specs["label_only_structural_group_policy"] in {
         "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
@@ -3350,7 +3730,11 @@ def _extract_table_local_records(
                 record["cells"],
                 record["lane_keys"],
                 record["source_refs"],
-                "SOURCE_OBSERVED_ROLE_ROW",
+                (
+                    "SOURCE_UNMATCHED_SUPPLEMENTAL_DETAIL_ROW_PROJECTED_TO_RESIDUAL"
+                    if ordinal in supplemental_inferred_ordinals
+                    else "SOURCE_OBSERVED_ROLE_ROW"
+                ),
                 record["valuation_basis"],
             )
         )
@@ -3537,9 +3921,9 @@ def _extract_table_local_records(
                 for value in (rows[ordinal - 1].get("hierarchy_path_exact") or [])
                 if _normalized(value)
             ]
-            if (
+            if re.match(r"^(?:trong do|of which)\b", normalized_label) is not None or (
                 len(hierarchy_path) > 1
-                and re.match(r"^(?:trong do|of which)\b", normalized_label) is not None
+                and re.match(r"^(?:trong do|of which)\b", hierarchy_path[0]) is not None
             ):
                 # A source-visible "Trong đó / Of which" row is a disclosed
                 # subset, never an additional component of an encompassing
@@ -3660,6 +4044,53 @@ def _extract_table_local_records(
             len(component_axis) == 1
             and component_axis[0][0] in set(classification.get("family_root_row_ordinals", []))
         )
+        context_roles = classification["context_roles"]
+        context_role = context_roles[0] if len(context_roles) == 1 else None
+        other_context_carriers = component_hit_roles.intersection(
+            compiled_specs["table_context_roles"]
+        ) - ({context_role} if context_role is not None else set())
+
+        def role_is_declared_within(role: str, context: str) -> bool:
+            pending = [role]
+            seen = set()
+            while pending:
+                current = pending.pop()
+                if current == context:
+                    return True
+                if current in seen:
+                    continue
+                seen.add(current)
+                pending.extend(
+                    matcher["within_role"]
+                    for matcher in compiled_specs["matchers_by_role"].get(current, [])
+                    if matcher["within_role"] is not None
+                )
+            return False
+
+        context_total_preferred = bool(
+            context_role in compiled_specs["context_total_mapping_roles"]
+            and not other_context_carriers
+            and (
+                classification["context_resolution_kind"]
+                in {"EXPLICIT_TABLE_TITLE", "EXPLICIT_SOLE_TABLE_SECTION_TITLE"}
+                or (
+                    context_role not in component_hit_roles
+                    and component_hit_roles
+                    and any(
+                        role_is_declared_within(role, context_role) for role in component_hit_roles
+                    )
+                    and all(
+                        role_is_declared_within(role, context_role)
+                        or role
+                        in {
+                            declaration["residual_role"]
+                            for declaration in compiled_specs["supplemental_detail_residuals"]
+                        }
+                        for role in component_hit_roles
+                    )
+                )
+            )
+        )
         if (
             compiled_specs["schema"]["root_mapping_policy"]
             == "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
@@ -3668,12 +4099,14 @@ def _extract_table_local_records(
             root_total_emitted = bool(
                 explicit_root_row_equals_total
                 or (
-                    terminal_total
+                    not context_total_preferred
+                    and terminal_total
                     and component_hit_roles
                     and component_hit_roles <= set(compiled_specs["root_component_roles"])
                 )
                 or (
-                    terminal_total
+                    not context_total_preferred
+                    and terminal_total
                     and bool(classification.get("inverted_hierarchy_scope_rows"))
                     and classification["family_presence_anchor_visible"]
                 )
@@ -3682,7 +4115,8 @@ def _extract_table_local_records(
             root_total_emitted = bool(
                 explicit_root_row_equals_total
                 or (
-                    component_hit_roles
+                    not context_total_preferred
+                    and component_hit_roles
                     and component_hit_roles <= set(compiled_specs["root_component_roles"])
                     and len(component_hit_roles) >= 2
                 )
@@ -3699,7 +4133,6 @@ def _extract_table_local_records(
                 )
             )
             proven_roles.add("FAMILY_ROOT_TOTAL")
-        context_roles = classification["context_roles"]
         if (
             len(context_roles) == 1
             and not root_total_emitted
@@ -3719,6 +4152,71 @@ def _extract_table_local_records(
             proven_roles.add(context_roles[0])
 
     derived_structural_parent_receipts = []
+    equation_consumed_residual_projection_receipts = []
+    residual_role = compiled_specs["equation_consumed_unmatched_residual_role"]
+    direct_residual_anchor_visible = bool(
+        residual_role is not None
+        and any(hit["role"] == residual_role for hit in classification["role_hits"])
+    )
+    if residual_role is not None and direct_residual_anchor_visible:
+        component_ordinals = {
+            source_ref["row_ordinal"]
+            for equation in equations
+            if equation["status"] == "EXACT"
+            for source_refs in equation["component_source_refs"]
+            for source_ref in source_refs
+        }
+        result_ordinals = {
+            source_ref["row_ordinal"]
+            for equation in equations
+            if equation["status"] == "EXACT"
+            for source_ref in equation["result_source_refs"]
+        }
+        sole_child_corroboration_ordinals = {
+            equation["component_source_refs"][0][0]["row_ordinal"]
+            for equation in equations
+            if equation["status"] == "EXACT"
+            and len(equation["component_source_refs"]) == 1
+            and len(equation["component_source_refs"][0]) == 1
+            and any(
+                source_ref["row_ordinal"] in hit_by_row
+                for source_ref in equation["result_source_refs"]
+            )
+        }
+        projected_source_refs = []
+        for ordinal, record in sorted(row_records.items()):
+            if (
+                ordinal in hit_by_row
+                or ordinal not in component_ordinals
+                or ordinal in result_ordinals
+                or ordinal in sole_child_corroboration_ordinals
+                or rows[ordinal - 1].get("row_kind") != "ITEM"
+            ):
+                continue
+            local_records.append(
+                _local_record(
+                    residual_role,
+                    record["cells"],
+                    record["lane_keys"],
+                    record["source_refs"],
+                    "SOURCE_EQUATION_CONSUMED_UNMATCHED_ROW_PROJECTED_TO_RESIDUAL",
+                    record["valuation_basis"],
+                )
+            )
+            hit_by_row[ordinal] = residual_role
+            proven_roles.add(residual_role)
+            projected_source_refs.append(canonical_clone_v1(record["source_refs"][0]))
+        if projected_source_refs:
+            equation_consumed_residual_projection_receipts.append(
+                {
+                    "projected_source_refs": projected_source_refs,
+                    "residual_role": residual_role,
+                    "rule": (
+                        "UNMATCHED_ITEM_ROWS_USED_AS_EXACT_EQUATION_COMPONENTS_PROJECT_"
+                        "TO_DECLARED_RESIDUAL_EXCLUDING_RESULTS_AND_SOLE_CHILD_CORROBORATIONS"
+                    ),
+                }
+            )
     if compiled_specs["money_metric_policy"] == (
         "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
     ):
@@ -3858,6 +4356,10 @@ def _extract_table_local_records(
                 for occurrence in occurrences
                 for source_ref in occurrence["source_refs"]
             )
+            and _supplemental_residual_population_receipt(
+                occurrences, role=role, compiled_specs=compiled_specs
+            )
+            is None
         )
     local_records, aggregation_receipts = _aggregate_duplicate_roles(
         local_records,
@@ -3866,6 +4368,14 @@ def _extract_table_local_records(
     )
     receipt["aggregation_receipts"] = aggregation_receipts
     receipt["hierarchical_duplicate_receipts"] = hierarchical_duplicate_receipts
+    if supplemental_residual_projection_receipts:
+        receipt["supplemental_residual_projection_receipts"] = (
+            supplemental_residual_projection_receipts
+        )
+    if equation_consumed_residual_projection_receipts:
+        receipt["equation_consumed_residual_projection_receipts"] = (
+            equation_consumed_residual_projection_receipts
+        )
     if compiled_specs["label_only_structural_group_policy"] != "DISABLED":
         receipt["label_only_structural_group_receipts"] = label_only_structural_group_receipts
     if compiled_specs["money_metric_policy"] == (
@@ -4052,6 +4562,7 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
     ) = _derive_complete_top_level_family_root(
         local_records,
         source_only_axis=source_only_axis,
+        source_equations=equations,
         compiled_specs=compiled_specs,
     )
     equations.extend(root_component_equations)
