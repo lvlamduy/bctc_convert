@@ -1,0 +1,28 @@
+{
+  "family_id": "ISSUED_VALUABLE_PAPERS",
+  "family_root_report_norm_id": 1100,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1101, "role": "CERTIFICATE_OF_DEPOSIT"},
+    {"report_norm_id": 1102, "role": "CD_SHORT"},
+    {"report_norm_id": 6009, "role": "CD_PRINTED_OVER_TWELVE_MONTHS"},
+    {"report_norm_id": 1103, "role": "CD_MEDIUM"},
+    {"report_norm_id": 1104, "role": "CD_LONG"},
+    {"report_norm_id": 1105, "role": "PROMISSORY_NOTE"},
+    {"report_norm_id": 1106, "role": "PROMISSORY_SHORT"},
+    {"report_norm_id": 1107, "role": "PROMISSORY_MEDIUM"},
+    {"report_norm_id": 1108, "role": "PROMISSORY_LONG"},
+    {"report_norm_id": 1109, "role": "BOND"},
+    {"report_norm_id": 1110, "role": "BOND_SHORT"},
+    {"report_norm_id": 6010, "role": "BOND_PRINTED_BELOW_FIVE_YEARS"},
+    {"report_norm_id": 1111, "role": "BOND_MEDIUM"},
+    {"report_norm_id": 1112, "role": "BOND_LONG"},
+    {"report_norm_id": 1113, "role": "PROMISSORY_AND_BOND_TOTAL"},
+    {"report_norm_id": 1114, "role": "PROMISSORY_AND_BOND_SHORT"},
+    {"report_norm_id": 1115, "role": "PROMISSORY_AND_BOND_MEDIUM"},
+    {"report_norm_id": 1116, "role": "PROMISSORY_AND_BOND_LONG"},
+    {"report_norm_id": 1117, "role": "OTHER_ISSUED_PAPER"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}

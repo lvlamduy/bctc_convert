@@ -1,0 +1,62 @@
+{
+  "aggregate_duplicate_roles": [
+    "CERTIFICATE_OF_DEPOSIT",
+    "CD_SHORT",
+    "CD_PRINTED_OVER_TWELVE_MONTHS",
+    "CD_MEDIUM",
+    "CD_LONG",
+    "PROMISSORY_NOTE",
+    "PROMISSORY_SHORT",
+    "PROMISSORY_MEDIUM",
+    "PROMISSORY_LONG",
+    "BOND",
+    "BOND_SHORT",
+    "BOND_PRINTED_BELOW_FIVE_YEARS",
+    "BOND_MEDIUM",
+    "BOND_LONG",
+    "PROMISSORY_AND_BOND_TOTAL",
+    "PROMISSORY_AND_BOND_SHORT",
+    "PROMISSORY_AND_BOND_MEDIUM",
+    "PROMISSORY_AND_BOND_LONG",
+    "OTHER_ISSUED_PAPER"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "corroboration_pairs": [],
+  "context_total_mapping_roles": ["CERTIFICATE_OF_DEPOSIT", "PROMISSORY_NOTE", "BOND", "PROMISSORY_AND_BOND_TOTAL"],
+  "derived_role_equations": [
+    {"component_roles": ["PROMISSORY_NOTE", "BOND"], "result_role": "PROMISSORY_AND_BOND_TOTAL"},
+    {"component_roles": ["PROMISSORY_SHORT", "BOND_SHORT"], "result_role": "PROMISSORY_AND_BOND_SHORT"},
+    {"component_roles": ["PROMISSORY_MEDIUM", "BOND_MEDIUM"], "result_role": "PROMISSORY_AND_BOND_MEDIUM"},
+    {"component_roles": ["PROMISSORY_LONG", "BOND_LONG"], "result_role": "PROMISSORY_AND_BOND_LONG"}
+  ],
+  "detail_context_roles": ["OTHER_ISSUED_PAPER"],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "family_id": "ISSUED_VALUABLE_PAPERS",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "money_metric_policy": "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES",
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_REQUIRED_COMPARATIVE_IF_SOURCE_VISIBLE",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "row_alias_prefix_roles": ["OTHER_ISSUED_PAPER"],
+  "root_component_roles": ["CERTIFICATE_OF_DEPOSIT", "PROMISSORY_NOTE", "BOND", "PROMISSORY_AND_BOND_TOTAL", "OTHER_ISSUED_PAPER"],
+  "role_unit_overrides": [],
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "table_context_roles": ["CERTIFICATE_OF_DEPOSIT", "PROMISSORY_NOTE", "BOND", "PROMISSORY_AND_BOND_TOTAL"],
+  "typed_control_exclusions": [
+    {"aliases": ["phân tích theo kỳ hạn còn lại", "rủi ro thanh khoản", "rủi ro lãi suất"], "disposition": "MATURITY_OR_RISK_ANALYSIS_CONTROL_OUTSIDE_FAMILY_SOURCE"},
+    {"aliases": ["phân loại tài sản tài chính", "giá trị hợp lý"], "disposition": "FINANCIAL_INSTRUMENT_FAIR_VALUE_CONTROL"},
+    {"aliases": ["số lượng đã phát hành (trái phiếu)", "giá chuyển đổi dự kiến"], "disposition": "NON_ACCOUNTING_CONVERTIBLE_BOND_TERMS_CONTROL", "surface_kinds": ["COLUMN_HEADER"]}
+  ]
+}

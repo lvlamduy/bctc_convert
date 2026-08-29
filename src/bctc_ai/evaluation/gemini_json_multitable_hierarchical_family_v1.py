@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from itertools import product
 from typing import Any
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -39,6 +40,7 @@ from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import
     _page_record_axis,
     _row_local_record,
     _semantic_period_roles,
+    _source_money,
     _surface_dates,
     _table_lane_axis,
 )
@@ -114,9 +116,13 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     }
     optional_evaluation_fields = {
         "direct_frontier_policy",
+        "duplicate_role_aggregation_policy",
         "hierarchy_role_scope_policy",
         "label_only_structural_group_policy",
+        "money_metric_policy",
         "owner_surface_kinds",
+        "period_lane_policy",
+        "row_alias_prefix_roles",
         "structural_marker_policy",
     }
     if (
@@ -185,6 +191,28 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
     }:
         raise _error("multi-table hierarchical structural marker policy is invalid")
+    money_metric_policy = evaluation_spec.get("money_metric_policy", "GENERIC_AMOUNT_ONLY")
+    if money_metric_policy not in {
+        "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES",
+        "GENERIC_AMOUNT_ONLY",
+    }:
+        raise _error("multi-table hierarchical money metric policy is invalid")
+    period_lane_policy = evaluation_spec.get(
+        "period_lane_policy", "CURRENT_AND_COMPARATIVE_REQUIRED"
+    )
+    if period_lane_policy not in {
+        "CURRENT_AND_COMPARATIVE_REQUIRED",
+        "CURRENT_REQUIRED_COMPARATIVE_IF_SOURCE_VISIBLE",
+    }:
+        raise _error("multi-table hierarchical period lane policy is invalid")
+    duplicate_role_aggregation_policy = evaluation_spec.get(
+        "duplicate_role_aggregation_policy", "DECLARED_SAME_ROLE_SOURCE_ROW_SUM"
+    )
+    if duplicate_role_aggregation_policy not in {
+        "DECLARED_SAME_ROLE_SOURCE_ROW_SUM",
+        "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+    }:
+        raise _error("multi-table hierarchical duplicate role aggregation policy is invalid")
     child_by_role = {child["role"]: child for child in topology["children"]}
     roles = set(child_by_role)
 
@@ -204,6 +232,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     context_total_mapping_roles = role_axis("context_total_mapping_roles")
     root_component_roles = role_axis("root_component_roles")
     aggregate_duplicate_roles = role_axis("aggregate_duplicate_roles", allow_empty=True)
+    row_alias_prefix_roles = (
+        role_axis("row_alias_prefix_roles", allow_empty=True)
+        if "row_alias_prefix_roles" in evaluation_spec
+        else []
+    )
     role_unit_overrides = {}
     for item in evaluation_spec.get("role_unit_overrides", []):
         if (
@@ -254,22 +287,37 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         raise _error("multi-table hierarchical detail context role overlaps structural context")
     exclusions = []
     for item in evaluation_spec["typed_control_exclusions"]:
+        surface_kinds = item.get(
+            "surface_kinds", ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"]
+        )
         if (
             type(item) is not dict
-            or set(item) != {"aliases", "disposition"}
+            or set(item)
+            not in (
+                {"aliases", "disposition"},
+                {"aliases", "disposition", "surface_kinds"},
+            )
             or type(item.get("disposition")) is not str
             or not item["disposition"]
             or type(item.get("aliases")) is not list
             or not item["aliases"]
             or any(type(alias) is not str or not _normalized(alias) for alias in item["aliases"])
+            or type(surface_kinds) is not list
+            or not surface_kinds
+            or len(surface_kinds) != len(set(surface_kinds))
+            or any(
+                kind not in {"SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE", "COLUMN_HEADER"}
+                for kind in surface_kinds
+            )
         ):
             raise _error("multi-table hierarchical typed control exclusion is invalid")
-        exclusions.append(
-            {
-                "aliases": sorted({_normalized(alias) for alias in item["aliases"]}),
-                "disposition": item["disposition"],
-            }
-        )
+        exclusion = {
+            "aliases": sorted({_normalized(alias) for alias in item["aliases"]}),
+            "disposition": item["disposition"],
+        }
+        if "surface_kinds" in item:
+            exclusion["surface_kinds"] = sorted(surface_kinds)
+        exclusions.append(exclusion)
     try:
         unit_bindings, unit_binding_by_alias = _compile_units(
             evaluation_spec["money_unit_bindings"]
@@ -338,6 +386,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["hierarchy_role_scope_policy"] = hierarchy_role_scope_policy
     if "structural_marker_policy" in evaluation_spec:
         query_policy["structural_marker_policy"] = structural_marker_policy
+    if "row_alias_prefix_roles" in evaluation_spec:
+        query_policy["row_alias_prefix_roles"] = row_alias_prefix_roles
     return {
         "aggregate_duplicate_roles": aggregate_duplicate_roles,
         "aliases_by_role": aliases_by_role,
@@ -350,6 +400,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "derived_role_equations": derived_role_equations,
         "detail_context_roles": detail_context_roles,
         "direct_frontier_policy": direct_frontier_policy,
+        "duplicate_role_aggregation_policy": duplicate_role_aggregation_policy,
         "engine_format_version": ENGINE_FORMAT_VERSION,
         "evaluation": canonical_clone_v1(evaluation_spec),
         "matchers_by_role": {
@@ -357,10 +408,13 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         },
         "output_role_order": [item["role"] for item in schema_binding_spec["role_bindings"]],
         "label_only_structural_group_policy": label_only_structural_group_policy,
+        "money_metric_policy": money_metric_policy,
+        "period_lane_policy": period_lane_policy,
         "presence_anchor_roles": presence_anchor_roles,
         "query_policy": query_policy,
         "root_component_roles": root_component_roles,
         "role_unit_overrides": role_unit_overrides,
+        "row_alias_prefix_roles": row_alias_prefix_roles,
         "schema": canonical_clone_v1(schema_binding_spec),
         "table_context_roles": table_context_roles,
         "topology": topology,
@@ -444,14 +498,32 @@ def _typed_control_disposition(
         and section.get("statement_type") == "BALANCE_SHEET"
     ):
         return "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
-    surfaces = [_normalized(value) for value in _surface_axis(section, table)]
+    columns = table.get("columns")
     for exclusion in compiled_specs["typed_control_exclusions"]:
+        kinds = exclusion.get(
+            "surface_kinds", ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"]
+        )
+        surfaces = []
+        if "SECTION_TITLE" in kinds:
+            surfaces.append(_normalized(section.get("title_exact")))
+        if "SECTION_NARRATIVE" in kinds:
+            narratives = section.get("narratives_exact")
+            if type(narratives) is list:
+                surfaces.extend(_normalized(value) for value in narratives)
+        if "TABLE_TITLE" in kinds:
+            surfaces.append(_normalized(table.get("title_exact")))
+        if "COLUMN_HEADER" in kinds and type(columns) is list:
+            # Untitled control tables can be distinguishable only by declared
+            # metric headers.  This scope is opt-in so a shared section
+            # narrative cannot accidentally exclude its accounting sibling.
+            surfaces.extend(
+                _normalized(_header_text(column)) for column in columns if type(column) is dict
+            )
         if any(
             surface and any(alias in surface for alias in exclusion["aliases"])
             for surface in surfaces
         ):
             return exclusion["disposition"]
-    columns = table.get("columns")
     if type(columns) is list and not any(
         type(column) is dict and column.get("value_kind") == "MONEY" for column in columns
     ):
@@ -493,6 +565,107 @@ def _context_roles(
     return sorted(role for score, role in matches if score == maximum)
 
 
+def _transposed_column_role_hits(
+    columns: Sequence[Any], *, compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Bind instrument columns from declared structural aliases only.
+
+    This orientation is opt-in.  A column is accepted only when one unique
+    longest declared structural role matches its full header surface.  Values
+    never choose the role, and the ordinary row-oriented path is unchanged.
+    """
+
+    if (
+        compiled_specs["money_metric_policy"]
+        != "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    ):
+        return []
+    hits = []
+    for column_ordinal, column in enumerate(columns, start=1):
+        if type(column) is not dict or column.get("value_kind") != "MONEY":
+            continue
+        header = _header_text(column)
+        matches = []
+        for role in compiled_specs["table_context_roles"]:
+            for alias in compiled_specs["aliases_by_role"][role]:
+                if _contains_alias(header, alias):
+                    matches.append((len(_normalized(alias)), role, alias))
+        if not matches:
+            continue
+        maximum = max(score for score, _role, _alias in matches)
+        roles = sorted({role for score, role, _alias in matches if score == maximum})
+        if len(roles) != 1:
+            hits.append(
+                {
+                    "column_ordinal": column_ordinal,
+                    "matched_roles": roles,
+                    "source_header_exact": header,
+                    "status": "AMBIGUOUS_LONGEST_DECLARED_INSTRUMENT_ROLE",
+                }
+            )
+            continue
+        role = roles[0]
+        hits.append(
+            {
+                "column_ordinal": column_ordinal,
+                "role": role,
+                "source_header_exact": header,
+                "status": "EXACT_UNIQUE_LONGEST_DECLARED_INSTRUMENT_ROLE",
+            }
+        )
+    return hits
+
+
+def _transposed_row_role_hits(
+    rows: Sequence[Any],
+    column_role_hits: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Resolve tenor rows inside each already authenticated instrument column."""
+
+    parent_roles = sorted(
+        {hit["role"] for hit in column_role_hits if hit.get("status", "").startswith("EXACT_")}
+    )
+    if not parent_roles:
+        return []
+    hits = []
+    for row_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict or type(row.get("values_exact")) is not list:
+            continue
+        for parent_role in parent_roles:
+            try:
+                modes = _row_role_match_modes(
+                    row,
+                    topology=compiled_specs["topology"],
+                    aliases_by_role=compiled_specs["aliases_by_role"],
+                    fallback_within_role=parent_role,
+                    enable_declared_equivalences=True,
+                )
+            except ValueError:
+                modes = {}
+            roles = sorted(
+                role
+                for role in modes
+                if role in compiled_specs["child_by_role"]
+                and compiled_specs["child_by_role"][role]["role_kind"] != "STRUCTURAL_GROUP"
+                and any(
+                    matcher["within_role"] == parent_role
+                    for matcher in compiled_specs["matchers_by_role"][role]
+                )
+            )
+            if len(roles) == 1:
+                hits.append(
+                    {
+                        "parent_role": parent_role,
+                        "role": roles[0],
+                        "row_ordinal": row_ordinal,
+                        "source_order": row_ordinal,
+                    }
+                )
+    return hits
+
+
 def classify_gemini_json_multitable_hierarchical_table_v1(
     page_json: Any,
     section: Any,
@@ -513,9 +686,17 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         for ordinal, column in enumerate(columns, start=1)
         if type(column) is dict and column.get("value_kind") == "MONEY"
     ]
+    transposed_column_role_hits = _transposed_column_role_hits(
+        columns, compiled_specs=compiled_specs
+    )
+    transposed_row_role_hits = _transposed_row_role_hits(
+        rows, transposed_column_role_hits, compiled_specs=compiled_specs
+    )
     role_hits = []
     matched_scopes_by_hit: dict[tuple[int, str], set[str]] = {}
     ambiguous_rows = []
+    inverted_hierarchy_scope_rows = []
+    unscoped_shared_child_rows = []
     unbound_money_rows = []
     total_rows = []
     family_root_row_ordinals = []
@@ -547,13 +728,45 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
             _match_cache: dict[str | None, dict[str, str]] = match_cache,
         ) -> dict[str, str]:
             if scope not in _match_cache:
-                _match_cache[scope] = _row_role_match_modes(
+                exact_modes = _row_role_match_modes(
                     source_row,
                     topology=compiled_specs["topology"],
                     aliases_by_role=compiled_specs["aliases_by_role"],
                     fallback_within_role=scope,
                     enable_declared_equivalences=True,
                 )
+                if exact_modes:
+                    _match_cache[scope] = exact_modes
+                else:
+                    # Source labels commonly append an issuer, currency, or
+                    # other visible qualifier to a declared accounting
+                    # concept.  Resolve that shape from the unique longest
+                    # declared alias prefix, never from document identity or
+                    # values.  Scoped child aliases remain eligible only in
+                    # their authenticated structural parent.
+                    label = _normalized(source_row.get("label_exact"))
+                    prefix_matches = [
+                        (len(_normalized(alias)), role)
+                        for role, matchers in compiled_specs["matchers_by_role"].items()
+                        if role in compiled_specs["row_alias_prefix_roles"]
+                        for matcher in matchers
+                        if matcher["within_role"] is None or matcher["within_role"] == scope
+                        for alias in matcher["aliases"]
+                        if _normalized(alias) and label.startswith(_normalized(alias) + " ")
+                    ]
+                    maximum = max((length for length, _role in prefix_matches), default=None)
+                    roles = sorted(
+                        {
+                            role
+                            for length, role in prefix_matches
+                            if maximum is not None and length == maximum
+                        }
+                    )
+                    _match_cache[scope] = (
+                        {roles[0]: "UNIQUE_LONGEST_DECLARED_ALIAS_PREFIX"}
+                        if len(roles) == 1
+                        else {}
+                    )
             return _match_cache[scope]
 
         try:
@@ -658,6 +871,47 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
             )
             if len(structural_label_roles) == 1:
                 matched = structural_label_roles
+        if (
+            len(matched) == 1
+            and compiled_specs["money_metric_policy"]
+            == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+            and compiled_specs["child_by_role"][matched[0]]["role_kind"] == "STRUCTURAL_GROUP"
+        ):
+            structural_role = matched[0]
+            normalized_label = _normalized(row.get("label_exact"))
+            ancestor_surfaces = {
+                _normalized(value)
+                for value in (row.get("hierarchy_path_exact") or [])
+                if _normalized(value) and _normalized(value) != normalized_label
+            }
+            scoped_children = sorted(
+                role
+                for role in compiled_specs["child_by_role"]
+                if compiled_specs["child_by_role"][role]["role_kind"] != "STRUCTURAL_GROUP"
+                and any(
+                    matcher["within_role"] == structural_role
+                    for matcher in compiled_specs["matchers_by_role"][role]
+                )
+                and any(
+                    _normalized(alias) in ancestor_surfaces
+                    for alias in compiled_specs["aliases_by_role"][role]
+                )
+            )
+            if scoped_children:
+                matched = scoped_children
+            if len(scoped_children) == 1:
+                inverted_hierarchy_scope_rows.append(
+                    {
+                        "ancestor_surfaces": sorted(ancestor_surfaces),
+                        "parent_role": structural_role,
+                        "role": scoped_children[0],
+                        "row_ordinal": row_ordinal,
+                        "rule": (
+                            "EXACT_STRUCTURAL_INSTRUMENT_ROW_SCOPED_BY_UNIQUE_DECLARED_"
+                            "TENOR_ANCESTOR"
+                        ),
+                    }
+                )
         if len(matched) == 2:
             kinds = {role: compiled_specs["child_by_role"][role]["role_kind"] for role in matched}
             additive = [role for role in matched if kinds[role] != "STRUCTURAL_GROUP"]
@@ -670,7 +924,43 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
                 else:
                     matched = structural
         if len(matched) > 1:
-            ambiguous_rows.append({"matched_roles": matched, "row_ordinal": row_ordinal})
+            declared_scopes = {
+                role: {
+                    matcher["within_role"]
+                    for matcher in compiled_specs["matchers_by_role"][role]
+                    if matcher["within_role"] is not None
+                }
+                for role in matched
+            }
+            shared_unscoped_tenor = bool(
+                compiled_specs["money_metric_policy"]
+                == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+                and all(
+                    compiled_specs["child_by_role"][role]["role_kind"] != "STRUCTURAL_GROUP"
+                    and len(declared_scopes[role]) == 1
+                    for role in matched
+                )
+                and len({next(iter(declared_scopes[role])) for role in matched}) > 1
+                and not any(
+                    _path_has_role(
+                        row.get("hierarchy_path_exact"),
+                        aliases=compiled_specs["aliases_by_role"][scope],
+                        label_exact=row.get("label_exact"),
+                    )
+                    for role in matched
+                    for scope in declared_scopes[role]
+                )
+            )
+            if shared_unscoped_tenor:
+                unscoped_shared_child_rows.append(
+                    {
+                        "matched_roles": matched,
+                        "row_ordinal": row_ordinal,
+                        "rule": "UNSCOPED_MULTI_PARENT_TENOR_RETAINED_SOURCE_ONLY",
+                    }
+                )
+            else:
+                ambiguous_rows.append({"matched_roles": matched, "row_ordinal": row_ordinal})
         elif matched:
             role = matched[0]
             matched_scopes_by_hit[(row_ordinal, role)] = {
@@ -751,6 +1041,50 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         context_resolution_kind = "DECLARED_ROW_POPULATION_SCOPE"
     else:
         context_resolution_kind = "NO_CONTEXT_ROLE"
+    transposed_row_ordinals = {hit["row_ordinal"] for hit in transposed_row_role_hits}
+    if transposed_row_role_hits:
+        # In a transposed population the same tenor label intentionally maps
+        # to one child under each instrument column.  It is ambiguous only in
+        # the row-oriented interpretation, not in the authenticated 2-D axis.
+        ambiguous_rows = [
+            item for item in ambiguous_rows if item["row_ordinal"] not in transposed_row_ordinals
+        ]
+    exact_transposed_column_ordinals = {
+        hit["column_ordinal"]
+        for hit in transposed_column_role_hits
+        if hit.get("status", "").startswith("EXACT_")
+    }
+    transposed_total_column_ordinals = {
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict
+        and column.get("value_kind") == "MONEY"
+        and ordinal not in exact_transposed_column_ordinals
+        and any(
+            marker in f" {_normalized(_header_text(column))} "
+            for marker in (" tong cong ", " total ")
+        )
+    }
+    transposed_layout_visible = bool(
+        exact_transposed_column_ordinals
+        and len(transposed_total_column_ordinals) == 1
+        and total_rows
+    )
+    typed_control_disposition = _typed_control_disposition(
+        page_json, section, table, compiled_specs=compiled_specs
+    )
+    column_header_control_dispositions = {
+        exclusion["disposition"]
+        for exclusion in compiled_specs["typed_control_exclusions"]
+        if "COLUMN_HEADER" in exclusion.get("surface_kinds", [])
+    }
+    typed_control_conflict_disposition = (
+        typed_control_disposition
+        if typed_control_disposition is not None
+        and typed_control_disposition in column_header_control_dispositions
+        and bool(role_hits or transposed_row_role_hits or context_roles)
+        else None
+    )
     material = {
         "ambiguous_rows": ambiguous_rows,
         "context_resolution_kind": context_resolution_kind,
@@ -758,17 +1092,36 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
         "family_presence_anchor_visible": bool(
             family_root_row_ordinals
             or heading_context_roles
+            or transposed_layout_visible
             or any(hit["role"] in compiled_specs["presence_anchor_roles"] for hit in role_hits)
         ),
         "money_column_ordinals": money_ordinals,
         "owner_visible": _owner_visible(section, table, compiled_specs=compiled_specs),
         "role_hits": role_hits,
         "total_rows": total_rows,
-        "typed_control_disposition": _typed_control_disposition(
-            page_json, section, table, compiled_specs=compiled_specs
+        "typed_control_disposition": (
+            None if typed_control_conflict_disposition is not None else typed_control_disposition
         ),
         "unbound_money_row_ordinals": unbound_money_rows,
     }
+    if typed_control_conflict_disposition is not None:
+        # A control surface may not erase a simultaneously declared family
+        # role.  Preserve both signals and force the owner-fenced cluster to U
+        # instead of silently excluding the table.
+        material["typed_control_conflict_disposition"] = typed_control_conflict_disposition
+    if (
+        compiled_specs["money_metric_policy"]
+        == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    ):
+        material["transposed_column_role_hits"] = transposed_column_role_hits
+        material["transposed_row_role_hits"] = transposed_row_role_hits
+        material["inverted_hierarchy_scope_rows"] = inverted_hierarchy_scope_rows
+        material["unscoped_shared_child_rows"] = unscoped_shared_child_rows
+        material["layout_orientation"] = (
+            "INSTRUMENT_COLUMNS_TENOR_ROWS"
+            if transposed_layout_visible
+            else "ROW_ROLES_PERIOD_COLUMNS"
+        )
     if "owner_surface_kinds" in compiled_specs["query_policy"]:
         material["family_root_row_ordinals"] = family_root_row_ordinals
     return {
@@ -777,16 +1130,24 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     }
 
 
+def _classification_roles(classification: Mapping[str, Any]) -> set[str]:
+    return {
+        *(hit["role"] for hit in classification["role_hits"]),
+        *(classification["context_roles"]),
+        *(
+            hit["role"]
+            for hit in classification.get("transposed_column_role_hits", [])
+            if hit.get("status", "").startswith("EXACT_")
+        ),
+        *(hit["role"] for hit in classification.get("transposed_row_role_hits", [])),
+    }
+
+
 def _region(item: Mapping[str, Any], fragment_ordinal: int) -> dict[str, Any]:
     record = item["record"]
     classification = item["classification"]
     return {
-        "component_roles": sorted(
-            {
-                *(hit["role"] for hit in classification["role_hits"]),
-                *classification["context_roles"],
-            }
-        ),
+        "component_roles": sorted(_classification_roles(classification)),
         "document_id": record["document_id"],
         "document_ordinal": record["document_ordinal"],
         "fragment_ordinal": fragment_ordinal,
@@ -935,10 +1296,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         ]
         for item in reversed(same_page_preceding):
             classification = item["classification"]
-            roles = {
-                *(hit["role"] for hit in classification["role_hits"]),
-                *classification["context_roles"],
-            }
+            roles = _classification_roles(classification)
             if (
                 classification["typed_control_disposition"] is not None
                 or not classification["family_presence_anchor_visible"]
@@ -1004,8 +1362,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             if item["classification"]["typed_control_disposition"] is None
         ]
         roles = {
-            *(hit["role"] for item in family_items for hit in item["classification"]["role_hits"]),
-            *(role for item in family_items for role in item["classification"]["context_roles"]),
+            role for item in family_items for role in _classification_roles(item["classification"])
         }
         span = (
             family_items[-1]["position"][0] - family_items[0]["position"][0] if family_items else 0
@@ -1024,6 +1381,22 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
     if len(complete) > 1:
         reasons.append("MULTIPLE_COMPLETE_OWNER_CLUSTERS")
     selected = complete[0] if len(complete) == 1 else None
+    if selected is not None:
+        for item in selected["family_items"]:
+            conflict = item["classification"].get("typed_control_conflict_disposition")
+            if conflict is not None:
+                reasons.append(
+                    "TYPED_CONTROL_AND_DECLARED_FAMILY_ROLE_CONFLICT:"
+                    + conflict
+                    + ":"
+                    + ":".join(
+                        (
+                            item["record"]["page_json_version_id"],
+                            item["section_id"],
+                            item["table_id"],
+                        )
+                    )
+                )
     if intervals and selected is None and not reasons:
         reasons.append("COMPLETE_OWNER_CLUSTER_NOT_RESOLVED")
     selected_keys = (
@@ -1382,7 +1755,10 @@ def _exact_equation(
 
 
 def _aggregate_duplicate_roles(
-    records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]
+    records: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+    consumed_ordinals: set[int],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     by_role: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for record in records:
@@ -1395,6 +1771,15 @@ def _aggregate_duplicate_roles(
             continue
         if role not in compiled_specs["aggregate_duplicate_roles"] or not _same_lane_axis(
             occurrences
+        ):
+            output.extend(canonical_clone_v1(occurrences))
+            continue
+        if compiled_specs["duplicate_role_aggregation_policy"] == (
+            "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
+        ) and any(
+            source_ref.get("row_ordinal") not in consumed_ordinals
+            for occurrence in occurrences
+            for source_ref in occurrence["source_refs"]
         ):
             output.extend(canonical_clone_v1(occurrences))
             continue
@@ -1775,6 +2160,14 @@ def _derive_complete_top_level_family_root(
     candidate_component_roles = [
         role for role in compiled_specs["root_component_roles"] if by_role.get(role)
     ]
+    for declaration in compiled_specs["derived_role_equations"]:
+        if declaration["result_role"] not in candidate_component_roles or not all(
+            role in candidate_component_roles for role in declaration["component_roles"]
+        ):
+            continue
+        candidate_component_roles = [
+            role for role in candidate_component_roles if role not in declaration["component_roles"]
+        ]
     if not candidate_component_roles or any(
         len(by_role[role]) != 1 for role in candidate_component_roles
     ):
@@ -1891,6 +2284,840 @@ def _derive_complete_top_level_family_root(
     return output, [equation], [receipt], []
 
 
+def _transposed_source_ref(
+    region: Mapping[str, Any],
+    row_ordinal: int,
+    row: Mapping[str, Any],
+    *,
+    money_column_ordinals: Sequence[int],
+) -> dict[str, Any]:
+    return {
+        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+        "label_exact": row.get("label_exact"),
+        "locator": canonical_clone_v1(region),
+        "money_column_ordinals": list(money_column_ordinals),
+        "row_id": f"r{row_ordinal}",
+        "row_kind": row.get("row_kind"),
+        "row_ordinal": row_ordinal,
+    }
+
+
+def _transposed_record_from_rows(
+    role: str,
+    row_ordinals: Sequence[int],
+    column_ordinals: Sequence[int],
+    *,
+    rows: Sequence[Mapping[str, Any]],
+    lane_key: Sequence[str],
+    region: Mapping[str, Any],
+    state: str,
+) -> dict[str, Any]:
+    source_cells = []
+    source_refs = []
+    for row_ordinal in row_ordinals:
+        row = rows[row_ordinal - 1]
+        values = row.get("values_exact")
+        if type(values) is not list or any(ordinal > len(values) for ordinal in column_ordinals):
+            raise _error("transposed source coordinate is absent")
+        source_cells.extend(_source_money(values[ordinal - 1]) for ordinal in column_ordinals)
+        source_refs.append(
+            _transposed_source_ref(
+                region,
+                row_ordinal,
+                row,
+                money_column_ordinals=column_ordinals,
+            )
+        )
+    if len(source_cells) == 1:
+        cell = source_cells[0]
+    else:
+        cell = {
+            "coefficient": sum(item["coefficient"] for item in source_cells),
+            "source_text": None,
+            "state": "EXACT_TRANSPOSED_SOURCE_COORDINATE_SUM",
+        }
+    return _local_record(
+        role,
+        [cell],
+        [list(lane_key)],
+        source_refs,
+        state,
+        "CARRYING_VALUE",
+    )
+
+
+def _page_reporting_date_axis(page_json: Mapping[str, Any]) -> list[str]:
+    dates = set()
+    for section in page_json.get("sections") or []:
+        if type(section) is not dict:
+            continue
+        title = section.get("title_exact")
+        folded = _normalized(title)
+        if not folded or not any(
+            marker in f" {folded} " for marker in (" tai ngay ", " as at ", " as of ")
+        ):
+            continue
+        dates.update(item.isoformat() for item in _surface_dates(title))
+    return sorted(dates, reverse=True)
+
+
+def _document_reporting_period_context_axis(
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Derive a typed snapshot pair from repeated two-date MONEY tables."""
+
+    pair_evidence: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for page_json_version_id, page_json in page_json_by_version.items():
+        for section_ordinal, section in enumerate(page_json.get("sections") or [], start=1):
+            if type(section) is not dict:
+                continue
+            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
+                if type(table) is not dict:
+                    continue
+                dates = set()
+                invalid = False
+                for column in table.get("columns") or []:
+                    if type(column) is not dict or column.get("value_kind") != "MONEY":
+                        continue
+                    column_dates = {
+                        item.isoformat() for item in _surface_dates(_header_text(column))
+                    }
+                    if len(column_dates) > 1:
+                        invalid = True
+                        break
+                    dates.update(column_dates)
+                if invalid or len(dates) != 2:
+                    continue
+                pair = tuple(sorted(dates, reverse=True))
+                pair_evidence[pair].append(
+                    {
+                        "page_json_version_id": page_json_version_id,
+                        "section_id": f"s{section_ordinal}",
+                        "table_id": f"t{table_ordinal}",
+                    }
+                )
+    if not pair_evidence:
+        return {
+            "comparative_period_date": None,
+            "current_period_date": None,
+            "evidence": [],
+            "resolution": "NO_EXACT_TWO_DATE_MONEY_TABLE_CONTEXT",
+        }
+    latest_current = max(pair[0] for pair in pair_evidence)
+    candidates = [pair for pair in pair_evidence if pair[0] == latest_current]
+    maximum_support = max(len(pair_evidence[pair]) for pair in candidates)
+    candidates = [pair for pair in candidates if len(pair_evidence[pair]) == maximum_support]
+    if maximum_support < 2:
+        return {
+            "comparative_period_date": None,
+            "current_period_date": None,
+            "evidence": [
+                {"dates": list(pair), "source_refs": canonical_clone_v1(pair_evidence[pair])}
+                for pair in sorted(candidates, reverse=True)
+            ],
+            "resolution": "EXACT_TWO_DATE_MONEY_TABLE_CONTEXT_NOT_REPEATED",
+        }
+    if len(candidates) != 1:
+        return {
+            "comparative_period_date": None,
+            "current_period_date": None,
+            "evidence": [
+                {"dates": list(pair), "source_refs": canonical_clone_v1(pair_evidence[pair])}
+                for pair in sorted(candidates, reverse=True)
+            ],
+            "resolution": "EXACT_TWO_DATE_MONEY_TABLE_CONTEXT_AMBIGUOUS",
+        }
+    current, comparative = candidates[0]
+    return {
+        "comparative_period_date": comparative,
+        "current_period_date": current,
+        "evidence": canonical_clone_v1(pair_evidence[candidates[0]]),
+        "resolution": "UNIQUE_LATEST_REPEATED_TWO_DATE_MONEY_TABLE_CONTEXT",
+    }
+
+
+def _transposed_period_axis(
+    page_json: Mapping[str, Any],
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+    classification: Mapping[str, Any],
+    *,
+    document_period_context: Mapping[str, Any],
+) -> dict[str, Any]:
+    columns = table.get("columns")
+    rows = table.get("rows")
+    if type(columns) is not list or type(rows) is not list:
+        raise _error("transposed period source axes are invalid")
+    exact_column_hits = [
+        hit
+        for hit in classification.get("transposed_column_role_hits", [])
+        if hit.get("status", "").startswith("EXACT_")
+    ]
+    ambiguous_columns = [
+        hit
+        for hit in classification.get("transposed_column_role_hits", [])
+        if not hit.get("status", "").startswith("EXACT_")
+    ]
+    instrument_ordinals = sorted({hit["column_ordinal"] for hit in exact_column_hits})
+    total_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict
+        and column.get("value_kind") == "MONEY"
+        and ordinal not in instrument_ordinals
+        and any(
+            marker in f" {_normalized(_header_text(column))} "
+            for marker in (" tong cong ", " total ")
+        )
+    ]
+    all_money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    unclassified_money_ordinals = sorted(
+        set(all_money_ordinals) - set(instrument_ordinals) - set(total_ordinals)
+    )
+    reasons = []
+    if ambiguous_columns:
+        reasons.append("AMBIGUOUS_TRANSPOSED_INSTRUMENT_COLUMN_ROLE")
+    if not {hit["role"] for hit in exact_column_hits}:
+        reasons.append("TRANSPOSED_INSTRUMENT_ROLE_AXIS_INCOMPLETE")
+    if len(total_ordinals) != 1:
+        reasons.append("TRANSPOSED_EXACT_TOTAL_COLUMN_NOT_UNIQUE")
+    if unclassified_money_ordinals:
+        reasons.append(
+            "TRANSPOSED_UNCLASSIFIED_MONEY_COLUMNS:"
+            + ":".join(f"c{ordinal}" for ordinal in unclassified_money_ordinals)
+        )
+
+    column_date_axis = set()
+    column_semantic_roles = set()
+    for ordinal in [*instrument_ordinals, *total_ordinals]:
+        header = _header_text(columns[ordinal - 1])
+        dates = {item.isoformat() for item in _surface_dates(header)}
+        semantic_roles = _semantic_period_roles(header)
+        if len(dates) > 1:
+            reasons.append(f"TRANSPOSED_COLUMN_PERIOD_DATE_AMBIGUOUS:c{ordinal}")
+        if len(semantic_roles) > 1:
+            reasons.append(f"TRANSPOSED_COLUMN_PERIOD_ROLE_AMBIGUOUS:c{ordinal}")
+        column_date_axis.update(dates)
+        column_semantic_roles.update(semantic_roles)
+    if len(column_semantic_roles) > 1:
+        reasons.append("TRANSPOSED_COLUMN_PERIOD_ROLE_AXIS_CONFLICTS")
+
+    markers = []
+    for row_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            continue
+        label = row.get("label_exact")
+        roles = _semantic_period_roles(label)
+        dates = sorted({item.isoformat() for item in _surface_dates(label)}, reverse=True)
+        if len(dates) > 1:
+            reasons.append(f"TRANSPOSED_ROW_PERIOD_DATE_AMBIGUOUS:r{row_ordinal}")
+        if len(roles) > 1:
+            reasons.append(f"TRANSPOSED_ROW_PERIOD_ROLE_AMBIGUOUS:r{row_ordinal}")
+        elif len(roles) == 1:
+            values = row.get("values_exact")
+            if type(values) is not list or any(
+                ordinal <= len(values) and values[ordinal - 1] is not None
+                for ordinal in [*instrument_ordinals, *total_ordinals]
+            ):
+                reasons.append(f"TRANSPOSED_ROW_PERIOD_MARKER_HAS_MONEY_VALUES:r{row_ordinal}")
+            else:
+                markers.append(
+                    {
+                        "date": dates[0] if len(dates) == 1 else None,
+                        "role": roles[0],
+                        "row_ordinal": row_ordinal,
+                    }
+                )
+    blocks = []
+    if markers:
+        if column_date_axis or column_semantic_roles:
+            reasons.append("TRANSPOSED_ROW_BLOCKS_CONFLICT_WITH_COLUMN_PERIOD_EVIDENCE")
+        if [marker["role"] for marker in markers] != [
+            "CURRENT_PERIOD",
+            "COMPARATIVE_PERIOD",
+        ]:
+            reasons.append("TRANSPOSED_ROW_PERIOD_BLOCK_AXIS_NOT_CURRENT_COMPARATIVE")
+        else:
+            marker_dates = [marker["date"] for marker in markers]
+            if any(marker_dates) and not all(marker_dates):
+                reasons.append("TRANSPOSED_ROW_PERIOD_DATE_AXIS_PARTIAL")
+            elif all(marker_dates) and marker_dates[0] <= marker_dates[1]:
+                reasons.append("TRANSPOSED_ROW_PERIOD_DATE_AXIS_NOT_CURRENT_COMPARATIVE")
+            for marker_index, marker in enumerate(markers):
+                marker_ordinal = marker["row_ordinal"]
+                end = (
+                    markers[marker_index + 1]["row_ordinal"] - 1
+                    if marker_index + 1 < len(markers)
+                    else len(rows)
+                )
+                blocks.append(
+                    {
+                        "end_row_ordinal": end,
+                        "lane_key": (
+                            ["DATE", marker["date"]]
+                            if marker["date"] is not None
+                            else ["SEMANTIC_ALIAS", marker["role"]]
+                        ),
+                        "marker_row_ordinal": marker_ordinal,
+                        "start_row_ordinal": marker_ordinal + 1,
+                    }
+                )
+    else:
+        date_axis = set(column_date_axis)
+        page_reporting_dates = set(_page_reporting_date_axis(page_json))
+        if not date_axis:
+            date_axis.update(page_reporting_dates)
+        continuation = bool(
+            re.search(
+                r"\b(?:tiep theo|continued)\b",
+                _normalized(section.get("title_exact")),
+            )
+        )
+        if not date_axis and document_period_context.get("resolution") == (
+            "UNIQUE_LATEST_REPEATED_TWO_DATE_MONEY_TABLE_CONTEXT"
+        ):
+            context_key = "comparative_period_date" if continuation else "current_period_date"
+            context_date = document_period_context.get(context_key)
+            if type(context_date) is str:
+                date_axis.add(context_date)
+        if len(date_axis) != 1:
+            reasons.append("TRANSPOSED_SINGLE_PERIOD_DATE_NOT_UNIQUELY_RESOLVED")
+        else:
+            date = next(iter(date_axis))
+            contextual_roles = set()
+            if date in page_reporting_dates:
+                contextual_roles.add("CURRENT_PERIOD")
+            if document_period_context.get("resolution") == (
+                "UNIQUE_LATEST_REPEATED_TWO_DATE_MONEY_TABLE_CONTEXT"
+            ):
+                if date == document_period_context.get("current_period_date"):
+                    contextual_roles.add("CURRENT_PERIOD")
+                if date == document_period_context.get("comparative_period_date"):
+                    contextual_roles.add("COMPARATIVE_PERIOD")
+            if len(contextual_roles) > 1:
+                reasons.append("TRANSPOSED_DATE_PERIOD_CONTEXT_CONFLICTS")
+            if (
+                len(column_semantic_roles) == 1
+                and contextual_roles
+                and next(iter(column_semantic_roles)) not in contextual_roles
+            ):
+                reasons.append("TRANSPOSED_DATE_SEMANTIC_PERIOD_CONFLICT")
+            lane_key = (
+                ["SEMANTIC_ALIAS", next(iter(column_semantic_roles))]
+                if len(column_semantic_roles) == 1
+                else ["DATE", date]
+            )
+            blocks.append(
+                {
+                    "end_row_ordinal": len(rows),
+                    "lane_key": lane_key,
+                    "marker_row_ordinal": None,
+                    "start_row_ordinal": 1,
+                }
+            )
+    for block in blocks:
+        totals = [
+            ordinal
+            for ordinal in range(block["start_row_ordinal"], block["end_row_ordinal"] + 1)
+            if type(rows[ordinal - 1]) is dict and rows[ordinal - 1].get("row_kind") == "TOTAL"
+        ]
+        if len(totals) != 1:
+            reasons.append(
+                "TRANSPOSED_PERIOD_BLOCK_TERMINAL_TOTAL_NOT_UNIQUE:" + ":".join(block["lane_key"])
+            )
+        else:
+            block["total_row_ordinal"] = totals[0]
+    material = {
+        "blocks": blocks if not reasons else [],
+        "complete": not reasons,
+        "instrument_column_ordinals": instrument_ordinals,
+        "reasons": sorted(set(reasons)),
+        "rule": (
+            "EXACT_INSTRUMENT_COLUMNS_TENOR_ROWS_WITH_ONE_TOTAL_COLUMN_AND_"
+            "SOURCE_VISIBLE_PERIOD_BLOCKS"
+        ),
+        "total_column_ordinal": total_ordinals[0] if len(total_ordinals) == 1 else None,
+        "unclassified_money_column_ordinals": unclassified_money_ordinals,
+    }
+    return material
+
+
+def _transposed_carrier_record(
+    role: str,
+    carrier_ordinal: int,
+    column_ordinals: Sequence[int],
+    *,
+    rows: Sequence[Mapping[str, Any]],
+    lane_key: Sequence[str],
+    region: Mapping[str, Any],
+    end_exclusive: int,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], set[int]]:
+    carrier = rows[carrier_ordinal - 1]
+    values = carrier.get("values_exact")
+    if type(values) is not list or any(ordinal > len(values) for ordinal in column_ordinals):
+        return None, [], set()
+    carrier_visible = any(values[ordinal - 1] is not None for ordinal in column_ordinals)
+    descendants = [
+        ordinal
+        for ordinal in range(carrier_ordinal + 1, end_exclusive)
+        if type(rows[ordinal - 1]) is dict
+        and type(rows[ordinal - 1].get("values_exact")) is list
+        and any(
+            ordinal_column <= len(rows[ordinal - 1]["values_exact"])
+            and rows[ordinal - 1]["values_exact"][ordinal_column - 1] is not None
+            for ordinal_column in column_ordinals
+        )
+    ]
+    direct = [
+        ordinal
+        for ordinal in descendants
+        if not any(
+            other != ordinal and _row_is_strict_descendant(rows, ordinal, other)
+            for other in descendants
+        )
+    ]
+    equations = []
+    consumed = set()
+    if carrier_visible:
+        result = _transposed_record_from_rows(
+            role,
+            [carrier_ordinal],
+            column_ordinals,
+            rows=rows,
+            lane_key=lane_key,
+            region=region,
+            state="SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER",
+        )
+        if direct:
+            components = [
+                _transposed_record_from_rows(
+                    f"SOURCE_DIRECT_CHILD_r{ordinal}",
+                    [ordinal],
+                    column_ordinals,
+                    rows=rows,
+                    lane_key=lane_key,
+                    region=region,
+                    state="SOURCE_VISIBLE_TRANSPOSED_DIRECT_CHILD",
+                )
+                for ordinal in direct
+            ]
+            equation = _exact_equation(
+                kind="EXACT_TRANSPOSED_DIRECT_CHILDREN_EQUAL_VISIBLE_TENOR_CARRIER",
+                components=components,
+                result=result,
+            )
+            if equation is not None:
+                equations.append(equation)
+                consumed.update(direct)
+        return result, equations, consumed
+    if not direct:
+        # A visually blank instrument/tenor intersection is an explicit
+        # conditional zero candidate.  It is emitted only so the independent
+        # horizontal row total and vertical instrument total can prove or
+        # veto it; the global mapper promotes it only after those equations.
+        return (
+            _transposed_record_from_rows(
+                role,
+                [carrier_ordinal],
+                column_ordinals,
+                rows=rows,
+                lane_key=lane_key,
+                region=region,
+                state="SOURCE_BLANK_TRANSPOSED_TENOR_CARRIER_CONDITIONAL_ZERO",
+            ),
+            [],
+            set(),
+        )
+    result = _transposed_record_from_rows(
+        role,
+        direct,
+        column_ordinals,
+        rows=rows,
+        lane_key=lane_key,
+        region=region,
+        state="EXACT_TRANSPOSED_BLANK_CARRIER_DIRECT_CHILD_FRONTIER_SUM",
+    )
+    return result, [], set(direct)
+
+
+def _extract_transposed_table_local_records_core(
+    *,
+    page_json: Mapping[str, Any],
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+    region: Mapping[str, Any],
+    classification: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+    document_unit_context: Mapping[str, Any],
+    document_period_context: Mapping[str, Any],
+) -> dict[str, Any]:
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        raise _error("transposed source axes are invalid")
+    period_axis = _transposed_period_axis(
+        page_json,
+        section,
+        table,
+        classification,
+        document_period_context=document_period_context,
+    )
+    unit_table = canonical_clone_v1(table)
+    selected_columns = [
+        *period_axis["instrument_column_ordinals"],
+        *(
+            []
+            if period_axis["total_column_ordinal"] is None
+            else [period_axis["total_column_ordinal"]]
+        ),
+    ]
+    unit_table["columns"] = [
+        canonical_clone_v1(columns[ordinal - 1]) for ordinal in selected_columns
+    ]
+    unit_axis = _unit_axis(
+        unit_table,
+        compiled_specs=compiled_specs,
+        document_unit_context=document_unit_context,
+    )
+    receipt = {
+        "classification": canonical_clone_v1(classification),
+        "document_period_context": canonical_clone_v1(document_period_context),
+        "lane_axis": period_axis,
+        "region": canonical_clone_v1(region),
+        "unit_axis": unit_axis,
+    }
+    if not period_axis["complete"] or not unit_axis["complete"]:
+        return {
+            "equations": [],
+            "local_records": [],
+            "proven_roles": [],
+            "receipt": receipt,
+            "source_only_rows": [],
+            "unconsumed_reason": "TRANSPOSED_PERIOD_UNIT_OR_INSTRUMENT_AXIS_NOT_USABLE",
+        }
+    role_columns: dict[str, list[int]] = defaultdict(list)
+    for hit in classification["transposed_column_role_hits"]:
+        if hit.get("status", "").startswith("EXACT_"):
+            role_columns[hit["role"]].append(hit["column_ordinal"])
+    transposed_hits = classification["transposed_row_role_hits"]
+    local_records = []
+    equations = []
+    proven_roles = set()
+    consumed_rows = set()
+    reasons = []
+    for block in period_axis["blocks"]:
+        lane_key = block["lane_key"]
+        total_row = block["total_row_ordinal"]
+        block_hits = [
+            hit
+            for hit in transposed_hits
+            if block["start_row_ordinal"] <= hit["row_ordinal"] < total_row
+        ]
+        by_parent_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        by_row: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        carrier_ordinals = sorted({hit["row_ordinal"] for hit in block_hits})
+        for hit in block_hits:
+            by_parent_role[hit["parent_role"]].append(hit)
+            by_row[hit["row_ordinal"]].append(hit)
+        role_record_by_parent_and_child = {}
+        for parent_role in sorted(role_columns):
+            hits = by_parent_role.get(parent_role, [])
+            seen_roles = [hit["role"] for hit in hits]
+            if len(seen_roles) != len(set(seen_roles)):
+                reasons.append(
+                    f"TRANSPOSED_CHILD_ROLE_NOT_UNIQUE:{parent_role}:{':'.join(lane_key)}"
+                )
+                continue
+            for hit in hits:
+                later = [ordinal for ordinal in carrier_ordinals if ordinal > hit["row_ordinal"]]
+                end_exclusive = min(later, default=total_row)
+                try:
+                    record, child_equations, consumed = _transposed_carrier_record(
+                        hit["role"],
+                        hit["row_ordinal"],
+                        role_columns[parent_role],
+                        rows=rows,
+                        lane_key=lane_key,
+                        region=region,
+                        end_exclusive=end_exclusive,
+                    )
+                except ValueError:
+                    record = None
+                    child_equations = []
+                    consumed = set()
+                if record is None:
+                    reasons.append(
+                        f"TRANSPOSED_TENOR_CARRIER_VALUE_NOT_RESOLVED:{hit['role']}:r{hit['row_ordinal']}"
+                    )
+                    continue
+                local_records.append(record)
+                equations.extend(child_equations)
+                consumed_rows.update(consumed)
+                role_record_by_parent_and_child[(parent_role, hit["role"])] = record
+            try:
+                parent_record = _transposed_record_from_rows(
+                    parent_role,
+                    [total_row],
+                    role_columns[parent_role],
+                    rows=rows,
+                    lane_key=lane_key,
+                    region=region,
+                    state="SOURCE_VISIBLE_TRANSPOSED_INSTRUMENT_TOTAL",
+                )
+            except ValueError:
+                reasons.append(f"TRANSPOSED_INSTRUMENT_TOTAL_INVALID:{parent_role}")
+                continue
+            components = [
+                role_record_by_parent_and_child[(parent_role, hit["role"])]
+                for hit in hits
+                if (parent_role, hit["role"]) in role_record_by_parent_and_child
+            ]
+            if components:
+                equation = _exact_equation(
+                    kind="EXACT_TRANSPOSED_TENOR_FRONTIER_EQUALS_INSTRUMENT_TOTAL",
+                    components=components,
+                    result=parent_record,
+                )
+                if equation is None:
+                    reasons.append(
+                        f"TRANSPOSED_INSTRUMENT_VERTICAL_EQUATION_MISMATCH:{parent_role}"
+                    )
+                else:
+                    equations.append(equation)
+                    proven_roles.update([parent_role, *(item["role"] for item in components)])
+            local_records.append(parent_record)
+
+        total_column = period_axis["total_column_ordinal"]
+        if type(total_column) is not int:
+            raise _error("transposed total column is absent after complete lane validation")
+        for carrier_ordinal, hits in sorted(by_row.items()):
+            later = [ordinal for ordinal in carrier_ordinals if ordinal > carrier_ordinal]
+            end_exclusive = min(later, default=total_row)
+            try:
+                row_total, child_equations, consumed = _transposed_carrier_record(
+                    f"SOURCE_TRANSPOSED_ROW_TOTAL_r{carrier_ordinal}",
+                    carrier_ordinal,
+                    [total_column],
+                    rows=rows,
+                    lane_key=lane_key,
+                    region=region,
+                    end_exclusive=end_exclusive,
+                )
+            except ValueError:
+                row_total = None
+                child_equations = []
+                consumed = set()
+            components = [
+                role_record_by_parent_and_child[(hit["parent_role"], hit["role"])]
+                for hit in hits
+                if (hit["parent_role"], hit["role"]) in role_record_by_parent_and_child
+            ]
+            equation = (
+                None
+                if row_total is None
+                else _exact_equation(
+                    kind="EXACT_TRANSPOSED_INSTRUMENT_COLUMNS_EQUAL_VISIBLE_ROW_TOTAL",
+                    components=components,
+                    result=row_total,
+                )
+            )
+            if equation is None:
+                reasons.append(f"TRANSPOSED_ROW_HORIZONTAL_EQUATION_MISMATCH:r{carrier_ordinal}")
+            else:
+                equations.extend([*child_equations, equation])
+                consumed_rows.update(consumed)
+                proven_roles.update(item["role"] for item in components)
+
+        parent_records = [
+            record
+            for record in local_records
+            if record["lane_keys"] == [lane_key]
+            and record["role"] in role_columns
+            and record["state"] == "SOURCE_VISIBLE_TRANSPOSED_INSTRUMENT_TOTAL"
+        ]
+        root_record = _transposed_record_from_rows(
+            "FAMILY_ROOT_TOTAL",
+            [total_row],
+            [total_column],
+            rows=rows,
+            lane_key=lane_key,
+            region=region,
+            state="SOURCE_VISIBLE_TRANSPOSED_FAMILY_ROOT_TOTAL",
+        )
+        root_equation = _exact_equation(
+            kind="EXACT_TRANSPOSED_INSTRUMENT_TOTALS_EQUAL_VISIBLE_FAMILY_ROOT",
+            components=parent_records,
+            result=root_record,
+        )
+        if root_equation is None:
+            reasons.append("TRANSPOSED_FAMILY_ROOT_HORIZONTAL_EQUATION_MISMATCH")
+        else:
+            equations.append(root_equation)
+            proven_roles.update(["FAMILY_ROOT_TOTAL", *(item["role"] for item in parent_records)])
+        local_records.append(root_record)
+        consumed_rows.add(total_row)
+    source_only_rows = [
+        {
+            "consumed_by_exact_equation": row_ordinal in consumed_rows,
+            "row_ordinal": row_ordinal,
+            "source_ref": _transposed_source_ref(
+                region,
+                row_ordinal,
+                row,
+                money_column_ordinals=selected_columns,
+            ),
+        }
+        for row_ordinal, row in enumerate(rows, start=1)
+        if type(row) is dict
+        and type(row.get("values_exact")) is list
+        and row_ordinal not in {hit["row_ordinal"] for hit in transposed_hits}
+        and row_ordinal not in {block["marker_row_ordinal"] for block in period_axis["blocks"]}
+    ]
+    receipt["source_only_rows"] = source_only_rows
+    receipt["transposed_equation_count"] = len(equations)
+    receipt["transposed_reasons"] = sorted(set(reasons))
+    return {
+        "equations": equations,
+        "local_records": local_records,
+        "proven_roles": sorted(proven_roles),
+        "receipt": receipt,
+        "source_only_rows": source_only_rows,
+        "unconsumed_reason": None if not reasons else sorted(set(reasons))[0],
+    }
+
+
+def _transposed_right_shift_variants(
+    table: Mapping[str, Any], *, total_column_ordinal: int
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return []
+    row_options = []
+    for row_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict or type(row.get("values_exact")) is not list:
+            continue
+        values = row["values_exact"]
+        if len(values) != len(columns) or values[total_column_ordinal - 1] is not None:
+            continue
+        candidates = {}
+        for start_ordinal in range(1, total_column_ordinal):
+            suffix = values[start_ordinal - 1 : total_column_ordinal - 1]
+            if (
+                not suffix
+                or suffix[-1] is None
+                or not any(
+                    value is not None and _source_money(value)["coefficient"] != 0
+                    for value in suffix
+                )
+            ):
+                continue
+            aligned = [
+                *values[: start_ordinal - 1],
+                None,
+                *suffix,
+                *values[total_column_ordinal:],
+            ]
+            if aligned == values:
+                continue
+            candidates[canonical_json_sha256_v1(aligned)] = (
+                aligned,
+                {
+                    "after_values_exact": aligned,
+                    "before_values_exact": canonical_clone_v1(values),
+                    "row_ordinal": row_ordinal,
+                    "rule": (
+                        "ONE_CONTIGUOUS_SUFFIX_SHIFTED_RIGHT_INTO_BLANK_TOTAL_"
+                        "COLUMN_ONLY_IF_ALL_HORIZONTAL_AND_VERTICAL_EQUATIONS_EXACT"
+                    ),
+                },
+            )
+        if candidates:
+            row_options.append([(None, None), *candidates.values()])
+    if not row_options:
+        return []
+    combination_count = 1
+    for options in row_options:
+        combination_count *= len(options)
+        if combination_count > 256:
+            return []
+    variants = {}
+    for selections in product(*row_options):
+        repairs = [receipt for _aligned, receipt in selections if receipt is not None]
+        if not repairs:
+            continue
+        variant = canonical_clone_v1(table)
+        for aligned, receipt in selections:
+            if aligned is not None and receipt is not None:
+                variant["rows"][receipt["row_ordinal"] - 1]["values_exact"] = aligned
+        alignment_receipt = (
+            repairs[0]
+            if len(repairs) == 1
+            else {
+                "row_repairs": repairs,
+                "rule": (
+                    "UNIQUE_BOUNDED_SET_OF_CONTIGUOUS_ROW_SUFFIX_SHIFTS_ONLY_IF_"
+                    "ALL_HORIZONTAL_AND_VERTICAL_EQUATIONS_EXACT"
+                ),
+            }
+        )
+        variants[canonical_json_sha256_v1(variant)] = (variant, alignment_receipt)
+    return list(variants.values())
+
+
+def _extract_transposed_table_local_records(
+    *,
+    page_json: Mapping[str, Any],
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+    region: Mapping[str, Any],
+    classification: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+    document_unit_context: Mapping[str, Any],
+    document_period_context: Mapping[str, Any],
+) -> dict[str, Any]:
+    raw = _extract_transposed_table_local_records_core(
+        page_json=page_json,
+        section=section,
+        table=table,
+        region=region,
+        classification=classification,
+        compiled_specs=compiled_specs,
+        document_unit_context=document_unit_context,
+        document_period_context=document_period_context,
+    )
+    if raw["unconsumed_reason"] is None:
+        return raw
+    total_column = raw["receipt"]["lane_axis"].get("total_column_ordinal")
+    if type(total_column) is not int:
+        return raw
+    resolved = []
+    for variant, alignment_receipt in _transposed_right_shift_variants(
+        table, total_column_ordinal=total_column
+    ):
+        candidate = _extract_transposed_table_local_records_core(
+            page_json=page_json,
+            section=section,
+            table=variant,
+            region=region,
+            classification=classification,
+            compiled_specs=compiled_specs,
+            document_unit_context=document_unit_context,
+            document_period_context=document_period_context,
+        )
+        if candidate["unconsumed_reason"] is None:
+            resolved.append((candidate, alignment_receipt))
+    if len(resolved) != 1:
+        return raw
+    candidate, alignment_receipt = resolved[0]
+    candidate["receipt"]["value_alignment_receipt"] = alignment_receipt
+    return candidate
+
+
 def _extract_table_local_records(
     *,
     page_json: Mapping[str, Any],
@@ -1899,6 +3126,7 @@ def _extract_table_local_records(
     region: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
     document_unit_context: Mapping[str, Any],
+    document_period_context: Mapping[str, Any],
 ) -> dict[str, Any]:
     classification = classify_gemini_json_multitable_hierarchical_table_v1(
         page_json, section, table, compiled_specs=compiled_specs
@@ -1915,14 +3143,20 @@ def _extract_table_local_records(
         classification["context_resolution_kind"],
         "SOURCE_PRINTED_TOTAL_PROVEN_AS_TABLE_CONTEXT_ROLE",
     )
-    expected_roles = sorted(
-        {
-            *(hit["role"] for hit in classification["role_hits"]),
-            *classification["context_roles"],
-        }
-    )
+    expected_roles = sorted(_classification_roles(classification))
     if expected_roles != region["component_roles"]:
         raise _error("multi-table hierarchical fragment classification drifted")
+    if classification.get("layout_orientation") == "INSTRUMENT_COLUMNS_TENOR_ROWS":
+        return _extract_transposed_table_local_records(
+            page_json=page_json,
+            section=section,
+            table=table,
+            region=region,
+            classification=classification,
+            compiled_specs=compiled_specs,
+            document_unit_context=document_unit_context,
+            document_period_context=document_period_context,
+        )
     lane_axis = _multitable_lane_axis(section, table)
     unit_table = canonical_clone_v1(table)
     if lane_axis["complete"]:
@@ -2399,6 +3633,21 @@ def _extract_table_local_records(
             projected_label_only_groups.add(ordinal)
             consumed_ordinals.update(child_ordinals)
             proven_roles.add(role)
+            # The carrier proxy is constructed from the complete direct-child
+            # frontier, and is projected only after that proxy participates in
+            # the unique exact source-total closure above.  Consequently every
+            # declared direct child is equation-consumed too.  Preserve that
+            # proof at role granularity so a source BLANK in one child lane can
+            # be canonicalized to zero by the existing conditional-zero gate.
+            # This is graph-derived evidence, not a label/value inference.
+            if compiled_specs["duplicate_role_aggregation_policy"] == (
+                "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
+            ):
+                proven_roles.update(
+                    hit_by_row[child_ordinal]
+                    for child_ordinal in child_ordinals
+                    if child_ordinal in hit_by_row
+                )
         proven_roles.update(
             hit_by_row[ordinal] for ordinal, _record in component_axis if ordinal in hit_by_row
         )
@@ -2422,6 +3671,11 @@ def _extract_table_local_records(
                     terminal_total
                     and component_hit_roles
                     and component_hit_roles <= set(compiled_specs["root_component_roles"])
+                )
+                or (
+                    terminal_total
+                    and bool(classification.get("inverted_hierarchy_scope_rows"))
+                    and classification["family_presence_anchor_visible"]
                 )
             )
         else:
@@ -2463,6 +3717,79 @@ def _extract_table_local_records(
                 )
             )
             proven_roles.add(context_roles[0])
+
+    derived_structural_parent_receipts = []
+    if compiled_specs["money_metric_policy"] == (
+        "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    ):
+        existing_roles = {record["role"] for record in local_records}
+        for parent_role in compiled_specs["table_context_roles"]:
+            if parent_role in existing_roles:
+                continue
+            child_roles = {
+                role
+                for role in compiled_specs["child_by_role"]
+                if compiled_specs["child_by_role"][role]["role_kind"] != "STRUCTURAL_GROUP"
+                and any(
+                    matcher["within_role"] == parent_role
+                    for matcher in compiled_specs["matchers_by_role"][role]
+                )
+            }
+            components = [record for record in local_records if record["role"] in child_roles]
+            if (
+                not components
+                or not _same_lane_axis(components)
+                or any(
+                    component["valuation_basis"] != components[0]["valuation_basis"]
+                    for component in components[1:]
+                )
+                or any(
+                    source_ref.get("row_ordinal") not in consumed_ordinals
+                    for component in components
+                    for source_ref in component["source_refs"]
+                )
+            ):
+                continue
+            coefficients = _sum_records(components)
+            source_refs = [
+                source_ref for component in components for source_ref in component["source_refs"]
+            ]
+            parent_record = _local_record(
+                parent_role,
+                [
+                    {
+                        "coefficient": coefficient,
+                        "source_text": None,
+                        "state": "EXACT_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER_SUM",
+                    }
+                    for coefficient in coefficients
+                ],
+                components[0]["lane_keys"],
+                source_refs,
+                "STRUCTURAL_PARENT_DERIVED_FROM_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER",
+                components[0]["valuation_basis"],
+            )
+            equation = _exact_equation(
+                kind="EXACT_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER_DERIVES_PARENT",
+                components=components,
+                result=parent_record,
+            )
+            if equation is None:
+                continue
+            local_records.append(parent_record)
+            equations.append(equation)
+            existing_roles.add(parent_role)
+            proven_roles.add(parent_role)
+            proven_roles.update(component["role"] for component in components)
+            derived_structural_parent_receipts.append(
+                {
+                    "coefficients": coefficients,
+                    "component_roles": [component["role"] for component in components],
+                    "parent_role": parent_role,
+                    "rule": "COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER_DIRECT_SUM_NO_BACKSOLVE",
+                    "source_refs": canonical_clone_v1(source_refs),
+                }
+            )
 
     context_roles = classification["context_roles"]
     if (
@@ -2513,15 +3840,44 @@ def _extract_table_local_records(
             if source_ref["row_ordinal"] not in consumed_ordinals
         }
     )
+    unsealed_duplicate_roles = []
+    if compiled_specs["duplicate_role_aggregation_policy"] == (
+        "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
+    ):
+        local_records_by_role: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for local_record in local_records:
+            local_records_by_role[local_record["role"]].append(local_record)
+        unsealed_duplicate_roles = sorted(
+            role
+            for role, occurrences in local_records_by_role.items()
+            if role in compiled_specs["aggregate_duplicate_roles"]
+            and len(occurrences) > 1
+            and _same_lane_axis(occurrences)
+            and any(
+                source_ref.get("row_ordinal") not in consumed_ordinals
+                for occurrence in occurrences
+                for source_ref in occurrence["source_refs"]
+            )
+        )
     local_records, aggregation_receipts = _aggregate_duplicate_roles(
-        local_records, compiled_specs=compiled_specs
+        local_records,
+        compiled_specs=compiled_specs,
+        consumed_ordinals=consumed_ordinals,
     )
     receipt["aggregation_receipts"] = aggregation_receipts
     receipt["hierarchical_duplicate_receipts"] = hierarchical_duplicate_receipts
     if compiled_specs["label_only_structural_group_policy"] != "DISABLED":
         receipt["label_only_structural_group_receipts"] = label_only_structural_group_receipts
+    if compiled_specs["money_metric_policy"] == (
+        "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    ):
+        receipt["derived_structural_parent_receipts"] = derived_structural_parent_receipts
     receipt["source_only_rows"] = source_only_rows
     receipt["unproven_conditional_zero_rows"] = unproven_conditional_zero_rows
+    if compiled_specs["duplicate_role_aggregation_policy"] == (
+        "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
+    ):
+        receipt["unsealed_duplicate_roles"] = unsealed_duplicate_roles
     if classification["ambiguous_rows"]:
         unconsumed_reason = "AMBIGUOUS_DECLARED_SOURCE_ROW_ROLE"
     elif len(classification["context_roles"]) > 1:
@@ -2530,6 +3886,8 @@ def _extract_table_local_records(
         unconsumed_reason = "INVALID_VISIBLE_SOURCE_MONEY_CELL"
     elif unproven_conditional_zero_rows:
         unconsumed_reason = "UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW"
+    elif unsealed_duplicate_roles:
+        unconsumed_reason = "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED"
     else:
         unconsumed_reason = None
     return {
@@ -2540,6 +3898,85 @@ def _extract_table_local_records(
         "source_only_rows": source_only_rows,
         "unconsumed_reason": unconsumed_reason,
     }
+
+
+def _multitable_global_records(
+    local_records: Sequence[Mapping[str, Any]],
+    *,
+    proven_roles: set[str],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[str]]:
+    records, partial, reasons = _global_records(
+        local_records, proven_roles=proven_roles, allow_bare_year=True
+    )
+    if compiled_specs["period_lane_policy"] == "CURRENT_AND_COMPARATIVE_REQUIRED" or reasons:
+        return records, partial, reasons
+
+    partial_current_roles = {
+        item["role"] for item in partial if item.get("missing_lanes") == ["COMPARATIVE_PERIOD"]
+    }
+    if not partial_current_roles:
+        return records, partial, reasons
+    lane_keys = {
+        tuple(lane_key)
+        for record in local_records
+        if len(record["lane_keys"]) == 1
+        for lane_key in record["lane_keys"]
+    }
+    latest_date = max((key[1] for key in lane_keys if key[0] == "DATE"), default=None)
+    latest_year = max((key[1] for key in lane_keys if key[0] == "BARE_YEAR"), default=None)
+
+    def is_current_lane(key: tuple[str, ...]) -> bool:
+        return bool(
+            key == ("SEMANTIC_ALIAS", "CURRENT_PERIOD")
+            or (key[0] == "DATE" and key[1] == latest_date)
+            or (key[0] == "BARE_YEAR" and key[1] == latest_year)
+        )
+
+    by_role: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for record in local_records:
+        if (
+            record["role"] in partial_current_roles
+            and len(record["cells"]) == len(record["lane_keys"]) == 1
+            and is_current_lane(tuple(record["lane_keys"][0]))
+        ):
+            by_role[record["role"]].append(record)
+    output = dict(records)
+    single_reasons = []
+    recovered_roles = set()
+    for role in sorted(partial_current_roles):
+        observations = by_role.get(role, [])
+        if not observations:
+            continue
+        coefficients = {item["cells"][0]["coefficient"] for item in observations}
+        if len(coefficients) != 1:
+            single_reasons.append(f"CONFLICTING_SOURCE_VALUES_FOR_ROLE_LANE:{role}:CURRENT_PERIOD")
+            continue
+        selected = observations[0]
+        cell = canonical_clone_v1(selected["cells"][0])
+        if cell["state"].endswith("ZERO_IF_EQUATION_EXACT"):
+            if role not in proven_roles:
+                single_reasons.append(f"UNPROVEN_BLANK_ZERO_IN_MAPPING_ROLE:{role}")
+                continue
+            cell["state"] = "INFERRED_" + cell["state"]
+        output[role] = {
+            "cells": [cell],
+            "role": role,
+            "source_refs": [
+                source_ref
+                for observation in observations
+                if observation["cells"][0]["coefficient"] == cell["coefficient"]
+                for source_ref in canonical_clone_v1(observation["source_refs"])
+            ],
+            "state": (
+                selected["state"]
+                if len({item["state"] for item in observations}) == 1
+                else "CORROBORATED_MULTI_SOURCE_PRESENTATIONS"
+            ),
+        }
+        recovered_roles.add(role)
+    remaining_partial = [item for item in partial if item["role"] not in recovered_roles]
+    return output, remaining_partial, sorted(set(single_reasons))
 
 
 def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
@@ -2559,6 +3996,13 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         raise _error("multi-table hierarchical query receipt does not bind fragments")
     document_unit_context = _document_unit_context_axis(
         page_json_by_version, compiled_specs=compiled_specs
+    )
+    transposed_policy = (
+        compiled_specs["money_metric_policy"]
+        == "CARRYING_VALUE_PREFERRED_WITH_EXACT_PERIOD_AND_INSTRUMENT_AXES"
+    )
+    document_period_context = (
+        _document_reporting_period_context_axis(page_json_by_version) if transposed_policy else {}
     )
     local_records = []
     equations = []
@@ -2580,6 +4024,7 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
             region=region,
             compiled_specs=compiled_specs,
             document_unit_context=document_unit_context,
+            document_period_context=document_period_context,
         )
         local_records.extend(extracted["local_records"])
         equations.extend(extracted["equations"])
@@ -2629,8 +4074,10 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         if equation is not None:
             equations.append(equation)
             proven_roles.add(pair["detail_role"])
-    records, partial_roles, global_reasons = _global_records(
-        local_records, proven_roles=proven_roles, allow_bare_year=True
+    records, partial_roles, global_reasons = _multitable_global_records(
+        local_records,
+        proven_roles=proven_roles,
+        compiled_specs=compiled_specs,
     )
     reasons.extend(global_reasons)
     if (
@@ -2691,6 +4138,8 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         },
         "table_receipts": table_receipts,
     }
+    if transposed_policy:
+        closure_receipt["document_period_context"] = document_period_context
     if (
         compiled_specs["schema"]["root_mapping_policy"]
         == "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"

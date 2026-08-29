@@ -169,6 +169,25 @@ PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_HISTORICAL_ORACLES = (
         "size_bytes": 81492,
     },
 )
+PINNED_ISSUED_VALUABLE_PAPERS_HISTORICAL_ORACLES = (
+    {
+        "format_version": "ISSUED_VALUABLE_PAPERS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0076-issued-valuable-papers-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "d2c9a85c2d5a0a4fbdfb47321a27054a85ed2bdf81db022ae0ec1015d16117af",
+        "size_bytes": 196147,
+    },
+    {
+        "format_version": ("ANNUAL_2025_ISSUED_VALUABLE_PAPERS_8BANK_CODEX_VERIFIED_MAPPING_V1"),
+        "path": (
+            "docs/experiments/"
+            "E-0131-annual-2025-issued-valuable-papers-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "f2af00de94712cb2d46bdac149e401919b5681ccdb8fcb9afcc3afa161ad2e03",
+        "size_bytes": 244921,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -266,6 +285,55 @@ PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AXIS_SHA256 = {
     "equations": "baa4e5a6337dacec9edd8ca4dccaec71b818020b5f0bb5aff85ccc1a76026b40",
     "historical_comparator": ("6e4a1eccf284b716b6e840fc9e180624bff707bdb9ff35ad531fdb9887081714"),
     "mappings": "01d7eb41b11f0463be239a29e01157127492efce028b37f265c43f55eccc117e",
+}
+PINNED_ISSUED_VALUABLE_PAPERS_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "173895e78e18a5a453932c43d82411410234b3dec75ea20a1c7e01ee17adb219"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 186,
+    "candidate_disposition_axis_sha256": (
+        "8c9eebd1c56b4adcb4e8c0792607cdc32c48834e83b089b8470d92dc11025b77"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "12ac98c49f074f9f126e502d1032a320fb4a445688f8171026acc01514741cad",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 1228,
+    "not_observed_count": 0,
+    "ready_count": 140,
+    "unresolved_count": 0,
+}
+PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AUDIT_METRICS = {
+    "equation_count": 849,
+    "historical_comparator_exact_count": 150,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 134,
+    "historical_mapping_record_count": 136,
+    "mapping_count": 1228,
+}
+PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_COUNTS = {
+    "clusters": 140,
+    "equations": 849,
+    "historical_comparator": 152,
+    "mappings": 1228,
+}
+PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_SHA256 = {
+    "clusters": "c12b0e487f28e195bde11afcbec7be41650a5bc477dd4c0667270356dc75c9d9",
+    "equations": "2b8862a72ac0bf0057a63bc00416fbf92866bd4fdbbdebe367f4dda801c917dc",
+    "historical_comparator": ("8c3b19d3b7cfedfcbfb79f642502a9b404ecf567dd22c2888a89efc0a191d74c"),
+    "mappings": "5174aa74075b050642b1f25179e4d210aa02336cdfe1237a12266ac57f914435",
 }
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
@@ -476,6 +544,8 @@ def _historical_oracle_refs(
         return PINNED_GOVERNMENT_SBV_LIABILITIES_HISTORICAL_ORACLES
     if family_id == "ENTRUSTED_INVESTMENT_RISK_CAPITAL":
         return PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_HISTORICAL_ORACLES
+    if family_id == "ISSUED_VALUABLE_PAPERS":
+        return PINNED_ISSUED_VALUABLE_PAPERS_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -509,6 +579,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": (PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_AUDIT_METRICS),
             "query_receipt": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_QUERY_RECEIPT,
             "sweep_metrics": PINNED_ENTRUSTED_INVESTMENT_RISK_CAPITAL_RELEASE_METRICS,
+        }
+    if family_id == "ISSUED_VALUABLE_PAPERS":
+        return {
+            "axis_counts": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_ISSUED_VALUABLE_PAPERS_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -605,7 +683,7 @@ def _historical_comparator_axis(
                     type(report_norm_id) is not int
                     or report_norm_id in actual_by_id
                     or type(values) is not list
-                    or len(values) != 2
+                    or len(values) not in {1, 2}
                     or any(
                         type(value) is not dict or type(value.get("coefficient")) is not int
                         for value in values
@@ -613,27 +691,68 @@ def _historical_comparator_axis(
                 ):
                     raise _error("current multi-table comparator mapping axis is invalid")
                 actual_by_id[report_norm_id] = mapping
+            historical_report_norm_ids = {
+                binding.get("report_norm_id")
+                for historical in historical_mappings
+                if type(historical) is dict
+                and type(binding := historical.get("schema_binding")) is dict
+            }
             for historical in historical_mappings:
                 binding = historical.get("schema_binding")
                 source_values = historical.get("values")
                 old_report_norm_id = (
                     binding.get("report_norm_id") if type(binding) is dict else None
                 )
-                historical_coefficients = (
-                    [value.get("normalized_value") for value in source_values]
-                    if type(source_values) is list
-                    else None
-                )
+                historical_coefficients = None
+                if type(source_values) is list:
+                    by_period_role = {
+                        value.get("period_role"): value.get("normalized_value")
+                        for value in source_values
+                        if type(value) is dict
+                    }
+                    if len(by_period_role) == len(source_values) and set(by_period_role) in (
+                        {"CURRENT"},
+                        {"CURRENT", "COMPARATIVE"},
+                    ):
+                        historical_coefficients = [by_period_role["CURRENT"]]
+                        if "COMPARATIVE" in by_period_role:
+                            historical_coefficients.append(by_period_role["COMPARATIVE"])
                 current = actual_by_id.get(old_report_norm_id)
-                current_coefficients = (
+                full_current_coefficients = (
                     [value["coefficient"] for value in current["values"]]
                     if type(current) is dict
                     else None
                 )
+                current_role = current.get("role") if type(current) is dict else None
+                bond_report_norm_id = compiled_specs["bindings"].get("BOND")
+                other_report_norm_id = compiled_specs["bindings"].get("OTHER_ISSUED_PAPER")
+                if (
+                    compiled_specs["topology"]["family_id"] == "ISSUED_VALUABLE_PAPERS"
+                    and old_report_norm_id == bond_report_norm_id
+                    and other_report_norm_id not in historical_report_norm_ids
+                    and type(current) is dict
+                    and type(other := actual_by_id.get(other_report_norm_id)) is dict
+                    and len(current["values"]) == len(other["values"])
+                ):
+                    # The earlier oracle schema folded capital-raising/other
+                    # issued papers into BOND.  The current schema has an
+                    # explicit RNID 1117.  Compare the exact additive legacy
+                    # projection without changing either current mapping.
+                    full_current_coefficients = [
+                        left["coefficient"] + right["coefficient"]
+                        for left, right in zip(current["values"], other["values"], strict=True)
+                    ]
+                    current_role = "BOND_PLUS_OTHER_ISSUED_PAPER_LEGACY_PROJECTION"
+                current_coefficients = (
+                    full_current_coefficients[: len(historical_coefficients)]
+                    if type(full_current_coefficients) is list
+                    and type(historical_coefficients) is list
+                    else full_current_coefficients
+                )
                 exact = (
                     type(old_report_norm_id) is int
                     and type(historical_coefficients) is list
-                    and len(historical_coefficients) == 2
+                    and len(historical_coefficients) in {1, 2}
                     and all(type(value) is int for value in historical_coefficients)
                     and current is not None
                     and current_coefficients == historical_coefficients
@@ -645,7 +764,7 @@ def _historical_comparator_axis(
                             binding.get("canonical_name") if type(binding) is dict else None
                         ),
                         "current_coefficients": current_coefficients,
-                        "current_role": current.get("role") if type(current) is dict else None,
+                        "current_role": current_role,
                         "declared_role": current_role_by_id.get(old_report_norm_id),
                         "disposition": "EXACT" if exact else "MISMATCH",
                         "historical_coefficients": historical_coefficients,
