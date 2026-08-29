@@ -51,6 +51,21 @@ def _version_id(value: Any) -> str:
     return value
 
 
+def _candidate_id(value: Any) -> str:
+    if type(value) is not str:
+        raise _error("effective page frontier candidate identity is invalid")
+    parts = value.split(":")
+    if (
+        len(parts) != 3
+        or not parts[0].startswith("gj")
+        or parts[1] not in {"candidate", "query-disposition"}
+        or len(parts[2]) != 64
+        or any(character not in "0123456789abcdef" for character in parts[2])
+    ):
+        raise _error("effective page frontier candidate identity is invalid")
+    return value
+
+
 def _frontier_hash(version_ids: Sequence[str]) -> str:
     return canonical_json_sha256_v1(list(version_ids))
 
@@ -100,10 +115,9 @@ def build_gemini_family_effective_page_frontier_v1(
         checked = canonical_clone_v1(replacement)
         _version_id(checked["base_page_json_version_id"])
         _version_id(checked["selected_page_json_version_id"])
+        _candidate_id(checked["candidate_id"])
         if (
-            type(checked["candidate_id"]) is not str
-            or not checked["candidate_id"].startswith("gjfafcv1:candidate:")
-            or type(checked["document_ordinal"]) is not int
+            type(checked["document_ordinal"]) is not int
             or checked["document_ordinal"] <= 0
             or type(checked["physical_page"]) is not int
             or checked["physical_page"] <= 0

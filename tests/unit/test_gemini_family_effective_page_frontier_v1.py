@@ -61,6 +61,26 @@ def test_effective_page_frontier_replaces_only_exact_selected_versions() -> None
         apply_gemini_family_effective_page_frontier_v1(tampered, base_page_json_version_ids=base)
 
 
+def test_effective_page_frontier_accepts_content_addressed_multitable_candidate() -> None:
+    base = ["gfpstorev1:json:" + "1" * 64]
+    selected = "gfpstorev1:json:" + "7" * 64
+    replacement = _replacement(base[0], selected)
+    replacement["candidate_id"] = "gjmthfcv1:candidate:" + "3" * 64
+    value = build_gemini_family_effective_page_frontier_v1(
+        base_corpus_manifest_index_id="gjfccmiv1:index:" + "8" * 64,
+        base_page_json_version_ids=base,
+        database_ref=_ref("store.sqlite3", "9"),
+        family_id="INVESTMENT_SECURITIES_ACTIVITY",
+        job_status_counts={"ABSTAINED": 0, "RESOLVED": 1},
+        repair_source_family_run_id="gjfafstorev1:run:" + "a" * 64,
+        replacements=[replacement],
+        results_database_ref=_ref("families.sqlite3", "b"),
+    )
+    assert apply_gemini_family_effective_page_frontier_v1(value, base_page_json_version_ids=base)[
+        1
+    ] == [selected]
+
+
 def test_effective_page_frontier_preserves_identity_repair_observation() -> None:
     base = ["gfpstorev1:json:" + "1" * 64]
     value = build_gemini_family_effective_page_frontier_v1(

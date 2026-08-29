@@ -10,6 +10,10 @@ from pathlib import Path
 import pytest
 from test_gemini_financial_page_json_v1 import _page
 
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
+    build_financial_page_json_prompt_v1,
+    financial_page_json_response_schema_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     merge_region_repair_v1,
@@ -30,6 +34,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     document_page_image_frontier_v1,
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
+    ingest_whole_page_table_population_projection_v1,
     initialize_gemini_financial_page_store_v1,
     initialize_region_repair_extension_v1,
     load_page_json_versions_v1,
@@ -45,6 +50,100 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (
     selected_page_json_provenance_receipts_v1,
     usage_summary_v1,
 )
+
+
+def test_standard_items_retry_projects_one_table_population_with_lineage(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    base_page = _page()
+    base_table = base_page["sections"][0]["tables"][0]
+    base_table["rows"] = base_table["rows"][:2]
+    base_table["rows"][1]["values_exact"] = ["29.412 lỗi", "30.754.076"]
+    base = _ingest(path, page_json=base_page)
+
+    retry_page = deepcopy(base_page)
+    retry_table = retry_page["sections"][0]["tables"][0]
+    retry_table["title_exact"] = None
+    retry_page["sections"][0]["title_exact"] = "Phân tích theo loại hình doanh nghiệp"
+    retry_table["rows"][1]["values_exact"] = ["29.412.253", "30.754.076"]
+    retry_table["rows"].append(
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["434.609.559", "425.746.734"],
+        }
+    )
+    retry = _ingest(
+        path,
+        page_json=retry_page,
+        prompt_sha256=sha256(
+            build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+        ).hexdigest(),
+        prompt_variant="items",
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+    )
+    projected = ingest_whole_page_table_population_projection_v1(
+        path,
+        base_page_json_version_id=base["page_json_version_id"],
+        retry_page_json_version_id=retry["page_json_version_id"],
+        target_table_ref={"section_id": "s1", "table_id": "t1"},
+        required_changed_target_ids=["s1:t1:r2"],
+        require_added_rows=True,
+    )
+    selected_id = projected["page_json_version_id"]
+    loaded = load_page_json_versions_v1(path, page_json_version_ids=[selected_id])[0]
+    selected_table = loaded["page_json"]["sections"][0]["tables"][0]
+    assert selected_table["title_exact"] == base_table["title_exact"]
+    assert selected_table["rows"][1]["label_exact"] == base_table["rows"][1]["label_exact"]
+    assert selected_table["rows"][1]["values_exact"] == ["29.412.253", "30.754.076"]
+    assert selected_table["rows"][2]["row_kind"] == "TOTAL"
+    replayed = page_json_region_repair_lineages_v1(
+        path, observed_page_json_version_ids=[selected_id]
+    )
+    assert replayed[0]["repair_id"] == projected["lineage"]["repair_id"]
+    assert (
+        replayed[0]["repair_receipt"]["changes"][0]["projection_receipt"]
+        == projected["projection_receipt"]
+    )
+
+
+def test_table_population_projection_rejects_self_named_nonstandard_items_prompt(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    base_page = _page()
+    base_page["sections"][0]["tables"][0]["rows"] = base_page["sections"][0]["tables"][0]["rows"][
+        :2
+    ]
+    base = _ingest(path, page_json=base_page)
+    retry_page = deepcopy(base_page)
+    retry_page["sections"][0]["tables"][0]["rows"][1]["values_exact"] = ["1", "1"]
+    retry_page["sections"][0]["tables"][0]["rows"].append(
+        {
+            "hierarchy_path_exact": [None],
+            "label_exact": None,
+            "row_kind": "TOTAL",
+            "values_exact": ["1", "1"],
+        }
+    )
+    retry = _ingest(
+        path,
+        page_json=retry_page,
+        prompt_sha256="f" * 64,
+        prompt_variant="items",
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+    )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="authenticated standard items"):
+        ingest_whole_page_table_population_projection_v1(
+            path,
+            base_page_json_version_id=base["page_json_version_id"],
+            retry_page_json_version_id=retry["page_json_version_id"],
+            target_table_ref={"section_id": "s1", "table_id": "t1"},
+            required_changed_target_ids=["s1:t1:r2"],
+            require_added_rows=True,
+        )
 
 
 def _dual_axis_page_for_query(orientation: str, *, broad_metric: bool = False) -> dict:
@@ -424,6 +523,7 @@ def _ingest(
     source_sha256: str = "b" * 64,
     prompt_sha256: str = "d" * 64,
     prompt_variant: str = "compact",
+    response_schema_sha256: str = "e" * 64,
     provider_result: ProviderResultV1 | None = None,
     page_json: dict[str, object] | None = None,
 ) -> dict[str, str]:
@@ -446,7 +546,7 @@ def _ingest(
         prompt_variant=prompt_variant,
         output_contract_mode="JSON_SCHEMA",
         prompt_sha256=prompt_sha256,
-        response_schema_sha256="e" * 64,
+        response_schema_sha256=response_schema_sha256,
         requested_model="gemini-3.7-flash",
         requested_service_tier="flex",
         thinking_level="low",

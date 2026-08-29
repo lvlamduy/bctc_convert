@@ -19,6 +19,8 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
 )
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
     SEARCH_NORMALIZATION_VERSION,
+    build_financial_page_json_prompt_v1,
+    financial_page_json_response_schema_v1,
     normalize_search_text_v1,
     validate_financial_page_json_v1,
 )
@@ -27,6 +29,11 @@ from bctc_ai.evaluation.gemini_json_first_batch_v1 import (
     summarize_google_batch_operation_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
+from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
+    TABLE_POPULATION_PROJECTION_FORMAT_VERSION,
+    project_whole_page_table_population_v1,
+    validate_whole_page_table_population_projection_v1,
+)
 from bctc_ai.evaluation.gemini_json_structural_context_v1 import (
     declared_surface_alias_match_v1,
     family_anchor_lookup_forms_v1,
@@ -41,6 +48,12 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 FORMAT_VERSION = "GEMINI_FINANCIAL_PAGE_STORE_V9"
 DEFAULT_DATABASE_PATH = Path("data/local/gemini_financial_page_store_v1.sqlite3")
+_STANDARD_ITEMS_PROMPT_SHA256 = sha256(
+    build_financial_page_json_prompt_v1(variant="items").encode("utf-8")
+).hexdigest()
+_STANDARD_PAGE_RESPONSE_SCHEMA_SHA256 = canonical_json_sha256_v1(
+    financial_page_json_response_schema_v1()
+)
 _SELECTABLE_PROMPT_VARIANTS = frozenset(
     {
         "balanced",
@@ -475,7 +488,8 @@ def page_json_region_repair_lineages_v1(
                 "r.repair_id,r.base_page_json_version_id,r.merged_page_json_version_id,"
                 "r.receipt_sha256,r.receipt_json,"
                 "base.canonical_json_bytes AS base_page_json_bytes,"
-                "merged.canonical_json_bytes AS merged_page_json_bytes "
+                "merged.canonical_json_bytes AS merged_page_json_bytes,"
+                "merged_run.prompt_variant AS merged_prompt_variant "
                 "FROM selected_region_repair_lineage AS s "
                 "JOIN page_json_region_repair_observation AS o "
                 "ON o.merged_page_json_version_id=s.page_json_version_id "
@@ -484,6 +498,8 @@ def page_json_region_repair_lineages_v1(
                 "ON base.page_json_version_id=r.base_page_json_version_id "
                 "JOIN page_json_version AS merged "
                 "ON merged.page_json_version_id=r.merged_page_json_version_id "
+                "JOIN extraction_run AS merged_run "
+                "ON merged_run.extraction_run_id=merged.extraction_run_id "
                 "ORDER BY s.selection_ordinal"
             ).fetchall()
         except sqlite3.OperationalError as exc:
@@ -528,6 +544,82 @@ def page_json_region_repair_lineages_v1(
             or receipt.get("merged_page_json_sha256") != canonical_json_sha256_v1(merged_page_json)
         ):
             raise _error("region repair lineage receipt does not replay")
+        changes = receipt["changes"]
+        is_table_population_projection = (
+            type(changes) is list
+            and len(changes) == 1
+            and type(changes[0]) is dict
+            and changes[0].get("change_kind") == "WHOLE_PAGE_TABLE_POPULATION_PROJECTION"
+        )
+        if (row["merged_prompt_variant"] == "table-population-projection") != (
+            is_table_population_projection
+        ):
+            raise _error("table-population lineage kind and merged version differ")
+        if is_table_population_projection:
+            change = changes[0]
+            if set(change) != {
+                "change_kind",
+                "projection_receipt",
+                "retry_provenance",
+            }:
+                raise _error("table-population lineage change fields drifted")
+            projection = change["projection_receipt"]
+            if (
+                type(projection) is not dict
+                or projection.get("format_version") != TABLE_POPULATION_PROJECTION_FORMAT_VERSION
+            ):
+                raise _error("table-population lineage projection is invalid")
+            retry_id = projection.get("retry_page_json_version_id")
+            retry_versions = load_page_json_versions_v1(path, page_json_version_ids=[retry_id])
+            with _connect(path, readonly=True) as connection:
+                retry_row = connection.execute(
+                    "SELECT v.raw_response_sha256,r.extraction_run_id,r.prompt_variant,"
+                    "r.output_contract_mode,"
+                    "r.prompt_sha256,r.response_schema_sha256,r.requested_model,"
+                    "r.requested_service_tier,r.selected_provider,p.physical_page,"
+                    "p.image_sha256,d.source_logical_name,d.source_sha256 "
+                    "FROM page_json_version AS v JOIN extraction_run AS r "
+                    "USING(extraction_run_id) JOIN page AS p USING(page_id) "
+                    "JOIN document AS d USING(document_id) "
+                    "WHERE v.page_json_version_id=?",
+                    (retry_id,),
+                ).fetchone()
+            if retry_row is None:
+                raise _error("table-population retry provenance is absent")
+            if (
+                retry_row["prompt_variant"] != "items"
+                or retry_row["output_contract_mode"] != "JSON_SCHEMA"
+                or retry_row["prompt_sha256"] != _STANDARD_ITEMS_PROMPT_SHA256
+                or retry_row["response_schema_sha256"] != _STANDARD_PAGE_RESPONSE_SCHEMA_SHA256
+                or retry_row["requested_model"] != "gemini-3.7-flash"
+                or retry_row["requested_service_tier"] != "flex"
+            ):
+                raise _error("table-population retry prompt contract drifted")
+            expected_retry_provenance = {
+                "extraction_run_id": retry_row["extraction_run_id"],
+                "image_sha256": retry_row["image_sha256"],
+                "physical_page": retry_row["physical_page"],
+                "prompt_sha256": retry_row["prompt_sha256"],
+                "prompt_variant": retry_row["prompt_variant"],
+                "provider": retry_row["selected_provider"],
+                "raw_response_sha256": retry_row["raw_response_sha256"],
+                "requested_model": retry_row["requested_model"],
+                "requested_service_tier": retry_row["requested_service_tier"],
+                "response_schema_sha256": retry_row["response_schema_sha256"],
+                "source_logical_name": retry_row["source_logical_name"],
+                "source_sha256": retry_row["source_sha256"],
+            }
+            if (
+                change["retry_provenance"] != expected_retry_provenance
+                or receipt["repair_response_sha256"] != retry_row["raw_response_sha256"]
+            ):
+                raise _error("table-population retry provenance drifted")
+            validate_whole_page_table_population_projection_v1(
+                projection,
+                base_page_json=base_page_json,
+                retry_page_json=retry_versions[0]["page_json"],
+                merged_page_json=merged_page_json,
+            )
         result.append(
             {
                 "base_page_json_version_id": row["base_page_json_version_id"],
@@ -975,6 +1067,203 @@ def ingest_financial_page_extraction_v1(
         "extraction_run_id": extraction_run_id,
         "page_id": page_id,
         "page_json_version_id": page_json_version_id,
+    }
+
+
+def ingest_whole_page_table_population_projection_v1(
+    path: Path,
+    *,
+    base_page_json_version_id: str,
+    retry_page_json_version_id: str,
+    target_table_ref: Mapping[str, str],
+    required_changed_target_ids: Sequence[str],
+    require_added_rows: bool,
+) -> dict[str, Any]:
+    """Persist one local projection from an authenticated standard ``items`` retry.
+
+    The billed retry remains an ordinary immutable page extraction.  This
+    function adds a zero-cost local derived version and region-repair lineage;
+    it does not call a provider and never selects the retry page wholesale.
+    """
+
+    version_ids = [base_page_json_version_id, retry_page_json_version_id]
+    if len(set(version_ids)) != 2:
+        raise _error("table-population projection version frontier is invalid")
+    with _connect(path, readonly=True) as connection:
+        connection.execute(
+            "CREATE TEMP TABLE selected_table_population_projection("
+            "selection_ordinal INTEGER PRIMARY KEY,page_json_version_id TEXT NOT NULL UNIQUE)"
+        )
+        connection.executemany(
+            "INSERT INTO selected_table_population_projection VALUES (?,?)",
+            enumerate(version_ids, start=1),
+        )
+        rows = connection.execute(
+            "SELECT selected.selection_ordinal,v.page_json_version_id,v.page_id,"
+            "v.raw_response_sha256,v.canonical_json_bytes,r.extraction_run_id,"
+            "r.prompt_variant,r.output_contract_mode,r.prompt_sha256,"
+            "r.response_schema_sha256,r.requested_model,"
+            "r.requested_service_tier,r.selected_provider,"
+            "p.physical_page,p.image_sha256,p.image_size_bytes,p.pixel_width,p.pixel_height,"
+            "p.render_dpi,p.media_type,d.source_logical_name,d.source_sha256,d.source_size_bytes "
+            "FROM selected_table_population_projection AS selected "
+            "JOIN page_json_version AS v USING(page_json_version_id) "
+            "JOIN extraction_run AS r USING(extraction_run_id) "
+            "JOIN page AS p USING(page_id) JOIN document AS d USING(document_id) "
+            "ORDER BY selected.selection_ordinal"
+        ).fetchall()
+    if len(rows) != 2 or rows[0]["page_id"] != rows[1]["page_id"]:
+        raise _error("table-population base and retry versions do not bind one page")
+    if (
+        rows[1]["prompt_variant"] != "items"
+        or rows[1]["output_contract_mode"] != "JSON_SCHEMA"
+        or rows[1]["prompt_sha256"] != _STANDARD_ITEMS_PROMPT_SHA256
+        or rows[1]["response_schema_sha256"] != _STANDARD_PAGE_RESPONSE_SCHEMA_SHA256
+        or rows[1]["requested_model"] != "gemini-3.7-flash"
+        or rows[1]["requested_service_tier"] != "flex"
+        or rows[1]["selected_provider"]
+        not in {
+            "Google",
+            "OPENROUTER",
+            "GOOGLE_GEMINI_API",
+            "GOOGLE_GEMINI_BATCH_API",
+        }
+    ):
+        raise _error("table-population retry is not an authenticated standard items read")
+    try:
+        base_page_json = json.loads(rows[0]["canonical_json_bytes"])
+        retry_page_json = json.loads(rows[1]["canonical_json_bytes"])
+    except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("table-population source page JSON is invalid") from exc
+    merged, projection_receipt = project_whole_page_table_population_v1(
+        base_page_json,
+        retry_page_json,
+        base_page_json_version_id=base_page_json_version_id,
+        retry_page_json_version_id=retry_page_json_version_id,
+        target_table_ref=target_table_ref,
+        required_changed_target_ids=required_changed_target_ids,
+        require_added_rows=require_added_rows,
+    )
+    retry_provenance = {
+        "extraction_run_id": rows[1]["extraction_run_id"],
+        "image_sha256": rows[1]["image_sha256"],
+        "physical_page": rows[1]["physical_page"],
+        "prompt_sha256": rows[1]["prompt_sha256"],
+        "prompt_variant": rows[1]["prompt_variant"],
+        "provider": rows[1]["selected_provider"],
+        "raw_response_sha256": rows[1]["raw_response_sha256"],
+        "requested_model": rows[1]["requested_model"],
+        "requested_service_tier": rows[1]["requested_service_tier"],
+        "response_schema_sha256": rows[1]["response_schema_sha256"],
+        "source_logical_name": rows[1]["source_logical_name"],
+        "source_sha256": rows[1]["source_sha256"],
+    }
+    local_record = {
+        "projection_receipt": projection_receipt,
+        "retry_provenance": retry_provenance,
+    }
+    local_bytes = canonical_json_bytes_v1(local_record)
+    zero_usage = {
+        "actual_cost_usd": "0.000000000000",
+        "billing_disposition": "LOCAL_DERIVED_NO_PROVIDER_CALL",
+        "cached_input_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "thought_tokens": 0,
+        "total_tokens": 0,
+    }
+    provider_result = ProviderResultV1(
+        output_text=local_bytes.decode("utf-8"),
+        raw_response_bytes=local_bytes,
+        provider_name="LOCAL_DETERMINISTIC_PROJECTION",
+        provider_model=TABLE_POPULATION_PROJECTION_FORMAT_VERSION,
+        service_tier="NOT_APPLICABLE",
+        attempts=(
+            {
+                "attempt_ordinal": 1,
+                "credential_slot": "NOT_APPLICABLE",
+                "elapsed_seconds": "0.000",
+                "http_status": None,
+                "outcome": "LOCAL_DETERMINISTIC_PROJECTION",
+                "provider": "LOCAL_DETERMINISTIC_PROJECTION",
+                "usage": None,
+            },
+        ),
+        usage=zero_usage,
+        response_id_sha256=sha256(projection_receipt["projection_id"].encode("utf-8")).hexdigest(),
+    )
+    document = {
+        "source_logical_name": rows[0]["source_logical_name"],
+        "source_sha256": rows[0]["source_sha256"],
+        "source_size_bytes": rows[0]["source_size_bytes"],
+    }
+    page = {
+        "image_sha256": rows[0]["image_sha256"],
+        "image_size_bytes": rows[0]["image_size_bytes"],
+        "media_type": rows[0]["media_type"],
+        "physical_page": rows[0]["physical_page"],
+        "pixel_height": rows[0]["pixel_height"],
+        "pixel_width": rows[0]["pixel_width"],
+        "render_dpi": rows[0]["render_dpi"],
+    }
+    ingested = ingest_financial_page_extraction_v1(
+        path,
+        document=document,
+        page=page,
+        prompt_variant="table-population-projection",
+        output_contract_mode="LOCAL_DETERMINISTIC_PROJECTION",
+        prompt_sha256=canonical_json_sha256_v1(
+            {
+                "base_page_json_version_id": base_page_json_version_id,
+                "required_changed_target_ids": list(required_changed_target_ids),
+                "retry_page_json_version_id": retry_page_json_version_id,
+                "target_table_ref": dict(target_table_ref),
+            }
+        ),
+        response_schema_sha256=sha256(
+            TABLE_POPULATION_PROJECTION_FORMAT_VERSION.encode("utf-8")
+        ).hexdigest(),
+        requested_model="LOCAL_DETERMINISTIC_PROJECTION",
+        requested_service_tier="NOT_APPLICABLE",
+        thinking_level="NOT_APPLICABLE",
+        provider_result=provider_result,
+        page_json=merged,
+    )
+    changes = [
+        {
+            "change_kind": "WHOLE_PAGE_TABLE_POPULATION_PROJECTION",
+            "projection_receipt": projection_receipt,
+            "retry_provenance": retry_provenance,
+        }
+    ]
+    receipt_material = {
+        "base_page_json_sha256": canonical_json_sha256_v1(base_page_json),
+        "base_page_json_version_id": base_page_json_version_id,
+        "changes": changes,
+        "format_version": "GEMINI_JSON_REGION_REPAIR_V1",
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "repair_response_sha256": rows[1]["raw_response_sha256"],
+    }
+    region_receipt = {
+        **receipt_material,
+        "repair_id": "gjfrrv1:repair:" + canonical_json_sha256_v1(receipt_material),
+    }
+    lineage = record_page_json_region_repair_v1(
+        path,
+        merged_page_json_version_id=ingested["page_json_version_id"],
+        receipt=region_receipt,
+    )
+    validate_whole_page_table_population_projection_v1(
+        projection_receipt,
+        base_page_json=base_page_json,
+        retry_page_json=retry_page_json,
+        merged_page_json=merged,
+    )
+    return {
+        **ingested,
+        "lineage": lineage,
+        "projection_receipt": projection_receipt,
+        "region_repair_receipt": region_receipt,
     }
 
 
@@ -3171,7 +3460,9 @@ def query_selected_multitable_hierarchical_family_regions_v1(
         or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
     ):
         raise _error("selected multi-table hierarchical family query is invalid")
-    selected_page_extraction_receipts_v1(path, page_json_version_ids=selected_page_json_version_ids)
+    selected_page_json_provenance_receipts_v1(
+        path, page_json_version_ids=selected_page_json_version_ids
+    )
     documents = []
     selected_page_axis = []
     clusters = []

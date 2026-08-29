@@ -1,0 +1,14 @@
+{
+  "family_id": "INVESTMENT_SECURITIES_ACTIVITY",
+  "family_root_report_norm_id": 1193,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1194, "role": "INCOME_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 1195, "role": "EXPENSE_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 1196, "role": "PROVISION_INVESTMENT_SECURITIES"},
+    {"report_norm_id": 6028, "role": "LONG_TERM_INVESTMENT_PROVISION"},
+    {"report_norm_id": 1197, "role": "OTHER_INVESTMENT_SECURITIES"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "DURATION"
+}

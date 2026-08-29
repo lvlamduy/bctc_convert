@@ -21,11 +21,17 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
 )
+from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
+    merge_region_repair_v1,
+    region_repair_targets_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     initialize_gemini_financial_page_store_v1,
+    initialize_region_repair_extension_v1,
     query_selected_multitable_hierarchical_family_regions_v1,
+    record_page_json_region_repair_v1,
     validate_selected_multitable_hierarchical_family_candidate_replays_v1,
     validate_selected_multitable_hierarchical_family_query_evidence_v1,
 )
@@ -144,6 +150,53 @@ def test_indexed_query_flat_sweep_and_sqlite_candidate_replay(tmp_path) -> None:
         )
         == trials
     )
+
+
+def test_indexed_query_accepts_only_exact_replayed_derived_page_lineage(tmp_path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _summary_page()
+    base = _ingest(database, page_json=page)
+    targets = region_repair_targets_v1(page, target_ids=["s1:t1:r2"])
+    merged, receipt = merge_region_repair_v1(
+        page,
+        base_page_json_version_id=base["page_json_version_id"],
+        targets=targets,
+        repair={
+            "all_targets_transcribed": True,
+            "rows": [
+                {
+                    "label_exact": targets[0]["label_exact"],
+                    "target_id": "s1:t1:r2",
+                    "values_exact": ["61", "50"],
+                }
+            ],
+            "uncertainty_exact": [],
+        },
+    )
+    derived = _ingest(
+        database,
+        page_json=merged,
+        prompt_sha256="f" * 64,
+        prompt_variant="region-repair-row-values",
+    )
+    initialize_region_repair_extension_v1(database)
+    record_page_json_region_repair_v1(
+        database,
+        merged_page_json_version_id=derived["page_json_version_id"],
+        receipt=receipt,
+    )
+
+    evidence = query_selected_multitable_hierarchical_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[derived["page_json_version_id"]],
+        compiled_specs=_compiled(),
+    )
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 0,
+        READY: 1,
+        "UNRESOLVED_GEMINI_JSON_FAMILY": 0,
+    }
 
 
 def test_sqlite_replay_rejects_coherent_candidate_source_drift(tmp_path) -> None:

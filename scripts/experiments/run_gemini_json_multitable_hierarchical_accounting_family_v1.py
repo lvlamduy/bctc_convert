@@ -42,11 +42,17 @@ from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
     record_gemini_accounting_family_export_v1,
+    resolved_gemini_family_region_repair_overlay_v1,
 )
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
+from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: E402
+    apply_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    page_json_region_repair_lineages_v1,
     query_selected_multitable_hierarchical_family_regions_v1,
     validate_selected_multitable_hierarchical_family_candidate_replays_v1,
 )
@@ -298,6 +304,28 @@ PINNED_TRADING_SECURITIES_ACTIVITY_HISTORICAL_ORACLES = (
         ),
         "sha256": "baadd83a53c6040f6b92774386ece52cc9f6d4d99fe2ee110b28a76970caed50",
         "size_bytes": 82198,
+    },
+)
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_HISTORICAL_ORACLES = (
+    {
+        "format_version": "INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0085-investment-securities-activity-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "86f0a03859ff2d2283483c2792644562e190b6b5e2968c3e57720335c1acf823",
+        "size_bytes": 92485,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0140-annual-2025-investment-securities-activity-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "59d48f9f89cb5d658faaa1ed07a8747ffcc630462b4dd84feeacc41ed772fefa",
+        "size_bytes": 101812,
     },
 )
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
@@ -741,6 +769,57 @@ PINNED_TRADING_SECURITIES_ACTIVITY_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("62dece4056c6ee503e9b839d483b84c3477171032e3fd93761b0f60986269925"),
     "mappings": "76eb6855cb631d2acb384e7fabdafc71da92d42ab71a2104607d8ea0cd7a81ea",
 }
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "541096621eb8ba45c0238ad0a5fee7532090f047f500d1d3101331c6291fbb80"
+    ),
+    "accepted_cluster_count": 112,
+    "accepted_fragment_count": 112,
+    "candidate_disposition_axis_sha256": (
+        "14154f7f53198ca6da3ee477fb7d9f02ce245c1425304ad41a020fc15571acc3"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 28, READY: 112, UNRESOLVED: 0},
+    "query_policy_sha256": "532f11e15f638f07438f05e63996999c5d85e5bfedd33d0b6b3e96f4a4ab231a",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "ea864a4965be25215d92ad29ca797b836ca03277986ff90df884e919b1b80419"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": (
+        "5073c20d35c695aa2f8242f61f5c40abd5f8bab0cbb33bc2066bc2a01024d91b"
+    ),
+}
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 424,
+    "not_observed_count": 28,
+    "ready_count": 112,
+    "unresolved_count": 0,
+}
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AUDIT_METRICS = {
+    "equation_count": 128,
+    "historical_comparator_exact_count": 76,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 60,
+    "historical_mapping_record_count": 60,
+    "mapping_count": 424,
+}
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AXIS_COUNTS = {
+    "clusters": 112,
+    "equations": 128,
+    "historical_comparator": 76,
+    "mappings": 424,
+}
+PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AXIS_SHA256 = {
+    "clusters": "e8b3a0903cdf1b03f8bffa07c0f99722b832a15019eadc36c0d21c4551726791",
+    "equations": "19f6412d14278eeb1844ac82b9832b6fbe9afc452c510eae1c80d35039c2a483",
+    "historical_comparator": "463ab58fadb3d04c3350cbce4f0acac7e7dc8ee13e92f38b2e0cb9d72b6e3630",
+    "mappings": "fed1239c0a2b32fd05d2832f3254f3f9c857f24ff05b4b03509ecef7f482e1a1",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -964,6 +1043,8 @@ def _historical_oracle_refs(
         return PINNED_FX_GOLD_ACTIVITY_HISTORICAL_ORACLES
     if family_id == "TRADING_SECURITIES_ACTIVITY":
         return PINNED_TRADING_SECURITIES_ACTIVITY_HISTORICAL_ORACLES
+    if family_id == "INVESTMENT_SECURITIES_ACTIVITY":
+        return PINNED_INVESTMENT_SECURITIES_ACTIVITY_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1053,6 +1134,17 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_TRADING_SECURITIES_ACTIVITY_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_TRADING_SECURITIES_ACTIVITY_QUERY_RECEIPT,
             "sweep_metrics": PINNED_TRADING_SECURITIES_ACTIVITY_RELEASE_METRICS,
+        }
+    if family_id == "INVESTMENT_SECURITIES_ACTIVITY":
+        return {
+            "axis_counts": PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_INVESTMENT_SECURITIES_ACTIVITY_QUERY_RECEIPT,
+            "selected_page_json_frontier_sha256": (
+                "5073c20d35c695aa2f8242f61f5c40abd5f8bab0cbb33bc2066bc2a01024d91b"
+            ),
+            "sweep_metrics": PINNED_INVESTMENT_SECURITIES_ACTIVITY_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -1542,7 +1634,10 @@ def _assert_release_pins(
     mismatches = []
     if actual["corpus_manifest_index_id"] != PINNED_CORPUS_MANIFEST_INDEX_ID:
         mismatches.append("corpus_manifest_index_id")
-    if actual["selected_page_json_frontier_sha256"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256:
+    expected_frontier_sha256 = profile.get(
+        "selected_page_json_frontier_sha256", PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
+    )
+    if actual["selected_page_json_frontier_sha256"] != expected_frontier_sha256:
         mismatches.append("selected_page_json_frontier_sha256")
     if not same_typed_json_v1(actual["query_receipt"], profile["query_receipt"]):
         mismatches.append("query_receipt")
@@ -1687,6 +1782,7 @@ def _run_with_authenticated_database(
     schema: dict[str, Any],
     compiled: dict[str, Any],
     spec_refs: dict[str, Any],
+    effective_page_frontier: dict[str, Any] | None,
 ) -> dict[str, Any]:
     database = database_guard.path
     indexed = query_selected_multitable_hierarchical_family_regions_v1(
@@ -1717,6 +1813,7 @@ def _run_with_authenticated_database(
         evaluation_spec=evaluation,
         schema_binding_spec=schema,
         trials=trials,
+        effective_page_frontier=effective_page_frontier,
         indexed_query_evidence=indexed,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
@@ -1769,6 +1866,12 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
+    if effective_page_frontier is not None:
+        implementation_paths = (
+            *implementation_paths,
+            ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_v1.py",
+            ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",
+        )
     stored = ingest_gemini_accounting_family_sweep_v1(
         args.results_database,
         sweep=sweep,
@@ -1794,6 +1897,11 @@ def _run_with_authenticated_database(
         "axis_counts": audit["axis_counts"],
         "axis_sha256": audit["axis_sha256"],
         "disposition": "SUCCEEDED",
+        "effective_page_frontier_id": (
+            None
+            if effective_page_frontier is None
+            else effective_page_frontier["effective_page_frontier_id"]
+        ),
         "family_run_id": stored["family_run_id"],
         "metrics": sweep["metrics"],
         "output": str(args.output),
@@ -1807,20 +1915,69 @@ def _run_with_authenticated_database(
 def run(args: argparse.Namespace) -> dict[str, Any]:
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
-    source_database = _content_ref(artifact_root, index["database_ref"])
+    database = _content_ref(artifact_root, index["database_ref"])
+    database_reference = index["database_ref"]
     selected_ids = _selected_page_axis(index=index, artifact_root=artifact_root)
     topology = _json(args.topology_spec)
     evaluation = _json(args.evaluation_spec)
     schema = _json(args.schema_binding_spec)
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    effective_page_frontier = None
+    effective_page_frontier_path = getattr(args, "effective_page_frontier", None)
+    if effective_page_frontier_path is not None:
+        effective_page_frontier, selected_ids = apply_gemini_family_effective_page_frontier_v1(
+            _json(effective_page_frontier_path),
+            base_page_json_version_ids=selected_ids,
+        )
+        if (
+            effective_page_frontier["base_corpus_manifest_index_id"]
+            != index["corpus_manifest_index_id"]
+            or effective_page_frontier["family_id"] != compiled["topology"]["family_id"]
+        ):
+            raise _error("effective page frontier does not bind this corpus and family")
+        for stage in effective_page_frontier_stages_v1(effective_page_frontier):
+            database = _content_ref(artifact_root, stage["database_ref"])
+            database_reference = stage["database_ref"]
+            repair_results_database = _content_ref(artifact_root, stage["results_database_ref"])
+            source_overlay = resolved_gemini_family_region_repair_overlay_v1(
+                repair_results_database,
+                family_run_id=stage["repair_source_family_run_id"],
+            )
+            if (
+                source_overlay["family_id"] != stage["family_id"]
+                or source_overlay["job_status_counts"] != stage["job_status_counts"]
+            ):
+                raise _error("effective page frontier source family jobs do not replay")
+            lineages = page_json_region_repair_lineages_v1(
+                database,
+                observed_page_json_version_ids=[
+                    replacement["selected_page_json_version_id"]
+                    for replacement in source_overlay["replacements"]
+                ],
+            )
+            replacements = []
+            for replacement, lineage in zip(source_overlay["replacements"], lineages, strict=True):
+                if (
+                    lineage["base_page_json_version_id"] != replacement["base_page_json_version_id"]
+                    or lineage["observed_page_json_version_id"]
+                    != replacement["selected_page_json_version_id"]
+                ):
+                    raise _error("effective page frontier repair lineage does not replay")
+                replacements.append(
+                    {
+                        **replacement,
+                        "repair_id": lineage["repair_id"],
+                        "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+                    }
+                )
+            if replacements != stage["replacements"]:
+                raise _error("effective page frontier replacement evidence drifted")
     spec_refs = {
         "evaluation": _file_ref(args.evaluation_spec, root=ROOT),
         "schema_binding": _file_ref(args.schema_binding_spec, root=ROOT),
         "topology": _file_ref(args.topology_spec, root=ROOT),
     }
-    with _authenticated_sqlite_snapshot(
-        source_database, reference=index["database_ref"]
-    ) as database_guard:
+    with _authenticated_sqlite_snapshot(database, reference=database_reference) as database_guard:
         return _run_with_authenticated_database(
             args,
             index=index,
@@ -1831,12 +1988,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             schema=schema,
             compiled=compiled,
             spec_refs=spec_refs,
+            effective_page_frontier=effective_page_frontier,
         )
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus-index", type=Path, required=True)
+    parser.add_argument(
+        "--effective-page-frontier",
+        type=Path,
+        help="Optional immutable repair overlay; never mutates the frozen base corpus index.",
+    )
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)

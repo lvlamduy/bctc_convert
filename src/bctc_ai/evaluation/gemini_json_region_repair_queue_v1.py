@@ -14,6 +14,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import _row_roles
+from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
+    TABLE_POPULATION_PROJECTION_FORMAT_VERSION,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -570,3 +573,84 @@ def build_family_region_repair_plans_v1(
                 }
             )
     return sorted(plans, key=lambda plan: (plan["document_ordinal"], plan["repair_job_id"]))
+
+
+def build_whole_page_table_population_projection_repair_plan_v1(
+    *, sweep: Mapping[str, Any], projection_receipt: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Bind one standard-page retry projection to its typed unresolved candidate.
+
+    This is a local orchestration plan, not a new Gemini prompt.  The provider
+    has already produced the ordinary sealed ``items`` page version; the plan
+    only authorizes deterministic projection when the failed candidate proves
+    both an invalid visible cell and a missing source-visible family total.
+    """
+
+    checked = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
+    if type(projection_receipt) is not dict:
+        raise _error("table-population projection receipt is invalid")
+    projection = canonical_clone_v1(dict(projection_receipt))
+    projection_material = {key: projection[key] for key in projection if key != "projection_id"}
+    if (
+        projection.get("format_version") != TABLE_POPULATION_PROJECTION_FORMAT_VERSION
+        or projection.get("projection_id")
+        != "gjfwtppv1:projection:" + canonical_json_sha256_v1(projection_material)
+        or type(projection.get("required_changed_target_ids")) is not list
+        or not projection["required_changed_target_ids"]
+    ):
+        raise _error("table-population projection receipt identity drifted")
+    base_ref = projection.get("base_table_ref")
+    if type(base_ref) is not dict or set(base_ref) != {"section_id", "table_id"}:
+        raise _error("table-population base table reference is invalid")
+    matches = []
+    for trial in checked["trials"]:
+        if trial["status"] != UNRESOLVED:
+            continue
+        for candidate in trial["candidates"]:
+            if (
+                candidate["status"] == UNRESOLVED
+                and candidate["page_json_version_id"] == projection["base_page_json_version_id"]
+                and candidate["section_id"] == base_ref["section_id"]
+                and candidate["table_id"] == base_ref["table_id"]
+            ):
+                matches.append((trial, candidate))
+    if len(matches) != 1:
+        raise _error("table-population projection does not bind one unresolved candidate")
+    trial, candidate = matches[0]
+    required_reasons = {
+        "INVALID_VISIBLE_SOURCE_MONEY_CELL",
+        "REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN",
+    }
+    if not required_reasons.issubset(candidate["reasons"]):
+        raise _error("table-population candidate does not expose the required typed failures")
+    target_prefix = f"{candidate['section_id']}:{candidate['table_id']}:"
+    if any(
+        type(target_id) is not str or not target_id.startswith(target_prefix)
+        for target_id in projection["required_changed_target_ids"]
+    ):
+        raise _error("table-population changed target lies outside its candidate")
+    material = {
+        "base_page_json_version_id": candidate["page_json_version_id"],
+        "candidate_id": candidate["candidate_id"],
+        "document_ordinal": trial["document_ordinal"],
+        "family_id": checked["family_id"],
+        "format_version": FORMAT_VERSION,
+        "physical_page": candidate["physical_page"],
+        "projection_kind": "WHOLE_PAGE_TABLE_POPULATION_PROJECTION",
+        "repair_policy": {
+            "initial_thinking_level": "low",
+            "max_attempts": 1,
+            "thinking_escalation": [],
+        },
+        "repair_scope": "STANDARD_ITEMS_RETRY_LOCAL_TABLE_POPULATION_PROJECTION",
+        "retry_page_json_version_id": projection["retry_page_json_version_id"],
+        "section_id": candidate["section_id"],
+        "source_logical_name": trial["source_logical_name"],
+        "source_sha256": trial["source_sha256"],
+        "table_id": candidate["table_id"],
+        "target_ids": projection["required_changed_target_ids"],
+    }
+    return {
+        **material,
+        "repair_job_id": "gjfrrqv1:job:" + canonical_json_sha256_v1(material),
+    }

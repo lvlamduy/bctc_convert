@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from typing import Any
 
@@ -18,6 +18,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 FORMAT_VERSION = "GEMINI_JSON_REGION_REPAIR_V1"
+TABLE_POPULATION_PROJECTION_FORMAT_VERSION = "GEMINI_JSON_WHOLE_PAGE_TABLE_POPULATION_PROJECTION_V1"
 
 
 class GeminiJsonRegionRepairV1Error(ValueError):
@@ -913,3 +914,283 @@ def merge_region_repair_v1(
 
 def repair_prompt_sha256_v1(prompt: str) -> str:
     return sha256(prompt.encode("utf-8")).hexdigest()
+
+
+def _normalized_surface(value: Any) -> str | None:
+    if value is None:
+        return None
+    if type(value) is not str or not value.strip():
+        raise _error("table-population projection surface is invalid")
+    normalized = normalize_search_text_v1(value)["text_search_normalized"]
+    if type(normalized) is not str or not normalized:
+        raise _error("table-population projection surface has no normalized identity")
+    return normalized
+
+
+def _normalized_path(value: Any) -> tuple[str | None, ...]:
+    if type(value) is not list or not value:
+        raise _error("table-population projection path is invalid")
+    return tuple(_normalized_surface(item) for item in value)
+
+
+def _column_axis(table: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    result = []
+    for column in table["columns"]:
+        header = " ".join(item for item in column["header_path_exact"] if item is not None)
+        normalized = _normalized_surface(header)
+        if normalized is None:
+            raise _error("table-population projection column header is absent")
+        result.append((column["value_kind"], normalized))
+    return tuple(result)
+
+
+def _row_anchor(row: Mapping[str, Any]) -> tuple[str, tuple[str | None, ...]]:
+    label = _normalized_surface(row["label_exact"])
+    hierarchy = _normalized_path(row["hierarchy_path_exact"])
+    if label is None:
+        visible_hierarchy = tuple(item for item in hierarchy if item is not None)
+        if not visible_hierarchy:
+            raise _error("base table row has no stable textual anchor")
+        label = visible_hierarchy[-1]
+    return label, hierarchy
+
+
+def _table_ref(value: Any, *, field: str) -> tuple[int, int, dict[str, str]]:
+    if type(value) is not dict or set(value) != {"section_id", "table_id"}:
+        raise _error(f"{field} table reference is invalid")
+    section = value["section_id"]
+    table = value["table_id"]
+    if (
+        type(section) is not str
+        or type(table) is not str
+        or not section.startswith("s")
+        or not table.startswith("t")
+        or not section[1:].isdigit()
+        or not table[1:].isdigit()
+        or section[1:].startswith("0")
+        or table[1:].startswith("0")
+    ):
+        raise _error(f"{field} table reference is invalid")
+    return int(section[1:]) - 1, int(table[1:]) - 1, dict(value)
+
+
+def project_whole_page_table_population_v1(
+    base_page_json: Any,
+    retry_page_json: Any,
+    *,
+    base_page_json_version_id: str,
+    retry_page_json_version_id: str,
+    target_table_ref: Mapping[str, str],
+    required_changed_target_ids: Sequence[str],
+    require_added_rows: bool,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Project one uniquely anchored table population from a standard page retry.
+
+    The retry is still the ordinary whole-page reader response.  This local
+    projection never selects the retry page wholesale: it keeps every base
+    section/table/header byte and replaces only one row population after the
+    column, period, unit, title and ordered row-anchor axes match uniquely.
+    Existing non-target rows must be semantically unchanged.  Added rows are
+    source observations, not inferred values; the consuming family evaluator
+    remains responsible for exhaustive role inventory and exact equations.
+    """
+
+    base = validate_financial_page_json_v1(base_page_json)
+    retry = validate_financial_page_json_v1(retry_page_json)
+    if (
+        type(base_page_json_version_id) is not str
+        or not base_page_json_version_id.startswith("gfpstorev1:json:")
+        or type(retry_page_json_version_id) is not str
+        or not retry_page_json_version_id.startswith("gfpstorev1:json:")
+        or base_page_json_version_id == retry_page_json_version_id
+        or type(required_changed_target_ids) not in {list, tuple}
+        or not required_changed_target_ids
+        or len(set(required_changed_target_ids)) != len(required_changed_target_ids)
+        or type(require_added_rows) is not bool
+    ):
+        raise _error("table-population projection authority is invalid")
+    section_index, table_index, checked_target_ref = _table_ref(target_table_ref, field="base")
+    try:
+        base_section = base["sections"][section_index]
+        base_table = base_section["tables"][table_index]
+    except (IndexError, KeyError, TypeError) as exc:
+        raise _error("table-population base target lies outside the page") from exc
+    if checked_target_ref != {
+        "section_id": f"s{section_index + 1}",
+        "table_id": f"t{table_index + 1}",
+    }:
+        raise _error("table-population base target identity drifted")
+
+    required_targets = list(required_changed_target_ids)
+    required_row_indexes = []
+    for target_id in required_targets:
+        target_section, target_table, target_row = _target_id(target_id)
+        if (target_section, target_table) != (section_index, table_index):
+            raise _error("changed row target is outside the selected base table")
+        if not 0 <= target_row < len(base_table["rows"]):
+            raise _error("changed row target lies outside the base row population")
+        required_row_indexes.append(target_row)
+
+    base_anchors = [_row_anchor(row) for row in base_table["rows"]]
+    if len(set(base_anchors)) != len(base_anchors):
+        raise _error("base table row anchors are duplicate")
+    base_context = _normalized_surface(base_table["title_exact"])
+    if base_context is None:
+        base_context = _normalized_surface(base_section["title_exact"])
+    if base_context is None:
+        raise _error("base table has no explicit title context")
+    base_column_axis = _column_axis(base_table)
+    base_unit = _normalized_surface(base_table["unit_exact"])
+
+    matches: list[tuple[int, int, dict[str, Any]]] = []
+    for retry_section_index, retry_section in enumerate(retry["sections"]):
+        for retry_table_index, retry_table in enumerate(retry_section["tables"]):
+            if _column_axis(retry_table) != base_column_axis:
+                continue
+            if _normalized_surface(retry_table["unit_exact"]) != base_unit:
+                continue
+            retry_contexts = {
+                item
+                for item in (
+                    _normalized_surface(retry_table["title_exact"]),
+                    _normalized_surface(retry_section["title_exact"]),
+                )
+                if item is not None
+            }
+            if base_context not in retry_contexts:
+                continue
+            retry_anchor_positions: dict[tuple[str, tuple[str | None, ...]], list[int]] = {}
+            for retry_row_index, retry_row in enumerate(retry_table["rows"]):
+                try:
+                    anchor = _row_anchor(retry_row)
+                except GeminiJsonRegionRepairV1Error:
+                    continue
+                retry_anchor_positions.setdefault(anchor, []).append(retry_row_index)
+            if any(len(retry_anchor_positions.get(anchor, [])) != 1 for anchor in base_anchors):
+                continue
+            positions = [retry_anchor_positions[anchor][0] for anchor in base_anchors]
+            if positions != sorted(positions):
+                continue
+            matches.append(
+                (
+                    retry_section_index,
+                    retry_table_index,
+                    {
+                        "base_row_to_retry_row": positions,
+                        "retry_table": retry_table,
+                    },
+                )
+            )
+    if len(matches) != 1:
+        raise _error("standard page retry does not expose one unique table population")
+    retry_section_index, retry_table_index, selected = matches[0]
+    retry_table = selected["retry_table"]
+    positions = selected["base_row_to_retry_row"]
+    target_indexes = set(required_row_indexes)
+    changed_target_ids = []
+    matched_receipts = []
+    for base_row_index, retry_row_index in enumerate(positions):
+        base_row = base_table["rows"][base_row_index]
+        retry_row = retry_table["rows"][retry_row_index]
+        if base_row["row_kind"] != retry_row["row_kind"]:
+            raise _error("matched row kind changed in the page retry")
+        if _row_anchor(base_row) != _row_anchor(retry_row):
+            raise _error("matched row anchor changed in the page retry")
+        values_changed = base_row["values_exact"] != retry_row["values_exact"]
+        if values_changed and base_row_index not in target_indexes:
+            raise _error("page retry changed a non-target existing row")
+        target_id = f"s{section_index + 1}:t{table_index + 1}:r{base_row_index + 1}"
+        if values_changed:
+            changed_target_ids.append(target_id)
+        matched_receipts.append(
+            {
+                "base_target_id": target_id,
+                "retry_target_id": (
+                    f"s{retry_section_index + 1}:t{retry_table_index + 1}:r{retry_row_index + 1}"
+                ),
+                "values_changed": values_changed,
+            }
+        )
+    if changed_target_ids != required_targets:
+        raise _error("required changed row axis is incomplete or reordered")
+    matched_retry_indexes = set(positions)
+    added_retry_row_ids = [
+        f"s{retry_section_index + 1}:t{retry_table_index + 1}:r{row_index + 1}"
+        for row_index in range(len(retry_table["rows"]))
+        if row_index not in matched_retry_indexes
+    ]
+    if require_added_rows != bool(added_retry_row_ids):
+        raise _error("page retry row-extension contract does not match the observed population")
+    if any(
+        retry_table["rows"][row_index]["row_kind"] not in {"GROUP", "SUBTOTAL", "TOTAL"}
+        for row_index in range(len(retry_table["rows"]))
+        if row_index not in matched_retry_indexes
+    ):
+        raise _error("page retry added a non-structural source row")
+
+    merged = canonical_clone_v1(base)
+    base_by_retry_index = {
+        retry_row_index: base_row_index for base_row_index, retry_row_index in enumerate(positions)
+    }
+    projected_rows = []
+    for retry_row_index, retry_row in enumerate(retry_table["rows"]):
+        base_row_index = base_by_retry_index.get(retry_row_index)
+        if base_row_index is None:
+            projected_rows.append(canonical_clone_v1(retry_row))
+            continue
+        projected = canonical_clone_v1(base_table["rows"][base_row_index])
+        if base_row_index in target_indexes:
+            projected["values_exact"] = canonical_clone_v1(retry_row["values_exact"])
+        projected_rows.append(projected)
+    merged["sections"][section_index]["tables"][table_index]["rows"] = projected_rows
+    merged = validate_financial_page_json_v1(merged)
+    material = {
+        "added_retry_row_ids": added_retry_row_ids,
+        "base_page_json_sha256": canonical_json_sha256_v1(base),
+        "base_page_json_version_id": base_page_json_version_id,
+        "base_table_ref": checked_target_ref,
+        "column_axis_sha256": canonical_json_sha256_v1([list(item) for item in base_column_axis]),
+        "format_version": TABLE_POPULATION_PROJECTION_FORMAT_VERSION,
+        "matched_rows": matched_receipts,
+        "merged_page_json_sha256": canonical_json_sha256_v1(merged),
+        "required_changed_target_ids": required_targets,
+        "retry_page_json_sha256": canonical_json_sha256_v1(retry),
+        "retry_page_json_version_id": retry_page_json_version_id,
+        "retry_table_ref": {
+            "section_id": f"s{retry_section_index + 1}",
+            "table_id": f"t{retry_table_index + 1}",
+        },
+        "rule": "UNIQUE_EXACT_AXIS_ORDERED_ROW_POPULATION_PROJECTION",
+    }
+    receipt = {
+        **material,
+        "projection_id": "gjfwtppv1:projection:" + canonical_json_sha256_v1(material),
+    }
+    return merged, receipt
+
+
+def validate_whole_page_table_population_projection_v1(
+    value: Any,
+    *,
+    base_page_json: Any,
+    retry_page_json: Any,
+    merged_page_json: Any,
+) -> dict[str, Any]:
+    """Rebuild and exact-compare one table-population projection receipt."""
+
+    if type(value) is not dict:
+        raise _error("table-population projection receipt is invalid")
+    rebuilt_merged, rebuilt = project_whole_page_table_population_v1(
+        base_page_json,
+        retry_page_json,
+        base_page_json_version_id=value.get("base_page_json_version_id"),
+        retry_page_json_version_id=value.get("retry_page_json_version_id"),
+        target_table_ref=value.get("base_table_ref"),
+        required_changed_target_ids=value.get("required_changed_target_ids"),
+        require_added_rows=bool(value.get("added_retry_row_ids")),
+    )
+    if rebuilt != value or not canonical_json_bytes_v1(rebuilt_merged) == canonical_json_bytes_v1(
+        validate_financial_page_json_v1(merged_page_json)
+    ):
+        raise _error("table-population projection does not replay exactly")
+    return rebuilt

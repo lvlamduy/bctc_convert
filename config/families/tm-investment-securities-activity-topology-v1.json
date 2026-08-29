@@ -1,0 +1,136 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập từ mua bán chứng khoán đầu tư",
+            "Thu nhập do mua bán chứng khoán đầu tư",
+            "Thu từ mua bán chứng khoán đầu tư",
+            "Lãi từ mua bán chứng khoán đầu tư"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INCOME_INVESTMENT_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí về mua bán chứng khoán đầu tư",
+            "Chi phí từ mua bán chứng khoán đầu tư",
+            "Chi phí mua bán chứng khoán đầu tư",
+            "Chi về chứng khoán đầu tư",
+            "Chi về mua bán chứng khoán đầu tư",
+            "Lỗ về mua bán chứng khoán đầu tư"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE_INVESTMENT_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán đầu tư",
+            "Hoàn nhập/(Trích lập) dự phòng chứng khoán đầu tư",
+            "(Trích lập)/Hoàn nhập dự phòng rủi ro chứng khoán đầu tư",
+            "(Trích lập)/Hoàn nhập dự phòng chứng khoán đầu tư",
+            "Chi phí dự phòng rủi ro chứng khoán đầu tư",
+            "Trích lập dự phòng chung cho chứng khoán đầu tư",
+            "Trích lập dự phòng chứng khoán đầu tư",
+            "Trích lập dự phòng giảm giá chứng khoán đầu tư",
+            "Hoàn nhập dự phòng chứng khoán đầu tư sẵn sàng để bán",
+            "Hoàn nhập dự phòng chứng khoán đầu tư",
+            "Hoàn nhập dự phòng giảm giá chứng khoán đầu tư",
+            "Hoàn nhập dự phòng chứng khoán giữ đến ngày đáo hạn",
+            "Dự phòng rủi ro chứng khoán đầu tư",
+            "Dự phòng giảm giá chứng khoán đầu tư",
+            "Hoàn nhập dự phòng chung cho chứng khoán sẵn sàng để bán",
+            "Hoàn nhập dự phòng chung cho chứng khoán đầu tư sẵn sàng để bán",
+            "Hoàn nhập dự phòng/(dự phòng) rủi ro chứng khoán đầu tư",
+            "Hoàn nhập/(dự phòng) rủi ro chứng khoán đầu tư",
+            "Hoàn nhập dự phòng chung cho chứng khoán đầu tư giữ đến ngày đáo hạn",
+            "Hoàn nhập dự phòng chung chứng khoán đầu tư giữ đến ngày đáo hạn",
+            "Trích lập dự phòng cụ thể cho chứng khoán đầu tư giữ đến ngày đáo hạn",
+            "Trích lập dự phòng cụ thể cho chứng khoán giữ đến ngày đáo hạn"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_INVESTMENT_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "(Trích lập)/Hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Hoàn nhập/(Trích lập) dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "(Trích lập)/Hoàn nhập dự phòng rủi ro đầu tư dài hạn",
+            "Hoàn nhập/(Trích lập) dự phòng rủi ro đầu tư dài hạn",
+            "Dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Dự phòng rủi ro đầu tư dài hạn"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LONG_TERM_INVESTMENT_PROVISION",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Khác"],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_INVESTMENT_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "INVESTMENT_SECURITIES_ACTIVITY",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Thu nhập từ mua bán chứng khoán kinh doanh"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Lãi thuần từ mua bán chứng khoán đầu tư",
+      "Lãi thuần từ hoạt động mua bán chứng khoán đầu tư",
+      "Lãi/(Lỗ) thuần từ mua bán chứng khoán đầu tư",
+      "Lãi/(Lỗ) thuần từ hoạt động mua bán chứng khoán đầu tư",
+      "(Lỗ)/Lãi thuần từ mua bán chứng khoán đầu tư",
+      "Lãi từ hoạt động mua bán chứng khoán đầu tư"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "NET_INVESTMENT_SECURITIES"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["INCOME_INVESTMENT_SECURITIES"]
+  ],
+  "structural_reset_aliases": [
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Thu nhập từ hoạt động khác"
+  ]
+}
