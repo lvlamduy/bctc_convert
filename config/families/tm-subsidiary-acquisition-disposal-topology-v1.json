@@ -1,0 +1,86 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng giá trị mua hoặc bán",
+            "Tổng giá trị mua hoặc thanh lý",
+            "Tổng giá trị mua mới hoặc thanh lý"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TOTAL_CONSIDERATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giá trị mua hoặc thanh lý được thanh toán bằng tiền và các khoản tương đương tiền",
+            "Phần giá trị mua hoặc bán được thanh toán bằng tiền và các khoản tương đương tiền",
+            "Phần giá trị mua hoặc thanh lý được thanh toán bằng tiền và các khoản tương đương tiền"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CASH_SETTLEMENT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Số tiền và các khoản tương đương tiền có trong công ty con hoặc đơn vị kinh doanh khác được mua hoặc thanh lý",
+            "Số tiền và các khoản tương đương tiền thực có trong công ty con hoặc đơn vị kinh doanh khác được mua hoặc bán",
+            "Số tiền và các khoản tương đương tiền thực có trong công ty con hoặc đơn vị kinh doanh khác được mua hoặc thanh lý"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "ACQUIRED_DISPOSED_BUSINESS_CASH",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "SUBSIDIARY_ACQUISITION_DISPOSAL",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Hợp nhất kinh doanh",
+    "Hợp nhất kinh doanh và lợi thế thương mại",
+    "Kết quả hoạt động của công ty con được mua lại hoặc bán đi",
+    "Mua công ty con, góp vốn liên doanh, liên kết",
+    "Mua sắm và thanh lý tài sản cố định",
+    "Thanh lý công ty con, góp vốn liên doanh, liên kết"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 4096,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Mua mới và thanh lý các công ty con",
+      "Mua mới hoặc thanh lý các công ty con",
+      "Mua và thanh lý các công ty con"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "SUBSIDIARY_ACQUISITION_DISPOSAL_DISCLOSURE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "TOTAL_CONSIDERATION",
+      "CASH_SETTLEMENT",
+      "ACQUIRED_DISPOSED_BUSINESS_CASH"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Hợp nhất kinh doanh",
+    "Hợp nhất kinh doanh và lợi thế thương mại",
+    "Mua sắm và thanh lý tài sản cố định"
+  ]
+}

@@ -460,6 +460,29 @@ PINNED_CASH_EQUIVALENTS_HISTORICAL_ORACLES = (
         "size_bytes": 125341,
     },
 )
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_HISTORICAL_ORACLES = (
+    {
+        "format_version": "SUBSIDIARY_ACQUISITION_DISPOSAL_8BANK_BOUND_REPORT_ABSENCE_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0093-subsidiary-acquisition-disposal-8bank-bound-report-absence-v1.json"
+        ),
+        "sha256": "80a6d6846614db91ca2a6d98401656f107f8e5e62e6ace269b5192a27772c2e4",
+        "size_bytes": 17641,
+    },
+    {
+        "format_version": (
+            "ANNUAL_2025_SUBSIDIARY_ACQUISITION_DISPOSAL_8BANK_BOUND_REPORT_ABSENCE_V1"
+        ),
+        "path": (
+            "docs/experiments/"
+            "E-0148-annual-2025-subsidiary-acquisition-disposal-8bank-bound-"
+            "report-absence-v1.json"
+        ),
+        "sha256": "143d48819f38f90cb9eaa5b6e7b5f6a020d9b4b18adf402c965cbb4c2aced1ab",
+        "size_bytes": 14864,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1295,6 +1318,55 @@ PINNED_CASH_EQUIVALENTS_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "a46512b4525947e56dbdd10c1fa9a092f6e4ca0abe885589adf61de7bb36e3ef",
     "mappings": "5e271550de8a8b9cdb8d15278e944f1a55c6bfb7a4c09a7af576df15db8bfd87",
 }
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    ),
+    "accepted_cluster_count": 0,
+    "accepted_fragment_count": 0,
+    "candidate_disposition_axis_sha256": (
+        "3a80b9ebd5ced44b06e69c929e6a9f6532e98ad3bb13d5ab2e3cfebca245bb89"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 140, READY: 0, UNRESOLVED: 0},
+    "query_policy_sha256": "b6e941a7a4622cc1fe7394d0f2e145c978294bfb41c38c547f232ff2bdbe74ce",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 0,
+    "not_observed_count": 140,
+    "ready_count": 0,
+    "unresolved_count": 0,
+}
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AUDIT_METRICS = {
+    "equation_count": 0,
+    "historical_comparator_exact_count": 16,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 0,
+    "historical_mapping_record_count": 0,
+    "mapping_count": 0,
+}
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AXIS_COUNTS = {
+    "clusters": 0,
+    "equations": 0,
+    "historical_comparator": 16,
+    "mappings": 0,
+}
+PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AXIS_SHA256 = {
+    "clusters": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "equations": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "historical_comparator": ("51dd33edf55179beadc4567fd40255ca7f14518f3591fb78d90a0a656882ef00"),
+    "mappings": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1534,6 +1606,8 @@ def _historical_oracle_refs(
         return PINNED_INCOME_TAX_HISTORICAL_ORACLES
     if family_id == "CASH_EQUIVALENTS":
         return PINNED_CASH_EQUIVALENTS_HISTORICAL_ORACLES
+    if family_id == "SUBSIDIARY_ACQUISITION_DISPOSAL":
+        return PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1690,6 +1764,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_CASH_EQUIVALENTS_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_CASH_EQUIVALENTS_QUERY_RECEIPT,
             "sweep_metrics": PINNED_CASH_EQUIVALENTS_RELEASE_METRICS,
+        }
+    if family_id == "SUBSIDIARY_ACQUISITION_DISPOSAL":
+        return {
+            "axis_counts": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AXIS_SHA256,
+            "audit_metrics": (PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

@@ -141,6 +141,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "period_lane_policy",
         "primary_statement_family_root_subtree_policy",
         "query_owner_aliases",
+        "required_role_combination_mapping_policy",
         "role_anchored_owner_fallback_policy",
         "role_anchored_supplemental_roles",
         "root_component_equation_policy",
@@ -344,6 +345,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         raise _error(
             "multi-table hierarchical minimum source-visible root component count is invalid"
         )
+    required_role_combination_mapping_policy = evaluation_spec.get(
+        "required_role_combination_mapping_policy", "QUERY_EVIDENCE_ONLY"
+    )
+    if required_role_combination_mapping_policy not in {
+        "QUERY_EVIDENCE_ONLY",
+        "REQUIRE_COMPLETE_COMBINATION_BEFORE_MAPPING",
+    }:
+        raise _error("multi-table hierarchical required-role mapping policy is invalid")
     root_only_source_result_policy = evaluation_spec.get(
         "root_only_source_result_policy", "ALLOW_EXACT_SOURCE_RESULT"
     )
@@ -709,6 +718,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         or schema_binding_spec["family_root_report_norm_id"] <= 0
         or schema_binding_spec.get("root_mapping_policy")
         not in {
+            "STRUCTURAL_CONTEXT_ONLY",
             "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO",
             "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
             "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
@@ -846,6 +856,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         ),
         "presence_anchor_roles": presence_anchor_roles,
         "query_policy": query_policy,
+        "required_role_combination_mapping_policy": (required_role_combination_mapping_policy),
         "root_component_roles": root_component_roles,
         "root_component_equation_policy": root_component_equation_policy,
         "role_anchored_owner_fallback_policy": role_anchored_owner_fallback_policy,
@@ -6469,7 +6480,13 @@ def _extract_table_local_records(
                 )
             )
         )
-        if (
+        if compiled_specs["schema"]["root_mapping_policy"] == "STRUCTURAL_CONTEXT_ONLY":
+            # Some TM families use the family root solely as an authenticated
+            # owner for several non-additive numeric disclosures.  A source
+            # row that Gemini happens to classify as TOTAL must not turn one
+            # of those child measures into a synthetic family-root value.
+            root_total_emitted = False
+        elif (
             compiled_specs["schema"]["root_mapping_policy"]
             == "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
         ):
@@ -6544,7 +6561,11 @@ def _extract_table_local_records(
             )
             proven_roles.add(context_roles[0])
 
-    if not source_visible_family_root_ordinals and len(deferred_hierarchy_family_roots) == 1:
+    if (
+        compiled_specs["schema"]["root_mapping_policy"] != "STRUCTURAL_CONTEXT_ONLY"
+        and not source_visible_family_root_ordinals
+        and len(deferred_hierarchy_family_roots) == 1
+    ):
         root_ordinal, root = deferred_hierarchy_family_roots[0]
         local_records.append(
             _local_record(
@@ -7469,6 +7490,18 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         and "FAMILY_ROOT_TOTAL" not in records
     ):
         reasons.append("REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN")
+    observed_declared_roles = set(records).intersection(compiled_specs["child_by_role"])
+    if compiled_specs[
+        "required_role_combination_mapping_policy"
+    ] == "REQUIRE_COMPLETE_COMBINATION_BEFORE_MAPPING" and not any(
+        set(combination) <= observed_declared_roles
+        for combination in compiled_specs["topology"]["required_role_combinations"]
+    ):
+        # The owner fence may intentionally retain a partial near-control so
+        # its source evidence is audited.  It is never mapping authority until
+        # one complete declarative role combination survives extraction; no
+        # equation or value may backsolve the missing role.
+        reasons.append("REQUIRED_DECLARED_ROLE_COMBINATION_NOT_COMPLETE")
     minimum_root_components = compiled_specs["evaluation"].get(
         "minimum_source_visible_root_component_count"
     )
@@ -7493,7 +7526,14 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
     if not reasons:
         for role in [*compiled_specs["output_role_order"], "FAMILY_ROOT_TOTAL"]:
             record = records.get(role)
-            if record is None or role in compiled_specs["validation_only_roles"]:
+            if (
+                record is None
+                or role in compiled_specs["validation_only_roles"]
+                or (
+                    role == "FAMILY_ROOT_TOTAL"
+                    and compiled_specs["schema"]["root_mapping_policy"] == "STRUCTURAL_CONTEXT_ONLY"
+                )
+            ):
                 continue
             report_norm_id = (
                 compiled_specs["schema"]["family_root_report_norm_id"]
@@ -7534,7 +7574,11 @@ def evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         ),
         "source_only_unmapped_rows": source_only_axis,
         "structural_root_receipt": {
-            "emitted_mapping": "FAMILY_ROOT_TOTAL" in records and not reasons,
+            "emitted_mapping": (
+                "FAMILY_ROOT_TOTAL" in records
+                and not reasons
+                and compiled_specs["schema"]["root_mapping_policy"] != "STRUCTURAL_CONTEXT_ONLY"
+            ),
             "mapping_policy": compiled_specs["schema"]["root_mapping_policy"],
             "report_norm_id": compiled_specs["schema"]["family_root_report_norm_id"],
             "role": compiled_specs["topology"]["parent"]["role"],

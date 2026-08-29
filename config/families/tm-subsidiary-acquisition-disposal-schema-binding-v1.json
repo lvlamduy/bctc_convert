@@ -1,0 +1,21 @@
+{
+  "family_id": "SUBSIDIARY_ACQUISITION_DISPOSAL",
+  "family_root_report_norm_id": 1255,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {
+      "report_norm_id": 1256,
+      "role": "TOTAL_CONSIDERATION"
+    },
+    {
+      "report_norm_id": 1257,
+      "role": "CASH_SETTLEMENT"
+    },
+    {
+      "report_norm_id": 1258,
+      "role": "ACQUIRED_DISPOSED_BUSINESS_CASH"
+    }
+  ],
+  "root_mapping_policy": "STRUCTURAL_CONTEXT_ONLY",
+  "schema_period_type": "DURATION"
+}
