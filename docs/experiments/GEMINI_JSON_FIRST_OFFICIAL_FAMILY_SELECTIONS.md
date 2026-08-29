@@ -57,9 +57,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 35 | `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME` | 118 | 22 | 0 | 428 | `gjfafstorev1:run:d3b6d61d18c29318c11bbaea2e4a1a82209286eef69981e16be3d3803e01962c` |
 | 36 | `OPERATING_EXPENSE` | 138 | 0 | 2 | 1.648 | `gjfafstorev1:run:546ea624e42555a47a266fdd676f095786fa65897c62f8eff5d7de558a805a1d` |
 | 37 | `CREDIT_RISK_PROVISION_EXPENSE` | 64 | 76 | 0 | 300 | `gjfafstorev1:run:d0423fdd934fc17844504f95885dc6901c6338842d7844dce0ab1141af4964f3` |
+| 38 | `OTHER_ACTIVITY` | 72 | 68 | 0 | 587 | `gjfafstorev1:run:950f420a48368122686d77d4d2a7a9b22a3ad788a53b06c54242f1b3061e7ef5` |
 
-Tại checkpoint này database có đủ đúng ba mươi bảy current selection liên tục
-từ Family 1 đến Family 37. Family 38 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng ba mươi tám current selection liên tục
+từ Family 1 đến Family 38. Family 39 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -800,14 +801,57 @@ Artifact OFFICIAL:
   selections, `quick_check` và foreign keys sạch, không SQLite sidecar,
   SHA-256
   `93c21f9a4ff73443427d343c53e763a4c4fb31966642658aa978f8ba1df228e0`.
+- Family 38 `OTHER_ACTIVITY`: `READY=72`, `NOT_OBSERVED=68`,
+  `UNRESOLVED=0` và 587 mappings. Generic hierarchical resolver nhận cả hai
+  source presentation: 60 population có structural income parent, trong đó 58
+  có expense parent; 12 MBB population là net-only với debt recovery,
+  derivative và other-net components. Mọi candidate vẫn cần đúng một
+  owner/reset fence, hai duration lanes, unit `MILLION_VND`, exhaustive money
+  population và một family root RNID 6029 được source-visible hoặc được suy từ
+  complete top-level component frontier.
+
+  Schema residual mới là quy tắc declarative theo context, không phải fuzzy
+  catch-all: một direct child chưa có alias dưới đúng một income/expense parent
+  chỉ được chiếu vào `INCOME_OTHER`/`EXPENSE_OTHER` sau khi source parent total
+  đóng exact trên mọi lane. Nếu parent equation lệch, row không direct, context
+  không duy nhất hoặc period/unit xung đột thì candidate trả U với
+  `mappings=[]`. Alias cụ thể luôn thắng residual; prompt Gemini không chứa
+  mapping, graph, phương trình hay đáp án family và không thay đổi trong lần
+  phát hành này.
+
+  Exact query census là 72 accepted clusters/72 fragments và 68 typed absence
+  dispositions trên đủ 8.947 selected page versions. Có 176 exact equations:
+  82 visible-hierarchy, 66 top-level frontier, 14 ordered-prefix subtotal, 12
+  all-preceding rows và 2 complete-component derived-root equations. Mọi READY
+  candidate có đúng một root, hai values/mapping và không còn unresolved
+  residual row. E-0090/E-0145 khớp 16/16 historical dispositions và 94/95
+  historical mappings. Một sai khác được giữ minh bạch: E-0090 cũ bỏ dòng
+  source-visible `Thu từ phạt vi phạm hợp đồng` khỏi RNID 1239, trong khi
+  E-0145 đã gộp cùng dòng vào `Khác`; rule hiện hành áp dụng nhất quán cách sau
+  cho mọi kỳ/tài liệu, không route theo bank/period để bắt chước hai oracle mâu
+  thuẫn.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family38-other-activity/sweep.json`,
+  SHA-256
+  `6995e08a1ea50c9a2e95685dd457ec256d00bad57b8fab95af3db091159dbce7`;
+  audit SHA-256
+  `8d2acd01e0edfe741fa59f9409d80e61a18ae78da147d4b7d71e57b314430793`.
+  Implementation commit `f805c19`; detached audit có 198
+  focused/adjacent/regression tests, exact SQLite query/candidate replay, Ruff,
+  format, compile, JSON, diff và implementation-ref checks đều xanh.
+  Cumulative results DB có 38 current selections, `quick_check` và foreign keys
+  sạch, không SQLite sidecar, SHA-256
+  `331ac775a99863f5018ada5c8574521bbbd17fab60223bdc92059212dcef0cd9`.
 
 ## Next gate
 
-Family 38 là `OTHER_ACTIVITY`. Khóa comparator E-0090/E-0145, giữ prompt Gemini
-tối giản và cố định; code phải tự inventory source-visible owner, income,
-expense, catch-all và mọi declared child population, rồi dựng graph, scope,
-period, unit và phương trình ở cả hai lane bằng thuật toán/config declarative.
-Không được route theo bank/file/page/value, hấp thụ row của family lân cận hay
+Family 39 là `INCOME_TAX`. Khóa comparator E-0091/E-0146, giữ prompt Gemini tối
+giản và cố định; code phải tự inventory profit-before-tax, adjustment,
+taxable-income, current/deferred tax và source total/reconciliation populations,
+rồi dựng graph, scope, period, unit và phương trình ở cả hai lane bằng
+thuật toán/config declarative. Không được route theo bank/file/page/value,
+backsolve ô trống, hấp thụ tax-obligation/deferred-tax-balance control table hay
 ép Gemini trả một serialization family-specific. Chỉ promote OFFICIAL sau
 exhaustive 8.947-page inventory, SQLite query/candidate replay, historical
 comparator và đủ 140 dispositions.
