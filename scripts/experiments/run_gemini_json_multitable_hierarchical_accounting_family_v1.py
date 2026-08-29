@@ -477,16 +477,16 @@ PINNED_ISSUED_VALUABLE_PAPERS_RELEASE_AXIS_SHA256 = {
 }
 PINNED_OTHER_PAYABLES_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "40ab764b31e9a8b3a425838e99062139028f812a656138270a76c4fdfd23f0a7"
+        "22c30626613d286a61bb26cf053135b2b9008911a59dd11accf9a3e5ecef0993"
     ),
     "accepted_cluster_count": 140,
     "accepted_fragment_count": 220,
     "candidate_disposition_axis_sha256": (
-        "b81e68a47f14c57ae974fa1fd271285253fb5c6a68068f8db5a841095da8923d"
+        "18b3ce56818fd037f0cf52a94704b6ee0c3c875517e8696b59dcba9ff9aaee62"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
-    "query_policy_sha256": "31ca1748330adbde74aae5db2f40c8d1d35fc9f2ccb345c14ac95be8bc53d10c",
+    "query_policy_sha256": "7189792c6199f2f09ef9dd2984ae03fb097f01f21e9c5b41fefb7c21e3f764c9",
     "selected_document_axis_sha256": (
         "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
     ),

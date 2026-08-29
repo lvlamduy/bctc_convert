@@ -408,6 +408,30 @@ Trạng thái:
   trigger khi primary unresolved hoặc layout mới; disagreement giữ unresolved.
 - **Status:** `OPEN`.
 
+## RFP-014 — A nested root-labelled carrier is selected before the wider table total
+
+- **Failure pattern:** một source row mang đúng family-root label và đóng bằng
+  direct children được phát ra ngay làm root, dù cùng table còn một terminal
+  total rộng hơn gồm carrier đó và các direct family roles khác. Wider total
+  bị bỏ vì root đã được chọn, hoặc candidate báo source-root equation không duy
+  nhất. Biến thể Gemini nối `parent\n- child` trong một hierarchy segment làm
+  lỗi này dễ lộ hơn nhưng không phải nguyên nhân riêng theo định dạng.
+- **Cause:** graph materialize root theo thứ tự duyệt row thay vì chờ inventory
+  toàn bộ authenticated top-level frontier; equation identity còn giới hạn vào
+  tên equation thay vì exact result source identity/coefficient.
+- **Anti-fix:** không chọn root theo label đầu tiên hoặc theo value; không bỏ
+  terminal total; không flatten descendants thành siblings; không route theo
+  family/page. Root carrier chỉ là fallback đã chứng minh cho đến khi mọi
+  printed total/frontier trong table được xét.
+- **Current primitive:** hierarchy carrier được giữ deferred. Một wider printed
+  total chỉ supersede khi chính graph top-level đã chọn và exact all-lane
+  equation đóng; nếu không có wider total hợp lệ, đúng một deferred carrier mới
+  được materialize. Source-equation replay bind exact result row identity và
+  coefficients. Newline-joined parent/child fixture xanh; Family26 full corpus
+  giữ nguyên 809 mappings/334 equations và bốn semantic hashes; Family33 giữ
+  nguyên byte-exact sweep.
+- **Status:** `MITIGATED` trong shared multi-table hierarchical primitive.
+
 ## Pre-change gate
 
 Trước một generic fix mới:

@@ -3216,13 +3216,6 @@ def _derive_complete_top_level_family_root(
                 equation
                 for equation in source_equations
                 if equation.get("status") == "EXACT"
-                and (
-                    equation.get("result_role") == "FAMILY_ROOT_TOTAL"
-                    or (
-                        type(equation.get("equation_kind")) is str
-                        and equation["equation_kind"].endswith("EQUAL_PRINTED_TOTAL")
-                    )
-                )
                 and source_identity_axis(equation.get("result_source_refs", [])) == root_result_axis
                 and equation.get("result_coefficients") == _coefficients(root)
             ]
@@ -4748,6 +4741,7 @@ def _extract_table_local_records(
     consumed_ordinals: set[int] = set()
     proven_carrier_children: dict[int, set[int]] = defaultdict(set)
     source_visible_family_root_ordinals: set[int] = set()
+    deferred_hierarchy_family_roots: list[tuple[int, dict[str, Any]]] = []
     label_only_structural_group_receipts = []
     projected_label_only_groups: set[int] = set()
     total_ordinals = {
@@ -4798,18 +4792,14 @@ def _extract_table_local_records(
             if carrier_ordinal in family_root_ordinals and any(
                 cell["source_text"] is not None for cell in carrier["cells"]
             ):
-                local_records.append(
-                    _local_record(
-                        "FAMILY_ROOT_TOTAL",
-                        carrier["cells"],
-                        carrier["lane_keys"],
-                        carrier["source_refs"],
-                        "SOURCE_VISIBLE_FAMILY_ROOT_PROVEN_BY_DIRECT_CHILD_FRONTIER",
-                        carrier["valuation_basis"],
-                    )
-                )
-                source_visible_family_root_ordinals.add(carrier_ordinal)
-                proven_roles.add("FAMILY_ROOT_TOTAL")
+                # Do not choose a nested explicit-root carrier before the
+                # table's wider top-level frontier has been evaluated.  A
+                # later printed total may include this exact carrier plus
+                # other direct family roles.  Keep the independently proven
+                # carrier as a fallback and materialize it only when no wider
+                # source total closes.  This is graph order, never value-based
+                # root selection.
+                deferred_hierarchy_family_roots.append((carrier_ordinal, carrier))
 
     # Some valid Gemini pages preserve visible indentation in row labels but
     # omit it from hierarchy_path_exact.  A contiguous run of dash-prefixed
@@ -5310,6 +5300,21 @@ def _extract_table_local_records(
                 )
             )
             proven_roles.add(context_roles[0])
+
+    if not source_visible_family_root_ordinals and len(deferred_hierarchy_family_roots) == 1:
+        root_ordinal, root = deferred_hierarchy_family_roots[0]
+        local_records.append(
+            _local_record(
+                "FAMILY_ROOT_TOTAL",
+                root["cells"],
+                root["lane_keys"],
+                root["source_refs"],
+                "SOURCE_VISIBLE_FAMILY_ROOT_PROVEN_BY_DIRECT_CHILD_FRONTIER",
+                root["valuation_basis"],
+            )
+        )
+        source_visible_family_root_ordinals.add(root_ordinal)
+        proven_roles.add("FAMILY_ROOT_TOTAL")
 
     if (
         document_source_result_carrier
