@@ -326,6 +326,24 @@ def _cell_semantic(source_text: Any, visual_state: Any = None) -> tuple[str, int
     return derived, coefficient
 
 
+def _repair_before_cell_semantic(source_text: Any, *, change_policy: str) -> tuple[str, int | None]:
+    """Type the immutable source cell without requiring a malformed target to parse.
+
+    A repair plan may exist precisely because the selected Gemini cell contains OCR
+    debris such as ``"(15)借-"``.  Requiring that *before* value to already satisfy the
+    money grammar makes a valid minimal observation impossible to apply.  Only an
+    authority-derived MUST_CHANGE cell gets this sentinel; collateral/MAY_CHANGE cells
+    remain strict so an undeclared malformed source cannot be silently normalized.
+    """
+
+    try:
+        return _cell_semantic(source_text)
+    except GeminiJsonRollforwardTableRepairV1Error:
+        if change_policy != "MUST_CHANGE":
+            raise
+        return "INVALID_SOURCE", None
+
+
 def _normalized_observed_source_text(
     value: Any,
     *,
@@ -1430,6 +1448,33 @@ def _equity_matrix_repair_equations_v1(
         row_index, column_index = _cell_id(cell_id)
         return _signed_integer(table["rows"][row_index]["values_exact"][column_index])
 
+    # A DECREASE column may be printed either as positive amounts to subtract or as
+    # parenthesized/negative amounts to add.  Infer the one common convention from
+    # every still-parseable exact row.  Rows containing the very OCR defect being
+    # repaired are non-evidence; contradictory valid rows remain fail-closed.
+    decrease_modes = {1, -1}
+    witnessed_mode = False
+    for row_axis_id in rows:
+        values = {
+            role: coefficient(f"{row_axis_id}:{columns[role]}")
+            for role in ("OPENING", "INCREASE", "DECREASE", "CLOSING")
+        }
+        if any(value is None for value in values.values()):
+            continue
+        exact_modes = {
+            candidate
+            for candidate in (1, -1)
+            if values["OPENING"] + values["INCREASE"] + candidate * values["DECREASE"]
+            == values["CLOSING"]
+        }
+        if not exact_modes:
+            continue
+        witnessed_mode = True
+        decrease_modes &= exact_modes
+    if not witnessed_mode or len(decrease_modes) != 1:
+        raise _error("equity-matrix repair decrease sign mode is not uniquely source-derived")
+    decrease_multiplier = next(iter(decrease_modes))
+
     def add_equation(
         equation_id: str,
         *,
@@ -1481,7 +1526,10 @@ def _equity_matrix_repair_equations_v1(
             terms=[
                 {"cell_id": f"{row_axis_id}:{columns['OPENING']}", "multiplier": 1},
                 {"cell_id": f"{row_axis_id}:{columns['INCREASE']}", "multiplier": 1},
-                {"cell_id": f"{row_axis_id}:{columns['DECREASE']}", "multiplier": -1},
+                {
+                    "cell_id": f"{row_axis_id}:{columns['DECREASE']}",
+                    "multiplier": decrease_multiplier,
+                },
             ],
             row_axis_id=row_axis_id,
         )
@@ -2807,7 +2855,9 @@ def merge_rollforward_table_repair_v1(
         row_index, column_index = _cell_id(cell_id)
         before = table["rows"][row_index]["values_exact"][column_index]
         _after_policy(response_cell, allowed["after_policy"])
-        before_semantic = _cell_semantic(before)
+        before_semantic = _repair_before_cell_semantic(
+            before, change_policy=allowed["change_policy"]
+        )
         after_semantic = _cell_semantic(response_cell["source_text"], response_cell["visual_state"])
         if after_semantic == before_semantic:
             if allowed["change_policy"] == "MUST_CHANGE":
@@ -2822,7 +2872,7 @@ def merge_rollforward_table_repair_v1(
                 "after_policy": allowed["after_policy"],
                 "after_visual_state": response_cell["visual_state"],
                 "before_exact": before,
-                "before_visual_state": _visual_state(before),
+                "before_visual_state": before_semantic[0],
                 "cell_id": cell_id,
                 "change_policy": allowed["change_policy"],
                 "evidence_kind": allowed["evidence_kind"],

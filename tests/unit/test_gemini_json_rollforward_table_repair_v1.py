@@ -910,6 +910,21 @@ def test_required_observations_and_may_change_semantics_are_local(corpus: dict) 
     ]
 
 
+def test_must_change_target_accepts_unparseable_source_before_valid_accounting_parentheses() -> (
+    None
+):
+    assert subject._repair_before_cell_semantic("(15)借-", change_policy="MUST_CHANGE") == (
+        "INVALID_SOURCE",
+        None,
+    )
+    assert subject._cell_semantic("(15)") == ("VALUE", -15)
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error,
+        match="exact signed integer",
+    ):
+        subject._repair_before_cell_semantic("(15)借-", change_policy="MAY_CHANGE")
+
+
 def test_legacy_projection_accepts_header_segmentation_and_null_dash(corpus: dict) -> None:
     plan = corpus["plans"][-1]
     page = corpus["pages"][plan["base_page_json_version_id"]]

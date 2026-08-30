@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 as repair_subject
 from bctc_ai.evaluation.gemini_json_equity_matrix_accounting_family_v1 import (
     READY,
     GeminiJsonEquityMatrixAccountingFamilyV1Error,
@@ -144,6 +145,36 @@ def test_vector_root_and_component_rows_close_without_prompt_accounting_logic() 
     ]
     assert by_role["FAMILY_TOTAL"]["values"][2]["equation_multiplier"] == -1
     assert by_role["OTHER_PAYABLE"]["report_norm_id"] == 1279
+
+
+def test_repair_equations_source_derive_positive_or_parenthesized_decrease_sign() -> None:
+    positive = _table()
+    _compiled_specs, _page_json, _cluster, positive_candidate = _evaluate(positive)
+    positive_equations, _rows, _columns = repair_subject._equity_matrix_repair_equations_v1(
+        table=positive,
+        closure=positive_candidate["closure_receipt"],
+    )
+    assert {
+        equation["terms"][-1]["multiplier"]
+        for equation in positive_equations
+        if equation["equation_id"].startswith("vertical-rollforward-")
+    } == {-1}
+
+    parenthesized = _table()
+    for row in parenthesized["rows"]:
+        row["values_exact"][2] = f"({row['values_exact'][2]})"
+    parenthesized["rows"][0]["values_exact"][2] = "(3)借-"
+    parenthesized["rows"][0]["values_exact"][3] = "null"
+    _compiled_specs, _page_json, _cluster, parenthesized_candidate = _evaluate(parenthesized)
+    signed_equations, _rows, _columns = repair_subject._equity_matrix_repair_equations_v1(
+        table=parenthesized,
+        closure=parenthesized_candidate["closure_receipt"],
+    )
+    assert {
+        equation["terms"][-1]["multiplier"]
+        for equation in signed_equations
+        if equation["equation_id"].startswith("vertical-rollforward-")
+    } == {1}
 
 
 def test_longer_other_payable_alias_does_not_double_match_other_tax() -> None:
