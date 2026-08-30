@@ -47,6 +47,14 @@ CLAIM_BOUNDARY = (
     "OCR_GEOMETRY_BANK_FILE_PAGE_NOTE_VALUE_ROUTING_BACKSOLVE_CANONICAL_OR_"
     "EXPORT_AUTHORITY"
 )
+VALUATION_CLAIM_BOUNDARY = (
+    "MANIFEST_SELECTED_GEMINI_JSON_ONLY_FINANCIAL_INSTRUMENT_BOOK_AND_FAIR_VALUE_"
+    "CLASSIFICATION_MATRIX_EXPLICIT_OWNER_RESET_FENCE_EXHAUSTIVE_DECLARED_ROWS_"
+    "FIXED_OR_UNIQUE_PACKED_SPARSE_ALIGNMENT_HORIZONTAL_ROW_AND_VERTICAL_ASSET_"
+    "LIABILITY_TOTAL_CLOSURE_TYPED_PERIOD_UNIT_UNAVAILABLE_FAIR_VALUE_PRESERVED_"
+    "STRUCTURAL_ROOT_AND_BRANCH_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_OCR_GEOMETRY_"
+    "BANK_FILE_PAGE_NOTE_VALUE_ROUTING_OR_EXPORT_AUTHORITY"
+)
 
 _PAGE_VERSION = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
@@ -161,6 +169,206 @@ def _compile_units(value: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str
     return result, by_alias
 
 
+def _compile_valuation_matrix_specs_v1(
+    *, topology: Mapping[str, Any], evaluation_spec: Any, schema_binding_spec: Any
+) -> dict[str, Any]:
+    """Compile the declarative carrying/fair-value matrix variant."""
+
+    if (
+        type(evaluation_spec) is not dict
+        or set(evaluation_spec)
+        != {
+            "blank_zero_policy",
+            "closure_policy",
+            "family_id",
+            "format_version",
+            "matrix_policy",
+        }
+        or evaluation_spec.get("format_version") != EVALUATION_FORMAT_VERSION
+        or evaluation_spec.get("family_id") != topology["family_id"]
+        or evaluation_spec.get("blank_zero_policy") != "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT"
+        or evaluation_spec.get("closure_policy")
+        != "EXACT_CLASSIFICATION_ROWS_AND_ASSET_LIABILITY_BRANCH_TOTALS"
+    ):
+        raise _error("valuation-matrix evaluation spec is invalid")
+    policy = evaluation_spec.get("matrix_policy")
+    policy_fields = {
+        "accepted_orientations",
+        "aggregate_duplicate_roles",
+        "asset_role_aliases",
+        "asset_total_aliases",
+        "book_total_header_aliases",
+        "book_value_header_aliases",
+        "fair_value_header_aliases",
+        "liability_role_aliases",
+        "liability_total_aliases",
+        "matrix_kind",
+        "max_continuation_pages",
+        "minimum_mapped_component_roles",
+        "unavailable_value_aliases",
+        "unit_bindings",
+    }
+    if (
+        type(policy) is not dict
+        or set(policy) != policy_fields
+        or policy.get("matrix_kind") != "VALUATION_CLASSIFICATION"
+        or policy.get("accepted_orientations") != ["COMPONENT_ROWS"]
+        or policy.get("max_continuation_pages") != 1
+        or type(policy.get("minimum_mapped_component_roles")) is not int
+        or policy["minimum_mapped_component_roles"] < 4
+    ):
+        raise _error("valuation-matrix policy is invalid")
+    asset_aliases = _compile_alias_map(policy["asset_role_aliases"], label="asset role")
+    liability_aliases = _compile_alias_map(policy["liability_role_aliases"], label="liability role")
+    if set(asset_aliases) & set(liability_aliases):
+        raise _error("valuation-matrix asset and liability roles collide")
+    role_aliases = {**asset_aliases, **liability_aliases}
+    aggregate_roles = policy["aggregate_duplicate_roles"]
+    if (
+        type(aggregate_roles) is not list
+        or len(aggregate_roles) != len(set(aggregate_roles))
+        or not set(aggregate_roles) <= set(role_aliases)
+    ):
+        raise _error("valuation-matrix aggregate role policy is invalid")
+
+    def aliases(field: str) -> list[str]:
+        values = policy.get(field)
+        normalized = (
+            [item.strip() for item in values]
+            if type(values) is list and field == "unavailable_value_aliases"
+            else [_normalized(item) for item in values]
+            if type(values) is list
+            else []
+        )
+        if (
+            type(values) is not list
+            or not values
+            or any(type(item) is not str or not item.strip() for item in values)
+            or any(not item for item in normalized)
+            or len(set(normalized)) != len(values)
+        ):
+            raise _error(f"valuation-matrix {field} is invalid")
+        return canonical_clone_v1(values)
+
+    marker_fields = (
+        "asset_total_aliases",
+        "book_total_header_aliases",
+        "book_value_header_aliases",
+        "fair_value_header_aliases",
+        "liability_total_aliases",
+        "unavailable_value_aliases",
+    )
+    marker_aliases = {field: aliases(field) for field in marker_fields}
+    units, unit_by_alias = _compile_units(policy["unit_bindings"])
+    schema_fields = {
+        "book_branch_report_norm_id",
+        "component_role_bindings",
+        "fair_branch_report_norm_id",
+        "family_id",
+        "family_root_report_norm_id",
+        "format_version",
+        "total_role_bindings",
+    }
+    if (
+        type(schema_binding_spec) is not dict
+        or set(schema_binding_spec) != schema_fields
+        or schema_binding_spec.get("format_version") != SCHEMA_FORMAT_VERSION
+        or schema_binding_spec.get("family_id") != topology["family_id"]
+        or any(
+            type(schema_binding_spec.get(field)) is not int or schema_binding_spec[field] <= 0
+            for field in (
+                "book_branch_report_norm_id",
+                "fair_branch_report_norm_id",
+                "family_root_report_norm_id",
+            )
+        )
+    ):
+        raise _error("valuation-matrix schema binding spec is invalid")
+
+    def paired_bindings(
+        value: Any, *, expected_roles: set[str], label: str
+    ) -> dict[str, dict[str, int]]:
+        fields = {"book_report_norm_id", "fair_report_norm_id", "role"}
+        if type(value) is not list or len(value) != len(expected_roles):
+            raise _error(f"valuation-matrix {label} binding axis is incomplete")
+        result: dict[str, dict[str, int]] = {}
+        for raw in value:
+            if (
+                type(raw) is not dict
+                or set(raw) != fields
+                or raw.get("role") not in expected_roles
+                or raw["role"] in result
+                or type(raw.get("book_report_norm_id")) is not int
+                or raw["book_report_norm_id"] <= 0
+                or type(raw.get("fair_report_norm_id")) is not int
+                or raw["fair_report_norm_id"] <= 0
+            ):
+                raise _error(f"valuation-matrix {label} binding is invalid")
+            result[raw["role"]] = {
+                "book_report_norm_id": raw["book_report_norm_id"],
+                "fair_report_norm_id": raw["fair_report_norm_id"],
+            }
+        if set(result) != expected_roles:
+            raise _error(f"valuation-matrix {label} binding roles are incomplete")
+        return result
+
+    component_bindings = paired_bindings(
+        schema_binding_spec["component_role_bindings"],
+        expected_roles=set(role_aliases),
+        label="component",
+    )
+    total_bindings = paired_bindings(
+        schema_binding_spec["total_role_bindings"],
+        expected_roles={"BOOK_TOTAL_ASSETS", "BOOK_TOTAL_LIABILITIES"},
+        label="total",
+    )
+    report_norm_ids = {
+        schema_binding_spec["family_root_report_norm_id"],
+        schema_binding_spec["book_branch_report_norm_id"],
+        schema_binding_spec["fair_branch_report_norm_id"],
+        *(
+            report_norm_id
+            for binding in [*component_bindings.values(), *total_bindings.values()]
+            for report_norm_id in binding.values()
+        ),
+    }
+    expected_id_count = 3 + 2 * (len(component_bindings) + len(total_bindings))
+    if len(report_norm_ids) != expected_id_count:
+        raise _error("valuation-matrix schema report norm IDs collide")
+    query_policy = {
+        "hard_negative_aliases": canonical_clone_v1(topology["hard_negative_aliases"]),
+        "matrix_kind": "VALUATION_CLASSIFICATION",
+        "max_continuation_pages": 1,
+        "minimum_mapped_component_roles": policy["minimum_mapped_component_roles"],
+        "owner_aliases": canonical_clone_v1(topology["parent"]["aliases"]),
+        "reset_aliases": canonical_clone_v1(topology["structural_reset_aliases"]),
+    }
+    return {
+        "aliases_by_role": role_aliases,
+        "asset_role_aliases_by_role": asset_aliases,
+        "book_branch_report_norm_id": schema_binding_spec["book_branch_report_norm_id"],
+        "claim_boundary": VALUATION_CLAIM_BOUNDARY,
+        "component_report_norm_id_by_role": {
+            role: binding["book_report_norm_id"] for role, binding in component_bindings.items()
+        },
+        "engine_format_version": ENGINE_FORMAT_VERSION,
+        "evaluation": canonical_clone_v1(evaluation_spec),
+        "fair_branch_report_norm_id": schema_binding_spec["fair_branch_report_norm_id"],
+        "family_id": topology["family_id"],
+        "family_root_report_norm_id": schema_binding_spec["family_root_report_norm_id"],
+        "liability_role_aliases_by_role": liability_aliases,
+        "query_policy": query_policy,
+        "schema": canonical_clone_v1(schema_binding_spec),
+        "topology": canonical_clone_v1(topology),
+        "unit_binding_by_alias": unit_by_alias,
+        "unit_bindings": units,
+        "valuation_component_bindings_by_role": component_bindings,
+        "valuation_marker_aliases": marker_aliases,
+        "valuation_mode": True,
+        "valuation_total_bindings_by_role": total_bindings,
+    }
+
+
 def compile_gemini_json_equity_matrix_family_specs_v1(
     topology_spec: Any, evaluation_spec: Any, schema_binding_spec: Any
 ) -> dict[str, Any]:
@@ -170,6 +378,16 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         topology = compile_accounting_family_topology_spec_v1(topology_spec)
     except ValueError as exc:
         raise _error("equity-matrix topology spec is invalid") from exc
+    if (
+        type(evaluation_spec) is dict
+        and type(evaluation_spec.get("matrix_policy")) is dict
+        and evaluation_spec["matrix_policy"].get("matrix_kind") == "VALUATION_CLASSIFICATION"
+    ):
+        return _compile_valuation_matrix_specs_v1(
+            topology=topology,
+            evaluation_spec=evaluation_spec,
+            schema_binding_spec=schema_binding_spec,
+        )
     if (
         type(evaluation_spec) is not dict
         or set(evaluation_spec)
@@ -791,10 +1009,237 @@ def _component_record(
     return result
 
 
+def _valuation_label_matches_v1(value: Any, aliases: Sequence[str]) -> list[str]:
+    folded = _normalized(value)
+    tokens = folded.split()
+    ordinal_tokens = {
+        "i",
+        "ii",
+        "iii",
+        "iv",
+        "v",
+        "vi",
+        "vii",
+        "viii",
+        "ix",
+        "x",
+    }
+    while len(tokens) > 1 and (tokens[0].isdigit() or tokens[0] in ordinal_tokens):
+        tokens.pop(0)
+    folded = " ".join(tokens)
+    for suffix in (" gop", " thuan"):
+        if folded.endswith(suffix):
+            folded = folded[: -len(suffix)].strip()
+    return sorted(
+        {
+            alias
+            for alias in aliases
+            if (
+                folded == _normalized(alias)
+                or folded.startswith(_normalized(alias) + " xem thuyet minh ")
+                or (
+                    len(folded.split()) >= 6
+                    and _normalized(alias).startswith(folded + " ")
+                    and len(_normalized(alias).split()) == len(folded.split()) + 1
+                )
+            )
+        }
+    )
+
+
+def _valuation_role_v1(
+    value: Any, *, aliases_by_role: Mapping[str, Sequence[str]]
+) -> tuple[str | None, list[str]]:
+    matches = [
+        (role, alias)
+        for role, aliases in aliases_by_role.items()
+        for alias in _valuation_label_matches_v1(value, aliases)
+    ]
+    if not matches:
+        return None, []
+    maximum = max(len(_normalized(alias)) for _role, alias in matches)
+    roles = sorted({role for role, alias in matches if len(_normalized(alias)) == maximum})
+    return (roles[0] if len(roles) == 1 else None), roles
+
+
+def _valuation_header_has_v1(members: Sequence[str], aliases: Sequence[str]) -> bool:
+    folded = " ".join(_normalized(member) for member in members if _normalized(member))
+    return any(
+        re.search(rf"(?<![a-z0-9]){re.escape(_normalized(alias))}(?![a-z0-9])", folded)
+        for alias in aliases
+    )
+
+
+def _valuation_active_source_cell_v1(value: Any) -> bool:
+    return value is not None and (type(value) is not str or bool(value.strip()))
+
+
+def _classify_valuation_matrix_table_v1(
+    table: Any, *, compiled_specs: Mapping[str, Any]
+) -> dict[str, Any]:
+    rows = table.get("rows") if type(table) is dict else None
+    columns = table.get("columns") if type(table) is dict else None
+    if type(rows) is not list or type(columns) is not list or not rows or not columns:
+        raise _error("valuation-matrix table axes are invalid")
+    if any(
+        type(row) is not dict
+        or type(row.get("values_exact")) is not list
+        or len(row["values_exact"]) != len(columns)
+        or type(row.get("hierarchy_path_exact")) is not list
+        for row in rows
+    ) or any(type(column) is not dict for column in columns):
+        raise _error("valuation-matrix row or column axis is invalid")
+    markers = compiled_specs["valuation_marker_aliases"]
+    column_axis = []
+    for ordinal, column in enumerate(columns, start=1):
+        members = _header_members(column)
+        book = _valuation_header_has_v1(members, markers["book_value_header_aliases"])
+        book_total = _valuation_header_has_v1(members, markers["book_total_header_aliases"])
+        fair = _valuation_header_has_v1(members, markers["fair_value_header_aliases"])
+        roles = [
+            role
+            for role, present in (
+                ("BOOK_CLASSIFICATION", book and not book_total),
+                ("BOOK_TOTAL", book_total),
+                ("FAIR_VALUE", fair and not book and not book_total),
+            )
+            if present
+        ]
+        column_axis.append(
+            {
+                "column_id": f"c{ordinal}",
+                "header_path_exact": canonical_clone_v1(members),
+                "role_source": "EXPLICIT_HEADER_ALIAS" if roles else None,
+                "roles": roles,
+                "value_kind": column.get("value_kind"),
+            }
+        )
+    explicit_book_totals = [item for item in column_axis if item["roles"] == ["BOOK_TOTAL"]]
+    explicit_fair_values = [item for item in column_axis if item["roles"] == ["FAIR_VALUE"]]
+    if len(explicit_book_totals) == len(explicit_fair_values) == 1:
+        total_ordinal = int(explicit_book_totals[0]["column_id"][1:])
+        fair_ordinal = int(explicit_fair_values[0]["column_id"][1:])
+        if fair_ordinal == total_ordinal + 1 == len(column_axis):
+            for item in column_axis[: total_ordinal - 1]:
+                if not item["roles"] and item["header_path_exact"]:
+                    item["roles"] = ["BOOK_CLASSIFICATION"]
+                    item["role_source"] = "LEFT_SIBLING_OF_EXACT_BOOK_TOTAL_AND_FAIR_VALUE_COLUMNS"
+    reasons = []
+    book_total_columns = [item for item in column_axis if item["roles"] == ["BOOK_TOTAL"]]
+    fair_columns = [item for item in column_axis if item["roles"] == ["FAIR_VALUE"]]
+    classification_columns = [
+        item for item in column_axis if item["roles"] == ["BOOK_CLASSIFICATION"]
+    ]
+    if len(book_total_columns) != 1:
+        reasons.append("EXACTLY_ONE_BOOK_TOTAL_COLUMN_REQUIRED")
+    if len(fair_columns) != 1:
+        reasons.append("EXACTLY_ONE_FAIR_VALUE_COLUMN_REQUIRED")
+    if len(classification_columns) < 2:
+        reasons.append("BOOK_CLASSIFICATION_COLUMN_AXIS_INCOMPLETE")
+    if any(not item["roles"] for item in column_axis):
+        reasons.append("UNCLASSIFIED_VALUATION_COLUMN_PRESENT")
+    if any(len(item["roles"]) != 1 for item in column_axis):
+        reasons.append("VALUATION_COLUMN_ROLE_CONFLICT")
+
+    total_rows = []
+    for ordinal, row in enumerate(rows, start=1):
+        label = row.get("label_exact")
+        explicit_total = _valuation_label_matches_v1(
+            label,
+            [*markers["asset_total_aliases"], *markers["liability_total_aliases"]],
+        )
+        generic_unlabeled_total = row.get("row_kind") in {"SUBTOTAL", "TOTAL"} and _normalized(
+            label
+        ) in {"", "tong", "tong cong"}
+        if explicit_total or generic_unlabeled_total:
+            total_rows.append(ordinal)
+    if len(total_rows) != 2:
+        reasons.append("EXACTLY_TWO_ASSET_LIABILITY_TOTAL_ROWS_REQUIRED")
+    first_total = total_rows[0] if len(total_rows) == 2 else None
+    second_total = total_rows[1] if len(total_rows) == 2 else None
+    row_axis = []
+    mapped_roles = []
+    for ordinal, row in enumerate(rows, start=1):
+        label = row.get("label_exact")
+        active = any(_valuation_active_source_cell_v1(value) for value in row["values_exact"])
+        if ordinal in total_rows:
+            branch = "ASSET" if ordinal == first_total else "LIABILITY"
+            kind = "BRANCH_TOTAL"
+            role = "BOOK_TOTAL_ASSETS" if branch == "ASSET" else "BOOK_TOTAL_LIABILITIES"
+            role_matches = [role]
+        elif first_total is not None and ordinal < first_total:
+            branch = "ASSET"
+            role, role_matches = _valuation_role_v1(
+                label, aliases_by_role=compiled_specs["asset_role_aliases_by_role"]
+            )
+            kind = "MAPPED_COMPONENT" if role is not None else "STRUCTURAL_GROUP"
+        elif (
+            first_total is not None
+            and second_total is not None
+            and first_total < ordinal < second_total
+        ):
+            branch = "LIABILITY"
+            role, role_matches = _valuation_role_v1(
+                label, aliases_by_role=compiled_specs["liability_role_aliases_by_role"]
+            )
+            kind = "MAPPED_COMPONENT" if role is not None else "STRUCTURAL_GROUP"
+        else:
+            branch = None
+            role = None
+            role_matches = []
+            kind = "UNCONSUMED_ROW"
+        if kind == "STRUCTURAL_GROUP" and active:
+            kind = "UNCLASSIFIED_ACTIVE_ROW"
+            reasons.append("UNCLASSIFIED_ACTIVE_VALUATION_ROW_PRESENT")
+        if len(role_matches) > 1:
+            reasons.append("VALUATION_ROW_MATCHES_MULTIPLE_ROLES")
+        if kind == "UNCONSUMED_ROW" and active:
+            reasons.append("ACTIVE_ROW_OUTSIDE_ASSET_LIABILITY_BRANCHES")
+        if kind == "MAPPED_COMPONENT":
+            mapped_roles.append(role)
+        row_axis.append(
+            {
+                "branch": branch,
+                "kind": kind,
+                "label_exact": label,
+                "role": role,
+                "role_matches": role_matches,
+                "row_id": f"r{ordinal}",
+                "row_kind": row.get("row_kind"),
+                "source_order": ordinal,
+            }
+        )
+    duplicate_roles = {role for role in mapped_roles if mapped_roles.count(role) > 1}
+    if duplicate_roles - set(
+        compiled_specs["evaluation"]["matrix_policy"]["aggregate_duplicate_roles"]
+    ):
+        reasons.append("DUPLICATE_VALUATION_COMPONENT_ROLE")
+    if len(set(mapped_roles)) < compiled_specs["query_policy"]["minimum_mapped_component_roles"]:
+        reasons.append("VALUATION_COMPONENT_ROLE_POPULATION_INCOMPLETE")
+    status = "MATRIX_FRAGMENT" if not reasons else "NOT_MATRIX"
+    return {
+        "column_axis": column_axis,
+        "column_declared_component_roles": sorted(
+            {role for item in column_axis for role in item["roles"]}
+        ),
+        "component_axis": row_axis,
+        "component_axis_sha256": canonical_json_sha256_v1(row_axis),
+        "mapped_component_roles": sorted(set(mapped_roles)),
+        "matrix_kind": "VALUATION_CLASSIFICATION",
+        "orientation": "COMPONENT_ROWS" if status == "MATRIX_FRAGMENT" else None,
+        "reasons": sorted(set(reasons)),
+        "row_declared_component_roles": sorted(set(mapped_roles)),
+        "status": status,
+    }
+
+
 def classify_gemini_json_equity_matrix_table_v1(
     table: Any, *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any]:
     """Classify one matrix fragment from its two declared axes only."""
+
+    if compiled_specs.get("valuation_mode") is True:
+        return _classify_valuation_matrix_table_v1(table, compiled_specs=compiled_specs)
 
     rows = table.get("rows") if type(table) is dict else None
     columns = table.get("columns") if type(table) is dict else None
@@ -1277,7 +1722,10 @@ def _local_unit_axis(
         [
             (ordinal, column)
             for ordinal, column in enumerate(columns, start=1)
-            if type(column) is dict and column.get("value_kind") == "MONEY"
+            if type(column) is dict
+            and (
+                column.get("value_kind") == "MONEY" or compiled_specs.get("valuation_mode") is True
+            )
         ]
         if type(columns) is list
         else []
@@ -1307,7 +1755,30 @@ def _local_unit_axis(
         ):
             reasons.append("TABLE_AND_COLUMN_MONEY_UNITS_CONFLICT")
     elif any(item is not None for item in column_records):
+        valuation_nonfair_records = []
+        if compiled_specs.get("valuation_mode") is True:
+            fair_aliases = compiled_specs["valuation_marker_aliases"]["fair_value_header_aliases"]
+            valuation_nonfair_records = [
+                record
+                for record, (_ordinal, column) in zip(column_records, money_columns, strict=True)
+                if not _valuation_header_has_v1(_header_members(column), fair_aliases)
+            ]
         if (
+            valuation_nonfair_records
+            and all(item is not None and item["accepted"] for item in valuation_nonfair_records)
+            and len({item["canonical_unit"] for item in valuation_nonfair_records}) == 1
+            and all(
+                record is not None
+                or _valuation_header_has_v1(
+                    _header_members(column),
+                    compiled_specs["valuation_marker_aliases"]["fair_value_header_aliases"],
+                )
+                for record, (_ordinal, column) in zip(column_records, money_columns, strict=True)
+            )
+        ):
+            canonical_unit = valuation_nonfair_records[0]["canonical_unit"]
+            source = "LOCAL_UNIFORM_BOOK_COLUMNS_WITH_UNITLESS_FAIR_COLUMN"
+        elif (
             len(column_records) != len(money_columns)
             or any(item is None for item in column_records)
             or any(not item["accepted"] for item in column_records if item is not None)
@@ -2754,6 +3225,614 @@ def _build_mappings(
     return result
 
 
+def _valuation_cell_v1(
+    *,
+    value: Any,
+    region: Mapping[str, Any],
+    row_id: str,
+    column_id: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    source_text = value
+    cell_ref = {
+        "column_id": column_id,
+        "locator": canonical_clone_v1(region),
+        "row_id": row_id,
+    }
+    if value is None or type(value) is str and not value.strip():
+        return {
+            "cell_ref": cell_ref,
+            "coefficient": None,
+            "source_text": source_text,
+            "state": "BLANK",
+        }
+    if type(value) is not str:
+        return {
+            "cell_ref": cell_ref,
+            "coefficient": None,
+            "source_text": source_text,
+            "state": "INVALID_NON_STRING_SOURCE_CELL",
+        }
+    stripped = value.strip()
+    unavailable = compiled_specs["valuation_marker_aliases"]["unavailable_value_aliases"]
+    if stripped in unavailable:
+        return {
+            "cell_ref": cell_ref,
+            "coefficient": None,
+            "source_text": source_text,
+            "state": "SOURCE_EXPLICIT_FAIR_VALUE_UNAVAILABLE",
+        }
+    compact = "".join(stripped.split())
+    if (
+        compact
+        and any(character in "-–—_" for character in compact)
+        and not any(character.isdigit() for character in compact)
+    ):
+        return {
+            "cell_ref": cell_ref,
+            "coefficient": 0,
+            "source_text": source_text,
+            "state": "DASH_ZERO",
+        }
+    try:
+        parsed = _money(value)
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        return {**parsed, "cell_ref": cell_ref, "source_text": source_text}
+    numeric_tokens = re.findall(r"\(?-?\d{1,3}(?:[.,]\d{3})+\)?|\(?-?\d+\)?", stripped)
+    if len(numeric_tokens) == 1:
+        try:
+            parsed = _money(numeric_tokens[0])
+        except ValueError:
+            parsed = None
+        if parsed is not None and parsed["state"] == "RAW_SIGNED_INTEGER":
+            return {
+                **parsed,
+                "cell_ref": cell_ref,
+                "source_text": source_text,
+                "state": "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH",
+            }
+    return {
+        "cell_ref": cell_ref,
+        "coefficient": None,
+        "source_text": source_text,
+        "state": "INVALID_SOURCE_CELL",
+    }
+
+
+def _valuation_resolve_row_v1(
+    *,
+    row: Mapping[str, Any],
+    row_axis: Mapping[str, Any],
+    column_axis: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any] | None, list[str]]:
+    cells = [
+        _valuation_cell_v1(
+            value=value,
+            region=region,
+            row_id=row_axis["row_id"],
+            column_id=f"c{ordinal}",
+            compiled_specs=compiled_specs,
+        )
+        for ordinal, value in enumerate(row["values_exact"], start=1)
+    ]
+    category_ordinals = [
+        int(item["column_id"][1:])
+        for item in column_axis
+        if item["roles"] == ["BOOK_CLASSIFICATION"]
+    ]
+    total_ordinal = next(
+        int(item["column_id"][1:]) for item in column_axis if item["roles"] == ["BOOK_TOTAL"]
+    )
+    fair_ordinal = next(
+        int(item["column_id"][1:]) for item in column_axis if item["roles"] == ["FAIR_VALUE"]
+    )
+
+    def numeric(cell: Mapping[str, Any]) -> bool:
+        return type(cell.get("coefficient")) is int and cell.get("state") not in {
+            "SOURCE_EXPLICIT_FAIR_VALUE_UNAVAILABLE",
+        }
+
+    candidates = []
+    fixed_categories = [cells[ordinal - 1] for ordinal in category_ordinals]
+    fixed_total = cells[total_ordinal - 1]
+    fixed_fair = cells[fair_ordinal - 1]
+    fixed_invalid = [
+        cell
+        for cell in fixed_categories
+        if cell["state"]
+        not in {
+            "BLANK",
+            "DASH_ZERO",
+            "RAW_SIGNED_INTEGER",
+            "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH",
+        }
+    ]
+    fair_valid = fixed_fair["state"] in {
+        "BLANK",
+        "DASH_ZERO",
+        "RAW_SIGNED_INTEGER",
+        "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH",
+        "SOURCE_EXPLICIT_FAIR_VALUE_UNAVAILABLE",
+    }
+    if fixed_total["state"] == "BLANK" and not fixed_invalid:
+        known_categories = [cell for cell in fixed_categories if numeric(cell)]
+        known_sum = sum(cell["coefficient"] for cell in known_categories)
+        if known_categories and known_sum == 0:
+            fixed_total = canonical_clone_v1(fixed_total)
+            fixed_total["coefficient"] = 0
+            fixed_total["state"] = "BLANK_ZERO_AFTER_COMPLETE_CLASSIFICATION_AXIS_EXACT"
+    if numeric(fixed_total) and not fixed_invalid and fair_valid:
+        known_sum = sum(cell["coefficient"] for cell in fixed_categories if numeric(cell))
+        normalized_categories = canonical_clone_v1(fixed_categories)
+        if known_sum != fixed_total["coefficient"]:
+            adjacent_index = total_ordinal - 2
+            adjacent = (
+                normalized_categories[adjacent_index]
+                if 0 <= adjacent_index < len(normalized_categories)
+                else None
+            )
+            if (
+                adjacent is not None
+                and numeric(adjacent)
+                and adjacent["coefficient"] == fixed_total["coefficient"]
+                and known_sum - adjacent["coefficient"] == fixed_total["coefficient"]
+            ):
+                adjacent["coefficient"] = 0
+                adjacent["state"] = (
+                    "DUPLICATE_ADJACENT_BOOK_TOTAL_EXTRACTION_SUPPRESSED_ROW_GRAPH_EXACT"
+                )
+                known_sum = fixed_total["coefficient"]
+        if known_sum == fixed_total["coefficient"]:
+            for cell in normalized_categories:
+                if cell["state"] == "BLANK":
+                    cell["coefficient"] = 0
+                    cell["state"] = "BLANK_ZERO_AFTER_ROW_EQUATION_EXACT"
+            candidates.append(
+                {
+                    "alignment_mode": "FIXED_DECLARED_AXIS",
+                    "classification_cells": normalized_categories,
+                    "fair_value_cell": canonical_clone_v1(fixed_fair),
+                    "book_total_cell": canonical_clone_v1(fixed_total),
+                }
+            )
+    # Gemini occasionally preserves the visible cells but compacts them to
+    # the left.  Resolve that representation only through a unique arithmetic
+    # pivot; source order alone is never enough to select a total column.
+    last_active = max(
+        (ordinal for ordinal, cell in enumerate(cells, start=1) if cell["state"] != "BLANK"),
+        default=0,
+    )
+    packed = [cell for cell in cells[:last_active] if cell["state"] != "BLANK"]
+    for pivot in range(2, len(packed) + 1) if not candidates else ():
+        classification = packed[: pivot - 1]
+        total = packed[pivot - 1]
+        tail = packed[pivot:]
+        fair_cell = None
+        ignored_tail_zero_cells = []
+        if tail:
+            if tail[-1]["state"] in {
+                "RAW_SIGNED_INTEGER",
+                "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH",
+                "SOURCE_EXPLICIT_FAIR_VALUE_UNAVAILABLE",
+            }:
+                fair_cell = tail[-1]
+                filler = tail[:-1]
+            else:
+                filler = tail
+            if not all(numeric(cell) and cell["coefficient"] == 0 for cell in filler):
+                continue
+            ignored_tail_zero_cells = canonical_clone_v1(filler)
+        if (
+            not all(numeric(cell) for cell in classification)
+            or not numeric(total)
+            or sum(cell["coefficient"] for cell in classification) != total["coefficient"]
+        ):
+            continue
+        candidates.append(
+            {
+                "alignment_mode": "PACKED_SPARSE_ROW_UNIQUE_ARITHMETIC_PIVOT",
+                "classification_cells": canonical_clone_v1(classification),
+                "fair_value_cell": canonical_clone_v1(fair_cell),
+                "ignored_packed_zero_cells": ignored_tail_zero_cells,
+                "book_total_cell": canonical_clone_v1(total),
+            }
+        )
+    if (
+        not candidates
+        and len(packed) >= 2
+        and packed[-1]["state"] == "SOURCE_EXPLICIT_FAIR_VALUE_UNAVAILABLE"
+        and all(numeric(cell) and cell["coefficient"] == 0 for cell in packed[:-1])
+        and cells[total_ordinal - 1]["state"] == "BLANK"
+    ):
+        inferred_total = canonical_clone_v1(cells[total_ordinal - 1])
+        inferred_total["coefficient"] = 0
+        inferred_total["state"] = "BLANK_ZERO_AFTER_COMPLETE_CLASSIFICATION_AXIS_EXACT"
+        candidates.append(
+            {
+                "alignment_mode": "PACKED_SPARSE_ROW_ZERO_TOTAL_OMITTED_BEFORE_UNAVAILABLE_FAIR",
+                "classification_cells": canonical_clone_v1(packed[:-1]),
+                "fair_value_cell": canonical_clone_v1(packed[-1]),
+                "ignored_packed_zero_cells": [],
+                "book_total_cell": inferred_total,
+            }
+        )
+    unique = {canonical_json_sha256_v1(candidate): candidate for candidate in candidates}
+    if len(unique) != 1:
+        return None, [
+            "VALUATION_ROW_ALIGNMENT_NOT_UNIQUE"
+            if unique
+            else "VALUATION_ROW_CLASSIFICATION_TOTAL_NOT_EXACT"
+        ]
+    resolved = next(iter(unique.values()))
+    for cell in [
+        *resolved["classification_cells"],
+        resolved["book_total_cell"],
+        *([resolved["fair_value_cell"]] if resolved["fair_value_cell"] is not None else []),
+    ]:
+        if cell["state"] == "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH":
+            cell["state"] = "NORMALIZED_SINGLE_NUMERIC_TOKEN_ROW_GRAPH_EXACT"
+    equation = {
+        "computed_value": sum(cell["coefficient"] for cell in resolved["classification_cells"]),
+        "equation_kind": "CLASSIFICATION_CELLS_EQUAL_BOOK_TOTAL",
+        "result_cell": canonical_clone_v1(resolved["book_total_cell"]),
+        "row_id": row_axis["row_id"],
+        "status": "EXACT",
+        "term_cells": canonical_clone_v1(resolved["classification_cells"]),
+    }
+    return (
+        {
+            **canonical_clone_v1(row_axis),
+            **resolved,
+            "equation": equation,
+        },
+        [],
+    )
+
+
+def _valuation_aggregate_value_v1(
+    *, cells: Sequence[Mapping[str, Any]], period_role: str, period_date: str, axis_role: str
+) -> dict[str, Any]:
+    components = [
+        {
+            "axis_role": axis_role,
+            "cell_ref": canonical_clone_v1(cell["cell_ref"]),
+            "coefficient": cell["coefficient"],
+            "period_date": period_date,
+            "period_role": period_role,
+            "source_text": cell["source_text"],
+            "state": cell["state"],
+        }
+        for cell in cells
+    ]
+    return {
+        "aggregate_components": components,
+        "axis_role": axis_role,
+        "cell_ref": None,
+        "coefficient": sum(item["coefficient"] for item in components),
+        "period_date": period_date,
+        "period_role": period_role,
+        "source_text": None,
+        "state": "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT",
+    }
+
+
+def _valuation_mapping_value_v1(
+    *, cell: Mapping[str, Any], period_role: str, period_date: str, axis_role: str
+) -> dict[str, Any]:
+    return {
+        "axis_role": axis_role,
+        "cell_ref": canonical_clone_v1(cell["cell_ref"]),
+        "coefficient": cell["coefficient"],
+        "period_date": period_date,
+        "period_role": period_role,
+        "source_text": cell["source_text"],
+        "state": cell["state"],
+    }
+
+
+def _build_valuation_mappings_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    canonical_unit: str,
+    period_assignments: Sequence[Mapping[str, Any]],
+    role_period_cells: Mapping[tuple[str, str, str], Sequence[Mapping[str, Any]]],
+    total_period_cells: Mapping[tuple[str, str], Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build the exact schema projection from a closed valuation cell graph."""
+
+    period_dates = {item["period_role"]: item["period_date"] for item in period_assignments}
+    if set(period_dates) not in (
+        {"CURRENT_PERIOD"},
+        {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"},
+    ):
+        raise _error("valuation-matrix period mapping axis is incomplete")
+    mappings = []
+    for role, report_norm_id in (
+        ("FAMILY", compiled_specs["family_root_report_norm_id"]),
+        ("BOOK_BRANCH", compiled_specs["book_branch_report_norm_id"]),
+        ("FAIR_BRANCH", compiled_specs["fair_branch_report_norm_id"]),
+    ):
+        mapping = {
+            "item_mapping_id": "gjeqmfv1:item:pending",
+            "report_norm_id": report_norm_id,
+            "role": role,
+            "row_id": f"structural:{role}",
+            "unit": None,
+            "values": [],
+        }
+        mapping["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+            {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+        )
+        mappings.append(mapping)
+    for role, binding in {
+        **compiled_specs["valuation_total_bindings_by_role"],
+        **compiled_specs["valuation_component_bindings_by_role"],
+    }.items():
+        values = []
+        for period_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+            if period_role not in period_dates:
+                continue
+            if role in compiled_specs["valuation_total_bindings_by_role"]:
+                cell = total_period_cells.get((role, period_role))
+                cells = [cell] if cell is not None else []
+            else:
+                cells = list(role_period_cells.get((role, period_role, "CARRYING_VALUE"), []))
+            if len(cells) == 1:
+                values.append(
+                    _valuation_mapping_value_v1(
+                        cell=cells[0],
+                        period_role=period_role,
+                        period_date=period_dates[period_role],
+                        axis_role="CARRYING_VALUE",
+                    )
+                )
+            elif len(cells) > 1:
+                values.append(
+                    _valuation_aggregate_value_v1(
+                        cells=cells,
+                        period_role=period_role,
+                        period_date=period_dates[period_role],
+                        axis_role="CARRYING_VALUE",
+                    )
+                )
+        if values:
+            mapping = {
+                "item_mapping_id": "gjeqmfv1:item:pending",
+                "report_norm_id": binding["book_report_norm_id"],
+                "role": role,
+                "row_id": f"book:{role}",
+                "unit": canonical_unit,
+                "values": values,
+            }
+            mapping["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+                {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+            )
+            mappings.append(mapping)
+        fair_values = []
+        for period_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+            if period_role not in period_dates:
+                continue
+            cells = list(role_period_cells.get((role, period_role, "FAIR_VALUE"), []))
+            if len(cells) == 1:
+                fair_values.append(
+                    _valuation_mapping_value_v1(
+                        cell=cells[0],
+                        period_role=period_role,
+                        period_date=period_dates[period_role],
+                        axis_role="FAIR_VALUE",
+                    )
+                )
+            elif len(cells) > 1:
+                fair_values.append(
+                    _valuation_aggregate_value_v1(
+                        cells=cells,
+                        period_role=period_role,
+                        period_date=period_dates[period_role],
+                        axis_role="FAIR_VALUE",
+                    )
+                )
+        if fair_values:
+            fair_role = role.replace("BOOK_", "FAIR_", 1)
+            mapping = {
+                "item_mapping_id": "gjeqmfv1:item:pending",
+                "report_norm_id": binding["fair_report_norm_id"],
+                "role": fair_role,
+                "row_id": f"fair:{role}",
+                "unit": canonical_unit,
+                "values": fair_values,
+            }
+            mapping["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+                {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+            )
+            mappings.append(mapping)
+    return mappings
+
+
+def _evaluate_valuation_matrix_cluster_v1(
+    *,
+    regions: Sequence[Mapping[str, Any]],
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    query_receipt: Mapping[str, Any],
+    document_unit_context_evidence: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    checked_regions = _checked_region_axis(regions)
+    expected_query = build_gemini_json_equity_matrix_region_query_receipt_v1(
+        checked_regions, owner_receipt=query_receipt.get("owner_receipt", {})
+    )
+    if not same_typed_json_v1(expected_query, query_receipt):
+        raise _error("valuation-matrix query receipt drifted")
+    period_assignments = query_receipt.get("owner_receipt", {}).get("period_assignments")
+    if type(period_assignments) is not list or len(period_assignments) != len(checked_regions):
+        raise _error("valuation-matrix period assignment axis is incomplete")
+    assignment_by_key = {
+        (
+            item.get("page_json_version_id"),
+            item.get("section_id"),
+            item.get("table_id"),
+        ): item
+        for item in period_assignments
+        if type(item) is dict
+    }
+    tables = []
+    classifications = []
+    reasons = []
+    table_receipts = []
+    role_period_cells: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    total_period_cells: dict[tuple[str, str], dict[str, Any]] = {}
+    equations = []
+    for region in checked_regions:
+        page = page_json_by_version.get(region["page_json_version_id"])
+        if type(page) is not dict:
+            raise _error("valuation-matrix selected canonical page is absent")
+        _section, table = _source_table(
+            page, section_id=region["section_id"], table_id=region["table_id"]
+        )
+        classification = _classify_valuation_matrix_table_v1(table, compiled_specs=compiled_specs)
+        tables.append(table)
+        classifications.append(classification)
+        reasons.extend(classification["reasons"])
+        assignment = assignment_by_key.get(
+            (region["page_json_version_id"], region["section_id"], region["table_id"])
+        )
+        if (
+            type(assignment) is not dict
+            or assignment.get("period_role") not in {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}
+            or type(assignment.get("period_date")) is not str
+        ):
+            reasons.append("VALUATION_FRAGMENT_PERIOD_ASSIGNMENT_MISSING")
+            continue
+        resolved_rows = []
+        row_by_id = {f"r{ordinal}": row for ordinal, row in enumerate(table["rows"], start=1)}
+        for row_axis in classification["component_axis"]:
+            if row_axis["kind"] not in {"MAPPED_COMPONENT", "BRANCH_TOTAL"}:
+                continue
+            resolved, row_reasons = _valuation_resolve_row_v1(
+                row=row_by_id[row_axis["row_id"]],
+                row_axis=row_axis,
+                column_axis=classification["column_axis"],
+                region=region,
+                compiled_specs=compiled_specs,
+            )
+            reasons.extend(f"{row_axis['row_id']}:{reason}" for reason in row_reasons)
+            if resolved is None:
+                continue
+            resolved_rows.append(resolved)
+            equations.append(canonical_clone_v1(resolved["equation"]))
+            if row_axis["kind"] == "MAPPED_COMPONENT":
+                role_period_cells.setdefault(
+                    (row_axis["role"], assignment["period_role"], "CARRYING_VALUE"), []
+                ).append(resolved["book_total_cell"])
+                fair = resolved["fair_value_cell"]
+                if fair is not None and fair.get("state") in {
+                    "RAW_SIGNED_INTEGER",
+                    "NORMALIZED_SINGLE_NUMERIC_TOKEN_ROW_GRAPH_EXACT",
+                }:
+                    role_period_cells.setdefault(
+                        (row_axis["role"], assignment["period_role"], "FAIR_VALUE"), []
+                    ).append(fair)
+            else:
+                total_period_cells[(row_axis["role"], assignment["period_role"])] = resolved[
+                    "book_total_cell"
+                ]
+                fair = resolved["fair_value_cell"]
+                if fair is not None and fair.get("state") in {
+                    "RAW_SIGNED_INTEGER",
+                    "NORMALIZED_SINGLE_NUMERIC_TOKEN_ROW_GRAPH_EXACT",
+                }:
+                    role_period_cells.setdefault(
+                        (row_axis["role"], assignment["period_role"], "FAIR_VALUE"), []
+                    ).append(fair)
+        for branch in ("ASSET", "LIABILITY"):
+            item_cells = [
+                row["book_total_cell"]
+                for row in resolved_rows
+                if row["branch"] == branch and row["kind"] == "MAPPED_COMPONENT"
+            ]
+            total_rows = [
+                row
+                for row in resolved_rows
+                if row["branch"] == branch and row["kind"] == "BRANCH_TOTAL"
+            ]
+            if len(total_rows) != 1 or not item_cells:
+                reasons.append(f"{branch}_BOOK_BRANCH_FRONTIER_INCOMPLETE")
+                continue
+            result_cell = total_rows[0]["book_total_cell"]
+            computed = sum(cell["coefficient"] for cell in item_cells)
+            status = "EXACT" if computed == result_cell["coefficient"] else "MISMATCH"
+            equations.append(
+                {
+                    "computed_value": computed,
+                    "equation_kind": f"{branch}_ITEM_BOOK_TOTALS_EQUAL_BRANCH_TOTAL",
+                    "result_cell": canonical_clone_v1(result_cell),
+                    "status": status,
+                    "term_cells": canonical_clone_v1(item_cells),
+                }
+            )
+            if status != "EXACT":
+                reasons.append(f"{branch}_BOOK_BRANCH_TOTAL_MISMATCH")
+        table_receipts.append(
+            {
+                "classification": classification,
+                "period_assignment": canonical_clone_v1(assignment),
+                "region": canonical_clone_v1(region),
+                "resolved_rows": resolved_rows,
+            }
+        )
+    unit_receipt, unit_reasons = _resolve_cluster_unit(
+        tables=tables,
+        compiled_specs=compiled_specs,
+        document_unit_context_evidence=document_unit_context_evidence,
+    )
+    reasons.extend(unit_reasons)
+    reasons = sorted(set(reasons))
+    mappings = []
+    if not reasons and unit_receipt["canonical_unit"] is not None:
+        mappings = _build_valuation_mappings_v1(
+            compiled_specs=compiled_specs,
+            canonical_unit=unit_receipt["canonical_unit"],
+            period_assignments=period_assignments,
+            role_period_cells=role_period_cells,
+            total_period_cells=total_period_cells,
+        )
+    first = checked_regions[0]
+    closure_receipt = {
+        "equations": equations,
+        "matrix_kind": "VALUATION_CLASSIFICATION",
+        "period_assignments": canonical_clone_v1(period_assignments),
+        "query_receipt": canonical_clone_v1(query_receipt),
+        "rule": ("EXACT_FIXED_OR_UNIQUE_PACKED_ROWS_AND_ASSET_LIABILITY_BRANCH_TOTALS"),
+        "table_receipts": table_receipts,
+        "unit_receipt": unit_receipt,
+    }
+    material = {
+        "claim_boundary": VALUATION_CLAIM_BOUNDARY,
+        "closure_receipt": closure_receipt,
+        "component_regions": canonical_clone_v1(checked_regions),
+        "document_id": first["document_id"],
+        "family_id": compiled_specs["family_id"],
+        "mappings": mappings,
+        "page_json_version_id": first["page_json_version_id"],
+        "physical_page": first["physical_page"],
+        "reasons": reasons,
+        "section_id": first["section_id"],
+        "source_logical_name": first["source_logical_name"],
+        "source_sha256": first["source_sha256"],
+        "status": READY if not reasons else UNRESOLVED,
+        "table_id": first["table_id"],
+    }
+    if reasons:
+        material["mappings"] = []
+    return {
+        "candidate_id": "gjeqmfv1:candidate:" + canonical_json_sha256_v1(material),
+        **material,
+    }
+
+
 def evaluate_gemini_json_equity_matrix_family_cluster_v1(
     *,
     regions: Sequence[Mapping[str, Any]],
@@ -2763,6 +3842,15 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
     document_unit_context_evidence: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     """Evaluate one exact matrix cluster and emit mappings only after closure."""
+
+    if compiled_specs.get("valuation_mode") is True:
+        return _evaluate_valuation_matrix_cluster_v1(
+            regions=regions,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+            query_receipt=query_receipt,
+            document_unit_context_evidence=document_unit_context_evidence,
+        )
 
     checked_regions = _checked_region_axis(regions)
     expected_query = build_gemini_json_equity_matrix_region_query_receipt_v1(
@@ -3065,10 +4153,368 @@ def _matrix_region(item: Mapping[str, Any], *, fragment_ordinal: int) -> dict[st
     }
 
 
+def _valuation_period_date_from_table_v1(
+    *, section: Mapping[str, Any], table: Mapping[str, Any]
+) -> tuple[str | None, list[dict[str, Any]], list[str]]:
+    observed = []
+    for source_kind, surface in (
+        ("TABLE_TITLE", table.get("title_exact")),
+        ("SECTION_TITLE", section.get("title_exact")),
+    ):
+        dates = sorted(item.isoformat() for item in _header_dates(surface or ""))
+        observed.append(
+            {
+                "dates": dates,
+                "source_exact": surface,
+                "source_kind": source_kind,
+            }
+        )
+    # A table title is the narrowest source-governed period carrier.  A broad
+    # section/report title is used only when the table title is silent.  This
+    # avoids treating a current report heading as a contradiction to an
+    # explicitly titled comparative sibling table.
+    for item in observed:
+        if len(item["dates"]) == 1:
+            evidence = [
+                {
+                    "period_date": item["dates"][0],
+                    "source_exact": item["source_exact"],
+                    "source_kind": item["source_kind"],
+                }
+            ]
+            return item["dates"][0], evidence, []
+        if item["source_kind"] == "TABLE_TITLE" and len(item["dates"]) > 1:
+            return None, canonical_clone_v1(observed), ["TABLE_TITLE_PERIOD_DATE_NOT_UNIQUE"]
+    return None, canonical_clone_v1(observed), []
+
+
+def _valuation_document_reporting_date_receipt_v1(
+    pages: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    # The typed reporting-date primitive is source-generic and already seals
+    # PRIMARY_STATEMENT date carriers without inventing a calendar year end.
+    from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
+        _document_reporting_date_receipt,
+    )
+
+    return _document_reporting_date_receipt(pages)
+
+
+def _valuation_role_population_signature_v1(classification: Mapping[str, Any]) -> list[Any]:
+    return [
+        [item.get("branch"), item.get("kind"), item.get("role")]
+        for item in classification.get("component_axis", [])
+        if item.get("kind") != "STRUCTURAL_GROUP"
+    ]
+
+
+def _valuation_forward_table_marker_v1(value: Any) -> bool:
+    folded = _normalized(value)
+    return bool(
+        re.search(r"\bbang\b", folded)
+        and re.search(r"\b(?:sau|duoi day|tiep theo)\b", folded)
+        and re.search(r"\b(?:trinh bay|the hien|chi tiet|tong hop)\b", folded)
+    )
+
+
+def _coalesce_valuation_matrix_document_v1(
+    *, page_records: Any, compiled_specs: Mapping[str, Any]
+) -> dict[str, Any]:
+    pages = _selected_page_record_axis(page_records)
+    inventory = []
+    owner_markers = []
+    period_markers = []
+    continuation_markers = []
+    reset_markers = []
+    for record in pages:
+        for section_ordinal, section in enumerate(record["page_json"]["sections"], start=1):
+            if type(section) is not dict:
+                continue
+            section_id = f"s{section_ordinal}"
+            surfaces = [section.get("title_exact"), *(section.get("narratives_exact") or [])]
+            title_dates = sorted(
+                item.isoformat() for item in _header_dates(section.get("title_exact") or "")
+            )
+            title_folded = _normalized(section.get("title_exact"))
+            if len(title_dates) == 1 and any(
+                marker in title_folded
+                for marker in ("tai ngay", "ket thuc ngay", "ket thuc cung ngay")
+            ):
+                period_markers.append(
+                    {
+                        "period_date": title_dates[0],
+                        "position": [record["selected_page_ordinal"], section_ordinal, 0],
+                        "source_exact": section.get("title_exact"),
+                        "source_kind": "BOUNDED_REPORT_SECTION_TITLE",
+                    }
+                )
+            for source_exact in surfaces:
+                position = [record["selected_page_ordinal"], section_ordinal, 0]
+                owner = _contained_declared_alias(
+                    source_exact, compiled_specs["query_policy"]["owner_aliases"]
+                )
+                reset = _contained_declared_alias(
+                    source_exact,
+                    [
+                        *compiled_specs["query_policy"]["reset_aliases"],
+                        *compiled_specs["query_policy"]["hard_negative_aliases"],
+                    ],
+                )
+                if owner is not None:
+                    owner_markers.append(
+                        {"alias": owner, "position": position, "source_exact": source_exact}
+                    )
+                if _valuation_forward_table_marker_v1(source_exact):
+                    continuation_markers.append(
+                        {
+                            "position": position,
+                            "source_exact": source_exact,
+                            "source_kind": "EXPLICIT_FORWARD_TABLE_NARRATIVE",
+                        }
+                    )
+                if reset is not None:
+                    reset_markers.append(
+                        {"alias": reset, "position": position, "source_exact": source_exact}
+                    )
+            tables = section.get("tables")
+            if type(tables) is not list:
+                continue
+            for table_ordinal, table in enumerate(tables, start=1):
+                if type(table) is not dict:
+                    continue
+                position = [record["selected_page_ordinal"], section_ordinal, table_ordinal]
+                source_exact = table.get("title_exact")
+                owner = _contained_declared_alias(
+                    source_exact, compiled_specs["query_policy"]["owner_aliases"]
+                )
+                reset = _contained_declared_alias(
+                    source_exact,
+                    [
+                        *compiled_specs["query_policy"]["reset_aliases"],
+                        *compiled_specs["query_policy"]["hard_negative_aliases"],
+                    ],
+                )
+                if owner is not None:
+                    owner_markers.append(
+                        {"alias": owner, "position": position, "source_exact": source_exact}
+                    )
+                if reset is not None:
+                    reset_markers.append(
+                        {"alias": reset, "position": position, "source_exact": source_exact}
+                    )
+                classification = _classify_valuation_matrix_table_v1(
+                    table, compiled_specs=compiled_specs
+                )
+                declared_columns = set(classification["column_declared_component_roles"])
+                if {"BOOK_TOTAL", "FAIR_VALUE"} <= declared_columns and classification[
+                    "row_declared_component_roles"
+                ]:
+                    local_date, period_evidence, period_reasons = (
+                        _valuation_period_date_from_table_v1(section=section, table=table)
+                    )
+                    inventory.append(
+                        {
+                            "classification": classification,
+                            "continuation": table.get("continuation"),
+                            "local_period_date": local_date,
+                            "period_evidence": period_evidence,
+                            "period_reasons": period_reasons,
+                            "position": position,
+                            "record": record,
+                            "section_id": section_id,
+                            "table_id": f"t{table_ordinal}",
+                        }
+                    )
+    selected = [item for item in inventory if item["classification"]["status"] == "MATRIX_FRAGMENT"]
+    reasons = [
+        reason
+        for item in inventory
+        if item["classification"]["status"] != "MATRIX_FRAGMENT"
+        for reason in item["classification"]["reasons"]
+    ]
+    if inventory and len(selected) != len(inventory):
+        reasons.append("INCOMPLETE_DECLARED_VALUATION_TABLE_PRESENT")
+    reporting_date_receipt = _valuation_document_reporting_date_receipt_v1(pages)
+    period_assignments = []
+    if len(selected) not in {0, 1, 2}:
+        reasons.append("MORE_THAN_TWO_VALUATION_PERIOD_TABLES_UNDER_DOCUMENT_OWNER")
+    if len(selected) == 2 and not same_typed_json_v1(
+        _valuation_role_population_signature_v1(selected[0]["classification"]),
+        _valuation_role_population_signature_v1(selected[1]["classification"]),
+    ):
+        reasons.append("VALUATION_PERIOD_TABLE_ROLE_POPULATIONS_DIFFER")
+    for item in selected:
+        reasons.extend(item["period_reasons"])
+        period_date = item["local_period_date"]
+        source = "LOCAL_TABLE_OR_SECTION_DATE"
+        if period_date is None:
+            prior_period_markers = [
+                marker
+                for marker in period_markers
+                if marker["position"] <= item["position"]
+                and item["position"][0] - marker["position"][0]
+                <= compiled_specs["query_policy"]["max_continuation_pages"]
+            ]
+            if prior_period_markers:
+                marker = max(prior_period_markers, key=lambda value: value["position"])
+                period_date = marker["period_date"]
+                source = "BOUNDED_PRECEDING_REPORT_HEADING"
+                item["period_evidence"].append(canonical_clone_v1(marker))
+        if period_date is None and len(selected) == 1:
+            period_date = reporting_date_receipt.get("current_date")
+            source = "TYPED_DOCUMENT_REPORTING_DATE"
+        if period_date is None:
+            reasons.append("VALUATION_PERIOD_DATE_UNRESOLVED")
+        period_assignments.append(
+            {
+                "page_json_version_id": item["record"]["page_json_version_id"],
+                "period_date": period_date,
+                "period_evidence": canonical_clone_v1(item["period_evidence"]),
+                "section_id": item["section_id"],
+                "source": source,
+                "table_id": item["table_id"],
+            }
+        )
+    distinct_dates = {item["period_date"] for item in period_assignments if item["period_date"]}
+    if len(selected) == 2 and len(distinct_dates) != 2:
+        reasons.append("TWO_VALUATION_TABLE_PERIOD_DATES_NOT_DISTINCT")
+    period_roles = {}
+    if len(distinct_dates) == len(selected) and selected:
+        ordered_dates = sorted(distinct_dates, reverse=True)
+        period_roles = {
+            period_date: "CURRENT_PERIOD" if ordinal == 0 else "COMPARATIVE_PERIOD"
+            for ordinal, period_date in enumerate(ordered_dates)
+        }
+        for assignment in period_assignments:
+            assignment["period_role"] = period_roles[assignment["period_date"]]
+
+    owner_receipt = None
+    if selected:
+        first_position = min(item["position"] for item in selected)
+        last_position = max(item["position"] for item in selected)
+        prior_owners = [
+            marker
+            for marker in owner_markers
+            if marker["position"] <= first_position
+            and first_position[0] - marker["position"][0]
+            <= compiled_specs["query_policy"]["max_continuation_pages"]
+            and (
+                marker["position"][0] == first_position[0]
+                or min(selected, key=lambda item: item["position"])["continuation"]
+                == "CONTINUES_FROM_PREVIOUS_PAGE"
+                or any(
+                    marker["position"] <= continuation["position"] < first_position
+                    and first_position[0] - continuation["position"][0]
+                    <= compiled_specs["query_policy"]["max_continuation_pages"]
+                    for continuation in continuation_markers
+                )
+            )
+        ]
+        if not prior_owners:
+            reasons.append("EXPLICIT_BOUNDED_VALUATION_MATRIX_OWNER_NOT_VISIBLE")
+        else:
+            owner = max(prior_owners, key=lambda item: item["position"])
+            fenced_resets = [
+                marker
+                for marker in reset_markers
+                if owner["position"] <= marker["position"] <= last_position
+            ]
+            if fenced_resets:
+                reasons.append("OWNER_TO_VALUATION_MATRIX_INTERVAL_CONTAINS_RESET")
+            first_selected = min(selected, key=lambda item: item["position"])
+            continuation_evidence = None
+            if owner["position"][0] != first_position[0]:
+                narrative_markers = [
+                    marker
+                    for marker in continuation_markers
+                    if owner["position"] <= marker["position"] < first_position
+                    and first_position[0] - marker["position"][0]
+                    <= compiled_specs["query_policy"]["max_continuation_pages"]
+                ]
+                if narrative_markers:
+                    continuation_evidence = max(
+                        narrative_markers, key=lambda item: item["position"]
+                    )
+                elif first_selected["continuation"] == "CONTINUES_FROM_PREVIOUS_PAGE":
+                    continuation_evidence = {
+                        "position": first_selected["position"],
+                        "source_exact": first_selected["continuation"],
+                        "source_kind": "STRUCTURED_TABLE_CONTINUATION",
+                    }
+            owner_receipt = {
+                "continuation_evidence": continuation_evidence,
+                "document_reporting_date_receipt": reporting_date_receipt,
+                "owner_alias": owner["alias"],
+                "owner_position": owner["position"],
+                "owner_source_exact": owner["source_exact"],
+                "period_assignments": period_assignments,
+                "reset_fence_axis": fenced_resets,
+                "rule": "LATEST_EXPLICIT_OWNER_WITHIN_ONE_PAGE_RESET_FREE_INTERVAL",
+            }
+    regions = [
+        _matrix_region(item, fragment_ordinal=ordinal)
+        for ordinal, item in enumerate(selected, start=1)
+    ]
+    if regions:
+        try:
+            _checked_region_axis(regions)
+        except GeminiJsonEquityMatrixAccountingFamilyV1Error:
+            reasons.append("VALUATION_REGION_AXIS_IS_NOT_ONE_OR_TWO_ADJACENT_FRAGMENTS")
+    inventory_receipt = [
+        {
+            "classification": canonical_clone_v1(item["classification"]),
+            "continuation": item["continuation"],
+            "disposition": (
+                "SELECTED_VALUATION_FRAGMENT"
+                if item in selected
+                else "UNSELECTED_DECLARED_VALUATION_TABLE"
+            ),
+            "local_period_date": item["local_period_date"],
+            "page_json_version_id": item["record"]["page_json_version_id"],
+            "period_evidence": canonical_clone_v1(item["period_evidence"]),
+            "physical_page": item["record"]["physical_page"],
+            "position": item["position"],
+            "section_id": item["section_id"],
+            "table_id": item["table_id"],
+        }
+        for item in inventory
+    ]
+    unit_context = _document_unit_context_v1(pages, compiled_specs=compiled_specs)
+    first = pages[0]
+    status = (
+        NOT_OBSERVED
+        if not inventory
+        else READY
+        if selected and not reasons and owner_receipt is not None
+        else UNRESOLVED
+    )
+    material = {
+        "component_regions": regions if status == READY else [],
+        "declared_table_inventory": inventory_receipt,
+        "document_id": first["document_id"],
+        "document_ordinal": first["document_ordinal"],
+        "document_unit_context_evidence": unit_context,
+        "owner_receipt": owner_receipt,
+        "reasons": sorted(set(reasons)),
+        "source_logical_name": first["source_logical_name"],
+        "source_sha256": first["source_sha256"],
+        "status": status,
+    }
+    return {
+        "cluster_id": "gjeqmfv1:cluster:" + canonical_json_sha256_v1(material),
+        **material,
+    }
+
+
 def coalesce_gemini_json_equity_matrix_document_v1(
     *, page_records: Any, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any]:
     """Select one complete matrix under one bounded owner/reset fence."""
+
+    if compiled_specs.get("valuation_mode") is True:
+        return _coalesce_valuation_matrix_document_v1(
+            page_records=page_records, compiled_specs=compiled_specs
+        )
 
     pages = _selected_page_record_axis(page_records)
     inventory = []
@@ -3571,6 +5017,383 @@ def validate_gemini_json_indexed_equity_matrix_query_evidence_v1(
     return canonical_clone_v1(value)
 
 
+def _validate_valuation_matrix_candidate_binding_v1(
+    candidate: Any,
+    *,
+    document: Mapping[str, Any],
+    cluster: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal the self-contained valuation graph before SQLite source replay."""
+
+    candidate_fields = {
+        "candidate_id",
+        "claim_boundary",
+        "closure_receipt",
+        "component_regions",
+        "document_id",
+        "family_id",
+        "mappings",
+        "page_json_version_id",
+        "physical_page",
+        "reasons",
+        "section_id",
+        "source_logical_name",
+        "source_sha256",
+        "status",
+        "table_id",
+    }
+    closure_fields = {
+        "equations",
+        "matrix_kind",
+        "period_assignments",
+        "query_receipt",
+        "rule",
+        "table_receipts",
+        "unit_receipt",
+    }
+    table_receipt_fields = {
+        "classification",
+        "period_assignment",
+        "region",
+        "resolved_rows",
+    }
+    unit_fields = {
+        "canonical_unit",
+        "document_unit_context_evidence",
+        "fragment_unit_axes",
+        "source",
+    }
+    local_unit_fields = {
+        "canonical_unit",
+        "complete",
+        "conflicting_surfaces",
+        "evidence",
+        "reasons",
+        "source",
+        "undeclared_evidence",
+    }
+    row_axis_fields = {
+        "branch",
+        "kind",
+        "label_exact",
+        "role",
+        "role_matches",
+        "row_id",
+        "row_kind",
+        "source_order",
+    }
+    row_equation_fields = {
+        "computed_value",
+        "equation_kind",
+        "result_cell",
+        "row_id",
+        "status",
+        "term_cells",
+    }
+    branch_equation_fields = {
+        "computed_value",
+        "equation_kind",
+        "result_cell",
+        "status",
+        "term_cells",
+    }
+    regions = cluster["component_regions"]
+    first = regions[0]
+    closure = candidate.get("closure_receipt") if type(candidate) is dict else None
+    if (
+        type(candidate) is not dict
+        or set(candidate) != candidate_fields
+        or candidate.get("claim_boundary") != VALUATION_CLAIM_BOUNDARY
+        or candidate.get("family_id") != compiled_specs["family_id"]
+        or candidate.get("document_id") != first["document_id"]
+        or candidate.get("page_json_version_id") != first["page_json_version_id"]
+        or candidate.get("physical_page") != first["physical_page"]
+        or candidate.get("section_id") != first["section_id"]
+        or candidate.get("table_id") != first["table_id"]
+        or candidate.get("source_logical_name") != document["source_logical_name"]
+        or candidate.get("source_sha256") != document["source_sha256"]
+        or not same_typed_json_v1(candidate.get("component_regions"), regions)
+        or candidate.get("status") not in {READY, UNRESOLVED}
+        or type(candidate.get("reasons")) is not list
+        or candidate["reasons"] != sorted(set(candidate["reasons"]))
+        or type(candidate.get("mappings")) is not list
+        or type(closure) is not dict
+        or set(closure) != closure_fields
+        or closure.get("matrix_kind") != "VALUATION_CLASSIFICATION"
+        or closure.get("rule")
+        != "EXACT_FIXED_OR_UNIQUE_PACKED_ROWS_AND_ASSET_LIABILITY_BRANCH_TOTALS"
+        or type(closure.get("equations")) is not list
+        or type(closure.get("period_assignments")) is not list
+        or type(closure.get("table_receipts")) is not list
+        or type(closure.get("unit_receipt")) is not dict
+        or set(closure["unit_receipt"]) != unit_fields
+    ):
+        raise _error("valuation-matrix candidate structure drifted")
+    expected_query = build_gemini_json_equity_matrix_region_query_receipt_v1(
+        regions, owner_receipt=cluster["owner_receipt"]
+    )
+    if not same_typed_json_v1(closure["query_receipt"], expected_query):
+        raise _error("valuation-matrix candidate query receipt drifted")
+    expected_period_assignments = cluster["owner_receipt"].get("period_assignments")
+    if not same_typed_json_v1(closure["period_assignments"], expected_period_assignments):
+        raise _error("valuation-matrix candidate period assignments drifted")
+    unit_receipt = closure["unit_receipt"]
+    if (
+        not same_typed_json_v1(
+            unit_receipt["document_unit_context_evidence"],
+            cluster["document_unit_context_evidence"],
+        )
+        or type(unit_receipt["fragment_unit_axes"]) is not list
+        or len(unit_receipt["fragment_unit_axes"]) != len(regions)
+        or any(
+            type(axis) is not dict
+            or set(axis) != local_unit_fields
+            or type(axis.get("complete")) is not bool
+            or type(axis.get("conflicting_surfaces")) is not list
+            or type(axis.get("evidence")) is not list
+            or type(axis.get("reasons")) is not list
+            or axis["reasons"] != sorted(set(axis["reasons"]))
+            or type(axis.get("undeclared_evidence")) is not list
+            for axis in unit_receipt["fragment_unit_axes"]
+        )
+    ):
+        raise _error("valuation-matrix unit receipt drifted")
+    material = {key: value for key, value in candidate.items() if key != "candidate_id"}
+    if candidate["candidate_id"] != "gjeqmfv1:candidate:" + canonical_json_sha256_v1(material):
+        raise _error("valuation-matrix candidate identity drifted")
+
+    inventory_by_locator = {
+        (
+            item["page_json_version_id"],
+            item["section_id"],
+            item["table_id"],
+        ): item
+        for item in cluster.get("declared_table_inventory", [])
+        if type(item) is dict and item.get("disposition") == "SELECTED_VALUATION_FRAGMENT"
+    }
+    assignment_by_locator = {
+        (
+            item["page_json_version_id"],
+            item["section_id"],
+            item["table_id"],
+        ): item
+        for item in closure["period_assignments"]
+        if type(item) is dict
+    }
+    if (
+        len(inventory_by_locator) != len(regions)
+        or len(assignment_by_locator) != len(regions)
+        or len(closure["table_receipts"]) != len(regions)
+    ):
+        raise _error("valuation-matrix candidate table frontier drifted")
+
+    expected_equations = []
+    role_period_cells: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    total_period_cells: dict[tuple[str, str], dict[str, Any]] = {}
+    for table_receipt, region in zip(closure["table_receipts"], regions, strict=True):
+        locator = (
+            region["page_json_version_id"],
+            region["section_id"],
+            region["table_id"],
+        )
+        inventory = inventory_by_locator.get(locator)
+        assignment = assignment_by_locator.get(locator)
+        if (
+            type(table_receipt) is not dict
+            or set(table_receipt) != table_receipt_fields
+            or inventory is None
+            or assignment is None
+            or not same_typed_json_v1(table_receipt["region"], region)
+            or not same_typed_json_v1(table_receipt["classification"], inventory["classification"])
+            or not same_typed_json_v1(table_receipt["period_assignment"], assignment)
+            or type(table_receipt["resolved_rows"]) is not list
+        ):
+            raise _error("valuation-matrix table receipt drifted")
+        classification = table_receipt["classification"]
+        expected_row_axes = [
+            item
+            for item in classification.get("component_axis", [])
+            if item.get("kind") in {"MAPPED_COMPONENT", "BRANCH_TOTAL"}
+        ]
+        resolved_rows = table_receipt["resolved_rows"]
+        if len(resolved_rows) > len(expected_row_axes):
+            raise _error("valuation-matrix resolved row axis is overcomplete")
+        expected_by_row = {item["row_id"]: item for item in expected_row_axes}
+        seen_rows = set()
+        for resolved in resolved_rows:
+            row_id = resolved.get("row_id") if type(resolved) is dict else None
+            expected_axis = expected_by_row.get(row_id)
+            optional_fields = (
+                {"ignored_packed_zero_cells"}
+                if type(resolved) is dict and "ignored_packed_zero_cells" in resolved
+                else set()
+            )
+            expected_fields = (
+                row_axis_fields
+                | {
+                    "alignment_mode",
+                    "book_total_cell",
+                    "classification_cells",
+                    "equation",
+                    "fair_value_cell",
+                }
+                | optional_fields
+            )
+            if (
+                type(resolved) is not dict
+                or set(resolved) != expected_fields
+                or expected_axis is None
+                or row_id in seen_rows
+                or not same_typed_json_v1(
+                    {key: resolved[key] for key in row_axis_fields}, expected_axis
+                )
+                or type(resolved["classification_cells"]) is not list
+                or not resolved["classification_cells"]
+                or type(resolved["book_total_cell"]) is not dict
+                or resolved["fair_value_cell"] is not None
+                and type(resolved["fair_value_cell"]) is not dict
+                or type(resolved["equation"]) is not dict
+                or set(resolved["equation"]) != row_equation_fields
+            ):
+                raise _error("valuation-matrix resolved row receipt drifted")
+            seen_rows.add(row_id)
+            cells = [
+                *resolved["classification_cells"],
+                resolved["book_total_cell"],
+                *([resolved["fair_value_cell"]] if resolved["fair_value_cell"] is not None else []),
+                *resolved.get("ignored_packed_zero_cells", []),
+            ]
+            for cell in cells:
+                ref = cell.get("cell_ref") if type(cell) is dict else None
+                if (
+                    type(cell) is not dict
+                    or set(cell) != {"cell_ref", "coefficient", "source_text", "state"}
+                    or type(cell.get("state")) is not str
+                    or not cell["state"]
+                    or cell.get("source_text") is not None
+                    and type(cell["source_text"]) is not str
+                    or cell.get("coefficient") is not None
+                    and type(cell["coefficient"]) is not int
+                    or type(ref) is not dict
+                    or set(ref) != {"column_id", "locator", "row_id"}
+                    or ref.get("row_id") != row_id
+                    or _COLUMN_ID.fullmatch(ref.get("column_id", "")) is None
+                    or not same_typed_json_v1(ref.get("locator"), region)
+                ):
+                    raise _error("valuation-matrix resolved cell provenance drifted")
+            expected_row_equation = {
+                "computed_value": sum(
+                    cell["coefficient"] for cell in resolved["classification_cells"]
+                ),
+                "equation_kind": "CLASSIFICATION_CELLS_EQUAL_BOOK_TOTAL",
+                "result_cell": canonical_clone_v1(resolved["book_total_cell"]),
+                "row_id": row_id,
+                "status": "EXACT",
+                "term_cells": canonical_clone_v1(resolved["classification_cells"]),
+            }
+            if (
+                any(
+                    type(cell.get("coefficient")) is not int
+                    for cell in resolved["classification_cells"]
+                )
+                or type(resolved["book_total_cell"].get("coefficient")) is not int
+                or expected_row_equation["computed_value"]
+                != resolved["book_total_cell"]["coefficient"]
+                or not same_typed_json_v1(resolved["equation"], expected_row_equation)
+            ):
+                raise _error("valuation-matrix row equation drifted")
+            expected_equations.append(expected_row_equation)
+            if resolved["kind"] == "MAPPED_COMPONENT":
+                role_period_cells.setdefault(
+                    (resolved["role"], assignment["period_role"], "CARRYING_VALUE"),
+                    [],
+                ).append(resolved["book_total_cell"])
+                fair = resolved["fair_value_cell"]
+                if fair is not None and fair.get("state") in {
+                    "RAW_SIGNED_INTEGER",
+                    "NORMALIZED_SINGLE_NUMERIC_TOKEN_ROW_GRAPH_EXACT",
+                }:
+                    role_period_cells.setdefault(
+                        (resolved["role"], assignment["period_role"], "FAIR_VALUE"),
+                        [],
+                    ).append(fair)
+            else:
+                total_key = (resolved["role"], assignment["period_role"])
+                if total_key in total_period_cells:
+                    raise _error("valuation-matrix branch total is duplicate")
+                total_period_cells[total_key] = resolved["book_total_cell"]
+                fair = resolved["fair_value_cell"]
+                if fair is not None and fair.get("state") in {
+                    "RAW_SIGNED_INTEGER",
+                    "NORMALIZED_SINGLE_NUMERIC_TOKEN_ROW_GRAPH_EXACT",
+                }:
+                    role_period_cells.setdefault(
+                        (resolved["role"], assignment["period_role"], "FAIR_VALUE"), []
+                    ).append(fair)
+        for branch in ("ASSET", "LIABILITY"):
+            item_cells = [
+                row["book_total_cell"]
+                for row in resolved_rows
+                if row["branch"] == branch and row["kind"] == "MAPPED_COMPONENT"
+            ]
+            total_rows = [
+                row
+                for row in resolved_rows
+                if row["branch"] == branch and row["kind"] == "BRANCH_TOTAL"
+            ]
+            if len(total_rows) == 1 and item_cells:
+                result_cell = total_rows[0]["book_total_cell"]
+                computed = sum(cell["coefficient"] for cell in item_cells)
+                expected_equations.append(
+                    {
+                        "computed_value": computed,
+                        "equation_kind": f"{branch}_ITEM_BOOK_TOTALS_EQUAL_BRANCH_TOTAL",
+                        "result_cell": canonical_clone_v1(result_cell),
+                        "status": "EXACT" if computed == result_cell["coefficient"] else "MISMATCH",
+                        "term_cells": canonical_clone_v1(item_cells),
+                    }
+                )
+    if any(
+        type(item) is not dict or set(item) not in (row_equation_fields, branch_equation_fields)
+        for item in closure["equations"]
+    ) or not same_typed_json_v1(closure["equations"], expected_equations):
+        raise _error("valuation-matrix closure equation axis drifted")
+
+    if candidate["status"] == READY:
+        canonical_unit = unit_receipt.get("canonical_unit")
+        if (
+            candidate["reasons"]
+            or type(canonical_unit) is not str
+            or not canonical_unit
+            or any(
+                len(receipt["resolved_rows"])
+                != len(
+                    [
+                        item
+                        for item in receipt["classification"]["component_axis"]
+                        if item["kind"] in {"MAPPED_COMPONENT", "BRANCH_TOTAL"}
+                    ]
+                )
+                for receipt in closure["table_receipts"]
+            )
+            or any(item.get("status") != "EXACT" for item in expected_equations)
+        ):
+            raise _error("valuation-matrix READY closure is incomplete")
+        expected_mappings = _build_valuation_mappings_v1(
+            compiled_specs=compiled_specs,
+            canonical_unit=canonical_unit,
+            period_assignments=closure["period_assignments"],
+            role_period_cells=role_period_cells,
+            total_period_cells=total_period_cells,
+        )
+        if not same_typed_json_v1(candidate["mappings"], expected_mappings):
+            raise _error("valuation-matrix schema mapping axis drifted")
+    elif candidate["mappings"] or not candidate["reasons"]:
+        raise _error("valuation-matrix unresolved candidate semantics drifted")
+    return candidate
+
+
 def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
     *, trials: Any, indexed_query_evidence: Any, compiled_specs: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -3641,6 +5464,13 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
     def validate_candidate(
         candidate: Any, *, document: Mapping[str, Any], cluster: Mapping[str, Any]
     ) -> dict[str, Any]:
+        if compiled_specs.get("valuation_mode") is True:
+            return _validate_valuation_matrix_candidate_binding_v1(
+                candidate,
+                document=document,
+                cluster=cluster,
+                compiled_specs=compiled_specs,
+            )
         regions = cluster["component_regions"]
         first = regions[0]
         closure = candidate.get("closure_receipt") if type(candidate) is dict else None

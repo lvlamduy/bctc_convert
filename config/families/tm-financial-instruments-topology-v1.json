@@ -1,0 +1,77 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tài sản tài chính"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FINANCIAL_ASSET_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Nợ phải trả tài chính",
+            "Công nợ tài chính"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FINANCIAL_LIABILITY_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    }
+  ],
+  "family_id": "FINANCIAL_INSTRUMENTS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Rủi ro tiền tệ",
+    "Rủi ro lãi suất",
+    "Rủi ro thanh khoản",
+    "Quản lý rủi ro tài chính",
+    "Chính sách kế toán công cụ tài chính"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 200,
+    "max_continuation_pages": 1,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Phân loại tài sản tài chính và công nợ tài chính",
+      "Phân loại tài sản tài chính và nợ phải trả tài chính",
+      "Tài sản tài chính và nợ phải trả tài chính",
+      "Tài sản tài chính và công nợ tài chính",
+      "Giá trị hợp lý của tài sản tài chính và nợ phải trả tài chính",
+      "Giá trị hợp lý của các công cụ tài chính",
+      "Thuyết minh công cụ tài chính"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "FINANCIAL_INSTRUMENTS"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "FINANCIAL_ASSET_GROUP"
+    ],
+    [
+      "FINANCIAL_LIABILITY_GROUP"
+    ],
+    [
+      "FINANCIAL_ASSET_GROUP",
+      "FINANCIAL_LIABILITY_GROUP"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Cam kết và nghĩa vụ nợ tiềm ẩn",
+    "Phân tích tài sản và nợ phải trả theo kỳ đáo hạn",
+    "Phân tích mức độ tập trung rủi ro tín dụng",
+    "Rủi ro thị trường"
+  ]
+}

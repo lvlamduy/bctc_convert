@@ -1,0 +1,181 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT",
+  "closure_policy": "EXACT_CLASSIFICATION_ROWS_AND_ASSET_LIABILITY_BRANCH_TOTALS",
+  "family_id": "FINANCIAL_INSTRUMENTS",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": [
+      "COMPONENT_ROWS"
+    ],
+    "aggregate_duplicate_roles": [
+      "BOOK_ASSET_INVESTMENT"
+    ],
+    "asset_role_aliases": {
+      "BOOK_ASSET_CASH": [
+        "Tiền mặt và vàng",
+        "Tiền mặt, vàng bạc, đá quý",
+        "Tiền mặt, vàng bạc đá quý"
+      ],
+      "BOOK_ASSET_CENTRAL_BANK": [
+        "Tiền gửi tại NHNN",
+        "Tiền gửi tại NHNN Việt Nam",
+        "Tiền gửi tại NHNNVN",
+        "Tiền gửi tại Ngân hàng Nhà nước",
+        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam"
+      ],
+      "BOOK_ASSET_DERIVATIVE": [
+        "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+        "Các công cụ tài chính phái sinh và các khoản tài sản tài chính khác",
+        "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+        "Các công cụ tài chính phái sinh và các tài sản tài chính khác",
+        "Các công cụ tài chính phái sinh và các tài sản tài chính"
+      ],
+      "BOOK_ASSET_INTERBANK": [
+        "Tiền gửi tại và cho vay các TCTD khác",
+        "Tiền gửi tại và cho vay các tổ chức tín dụng khác",
+        "Tiền gửi và cho vay các TCTD khác",
+        "Tiền gửi và cho vay các tổ chức tín dụng khác",
+        "Tiền gửi và cấp tín dụng cho các TCTD khác",
+        "Tiền gửi và cấp tín dụng cho các Tổ chức tín dụng khác"
+      ],
+      "BOOK_ASSET_INTEREST_RECEIVABLE": [
+        "Lãi, phí phải thu",
+        "Lãi và phí phải thu",
+        "Các khoản lãi, phí phải thu"
+      ],
+      "BOOK_ASSET_INVESTMENT": [
+        "Chứng khoán đầu tư",
+        "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+        "Chứng khoán đầu tư sẵn sàng để bán",
+        "Chứng khoán sẵn sàng để bán",
+        "Chứng khoán giữ đến ngày đáo hạn"
+      ],
+      "BOOK_ASSET_LOANS": [
+        "Cho vay khách hàng",
+        "Cho vay khách hàng và mua nợ"
+      ],
+      "BOOK_ASSET_LONG_TERM": [
+        "Đầu tư dài hạn khác",
+        "Góp vốn, đầu tư dài hạn"
+      ],
+      "BOOK_ASSET_OTHER": [
+        "Tài sản tài chính khác"
+      ],
+      "BOOK_ASSET_RECEIVABLE": [
+        "Các khoản phải thu",
+        "Hoạt động mua nợ"
+      ],
+      "BOOK_ASSET_TRADING": [
+        "Chứng khoán kinh doanh"
+      ]
+    },
+    "asset_total_aliases": [
+      "Tổng tài sản tài chính",
+      "Tổng cộng tài sản tài chính"
+    ],
+    "book_total_header_aliases": [
+      "Tổng giá trị ghi sổ",
+      "Tổng cộng giá trị ghi sổ",
+      "Tổng cộng giá trị ghi sổ gộp"
+    ],
+    "book_value_header_aliases": [
+      "Giá trị ghi sổ",
+      "Giá trị ghi sổ gộp"
+    ],
+    "fair_value_header_aliases": [
+      "Giá trị hợp lý"
+    ],
+    "liability_role_aliases": {
+      "BOOK_LIABILITY_CENTRAL_AND_INTERBANK": [
+        "Các khoản nợ Chính phủ và NHNN và tiền gửi và vay các TCTD khác",
+        "Các khoản nợ Chính phủ và NHNNVN và tiền gửi và vay các TCTD khác",
+        "Tiền gửi của và vay từ NHNN và các tổ chức tín dụng khác"
+      ],
+      "BOOK_LIABILITY_CUSTOMER": [
+        "Tiền gửi của khách hàng"
+      ],
+      "BOOK_LIABILITY_DERIVATIVE": [
+        "Các công cụ tài chính phái sinh và các công nợ tài chính khác",
+        "Các công cụ tài chính phái sinh và các nợ phải trả tài chính khác",
+        "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+        "Các công cụ tài chính phái sinh và các khoản nợ tài chính",
+        "Công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+        "Các công cụ tài chính phái sinh và các tài sản tài chính"
+      ],
+      "BOOK_LIABILITY_ENTRUSTED": [
+        "Vốn tài trợ, ủy thác đầu tư TCTD chịu rủi ro",
+        "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+        "Vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro"
+      ],
+      "BOOK_LIABILITY_GOVERNMENT": [
+        "Các khoản nợ Chính phủ và NHNN",
+        "Các khoản nợ Chính phủ, NHNN Việt Nam",
+        "Các khoản nợ Chính phủ và NHNNVN",
+        "Các khoản nợ Chính phủ và NHNN Việt Nam",
+        "Nợ phải trả Chính phủ và NHNN"
+      ],
+      "BOOK_LIABILITY_INTERBANK": [
+        "Tiền gửi và vay các TCTD khác",
+        "Tiền gửi và vay các TCTD, TCTC khác",
+        "Tiền gửi và vay các TCTC, TCTD khác",
+        "Tiền gửi và vay các Tổ chức tài chính, Tổ chức tín dụng khác"
+      ],
+      "BOOK_LIABILITY_INTEREST_PAYABLE": [
+        "Lãi, phí phải trả",
+        "Lãi và phí phải trả",
+        "Các khoản lãi, phí phải trả"
+      ],
+      "BOOK_LIABILITY_ISSUED": [
+        "Phát hành giấy tờ có giá"
+      ],
+      "BOOK_LIABILITY_OTHER": [
+        "Các khoản nợ khác",
+        "Các khoản nợ tài chính khác",
+        "Các khoản nợ phải trả tài chính khác"
+      ]
+    },
+    "liability_total_aliases": [
+      "Tổng nợ phải trả tài chính",
+      "Tổng công nợ tài chính"
+    ],
+    "matrix_kind": "VALUATION_CLASSIFICATION",
+    "max_continuation_pages": 1,
+    "minimum_mapped_component_roles": 4,
+    "unavailable_value_aliases": [
+      "*",
+      "(*)"
+    ],
+    "unit_bindings": [
+      {
+        "accepted": true,
+        "aliases": [
+          "Triệu đồng",
+          "Triệu VND"
+        ],
+        "canonical_unit": "MILLION_VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 6
+      },
+      {
+        "accepted": false,
+        "aliases": [
+          "Nghìn đồng",
+          "Nghìn VND"
+        ],
+        "canonical_unit": "THOUSAND_VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 3
+      },
+      {
+        "accepted": false,
+        "aliases": [
+          "Tỷ đồng",
+          "Tỷ VND"
+        ],
+        "canonical_unit": "BILLION_VND",
+        "document_consensus_eligible": true,
+        "magnitude_power10": 9
+      }
+    ]
+  }
+}

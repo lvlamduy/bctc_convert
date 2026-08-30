@@ -1,0 +1,33 @@
+{
+  "book_branch_report_norm_id": 1306,
+  "component_role_bindings": [
+    {"book_report_norm_id": 1308, "fair_report_norm_id": 1331, "role": "BOOK_ASSET_CASH"},
+    {"book_report_norm_id": 1309, "fair_report_norm_id": 1332, "role": "BOOK_ASSET_CENTRAL_BANK"},
+    {"book_report_norm_id": 1310, "fair_report_norm_id": 1333, "role": "BOOK_ASSET_INTERBANK"},
+    {"book_report_norm_id": 1317, "fair_report_norm_id": 1340, "role": "BOOK_ASSET_INTEREST_RECEIVABLE"},
+    {"book_report_norm_id": 1311, "fair_report_norm_id": 1334, "role": "BOOK_ASSET_TRADING"},
+    {"book_report_norm_id": 1312, "fair_report_norm_id": 1335, "role": "BOOK_ASSET_DERIVATIVE"},
+    {"book_report_norm_id": 1313, "fair_report_norm_id": 1336, "role": "BOOK_ASSET_LOANS"},
+    {"book_report_norm_id": 1314, "fair_report_norm_id": 1337, "role": "BOOK_ASSET_INVESTMENT"},
+    {"book_report_norm_id": 1315, "fair_report_norm_id": 1338, "role": "BOOK_ASSET_LONG_TERM"},
+    {"book_report_norm_id": 1316, "fair_report_norm_id": 1339, "role": "BOOK_ASSET_RECEIVABLE"},
+    {"book_report_norm_id": 1318, "fair_report_norm_id": 1341, "role": "BOOK_ASSET_OTHER"},
+    {"book_report_norm_id": 1320, "fair_report_norm_id": 1343, "role": "BOOK_LIABILITY_CENTRAL_AND_INTERBANK"},
+    {"book_report_norm_id": 1321, "fair_report_norm_id": 1344, "role": "BOOK_LIABILITY_GOVERNMENT"},
+    {"book_report_norm_id": 1322, "fair_report_norm_id": 1345, "role": "BOOK_LIABILITY_INTERBANK"},
+    {"book_report_norm_id": 1327, "fair_report_norm_id": 1350, "role": "BOOK_LIABILITY_INTEREST_PAYABLE"},
+    {"book_report_norm_id": 1323, "fair_report_norm_id": 1346, "role": "BOOK_LIABILITY_CUSTOMER"},
+    {"book_report_norm_id": 1324, "fair_report_norm_id": 1347, "role": "BOOK_LIABILITY_DERIVATIVE"},
+    {"book_report_norm_id": 1325, "fair_report_norm_id": 1348, "role": "BOOK_LIABILITY_ENTRUSTED"},
+    {"book_report_norm_id": 1326, "fair_report_norm_id": 1349, "role": "BOOK_LIABILITY_ISSUED"},
+    {"book_report_norm_id": 1328, "fair_report_norm_id": 1351, "role": "BOOK_LIABILITY_OTHER"}
+  ],
+  "family_id": "FINANCIAL_INSTRUMENTS",
+  "family_root_report_norm_id": 1305,
+  "fair_branch_report_norm_id": 1329,
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1",
+  "total_role_bindings": [
+    {"book_report_norm_id": 1307, "fair_report_norm_id": 1330, "role": "BOOK_TOTAL_ASSETS"},
+    {"book_report_norm_id": 1319, "fair_report_norm_id": 1342, "role": "BOOK_TOTAL_LIABILITIES"}
+  ]
+}
