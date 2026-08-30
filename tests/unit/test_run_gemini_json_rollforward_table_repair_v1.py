@@ -13,8 +13,12 @@ from pathlib import Path
 
 import fitz
 import pytest
-from test_gemini_json_rollforward_table_repair_v1 import _response
+from test_gemini_json_rollforward_table_repair_v1 import (
+    _all_may_source_corroboration_corpus,
+    _response,
+)
 
+from bctc_ai.evaluation import gemini_json_rollforward_table_repair_v1 as repair_subject
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
@@ -446,6 +450,246 @@ def test_fake_openrouter_escalates_one_sibling_and_records_exact_overlay(
         match="does not authenticate",
     ):
         target._validate_attempt_artifact_manifest(output, manifest)
+
+
+@pytest.mark.parametrize(
+    ("corrected", "expected_attempt_count", "expected_replacement_count", "terminal_outcome"),
+    (
+        (False, 6, 5, "SOURCE_CORROBORATED_NO_CHANGE"),
+        (True, 7, 6, "RESOLVED"),
+    ),
+)
+def test_ready_candidate_uses_source_no_change_or_two_observation_consensus(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+    corrected: bool,
+    expected_attempt_count: int,
+    expected_replacement_count: int,
+    terminal_outcome: str,
+) -> None:
+    corpus = _all_may_source_corroboration_corpus(corpus)
+    inputs = _inputs(tmp_path, corpus)
+    output = tmp_path / "ready-source-adjudication"
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    _bind_fixture_images(monkeypatch, corpus)
+    plans_by_version = {plan["base_page_json_version_id"]: plan for plan in corpus["plans"]}
+    ready_job_id = corpus["plans"][-1]["repair_job_id"]
+    original_status = target._repair_candidate_input_status
+
+    def candidate_status(prepared, job):
+        if job.plan["repair_job_id"] == ready_job_id:
+            return target.READY
+        return original_status(prepared, job)
+
+    monkeypatch.setattr(target, "_repair_candidate_input_status", candidate_status)
+    original_overlay_status = repair_subject._repair_plan_candidate_status_v1
+
+    def overlay_candidate_status(plan, *, authority):
+        if plan["repair_job_id"] == ready_job_id:
+            return repair_subject.READY
+        return original_overlay_status(plan, authority=authority)
+
+    monkeypatch.setattr(
+        repair_subject,
+        "_repair_plan_candidate_status_v1",
+        overlay_candidate_status,
+    )
+
+    def provider(**kwargs) -> ProviderResultV1:
+        version_id = next(
+            line.split("=", 1)[1]
+            for line in kwargs["prompt"].splitlines()
+            if line.startswith("base_page_json_version_id=")
+        )
+        plan = plans_by_version[version_id]
+        response = _response(
+            corpus["pages"][version_id],
+            plan,
+            corrected=(corrected if plan["repair_job_id"] == ready_job_id else True),
+        )
+        usage = {
+            "actual_cost_usd": "0.000100000000",
+            "billing_disposition": "BILLED_ACTUAL",
+            "cached_input_tokens": 0,
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "thought_tokens": 1,
+            "total_tokens": 15,
+        }
+        return ProviderResultV1(
+            output_text=canonical_json_bytes_v1(response).decode("utf-8"),
+            raw_response_bytes=(
+                canonical_json_bytes_v1({"fake": version_id, "thinking": kwargs["thinking_level"]})
+                + b"\n"
+            ),
+            provider_name="Google",
+            provider_model="google/gemini-3.7-flash",
+            service_tier="flex",
+            attempts=(),
+            usage=usage,
+            response_id_sha256=sha256(
+                f"{version_id}:{kwargs['thinking_level']}".encode()
+            ).hexdigest(),
+        )
+
+    result = target.run_rollforward_table_repair_v1(
+        **inputs,
+        artifact_dir=output,
+        dry_run=False,
+        writable_page_store=writable,
+        writable_results_database=writable_results,
+        openrouter_api_key="x" * 32,
+        workers=6,
+        provider_call=provider,
+    )
+    overlay = json.loads((output / "repair-overlay.json").read_bytes())
+    ready_attempts = sorted(
+        output.glob("jobs/job-006/attempt-*/attempt.json"), key=lambda path: path.name
+    )
+    assert result["disposition"] == "REPAIR_FRONTIER_COMPLETE"
+    assert result["attempt_count"] == expected_attempt_count
+    assert len(overlay["replacements"]) == expected_replacement_count
+    assert json.loads(ready_attempts[-1].read_bytes())["outcome"] == terminal_outcome
+    if corrected:
+        assert [json.loads(path.read_bytes())["outcome"] for path in ready_attempts] == [
+            "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+            "RESOLVED",
+        ]
+    else:
+        assert ready_attempts[-1].parent.joinpath("source-corroboration-receipt.json").is_file()
+
+
+def test_complete_sealed_observations_are_reused_without_provider_recall(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corpus: dict,
+) -> None:
+    inputs = _inputs(tmp_path, corpus)
+    source_output = tmp_path / "sealed-source-run"
+    adopted_output = tmp_path / "adopted-run"
+    writable = tmp_path / "writable.sqlite3"
+    writable_results = tmp_path / "writable-results.sqlite3"
+    _bind_fixture_images(monkeypatch, corpus)
+    plans_by_version = {plan["base_page_json_version_id"]: plan for plan in corpus["plans"]}
+
+    def provider(**kwargs) -> ProviderResultV1:
+        version_id = next(
+            line.split("=", 1)[1]
+            for line in kwargs["prompt"].splitlines()
+            if line.startswith("base_page_json_version_id=")
+        )
+        response = _response(
+            corpus["pages"][version_id],
+            plans_by_version[version_id],
+        )
+        return ProviderResultV1(
+            output_text=canonical_json_bytes_v1(response).decode("utf-8"),
+            raw_response_bytes=(
+                canonical_json_bytes_v1({"fake": version_id, "thinking": kwargs["thinking_level"]})
+                + b"\n"
+            ),
+            provider_name="Google",
+            provider_model="google/gemini-3.7-flash",
+            service_tier="flex",
+            attempts=(),
+            usage={
+                "actual_cost_usd": "0.000100000000",
+                "billing_disposition": "BILLED_ACTUAL",
+                "cached_input_tokens": 0,
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "thought_tokens": 1,
+                "total_tokens": 15,
+            },
+            response_id_sha256=sha256(version_id.encode()).hexdigest(),
+        )
+
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+    source_result = target.run_rollforward_table_repair_v1(
+        **inputs,
+        artifact_dir=source_output,
+        dry_run=False,
+        writable_page_store=writable,
+        writable_results_database=writable_results,
+        openrouter_api_key="x" * 32,
+        workers=6,
+        provider_call=provider,
+    )
+    assert source_result["disposition"] == "REPAIR_FRONTIER_COMPLETE"
+    shutil.copyfile(corpus["store"], writable)
+    shutil.copyfile(inputs["source_results_database"], writable_results)
+
+    def forbidden_provider(**_kwargs):
+        raise AssertionError("a sealed provider observation was recalled")
+
+    adopted_result = target.run_rollforward_table_repair_v1(
+        **inputs,
+        artifact_dir=adopted_output,
+        dry_run=False,
+        writable_page_store=writable,
+        writable_results_database=writable_results,
+        openrouter_api_key="x" * 32,
+        workers=6,
+        provider_call=forbidden_provider,
+        sealed_observation_artifact_dir=source_output,
+        sealed_observation_run_result_sha256=sha256(
+            (source_output / "run-result.json").read_bytes()
+        ).hexdigest(),
+    )
+    assert adopted_result["disposition"] == "REPAIR_FRONTIER_COMPLETE"
+    assert adopted_result["new_provider_call_count"] == 0
+    assert adopted_result["reused_sealed_observation_count"] == 6
+    assert len(list(adopted_output.glob("jobs/job-*/attempt-*/sealed-source-link.json"))) == 6
+    contract = json.loads((adopted_output / "run-contract.json").read_bytes())
+    authority = contract["sealed_observation_adoption_authority"]
+    assert authority["source_attempt_count"] == 6
+    assert authority["authenticity"]["provider_recall_for_sealed_attempts"] == "FORBIDDEN"
+
+
+def test_historical_implementation_ref_is_authenticated_by_exact_git_blob() -> None:
+    commit = target.subprocess.run(
+        ["git", "-C", str(_ROOT), "rev-parse", "HEAD^{commit}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    blob = target.subprocess.run(
+        ["git", "-C", str(_ROOT), "show", f"{commit}:{target.RUNNER_IMPLEMENTATION_PATH}"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    reference = {
+        "path": target.RUNNER_IMPLEMENTATION_PATH,
+        "sha256": sha256(blob).hexdigest(),
+        "size_bytes": len(blob),
+    }
+    assert (
+        target._authenticate_sealed_implementation_ref_v1(
+            reference=reference,
+            expected_path=target.RUNNER_IMPLEMENTATION_PATH,
+            workspace_root=_ROOT,
+            git_commit=commit,
+            current_reference=reference,
+        )
+        == reference
+    )
+    forged = {**reference, "sha256": "0" * 64}
+    with pytest.raises(
+        target.RunGeminiJsonRollforwardTableRepairV1Error,
+        match="differs from the pinned Git blob",
+    ):
+        target._authenticate_sealed_implementation_ref_v1(
+            reference=forged,
+            expected_path=target.RUNNER_IMPLEMENTATION_PATH,
+            workspace_root=_ROOT,
+            git_commit=commit,
+            current_reference=reference,
+        )
 
 
 def test_openrouter_refuses_source_store_as_writable_target_before_provider(

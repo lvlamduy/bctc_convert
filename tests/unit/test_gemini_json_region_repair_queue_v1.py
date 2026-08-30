@@ -173,6 +173,71 @@ def test_invalid_money_cell_becomes_database_pending_region_job(tmp_path) -> Non
     ]
 
 
+def test_source_corroborated_no_change_resolves_queue_without_replacement(tmp_path) -> None:
+    topology, evaluation, schema = _specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    page = deepcopy(_page())
+    page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "-ktCap-"
+    version_id = "gfpstorev1:json:" + "1" * 64
+    candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=page,
+        page_json_version_id=version_id,
+        physical_page=7,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    trial = {
+        "candidate_count": 1,
+        "candidates": [candidate],
+        "document_ordinal": 1,
+        "mappings": [],
+        "reasons": candidate["reasons"],
+        "selected_candidate_id": None,
+        "source_logical_name": "ACB/2025/example.pdf",
+        "source_sha256": "2" * 64,
+        "status": UNRESOLVED,
+    }
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "3" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[trial],
+    )
+    plan = build_family_region_repair_plans_v1(
+        sweep=sweep,
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )[0]
+    database = tmp_path / "families.sqlite3"
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        database,
+        sweep=sweep,
+        corpus_index_ref=_reference("corpus.json", "4"),
+        implementation_refs=[_reference("runner.py", "5")],
+        run_kind="EXPERIMENTAL",
+    )
+    enqueue_gemini_family_region_repair_plans_v1(
+        database, family_run_id=stored["family_run_id"], plans=[plan]
+    )
+    result = record_gemini_family_region_repair_attempt_v1(
+        database,
+        repair_job_id=plan["repair_job_id"],
+        thinking_level="low",
+        outcome="SOURCE_CORROBORATED_NO_CHANGE",
+        page_json_version_id=version_id,
+        usage={"thought_tokens": 12},
+        reasons=[],
+    )
+    assert result["next_status"] == "RESOLVED"
+    overlay = resolved_gemini_family_region_repair_overlay_v1(
+        database, family_run_id=stored["family_run_id"]
+    )
+    assert overlay["job_status_counts"] == {"ABSTAINED": 0, "RESOLVED": 1}
+    assert overlay["replacements"] == []
+
+
 def test_ready_candidate_repair_requires_exact_semantic_replay(tmp_path) -> None:
     topology, evaluation, schema = _specs()
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)

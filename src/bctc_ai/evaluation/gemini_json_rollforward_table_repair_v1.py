@@ -94,6 +94,8 @@ _ATTEMPT_OUTCOMES = frozenset(
         "PROVIDER_OR_VALIDATION_FAILURE",
         "RESOLVED",
         "RETRYABLE_VALIDATION_FAILURE",
+        "SOURCE_CORROBORATED_NO_CHANGE",
+        "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
     }
 )
 _USAGE_FIELDS = {
@@ -3116,6 +3118,144 @@ def merge_rollforward_table_repair_v1(
     }
 
 
+def validate_rollforward_table_source_corroboration_v1(
+    page_json: Any,
+    *,
+    plan: Mapping[str, Any],
+    repair: Mapping[str, Any],
+    page_store_path: Path,
+    authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal a complete source observation proving that no allowlisted cell changed."""
+
+    checked_plan, checked_spec_authority = _authoritative_plan(
+        plan,
+        authority=authority,
+        repair_spec_authority=repair_spec_authority,
+        page_store_path=page_store_path,
+    )
+    page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
+        checked_plan, page_store_path=page_store_path
+    )
+    checked_page, table = _table(page_json, checked_plan["section_id"], checked_plan["table_id"])
+    if (
+        checked_page != page_evidence["page_json"]
+        or canonical_json_sha256_v1(checked_page) != checked_plan["base_page_json_sha256"]
+        or _shape_gate(table) != checked_plan["shape_gate"]
+        or any(item["change_policy"] != "MAY_CHANGE" for item in checked_plan["cell_allowlist"])
+    ):
+        raise _error("roll-forward source corroboration is not one unchanged MAY_CHANGE table")
+    target = rollforward_table_repair_target_v1(checked_page, plan=checked_plan)
+    decoded = decode_rollforward_table_repair_text_v1(
+        canonical_json_bytes_v1(dict(repair)).decode("utf-8"), target=target
+    )
+    observed_by_id = {item["cell_id"]: item for item in decoded["observations"]}
+    allow_by_id = {item["cell_id"]: item for item in checked_plan["cell_allowlist"]}
+    if set(observed_by_id) != set(allow_by_id):
+        raise _error("roll-forward source corroboration does not cover the exact allowlist")
+    observation_axis = []
+    for cell_id in sorted(allow_by_id, key=_cell_id):
+        allowed = allow_by_id[cell_id]
+        observed = observed_by_id[cell_id]
+        row_index, column_index = _cell_id(cell_id)
+        before = table["rows"][row_index]["values_exact"][column_index]
+        _after_policy(observed, allowed["after_policy"])
+        before_semantic = _repair_before_cell_semantic(before, change_policy="MAY_CHANGE")
+        after_semantic = _cell_semantic(observed["source_text"], observed["visual_state"])
+        if after_semantic != before_semantic:
+            raise _error("roll-forward source corroboration contains a semantic change")
+        observation_axis.append(
+            {
+                "cell_id": cell_id,
+                "source_text": observed["source_text"],
+                "signed_integer": after_semantic[1],
+                "visual_state": after_semantic[0],
+            }
+        )
+    equation_receipts = []
+    for equation in checked_plan["equation_inventory"]:
+        result_row, result_column = _cell_id(equation["result_cell_id"])
+        observed_result = _signed_integer(table["rows"][result_row]["values_exact"][result_column])
+        terms = []
+        for term in equation["terms"]:
+            row_index, column_index = _cell_id(term["cell_id"])
+            coefficient = _signed_integer(table["rows"][row_index]["values_exact"][column_index])
+            terms.append((term["multiplier"], coefficient))
+        if observed_result is None or any(value is None for _, value in terms):
+            raise _error("roll-forward source corroboration equation has an unknown cell")
+        expected_result = sum(multiplier * value for multiplier, value in terms)
+        equation_receipts.append(
+            {
+                "delta": observed_result - expected_result,
+                "equation_id": equation["equation_id"],
+                "expected_result": expected_result,
+                "observed_result": observed_result,
+                "status": (
+                    "EXACT" if observed_result == expected_result else "SOURCE_VISIBLE_NONCLOSING"
+                ),
+            }
+        )
+    material = {
+        "base_page_json_sha256": canonical_json_sha256_v1(checked_page),
+        "base_page_json_version_id": checked_plan["base_page_json_version_id"],
+        "equation_inventory_sha256": checked_plan["equation_inventory_sha256"],
+        "equation_receipts": equation_receipts,
+        "format_version": "GEMINI_JSON_ROLLFORWARD_SOURCE_CORROBORATION_V1",
+        "observation_axis": observation_axis,
+        "repair_response_sha256": canonical_json_sha256_v1(decoded),
+        "repair_spec_authority_manifest_sha256": checked_spec_authority["manifest_sha256"],
+        "response_projection": canonical_clone_v1(decoded["projection_diagnostics"]),
+        "source_binding": canonical_clone_v1(checked_plan["source_binding"]),
+        "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
+    }
+    return {
+        **material,
+        "evidence_id": "gjfrscev1:evidence:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _source_corroboration_receipt_for_plan(
+    value: Any,
+    *,
+    plan: Mapping[str, Any],
+    repair_spec_authority_manifest_sha256: str,
+) -> dict[str, Any]:
+    fields = {
+        "base_page_json_sha256",
+        "base_page_json_version_id",
+        "equation_inventory_sha256",
+        "equation_receipts",
+        "evidence_id",
+        "format_version",
+        "observation_axis",
+        "repair_response_sha256",
+        "repair_spec_authority_manifest_sha256",
+        "response_projection",
+        "source_binding",
+        "target_id",
+    }
+    receipt = _exact_keys(value, fields, "roll-forward source corroboration receipt")
+    material = {key: receipt[key] for key in receipt if key != "evidence_id"}
+    if (
+        receipt["format_version"] != "GEMINI_JSON_ROLLFORWARD_SOURCE_CORROBORATION_V1"
+        or receipt["evidence_id"] != "gjfrscev1:evidence:" + canonical_json_sha256_v1(material)
+        or receipt["base_page_json_version_id"] != plan["base_page_json_version_id"]
+        or receipt["base_page_json_sha256"] != plan["base_page_json_sha256"]
+        or receipt["equation_inventory_sha256"] != plan["equation_inventory_sha256"]
+        or receipt["repair_spec_authority_manifest_sha256"] != repair_spec_authority_manifest_sha256
+        or receipt["source_binding"] != plan["source_binding"]
+        or receipt["target_id"] != f"{plan['section_id']}:{plan['table_id']}"
+        or [item.get("cell_id") for item in receipt["observation_axis"]]
+        != sorted((item["cell_id"] for item in plan["cell_allowlist"]), key=_cell_id)
+        or [item.get("equation_id") for item in receipt["equation_receipts"]]
+        != [item["equation_id"] for item in plan["equation_inventory"]]
+    ):
+        raise _error("roll-forward source corroboration receipt does not replay its plan")
+    _hash(receipt["repair_response_sha256"], "source corroboration response SHA-256")
+    return canonical_clone_v1(receipt)
+
+
 def crop_rollforward_table_image_v1(
     image_bytes: bytes,
     *,
@@ -3436,40 +3576,53 @@ def _validated_attempt(value: Any) -> dict[str, Any]:
     if elapsed < 0 or not elapsed.is_finite():
         raise _error("roll-forward table repair attempt elapsed time is invalid")
     resolved = checked["outcome"] == "RESOLVED"
+    corroborated = checked["outcome"] == "SOURCE_CORROBORATED_NO_CHANGE"
+    pending_consensus = checked["outcome"] == "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+    valid_evidence = resolved or corroborated or pending_consensus
+    expected_next = (
+        "RESOLVED"
+        if resolved or corroborated
+        else "ABSTAINED"
+        if pending_consensus and checked["attempt_ordinal"] == 3
+        else "PENDING"
+        if pending_consensus or checked["attempt_ordinal"] < 3
+        else "ABSTAINED"
+    )
     if (
-        resolved
-        != (
-            checked["next_status"] == "RESOLVED"
-            and checked["observed_page_json_version_id"] is not None
-            and checked["repair_id"] is not None
-            and checked["repair_receipt_sha256"] is not None
-            and validation["status"] == "PASS"
-            and checked["response_artifact_ref"] is not None
-            and checked["decoded_response_sha256"] is not None
-        )
-        or (not resolved and validation["status"] != "FAIL")
+        checked["next_status"] != expected_next
         or (
-            not resolved
+            valid_evidence
+            and (
+                checked["observed_page_json_version_id"] is None
+                or checked["repair_receipt_sha256"] is None
+                or validation["status"] != "PASS"
+                or checked["response_artifact_ref"] is None
+                or checked["decoded_response_sha256"] is None
+            )
+        )
+        or (resolved and checked["repair_id"] is None)
+        or ((corroborated or not valid_evidence) and checked["repair_id"] is not None)
+        or (not valid_evidence and validation["status"] != "FAIL")
+        or (
+            not valid_evidence
             and any(
                 checked[field] is not None
                 for field in (
                     "observed_page_json_version_id",
-                    "repair_id",
                     "repair_receipt_sha256",
                 )
             )
-        )
-        or (checked["attempt_ordinal"] < 3 and not resolved and checked["next_status"] != "PENDING")
-        or (
-            checked["attempt_ordinal"] == 3
-            and not resolved
-            and checked["next_status"] != "ABSTAINED"
         )
     ):
         raise _error("roll-forward table repair attempt outcome lineage is invalid")
     if checked["repair_id"] is not None:
         _prefixed_hash(checked["repair_id"], "gjfrrv1:repair:", "table repair ID")
         _hash(checked["repair_receipt_sha256"], "table repair receipt SHA-256")
+    elif valid_evidence:
+        _hash(
+            checked["repair_receipt_sha256"],
+            "table source corroboration receipt SHA-256",
+        )
     return canonical_clone_v1(checked)
 
 
@@ -3672,64 +3825,97 @@ def build_rollforward_table_repair_attempt_v1(
             decoded_response_sha = None
     checked_validation = _validation_record(validation)
     resolved = outcome == "RESOLVED"
-    if resolved:
-        checked_receipt = _repair_receipt_for_plan(
-            repair_receipt,
-            plan=checked_plan,
-            repair_spec_authority_manifest_sha256=checked_spec_authority["manifest_sha256"],
-        )
+    corroborated = outcome == "SOURCE_CORROBORATED_NO_CHANGE"
+    pending_consensus = outcome == "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+    valid_evidence = resolved or corroborated or pending_consensus
+    if valid_evidence:
         if (
             type(observed_page_json_version_id) is not str
             or checked_response_ref is None
             or decoded is None
             or checked_validation != {"reason_codes": [], "status": "PASS"}
-            or decoded_response_sha != checked_receipt["repair_response_sha256"]
         ):
-            raise _error("resolved roll-forward table repair lineage is invalid")
+            raise _error("validated roll-forward table observation lineage is invalid")
         _prefixed_hash(
             observed_page_json_version_id,
             "gfpstorev1:json:",
-            "roll-forward table repair observed version",
+            "roll-forward table observation version",
         )
         base_evidence = load_rollforward_table_page_evidence_v1(
             page_store_path,
             page_json_version_ids=[checked_plan["base_page_json_version_id"]],
         )[0]
-        expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
-            base_evidence["page_json"],
-            plan=checked_plan,
-            repair=decoded,
-            page_store_path=page_store_path,
-            authority=authority,
-            repair_spec_authority=repair_spec_authority,
-        )
-        if not same_typed_json_v1(expected_receipt, checked_receipt):
-            raise _error("resolved roll-forward table repair receipt does not exact-replay")
-        from bctc_ai.storage.gemini_financial_page_store_v1 import (
-            page_json_region_repair_lineages_v1,
-        )
-
-        lineage = page_json_region_repair_lineages_v1(
-            page_store_path,
-            observed_page_json_version_ids=[observed_page_json_version_id],
-        )[0]
-        merged_evidence = load_rollforward_table_page_evidence_v1(
-            page_store_path,
-            page_json_version_ids=[lineage["canonical_merged_page_json_version_id"]],
-        )[0]
-        if (
-            lineage["base_page_json_version_id"] != checked_plan["base_page_json_version_id"]
-            or not same_typed_json_v1(lineage["repair_receipt"], expected_receipt)
-            or lineage["repair_receipt_sha256"]
-            != sha256(canonical_json_bytes_v1(expected_receipt) + b"\n").hexdigest()
-            or merged_evidence["source_binding_without_crop"]
-            != base_evidence["source_binding_without_crop"]
-            or not same_typed_json_v1(merged_evidence["page_json"], expected_merged)
+        if type(repair_receipt) is dict and repair_receipt.get("format_version") == (
+            "GEMINI_JSON_REGION_REPAIR_V1"
         ):
-            raise _error("resolved roll-forward table repair stored lineage does not exact-replay")
-        repair_id = checked_receipt["repair_id"]
+            checked_receipt = _repair_receipt_for_plan(
+                repair_receipt,
+                plan=checked_plan,
+                repair_spec_authority_manifest_sha256=checked_spec_authority["manifest_sha256"],
+            )
+            expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
+                base_evidence["page_json"],
+                plan=checked_plan,
+                repair=decoded,
+                page_store_path=page_store_path,
+                authority=authority,
+                repair_spec_authority=repair_spec_authority,
+            )
+            if (
+                corroborated
+                or not same_typed_json_v1(expected_receipt, checked_receipt)
+                or decoded_response_sha != checked_receipt["repair_response_sha256"]
+            ):
+                raise _error("validated roll-forward repair receipt does not exact-replay")
+            from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                page_json_region_repair_lineages_v1,
+            )
+
+            lineage = page_json_region_repair_lineages_v1(
+                page_store_path,
+                observed_page_json_version_ids=[observed_page_json_version_id],
+            )[0]
+            merged_evidence = load_rollforward_table_page_evidence_v1(
+                page_store_path,
+                page_json_version_ids=[lineage["canonical_merged_page_json_version_id"]],
+            )[0]
+            if (
+                lineage["base_page_json_version_id"] != checked_plan["base_page_json_version_id"]
+                or not same_typed_json_v1(lineage["repair_receipt"], expected_receipt)
+                or lineage["repair_receipt_sha256"]
+                != sha256(canonical_json_bytes_v1(expected_receipt) + b"\n").hexdigest()
+                or merged_evidence["source_binding_without_crop"]
+                != base_evidence["source_binding_without_crop"]
+                or not same_typed_json_v1(merged_evidence["page_json"], expected_merged)
+            ):
+                raise _error("validated roll-forward repair lineage does not exact-replay")
+            repair_id = checked_receipt["repair_id"]
+        else:
+            checked_receipt = _source_corroboration_receipt_for_plan(
+                repair_receipt,
+                plan=checked_plan,
+                repair_spec_authority_manifest_sha256=checked_spec_authority["manifest_sha256"],
+            )
+            expected_receipt = validate_rollforward_table_source_corroboration_v1(
+                base_evidence["page_json"],
+                plan=checked_plan,
+                repair=decoded,
+                page_store_path=page_store_path,
+                authority=authority,
+                repair_spec_authority=repair_spec_authority,
+            )
+            if (
+                resolved
+                or observed_page_json_version_id != checked_plan["base_page_json_version_id"]
+                or not same_typed_json_v1(expected_receipt, checked_receipt)
+                or decoded_response_sha != checked_receipt["repair_response_sha256"]
+            ):
+                raise _error("source-corroborated observation does not exact-replay")
+            repair_id = None
         receipt_sha = sha256(canonical_json_bytes_v1(checked_receipt) + b"\n").hexdigest()
-        next_status = "RESOLVED"
+        next_status = (
+            "RESOLVED" if resolved or corroborated else "ABSTAINED" if ordinal == 3 else "PENDING"
+        )
     else:
         if (
             observed_page_json_version_id is not None
@@ -3768,6 +3954,123 @@ def build_rollforward_table_repair_attempt_v1(
     }
 
 
+def _repair_plan_candidate_status_v1(
+    plan: Mapping[str, Any], *, authority: Mapping[str, Any]
+) -> str:
+    """Recover the authenticated pre-repair candidate status from the sweep."""
+
+    checked = _exact_keys(dict(authority), _AUTHORITY_FIELDS, "table repair plan authority")
+    sweep = validate_gemini_json_flat_family_sweep_v1(checked["family_sweep"])
+    matches = []
+    for trial in sweep["trials"]:
+        for candidate in trial.get("candidates", []):
+            if candidate.get("candidate_id") == plan["candidate_id"]:
+                matches.append((trial, candidate))
+    if len(matches) != 1:
+        raise _error("table repair plan does not bind one authenticated candidate status")
+    trial, candidate = matches[0]
+    status = candidate.get("status")
+    if (
+        status not in {READY, UNRESOLVED}
+        or trial.get("status") != status
+        or trial.get("document_ordinal") != plan["document_ordinal"]
+        or candidate.get("family_id") != plan["family_id"]
+        or canonical_json_sha256_v1(candidate) != plan["candidate_semantic_replay_sha256"]
+    ):
+        raise _error("table repair candidate status/semantic replay drifted")
+    return status
+
+
+def _replay_validated_observation_attempt_v1(
+    *,
+    attempt: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    raw_response: bytes,
+    page_store_path: Path,
+    authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
+    repair_spec_authority_manifest_sha256: str,
+) -> str:
+    """Replay one accepted observation, including nonterminal consensus evidence."""
+
+    if attempt["outcome"] not in {
+        "RESOLVED",
+        "SOURCE_CORROBORATED_NO_CHANGE",
+        "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+    }:
+        raise _error("attempt is not one validated observation")
+    base_evidence = load_rollforward_table_page_evidence_v1(
+        page_store_path, page_json_version_ids=[plan["base_page_json_version_id"]]
+    )[0]
+    target = rollforward_table_repair_target_v1(base_evidence["page_json"], plan=plan)
+    try:
+        decoded = decode_rollforward_table_repair_text_v1(
+            raw_response.decode("utf-8"), target=target
+        )
+    except UnicodeDecodeError as exc:
+        raise _error("validated roll-forward response artifact is not UTF-8") from exc
+    if attempt["decoded_response_sha256"] != canonical_json_sha256_v1(decoded):
+        raise _error("validated observation decoded response drifted")
+    if attempt["repair_id"] is None:
+        receipt = validate_rollforward_table_source_corroboration_v1(
+            base_evidence["page_json"],
+            plan=plan,
+            repair=decoded,
+            page_store_path=page_store_path,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+        )
+        _source_corroboration_receipt_for_plan(
+            receipt,
+            plan=plan,
+            repair_spec_authority_manifest_sha256=repair_spec_authority_manifest_sha256,
+        )
+        if (
+            attempt["observed_page_json_version_id"] != plan["base_page_json_version_id"]
+            or attempt["repair_receipt_sha256"]
+            != sha256(canonical_json_bytes_v1(receipt) + b"\n").hexdigest()
+        ):
+            raise _error("validated source no-change attempt does not exact-replay")
+        return canonical_json_sha256_v1(base_evidence["page_json"])
+
+    expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
+        base_evidence["page_json"],
+        plan=plan,
+        repair=decoded,
+        page_store_path=page_store_path,
+        authority=authority,
+        repair_spec_authority=repair_spec_authority,
+    )
+    _repair_receipt_for_plan(
+        expected_receipt,
+        plan=plan,
+        repair_spec_authority_manifest_sha256=repair_spec_authority_manifest_sha256,
+    )
+    from bctc_ai.storage.gemini_financial_page_store_v1 import (
+        page_json_region_repair_lineages_v1,
+    )
+
+    lineage = page_json_region_repair_lineages_v1(
+        page_store_path,
+        observed_page_json_version_ids=[attempt["observed_page_json_version_id"]],
+    )[0]
+    merged_evidence = load_rollforward_table_page_evidence_v1(
+        page_store_path,
+        page_json_version_ids=[lineage["canonical_merged_page_json_version_id"]],
+    )[0]
+    if (
+        lineage["base_page_json_version_id"] != plan["base_page_json_version_id"]
+        or lineage["repair_id"] != attempt["repair_id"]
+        or lineage["repair_receipt_sha256"] != attempt["repair_receipt_sha256"]
+        or not same_typed_json_v1(lineage["repair_receipt"], expected_receipt)
+        or not same_typed_json_v1(merged_evidence["page_json"], expected_merged)
+        or merged_evidence["source_binding_without_crop"]
+        != base_evidence["source_binding_without_crop"]
+    ):
+        raise _error("validated correction attempt does not exact-replay")
+    return canonical_json_sha256_v1(merged_evidence["page_json"])
+
+
 def build_rollforward_table_repair_overlay_v1(
     *,
     family_run_id: str,
@@ -3804,6 +4107,7 @@ def build_rollforward_table_repair_overlay_v1(
     plan_by_job = {plan["repair_job_id"]: plan for plan in checked_plans}
     if any(attempt["repair_job_id"] not in plan_by_job for attempt in checked_attempts):
         raise _error("roll-forward table repair overlay contains an unplanned attempt")
+    observation_page_sha_by_attempt_id = {}
     for attempt in checked_attempts:
         plan = plan_by_job[attempt["repair_job_id"]]
         if (
@@ -3838,14 +4142,34 @@ def build_rollforward_table_repair_overlay_v1(
         )
         response_ref = attempt["response_artifact_ref"]
         if response_ref is not None:
-            _artifact_bytes(
+            raw_response = _artifact_bytes(
                 response_artifacts_by_sha256,
                 sha256_value=response_ref["sha256"],
                 size_bytes=response_ref["size_bytes"],
                 label="table repair response",
             )
+            if attempt["outcome"] in {
+                "RESOLVED",
+                "SOURCE_CORROBORATED_NO_CHANGE",
+                "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+            }:
+                observation_page_sha_by_attempt_id[attempt["attempt_id"]] = (
+                    _replay_validated_observation_attempt_v1(
+                        attempt=attempt,
+                        plan=plan,
+                        raw_response=raw_response,
+                        page_store_path=page_store_path,
+                        authority=authority,
+                        repair_spec_authority=repair_spec_authority,
+                        repair_spec_authority_manifest_sha256=checked_spec_authority[
+                            "manifest_sha256"
+                        ],
+                    )
+                )
     resolved_attempts = [
-        attempt for attempt in checked_attempts if attempt["next_status"] == "RESOLVED"
+        attempt
+        for attempt in checked_attempts
+        if attempt["next_status"] == "RESOLVED" and attempt["repair_id"] is not None
     ]
     lineages_by_observed = {}
     if resolved_attempts:
@@ -3876,10 +4200,7 @@ def build_rollforward_table_repair_overlay_v1(
             not job_attempts
             or [item["attempt_ordinal"] for item in job_attempts]
             != list(range(1, len(job_attempts) + 1))
-            or any(
-                item["next_status"] != "PENDING" or item["outcome"] == "RESOLVED"
-                for item in job_attempts[:-1]
-            )
+            or any(item["next_status"] != "PENDING" for item in job_attempts[:-1])
             or job_attempts[-1]["next_status"] not in {"RESOLVED", "ABSTAINED"}
         ):
             raise _error("roll-forward table repair overlay contains a nonterminal job")
@@ -3887,19 +4208,33 @@ def build_rollforward_table_repair_overlay_v1(
         statuses.append(terminal["next_status"])
         if terminal["next_status"] == "ABSTAINED":
             continue
-        lineage = lineages_by_observed.get(terminal["observed_page_json_version_id"])
-        if (
-            lineage is None
-            or lineage["base_page_json_version_id"] != plan["base_page_json_version_id"]
-            or lineage["repair_id"] != terminal["repair_id"]
-            or lineage["repair_receipt_sha256"] != terminal["repair_receipt_sha256"]
-            or lineage["repair_receipt"].get("repair_response_sha256")
-            != terminal["decoded_response_sha256"]
-        ):
-            raise _error("roll-forward table repair overlay page-store lineage drifted")
+        candidate_status = _repair_plan_candidate_status_v1(plan, authority=authority)
+        valid_prior = [
+            item
+            for item in job_attempts[:-1]
+            if item["outcome"] == "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+        ]
+        terminal_page_sha = observation_page_sha_by_attempt_id[terminal["attempt_id"]]
+        matching_prior = [
+            item
+            for item in valid_prior
+            if observation_page_sha_by_attempt_id[item["attempt_id"]] == terminal_page_sha
+        ]
+        if candidate_status == UNRESOLVED:
+            if terminal["outcome"] != "RESOLVED" or valid_prior:
+                raise _error("unresolved candidate repair used READY-only consensus semantics")
+        elif terminal["outcome"] == "RESOLVED":
+            if terminal["repair_id"] is None or not matching_prior:
+                raise _error("READY candidate correction lacks two matching observations")
+        elif terminal["outcome"] == "SOURCE_CORROBORATED_NO_CHANGE":
+            if terminal["repair_id"] is not None or (valid_prior and not matching_prior):
+                raise _error("source no-change contradicts a prior validated observation")
+        else:
+            raise _error("resolved repair job has an invalid terminal outcome")
+
         response_ref = terminal["response_artifact_ref"]
         if response_ref is None:
-            raise _error("resolved roll-forward table repair response artifact is absent")
+            raise _error("resolved roll-forward table observation artifact is absent")
         raw_response = _artifact_bytes(
             response_artifacts_by_sha256,
             sha256_value=response_ref["sha256"],
@@ -3917,6 +4252,35 @@ def build_rollforward_table_repair_overlay_v1(
             )
         except UnicodeDecodeError as exc:
             raise _error("resolved roll-forward response artifact is not UTF-8") from exc
+
+        if terminal["outcome"] == "SOURCE_CORROBORATED_NO_CHANGE":
+            expected_receipt = validate_rollforward_table_source_corroboration_v1(
+                base_evidence["page_json"],
+                plan=plan,
+                repair=decoded,
+                page_store_path=page_store_path,
+                authority=authority,
+                repair_spec_authority=repair_spec_authority,
+            )
+            if (
+                terminal["observed_page_json_version_id"] != plan["base_page_json_version_id"]
+                or terminal["decoded_response_sha256"] != expected_receipt["repair_response_sha256"]
+                or terminal["repair_receipt_sha256"]
+                != sha256(canonical_json_bytes_v1(expected_receipt) + b"\n").hexdigest()
+            ):
+                raise _error("source-corroborated no-change receipt does not exact-replay")
+            continue
+
+        lineage = lineages_by_observed.get(terminal["observed_page_json_version_id"])
+        if (
+            lineage is None
+            or lineage["base_page_json_version_id"] != plan["base_page_json_version_id"]
+            or lineage["repair_id"] != terminal["repair_id"]
+            or lineage["repair_receipt_sha256"] != terminal["repair_receipt_sha256"]
+            or lineage["repair_receipt"].get("repair_response_sha256")
+            != terminal["decoded_response_sha256"]
+        ):
+            raise _error("roll-forward table repair overlay page-store lineage drifted")
         expected_merged, expected_receipt = merge_rollforward_table_repair_v1(
             base_evidence["page_json"],
             plan=plan,

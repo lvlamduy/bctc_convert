@@ -514,6 +514,19 @@ def record_gemini_family_region_repair_attempt_v1(
         "PROVIDER_OR_VALIDATION_FAILURE",
         "RESOLVED",
         "RETRYABLE_VALIDATION_FAILURE",
+        "SOURCE_CORROBORATED_NO_CHANGE",
+        "STABLE_SOURCE_EVIDENCE",
+        "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+    }
+    evidence_outcomes = {
+        "RESOLVED",
+        "SOURCE_CORROBORATED_NO_CHANGE",
+        "STABLE_SOURCE_EVIDENCE",
+        "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+    }
+    terminal_outcomes = {
+        "RESOLVED",
+        "SOURCE_CORROBORATED_NO_CHANGE",
         "STABLE_SOURCE_EVIDENCE",
     }
     if (
@@ -521,7 +534,7 @@ def record_gemini_family_region_repair_attempt_v1(
         or outcome not in allowed_outcomes
         or type(reasons) not in {list, tuple}
         or any(type(reason) is not str or not reason for reason in reasons)
-        or (outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}) != (page_json_version_id is not None)
+        or (outcome in evidence_outcomes) != (page_json_version_id is not None)
         or (usage is not None and type(usage) is not dict)
     ):
         raise _error("family region repair attempt is invalid")
@@ -548,11 +561,9 @@ def record_gemini_family_region_repair_attempt_v1(
         )
         if ordinal > len(levels) or thinking_level != levels[ordinal - 1]:
             raise _error("family region repair thinking escalation does not replay")
-        terminal = outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"} or ordinal == len(levels)
+        terminal = outcome in terminal_outcomes or ordinal == len(levels)
         next_status = (
-            "RESOLVED"
-            if outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}
-            else ("ABSTAINED" if terminal else "PENDING")
+            "RESOLVED" if outcome in terminal_outcomes else ("ABSTAINED" if terminal else "PENDING")
         )
         connection.execute(
             "INSERT INTO family_region_repair_attempt("
@@ -573,7 +584,7 @@ def record_gemini_family_region_repair_attempt_v1(
             "WHERE repair_job_id=?",
             (
                 next_status,
-                page_json_version_id if outcome in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"} else None,
+                page_json_version_id if outcome in terminal_outcomes else None,
                 repair_job_id,
             ),
         )
@@ -613,6 +624,7 @@ def resolved_gemini_family_region_repair_overlay_v1(
         if any(job["status"] not in {"RESOLVED", "ABSTAINED"} for job in jobs):
             raise _error("family repair overlay job frontier is not terminal")
         replacements = []
+        source_corroborated_no_change_job_ids = []
         for job in jobs:
             plan_bytes = job["plan_bytes"]
             if sha256(plan_bytes).hexdigest() != job["plan_sha256"]:
@@ -645,10 +657,20 @@ def resolved_gemini_family_region_repair_overlay_v1(
                 type(selected) is not str
                 or not selected.startswith("gfpstorev1:json:")
                 or attempt is None
-                or attempt["outcome"] not in {"RESOLVED", "STABLE_SOURCE_EVIDENCE"}
+                or attempt["outcome"]
+                not in {
+                    "RESOLVED",
+                    "SOURCE_CORROBORATED_NO_CHANGE",
+                    "STABLE_SOURCE_EVIDENCE",
+                }
                 or attempt["page_json_version_id"] != selected
             ):
                 raise _error("resolved family repair selected version does not replay")
+            if attempt["outcome"] == "SOURCE_CORROBORATED_NO_CHANGE":
+                if selected != job["base_page_json_version_id"]:
+                    raise _error("source-corroborated family repair changed the selected page")
+                source_corroborated_no_change_job_ids.append(job["repair_job_id"])
+                continue
             replacements.append(
                 {
                     "base_page_json_version_id": job["base_page_json_version_id"],
@@ -669,6 +691,7 @@ def resolved_gemini_family_region_repair_overlay_v1(
         },
         "repair_source_family_run_id": family_run_id,
         "replacements": replacements,
+        "source_corroborated_no_change_job_ids": source_corroborated_no_change_job_ids,
     }
 
 

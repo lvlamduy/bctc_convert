@@ -80,6 +80,7 @@ def build_gemini_family_effective_page_frontier_v1(
     repair_source_family_run_id: str,
     replacements: Sequence[Mapping[str, Any]],
     results_database_ref: Mapping[str, Any],
+    source_corroborated_no_change_job_ids: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Build one immutable overlay and prove the resulting ordered page frontier."""
 
@@ -98,6 +99,13 @@ def build_gemini_family_effective_page_frontier_v1(
         or any(type(value) is not int or value < 0 for value in job_status_counts.values())
     ):
         raise _error("effective page frontier input contract is invalid")
+    checked_no_change_ids = list(source_corroborated_no_change_job_ids)
+    if len(checked_no_change_ids) != len(set(checked_no_change_ids)) or any(
+        type(job_id) is not str or not job_id.startswith("gjfrrqv1:job:")
+        for job_id in checked_no_change_ids
+    ):
+        raise _error("effective page frontier no-change job axis is invalid")
+    checked_no_change_ids.sort()
     checked_replacements = []
     required = {
         "base_page_json_version_id",
@@ -134,7 +142,8 @@ def build_gemini_family_effective_page_frontier_v1(
         key=lambda item: (item["document_ordinal"], item["physical_page"], item["repair_job_id"])
     )
     if (
-        len(checked_replacements) != job_status_counts["RESOLVED"]
+        len(checked_replacements) + len(checked_no_change_ids) != job_status_counts["RESOLVED"]
+        or {item["repair_job_id"] for item in checked_replacements} & set(checked_no_change_ids)
         or len({item["base_page_json_version_id"] for item in checked_replacements})
         != len(checked_replacements)
         or any(
@@ -162,6 +171,7 @@ def build_gemini_family_effective_page_frontier_v1(
         "repair_source_family_run_id": repair_source_family_run_id,
         "replacements": checked_replacements,
         "results_database_ref": _content_ref(dict(results_database_ref)),
+        "source_corroborated_no_change_job_ids": checked_no_change_ids,
     }
     return validate_gemini_family_effective_page_frontier_v1(
         {
@@ -189,9 +199,13 @@ def _validate_single_frontier_v1(value: Any) -> dict[str, Any]:
         "replacements",
         "results_database_ref",
     }
-    if type(value) is not dict or set(value) != required:
+    if type(value) is not dict or frozenset(value) not in {
+        frozenset(required),
+        frozenset({*required, "source_corroborated_no_change_job_ids"}),
+    }:
         raise _error("effective page frontier envelope fields drifted")
     checked = canonical_clone_v1(value)
+    no_change_ids = checked.get("source_corroborated_no_change_job_ids", [])
     if (
         checked["format_version"] != FORMAT_VERSION
         or type(checked["base_page_count"]) is not int
@@ -207,7 +221,16 @@ def _validate_single_frontier_v1(value: Any) -> dict[str, Any]:
         or set(checked["job_status_counts"]) != {"ABSTAINED", "RESOLVED"}
         or any(type(item) is not int or item < 0 for item in checked["job_status_counts"].values())
         or type(checked["replacements"]) is not list
-        or len(checked["replacements"]) != checked["job_status_counts"]["RESOLVED"]
+        or any(type(item) is not dict for item in checked["replacements"])
+        or type(no_change_ids) is not list
+        or no_change_ids != sorted(set(no_change_ids))
+        or any(
+            type(job_id) is not str or not job_id.startswith("gjfrrqv1:job:")
+            for job_id in no_change_ids
+        )
+        or len(checked["replacements"]) + len(no_change_ids)
+        != checked["job_status_counts"]["RESOLVED"]
+        or {item.get("repair_job_id") for item in checked["replacements"]} & set(no_change_ids)
     ):
         raise _error("effective page frontier envelope is invalid")
     _content_ref(checked["database_ref"])
@@ -344,6 +367,9 @@ def apply_gemini_family_effective_page_frontier_v1(
             repair_source_family_run_id=stage.get("repair_source_family_run_id"),
             replacements=stage.get("replacements"),
             results_database_ref=stage.get("results_database_ref"),
+            source_corroborated_no_change_job_ids=stage.get(
+                "source_corroborated_no_change_job_ids", []
+            ),
         )
         if rebuilt != stage:
             raise _error("effective page frontier does not replay exactly")

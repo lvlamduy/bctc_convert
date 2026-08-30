@@ -22,6 +22,7 @@ from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (
     merge_rollforward_table_repair_v1,
     rollforward_table_repair_target_v1,
     validate_rollforward_table_repair_plan_page_store_v1,
+    validate_rollforward_table_source_corroboration_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
@@ -1287,6 +1288,80 @@ def _resolved_low_attempt(corpus: dict, plan: dict) -> tuple[dict, dict, bytes, 
     return attempt, receipt, raw, crop_receipt, crop
 
 
+def _source_corroborated_attempt(corpus: dict, plan: dict) -> tuple[dict, dict, bytes, dict, bytes]:
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+    response = _target_response(page, plan, corrected=False)
+    receipt = validate_rollforward_table_source_corroboration_v1(
+        page,
+        plan=plan,
+        repair=response,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+    raw = canonical_json_bytes_v1(response) + b"\n"
+    crop, crop_receipt = crop_rollforward_table_image_v1(
+        corpus["images"][plan["base_page_json_version_id"]],
+        plan=plan,
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+    )
+    attempt = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        **_attempt_context(corpus, plan, crop),
+        prior_attempts=[],
+        thinking_level="low",
+        outcome="SOURCE_CORROBORATED_NO_CHANGE",
+        observed_page_json_version_id=plan["base_page_json_version_id"],
+        repair_receipt=receipt,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(raw),
+        raw_response_bytes=raw,
+        validation={"reason_codes": [], "status": "PASS"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1",
+    )
+    return attempt, receipt, raw, crop_receipt, crop
+
+
+def _all_may_source_corroboration_corpus(corpus: dict) -> dict:
+    authority = deepcopy(corpus["authority"])
+    authority["table_repair_specs"][-1]["dash_zero_cell_ids"] = []
+    authority["table_repair_specs"][-1]["collateral_cell_ids"] = []
+    authority["table_repair_specs"][-1]["collateral_equations"] = []
+    plans = build_rollforward_table_cell_repair_plans_v1(
+        compiled_specs=corpus["compiled"],
+        family_sweep=authority["family_sweep"],
+        page_store_path=corpus["store"],
+        selected_page_json_version_ids=authority["selected_page_json_version_ids"],
+        table_repair_specs=authority["table_repair_specs"],
+    )
+    old_external = corpus["repair_spec_authority"]
+    resolver = old_external["source_image_resolver"]
+    external = old_external["authority"]
+    repair_spec_authority = subject.build_rollforward_table_repair_spec_authority_v1(
+        authority_kind=external["authority_kind"],
+        authority_ref=external["authority_ref"],
+        authority_sha256=external["authority_sha256"],
+        source_image_resolver_implementation_path=resolver["implementation_path"],
+        source_image_resolver_implementation_sha256=resolver["implementation_sha256"],
+        source_image_resolver_implementation_size_bytes=resolver["implementation_size_bytes"],
+        source_image_resolver_mupdf_version=resolver["mupdf_version"],
+        source_image_resolver_pymupdf_version=resolver["pymupdf_version"],
+        table_repair_specs=authority["table_repair_specs"],
+        plans=plans,
+    )
+    return {
+        **corpus,
+        "authority": authority,
+        "plans": plans,
+        "repair_spec_authority": repair_spec_authority,
+        "specs": authority["table_repair_specs"],
+    }
+
+
 def _reseal_attempt(attempt: dict) -> None:
     material = {key: attempt[key] for key in attempt if key != "attempt_id"}
     attempt["attempt_id"] = "gjfrtav1:attempt:" + canonical_json_sha256_v1(material)
@@ -1384,6 +1459,97 @@ def test_retry_tiers_are_siblings_and_preserve_raw_usage_cost_and_validation(cor
         overlay["replacements"][0]["selected_page_json_version_id"]
         == lineage["merged_page_json_version_id"]
     )
+
+
+def test_source_corroborated_ready_job_resolves_without_a_replacement(
+    corpus: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    corpus = _all_may_source_corroboration_corpus(corpus)
+    plan = corpus["plans"][-1]
+    attempt, receipt, raw, _crop_receipt, crop = _source_corroborated_attempt(corpus, plan)
+    assert {item["status"] for item in receipt["equation_receipts"]} == {
+        "SOURCE_VISIBLE_NONCLOSING"
+    }
+    assert attempt["repair_id"] is None
+    assert attempt["next_status"] == "RESOLVED"
+    monkeypatch.setattr(
+        subject,
+        "_repair_plan_candidate_status_v1",
+        lambda *_args, **_kw: "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+    )
+    overlay = build_rollforward_table_repair_overlay_v1(
+        family_run_id="gjfafstorev1:run:" + "a" * 64,
+        plans=[plan],
+        attempts=[attempt],
+        page_store_path=corpus["store"],
+        **_overlay_artifacts(corpus, plan, crop, raw),
+    )
+    assert overlay["job_status_counts"] == {"ABSTAINED": 0, "RESOLVED": 1}
+    assert overlay["replacements"] == []
+
+
+def test_ready_correction_requires_two_matching_validated_observations(
+    corpus: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = corpus["plans"][-1]
+    receipt, lineage, raw, crop_receipt, crop = _resolved_lineage(corpus, plan)
+    monkeypatch.setattr(
+        subject,
+        "_repair_plan_candidate_status_v1",
+        lambda *_args, **_kw: "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+    )
+    one_shot, _receipt, _raw, _crop, _crop_bytes = _resolved_low_attempt(corpus, plan)
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error, match="lacks two matching observations"
+    ):
+        build_rollforward_table_repair_overlay_v1(
+            family_run_id="gjfafstorev1:run:" + "a" * 64,
+            plans=[plan],
+            attempts=[one_shot],
+            page_store_path=corpus["store"],
+            **_overlay_artifacts(corpus, plan, crop, raw),
+        )
+    pending = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        **_attempt_context(corpus, plan, crop),
+        prior_attempts=[],
+        thinking_level="low",
+        outcome="VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+        observed_page_json_version_id=lineage["observed_page_json_version_id"],
+        repair_receipt=receipt,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(raw, "low.json"),
+        raw_response_bytes=raw,
+        validation={"reason_codes": [], "status": "PASS"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1",
+    )
+    resolved = build_rollforward_table_repair_attempt_v1(
+        plan=plan,
+        **_attempt_context(corpus, plan, crop),
+        prior_attempts=[pending],
+        thinking_level="medium",
+        outcome="RESOLVED",
+        observed_page_json_version_id=lineage["observed_page_json_version_id"],
+        repair_receipt=receipt,
+        crop_receipt=crop_receipt,
+        response_artifact_ref=_raw_ref(raw, "medium.json"),
+        raw_response_bytes=raw,
+        validation={"reason_codes": [], "status": "PASS"},
+        usage=_usage(),
+        provider=_provider(),
+        elapsed_seconds="1",
+    )
+    overlay = build_rollforward_table_repair_overlay_v1(
+        family_run_id="gjfafstorev1:run:" + "a" * 64,
+        plans=[plan],
+        attempts=[pending, resolved],
+        page_store_path=corpus["store"],
+        **_overlay_artifacts(corpus, plan, crop, raw),
+    )
+    assert overlay["job_status_counts"] == {"ABSTAINED": 0, "RESOLVED": 1}
+    assert len(overlay["replacements"]) == 1
 
 
 def test_attempt_rejects_response_ref_mismatch_and_arbitrary_observed_version(
@@ -1719,7 +1885,10 @@ def test_audit_overlay_recomputes_stored_page_and_rejects_outside_r1c1(corpus: d
     forged_attempt["repair_id"] = malicious_lineage["repair_id"]
     forged_attempt["repair_receipt_sha256"] = malicious_lineage["repair_receipt_sha256"]
     _reseal_attempt(forged_attempt)
-    with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="exact page diff"):
+    with pytest.raises(
+        GeminiJsonRollforwardTableRepairV1Error,
+        match="validated correction attempt does not exact-replay|exact page diff",
+    ):
         build_rollforward_table_repair_overlay_v1(
             family_run_id="gjfafstorev1:run:" + "a" * 64,
             plans=[plan],

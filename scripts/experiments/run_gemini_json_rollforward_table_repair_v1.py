@@ -17,6 +17,7 @@ import os
 import re
 import sqlite3
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -41,6 +42,8 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     load_openrouter_api_key_v1,
 )
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
+    READY,
+    UNRESOLVED,
     compile_gemini_json_flat_family_specs_v1,
 )
 from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (  # noqa: E402
@@ -59,6 +62,7 @@ from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (  # noqa
     rollforward_table_repair_response_schema_v1,
     rollforward_table_repair_target_v1,
     validate_rollforward_source_image_resolver_implementation_v1,
+    validate_rollforward_table_source_corroboration_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
@@ -89,6 +93,12 @@ ATTEMPT_ARTIFACT_AXIS_FORMAT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_ATTEMPT_ARTIFACT_AXIS_V1"
 )
 CAPTURE_CHECKPOINT_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_CAPTURE_CHECKPOINT_V1"
+SEALED_OBSERVATION_ADOPTION_AUTHORITY_FORMAT_VERSION = (
+    "GEMINI_JSON_ROLLFORWARD_SEALED_OBSERVATION_ADOPTION_AUTHORITY_V1"
+)
+SEALED_OBSERVATION_SOURCE_LINK_FORMAT_VERSION = (
+    "GEMINI_JSON_ROLLFORWARD_SEALED_OBSERVATION_SOURCE_LINK_V1"
+)
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _VERSION_ID = re.compile(r"^gfpstorev1:json:[0-9a-f]{64}$")
 _FAMILY_RUN_ID = re.compile(r"^gjfafstorev1:run:[0-9a-f]{64}$")
@@ -96,7 +106,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "9c0c7c71cb9144dc49d73f4fb7751dbb30e5b0373a744aac04a2a57c5d620d94"
+PROJECTOR_IMPLEMENTATION_SHA256 = "97ededdb188993c8da816da61bb0f5c43eac68be958203eacf955d1454ba0d00"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )
@@ -164,6 +174,21 @@ class _ProviderObservation:
     result: ProviderResultV1 | None
     error: GeminiJsonFirstProviderV1Error | None
     elapsed_seconds: str
+
+
+@dataclass(frozen=True)
+class _SealedObservationAdoptionItem:
+    job_id: str
+    source_attempt: dict[str, Any]
+    source_link: dict[str, Any]
+    thinking_level: str
+    observation: _ProviderObservation
+
+
+@dataclass(frozen=True)
+class _SealedObservationAdoption:
+    authority: dict[str, Any]
+    items_by_job: dict[str, list[_SealedObservationAdoptionItem]]
 
 
 @dataclass(frozen=True)
@@ -1416,13 +1441,19 @@ def _response_ref(output: Path, path: Path, payload: bytes) -> dict[str, Any]:
 def _mirror_family_attempt(
     writable_results_database: Path,
     attempt: Mapping[str, Any],
+    *,
+    page_json_version_id_override: str | None = None,
 ) -> dict[str, Any]:
     mirrored = record_gemini_family_region_repair_attempt_v1(
         writable_results_database,
         repair_job_id=attempt["repair_job_id"],
         thinking_level=attempt["thinking_level"],
         outcome=attempt["outcome"],
-        page_json_version_id=attempt["observed_page_json_version_id"],
+        page_json_version_id=(
+            attempt["observed_page_json_version_id"]
+            if page_json_version_id_override is None
+            else page_json_version_id_override
+        ),
         usage=attempt["usage"],
         reasons=attempt["validation"]["reason_codes"],
     )
@@ -1464,6 +1495,43 @@ def _finalize_attempt(
     )
 
 
+def _repair_candidate_input_status(prepared: _PreparedRun, job: _PreparedJob) -> str:
+    matches = []
+    for trial in prepared.family_sweep["trials"]:
+        for candidate in trial.get("candidates", []):
+            if candidate.get("candidate_id") == job.plan["candidate_id"]:
+                matches.append((trial, candidate))
+    if len(matches) != 1:
+        raise _error("repair job does not bind one source candidate")
+    trial, candidate = matches[0]
+    status = candidate.get("status")
+    if (
+        status not in {READY, UNRESOLVED}
+        or trial.get("status") != status
+        or trial.get("document_ordinal") != job.plan["document_ordinal"]
+        or candidate.get("family_id") != job.plan["family_id"]
+        or canonical_json_sha256_v1(candidate) != job.plan["candidate_semantic_replay_sha256"]
+    ):
+        raise _error("repair source candidate status/semantic replay drifted")
+    return status
+
+
+def _validated_prior_page_hashes(
+    page_store_path: Path, prior_attempts: Sequence[Mapping[str, Any]]
+) -> list[str]:
+    version_ids = [
+        attempt["observed_page_json_version_id"]
+        for attempt in prior_attempts
+        if attempt["outcome"] == "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+    ]
+    if not version_ids:
+        return []
+    evidence = load_rollforward_table_page_evidence_v1(
+        page_store_path, page_json_version_ids=version_ids
+    )
+    return [canonical_json_sha256_v1(item["page_json"]) for item in evidence]
+
+
 def _persist_observation(
     *,
     output: Path,
@@ -1477,6 +1545,7 @@ def _persist_observation(
     response_artifacts: dict[str, bytes],
     attempt_artifact_manifests: list[dict[str, Any]],
     mirror_family_results: bool = True,
+    sealed_source_link: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     attempt_ordinal = len(prior_attempts) + 1
     attempt_root = (
@@ -1497,6 +1566,16 @@ def _persist_observation(
         attempt_root / "observation.json",
         {"elapsed_seconds": observation.elapsed_seconds},
     )
+    if sealed_source_link is not None:
+        link = dict(sealed_source_link)
+        material = {key: link[key] for key in link if key != "link_sha256"}
+        if (
+            type(sealed_source_link) is not dict
+            or link.get("format_version") != SEALED_OBSERVATION_SOURCE_LINK_FORMAT_VERSION
+            or link.get("link_sha256") != canonical_json_sha256_v1(material)
+        ):
+            raise _error("sealed observation source link identity drifted")
+        _write_json(attempt_root / "sealed-source-link.json", link)
     raw_response: bytes | None = None
     response_artifact_ref = None
     if result is None:
@@ -1573,14 +1652,6 @@ def _persist_observation(
     )
     try:
         decoded = decode_rollforward_table_repair_text_v1(result.output_text, target=job.target)
-        merged, receipt = merge_rollforward_table_repair_v1(
-            job.base_page_json,
-            plan=job.plan,
-            repair=decoded,
-            page_store_path=writable_page_store,
-            authority=prepared.authority,
-            repair_spec_authority=prepared.repair_spec_authority,
-        )
     except GeminiJsonRollforwardTableRepairV1Error as exc:
         validation_details = {
             "error_message": str(exc),
@@ -1621,6 +1692,117 @@ def _persist_observation(
             attempt_artifact_manifests=attempt_artifact_manifests,
             mirror_family_results=mirror_family_results,
         )
+    candidate_status = _repair_candidate_input_status(prepared, job)
+    prior_hashes = _validated_prior_page_hashes(writable_page_store, prior_attempts)
+    try:
+        merged, receipt = merge_rollforward_table_repair_v1(
+            job.base_page_json,
+            plan=job.plan,
+            repair=decoded,
+            page_store_path=writable_page_store,
+            authority=prepared.authority,
+            repair_spec_authority=prepared.repair_spec_authority,
+        )
+    except GeminiJsonRollforwardTableRepairV1Error as repair_exc:
+        corroboration = None
+        if candidate_status == READY:
+            try:
+                corroboration = validate_rollforward_table_source_corroboration_v1(
+                    job.base_page_json,
+                    plan=job.plan,
+                    repair=decoded,
+                    page_store_path=writable_page_store,
+                    authority=prepared.authority,
+                    repair_spec_authority=prepared.repair_spec_authority,
+                )
+            except GeminiJsonRollforwardTableRepairV1Error:
+                corroboration = None
+        if corroboration is None:
+            validation_details = {
+                "error_message": str(repair_exc),
+                "error_type": type(repair_exc).__name__,
+                "reason_codes": ["TABLE_REPAIR_VALIDATION_FAILED"],
+                "status": "FAIL",
+            }
+            _write_json(attempt_root / "validation.json", validation_details)
+            attempt = build_rollforward_table_repair_attempt_v1(
+                plan=job.plan,
+                authority=prepared.authority,
+                repair_spec_authority=prepared.repair_spec_authority,
+                page_store_path=writable_page_store,
+                prior_attempts=prior_attempts,
+                thinking_level=thinking_level,
+                outcome="RETRYABLE_VALIDATION_FAILURE",
+                observed_page_json_version_id=None,
+                repair_receipt=None,
+                crop_receipt=job.crop_receipt,
+                source_image_bytes=job.source_image,
+                crop_image_bytes=job.crop_image,
+                response_artifact_ref=response_artifact_ref,
+                raw_response_bytes=response_bytes,
+                validation={
+                    "reason_codes": ["TABLE_REPAIR_VALIDATION_FAILED"],
+                    "status": "FAIL",
+                },
+                usage=usage,
+                provider=provider,
+                elapsed_seconds=observation.elapsed_seconds,
+            )
+            _write_json(attempt_root / "attempt.json", attempt)
+            return _finalize_attempt(
+                output=output,
+                attempt_root=attempt_root,
+                writable_results_database=writable_results_database,
+                attempt=attempt,
+                attempt_artifact_manifests=attempt_artifact_manifests,
+                mirror_family_results=mirror_family_results,
+            )
+        base_sha = canonical_json_sha256_v1(job.base_page_json)
+        outcome = (
+            "SOURCE_CORROBORATED_NO_CHANGE"
+            if not prior_hashes or base_sha in prior_hashes
+            else "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+        )
+        _write_json(attempt_root / "source-corroboration-receipt.json", corroboration)
+        _write_json(
+            attempt_root / "validation.json",
+            {"reason_codes": [], "status": "PASS"},
+        )
+        attempt = build_rollforward_table_repair_attempt_v1(
+            plan=job.plan,
+            authority=prepared.authority,
+            repair_spec_authority=prepared.repair_spec_authority,
+            page_store_path=writable_page_store,
+            prior_attempts=prior_attempts,
+            thinking_level=thinking_level,
+            outcome=outcome,
+            observed_page_json_version_id=job.plan["base_page_json_version_id"],
+            repair_receipt=corroboration,
+            crop_receipt=job.crop_receipt,
+            source_image_bytes=job.source_image,
+            crop_image_bytes=job.crop_image,
+            response_artifact_ref=response_artifact_ref,
+            raw_response_bytes=response_bytes,
+            validation={"reason_codes": [], "status": "PASS"},
+            usage=usage,
+            provider=provider,
+            elapsed_seconds=observation.elapsed_seconds,
+        )
+        _write_json(attempt_root / "attempt.json", attempt)
+        return _finalize_attempt(
+            output=output,
+            attempt_root=attempt_root,
+            writable_results_database=writable_results_database,
+            attempt=attempt,
+            attempt_artifact_manifests=attempt_artifact_manifests,
+            mirror_family_results=mirror_family_results,
+        )
+    merged_sha = canonical_json_sha256_v1(merged)
+    outcome = (
+        "RESOLVED"
+        if candidate_status == UNRESOLVED or merged_sha in prior_hashes
+        else "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
+    )
     merged_payload = canonical_json_bytes_v1(merged) + b"\n"
     merged_path = attempt_root / "merged-page.json"
     _write_new(merged_path, merged_payload)
@@ -1631,7 +1813,7 @@ def _persist_observation(
     validation_path = attempt_root / "validation.json"
     _write_new(validation_path, validation_payload)
     pre_db_artifacts = {}
-    for path in (
+    pre_db_paths = [
         attempt_root / "provider-attempts.json",
         attempt_root / "provider-envelope.bin",
         attempt_root / "provider-result.json",
@@ -1643,7 +1825,11 @@ def _persist_observation(
         validation_path,
         merged_path,
         receipt_path,
-    ):
+    ]
+    sealed_link_path = attempt_root / "sealed-source-link.json"
+    if sealed_link_path.is_file():
+        pre_db_paths.append(sealed_link_path)
+    for path in pre_db_paths:
         payload = path.read_bytes()
         pre_db_artifacts[path.name] = _ref(output, path, payload)
     pre_db_material = {
@@ -1700,7 +1886,7 @@ def _persist_observation(
         page_store_path=writable_page_store,
         prior_attempts=prior_attempts,
         thinking_level=thinking_level,
-        outcome="RESOLVED",
+        outcome=outcome,
         observed_page_json_version_id=lineage["observed_page_json_version_id"],
         repair_receipt=receipt,
         crop_receipt=job.crop_receipt,
@@ -1822,6 +2008,40 @@ def _apply_sealed_resolved_observation(
         artifacts["table-response.json"],
     ).read_bytes()
     return result, receipt, lineage, response_bytes
+
+
+def _replay_sealed_source_corroboration(
+    *,
+    sealed_output: Path,
+    artifacts: Mapping[str, Mapping[str, Any]],
+    prepared: _PreparedRun,
+    job: _PreparedJob,
+    writable_page_store: Path,
+) -> tuple[dict[str, Any], bytes]:
+    required = {"source-corroboration-receipt.json", "table-response.json"}
+    if not required <= set(artifacts):
+        raise _error("sealed source corroboration omits its receipt or response")
+    result = _provider_result_from_sealed_artifacts(sealed_output, artifacts)
+    receipt = _json_artifact(
+        sealed_output,
+        artifacts["source-corroboration-receipt.json"],
+        label="sealed source corroboration receipt",
+    )
+    decoded = decode_rollforward_table_repair_text_v1(result.output_text, target=job.target)
+    rebuilt = validate_rollforward_table_source_corroboration_v1(
+        job.base_page_json,
+        plan=job.plan,
+        repair=decoded,
+        page_store_path=writable_page_store,
+        authority=prepared.authority,
+        repair_spec_authority=prepared.repair_spec_authority,
+    )
+    if not same_typed_json_v1(receipt, rebuilt):
+        raise _error("sealed source corroboration does not replay against the fresh page store")
+    response_bytes = _authenticated_artifact_ref(
+        sealed_output, artifacts["table-response.json"]
+    ).read_bytes()
+    return receipt, response_bytes
 
 
 def _validate_writable_copy(
@@ -1956,6 +2176,9 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
     workers: int = 6,
     timeout_seconds: int = 900,
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
+    sealed_observation_artifact_dir: Path | None = None,
+    sealed_observation_run_result_sha256: str | None = None,
+    sealed_observation_git_commit: str | None = None,
 ) -> dict[str, Any]:
     """Execute one fresh dry-run or bounded OpenRouter repair frontier."""
 
@@ -1970,6 +2193,9 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
                 writable_page_store,
                 writable_results_database,
                 openrouter_api_key,
+                sealed_observation_artifact_dir,
+                sealed_observation_run_result_sha256,
+                sealed_observation_git_commit,
             )
         ):
             raise _error("dry-run must not receive provider or writable-store authority")
@@ -1980,6 +2206,14 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         or len(openrouter_api_key) < 20
     ):
         raise _error("OpenRouter mode requires two writable database copies and a credential")
+    adoption_values = (
+        sealed_observation_artifact_dir,
+        sealed_observation_run_result_sha256,
+    )
+    if any(value is not None for value in adoption_values) and not all(
+        value is not None for value in adoption_values
+    ):
+        raise _error("sealed observation adoption requires its artifact root and run-result pin")
     source_store, source_sha, source_size = _validate_source_store(
         source_page_store,
         source_page_store_sha256,
@@ -2030,6 +2264,20 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         workspace_root=workspace_root,
         runner_implementation_sha256=runner_implementation_sha256,
     )
+    sealed_adoption = None
+    if sealed_observation_artifact_dir is not None:
+        assert sealed_observation_run_result_sha256 is not None
+        sealed_adoption = _validate_sealed_observation_adoption_source_v1(
+            sealed_artifact_dir=sealed_observation_artifact_dir,
+            sealed_run_result_sha256=sealed_observation_run_result_sha256,
+            sealed_git_commit=sealed_observation_git_commit,
+            prepared=prepared,
+            workspace_root=workspace_root,
+            source_sha=source_sha,
+            source_size=source_size,
+            source_results_sha=source_results_sha,
+            source_results_size=source_results_size,
+        )
     if writable_store is not None and writable_results is not None:
         _bind_effective_frontier_database_ref(
             effective_artifact_root,
@@ -2076,6 +2324,11 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         source_results_database_sha256=source_results_sha,
         source_results_database_size_bytes=source_results_size,
         effective_artifact_root=effective_artifact_root,
+        contract_extensions=(
+            None
+            if sealed_adoption is None
+            else {"sealed_observation_adoption_authority": sealed_adoption.authority}
+        ),
     )
     run_contract_payload = canonical_json_bytes_v1(contract) + b"\n"
     run_contract_sha256 = sha256(run_contract_payload).hexdigest()
@@ -2123,6 +2376,8 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
     attempt_artifact_manifests: list[dict[str, Any]] = []
     capture_checkpoint_ref: dict[str, Any] | None = None
     capture_failures: list[dict[str, Any]] = []
+    reused_sealed_observation_count = 0
+    new_provider_call_count = 0
     with tempfile.TemporaryDirectory(
         prefix="family13-table-repair-execution-",
         dir=output.parent,
@@ -2131,9 +2386,51 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         # validation, lineage, and canonical attempt recording all happen on that pair;
         # the public targets remain byte-identical until the all-resolved publish gate.
         capture_store = writable_store
-        active = list(prepared.jobs)
-        for thinking_level in _THINKING_LEVELS:
-            next_active_ids: set[str] = set()
+        if sealed_adoption is not None:
+            for job in prepared.jobs:
+                job_id = job.plan["repair_job_id"]
+                for source_item in sealed_adoption.items_by_job[job_id]:
+                    prior = attempts_by_job[job_id]
+                    if prior and prior[-1]["next_status"] != "PENDING":
+                        break
+                    if source_item.thinking_level != _THINKING_LEVELS[len(prior)]:
+                        raise _error("sealed observation sibling tier differs from current state")
+                    attempt = _persist_observation(
+                        output=output,
+                        prepared=prepared,
+                        job=job,
+                        thinking_level=source_item.thinking_level,
+                        observation=source_item.observation,
+                        writable_page_store=capture_store,
+                        writable_results_database=source_results,
+                        prior_attempts=prior,
+                        response_artifacts=response_artifacts,
+                        attempt_artifact_manifests=attempt_artifact_manifests,
+                        mirror_family_results=False,
+                        sealed_source_link=source_item.source_link,
+                    )
+                    attempts_by_job[job_id].append(attempt)
+                    reused_sealed_observation_count += 1
+                    capture_checkpoint_ref = _write_capture_checkpoint(
+                        output,
+                        attempt_artifact_manifests=attempt_artifact_manifests,
+                        attempts_by_job=attempts_by_job,
+                        previous_checkpoint_ref=capture_checkpoint_ref,
+                        run_contract_sha256=run_contract_sha256,
+                    )
+        for tier_index, thinking_level in enumerate(_THINKING_LEVELS):
+            active = [
+                job
+                for job in prepared.jobs
+                if len(attempts_by_job[job.plan["repair_job_id"]]) == tier_index
+                and (
+                    not attempts_by_job[job.plan["repair_job_id"]]
+                    or attempts_by_job[job.plan["repair_job_id"]][-1]["next_status"] == "PENDING"
+                )
+            ]
+            if not active:
+                continue
+            new_provider_call_count += len(active)
             with ThreadPoolExecutor(max_workers=min(workers, len(active))) as executor:
                 future_to_job = {
                     executor.submit(
@@ -2192,13 +2489,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
                         previous_checkpoint_ref=capture_checkpoint_ref,
                         run_contract_sha256=run_contract_sha256,
                     )
-                    if attempt["next_status"] == "PENDING":
-                        next_active_ids.add(job_id)
             if capture_failures:
-                active = []
-                break
-            active = [job for job in active if job.plan["repair_job_id"] in next_active_ids]
-            if not active:
                 break
     attempts = [
         attempt for job in prepared.jobs for attempt in attempts_by_job[job.plan["repair_job_id"]]
@@ -2234,6 +2525,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
             "disposition": "REPAIR_CAPTURE_INCOMPLETE",
             "format_version": FORMAT_VERSION,
             "mode": mode,
+            "new_provider_call_count": new_provider_call_count,
             "official_selection": "NOT_PERFORMED",
             "provider_recall": "AUDITED_CONTINUATION_REQUIRED",
             "recovery_action": (
@@ -2241,6 +2533,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
                 "WITHOUT_RECALLING_ANY_SEALED_PROVIDER_OBSERVATION"
             ),
             "recovery_journals": recovery_journals,
+            "reused_sealed_observation_count": reused_sealed_observation_count,
             "run_contract_sha256": run_contract_sha256,
         }
         _write_json(output / "run-result.json", incomplete)
@@ -2277,12 +2570,14 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
             "format_version": FORMAT_VERSION,
             "job_status_counts": terminal_status_counts,
             "mode": mode,
+            "new_provider_call_count": new_provider_call_count,
             "official_selection": "NOT_PERFORMED",
             "provider_recall": "FORBIDDEN",
             "recovery_action": (
                 "REVALIDATE_AUTHENTICATED_SEALED_RESPONSES_ON_ONE_FRESH_BASELINE_"
                 "DATABASE_PAIR_WITHOUT_PROVIDER_RECALL"
             ),
+            "reused_sealed_observation_count": reused_sealed_observation_count,
             "run_contract_sha256": run_contract_sha256,
         }
         _write_json(output / "run-result.json", incomplete)
@@ -2317,7 +2612,13 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
                         != sha256(canonical_json_bytes_v1(receipt) + b"\n").hexdigest()
                     ):
                         raise _error("captured resolved attempt differs from caller database apply")
-                _mirror_family_attempt(writable_results, attempt)
+                    _mirror_family_attempt(
+                        writable_results,
+                        attempt,
+                        page_json_version_id_override=lineage["merged_page_json_version_id"],
+                    )
+                else:
+                    _mirror_family_attempt(writable_results, attempt)
             except Exception as exc:  # noqa: BLE001 - all provider observations are sealed
                 apply_failures.append(
                     {
@@ -2338,6 +2639,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
             "failed_database_apply_jobs": apply_failures,
             "format_version": FORMAT_VERSION,
             "mode": mode,
+            "new_provider_call_count": new_provider_call_count,
             "official_selection": "NOT_PERFORMED",
             "provider_recall": "FORBIDDEN",
             "recovery_action": (
@@ -2345,6 +2647,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
                 "ARTIFACTS_TO_FRESH_EXACT_COPIES"
             ),
             "recovery_journals": recovery_journals,
+            "reused_sealed_observation_count": reused_sealed_observation_count,
             "run_contract_sha256": run_contract_sha256,
         }
         _write_json(output / "run-result.json", incomplete)
@@ -2370,13 +2673,24 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         crop_image_artifacts_by_sha256=crop_artifacts,
         response_artifacts_by_sha256=response_artifacts,
     )
+    replacement_job_ids = {
+        attempts_by_job[job.plan["repair_job_id"]][-1]["repair_job_id"]
+        for job in prepared.jobs
+        if attempts_by_job[job.plan["repair_job_id"]][-1]["outcome"] == "RESOLVED"
+    }
+    source_no_change_job_ids = sorted(
+        attempts_by_job[job.plan["repair_job_id"]][-1]["repair_job_id"]
+        for job in prepared.jobs
+        if attempts_by_job[job.plan["repair_job_id"]][-1]["outcome"]
+        == "SOURCE_CORROBORATED_NO_CHANGE"
+    )
     if (
         overlay.get("job_status_counts") != {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}
-        or len(overlay.get("replacements", [])) != len(prepared.jobs)
+        or len(overlay.get("replacements", [])) != len(replacement_job_ids)
         or {item.get("repair_job_id") for item in overlay.get("replacements", [])}
-        != {job.plan["repair_job_id"] for job in prepared.jobs}
+        != replacement_job_ids
     ):
-        raise _error("complete repair frontier does not contain one resolved replacement per job")
+        raise _error("complete repair frontier replacement axis differs from correction outcomes")
     overlay_payload = canonical_json_bytes_v1(overlay) + b"\n"
     overlay_path = output / "repair-overlay.json"
     _write_new(overlay_path, overlay_payload)
@@ -2404,6 +2718,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         or standard_overlay["repair_source_family_run_id"] != overlay["repair_source_family_run_id"]
         or standard_overlay["job_status_counts"] != overlay["job_status_counts"]
         or standard_overlay["replacements"] != expected_standard_replacements
+        or standard_overlay["source_corroborated_no_change_job_ids"] != source_no_change_job_ids
     ):
         raise _error("standard family-results overlay differs from the audited repair overlay")
     _bind_effective_frontier_database_ref(
@@ -2441,6 +2756,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
             "sha256": writable_results_sha,
             "size_bytes": writable_results_size,
         },
+        source_corroborated_no_change_job_ids=source_no_change_job_ids,
     )
     checked_frontier, effective_ids = apply_gemini_family_effective_page_frontier_v1(
         effective_frontier,
@@ -2463,11 +2779,13 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         "effective_page_frontier": frontier_ref,
         "effective_page_frontier_id": effective_frontier["effective_page_frontier_id"],
         "mode": mode,
+        "new_provider_call_count": new_provider_call_count,
         "official_selection": "NOT_PERFORMED",
         "overlay_id": overlay["overlay_id"],
         "repair_overlay": overlay_ref,
         "plan_axis_sha256": contract["plan_axis_sha256"],
         "run_contract_sha256": run_contract_sha256,
+        "reused_sealed_observation_count": reused_sealed_observation_count,
         "selected_page_count": len(prepared.selected_ids),
         "source_page_store_sha256": source_sha,
         "writable_page_store": {"sha256": writable_sha, "size_bytes": writable_size},
@@ -2512,6 +2830,9 @@ def run_rollforward_table_repair_v1(
     workers: int = 6,
     timeout_seconds: int = 900,
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
+    sealed_observation_artifact_dir: Path | None = None,
+    sealed_observation_run_result_sha256: str | None = None,
+    sealed_observation_git_commit: str | None = None,
 ) -> dict[str, Any]:
     """Run from held read-only sources with exactly one private page/results work pair."""
 
@@ -2604,6 +2925,9 @@ def run_rollforward_table_repair_v1(
                 workers=workers,
                 timeout_seconds=timeout_seconds,
                 provider_call=provider_call,
+                sealed_observation_artifact_dir=sealed_observation_artifact_dir,
+                sealed_observation_run_result_sha256=(sealed_observation_run_result_sha256),
+                sealed_observation_git_commit=sealed_observation_git_commit,
             )
             _assert_sqlite_boundary_current(
                 source_store_boundary,
@@ -2774,6 +3098,451 @@ def _validate_quarantined_legacy_attempt(
     ):
         raise _error("quarantined legacy response authority is incoherent")
     return attempt
+
+
+def _authenticate_sealed_implementation_ref_v1(
+    *,
+    reference: Any,
+    expected_path: str,
+    workspace_root: Path,
+    git_commit: str | None,
+    current_reference: Mapping[str, Any],
+) -> dict[str, Any]:
+    if (
+        type(reference) is not dict
+        or set(reference) != {"path", "sha256", "size_bytes"}
+        or reference.get("path") != expected_path
+        or type(reference.get("sha256")) is not str
+        or _HEX64.fullmatch(reference["sha256"]) is None
+        or type(reference.get("size_bytes")) is not int
+        or reference["size_bytes"] <= 0
+    ):
+        raise _error("sealed observation implementation reference drifted")
+    if git_commit is None:
+        if not same_typed_json_v1(reference, current_reference):
+            raise _error("sealed observation implementation differs without a pinned Git commit")
+        return json.loads(canonical_json_bytes_v1(reference))
+    if type(git_commit) is not str or re.fullmatch(r"[0-9a-f]{40}", git_commit) is None:
+        raise _error("sealed observation Git commit must be one full lowercase object ID")
+    root = workspace_root.resolve()
+    try:
+        resolved = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "rev-parse",
+                "--verify",
+                f"{git_commit}^{{commit}}",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        blob = subprocess.run(
+            ["git", "-C", str(root), "show", f"{git_commit}:{expected_path}"],
+            check=True,
+            capture_output=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise _error("sealed observation Git implementation authority cannot be resolved") from exc
+    if (
+        resolved != git_commit
+        or sha256(blob).hexdigest() != reference["sha256"]
+        or len(blob) != reference["size_bytes"]
+    ):
+        raise _error("sealed observation implementation differs from the pinned Git blob")
+    return json.loads(canonical_json_bytes_v1(reference))
+
+
+def _sealed_failure_observation_v1(
+    sealed_output: Path,
+    artifacts: Mapping[str, Mapping[str, Any]],
+) -> _ProviderObservation:
+    provider_attempts = _json_artifact(
+        sealed_output,
+        artifacts["provider-attempts.json"],
+        label="sealed failed provider attempts",
+    )
+    observation = _json_artifact(
+        sealed_output,
+        artifacts["observation.json"],
+        label="sealed failed provider observation",
+    )
+    if (
+        type(provider_attempts) is not list
+        or type(observation) is not dict
+        or set(observation) != {"elapsed_seconds"}
+        or type(observation["elapsed_seconds"]) is not str
+    ):
+        raise _error("sealed failed provider observation contract drifted")
+    error = GeminiJsonFirstProviderV1Error(
+        "authenticated sealed provider observation did not contain usable output"
+    )
+    error.attempts = tuple(provider_attempts)
+    envelope_ref = artifacts.get("provider-envelope.bin")
+    error.raw_response_bytes = (
+        None
+        if envelope_ref is None
+        else _authenticated_artifact_ref(sealed_output, envelope_ref).read_bytes()
+    )
+    return _ProviderObservation(
+        result=None,
+        error=error,
+        elapsed_seconds=observation["elapsed_seconds"],
+    )
+
+
+def _validate_sealed_observation_adoption_source_v1(
+    *,
+    sealed_artifact_dir: Path,
+    sealed_run_result_sha256: str,
+    sealed_git_commit: str | None,
+    prepared: _PreparedRun,
+    workspace_root: Path,
+    source_sha: str,
+    source_size: int,
+    source_results_sha: str,
+    source_results_size: int,
+) -> _SealedObservationAdoption:
+    sealed_input = Path(sealed_artifact_dir)
+    sealed_output = sealed_input.resolve()
+    if sealed_input.is_symlink() or not sealed_output.is_dir():
+        raise _error("sealed observation artifact directory is absent or a symlink")
+    sealed_result = _read_pinned_json(
+        sealed_output / "run-result.json",
+        sealed_run_result_sha256,
+        label="sealed observation run result",
+    ).value
+    if (
+        type(sealed_result) is not dict
+        or sealed_result.get("format_version") != FORMAT_VERSION
+        or sealed_result.get("mode") != "OPENROUTER_BOUNDED"
+        or sealed_result.get("official_selection") != "NOT_PERFORMED"
+        or sealed_result.get("disposition")
+        not in {
+            "REPAIR_CAPTURE_INCOMPLETE",
+            "REPAIR_FRONTIER_COMPLETE",
+            "REPAIR_FRONTIER_INCOMPLETE",
+        }
+    ):
+        raise _error("sealed observation source is not one bounded non-OFFICIAL run")
+    contract_path = sealed_output / "run-contract.json"
+    contract_raw = contract_path.read_bytes()
+    if sha256(contract_raw).hexdigest() != sealed_result.get("run_contract_sha256"):
+        raise _error("sealed observation run contract differs from its result")
+    try:
+        contract = json.loads(contract_raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("sealed observation run contract is not valid JSON") from exc
+    if (
+        type(contract) is not dict
+        or contract.get("format_version") != FORMAT_VERSION
+        or contract.get("mode") != "OPENROUTER_BOUNDED"
+        or contract.get("official_selection") != "NOT_PERFORMED"
+        or contract.get("expected_plan_count") != len(prepared.plans)
+        or contract.get("expected_selected_page_count") != len(prepared.selected_ids)
+        or contract.get("plan_axis_sha256") != canonical_json_sha256_v1(prepared.plans)
+        or contract.get("source_page_store") != {"sha256": source_sha, "size_bytes": source_size}
+        or contract.get("source_family_results_database")
+        != {"sha256": source_results_sha, "size_bytes": source_results_size}
+    ):
+        raise _error("sealed observation run contract differs from the current authority")
+    runner_ref = _authenticate_sealed_implementation_ref_v1(
+        reference=contract.get("runner_implementation_ref"),
+        expected_path=RUNNER_IMPLEMENTATION_PATH,
+        workspace_root=workspace_root,
+        git_commit=sealed_git_commit,
+        current_reference=prepared.runner_implementation_ref,
+    )
+    projector_ref = _authenticate_sealed_implementation_ref_v1(
+        reference=contract.get("projector_implementation_ref"),
+        expected_path=PROJECTOR_IMPLEMENTATION_PATH,
+        workspace_root=workspace_root,
+        git_commit=sealed_git_commit,
+        current_reference=prepared.projector_implementation_ref,
+    )
+    expected_inputs = {name: pinned for name, pinned in prepared.pinned_inputs.items()}
+    if set(contract.get("input_artifacts", {})) != set(expected_inputs):
+        raise _error("sealed observation input artifact axis is incomplete")
+    for name, pinned in expected_inputs.items():
+        reference = contract["input_artifacts"][name]
+        path = _authenticated_artifact_ref(sealed_output, reference)
+        if path.read_bytes() != pinned.raw:
+            raise _error("sealed observation pinned input differs from the current input")
+    authority_refs = contract.get("authority_artifacts")
+    if type(authority_refs) is not dict or set(authority_refs) != {
+        "plan_axis",
+        "plan_replay",
+        "repair_spec",
+        "source_family_run",
+    }:
+        raise _error("sealed observation authority artifact axis drifted")
+    source_plans = _json_artifact(
+        sealed_output,
+        authority_refs["plan_axis"],
+        label="sealed observation plan axis",
+    )
+    if (
+        not same_typed_json_v1(source_plans, prepared.plans)
+        or not same_typed_json_v1(
+            _json_artifact(
+                sealed_output,
+                authority_refs["plan_replay"],
+                label="sealed observation plan replay authority",
+            ),
+            prepared.authority,
+        )
+        or not same_typed_json_v1(
+            _json_artifact(
+                sealed_output,
+                authority_refs["repair_spec"],
+                label="sealed observation repair-spec authority",
+            ),
+            prepared.repair_spec_authority,
+        )
+        or not same_typed_json_v1(
+            _json_artifact(
+                sealed_output,
+                authority_refs["source_family_run"],
+                label="sealed observation baseline family run",
+            ),
+            prepared.baseline_run_receipt,
+        )
+    ):
+        raise _error("sealed observation source authority does not exact-replay")
+    jobs_by_id = {job.plan["repair_job_id"]: job for job in prepared.jobs}
+    contract_jobs = contract.get("jobs")
+    if type(contract_jobs) is not list or len(contract_jobs) != len(prepared.jobs):
+        raise _error("sealed observation static job axis drifted")
+    expected_static_names = {
+        "crop-image.png",
+        "crop-receipt.json",
+        "plan.json",
+        "prompt.txt",
+        "response-schema.json",
+        "source-image.png",
+        "source-resolution-receipt.json",
+    }
+    for contract_job in contract_jobs:
+        if type(contract_job) is not dict:
+            raise _error("sealed observation static job is invalid")
+        job = jobs_by_id.get(contract_job.get("repair_job_id"))
+        artifacts = contract_job.get("artifacts")
+        if job is None or type(artifacts) is not dict or set(artifacts) != expected_static_names:
+            raise _error("sealed observation static job does not bind the current plan")
+        expected_payloads = {
+            "crop-image.png": job.crop_image,
+            "crop-receipt.json": canonical_json_bytes_v1(job.crop_receipt) + b"\n",
+            "plan.json": canonical_json_bytes_v1(job.plan) + b"\n",
+            "prompt.txt": job.prompt.encode("utf-8"),
+            "response-schema.json": canonical_json_bytes_v1(job.response_schema) + b"\n",
+            "source-image.png": job.source_image,
+            "source-resolution-receipt.json": (
+                canonical_json_bytes_v1(job.source_resolution_receipt) + b"\n"
+            ),
+        }
+        if (
+            contract_job.get("document_ordinal") != job.plan["document_ordinal"]
+            or contract_job.get("physical_page") != job.plan["physical_page"]
+        ):
+            raise _error("sealed observation static job locator drifted")
+        for name, expected in expected_payloads.items():
+            if _authenticated_artifact_ref(sealed_output, artifacts[name]).read_bytes() != expected:
+                raise _error("sealed observation static request artifact drifted")
+    axis = _json_artifact(
+        sealed_output,
+        sealed_result.get("attempt_artifact_axis"),
+        label="sealed observation attempt artifact axis",
+    )
+    if (
+        type(axis) is not dict
+        or axis.get("format_version") != ATTEMPT_ARTIFACT_AXIS_FORMAT_VERSION
+        or type(axis.get("manifests")) is not list
+        or axis.get("manifest_axis_sha256") != canonical_json_sha256_v1(axis.get("manifests"))
+    ):
+        raise _error("sealed observation attempt artifact axis identity drifted")
+    checkpoint = _validate_capture_checkpoint(
+        sealed_output,
+        _json_artifact(
+            sealed_output,
+            sealed_result.get("capture_checkpoint"),
+            label="sealed observation terminal checkpoint",
+        ),
+    )
+    if checkpoint["run_contract_sha256"] != sealed_result["run_contract_sha256"] or sorted(
+        checkpoint["attempt_artifact_manifests"],
+        key=lambda item: item["attempt_id"],
+    ) != sorted(axis["manifests"], key=lambda item: item["attempt_id"]):
+        raise _error("sealed observation checkpoint differs from its attempt axis")
+    items_by_job: dict[str, list[_SealedObservationAdoptionItem]] = {
+        job_id: [] for job_id in jobs_by_id
+    }
+    source_attempt_ids: list[str] = []
+    source_usage_axis: list[dict[str, Any]] = []
+    source_job_order = {job.plan["repair_job_id"]: index for index, job in enumerate(prepared.jobs)}
+    if any(
+        type(entry) is not dict or entry.get("repair_job_id") not in source_job_order
+        for entry in axis["manifests"]
+    ):
+        raise _error("sealed observation attempt names an unknown repair job")
+    for entry in sorted(
+        axis["manifests"],
+        key=lambda item: (
+            source_job_order[item["repair_job_id"]],
+            item["attempt_ordinal"],
+        ),
+    ):
+        job = jobs_by_id.get(entry.get("repair_job_id"))
+        if job is None:
+            raise _error("sealed observation attempt names an unknown repair job")
+        manifest = _validate_attempt_artifact_manifest(
+            sealed_output,
+            _json_artifact(
+                sealed_output,
+                entry["attempt_artifact_manifest_ref"],
+                label="sealed observation attempt manifest",
+            ),
+        )
+        attempt = _validate_quarantined_legacy_attempt(
+            sealed_output,
+            entry=entry,
+            manifest=manifest,
+            legacy_plan=job.plan,
+        )
+        expected_ordinal = len(items_by_job[attempt["repair_job_id"]]) + 1
+        if attempt["attempt_ordinal"] != expected_ordinal:
+            raise _error("sealed observation sibling attempt axis is noncontiguous")
+        request = _json_artifact(
+            sealed_output,
+            manifest["artifacts"]["request.json"],
+            label="sealed observation provider request",
+        )
+        expected_request = _request_material(job, attempt["thinking_level"])
+        expected_request_id = canonical_json_sha256_v1(expected_request)
+        if request != {**expected_request, "request_id_sha256": expected_request_id}:
+            raise _error("sealed observation provider request differs from the current plan")
+        artifacts = manifest["artifacts"]
+        observation_record = _json_artifact(
+            sealed_output,
+            artifacts["observation.json"],
+            label="sealed provider observation timing",
+        )
+        if (
+            type(observation_record) is not dict
+            or set(observation_record) != {"elapsed_seconds"}
+            or type(observation_record["elapsed_seconds"]) is not str
+        ):
+            raise _error("sealed provider observation timing drifted")
+        if {
+            "provider-attempts.json",
+            "provider-envelope.bin",
+            "provider-result.json",
+            "table-response.json",
+        } <= set(artifacts):
+            observation = _ProviderObservation(
+                result=_provider_result_from_sealed_artifacts(sealed_output, artifacts),
+                error=None,
+                elapsed_seconds=observation_record["elapsed_seconds"],
+            )
+        else:
+            observation = _sealed_failure_observation_v1(sealed_output, artifacts)
+        source_attempt_ids.append(attempt["attempt_id"])
+        source_usage_axis.append({"attempt_id": attempt["attempt_id"], "usage": attempt["usage"]})
+        link_material = {
+            "adoption_authority_sha256": None,
+            "format_version": SEALED_OBSERVATION_SOURCE_LINK_FORMAT_VERSION,
+            "source_attempt_id": attempt["attempt_id"],
+            "source_attempt_manifest_sha256": manifest["manifest_sha256"],
+            "source_attempt_ordinal": attempt["attempt_ordinal"],
+            "source_attempt_outcome": attempt["outcome"],
+            "source_git_commit": sealed_git_commit,
+            "source_repair_job_id": attempt["repair_job_id"],
+            "source_response_artifact_ref": attempt.get("response_artifact_ref"),
+            "source_run_result_sha256": sealed_run_result_sha256,
+        }
+        items_by_job[attempt["repair_job_id"]].append(
+            _SealedObservationAdoptionItem(
+                job_id=attempt["repair_job_id"],
+                source_attempt=attempt,
+                source_link=link_material,
+                thinking_level=attempt["thinking_level"],
+                observation=observation,
+            )
+        )
+    expected_job_states = [
+        {
+            "attempt_count": len(items_by_job[job_id]),
+            "next_status": (
+                items_by_job[job_id][-1].source_attempt["next_status"]
+                if items_by_job[job_id]
+                else "PENDING"
+            ),
+            "repair_job_id": job_id,
+        }
+        for job_id in jobs_by_id
+    ]
+    if checkpoint["job_states"] != expected_job_states:
+        raise _error("sealed observation checkpoint job state differs from its attempts")
+    terminal_counts = {
+        status: sum(
+            item["next_status"] == status
+            for item in (
+                attempts[-1].source_attempt for attempts in items_by_job.values() if attempts
+            )
+        )
+        for status in ("ABSTAINED", "RESOLVED")
+    }
+    if (
+        sealed_result.get("job_status_counts") is not None
+        and sealed_result["job_status_counts"] != terminal_counts
+    ):
+        raise _error("sealed observation result status counts differ from its attempts")
+    material = {
+        "authenticity": {
+            "current_runner_revalidates_every_response": True,
+            "historical_implementation_is_authenticated_by_git": sealed_git_commit is not None,
+            "provider_recall_for_sealed_attempts": "FORBIDDEN",
+        },
+        "format_version": SEALED_OBSERVATION_ADOPTION_AUTHORITY_FORMAT_VERSION,
+        "source_artifact_root": str(sealed_output),
+        "source_attempt_axis_sha256": axis["manifest_axis_sha256"],
+        "source_attempt_count": len(source_attempt_ids),
+        "source_attempt_ids": source_attempt_ids,
+        "source_capture_checkpoint_sha256": checkpoint["capture_checkpoint_sha256"],
+        "source_git_commit": sealed_git_commit,
+        "source_plan_axis_sha256": canonical_json_sha256_v1(source_plans),
+        "source_projector_implementation_ref": projector_ref,
+        "source_run_contract_sha256": sealed_result["run_contract_sha256"],
+        "source_run_result_sha256": sealed_run_result_sha256,
+        "source_runner_implementation_ref": runner_ref,
+        "source_usage_axis": source_usage_axis,
+        "source_usage_axis_sha256": canonical_json_sha256_v1(source_usage_axis),
+    }
+    authority = {
+        **material,
+        "adoption_authority_sha256": canonical_json_sha256_v1(material),
+    }
+    bound_items = {}
+    for job_id, items in items_by_job.items():
+        bound = []
+        for item in items:
+            link_material = {
+                **item.source_link,
+                "adoption_authority_sha256": authority["adoption_authority_sha256"],
+            }
+            link = {**link_material, "link_sha256": canonical_json_sha256_v1(link_material)}
+            bound.append(
+                _SealedObservationAdoptionItem(
+                    job_id=item.job_id,
+                    source_attempt=item.source_attempt,
+                    source_link=link,
+                    thinking_level=item.thinking_level,
+                    observation=item.observation,
+                )
+            )
+        bound_items[job_id] = bound
+    return _SealedObservationAdoption(authority=authority, items_by_job=bound_items)
 
 
 def _validate_quarantined_legacy_source_v1(
@@ -3790,11 +4559,15 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
     for key in keys:
         job_id, attempt_ordinal = key
         job = jobs.get(job_id)
+        standard_page_override = None
         if job is None:
             raise _error("sealed observation names a job outside the authoritative axis")
         if key in attempt_records:
             attempt, artifacts = attempt_records[key]
-            if attempt["outcome"] == "RESOLVED":
+            if attempt["repair_id"] is not None and attempt["outcome"] in {
+                "RESOLVED",
+                "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+            }:
                 _result, receipt, lineage, response_bytes = _apply_sealed_resolved_observation(
                     sealed_output=sealed_output,
                     artifacts=artifacts,
@@ -3808,7 +4581,28 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
                     or attempt["repair_receipt_sha256"]
                     != sha256(canonical_json_bytes_v1(receipt) + b"\n").hexdigest()
                 ):
-                    raise _error("sealed resolved attempt differs from fresh database replay")
+                    raise _error("sealed correction attempt differs from fresh database replay")
+                response_artifacts[sha256(response_bytes).hexdigest()] = response_bytes
+                if attempt["outcome"] == "RESOLVED":
+                    standard_page_override = lineage["merged_page_json_version_id"]
+            elif attempt["repair_id"] is None and attempt["outcome"] in {
+                "SOURCE_CORROBORATED_NO_CHANGE",
+                "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
+            }:
+                receipt, response_bytes = _replay_sealed_source_corroboration(
+                    sealed_output=sealed_output,
+                    artifacts=artifacts,
+                    prepared=prepared,
+                    job=job,
+                    writable_page_store=writable_store,
+                )
+                if (
+                    attempt["observed_page_json_version_id"]
+                    != job.plan["base_page_json_version_id"]
+                    or attempt["repair_receipt_sha256"]
+                    != sha256(canonical_json_bytes_v1(receipt) + b"\n").hexdigest()
+                ):
+                    raise _error("sealed source no-change attempt differs from fresh replay")
                 response_artifacts[sha256(response_bytes).hexdigest()] = response_bytes
             reference = attempt.get("response_artifact_ref")
             if reference is not None:
@@ -3871,7 +4665,11 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
             response_artifacts[sha256(response_bytes).hexdigest()] = response_bytes
         if attempt["attempt_ordinal"] != len(attempts_by_job[job_id]) + 1:
             raise _error("sealed replay attempt ordinal is noncontiguous")
-        _mirror_family_attempt(writable_results, attempt)
+        _mirror_family_attempt(
+            writable_results,
+            attempt,
+            page_json_version_id_override=standard_page_override,
+        )
         attempts_by_job[job_id].append(attempt)
     attempts = [
         attempt for job in prepared.jobs for attempt in attempts_by_job[job.plan["repair_job_id"]]
@@ -3910,13 +4708,25 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
         for replacement in overlay["replacements"]
     ]
     expected_counts = {"ABSTAINED": 0, "RESOLVED": len(prepared.jobs)}
+    replacement_job_ids = {
+        attempts_by_job[job.plan["repair_job_id"]][-1]["repair_job_id"]
+        for job in prepared.jobs
+        if attempts_by_job[job.plan["repair_job_id"]][-1]["outcome"] == "RESOLVED"
+    }
+    source_no_change_job_ids = sorted(
+        attempts_by_job[job.plan["repair_job_id"]][-1]["repair_job_id"]
+        for job in prepared.jobs
+        if attempts_by_job[job.plan["repair_job_id"]][-1]["outcome"]
+        == "SOURCE_CORROBORATED_NO_CHANGE"
+    )
     if (
         overlay.get("job_status_counts") != expected_counts
-        or len(overlay.get("replacements", [])) != len(prepared.jobs)
+        or len(overlay.get("replacements", [])) != len(replacement_job_ids)
         or {item.get("repair_job_id") for item in overlay.get("replacements", [])}
-        != {job.plan["repair_job_id"] for job in prepared.jobs}
+        != replacement_job_ids
         or standard_overlay["job_status_counts"] != overlay["job_status_counts"]
         or standard_overlay["replacements"] != expected_replacements
+        or standard_overlay["source_corroborated_no_change_job_ids"] != source_no_change_job_ids
     ):
         raise _error("fresh replay standard overlay differs from the audited overlay")
     _bind_effective_frontier_database_ref(
@@ -3957,6 +4767,7 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
             "sha256": writable_results_sha,
             "size_bytes": writable_results_size,
         },
+        source_corroborated_no_change_job_ids=source_no_change_job_ids,
     )
     checked_frontier, effective_ids = apply_gemini_family_effective_page_frontier_v1(
         frontier,
@@ -4193,6 +5004,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--writable-results-database", type=Path)
     parser.add_argument("--sealed-run-result-sha256")
     parser.add_argument("--replay-artifact-dir", type=Path)
+    parser.add_argument("--sealed-observation-artifact-dir", type=Path)
+    parser.add_argument("--sealed-observation-run-result-sha256")
+    parser.add_argument("--sealed-observation-git-commit")
     parser.add_argument(
         "--openrouter-key-file",
         type=Path,
@@ -4260,6 +5074,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         openrouter_api_key=api_key,
         workers=args.workers,
         timeout_seconds=args.timeout_seconds,
+        sealed_observation_artifact_dir=args.sealed_observation_artifact_dir,
+        sealed_observation_run_result_sha256=(args.sealed_observation_run_result_sha256),
+        sealed_observation_git_commit=args.sealed_observation_git_commit,
     )
     print(canonical_json_bytes_v1(result).decode("utf-8"))
     return (

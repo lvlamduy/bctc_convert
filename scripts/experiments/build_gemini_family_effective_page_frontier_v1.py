@@ -223,6 +223,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         repair_source_family_run_id=overlay["repair_source_family_run_id"],
         replacements=replacements,
         results_database_ref=results_database_ref,
+        source_corroborated_no_change_job_ids=overlay.get(
+            "source_corroborated_no_change_job_ids", []
+        ),
     )
     if prior_frontier is not None:
         if (
