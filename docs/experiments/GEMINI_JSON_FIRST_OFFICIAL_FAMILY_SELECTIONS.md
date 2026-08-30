@@ -65,9 +65,11 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 43 | `STATE_BUDGET_OBLIGATIONS` | 130 | 10 | 0 | 590 | `gjfafstorev1:run:7020a723348693036d463962f49a818ae142160d4b33e640e27c312ae226f7f1` |
 | 44 | `CUSTOMER_COLLATERAL_HELD` | 58 | 82 | 0 | 314 | `gjfafstorev1:run:22ab1fc5ae4d5c0a245737ad50fd3c331e0708eebbc4a0e2dff65dd1151d32c6` |
 | 45 | `BANK_PLEDGED_OR_DISCOUNTED_ASSETS` | 50 | 90 | 0 | 114 | `gjfafstorev1:run:c6fd41be57cc3e8ca11e74a59d66489f640bd4f85e2e51ea0d96098141854dc5` |
+| 46 | `CONTINGENT_LIABILITIES_AND_COMMITMENTS` | 83 | 57 | 0 | 769 | `gjfafstorev1:run:a10b6421427aed6fe6c1f9972075eb451bc869a7091de2ff98d6b31b330358e7` |
+| 47 | `FINANCIAL_INSTRUMENTS` | 66 | 74 | 0 | 1.408 | `gjfafstorev1:run:7058ba455a4c01ef356bf0fe047696e769e2c01307ffd23235700ed39ef9020c` |
 
-Tại checkpoint này database có đủ đúng bốn mươi lăm current selection liên tục
-từ Family 1 đến Family 45. Family 46 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi bảy current selection liên tục
+từ Family 1 đến Family 47. Family 48 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -1135,13 +1137,42 @@ Artifact OFFICIAL:
   SHA-256
   `c9942d100db56c0a85624c8389980fc1c1712db4703fa457d7b1b8f5cd6055dc`.
 
+## Family 47 closure
+
+- Family 47 `FINANCIAL_INSTRUMENTS`: `READY=66`, `NOT_OBSERVED=74`,
+  `UNRESOLVED=0`, 1.408 mappings và 1.293 equation receipts. Generic valuation
+  matrix resolver tự inventory 68 source tables trong 66 clusters, khóa hai
+  nhánh tài sản/nợ phải trả, carrying/fair columns, continuation, period, unit,
+  row graph và complete source totals. Prompt Gemini không đổi và không chứa
+  schema, graph, equation, bank/file/page hoặc đáp án family.
+
+  Dấu `(*)` và fair value không công bố được giữ thành 917 typed unavailable,
+  không bị đổi thành zero hay sao chép carrying value. Partial fragment,
+  duplicate role, blank không có bằng chứng, period/unit drift, equation thiếu
+  hoặc source receipt tự rehash đều fail closed. Public SQLite query/candidate
+  replay dựng lại candidate từ đúng 8.947 selected page versions. E-0099 và
+  E-0154 khớp đủ 16/16 historical dispositions và 105/105 historical mappings;
+  hai absence cũ của VIB được thay bằng bảng Gemini giàu dữ liệu hơn sau khi
+  nguồn canonical được xác thực, không phải do route theo tài liệu.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family47-financial-instruments/sweep.json`,
+  SHA-256
+  `1b6d36189e5b5720cbf793d3a82c920f396dbbe893d2909c84f12464c1119f22`;
+  audit SHA-256
+  `91800a8b8fbdb568800d4dd303543749ae1c5e764a3f8184eef03296bb1335ac`.
+  Implementation commit `0e463c2`; 139 focused/adjacent/store/runner tests,
+  Ruff, format, diff, EXP/OFFICIAL replay và SQLite integrity đều xanh.
+  Cumulative results DB có 47 current selections và 47 selection events,
+  `quick_check`/foreign keys sạch, không SQLite sidecar, SHA-256
+  `e095f4b4e916d6dccd0e52029a34bfeee1e3213177435f1a19ce1740e33975bc`.
+
 ## Next gate
 
-Family 47 là `FINANCIAL_INSTRUMENTS`, khóa comparator E-0099/E-0154 và tiếp
-tục dùng prompt Gemini tối giản, cố định. Thuật toán phải tự inventory bảng giá
-trị ghi sổ/giá trị hợp lý, asset/liability branches, continuation, unit và
-period axes; dấu `(*)` không công bố fair value phải giữ typed unavailable chứ
-không đổi thành zero hoặc sao chép carrying value. Không route theo
-bank/file/page và chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
-public SQLite query/candidate replay, historical comparator và đủ 140
-dispositions.
+Family 48 là `CURRENCY_RISK`, schema root 1352, khóa comparator E-0101/E-0155
+và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán phải tự inventory
+currency columns, asset/liability/off-balance rows, nested subtotal, period,
+unit và continuation; source-only currency chưa có schema branch phải giữ typed
+unmapped thay vì gộp vào `OTHER`. Không route theo bank/file/page và chỉ promote
+OFFICIAL sau exhaustive 8.947-page inventory, public SQLite query/candidate
+replay, historical comparator và đủ 140 dispositions.
