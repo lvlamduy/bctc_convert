@@ -42,11 +42,17 @@ from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
     record_gemini_accounting_family_export_v1,
+    resolved_gemini_family_region_repair_overlay_v1,
 )
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
+from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (  # noqa: E402
+    apply_gemini_family_effective_page_frontier_v1,
+    effective_page_frontier_stages_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    page_json_region_repair_lineages_v1,
     query_selected_equity_matrix_family_regions_v1,
     validate_selected_equity_matrix_family_candidate_replays_v1,
     validate_selected_equity_matrix_family_query_evidence_v1,
@@ -66,70 +72,98 @@ PINNED_CORPUS_MANIFEST_INDEX_ID = (
     "gjfccmiv1:index:61be9e5dc44a261d2dbf3f396b9624e29cb4ae591ea0a7fdb83051352e7b60e3"
 )
 PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
-    "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8"
+    "37413ca1b7360c85f333b613676967cd5d497dd705478729f403ee3408ca13c0"
 )
 PINNED_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "51e99f3e10256a76e353d8c3a8eae140139b4c67bc3cc27023188f292442077a"
+        "3df63690cb87497e658f48ecf3c4fc7fffdbd38624d544d645f7945e41c87bd2"
     ),
-    "accepted_cluster_count": 140,
-    "accepted_fragment_count": 143,
+    "accepted_cluster_count": 130,
+    "accepted_fragment_count": 131,
     "candidate_disposition_axis_sha256": (
-        "8b7fe87e00f4dec152c53af67fc48b57908eb87a682a8380e7ba84ad7dce85c3"
+        "007947b46bb9ced4ad3478dba551151ddc5473978d254d52e6e454fd02c0bb74"
     ),
     "candidate_disposition_count": 140,
-    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
-    "query_policy_sha256": "62cfe73bd32d59ddd76d0698fa3ca41f8db90cdbe7083b8bb414ccdf49a4318f",
+    "disposition_counts": {NOT_OBSERVED: 10, READY: 130, UNRESOLVED: 0},
+    "query_policy_sha256": "51e713f6508ee320b0451b600b49e3a3954507160d2366a6f89dcb6d7b8539f0",
     "selected_document_axis_sha256": (
         "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
     ),
     "selected_document_count": 140,
     "selected_page_axis_sha256": (
-        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+        "fc034dc0a798af12a7459e82446a0eafd432e11150134e75ee7cd78911b80c85"
     ),
     "selected_page_count": 8947,
     "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
 }
 PINNED_RELEASE_METRICS = {
     "document_count": 140,
-    "mapping_count": 1295,
-    "not_observed_count": 0,
-    "ready_count": 137,
-    "unresolved_count": 3,
+    "mapping_count": 590,
+    "not_observed_count": 10,
+    "ready_count": 130,
+    "unresolved_count": 0,
 }
 PINNED_RELEASE_AUDIT_METRICS = {
-    "alignment_receipt_count": 9,
-    "equation_count": 2252,
-    "historical_value_match_count": 128,
-    "historical_value_unresolved_count": 11,
-    "mapping_count": 1295,
-    "period_block_receipt_count": 95,
-    "unresolved_document_count": 3,
+    "alignment_receipt_count": 0,
+    "equation_count": 1446,
+    "historical_source_only_match_count": 1,
+    "historical_source_only_unresolved_count": 0,
+    "historical_value_match_count": 68,
+    "historical_value_unresolved_count": 0,
+    "mapping_count": 590,
+    "period_block_receipt_count": 0,
+    "unresolved_document_count": 0,
+}
+PINNED_AXIS_COUNTS = {
+    "alignments": 0,
+    "clusters": 130,
+    "equations": 1446,
+    "historical_documents": 16,
+    "historical_mappings": 68,
+    "mappings": 590,
+    "period_blocks": 0,
+    "unresolved_documents": 0,
 }
 PINNED_AXIS_SHA256 = {
-    "alignments": "033d1a373d6235b6d68a43dd1f2207e78ff5770f4f6d4c043e7bf9b16d30be50",
-    "clusters": "90c73ff6bce5366e42538f11317ce083d6ac3a19bf50e7b78c3da43008dfcb80",
-    "equations": "5bf7fea93a402149052e6de8b267b9b1cdd86cbaf024c70971d520e0be8ad056",
-    "historical_documents": ("68c299b58b38d439b55c7d8efee35580c715fa58a32d4f0f0abd18f9d58a63c9"),
-    "historical_mappings": ("8a66588c1be57c5372dd4848bede43d7a9e286f960583070147e702b976976df"),
-    "mappings": "4684728e562bfb6cfcabdd36ac276bed5534e5e55a3583b5d727d446c45af747",
-    "period_blocks": "01e39b415297c45c7bf04a6bf06aa78785476bd30b9e08c6fe1be97d3cb39b8e",
-    "unresolved_documents": ("03748e9a3d2535a4f335a1b815941f22829d64c68569eaa1948a970e116c9174"),
+    "alignments": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "clusters": "60c535622271a3a4d748ca0fa1bd518ec08b60e5b2a0d3355fadc47f73281985",
+    "equations": "0c1ab6a04eed4f8d452d3c629ffcb321176e8f83c100169852fb5a3e484c65bb",
+    "historical_documents": "be679b9a7139b66acd66aa9a22db9710246e5ee9046fba68acd9ed11edc02324",
+    "historical_mappings": "c73499272c6c74cbfefad2d4fb741eeb4bc9674ee7ab40a6fb26f3682ad99118",
+    "mappings": "b8c06f6043f71be33d805ac671593dd6fd42abd4bf3f3ac91602efc233bdc179",
+    "period_blocks": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "unresolved_documents": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
 }
 PINNED_HISTORICAL_ORACLES = [
     {
-        "format_version": "CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFIED_MAPPING_V1",
-        "path": "docs/experiments/E-0078-capital-and-funds-8bank-codex-verified-mapping-v1.json",
-        "sha256": "f0389456e9d99abf96e98bef9fac301326106e09b6bbf3b0b44f127c0ff63aa3",
-        "size_bytes": 212753,
+        "format_version": "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0095-state-budget-obligations-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "d22ab081487f1ddb3076b6069a09583018181f5c897bdb2f1332c3d673e06530",
+        "size_bytes": 131472,
     },
     {
-        "format_version": "ANNUAL_2025_CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFIED_MAPPING_V1",
-        "path": "docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json",
-        "sha256": "a3f1df5d8647dc0df60563d53737bafefc34604086edf94b72d7dc412559c889",
-        "size_bytes": 275489,
+        "format_version": ("ANNUAL_2025_STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFIED_MAPPING_V1"),
+        "path": (
+            "docs/experiments/"
+            "E-0150-annual-2025-state-budget-obligations-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "032a4dfab25ef94a815d780335eafffb8d1d8aeae76fe4bca9438de5bf2b14a7",
+        "size_bytes": 138376,
     },
 ]
+_HISTORICAL_MOVEMENT_ROLE_ALIASES = {
+    "CLOSING": "CLOSING",
+    "CLOSING_PAYABLE": "CLOSING_PAYABLE",
+    "CLOSING_RECEIVABLE": "CLOSING_OFFSET",
+    "DECREASE": "DECREASE",
+    "DECREASE_MAGNITUDE": "DECREASE",
+    "INCREASE": "INCREASE",
+    "OPENING": "OPENING",
+    "PAID_DECREASE": "DECREASE",
+    "PAYABLE_INCREASE": "INCREASE",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -373,6 +407,14 @@ def _historical_comparator_axis(
             ].items()
         },
     }
+    mapped_axis_roles = {
+        "CLOSING",
+        "DECREASE",
+        "INCREASE",
+        "OPENING",
+        *compiled_specs["mapped_supplemental_movement_roles"],
+    }
+    closure_only_axis_roles = set(compiled_specs["movement_roles"]) - mapped_axis_roles
     documents = []
     mappings = []
     oracle_refs = []
@@ -394,15 +436,58 @@ def _historical_comparator_axis(
             historical_mappings = oracle_trial.get("verified_mappings")
             if type(historical_mappings) is not list:
                 raise _error("historical equity-matrix mapping axis is invalid")
+            historical_source_only_rows = oracle_trial.get("verified_source_only_rows", [])
+            if type(historical_source_only_rows) is not list:
+                raise _error("historical equity-matrix source-only axis is invalid")
+            historical_source_only_labels = sorted(
+                {
+                    evidence["normalized_pixel_transcription"]
+                    for row in historical_source_only_rows
+                    if type(row) is dict
+                    for evidence in row.get("label_evidence", [])
+                    if type(evidence) is dict
+                    and type(evidence.get("normalized_pixel_transcription")) is str
+                }
+            )
+            if historical_source_only_rows and not historical_source_only_labels:
+                raise _error("historical equity-matrix source-only labels are absent")
+            current_source_only_labels = sorted(
+                {
+                    label
+                    for item in (
+                        candidate.get("closure_receipt", {}).get("source_only_component_axes", [])
+                        if type(candidate) is dict
+                        else []
+                    )
+                    if type(item) is dict and type(item.get("semantic_path")) is list
+                    for label in [
+                        *[member for member in item["semantic_path"] if type(member) is str],
+                        " ".join(member for member in item["semantic_path"] if type(member) is str),
+                    ]
+                    if label
+                }
+            )
+            source_only_disposition = (
+                "EXACT"
+                if set(historical_source_only_labels) <= set(current_source_only_labels)
+                else "CURRENT_UNRESOLVED"
+            )
             documents.append(
                 {
                     "current_document_ordinal": trial["document_ordinal"],
                     "current_status": trial["status"],
                     "disposition": (
-                        "CURRENT_READY" if trial["status"] == READY else "CURRENT_UNRESOLVED"
+                        "CURRENT_READY"
+                        if trial["status"] == READY
+                        else "CURRENT_NOT_OBSERVED"
+                        if trial["status"] == NOT_OBSERVED
+                        else "CURRENT_UNRESOLVED"
                     ),
+                    "current_source_only_labels": current_source_only_labels,
                     "document_provenance": oracle_trial.get("document_provenance"),
                     "historical_mapping_count": len(historical_mappings),
+                    "historical_source_only_disposition": source_only_disposition,
+                    "historical_source_only_labels": historical_source_only_labels,
                     "historical_status": oracle_trial.get("status"),
                     "oracle_format_version": oracle["format_version"],
                     "source_sha256": source_sha256,
@@ -420,19 +505,26 @@ def _historical_comparator_axis(
                 ):
                     raise _error("historical equity-matrix mapping value axis is invalid")
                 historical_axis = {}
+                historical_auxiliary_axis = {}
                 raw_axis_roles = {}
                 for value in source_values:
                     raw_role = value.get("axis_role") if type(value) is dict else None
-                    axis_role = "DECREASE" if raw_role == "DECREASE_MAGNITUDE" else raw_role
+                    axis_role = _HISTORICAL_MOVEMENT_ROLE_ALIASES.get(raw_role, raw_role)
                     coefficient = value.get("normalized_value") if type(value) is dict else None
                     if (
-                        axis_role not in {"OPENING", "INCREASE", "DECREASE", "CLOSING"}
+                        axis_role not in mapped_axis_roles | closure_only_axis_roles
                         or type(coefficient) is not int
                         or axis_role in historical_axis
+                        or axis_role in historical_auxiliary_axis
                     ):
                         raise _error("historical equity-matrix movement values are invalid")
-                    historical_axis[axis_role] = coefficient
-                    raw_axis_roles[axis_role] = raw_role
+                    if axis_role in mapped_axis_roles:
+                        historical_axis[axis_role] = coefficient
+                        raw_axis_roles[axis_role] = raw_role
+                    else:
+                        historical_auxiliary_axis[axis_role] = coefficient
+                if not historical_axis:
+                    raise _error("historical equity-matrix mapped movement axis is empty")
                 current = current_by_id.get(report_norm_id)
                 historical_role = historical.get("role")
                 comparable_historical_role = (
@@ -475,6 +567,7 @@ def _historical_comparator_axis(
                         ),
                         "document_provenance": oracle_trial.get("document_provenance"),
                         "historical_axis": historical_axis,
+                        "historical_auxiliary_axis": historical_auxiliary_axis,
                         "historical_report_norm_id": report_norm_id,
                         "historical_role": historical_role,
                         "oracle_format_version": oracle["format_version"],
@@ -497,25 +590,38 @@ def _audit_axes(
     unresolved_documents = []
     for trial in trials:
         candidates = trial.get("candidates")
-        if type(candidates) is not list or len(candidates) != 1:
-            continue
-        candidate = candidates[0]
         document = {
             "document_ordinal": trial["document_ordinal"],
             "source_logical_name": trial["source_logical_name"],
             "source_sha256": trial["source_sha256"],
         }
+        if trial.get("status") == NOT_OBSERVED:
+            continue
         if trial.get("status") != READY:
+            candidate = candidates[0] if type(candidates) is list and len(candidates) == 1 else None
             unresolved_documents.append(
                 {
                     **document,
-                    "candidate_id": candidate["candidate_id"],
-                    "component_regions": candidate["component_regions"],
-                    "orientation": candidate["closure_receipt"]["orientation"],
-                    "reasons": candidate["reasons"],
+                    "candidate_id": (
+                        candidate["candidate_id"] if type(candidate) is dict else None
+                    ),
+                    "component_regions": (
+                        candidate["component_regions"] if type(candidate) is dict else []
+                    ),
+                    "orientation": (
+                        candidate["closure_receipt"]["orientation"]
+                        if type(candidate) is dict
+                        else None
+                    ),
+                    "reasons": (
+                        candidate["reasons"] if type(candidate) is dict else trial["reasons"]
+                    ),
                 }
             )
             continue
+        if type(candidates) is not list or len(candidates) != 1:
+            raise _error("READY equity-matrix trial does not have exactly one candidate")
+        candidate = candidates[0]
         clusters.append(
             {
                 **document,
@@ -585,6 +691,15 @@ def build_equity_matrix_experimental_audit_v1(
         ),
         "historical_value_unresolved_count": sum(
             item["disposition"] == "CURRENT_UNRESOLVED" for item in axes["historical_mappings"]
+        ),
+        "historical_source_only_match_count": sum(
+            len(item["historical_source_only_labels"])
+            for item in axes["historical_documents"]
+            if item["historical_source_only_disposition"] == "EXACT"
+        ),
+        "historical_source_only_unresolved_count": sum(
+            item["historical_source_only_disposition"] != "EXACT"
+            for item in axes["historical_documents"]
         ),
         "mapping_count": axis_counts["mappings"],
         "period_block_receipt_count": axis_counts["period_blocks"],
@@ -743,19 +858,7 @@ def _assert_release_pins(
         mismatches.append("sweep_metrics")
     if not same_typed_json_v1(actual["audit_metrics"], PINNED_RELEASE_AUDIT_METRICS):
         mismatches.append("audit_metrics")
-    expected_axis_counts = {
-        "alignments": 9,
-        "clusters": 137,
-        "equations": 2252,
-        "historical_documents": 16,
-        "historical_mappings": 139,
-        "mappings": 1295,
-        "period_blocks": 95,
-        "unresolved_documents": 3,
-    }
-    if any(
-        actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
-    ):
+    if any(actual["axis_counts"].get(name) != count for name, count in PINNED_AXIS_COUNTS.items()):
         mismatches.append("axis_counts")
     if not same_typed_json_v1(actual["axis_sha256"], PINNED_AXIS_SHA256):
         mismatches.append("axis_sha256")
@@ -890,6 +993,8 @@ def _run_with_authenticated_database(
     schema: dict[str, Any],
     compiled: dict[str, Any],
     spec_refs: dict[str, Any],
+    effective_page_frontier: dict[str, Any] | None,
+    effective_page_artifact_root: Path | None,
 ) -> dict[str, Any]:
     database = database_guard.path
     indexed = query_selected_equity_matrix_family_regions_v1(
@@ -928,6 +1033,7 @@ def _run_with_authenticated_database(
         schema_binding_spec=schema,
         trials=trials,
         indexed_query_evidence=indexed,
+        effective_page_frontier=effective_page_frontier,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
     validate_selected_equity_matrix_family_candidate_replays_v1(
@@ -974,6 +1080,7 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/evaluation/gemini_json_equity_matrix_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
     stored = ingest_gemini_accounting_family_sweep_v1(
@@ -985,6 +1092,7 @@ def _run_with_authenticated_database(
         source_page_database=database,
         selected_page_json_version_ids=selected_ids,
         corpus_artifact_root=args.artifact_root.resolve(),
+        effective_page_artifact_root=effective_page_artifact_root,
     )
     stored_sweep = load_gemini_accounting_family_sweep_v1(
         args.results_database, stored["family_run_id"]
@@ -1015,18 +1123,81 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
     source_database = _content_ref(artifact_root, index["database_ref"])
+    source_database_ref = index["database_ref"]
     selected_ids = _selected_page_axis(index=index, artifact_root=artifact_root)
     topology = _json(args.topology_spec)
     evaluation = _json(args.evaluation_spec)
     schema = _json(args.schema_binding_spec)
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    effective_page_frontier = None
+    effective_page_artifact_root = None
+    frontier_path = getattr(args, "effective_page_frontier", None)
+    frontier_root_path = getattr(args, "effective_page_artifact_root", None)
+    if frontier_path is None and frontier_root_path is not None:
+        raise _error("effective page artifact root requires an effective page frontier")
+    if frontier_path is not None:
+        effective_page_artifact_root = (
+            artifact_root if frontier_root_path is None else frontier_root_path.resolve()
+        )
+        if frontier_root_path is not None and (
+            frontier_root_path.is_symlink() or not effective_page_artifact_root.is_dir()
+        ):
+            raise _error("effective page artifact root is absent or not a trusted directory")
+        effective_page_frontier, selected_ids = apply_gemini_family_effective_page_frontier_v1(
+            _json(frontier_path), base_page_json_version_ids=selected_ids
+        )
+        if (
+            effective_page_frontier["base_corpus_manifest_index_id"]
+            != index["corpus_manifest_index_id"]
+            or effective_page_frontier["family_id"] != compiled["family_id"]
+        ):
+            raise _error("effective page frontier does not bind this corpus and family")
+        for stage in effective_page_frontier_stages_v1(effective_page_frontier):
+            source_database_ref = stage["database_ref"]
+            source_database = _content_ref(effective_page_artifact_root, source_database_ref)
+            repair_results_database = _content_ref(
+                effective_page_artifact_root, stage["results_database_ref"]
+            )
+            source_overlay = resolved_gemini_family_region_repair_overlay_v1(
+                repair_results_database,
+                family_run_id=stage["repair_source_family_run_id"],
+            )
+            if (
+                source_overlay["family_id"] != stage["family_id"]
+                or source_overlay["job_status_counts"] != stage["job_status_counts"]
+            ):
+                raise _error("effective page frontier source family jobs do not replay")
+            lineages = page_json_region_repair_lineages_v1(
+                source_database,
+                observed_page_json_version_ids=[
+                    replacement["selected_page_json_version_id"]
+                    for replacement in source_overlay["replacements"]
+                ],
+            )
+            replacements = []
+            for replacement, lineage in zip(source_overlay["replacements"], lineages, strict=True):
+                if (
+                    lineage["base_page_json_version_id"] != replacement["base_page_json_version_id"]
+                    or lineage["observed_page_json_version_id"]
+                    != replacement["selected_page_json_version_id"]
+                ):
+                    raise _error("effective page frontier repair lineage does not replay")
+                replacements.append(
+                    {
+                        **replacement,
+                        "repair_id": lineage["repair_id"],
+                        "repair_receipt_sha256": lineage["repair_receipt_sha256"],
+                    }
+                )
+            if replacements != stage["replacements"]:
+                raise _error("effective page frontier replacement evidence drifted")
     spec_refs = {
         "evaluation": _file_ref(args.evaluation_spec, root=ROOT),
         "schema_binding": _file_ref(args.schema_binding_spec, root=ROOT),
         "topology": _file_ref(args.topology_spec, root=ROOT),
     }
     with _authenticated_sqlite_snapshot(
-        source_database, reference=index["database_ref"]
+        source_database, reference=source_database_ref
     ) as database_guard:
         return _run_with_authenticated_database(
             args,
@@ -1038,6 +1209,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             schema=schema,
             compiled=compiled,
             spec_refs=spec_refs,
+            effective_page_frontier=effective_page_frontier,
+            effective_page_artifact_root=effective_page_artifact_root,
         )
 
 
@@ -1045,6 +1218,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus-index", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
+    parser.add_argument("--effective-page-frontier", type=Path)
+    parser.add_argument("--effective-page-artifact-root", type=Path)
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)
     parser.add_argument("--schema-binding-spec", type=Path, required=True)

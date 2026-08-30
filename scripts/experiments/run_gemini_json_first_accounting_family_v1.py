@@ -210,7 +210,9 @@ def _distinct_hit_assignment_exists_v1(hit_groups: list[list[str]]) -> bool:
 def _near_anchor_aliases_v1(compiled: dict[str, Any], *, stacked: bool) -> list[str]:
     """Keep near-path evidence limited to declared required child roles."""
 
-    query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
+    query_anchor_groups = compiled.get("query_anchor_alias_groups")
+    if query_anchor_groups is None:
+        query_anchor_groups = compiled["anchor_alias_groups"]
     if stacked:
         return sorted(
             {alias for groups in query_anchor_groups for aliases in groups for alias in aliases}
@@ -868,6 +870,13 @@ def _write_once(path: Path, value: dict[str, Any]) -> None:
         raise
 
 
+def _query_anchor_groups_v1(compiled: dict[str, Any]) -> Any:
+    query_anchor_groups = compiled.get("query_anchor_alias_groups")
+    if query_anchor_groups is None:
+        query_anchor_groups = compiled.get("anchor_alias_groups", [])
+    return query_anchor_groups
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus-index", type=Path, required=True)
@@ -875,6 +884,14 @@ def _parser() -> argparse.ArgumentParser:
         "--effective-page-frontier",
         type=Path,
         help="Optional immutable repair overlay; never mutates the frozen base corpus index.",
+    )
+    parser.add_argument(
+        "--effective-page-artifact-root",
+        type=Path,
+        help=(
+            "Optional content root for database/results refs in the effective frontier; "
+            "defaults to --artifact-root."
+        ),
     )
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--topology-spec", type=Path, required=True)
@@ -924,7 +941,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise _error("selected corpus JSON version frontier is incomplete or duplicate")
     effective_page_frontier = None
     effective_page_frontier_path = getattr(args, "effective_page_frontier", None)
+    effective_page_artifact_root_path = getattr(args, "effective_page_artifact_root", None)
+    effective_artifact_root = artifact_root
+    if effective_page_frontier_path is None and effective_page_artifact_root_path is not None:
+        raise _error("effective page artifact root requires an effective page frontier")
     if effective_page_frontier_path is not None:
+        effective_artifact_root = (
+            artifact_root
+            if effective_page_artifact_root_path is None
+            else effective_page_artifact_root_path.resolve()
+        )
+        if effective_page_artifact_root_path is not None and (
+            effective_page_artifact_root_path.is_symlink() or not effective_artifact_root.is_dir()
+        ):
+            raise _error("effective page artifact root is absent or not a trusted directory")
         effective_page_frontier, selected_ids = apply_gemini_family_effective_page_frontier_v1(
             _json(effective_page_frontier_path),
             base_page_json_version_ids=selected_ids,
@@ -936,8 +966,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         ):
             raise _error("effective page frontier does not bind this corpus and family")
         for stage in effective_page_frontier_stages_v1(effective_page_frontier):
-            database = _content_ref(artifact_root, stage["database_ref"])
-            repair_results_database = _content_ref(artifact_root, stage["results_database_ref"])
+            database = _content_ref(effective_artifact_root, stage["database_ref"])
+            repair_results_database = _content_ref(
+                effective_artifact_root, stage["results_database_ref"]
+            )
             source_overlay = resolved_gemini_family_region_repair_overlay_v1(
                 repair_results_database,
                 family_run_id=stage["repair_source_family_run_id"],
@@ -979,7 +1011,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     dual_axis_projection = compiled.get("dual_axis_projection_policy") is not None
     title_axis_projection = compiled.get("title_axis_projection_policy") is not None
     rollforward_projection = compiled.get("rollforward_projection_policy") is not None
-    query_anchor_groups = compiled.get("query_anchor_alias_groups", compiled["anchor_alias_groups"])
+    query_anchor_groups = _query_anchor_groups_v1(compiled)
     near_hits: list[dict[str, Any]] = []
     dual_axis_document_context: dict[str, dict[str, Any]] = {}
     dual_axis_query_receipt: dict[str, Any] | None = None
@@ -1623,6 +1655,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         source_page_database=database if rollforward_projection else None,
         selected_page_json_version_ids=selected_ids if rollforward_projection else None,
         corpus_artifact_root=artifact_root if rollforward_projection else None,
+        effective_page_artifact_root=(
+            effective_artifact_root
+            if rollforward_projection and effective_page_frontier is not None
+            else None
+        ),
     )
     repair_job_ids = enqueue_gemini_family_region_repair_plans_v1(
         args.results_database,

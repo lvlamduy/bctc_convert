@@ -3111,7 +3111,9 @@ def query_selected_equity_matrix_family_regions_v1(
         or len(set(selected_page_json_version_ids)) != len(selected_page_json_version_ids)
     ):
         raise _error("selected equity-matrix family query is invalid")
-    selected_page_extraction_receipts_v1(path, page_json_version_ids=selected_page_json_version_ids)
+    selected_page_json_provenance_receipts_v1(
+        path, page_json_version_ids=selected_page_json_version_ids
+    )
     documents = []
     selected_page_axis = []
     clusters = []

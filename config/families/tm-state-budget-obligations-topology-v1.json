@@ -49,13 +49,13 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Các loại thuế khác", "Thuế khác", "Các khoản thuế khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Các loại thuế khác", "Thuế khác", "Các khoản thuế khác", "Thuế nhà thầu"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "OTHER_TAX",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Các khoản phải nộp khác", "Các khoản phải nộp khác và các khoản phí, lệ phí", "Các loại thuế khác, các khoản phí, lệ phí và phải nộp khác", "Các loại thuế khác, phí và lệ phí", "Các loại thuế khác, phí, lệ phí và các khoản phải nộp khác", "Các khoản phí, lệ phí và phải nộp khác", "Các khoản phí, lệ phí và các khoản phải nộp khác", "Phí, lệ phí và các khoản phải nộp khác", "Tiền thuê đất"], "within_role": null}],
+      "matchers": [{"aliases": ["Các khoản phải nộp khác", "Các khoản phải nộp khác và các khoản phí, lệ phí", "Các loại thuế khác, các khoản phí, lệ phí và phải nộp khác", "Các loại thuế khác, phí và lệ phí", "Các loại thuế khác, phí, lệ phí và các khoản phải nộp khác", "Các khoản phí, lệ phí và phải nộp khác", "Các khoản phí, lệ phí và các khoản phải nộp khác", "Phí, lệ phí và các khoản phải nộp khác"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "OTHER_PAYABLE",
       "role_kind": "ADDITIVE_CHILD"

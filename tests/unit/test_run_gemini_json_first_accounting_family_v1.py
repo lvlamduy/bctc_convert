@@ -12,6 +12,47 @@ target = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(target)
 
 
+def test_parser_accepts_separate_effective_frontier_artifact_root(tmp_path) -> None:
+    frontier = tmp_path / "frontier.json"
+    corpus_root = tmp_path / "corpus"
+    repair_root = tmp_path / "repair"
+    corpus_root.mkdir()
+    repair_root.mkdir()
+    args = target._parser().parse_args(
+        [
+            "--corpus-index",
+            str(tmp_path / "index.json"),
+            "--artifact-root",
+            str(corpus_root),
+            "--effective-page-frontier",
+            str(frontier),
+            "--effective-page-artifact-root",
+            str(repair_root),
+            "--topology-spec",
+            str(tmp_path / "topology.json"),
+            "--evaluation-spec",
+            str(tmp_path / "evaluation.json"),
+            "--schema-binding-spec",
+            str(tmp_path / "schema.json"),
+            "--results-database",
+            str(tmp_path / "results.sqlite3"),
+            "--run-kind",
+            "EXPERIMENTAL",
+            "--output",
+            str(tmp_path / "sweep.json"),
+        ]
+    )
+    assert args.effective_page_frontier == frontier
+    assert args.effective_page_artifact_root == repair_root
+
+
+def test_query_anchor_axis_does_not_eagerly_require_legacy_fallback() -> None:
+    compiled = {"query_anchor_alias_groups": [["owner"], ["child"]]}
+    assert target._query_anchor_groups_v1(compiled) == [["owner"], ["child"]]
+    assert target._query_anchor_groups_v1({"anchor_alias_groups": [["legacy"]]}) == [["legacy"]]
+    assert target._query_anchor_groups_v1({}) == []
+
+
 def _compiled() -> dict:
     paths = (
         "config/families/tm-interbank-deposits-loans-topology-v4.json",

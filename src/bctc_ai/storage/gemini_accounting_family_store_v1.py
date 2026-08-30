@@ -705,6 +705,7 @@ def _selected_corpus_page_frontier_v1(
     *,
     corpus_index_ref: Mapping[str, Any],
     corpus_artifact_root: Path,
+    effective_page_artifact_root: Path | None,
     checked_sweep: Mapping[str, Any],
     source_page_database: Path,
 ) -> list[str]:
@@ -768,6 +769,7 @@ def _selected_corpus_page_frontier_v1(
         raise _error("selected corpus JSON version frontier is incomplete or duplicate")
 
     expected_database_ref = index["database_ref"]
+    database_artifact_root = root
     effective_frontier = checked_sweep.get("effective_page_frontier")
     if effective_frontier is not None:
         try:
@@ -785,8 +787,21 @@ def _selected_corpus_page_frontier_v1(
         expected_database_ref = effective_page_frontier_stages_v1(checked_frontier)[-1][
             "database_ref"
         ]
+        if effective_page_artifact_root is not None:
+            candidate_root = Path(effective_page_artifact_root)
+            if (
+                not candidate_root.is_absolute()
+                or candidate_root.is_symlink()
+                or not candidate_root.is_dir()
+            ):
+                raise _error("effective page artifact root is not an absolute regular directory")
+            database_artifact_root = candidate_root.resolve()
+    elif effective_page_artifact_root is not None:
+        raise _error("effective page artifact root requires an effective page frontier")
 
-    authenticated_database = _artifact_content_path_v1(root, expected_database_ref)
+    authenticated_database = _artifact_content_path_v1(
+        database_artifact_root, expected_database_ref
+    )
     _authenticate_file_ref_v1(authenticated_database, expected_database_ref)
     # A runner may query an immutable private snapshot instead of reopening the
     # corpus pathname.  Exact bytes, not pathname identity, are the authority.
@@ -804,6 +819,7 @@ def ingest_gemini_accounting_family_sweep_v1(
     source_page_database: Path | None = None,
     selected_page_json_version_ids: Sequence[str] | None = None,
     corpus_artifact_root: Path | None = None,
+    effective_page_artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     """Store one validated sweep and every trace row in one SQLite transaction."""
 
@@ -814,6 +830,7 @@ def ingest_gemini_accounting_family_sweep_v1(
     if source_replay_format in {
         "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1",
+        "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_FIXED_ASSET_ROLLFORWARD_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_INVESTMENT_SECURITIES_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_MULTITABLE_HIERARCHICAL_ACCOUNTING_FAMILY_V1",
@@ -838,12 +855,25 @@ def ingest_gemini_accounting_family_sweep_v1(
             authoritative_selected_ids = _selected_corpus_page_frontier_v1(
                 corpus_index_ref=corpus_index_ref,
                 corpus_artifact_root=corpus_artifact_root,
+                effective_page_artifact_root=effective_page_artifact_root,
                 checked_sweep=checked_sweep,
                 source_page_database=source_page_database,
             )
             if list(selected_page_json_version_ids) != authoritative_selected_ids:
                 raise _error("caller page frontier differs from authenticated corpus authority")
-            if source_replay_format == "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1":
+            if source_replay_format == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1":
+                from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                    validate_selected_equity_matrix_family_candidate_replays_v1,
+                )
+
+                validate_selected_equity_matrix_family_candidate_replays_v1(
+                    source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                    trials=checked_sweep["trials"],
+                )
+            elif source_replay_format == "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1":
                 from bctc_ai.storage.gemini_financial_page_store_v1 import (
                     validate_selected_customer_deposit_family_candidate_replays_v1,
                 )

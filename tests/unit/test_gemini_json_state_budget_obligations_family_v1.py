@@ -349,6 +349,95 @@ def test_flattened_declared_group_hierarchy_is_recovered_without_row_kind_author
     ]["semantic_path"] == ["cac loai thue khac phi va le phi"]
 
 
+def test_broad_group_total_is_not_mapped_when_strict_child_carries_same_role() -> None:
+    table = _table()
+    table["rows"] = [
+        table["rows"][0],
+        table["rows"][1],
+        {
+            "hierarchy_path_exact": ["Các loại thuế khác"],
+            "label_exact": "Các loại thuế khác",
+            "row_kind": "GROUP",
+            "values_exact": ["2", "3", "2", "3"],
+        },
+        {
+            "hierarchy_path_exact": ["Các loại thuế khác- Thuế thu nhập cá nhân"],
+            "label_exact": "- Thuế thu nhập cá nhân",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "1", "-", "2"],
+        },
+        {
+            "hierarchy_path_exact": ["Các loại thuế khác- Thuế nhà thầu"],
+            "label_exact": "- Thuế nhà thầu",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "2", "2", "1"],
+        },
+        table["rows"][2],
+        {
+            "hierarchy_path_exact": ["Tổng cộng"],
+            "label_exact": "Tổng cộng",
+            "row_kind": "TOTAL",
+            "values_exact": ["33", "14", "13", "34"],
+        },
+    ]
+    _compiled_specs, _page_json, _cluster, candidate = _evaluate(table)
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    group = candidate["closure_receipt"]["component_axis"][2]
+    assert candidate["status"] == READY
+    assert group["kind"] == "GROUP_TOTAL"
+    assert group["role"] is None
+    assert group["hierarchy_resolution"]["rule"] == (
+        "DECLARED_MAPPED_GROUP_DEMOTED_BY_STRICT_SAME_ROLE_CHILD"
+    )
+    assert [value["coefficient"] for value in by_role["OTHER_TAX"]["values"]] == [
+        1,
+        2,
+        2,
+        1,
+    ]
+    assert by_role["OTHER_TAX"]["component_axis"]["semantic_path"] == [
+        "cac loai thue khac",
+        "thue nha thau",
+    ]
+
+
+def test_standalone_rows_with_same_declared_residual_role_aggregate_after_closure() -> None:
+    table = _table()
+    table["rows"] = [
+        table["rows"][0],
+        table["rows"][1],
+        {
+            "hierarchy_path_exact": ["Thuế nhà thầu"],
+            "label_exact": "Thuế nhà thầu",
+            "row_kind": "ITEM",
+            "values_exact": ["1", "2", "1", "2"],
+        },
+        {
+            "hierarchy_path_exact": ["Các loại thuế khác"],
+            "label_exact": "Các loại thuế khác",
+            "row_kind": "ITEM",
+            "values_exact": ["2", "3", "2", "3"],
+        },
+        table["rows"][2],
+        {
+            "hierarchy_path_exact": ["Tổng cộng"],
+            "label_exact": "Tổng cộng",
+            "row_kind": "TOTAL",
+            "values_exact": ["34", "16", "14", "36"],
+        },
+    ]
+    _compiled_specs, _page_json, _cluster, candidate = _evaluate(table)
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert candidate["status"] == READY
+    assert by_role["OTHER_TAX"]["component_axis"]["kind"] == ("AGGREGATED_MAPPED_COMPONENT")
+    assert [value["coefficient"] for value in by_role["OTHER_TAX"]["values"]] == [
+        3,
+        5,
+        3,
+        5,
+    ]
+
+
 def test_last_source_group_total_owning_full_population_is_grand_total() -> None:
     table = _table()
     parent = "Nghĩa vụ với ngân sách nhà nước"
@@ -509,7 +598,7 @@ def test_unique_latest_dated_same_page_matrix_is_current_not_source_order() -> N
     ]
 
 
-def test_declared_duplicate_role_rows_aggregate_after_each_row_closes() -> None:
+def test_declared_source_only_land_rent_is_not_folded_into_other_payables() -> None:
     table = _table()
     table["rows"].insert(
         3,
@@ -524,10 +613,16 @@ def test_declared_duplicate_role_rows_aggregate_after_each_row_closes() -> None:
     _compiled_specs, _page_json, _cluster, candidate = _evaluate(table)
     by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
     assert candidate["status"] == READY
-    aggregate = by_role["OTHER_PAYABLE"]
-    assert aggregate["component_axis"]["kind"] == "AGGREGATED_MAPPED_COMPONENT"
-    assert [value["coefficient"] for value in aggregate["values"]] == [1, 3, 2, 2]
-    assert all(len(value["aggregate_components"]) == 2 for value in aggregate["values"])
+    assert [value["coefficient"] for value in by_role["OTHER_PAYABLE"]["values"]] == [
+        1,
+        2,
+        1,
+        2,
+    ]
+    assert any(
+        item["role"] == "LAND_RENT" and item["members_exact"] == ["Tiền thuê đất"]
+        for item in candidate["closure_receipt"]["source_only_component_axes"]
+    )
 
 
 def test_closing_detail_columns_must_decompose_visible_net_closing() -> None:

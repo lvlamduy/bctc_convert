@@ -612,7 +612,10 @@ def _promote_inferred_mapped_group_totals_v1(
 
     allowed = set(compiled_specs["hierarchy_policy"]["mapped_group_total_roles"])
     for index, item in enumerate(component_axis):
-        if item["kind"] != "MAPPED_COMPONENT" or item["role"] not in allowed:
+        if (
+            item["kind"] not in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+            or item["role"] not in allowed
+        ):
             continue
         prefix = item["semantic_path"]
         children = [
@@ -622,11 +625,29 @@ def _promote_inferred_mapped_group_totals_v1(
         ]
         if not children:
             continue
-        item["kind"] = "MAPPED_COMPONENT_GROUP_TOTAL"
+        same_role_children = [
+            child
+            for child in children
+            if child["kind"] == "MAPPED_COMPONENT" and child["role"] == item["role"]
+        ]
+        # A source subtotal and one of its strict children can legitimately
+        # share a broad declared alias (for example ``other taxes`` and a
+        # concrete tax that maps to that residual schema leaf).  Mapping both
+        # would double count the child.  The visible parent remains an exact
+        # equation frontier while the more specific child carries the schema
+        # role.  Without a same-role child the declared parent itself remains
+        # the mapped role, preserving ordinary group-total disclosures.
+        if same_role_children:
+            item["kind"] = "GROUP_TOTAL"
+            item["role"] = None
+            rule = "DECLARED_MAPPED_GROUP_DEMOTED_BY_STRICT_SAME_ROLE_CHILD"
+        else:
+            item["kind"] = "MAPPED_COMPONENT_GROUP_TOTAL"
+            rule = "DECLARED_MAPPED_GROUP_PROMOTED_BY_FOLLOWING_DEEPER_SEMANTIC_PATHS"
         item["group_prefix"] = canonical_clone_v1(prefix)
         item["hierarchy_resolution"] = {
             "child_axis_ids": [child["axis_id"] for child in children],
-            "rule": "DECLARED_MAPPED_GROUP_PROMOTED_BY_FOLLOWING_DEEPER_SEMANTIC_PATHS",
+            "rule": rule,
         }
 
 
