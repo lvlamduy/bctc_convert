@@ -184,11 +184,16 @@ def compile_gemini_json_currency_risk_matrix_specs_v1(
         branch_ids[raw["currency_role"]] = raw["report_norm_id"]
     cell_axis = schema_binding_spec["cell_role_bindings"]
     cell_fields = {"currency_role", "report_norm_id", "row_role"}
-    expected_pairs = {
+    allowed_pairs = {
         (currency_role, row_role) for currency_role in currency_aliases for row_role in row_aliases
     }
-    if type(cell_axis) is not list or len(cell_axis) != len(expected_pairs):
-        raise _error("currency-risk schema cell axis is incomplete")
+    required_pairs = {
+        (currency_role, row_role)
+        for currency_role in currency_aliases
+        for row_role in required_rows
+    }
+    if type(cell_axis) is not list:
+        raise _error("currency-risk schema cell axis is invalid")
     cell_ids: dict[tuple[str, str], int] = {}
     for raw in cell_axis:
         key = (
@@ -198,13 +203,15 @@ def compile_gemini_json_currency_risk_matrix_specs_v1(
         if (
             type(raw) is not dict
             or set(raw) != cell_fields
-            or key not in expected_pairs
+            or key not in allowed_pairs
             or key in cell_ids
             or type(raw.get("report_norm_id")) is not int
             or raw["report_norm_id"] <= 0
         ):
             raise _error("currency-risk schema cell binding is invalid")
         cell_ids[key] = raw["report_norm_id"]
+    if not required_pairs <= set(cell_ids):
+        raise _error("currency-risk schema required cell axis is incomplete")
     report_norm_ids = {
         schema_binding_spec["family_root_report_norm_id"],
         *branch_ids.values(),
@@ -267,6 +274,12 @@ def _label_role(
 def _column_role(
     column: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> tuple[str | None, str | None, list[str]]:
+    if compiled_specs.get("interest_rate_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
+            classify_interest_rate_column_role_v1,
+        )
+
+        return classify_interest_rate_column_role_v1(column, compiled_specs=compiled_specs)
     engine = _engine()
     members = engine._header_members(column)
     unit_aliases = sorted(compiled_specs["unit_binding_by_alias"], key=len, reverse=True)
@@ -370,9 +383,20 @@ def classify_gemini_json_currency_risk_matrix_table_v1(
 
     row_axis = []
     for ordinal, row in enumerate(rows, start=1):
-        role, matches = _label_role(
-            row.get("label_exact"), aliases_by_role=compiled_specs["aliases_by_role"]
-        )
+        if compiled_specs.get("interest_rate_risk_mode") is True:
+            from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
+                classify_interest_rate_row_role_v1,
+            )
+
+            role, matches = classify_interest_rate_row_role_v1(
+                row.get("label_exact"),
+                aliases_by_role=compiled_specs["aliases_by_role"],
+            )
+        else:
+            role, matches = _label_role(
+                row.get("label_exact"),
+                aliases_by_role=compiled_specs["aliases_by_role"],
+            )
         active = any(
             value is not None and (type(value) is not str or bool(value.strip()))
             for value in row["values_exact"]
@@ -390,6 +414,14 @@ def classify_gemini_json_currency_risk_matrix_table_v1(
                 "source_active": active,
                 "source_order": ordinal,
             }
+        )
+    if compiled_specs.get("interest_rate_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
+            resolve_interest_rate_row_axis_v1,
+        )
+
+        row_axis = resolve_interest_rate_row_axis_v1(
+            row_axis, aliases_by_role=compiled_specs["aliases_by_role"]
         )
     duplicate_roles = {
         item["role"]
@@ -510,9 +542,17 @@ def _period_date_from_currency_table_v1(
 
 def _currency_document_reporting_date_receipt_v1(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Select the latest typed statement date and its latest explicit comparator."""
 
+    if compiled_specs is not None and compiled_specs.get("interest_rate_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
+            interest_rate_document_reporting_date_receipt_v1,
+        )
+
+        return interest_rate_document_reporting_date_receipt_v1(list(pages))
     base = _engine()._valuation_document_reporting_date_receipt_v1(pages)
     evidence = base.get("evidence") if type(base) is dict else None
     evidence = evidence if type(evidence) is list else []
@@ -707,7 +747,9 @@ def coalesce_gemini_json_currency_risk_document_v1(
     ):
         reasons.append("CURRENCY_RISK_PERIOD_TABLE_ROW_POPULATIONS_DIFFER")
 
-    reporting_date_receipt = _currency_document_reporting_date_receipt_v1(pages)
+    reporting_date_receipt = _currency_document_reporting_date_receipt_v1(
+        pages, compiled_specs=compiled_specs
+    )
     period_assignments = []
     for item in selected:
         reasons.extend(item["period_reasons"])
@@ -799,6 +841,14 @@ def coalesce_gemini_json_currency_risk_document_v1(
                     marker["position"] <= continuation["position"] < first_position
                     for continuation in continuation_markers
                 )
+                or (
+                    compiled_specs.get("interest_rate_risk_mode") is True
+                    and first_position[0] - marker["position"][0] == 1
+                    and not any(
+                        marker["position"] < reset["position"] < first_position
+                        for reset in reset_markers
+                    )
+                )
             )
         ]
         if not prior_owners:
@@ -828,6 +878,17 @@ def coalesce_gemini_json_currency_risk_document_v1(
                         "position": first_selected["position"],
                         "source_exact": first_selected["continuation"],
                         "source_kind": "STRUCTURED_TABLE_CONTINUATION",
+                    }
+                elif (
+                    compiled_specs.get("interest_rate_risk_mode") is True
+                    and first_position[0] - owner["position"][0] == 1
+                ):
+                    continuation_evidence = {
+                        "position": first_selected["position"],
+                        "source_exact": owner["source_exact"],
+                        "source_kind": (
+                            "BOUNDED_ADJACENT_INTEREST_OWNER_INTRO_AND_RESET_FREE_TABLE"
+                        ),
                     }
             owner_receipt = {
                 "continuation_evidence": continuation_evidence,
@@ -894,19 +955,39 @@ def coalesce_gemini_json_currency_risk_document_v1(
     }
 
 
-def _cell(*, value: Any, region: Mapping[str, Any], row_id: str, column_id: str) -> dict[str, Any]:
+def _cell(
+    *,
+    value: Any,
+    region: Mapping[str, Any],
+    row_id: str,
+    column_id: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
     ref = {
         "column_id": column_id,
         "locator": canonical_clone_v1(region),
         "row_id": row_id,
     }
+    source_text = value
+    normalization_state = None
+    if compiled_specs.get("interest_rate_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
+            normalize_interest_rate_money_cell_v1,
+        )
+
+        value, normalization_state = normalize_interest_rate_money_cell_v1(value)
     if value is None or type(value) is str and not value.strip():
-        return {"cell_ref": ref, "coefficient": None, "source_text": value, "state": "BLANK"}
+        return {
+            "cell_ref": ref,
+            "coefficient": None,
+            "source_text": source_text,
+            "state": normalization_state or "BLANK",
+        }
     if type(value) is not str:
         return {
             "cell_ref": ref,
             "coefficient": None,
-            "source_text": value,
+            "source_text": source_text,
             "state": "INVALID_NON_STRING_SOURCE_CELL",
         }
     try:
@@ -917,10 +998,15 @@ def _cell(*, value: Any, region: Mapping[str, Any], row_id: str, column_id: str)
         return {
             "cell_ref": ref,
             "coefficient": None,
-            "source_text": value,
+            "source_text": source_text,
             "state": "INVALID_SOURCE_CELL",
         }
-    return {**parsed, "cell_ref": ref, "source_text": value}
+    return {
+        **parsed,
+        "cell_ref": ref,
+        "source_text": source_text,
+        "state": normalization_state or parsed["state"],
+    }
 
 
 def _equation(
@@ -947,7 +1033,7 @@ def _equation(
     derived_role = None
     if (
         len(unknown) == 1
-        and cells[unknown[0]]["state"] == "BLANK"
+        and cells[unknown[0]]["state"] in {"BLANK", "NORMALIZED_TEXT_NULL_BLANK"}
         and not any(cell["state"] == "ABSENT_SOURCE_ROW" for cell in cells.values())
     ):
         role = unknown[0]
@@ -1211,6 +1297,7 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
                     region=region,
                     row_id=row_axis["row_id"],
                     column_id=column_axis["column_id"],
+                    compiled_specs=compiled_specs,
                 )
                 if cell["state"].startswith("INVALID"):
                     reasons.append(

@@ -1,0 +1,61 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Tổng tài sản", "Tổng cộng tài sản", "Tổng tài sản Có"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "ASSET_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng nợ phải trả", "Tổng cộng nợ phải trả", "Nợ phải trả và vốn chủ sở hữu", "Tổng nợ phải trả và vốn chủ sở hữu"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "LIABILITY_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mức chênh nhạy cảm với lãi suất nội bảng", "Mức chênh lệch ròng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_INTERNAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mức chênh nhạy cảm với lãi suất ngoại bảng", "Các cam kết ngoại bảng có tác động tới mức độ nhạy cảm với lãi suất của các tài sản và công nợ", "Các cam kết ngoại bảng có tác động tới mức độ nhạy cảm với lãi suất của các tài sản và công nợ (ròng)"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_EXTERNAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Mức chênh nhạy cảm với lãi suất nội, ngoại bảng", "Mức chênh nhạy cảm với lãi suất nội bảng, ngoại bảng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_COMBINED",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "INTEREST_RATE_RISK",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Rủi ro tiền tệ",
+    "Rủi ro ngoại hối",
+    "Rủi ro thanh khoản",
+    "Phân tích tài sản và nợ phải trả theo kỳ đáo hạn"
+  ],
+  "limits": {"max_cluster_span_lines": 260, "max_continuation_pages": 1, "max_label_line_span": 4},
+  "parent": {
+    "aliases": [
+      "Rủi ro lãi suất",
+      "Phân tích tài sản và nợ phải trả theo kỳ định lại lãi suất",
+      "Phân tích tài sản và nợ phải trả theo kỳ hạn định lại lãi suất"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "INTEREST_RATE_RISK"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"]],
+  "structural_reset_aliases": [
+    "Rủi ro tiền tệ",
+    "Rủi ro ngoại hối",
+    "Rủi ro thanh khoản",
+    "Rủi ro giá cả thị trường",
+    "Rủi ro hoạt động"
+  ]
+}

@@ -96,7 +96,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "0f1ccb4d1d35a64e4bfa4e697c9ba6e0b2a963f482045f042313a5bfd9376adf"
+PROJECTOR_IMPLEMENTATION_SHA256 = "9c0c7c71cb9144dc49d73f4fb7751dbb30e5b0373a744aac04a2a57c5d620d94"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )
@@ -803,6 +803,7 @@ def _prepare(
             authority=authority,
             repair_spec_authority=repair_spec_authority,
             page_store_path=source_page_store,
+            _prevalidated_plan_axis=plans,
         )
         crop_image, crop_receipt = crop_rollforward_table_image_v1(
             source_image,
@@ -810,6 +811,7 @@ def _prepare(
             authority=authority,
             repair_spec_authority=repair_spec_authority,
             page_store_path=source_page_store,
+            _prevalidated_plan_axis=plans,
         )
         jobs.append(
             _PreparedJob(

@@ -34,6 +34,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
     validate_financial_page_json_v1,
 )
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+    READY,
     UNRESOLVED,
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
@@ -1536,6 +1537,100 @@ def _equity_matrix_repair_equations_v1(
     return equations, mismatch_rows, mismatch_columns
 
 
+def _interest_rate_risk_repair_frontier_v1(
+    *,
+    candidate: Mapping[str, Any],
+    page_json_version_id: str,
+    section_id: str,
+    table_id: str,
+) -> tuple[list[dict[str, Any]], set[str], list[str]]:
+    """Project one source-observation scope from the local accounting graph.
+
+    A single failing required identity asks the reader for only its three visible
+    cells.  More than one failing duration column is treated as a structural
+    transcription failure and expands to every visible core cell in that table.
+    The provider never receives the equations or their expected results; they
+    remain a local acceptance gate.
+    """
+
+    closure = candidate.get("closure_receipt")
+    if type(closure) is not dict or closure.get("matrix_kind") != "CURRENCY_RISK_CLASSIFICATION":
+        raise _error("interest-rate-risk repair candidate closure is invalid")
+
+    def cell_id(cell: Any) -> str | None:
+        if type(cell) is not dict or type(cell.get("cell_ref")) is not dict:
+            return None
+        ref = cell["cell_ref"]
+        locator = ref.get("locator")
+        if (
+            type(locator) is not dict
+            or locator.get("page_json_version_id") != page_json_version_id
+            or locator.get("section_id") != section_id
+            or locator.get("table_id") != table_id
+            or type(ref.get("row_id")) is not str
+            or type(ref.get("column_id")) is not str
+        ):
+            return None
+        coordinate = f"{ref['row_id']}:{ref['column_id']}"
+        _cell_id(coordinate)
+        return coordinate
+
+    local_equations = []
+    required_mismatches = []
+    for equation in closure.get("equations", []):
+        result_id = cell_id(equation.get("result_cell"))
+        terms = []
+        for term in equation.get("term_cells", []):
+            term_id = cell_id(term.get("cell"))
+            if term_id is None:
+                terms = []
+                break
+            terms.append({"cell_id": term_id, "multiplier": term.get("multiplier")})
+        if result_id is None or not terms:
+            continue
+        projected = {
+            "equation_id": (
+                "interest-rate-risk-"
+                + equation["currency_role"].lower().replace("_", "-")
+                + "-"
+                + equation["result_role"].lower().replace("_", "-")
+                + "-"
+                + result_id.replace(":", "-")
+            ),
+            "result_cell_id": result_id,
+            "terms": terms,
+        }
+        local_equations.append((equation, projected))
+        if equation.get("required") is True and equation.get("status") == "MISMATCH":
+            required_mismatches.append((equation, projected))
+    if not required_mismatches:
+        raise _error("interest-rate-risk repair table has no required mismatch")
+
+    mismatch_columns = {
+        projected["result_cell_id"].split(":", 1)[1] for _equation, projected in required_mismatches
+    }
+    selected = local_equations if len(mismatch_columns) > 1 else required_mismatches
+    equations = [canonical_clone_v1(projected) for _equation, projected in selected]
+    target_ids = {
+        coordinate
+        for _equation, projected in selected
+        for coordinate in (
+            projected["result_cell_id"],
+            *(term["cell_id"] for term in projected["terms"]),
+        )
+    }
+    trigger_reasons = sorted(
+        {
+            "INTEREST_RATE_RISK_REQUIRED_EQUATION_MISMATCH:"
+            + equation["currency_role"]
+            + ":"
+            + equation["result_role"]
+            for equation, _projected in required_mismatches
+        }
+    )
+    return equations, target_ids, trigger_reasons
+
+
 def build_equity_matrix_table_cell_repair_plans_v1(
     *,
     compiled_specs: Mapping[str, Any],
@@ -1543,6 +1638,7 @@ def build_equity_matrix_table_cell_repair_plans_v1(
     page_store_path: Path,
     selected_page_json_version_ids: Sequence[str],
     table_repair_specs: Sequence[Mapping[str, Any]],
+    _interest_rate_risk_mode: bool = False,
 ) -> list[dict[str, Any]]:
     """Derive minimal cell observations from an authenticated matrix failure graph.
 
@@ -1562,10 +1658,13 @@ def build_equity_matrix_table_cell_repair_plans_v1(
         compiled_spec_sources["evaluation"],
         compiled_spec_sources["schema_binding"],
     )
-    if rebuilt_specs.get(
-        "engine_format_version"
-    ) != "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1" or not same_typed_json_v1(
-        dict(compiled_specs), rebuilt_specs
+    expected_family_id = "INTEREST_RATE_RISK" if _interest_rate_risk_mode else None
+    if (
+        rebuilt_specs.get("engine_format_version")
+        != "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1"
+        or (expected_family_id is not None and rebuilt_specs.get("family_id") != expected_family_id)
+        or (expected_family_id is None and rebuilt_specs.get("family_id") == "INTEREST_RATE_RISK")
+        or not same_typed_json_v1(dict(compiled_specs), rebuilt_specs)
     ):
         raise _error("equity-matrix repair compiled specs do not replay the sweep")
     selected_ids = list(selected_page_json_version_ids)
@@ -1666,9 +1765,14 @@ def build_equity_matrix_table_cell_repair_plans_v1(
             raise _error("equity-matrix repair spec does not bind one candidate region")
         trial, candidate, region = matches[0]
         binding_without_crop = evidence["source_binding_without_crop"]
+        valid_status = (
+            trial.get("status") in {READY, UNRESOLVED}
+            and candidate.get("status") == trial.get("status")
+            if _interest_rate_risk_mode
+            else trial.get("status") == UNRESOLVED and candidate.get("status") == UNRESOLVED
+        )
         if (
-            trial.get("status") != UNRESOLVED
-            or candidate.get("status") != UNRESOLVED
+            not valid_status
             or candidate.get("family_id") != sweep["family_id"]
             or region.get("document_id") != binding_without_crop["document_id"]
             or region.get("physical_page") != binding_without_crop["physical_page"]
@@ -1679,26 +1783,35 @@ def build_equity_matrix_table_cell_repair_plans_v1(
         closure = candidate.get("closure_receipt")
         if type(closure) is not dict:
             raise _error("equity-matrix repair candidate closure is absent")
-        equations, mismatch_rows, mismatch_columns = _equity_matrix_repair_equations_v1(
-            table=table, closure=closure
-        )
-        invalid_cells = set()
-        for reason in candidate.get("reasons", []):
-            match = invalid_reason.fullmatch(reason)
-            if match is not None:
-                if match.group(1) != version_id:
-                    raise _error("equity-matrix invalid-cell reason crosses page versions")
-                invalid_cells.add(match.group(2))
-        if invalid_cells:
-            primary_ids = invalid_cells
+        if _interest_rate_risk_mode:
+            equations, primary_ids, trigger_reasons = _interest_rate_risk_repair_frontier_v1(
+                candidate=candidate,
+                page_json_version_id=version_id,
+                section_id=spec["section_id"],
+                table_id=spec["table_id"],
+            )
         else:
-            primary_ids = {
-                f"{row_axis_id}:{column_axis_id}"
-                for row_axis_id in mismatch_rows
-                for column_axis_id in mismatch_columns
-            }
-            if len(primary_ids) != 1:
-                raise _error("equity-matrix mismatch graph does not isolate one source cell")
+            equations, mismatch_rows, mismatch_columns = _equity_matrix_repair_equations_v1(
+                table=table, closure=closure
+            )
+            invalid_cells = set()
+            for reason in candidate.get("reasons", []):
+                match = invalid_reason.fullmatch(reason)
+                if match is not None:
+                    if match.group(1) != version_id:
+                        raise _error("equity-matrix invalid-cell reason crosses page versions")
+                    invalid_cells.add(match.group(2))
+            if invalid_cells:
+                primary_ids = invalid_cells
+            else:
+                primary_ids = {
+                    f"{row_axis_id}:{column_axis_id}"
+                    for row_axis_id in mismatch_rows
+                    for column_axis_id in mismatch_columns
+                }
+                if len(primary_ids) != 1:
+                    raise _error("equity-matrix mismatch graph does not isolate one source cell")
+            trigger_reasons = candidate["reasons"]
         dash_ids = set(spec["dash_zero_cell_ids"])
         if not dash_ids <= primary_ids:
             raise _error("equity-matrix dash policy lies outside graph-derived target cells")
@@ -1712,7 +1825,7 @@ def build_equity_matrix_table_cell_repair_plans_v1(
                     "after_policy": "DASH_ZERO" if cell_id in dash_ids else "SIGNED_INTEGER",
                     "before_exact": table["rows"][row_index]["values_exact"][column_index],
                     "cell_id": cell_id,
-                    "change_policy": "MUST_CHANGE",
+                    "change_policy": ("MAY_CHANGE" if _interest_rate_risk_mode else "MUST_CHANGE"),
                     "evidence_kind": "UNRESOLVED_FRONTIER",
                 }
             )
@@ -1748,13 +1861,33 @@ def build_equity_matrix_table_cell_repair_plans_v1(
                 "source_binding": source_binding,
                 "sweep_id": sweep["sweep_id"],
                 "table_id": spec["table_id"],
-                "trigger_reasons": candidate["reasons"],
+                "trigger_reasons": trigger_reasons,
             }
         )
         pages[version_id] = page_json
     return _build_rollforward_table_cell_repair_plans_v1(
         unresolved_frontier=frontiers,
         page_json_by_version=pages,
+    )
+
+
+def build_interest_rate_risk_matrix_table_cell_repair_plans_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    page_store_path: Path,
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build minimal source-observation jobs for required interest identities."""
+
+    return build_equity_matrix_table_cell_repair_plans_v1(
+        compiled_specs=compiled_specs,
+        family_sweep=family_sweep,
+        page_store_path=page_store_path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        table_repair_specs=table_repair_specs,
+        _interest_rate_risk_mode=True,
     )
 
 
@@ -1768,6 +1901,14 @@ def build_accounting_table_cell_repair_plans_v1(
 ) -> list[dict[str, Any]]:
     """Dispatch the one minimal observation contract to a typed family graph adapter."""
 
+    if compiled_specs.get("family_id") == "INTEREST_RATE_RISK":
+        return build_interest_rate_risk_matrix_table_cell_repair_plans_v1(
+            compiled_specs=compiled_specs,
+            family_sweep=family_sweep,
+            page_store_path=page_store_path,
+            selected_page_json_version_ids=selected_page_json_version_ids,
+            table_repair_specs=table_repair_specs,
+        )
     if (
         compiled_specs.get("engine_format_version")
         == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1"
@@ -2026,6 +2167,35 @@ def _authoritative_plan(
     return matches[0], external
 
 
+def _prevalidated_plan_from_axis(
+    plan: Mapping[str, Any],
+    *,
+    plan_axis: Sequence[Mapping[str, Any]],
+    authority: Mapping[str, Any],
+    repair_spec_authority: Mapping[str, Any],
+    page_store_path: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Reuse one DB-replayed plan axis inside a single preparation transaction."""
+
+    checked = _validated_plan(plan)
+    checked_authority = _exact_keys(
+        dict(authority), _AUTHORITY_FIELDS, "table repair plan authority"
+    )
+    plans = [_validated_plan(candidate) for candidate in plan_axis]
+    external = _repair_spec_authority(
+        repair_spec_authority,
+        table_repair_specs=checked_authority["table_repair_specs"],
+        plans=plans,
+    )
+    matches = [candidate for candidate in plans if same_typed_json_v1(candidate, checked)]
+    if len(matches) != 1:
+        raise _error("table repair plan is not in the prevalidated authoritative axis")
+    validate_rollforward_table_repair_plan_page_store_v1(
+        matches[0], page_store_path=page_store_path
+    )
+    return matches[0], external
+
+
 def _pinned_source_image_renderer_v1(
     workspace_root: Path, *, resolver: Mapping[str, Any]
 ) -> tuple[Any, dict[str, Any]]:
@@ -2096,6 +2266,7 @@ def resolve_rollforward_table_source_image_v1(
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
     page_store_path: Path,
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[bytes, dict[str, Any]]:
     """Render the exact source PDF page declared by one authenticated plan.
 
@@ -2105,11 +2276,21 @@ def resolve_rollforward_table_source_image_v1(
     frozen page-store binding.
     """
 
-    checked_plan, checked_external = _authoritative_plan(
-        plan,
-        authority=authority,
-        repair_spec_authority=repair_spec_authority,
-        page_store_path=page_store_path,
+    checked_plan, checked_external = (
+        _authoritative_plan(
+            plan,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
+        if _prevalidated_plan_axis is None
+        else _prevalidated_plan_from_axis(
+            plan,
+            plan_axis=_prevalidated_plan_axis,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
     )
     root_input = Path(workspace_root)
     root = root_input.resolve()
@@ -2942,14 +3123,25 @@ def crop_rollforward_table_image_v1(
     page_store_path: Path,
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[bytes, dict[str, Any]]:
     """Crop one immutable image by its receipt-bound, declarative table box."""
 
-    checked_plan, checked_spec_authority = _authoritative_plan(
-        plan,
-        authority=authority,
-        repair_spec_authority=repair_spec_authority,
-        page_store_path=page_store_path,
+    checked_plan, checked_spec_authority = (
+        _authoritative_plan(
+            plan,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
+        if _prevalidated_plan_axis is None
+        else _prevalidated_plan_from_axis(
+            plan,
+            plan_axis=_prevalidated_plan_axis,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
     )
     validate_rollforward_table_repair_plan_page_store_v1(
         checked_plan, page_store_path=page_store_path

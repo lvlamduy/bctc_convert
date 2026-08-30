@@ -1,0 +1,79 @@
+{
+  "authority_kind": "PINNED_CONFIG",
+  "authority_ref": "config://family49/interest-rate-risk-target-observations-v1",
+  "base_corpus_manifest_index_id": "gjfccmiv1:index:61be9e5dc44a261d2dbf3f396b9624e29cb4ae591ea0a7fdb83051352e7b60e3",
+  "expected_plan_count": 4,
+  "expected_selected_page_count": 8947,
+  "expected_selected_page_frontier_sha256": "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8",
+  "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_RUNNER_CONFIG_V1",
+  "repair_source_family_run_id": "gjfafstorev1:run:fbefa355d2e0d4f267803e7d8d0b0fbbe45335c5aaa1b5921f8d2c3ddf083a1e",
+  "source_image_resolver_implementation_path": "src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py",
+  "source_image_runtime": {
+    "mupdf_version": "1.29.0",
+    "pymupdf_version": "1.28.0"
+  },
+  "table_repair_specs": [
+    {
+      "base_page_json_version_id": "gfpstorev1:json:db0080681dc2b5f0a7934a243c5927d65424780bb4c9b70054c6649c8580140b",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        0,
+        0,
+        2481,
+        3508
+      ],
+      "dash_zero_cell_ids": [],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:fd497a74149d9465245a3ac21c270e8f5728ab20b73e54f069e5295c4a572820",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        0,
+        0,
+        2480,
+        3507
+      ],
+      "dash_zero_cell_ids": [],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:71ef6b3618eb83083075f57cd22620a46b7c2718e26a3ce0f935dd014cd67831",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        0,
+        0,
+        2481,
+        3509
+      ],
+      "dash_zero_cell_ids": [],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:f057bb00a9361fb465c99e1085785fe5b71467292c30b0083987913ceffdc6fa",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        0,
+        0,
+        3509,
+        2484
+      ],
+      "dash_zero_cell_ids": [],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    }
+  ],
+  "writable_page_store_ref_path": "state/family49-pages.sqlite3",
+  "writable_results_database_ref_path": "state/family49-results.sqlite3"
+}

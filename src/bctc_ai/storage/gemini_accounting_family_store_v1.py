@@ -217,6 +217,72 @@ def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
     return connection
 
 
+def _stored_candidate_repair_target_replays_v1(
+    *,
+    plan: Mapping[str, Any],
+    candidate_row: Sequence[Any],
+    stored_trial: Mapping[str, Any],
+    stored_candidate: Mapping[str, Any],
+) -> bool:
+    """Bind a repair target to the candidate root or one exact sealed component."""
+
+    status = stored_candidate.get("status")
+    if (
+        status
+        not in {
+            "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+            "UNRESOLVED_GEMINI_JSON_FAMILY",
+        }
+        or stored_trial.get("status") != status
+    ):
+        return False
+    row = tuple(candidate_row)
+    target_locator = (
+        plan.get("base_page_json_version_id"),
+        plan.get("physical_page"),
+        plan.get("section_id"),
+        plan.get("table_id"),
+    )
+    if len(row) != 7 or row[4:] != (
+        status,
+        plan.get("source_logical_name"),
+        plan.get("source_sha256"),
+    ):
+        return False
+    query_receipt = (
+        stored_candidate.get("closure_receipt", {}).get("query_receipt")
+        if type(stored_candidate.get("closure_receipt")) is dict
+        else None
+    )
+    component_regions = (
+        query_receipt.get("component_regions", []) if type(query_receipt) is dict else []
+    )
+    matching_components = [
+        region
+        for region in component_regions
+        if type(region) is dict
+        and (
+            region.get("page_json_version_id"),
+            region.get("physical_page"),
+            region.get("section_id"),
+            region.get("table_id"),
+            region.get("source_logical_name"),
+            region.get("source_sha256"),
+        )
+        == (
+            *target_locator,
+            plan.get("source_logical_name"),
+            plan.get("source_sha256"),
+        )
+    ]
+    if row[:4] != target_locator and len(matching_components) != 1:
+        return False
+    return not (
+        status == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+        or "candidate_semantic_replay_sha256" in plan
+    ) or plan.get("candidate_semantic_replay_sha256") == canonical_json_sha256_v1(stored_candidate)
+
+
 def enqueue_gemini_family_region_repair_plans_v1(
     path: Path,
     *,
@@ -268,15 +334,21 @@ def enqueue_gemini_family_region_repair_plans_v1(
                 "WHERE c.family_run_id=? AND c.document_ordinal=? AND c.candidate_id=?",
                 (family_run_id, plan["document_ordinal"], plan["candidate_id"]),
             ).fetchone()
-            expected_candidate = (
-                plan["base_page_json_version_id"],
-                plan["physical_page"],
-                plan.get("section_id"),
-                plan.get("table_id"),
-                "UNRESOLVED_GEMINI_JSON_FAMILY",
-                plan.get("source_logical_name"),
-                plan.get("source_sha256"),
+            stored_trials = [
+                trial
+                for trial in stored_sweep["trials"]
+                if trial["document_ordinal"] == plan["document_ordinal"]
+            ]
+            stored_candidates = (
+                [
+                    item
+                    for item in stored_trials[0]["candidates"]
+                    if item["candidate_id"] == plan["candidate_id"]
+                ]
+                if len(stored_trials) == 1
+                else []
             )
+            stored_candidate = stored_candidates[0] if len(stored_candidates) == 1 else None
             if candidate is None:
                 disposition_sha256 = plan.get("query_disposition_sha256")
                 evidence = stored_sweep.get("indexed_query_evidence")
@@ -339,7 +411,12 @@ def enqueue_gemini_family_region_repair_plans_v1(
                     )
                 ):
                     raise _error("family indexed repair disposition identity drifted")
-            elif tuple(candidate) != expected_candidate:
+            elif stored_candidate is None or not _stored_candidate_repair_target_replays_v1(
+                plan=plan,
+                candidate_row=candidate,
+                stored_trial=stored_trials[0],
+                stored_candidate=stored_candidate,
+            ):
                 raise _error("family region repair candidate does not replay")
             material = {key: plan[key] for key in plan if key != "repair_job_id"}
             if plan["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material):

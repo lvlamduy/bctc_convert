@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import pytest
 from test_gemini_json_flat_accounting_family_v1 import (
     _loan_quality_page,
     _loan_quality_specs,
@@ -9,6 +10,18 @@ from test_gemini_json_flat_accounting_family_v1 import (
     _loan_type_specs,
     _page,
     _specs,
+)
+from test_gemini_json_interest_rate_risk_matrix_v1 import (
+    _evaluate as _interest_evaluate,
+)
+from test_gemini_json_interest_rate_risk_matrix_v1 import (
+    _page as _interest_page,
+)
+from test_gemini_json_interest_rate_risk_matrix_v1 import (
+    _record as _interest_record,
+)
+from test_gemini_json_interest_rate_risk_matrix_v1 import (
+    _table as _interest_table,
 )
 from test_gemini_json_stacked_period_accounting_family_v1 import (
     _compiled as _stacked_compiled,
@@ -32,7 +45,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
 from bctc_ai.evaluation.gemini_json_region_repair_queue_v1 import (
     build_family_region_repair_plans_v1,
 )
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (
+    _stored_candidate_repair_target_replays_v1,
     enqueue_gemini_family_region_repair_plans_v1,
     ingest_gemini_accounting_family_sweep_v1,
     pending_gemini_family_region_repair_plans_v1,
@@ -156,6 +171,161 @@ def test_invalid_money_cell_becomes_database_pending_region_job(tmp_path) -> Non
             "selected_page_json_version_id": selected_version_id,
         }
     ]
+
+
+def test_ready_candidate_repair_requires_exact_semantic_replay(tmp_path) -> None:
+    topology, evaluation, schema = _specs()
+    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    version_id = "gfpstorev1:json:" + "1" * 64
+
+    unresolved_page = deepcopy(_page())
+    unresolved_page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "-ktCap-"
+    unresolved_candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=unresolved_page,
+        page_json_version_id=version_id,
+        physical_page=7,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    unresolved_trial = {
+        "candidate_count": 1,
+        "candidates": [unresolved_candidate],
+        "document_ordinal": 1,
+        "mappings": [],
+        "reasons": unresolved_candidate["reasons"],
+        "selected_candidate_id": None,
+        "source_logical_name": "ACB/2025/example.pdf",
+        "source_sha256": "2" * 64,
+        "status": UNRESOLVED,
+    }
+    unresolved_sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "3" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[unresolved_trial],
+    )
+    base_plan = build_family_region_repair_plans_v1(
+        sweep=unresolved_sweep,
+        page_json_by_version={version_id: unresolved_page},
+        compiled_specs=compiled,
+    )[0]
+
+    ready_page = deepcopy(_page())
+    ready_candidate = evaluate_gemini_json_flat_family_table_v1(
+        page_json=ready_page,
+        page_json_version_id=version_id,
+        physical_page=7,
+        section_id="s1",
+        table_id="t1",
+        compiled_specs=compiled,
+    )
+    assert ready_candidate["status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+    ready_trial = {
+        "candidate_count": 1,
+        "candidates": [ready_candidate],
+        "document_ordinal": 1,
+        "mappings": ready_candidate["mappings"],
+        "reasons": [],
+        "selected_candidate_id": ready_candidate["candidate_id"],
+        "source_logical_name": "ACB/2025/example.pdf",
+        "source_sha256": "2" * 64,
+        "status": ready_candidate["status"],
+    }
+    ready_sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "3" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[ready_trial],
+    )
+    plan = {
+        **base_plan,
+        "candidate_semantic_replay_sha256": canonical_json_sha256_v1(ready_candidate),
+    }
+    material = {key: plan[key] for key in plan if key != "repair_job_id"}
+    plan["repair_job_id"] = "gjfrrqv1:job:" + canonical_json_sha256_v1(material)
+
+    database = tmp_path / "families.sqlite3"
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        database,
+        sweep=ready_sweep,
+        corpus_index_ref=_reference("corpus.json", "4"),
+        implementation_refs=[_reference("runner.py", "5")],
+        run_kind="EXPERIMENTAL",
+    )
+    assert enqueue_gemini_family_region_repair_plans_v1(
+        database,
+        family_run_id=stored["family_run_id"],
+        plans=[plan],
+    ) == [plan["repair_job_id"]]
+
+    forged = {**plan, "candidate_semantic_replay_sha256": "0" * 64}
+    material = {key: forged[key] for key in forged if key != "repair_job_id"}
+    forged["repair_job_id"] = "gjfrrqv1:job:" + canonical_json_sha256_v1(material)
+    with pytest.raises(RuntimeError, match="candidate does not replay"):
+        enqueue_gemini_family_region_repair_plans_v1(
+            database,
+            family_run_id=stored["family_run_id"],
+            plans=[forged],
+        )
+
+
+def test_ready_cluster_repair_may_target_one_exact_nonprimary_component() -> None:
+    records = [
+        _interest_record(_interest_page(_interest_table(title="Tại ngày 31/12/2025")), ordinal=1),
+        _interest_record(_interest_page(_interest_table(title="Tại ngày 31/12/2024")), ordinal=2),
+    ]
+    _cluster, candidate = _interest_evaluate(records)
+    assert candidate["status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+    trial = {
+        "candidate_count": 1,
+        "candidates": [candidate],
+        "document_ordinal": 1,
+        "mappings": candidate["mappings"],
+        "reasons": [],
+        "selected_candidate_id": candidate["candidate_id"],
+        "source_logical_name": records[0]["source_logical_name"],
+        "source_sha256": records[0]["source_sha256"],
+        "status": candidate["status"],
+    }
+    plan = {
+        "base_page_json_version_id": records[1]["page_json_version_id"],
+        "candidate_id": candidate["candidate_id"],
+        "candidate_semantic_replay_sha256": canonical_json_sha256_v1(candidate),
+        "document_ordinal": 1,
+        "family_id": "INTEREST_RATE_RISK",
+        "format_version": "GEMINI_JSON_REGION_REPAIR_QUEUE_V1",
+        "physical_page": records[1]["physical_page"],
+        "section_id": "s1",
+        "source_logical_name": records[1]["source_logical_name"],
+        "source_sha256": records[1]["source_sha256"],
+        "table_id": "t1",
+        "target_ids": ["r1:c1"],
+    }
+    candidate_row = (
+        candidate["page_json_version_id"],
+        candidate["physical_page"],
+        candidate["section_id"],
+        candidate["table_id"],
+        candidate["status"],
+        records[0]["source_logical_name"],
+        records[0]["source_sha256"],
+    )
+    assert _stored_candidate_repair_target_replays_v1(
+        plan=plan,
+        candidate_row=candidate_row,
+        stored_trial=trial,
+        stored_candidate=candidate,
+    )
+    foreign = {**plan, "base_page_json_version_id": "gfpstorev1:json:" + "f" * 64}
+    assert not _stored_candidate_repair_target_replays_v1(
+        plan=foreign,
+        candidate_row=candidate_row,
+        stored_trial=trial,
+        stored_candidate=candidate,
+    )
 
 
 def test_missing_title_footnote_narrative_targets_only_its_section() -> None:
