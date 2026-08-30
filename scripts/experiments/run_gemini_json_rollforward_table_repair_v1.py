@@ -106,7 +106,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "97ededdb188993c8da816da61bb0f5c43eac68be958203eacf955d1454ba0d00"
+PROJECTOR_IMPLEMENTATION_SHA256 = "b6176da21db3a6e3ab70bcc70684087510ac15171c2c798ac4e1b1e559a20fef"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )
@@ -1618,6 +1618,7 @@ def _persist_observation(
             usage=usage,
             provider=provider,
             elapsed_seconds=observation.elapsed_seconds,
+            _prevalidated_plan_axis=prepared.plans,
         )
         _write_json(attempt_root / "attempt.json", attempt)
         return _finalize_attempt(
@@ -1682,6 +1683,7 @@ def _persist_observation(
             usage=usage,
             provider=provider,
             elapsed_seconds=observation.elapsed_seconds,
+            _prevalidated_plan_axis=prepared.plans,
         )
         _write_json(attempt_root / "attempt.json", attempt)
         return _finalize_attempt(
@@ -1702,6 +1704,7 @@ def _persist_observation(
             page_store_path=writable_page_store,
             authority=prepared.authority,
             repair_spec_authority=prepared.repair_spec_authority,
+            _prevalidated_plan_axis=prepared.plans,
         )
     except GeminiJsonRollforwardTableRepairV1Error as repair_exc:
         corroboration = None
@@ -1714,6 +1717,7 @@ def _persist_observation(
                     page_store_path=writable_page_store,
                     authority=prepared.authority,
                     repair_spec_authority=prepared.repair_spec_authority,
+                    _prevalidated_plan_axis=prepared.plans,
                 )
             except GeminiJsonRollforwardTableRepairV1Error:
                 corroboration = None
@@ -1747,6 +1751,7 @@ def _persist_observation(
                 usage=usage,
                 provider=provider,
                 elapsed_seconds=observation.elapsed_seconds,
+                _prevalidated_plan_axis=prepared.plans,
             )
             _write_json(attempt_root / "attempt.json", attempt)
             return _finalize_attempt(
@@ -1787,6 +1792,7 @@ def _persist_observation(
             usage=usage,
             provider=provider,
             elapsed_seconds=observation.elapsed_seconds,
+            _prevalidated_plan_axis=prepared.plans,
         )
         _write_json(attempt_root / "attempt.json", attempt)
         return _finalize_attempt(
@@ -1898,6 +1904,7 @@ def _persist_observation(
         usage=usage,
         provider=provider,
         elapsed_seconds=observation.elapsed_seconds,
+        _prevalidated_plan_axis=prepared.plans,
     )
     _write_json(attempt_root / "attempt.json", attempt)
     return _finalize_attempt(
@@ -1940,6 +1947,7 @@ def _apply_sealed_resolved_observation(
         page_store_path=writable_page_store,
         authority=prepared.authority,
         repair_spec_authority=prepared.repair_spec_authority,
+        _prevalidated_plan_axis=prepared.plans,
     )
     if not same_typed_json_v1(merged, rebuilt_merged) or not same_typed_json_v1(
         receipt, rebuilt_receipt
@@ -2035,6 +2043,7 @@ def _replay_sealed_source_corroboration(
         page_store_path=writable_page_store,
         authority=prepared.authority,
         repair_spec_authority=prepared.repair_spec_authority,
+        _prevalidated_plan_axis=prepared.plans,
     )
     if not same_typed_json_v1(receipt, rebuilt):
         raise _error("sealed source corroboration does not replay against the fresh page store")
@@ -3911,6 +3920,7 @@ def _validate_quarantined_legacy_source_v1(
                     page_store_path=page_store_path,
                     authority=prepared.authority,
                     repair_spec_authority=prepared.repair_spec_authority,
+                    _prevalidated_plan_axis=prepared.plans,
                 )
             except (UnicodeDecodeError, GeminiJsonRollforwardTableRepairV1Error):
                 rejection_hashes.append(artifacts["table-response.json"]["sha256"])
@@ -4036,6 +4046,7 @@ def _execute_quarantined_legacy_revalidation_v1(
             page_store_path=writable_store,
             authority=prepared.authority,
             repair_spec_authority=prepared.repair_spec_authority,
+            _prevalidated_plan_axis=prepared.plans,
         )
         source_link = {
             "deterministic_projection_contract_version": (
@@ -4652,6 +4663,7 @@ def _replay_sealed_rollforward_table_repair_on_private_sqlite_v1(
                 usage=usage,
                 provider=provider,
                 elapsed_seconds=observation["elapsed_seconds"],
+                _prevalidated_plan_axis=prepared.plans,
             )
             recovered_path = (
                 output

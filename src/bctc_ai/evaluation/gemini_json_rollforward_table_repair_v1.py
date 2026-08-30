@@ -2994,14 +2994,25 @@ def merge_rollforward_table_repair_v1(
     page_store_path: Path,
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Atomically merge only allowlisted cells after every table/equation gate."""
 
-    checked_plan, checked_spec_authority = _authoritative_plan(
-        plan,
-        authority=authority,
-        repair_spec_authority=repair_spec_authority,
-        page_store_path=page_store_path,
+    checked_plan, checked_spec_authority = (
+        _authoritative_plan(
+            plan,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
+        if _prevalidated_plan_axis is None
+        else _prevalidated_plan_from_axis(
+            plan,
+            plan_axis=_prevalidated_plan_axis,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
     )
     page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
         checked_plan, page_store_path=page_store_path
@@ -3126,14 +3137,25 @@ def validate_rollforward_table_source_corroboration_v1(
     page_store_path: Path,
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Seal a complete source observation proving that no allowlisted cell changed."""
 
-    checked_plan, checked_spec_authority = _authoritative_plan(
-        plan,
-        authority=authority,
-        repair_spec_authority=repair_spec_authority,
-        page_store_path=page_store_path,
+    checked_plan, checked_spec_authority = (
+        _authoritative_plan(
+            plan,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
+        if _prevalidated_plan_axis is None
+        else _prevalidated_plan_from_axis(
+            plan,
+            plan_axis=_prevalidated_plan_axis,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
     )
     page_evidence = validate_rollforward_table_repair_plan_page_store_v1(
         checked_plan, page_store_path=page_store_path
@@ -3334,6 +3356,7 @@ def _replay_crop_artifact(
     page_store_path: Path,
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if type(crop_image_bytes) is not bytes:
         raise _error("roll-forward table repair crop artifact bytes are invalid")
@@ -3343,6 +3366,7 @@ def _replay_crop_artifact(
         page_store_path=page_store_path,
         authority=authority,
         repair_spec_authority=repair_spec_authority,
+        _prevalidated_plan_axis=_prevalidated_plan_axis,
     )
     if crop_image_bytes != expected_bytes or not same_typed_json_v1(
         dict(crop_receipt), expected_receipt
@@ -3741,14 +3765,25 @@ def build_rollforward_table_repair_attempt_v1(
     usage: Mapping[str, Any],
     provider: Mapping[str, Any],
     elapsed_seconds: str,
+    _prevalidated_plan_axis: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Append one typed low/medium/high sibling attempt ledger record."""
 
-    checked_plan, checked_spec_authority = _authoritative_plan(
-        plan,
-        authority=authority,
-        repair_spec_authority=repair_spec_authority,
-        page_store_path=page_store_path,
+    checked_plan, checked_spec_authority = (
+        _authoritative_plan(
+            plan,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
+        if _prevalidated_plan_axis is None
+        else _prevalidated_plan_from_axis(
+            plan,
+            plan_axis=_prevalidated_plan_axis,
+            authority=authority,
+            repair_spec_authority=repair_spec_authority,
+            page_store_path=page_store_path,
+        )
     )
     prior = [_validated_attempt(item) for item in prior_attempts]
     if any(
@@ -3783,6 +3818,7 @@ def build_rollforward_table_repair_attempt_v1(
         page_store_path=page_store_path,
         authority=authority,
         repair_spec_authority=repair_spec_authority,
+        _prevalidated_plan_axis=_prevalidated_plan_axis,
     )
     if any(
         _crop_receipt(item["crop_receipt"], plan=checked_plan) != checked_crop
@@ -3860,6 +3896,7 @@ def build_rollforward_table_repair_attempt_v1(
                 page_store_path=page_store_path,
                 authority=authority,
                 repair_spec_authority=repair_spec_authority,
+                _prevalidated_plan_axis=_prevalidated_plan_axis,
             )
             if (
                 corroborated
@@ -3903,6 +3940,7 @@ def build_rollforward_table_repair_attempt_v1(
                 page_store_path=page_store_path,
                 authority=authority,
                 repair_spec_authority=repair_spec_authority,
+                _prevalidated_plan_axis=_prevalidated_plan_axis,
             )
             if (
                 resolved
@@ -3990,6 +4028,7 @@ def _replay_validated_observation_attempt_v1(
     authority: Mapping[str, Any],
     repair_spec_authority: Mapping[str, Any],
     repair_spec_authority_manifest_sha256: str,
+    prevalidated_plan_axis: Sequence[Mapping[str, Any]],
 ) -> str:
     """Replay one accepted observation, including nonterminal consensus evidence."""
 
@@ -4019,6 +4058,7 @@ def _replay_validated_observation_attempt_v1(
             page_store_path=page_store_path,
             authority=authority,
             repair_spec_authority=repair_spec_authority,
+            _prevalidated_plan_axis=prevalidated_plan_axis,
         )
         _source_corroboration_receipt_for_plan(
             receipt,
@@ -4040,6 +4080,7 @@ def _replay_validated_observation_attempt_v1(
         page_store_path=page_store_path,
         authority=authority,
         repair_spec_authority=repair_spec_authority,
+        _prevalidated_plan_axis=prevalidated_plan_axis,
     )
     _repair_receipt_for_plan(
         expected_receipt,
@@ -4139,6 +4180,7 @@ def build_rollforward_table_repair_overlay_v1(
             page_store_path=page_store_path,
             authority=authority,
             repair_spec_authority=repair_spec_authority,
+            _prevalidated_plan_axis=rebuilt_plans,
         )
         response_ref = attempt["response_artifact_ref"]
         if response_ref is not None:
@@ -4164,6 +4206,7 @@ def build_rollforward_table_repair_overlay_v1(
                         repair_spec_authority_manifest_sha256=checked_spec_authority[
                             "manifest_sha256"
                         ],
+                        prevalidated_plan_axis=rebuilt_plans,
                     )
                 )
     resolved_attempts = [
@@ -4261,6 +4304,7 @@ def build_rollforward_table_repair_overlay_v1(
                 page_store_path=page_store_path,
                 authority=authority,
                 repair_spec_authority=repair_spec_authority,
+                _prevalidated_plan_axis=rebuilt_plans,
             )
             if (
                 terminal["observed_page_json_version_id"] != plan["base_page_json_version_id"]
@@ -4288,6 +4332,7 @@ def build_rollforward_table_repair_overlay_v1(
             page_store_path=page_store_path,
             authority=authority,
             repair_spec_authority=repair_spec_authority,
+            _prevalidated_plan_axis=rebuilt_plans,
         )
         merged_evidence = load_rollforward_table_page_evidence_v1(
             page_store_path,

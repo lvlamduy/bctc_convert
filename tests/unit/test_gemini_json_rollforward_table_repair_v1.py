@@ -1461,6 +1461,28 @@ def test_retry_tiers_are_siblings_and_preserve_raw_usage_cost_and_validation(cor
     )
 
 
+def test_prevalidated_plan_axis_avoids_requery_inside_one_transaction(
+    corpus: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = corpus["plans"][0]
+    page = corpus["pages"][plan["base_page_json_version_id"]]
+
+    def forbidden_requery(*_args, **_kwargs):
+        raise AssertionError("the full selected frontier was queried twice")
+
+    monkeypatch.setattr(subject, "_authoritative_plan_axis", forbidden_requery)
+    merged, receipt = merge_rollforward_table_repair_v1(
+        page,
+        plan=plan,
+        repair=_response(page, plan),
+        page_store_path=corpus["store"],
+        authority=corpus["authority"],
+        repair_spec_authority=corpus["repair_spec_authority"],
+        _prevalidated_plan_axis=corpus["plans"],
+    )
+    assert receipt["merged_page_json_sha256"] == canonical_json_sha256_v1(merged)
+
+
 def test_source_corroborated_ready_job_resolves_without_a_replacement(
     corpus: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
