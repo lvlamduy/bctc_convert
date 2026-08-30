@@ -2973,6 +2973,88 @@ def _equation_gate(
     }
 
 
+def _source_graph_gate_v1(
+    table: Mapping[str, Any],
+    *,
+    plan: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Corroborate observed risk-matrix cells with an independent row graph.
+
+    The provider still reads every target value directly.  This gate only tests
+    those observations against the visible bucket-to-grand-total identities, so
+    it never inserts or arithmetically back-solves a missing source value.
+    """
+
+    if plan["family_id"] != "INTEREST_RATE_RISK":
+        return None
+    total_columns = []
+    for column_index, column in enumerate(table["columns"]):
+        surface = _normalized_header_anchor(
+            column["header_path_exact"], unit_exact=table.get("unit_exact")
+        )
+        if surface in {"tong", "tong cong"}:
+            total_columns.append(column_index)
+    target_ids = sorted((item["cell_id"] for item in plan["cell_allowlist"]), key=_cell_id)
+    target_rows = sorted({_cell_id(cell_id)[0] for cell_id in target_ids})
+    row_equations = []
+    if len(total_columns) == 1:
+        total_column = total_columns[0]
+        for row_index in target_rows:
+            result = _signed_integer(table["rows"][row_index]["values_exact"][total_column])
+            terms = [
+                {
+                    "cell_id": f"r{row_index + 1}:c{column_index + 1}",
+                    "coefficient": _signed_integer(
+                        table["rows"][row_index]["values_exact"][column_index]
+                    ),
+                }
+                for column_index in range(len(table["columns"]))
+                if column_index != total_column
+            ]
+            complete = type(result) is int and all(
+                type(term["coefficient"]) is int for term in terms
+            )
+            expected = (
+                sum(term["coefficient"] for term in terms if term["coefficient"] is not None)
+                if complete
+                else None
+            )
+            row_equations.append(
+                {
+                    "expected_result": expected,
+                    "observed_result": result,
+                    "result_cell_id": f"r{row_index + 1}:c{total_column + 1}",
+                    "row_id": f"r{row_index + 1}",
+                    "status": (
+                        "EXACT"
+                        if complete and result == expected
+                        else "SOURCE_VISIBLE_NONCLOSING"
+                        if complete
+                        else "NOT_TESTABLE"
+                    ),
+                    "terms": terms,
+                }
+            )
+    status = (
+        "EXACT"
+        if len(total_columns) == 1
+        and len(row_equations) == len(target_rows)
+        and all(item["status"] == "EXACT" for item in row_equations)
+        else "NOT_TESTABLE"
+        if len(total_columns) != 1
+        or any(item["status"] == "NOT_TESTABLE" for item in row_equations)
+        else "SOURCE_VISIBLE_NONCLOSING"
+    )
+    return {
+        "direct_observation_cell_ids": target_ids,
+        "format_version": "GEMINI_JSON_REPAIR_SOURCE_GRAPH_GATE_V1",
+        "grand_total_column_id": (f"c{total_columns[0] + 1}" if len(total_columns) == 1 else None),
+        "row_equations": row_equations,
+        "rule": "DIRECT_TARGET_OBSERVATIONS_AND_VISIBLE_ROW_BUCKETS_EQUAL_GRAND_TOTAL",
+        "status": status,
+    }
+
+
 def _after_policy(cell: Mapping[str, Any], policy: str) -> None:
     coefficient = _signed_integer(cell["source_text"])
     if policy == "DASH_ZERO":
@@ -3099,6 +3181,7 @@ def merge_rollforward_table_repair_v1(
         equations=checked_plan["equation_inventory"],
         allowlist=checked_plan["cell_allowlist"],
     )
+    source_graph_gate = _source_graph_gate_v1(merged_table, plan=checked_plan)
     change = {
         "all_other_cells_byte_equal": True,
         "base_table_sha256": checked_plan["shape_gate"]["base_table_sha256"],
@@ -3112,6 +3195,7 @@ def merge_rollforward_table_repair_v1(
         "response_projection": canonical_clone_v1(decoded["projection_diagnostics"]),
         "shape_gate": canonical_clone_v1(checked_plan["shape_gate"]),
         "source_binding": canonical_clone_v1(checked_plan["source_binding"]),
+        "source_graph_gate": source_graph_gate,
         "target_id": f"{checked_plan['section_id']}:{checked_plan['table_id']}",
         "validated_allowlist_cell_count": len(checked_plan["cell_allowlist"]),
     }
@@ -3650,6 +3734,96 @@ def _validated_attempt(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(checked)
 
 
+def _valid_source_graph_gate_v1(value: Any, *, plan: Mapping[str, Any]) -> bool:
+    if type(value) is not dict or set(value) != {
+        "direct_observation_cell_ids",
+        "format_version",
+        "grand_total_column_id",
+        "row_equations",
+        "rule",
+        "status",
+    }:
+        return False
+    target_ids = sorted((item["cell_id"] for item in plan["cell_allowlist"]), key=_cell_id)
+    target_rows = sorted({_cell_id(cell_id)[0] for cell_id in target_ids})
+    shape = plan["shape_gate"]
+    total_columns = [
+        index
+        for index, column in enumerate(shape["columns_exact"])
+        if _normalized_header_anchor(column["header_path_exact"], unit_exact=shape["unit_exact"])
+        in {"tong", "tong cong"}
+    ]
+    expected_total_id = f"c{total_columns[0] + 1}" if len(total_columns) == 1 else None
+    equations = value["row_equations"]
+    if (
+        value["format_version"] != "GEMINI_JSON_REPAIR_SOURCE_GRAPH_GATE_V1"
+        or value["rule"] != "DIRECT_TARGET_OBSERVATIONS_AND_VISIBLE_ROW_BUCKETS_EQUAL_GRAND_TOTAL"
+        or value["direct_observation_cell_ids"] != target_ids
+        or value["grand_total_column_id"] != expected_total_id
+        or value["status"] not in {"EXACT", "NOT_TESTABLE", "SOURCE_VISIBLE_NONCLOSING"}
+        or type(equations) is not list
+    ):
+        return False
+    expected_rows = target_rows if expected_total_id is not None else []
+    if len(equations) != len(expected_rows):
+        return False
+    row_statuses = []
+    total_column = total_columns[0] if total_columns else None
+    for equation, row_index in zip(equations, expected_rows, strict=True):
+        if type(equation) is not dict or set(equation) != {
+            "expected_result",
+            "observed_result",
+            "result_cell_id",
+            "row_id",
+            "status",
+            "terms",
+        }:
+            return False
+        expected_term_ids = [
+            f"r{row_index + 1}:c{column_index + 1}"
+            for column_index in range(shape["column_count"])
+            if column_index != total_column
+        ]
+        terms = equation["terms"]
+        if (
+            equation["row_id"] != f"r{row_index + 1}"
+            or equation["result_cell_id"] != f"r{row_index + 1}:{expected_total_id}"
+            or type(terms) is not list
+            or len(terms) != len(expected_term_ids)
+            or [term.get("cell_id") if type(term) is dict else None for term in terms]
+            != expected_term_ids
+            or any(
+                type(term) is not dict or set(term) != {"cell_id", "coefficient"} for term in terms
+            )
+        ):
+            return False
+        coefficients = [term["coefficient"] for term in terms]
+        complete = type(equation["observed_result"]) is int and all(
+            type(coefficient) is int for coefficient in coefficients
+        )
+        expected = sum(coefficients) if complete else None
+        status = (
+            "EXACT"
+            if complete and equation["observed_result"] == expected
+            else "SOURCE_VISIBLE_NONCLOSING"
+            if complete
+            else "NOT_TESTABLE"
+        )
+        if equation["expected_result"] != expected or equation["status"] != status:
+            return False
+        row_statuses.append(status)
+    expected_gate_status = (
+        "EXACT"
+        if expected_total_id is not None
+        and len(row_statuses) == len(target_rows)
+        and all(status == "EXACT" for status in row_statuses)
+        else "NOT_TESTABLE"
+        if expected_total_id is None or any(status == "NOT_TESTABLE" for status in row_statuses)
+        else "SOURCE_VISIBLE_NONCLOSING"
+    )
+    return value["status"] == expected_gate_status
+
+
 def _repair_receipt_for_plan(
     value: Any,
     *,
@@ -3692,6 +3866,7 @@ def _repair_receipt_for_plan(
         "response_projection",
         "shape_gate",
         "source_binding",
+        "source_graph_gate",
         "target_id",
         "validated_allowlist_cell_count",
     }
@@ -3704,6 +3879,11 @@ def _repair_receipt_for_plan(
         or change["base_table_sha256"] != plan["shape_gate"]["base_table_sha256"]
         or change["shape_gate"] != plan["shape_gate"]
         or change["source_binding"] != plan["source_binding"]
+        or (plan["family_id"] != "INTEREST_RATE_RISK" and change["source_graph_gate"] is not None)
+        or (
+            plan["family_id"] == "INTEREST_RATE_RISK"
+            and not _valid_source_graph_gate_v1(change["source_graph_gate"], plan=plan)
+        )
         or change["equation_inventory_sha256"] != plan["equation_inventory_sha256"]
         or change["target_id"] != f"{plan['section_id']}:{plan['table_id']}"
         or type(change["response_projection"]) is not dict
@@ -4209,22 +4389,25 @@ def build_rollforward_table_repair_overlay_v1(
                         prevalidated_plan_axis=rebuilt_plans,
                     )
                 )
-    resolved_attempts = [
+    validated_correction_attempts = [
         attempt
         for attempt in checked_attempts
-        if attempt["next_status"] == "RESOLVED" and attempt["repair_id"] is not None
+        if attempt["repair_id"] is not None
+        and attempt["outcome"] in {"RESOLVED", "VALIDATED_OBSERVATION_PENDING_CONSENSUS"}
     ]
     lineages_by_observed = {}
-    if resolved_attempts:
+    if validated_correction_attempts:
         from bctc_ai.storage.gemini_financial_page_store_v1 import (
             page_json_region_repair_lineages_v1,
         )
 
         lineages = page_json_region_repair_lineages_v1(
             page_store_path,
-            observed_page_json_version_ids=[
-                item["observed_page_json_version_id"] for item in resolved_attempts
-            ],
+            observed_page_json_version_ids=list(
+                dict.fromkeys(
+                    item["observed_page_json_version_id"] for item in validated_correction_attempts
+                )
+            ),
         )
         lineages_by_observed = {item["observed_page_json_version_id"]: item for item in lineages}
     family_ids = {plan["family_id"] for plan in checked_plans}
@@ -4263,11 +4446,35 @@ def build_rollforward_table_repair_overlay_v1(
             for item in valid_prior
             if observation_page_sha_by_attempt_id[item["attempt_id"]] == terminal_page_sha
         ]
+        graph_exact_attempts = [
+            item
+            for item in job_attempts
+            if item["repair_id"] is not None
+            and type(
+                lineages_by_observed[item["observed_page_json_version_id"]]["repair_receipt"][
+                    "changes"
+                ][0].get("source_graph_gate")
+            )
+            is dict
+            and lineages_by_observed[item["observed_page_json_version_id"]]["repair_receipt"][
+                "changes"
+            ][0]["source_graph_gate"].get("status")
+            == "EXACT"
+        ]
+        terminal_source_graph_exact = terminal in graph_exact_attempts
+        graph_exact_contradiction = any(
+            observation_page_sha_by_attempt_id[item["attempt_id"]] != terminal_page_sha
+            for item in graph_exact_attempts
+        )
         if candidate_status == UNRESOLVED:
             if terminal["outcome"] != "RESOLVED" or valid_prior:
                 raise _error("unresolved candidate repair used READY-only consensus semantics")
         elif terminal["outcome"] == "RESOLVED":
-            if terminal["repair_id"] is None or not matching_prior:
+            if (
+                terminal["repair_id"] is None
+                or graph_exact_contradiction
+                or (not matching_prior and not terminal_source_graph_exact)
+            ):
                 raise _error("READY candidate correction lacks two matching observations")
         elif terminal["outcome"] == "SOURCE_CORROBORATED_NO_CHANGE":
             if terminal["repair_id"] is not None or (valid_prior and not matching_prior):

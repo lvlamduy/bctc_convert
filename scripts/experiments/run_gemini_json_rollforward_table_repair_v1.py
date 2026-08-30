@@ -106,7 +106,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "b6176da21db3a6e3ab70bcc70684087510ac15171c2c798ac4e1b1e559a20fef"
+PROJECTOR_IMPLEMENTATION_SHA256 = "e22feeb191aeee9158384c0ab324100d2575f8592b24c2165b7877cf30c882e5"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )
@@ -1804,9 +1804,13 @@ def _persist_observation(
             mirror_family_results=mirror_family_results,
         )
     merged_sha = canonical_json_sha256_v1(merged)
+    source_graph_gate = receipt["changes"][0].get("source_graph_gate")
+    source_graph_exact = (
+        type(source_graph_gate) is dict and source_graph_gate.get("status") == "EXACT"
+    )
     outcome = (
         "RESOLVED"
-        if candidate_status == UNRESOLVED or merged_sha in prior_hashes
+        if candidate_status == UNRESOLVED or merged_sha in prior_hashes or source_graph_exact
         else "VALIDATED_OBSERVATION_PENDING_CONSENSUS"
     )
     merged_payload = canonical_json_bytes_v1(merged) + b"\n"
@@ -3067,6 +3071,8 @@ def _validate_quarantined_legacy_attempt(
             "PROVIDER_OR_VALIDATION_FAILURE",
             "RESOLVED",
             "RETRYABLE_VALIDATION_FAILURE",
+            "SOURCE_CORROBORATED_NO_CHANGE",
+            "VALIDATED_OBSERVATION_PENDING_CONSENSUS",
         }
         or attempt.get("next_status") not in {"ABSTAINED", "PENDING", "RESOLVED"}
     ):

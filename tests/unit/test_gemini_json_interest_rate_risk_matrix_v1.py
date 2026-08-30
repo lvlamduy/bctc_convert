@@ -24,6 +24,7 @@ from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
 )
 from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (
     _interest_rate_risk_repair_frontier_v1,
+    _source_graph_gate_v1,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -303,6 +304,31 @@ def test_single_required_mismatch_repair_reads_only_three_visible_cells() -> Non
     assert target_ids == {"r1:c1", "r2:c1", "r3:c1"}
     assert len(equations) == 1
     assert reasons == ["INTEREST_RATE_RISK_REQUIRED_EQUATION_MISMATCH:OVERDUE:STATE_INTERNAL"]
+
+
+def test_direct_target_observations_must_close_visible_row_grand_totals() -> None:
+    table = _table()
+    for row in table["rows"]:
+        row["values_exact"][-1] = str(sum(int(value) for value in row["values_exact"][:-1]))
+    plan = {
+        "cell_allowlist": [
+            {"cell_id": "r1:c1"},
+            {"cell_id": "r2:c1"},
+            {"cell_id": "r3:c1"},
+        ],
+        "family_id": "INTEREST_RATE_RISK",
+    }
+    exact = _source_graph_gate_v1(table, plan=plan)
+    assert exact is not None
+    assert exact["status"] == "EXACT"
+    assert [item["status"] for item in exact["row_equations"]] == ["EXACT"] * 3
+
+    drifted = copy.deepcopy(table)
+    drifted["rows"][0]["values_exact"][0] = "101"
+    nonclosing = _source_graph_gate_v1(drifted, plan=plan)
+    assert nonclosing is not None
+    assert nonclosing["status"] == "SOURCE_VISIBLE_NONCLOSING"
+    assert nonclosing["row_equations"][0]["status"] == "SOURCE_VISIBLE_NONCLOSING"
 
 
 def test_multi_column_required_mismatch_repair_reads_complete_core_matrix() -> None:
