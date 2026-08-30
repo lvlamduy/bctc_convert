@@ -1,0 +1,17 @@
+{
+  "family_id": "CUSTOMER_COLLATERAL_HELD",
+  "family_root_report_norm_id": 1280,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1281, "role": "REAL_ESTATE"},
+    {"report_norm_id": 1282, "role": "MOVABLE_PROPERTY"},
+    {"report_norm_id": 1283, "role": "MACHINERY_EQUIPMENT"},
+    {"report_norm_id": 1284, "role": "TRANSPORT_EQUIPMENT"},
+    {"report_norm_id": 1285, "role": "INVENTORY"},
+    {"report_norm_id": 1286, "role": "VALUABLE_PAPERS"},
+    {"report_norm_id": 1287, "role": "VALUABLE_PAPERS_ENTERPRISE_ISSUER_DETAIL"},
+    {"report_norm_id": 1288, "role": "OTHER_COLLATERAL"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}

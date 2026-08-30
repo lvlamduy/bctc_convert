@@ -1,0 +1,103 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {"aliases": ["Bất động sản"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "REAL_ESTATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Động sản", "Tài sản động sản"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "MOVABLE_PROPERTY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Máy móc, thiết bị"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "MACHINERY_EQUIPMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Phương tiện vận tải", "Phương tiện vận chuyển"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "TRANSPORT_EQUIPMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Hàng tồn kho", "Hàng hóa, nguyên vật liệu", "Hàng hóa lưu kho"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INVENTORY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Giấy tờ có giá", "Cổ phiếu, giấy tờ có giá"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "VALUABLE_PAPERS",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["GTCG do doanh nghiệp phát hành", "Giấy tờ có giá do doanh nghiệp phát hành"], "within_role": "VALUABLE_PAPERS"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "VALUABLE_PAPERS_ENTERPRISE_ISSUER_DETAIL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Khác", "Tài sản khác", "Tài sản đảm bảo khác", "Các tài sản đảm bảo khác", "Tài sản thế chấp khác", "Các tài sản thế chấp khác"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_COLLATERAL",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CUSTOMER_COLLATERAL_HELD",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản của Ngân hàng đưa đi thế chấp",
+    "Tài sản của các TCTD khác"
+  ],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Của khách hàng",
+      "Tài sản, GTCG nhận thế chấp, cầm cố và chiết khấu của khách hàng",
+      "Tài sản, GTCG nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu của khách hàng",
+      "Tài sản, giấy tờ có giá nhận thế chấp, cầm cố và chiết khấu của khách hàng",
+      "Tài sản, giấy tờ có giá nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu của khách hàng",
+      "Giá trị sổ sách của tài sản thế chấp của khách hàng",
+      "Bảng dưới đây trình bày giá trị sổ sách của tài sản thế chấp của khách hàng",
+      "Mô tả và giá trị ghi sổ của tài sản đảm bảo"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CUSTOMER_COLLATERAL_HELD_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["REAL_ESTATE", "OTHER_COLLATERAL"]
+  ],
+  "structural_reset_aliases": [
+    "Của các TCTD khác",
+    "Của TCTD khác",
+    "Tài sản, GTCG nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu của các tổ chức tín dụng khác",
+    "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản của Ngân hàng đưa đi thế chấp"
+  ]
+}

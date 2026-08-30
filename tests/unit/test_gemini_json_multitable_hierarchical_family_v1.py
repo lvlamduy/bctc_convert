@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    NOT_OBSERVED,
     READY,
     UNRESOLVED,
     GeminiJsonMultitableHierarchicalFamilyV1Error,
@@ -66,6 +67,14 @@ def _interest_expense_compiled() -> dict:
         _json("tm-interest-expense-topology-v1.json"),
         _json("tm-interest-expense-evaluation-v1.json"),
         _json("tm-interest-expense-schema-binding-v1.json"),
+    )
+
+
+def _customer_collateral_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-customer-collateral-held-topology-v1.json"),
+        _json("tm-customer-collateral-held-evaluation-v1.json"),
+        _json("tm-customer-collateral-held-schema-binding-v1.json"),
     )
 
 
@@ -1125,6 +1134,324 @@ def test_default_owner_surface_policy_preserves_narrative_owner_evidence() -> No
     _compiled_specs, cluster, candidate = _evaluate(page)
     assert cluster["status"] == READY
     assert candidate["status"] == READY
+
+
+def test_owner_or_exact_source_result_accepts_explicit_row_owned_population() -> None:
+    table = _table(
+        None,
+        [
+            _row("Của khách hàng", ["100", "80"], kind="GROUP"),
+            _row(
+                "Bất động sản",
+                ["60", "50"],
+                hierarchy=["Của khách hàng", "Bất động sản"],
+            ),
+            _row(
+                "Tài sản khác",
+                ["40", "30"],
+                hierarchy=["Của khách hàng", "Tài sản khác"],
+            ),
+        ],
+    )
+    page = _page(_section("18. Tài sản bảo đảm", table))
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert cluster["owner_receipt"]["alias"] == "EXACT_SOURCE_RESULT_ROW"
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "FAMILY_ROOT_TOTAL",
+        "OTHER_COLLATERAL",
+        "REAL_ESTATE",
+    }
+
+
+def test_owner_or_exact_source_result_accepts_surface_owned_flat_population() -> None:
+    table = _table(
+        None,
+        [
+            _row("Bất động sản", ["60", "50"]),
+            _row("Tài sản khác", ["40", "30"]),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section(
+            "18. Tài sản bảo đảm",
+            table,
+            narratives=[
+                "Bảng dưới đây trình bày giá trị sổ sách của tài sản thế chấp của khách hàng"
+            ],
+        )
+    )
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert not any(
+        item["classification"].get("family_root_row_ordinals")
+        for item in cluster["declared_money_table_inventory"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "FAMILY_ROOT_TOTAL",
+        "OTHER_COLLATERAL",
+        "REAL_ESTATE",
+    }
+
+
+def test_table_title_owner_is_local_and_does_not_absorb_preceding_population() -> None:
+    preceding = _table(
+        None,
+        [
+            _row("Bất động sản", ["600", "500"]),
+            _row("Tài sản khác", ["400", "300"]),
+            _row(None, ["1000", "800"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    target = _table(
+        "Mô tả và giá trị ghi sổ của tài sản đảm bảo",
+        [
+            _row("Bất động sản", ["60", "50"]),
+            _row("Tài sản khác", ["40", "30"]),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(_section("18. Rủi ro tín dụng", preceding, target))
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s1", "t2")
+    ]
+
+
+def test_source_result_population_excludes_non_result_sibling_tables() -> None:
+    target = _table(
+        None,
+        [
+            _row("Bất động sản", ["60", "50"]),
+            _row("Động sản", ["20", "10"]),
+            _row("Giấy tờ có giá", ["10", "10"]),
+            _row("Tài sản khác", ["10", "10"]),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    other_credit_institution = _table(
+        None,
+        [_row("Giấy tờ có giá", ["7", "6"])],
+    )
+    page = _page(
+        _section(
+            "39. Loại hình và giá trị sổ sách tài sản thế chấp",
+            target,
+            other_credit_institution,
+            narratives=[
+                "Giá trị sổ sách của tài sản thế chấp của khách hàng tại thời điểm cuối kỳ",
+                "Tài sản, giấy tờ có giá nhận thế chấp của TCTD khác tại thời điểm cuối kỳ",
+            ],
+        )
+    )
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    assert [item["table_id"] for item in cluster["component_regions"]] == ["t1"]
+    dispositions = {
+        item["table_id"]: item["disposition"] for item in cluster["declared_money_table_inventory"]
+    }
+    assert dispositions["t2"] == "EXCLUDED_NON_SOURCE_RESULT_MONEY_TABLE_INSIDE_OWNER_FENCE"
+
+
+def test_customer_collateral_bank_owned_table_title_is_a_typed_local_exclusion() -> None:
+    target = _table(
+        None,
+        [
+            _row("Bất động sản", ["60", "50"]),
+            _row("Tài sản khác", ["40", "30"]),
+            _row(None, ["100", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    bank_owned = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [
+            _row("Bất động sản", ["600", "500"]),
+            _row("Tài sản khác", ["400", "300"]),
+            _row(None, ["1000", "800"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section(
+            "39. Loại hình và giá trị sổ sách tài sản thế chấp",
+            target,
+            bank_owned,
+            narratives=["Giá trị sổ sách của tài sản thế chấp của khách hàng"],
+        )
+    )
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=_customer_collateral_compiled()
+    )
+    assert cluster["status"] == READY
+    assert [item["table_id"] for item in cluster["component_regions"]] == ["t1"]
+    inventory = {item["table_id"]: item for item in cluster["declared_money_table_inventory"]}
+    assert inventory["t2"]["disposition"] == "EXCLUDED_TYPED_CONTROL"
+    assert (
+        inventory["t2"]["classification"]["typed_control_disposition"]
+        == "BANK_OWNED_COLLATERAL_OUTSIDE_FAMILY"
+    )
+
+
+def test_multiple_source_result_populations_inside_one_owner_fence_are_unresolved() -> None:
+    def population(multiplier: int) -> dict:
+        return _table(
+            None,
+            [
+                _row("Bất động sản", [str(60 * multiplier), str(50 * multiplier)]),
+                _row("Tài sản khác", [str(40 * multiplier), str(30 * multiplier)]),
+                _row(
+                    None,
+                    [str(100 * multiplier), str(80 * multiplier)],
+                    kind="TOTAL",
+                    hierarchy=[None],
+                ),
+            ],
+        )
+
+    page = _page(
+        _section(
+            "39. Loại hình và giá trị sổ sách tài sản thế chấp",
+            population(1),
+            population(10),
+            narratives=["Giá trị sổ sách của tài sản thế chấp của khách hàng"],
+        )
+    )
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=_customer_collateral_compiled()
+    )
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert cluster["reasons"] == ["MULTIPLE_SOURCE_RESULT_POPULATIONS_INSIDE_OWNER_FENCE"]
+
+
+def test_owner_without_source_result_population_is_not_observed() -> None:
+    page = _page(
+        _section(
+            "39. Loại hình và giá trị sổ sách tài sản thế chấp",
+            _table(
+                None,
+                [
+                    _row("Bất động sản", ["60", "50"]),
+                    _row("Tài sản khác", ["40", "30"]),
+                ],
+            ),
+            narratives=["Giá trị sổ sách của tài sản thế chấp của khách hàng"],
+        )
+    )
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=_customer_collateral_compiled()
+    )
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["component_regions"] == []
+    assert cluster["reasons"] == []
+
+
+def test_customer_collateral_equation_mismatch_emits_no_mapping() -> None:
+    table = _table(
+        None,
+        [
+            _row("Bất động sản", ["60", "50"]),
+            _row("Tài sản khác", ["40", "30"]),
+            _row(None, ["101", "80"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section(
+            "39. Loại hình và giá trị sổ sách tài sản thế chấp",
+            table,
+            narratives=["Giá trị sổ sách của tài sản thế chấp của khách hàng"],
+        )
+    )
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "SOURCE_RESULT_TOTAL_NOT_PROVEN_BY_EXACT_EQUATION" in candidate["reasons"]
+
+
+def test_customer_collateral_residual_rows_aggregate_only_after_exact_root_closure() -> None:
+    table = _table(
+        None,
+        [
+            _row("Của khách hàng", ["100", "80"], kind="GROUP"),
+            _row(
+                "Bất động sản",
+                ["60", "50"],
+                hierarchy=["Của khách hàng", "Bất động sản"],
+            ),
+            _row(
+                "Quyền khai thác tài sản",
+                ["10", "5"],
+                hierarchy=["Của khách hàng", "Quyền khai thác tài sản"],
+            ),
+            _row(
+                "Tài sản khác",
+                ["30", "25"],
+                hierarchy=["Của khách hàng", "Tài sản khác"],
+            ),
+        ],
+    )
+    page = _page(_section("18. Tài sản bảo đảm", table))
+    compiled = _customer_collateral_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    other = next(
+        mapping for mapping in candidate["mappings"] if mapping["role"] == "OTHER_COLLATERAL"
+    )
+    assert [value["coefficient"] for value in other["values"]] == [40, 30]
+    assert {source_ref["row_id"] for source_ref in other["source_refs"]} == {"r3", "r4"}
 
 
 def test_owner_surface_policy_rejects_unknown_surface_kind() -> None:

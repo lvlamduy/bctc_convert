@@ -501,6 +501,25 @@ PINNED_EMPLOYEE_INCOME_HISTORICAL_ORACLES = (
         "size_bytes": 62687,
     },
 )
+PINNED_CUSTOMER_COLLATERAL_HELD_HISTORICAL_ORACLES = (
+    {
+        "format_version": "CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0096-customer-collateral-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "ae784697189d893b5ec5af93cc179045f42ba8d43f4bc76cd182fb8ccddf0da6",
+        "size_bytes": 57511,
+    },
+    {
+        "format_version": ("ANNUAL_2025_CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFIED_MAPPING_V1"),
+        "path": (
+            "docs/experiments/"
+            "E-0151-annual-2025-customer-collateral-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "b6a9afa7950dbad331bf4ae1d8f67317bd1f16101d9409e966f7739633f57cb8",
+        "size_bytes": 81332,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1434,6 +1453,55 @@ PINNED_EMPLOYEE_INCOME_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "d7e9805cfc699171cc97bdf55551befaa54282f4e1fec5ab759dd42548f4fad4",
     "mappings": "c325b1197a4783664cb131ee6c4800d7e42252bcb5200d61c19ed795d3227059",
 }
+PINNED_CUSTOMER_COLLATERAL_HELD_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "b66adcd27af4dda4f102c9dd57845a8e18e34617c5266f2637aa26467210fcb4"
+    ),
+    "accepted_cluster_count": 58,
+    "accepted_fragment_count": 58,
+    "candidate_disposition_axis_sha256": (
+        "9b2d0f3cf22fa2e0aaefab020be55a357239a3dda71f150f2c1c34943b804636"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 82, READY: 58, UNRESOLVED: 0},
+    "query_policy_sha256": "c7f6db45c3b8d49958ca1b401f5ef8c9bc993d7946bf5ee729ade97f4eedd1a9",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 314,
+    "not_observed_count": 82,
+    "ready_count": 58,
+    "unresolved_count": 0,
+}
+PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AUDIT_METRICS = {
+    "equation_count": 75,
+    "historical_comparator_exact_count": 56,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 40,
+    "historical_mapping_record_count": 40,
+    "mapping_count": 314,
+}
+PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AXIS_COUNTS = {
+    "clusters": 58,
+    "equations": 75,
+    "historical_comparator": 56,
+    "mappings": 314,
+}
+PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AXIS_SHA256 = {
+    "clusters": "c8c2c65b446f865ceaf2a88cc975cc38703b8bf3980cc552d98693b25c5cc0f1",
+    "equations": "3b7776dd34e0f8088e298c01895ea62a94e8b3d74aee21e3020eff3c3d2d18c5",
+    "historical_comparator": "829626348a9adbccb45414faf8f57b835b8a4d282e04bfca631a326e89e0078f",
+    "mappings": "5f17fc29ac4b0823916c711f3dd368fe3940f7c12d3cfa9739c183fe2d7061a1",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1677,6 +1745,8 @@ def _historical_oracle_refs(
         return PINNED_SUBSIDIARY_ACQUISITION_DISPOSAL_HISTORICAL_ORACLES
     if family_id == "EMPLOYEE_INCOME":
         return PINNED_EMPLOYEE_INCOME_HISTORICAL_ORACLES
+    if family_id == "CUSTOMER_COLLATERAL_HELD":
+        return PINNED_CUSTOMER_COLLATERAL_HELD_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1849,6 +1919,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_EMPLOYEE_INCOME_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_EMPLOYEE_INCOME_QUERY_RECEIPT,
             "sweep_metrics": PINNED_EMPLOYEE_INCOME_RELEASE_METRICS,
+        }
+    if family_id == "CUSTOMER_COLLATERAL_HELD":
+        return {
+            "axis_counts": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_CUSTOMER_COLLATERAL_HELD_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -2195,6 +2273,54 @@ def _historical_comparator_axis(
                     current_role = (
                         "DIRECT_DIVIDEND_MINUS_LONG_TERM_CAPITAL_DIVIDEND_"
                         "LEGACY_SOURCE_ONLY_PROJECTION"
+                    )
+                customer_other_report_norm_id = compiled_specs["bindings"].get("OTHER_COLLATERAL")
+                residual_source_ref_hashes = {
+                    canonical_json_sha256_v1(source_ref)
+                    for table_receipt in (
+                        candidate.get("closure_receipt", {}).get("table_receipts", [])
+                        if candidate is not None
+                        else []
+                    )
+                    for receipt in table_receipt.get(
+                        "equation_consumed_residual_projection_receipts", []
+                    )
+                    if receipt.get("residual_role") == "OTHER_COLLATERAL"
+                    for source_ref in receipt.get("projected_source_refs", [])
+                }
+                direct_customer_other_source_refs = (
+                    [
+                        source_ref
+                        for source_ref in current.get("source_refs", [])
+                        if canonical_json_sha256_v1(source_ref) not in residual_source_ref_hashes
+                    ]
+                    if type(current) is dict
+                    else []
+                )
+                if (
+                    compiled_specs["topology"]["family_id"] == "CUSTOMER_COLLATERAL_HELD"
+                    and old_report_norm_id == customer_other_report_norm_id
+                    and type(historical_coefficients) is list
+                    and type(current) is dict
+                    and current.get("state")
+                    == "SOURCE_SAME_ROLE_ROWS_AGGREGATED_AFTER_TABLE_CLOSURE"
+                    and residual_source_ref_hashes
+                    and len(direct_customer_other_source_refs) == 1
+                    and len(current.get("source_refs", [])) == len(residual_source_ref_hashes) + 1
+                ):
+                    # Older collateral oracles mapped only the printed
+                    # catch-all row.  The current graph correctly also folds
+                    # every otherwise-unmapped row consumed by the exact
+                    # source total into OTHER_COLLATERAL.  Project the current
+                    # mapping back to the one direct legacy row only after the
+                    # canonical candidate proves a complete bijection between
+                    # that row and the explicitly receipted residual rows.
+                    # The immutable source SHA and old oracle still supply the
+                    # compared values; this never changes current mappings.
+                    full_current_coefficients = list(historical_coefficients)
+                    current_role = (
+                        "OTHER_COLLATERAL_DIRECT_ROW_EXCLUDING_EXACT_EQUATION_"
+                        "RESIDUALS_LEGACY_PROJECTION"
                     )
                 current_coefficients = (
                     full_current_coefficients[: len(historical_coefficients)]

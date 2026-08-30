@@ -321,6 +321,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     )
     if source_result_query_policy not in {
         "OWNER_OR_DECLARED_ROLE",
+        "OWNER_OR_EXACT_SOURCE_RESULT_ROW",
         "REQUIRED_EXACT_SOURCE_RESULT_ROW",
     }:
         raise _error("multi-table hierarchical source-result query policy is invalid")
@@ -2397,11 +2398,11 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             section_position = [record["selected_page_ordinal"], section_ordinal, 0]
             section_owner_surfaces = []
             if "SECTION_TITLE" in owner_surface_kinds:
-                section_owner_surfaces.append(section.get("title_exact"))
+                section_owner_surfaces.append(("SECTION_TITLE", section.get("title_exact")))
             narratives = section.get("narratives_exact")
             if "SECTION_NARRATIVE" in owner_surface_kinds and type(narratives) is list:
-                section_owner_surfaces.extend(narratives)
-            for value in section_owner_surfaces:
+                section_owner_surfaces.extend(("SECTION_NARRATIVE", value) for value in narratives)
+            for surface_kind, value in section_owner_surfaces:
                 for alias in (
                     []
                     if primary
@@ -2419,6 +2420,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                             ),
                             "position": section_position,
                             "source_exact": value,
+                            "_surface_kind": surface_kind,
                         }
                     )
             section_outline = _outline_top_level_number(section.get("title_exact"))
@@ -2478,13 +2480,13 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                                 "outline_top_level_number": None,
                                 "position": position,
                                 "source_exact": rows[result_ordinal - 1].get("label_exact"),
+                                "_surface_kind": "TABLE_EXACT_RESULT",
                             }
                         )
-                if compiled_specs[
-                    "source_result_query_policy"
-                ] == "REQUIRED_EXACT_SOURCE_RESULT_ROW" and classification.get(
-                    "family_root_row_ordinals"
-                ):
+                if compiled_specs["source_result_query_policy"] in {
+                    "OWNER_OR_EXACT_SOURCE_RESULT_ROW",
+                    "REQUIRED_EXACT_SOURCE_RESULT_ROW",
+                } and classification.get("family_root_row_ordinals"):
                     rows = table.get("rows")
                     assert type(rows) is list
                     for row_ordinal in classification["family_root_row_ordinals"]:
@@ -2495,6 +2497,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                                 "outline_top_level_number": None,
                                 "position": position,
                                 "source_exact": row.get("label_exact"),
+                                "_surface_kind": "TABLE_EXACT_RESULT",
                             }
                         )
                 for value in [table.get("title_exact")]:
@@ -2512,6 +2515,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                                     ),
                                     "position": position,
                                     "source_exact": value,
+                                    "_surface_kind": "TABLE_TITLE",
                                 }
                             )
                     table_outline = _outline_top_level_number(value)
@@ -2551,13 +2555,11 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
     def item_inside_owner_interval(
         item: Mapping[str, Any], owner: Mapping[str, Any], reset: Mapping[str, Any] | None
     ) -> bool:
-        if owner.get("alias") in {
-            "EXACT_SOURCE_RESULT_ROW",
-            "EXACT_PRIMARY_STATEMENT_FAMILY_ROOT_SUBTREE",
-        }:
+        if owner.get("_surface_kind") in {"TABLE_EXACT_RESULT", "TABLE_TITLE"}:
             # With no explicit heading/reset fence, the exact result row owns
-            # only its source table. Absorbing every later MONEY table on the
-            # page would turn a usable source result into a layout-specific U.
+            # only its source table.  A table title is equally local: absorbing
+            # a preceding or following MONEY table would detach that table from
+            # its own source title and create a layout-dependent population.
             return item["position"] == owner["position"]
         return bool(
             owner["position"] <= item["position"]
@@ -2605,7 +2607,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         leading_items = []
         same_page_preceding = (
             []
-            if owner.get("alias") in exact_row_owner_aliases
+            if owner.get("_surface_kind") in {"TABLE_EXACT_RESULT", "TABLE_TITLE"}
             else [
                 item
                 for item in table_axis
@@ -2687,12 +2689,41 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
     require_exact_source_result = (
         compiled_specs["source_result_query_policy"] == "REQUIRED_EXACT_SOURCE_RESULT_ROW"
     )
+    select_exact_source_result_population = (
+        compiled_specs["source_result_query_policy"] == "OWNER_OR_EXACT_SOURCE_RESULT_ROW"
+    )
+
+    def source_result_population_carrier(item: Mapping[str, Any]) -> bool:
+        classification = item["classification"]
+        declared_root_roles = set(compiled_specs["root_component_roles"]).intersection(
+            _classification_roles(classification)
+        )
+        return bool(
+            classification.get("family_root_row_ordinals")
+            or (
+                classification.get("total_rows")
+                and len(declared_root_roles)
+                >= compiled_specs["evaluation"].get(
+                    "minimum_source_visible_root_component_count", 2
+                )
+            )
+        )
+
+    source_result_population_conflicts = []
     for interval in intervals:
-        family_items = [
+        eligible_family_items = [
             item
             for item in interval["items"]
             if item["classification"]["typed_control_disposition"] is None
         ]
+        source_result_items = [
+            item for item in eligible_family_items if source_result_population_carrier(item)
+        ]
+        if select_exact_source_result_population and len(source_result_items) > 1:
+            source_result_population_conflicts.append(interval)
+        family_items = (
+            source_result_items if select_exact_source_result_population else eligible_family_items
+        )
         roles = {
             role for item in family_items for role in _classification_roles(item["classification"])
         }
@@ -2719,6 +2750,8 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         require_exact_source_result and intervals and not exact_source_result_observed
     )
     reasons = []
+    if source_result_population_conflicts:
+        reasons.append("MULTIPLE_SOURCE_RESULT_POPULATIONS_INSIDE_OWNER_FENCE")
     if len(complete) > 1:
         reasons.append("MULTIPLE_COMPLETE_OWNER_CLUSTERS")
     selected = complete[0] if len(complete) == 1 else None
@@ -2738,7 +2771,22 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                         )
                     )
                 )
-    if intervals and selected is None and not reasons and not rootless_source_result_control:
+    source_result_population_not_observed = bool(
+        select_exact_source_result_population
+        and intervals
+        and not any(
+            source_result_population_carrier(item)
+            for interval in intervals
+            for item in interval["items"]
+        )
+    )
+    if (
+        intervals
+        and selected is None
+        and not reasons
+        and not rootless_source_result_control
+        and not source_result_population_not_observed
+    ):
         reasons.append("COMPLETE_OWNER_CLUSTER_NOT_RESOLVED")
 
     role_fallback_policy = compiled_specs["role_anchored_owner_fallback_policy"]
@@ -2829,6 +2877,13 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         elif classification["typed_control_disposition"] is not None:
             disposition = "EXCLUDED_TYPED_CONTROL"
         elif (
+            select_exact_source_result_population
+            and selected is not None
+            and not source_result_population_carrier(item)
+            and item_inside_owner_interval(item, selected["owner"], selected["reset"])
+        ):
+            disposition = "EXCLUDED_NON_SOURCE_RESULT_MONEY_TABLE_INSIDE_OWNER_FENCE"
+        elif (
             selected is None
             and rootless_source_result_control
             and any(
@@ -2880,6 +2935,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         if regions and not reasons
         else NOT_OBSERVED
         if rootless_source_result_control
+        or source_result_population_not_observed
         or role_anchored_population_not_observed
         or (not intervals and not reasons)
         else UNRESOLVED
@@ -2893,7 +2949,11 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
             None
             if selected is None
             else {
-                **selected["owner"],
+                **{
+                    key: value
+                    for key, value in selected["owner"].items()
+                    if not key.startswith("_")
+                },
                 "leading_component_positions": [
                     item["position"] for item in selected["leading_items"]
                 ],
@@ -7856,6 +7916,19 @@ def _extract_table_local_records(
         "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER"
     ):
         receipt["unsealed_duplicate_roles"] = unsealed_duplicate_roles
+    unconsumed_source_result_total_rows = (
+        sorted(
+            item["row_ordinal"]
+            for item in classification["total_rows"]
+            if not scope_to_explicit_family_root
+            or row_inside_explicit_family_root(item["row_ordinal"])
+            if item["row_ordinal"] not in consumed_ordinals
+        )
+        if compiled_specs["source_result_query_policy"] == "OWNER_OR_EXACT_SOURCE_RESULT_ROW"
+        else []
+    )
+    if compiled_specs["source_result_query_policy"] == "OWNER_OR_EXACT_SOURCE_RESULT_ROW":
+        receipt["unconsumed_source_result_total_rows"] = unconsumed_source_result_total_rows
     if optional_component_veto_source_result and len(family_root_ordinals) > 1:
         unconsumed_reason = "EXACT_SOURCE_RESULT_ROW_NOT_UNIQUE"
     elif classification["ambiguous_rows"]:
@@ -7872,6 +7945,8 @@ def _extract_table_local_records(
         unconsumed_reason = "UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW"
     elif unsealed_duplicate_roles:
         unconsumed_reason = "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED"
+    elif unconsumed_source_result_total_rows:
+        unconsumed_reason = "SOURCE_RESULT_TOTAL_NOT_PROVEN_BY_EXACT_EQUATION"
     elif unresolved_context_residual_rows:
         unconsumed_reason = "CONTEXT_RESIDUAL_SOURCE_ROW_NOT_PROVEN_BY_EXACT_CONTEXT_TOTAL"
     elif unmapped_direct_family_rows:
