@@ -1093,14 +1093,55 @@ Artifact OFFICIAL:
   events, `quick_check` và foreign keys sạch, không SQLite sidecar, SHA-256
   `4b42170b8bd308c122fed7d32d6b5c6955eea93ee3eb9653de66c57bbdca460e`.
 
+## Family 46 closure
+
+- Family 46 `CONTINGENT_LIABILITIES_AND_COMMITMENTS`: `READY=83`,
+  `NOT_OBSERVED=57`, `UNRESOLVED=0` và 769 mappings. Generic multi-table
+  hierarchical resolver inventory owner/reset fence và toàn bộ MONEY table,
+  khóa hai period lane, unit, hierarchy, source totals và complete direct
+  frontiers. Prompt Gemini vẫn là contract tối giản, cố định; không chứa graph,
+  equation, schema, bank/file/page hay đáp án Family 46.
+
+  Các presentation khác nhau được giải bằng primitive khai báo chung: bảng
+  gộp–ký quỹ–thuần chỉ map cột thuần sau khi từng hàng đóng `gross - deduction
+  = net`; hai carrier cùng tên cộng signed adjustment chỉ được nhận theo một
+  contiguous source frontier duy nhất; parent/detail trùng vai trò được shadow
+  chỉ khi một exact source equation chứng minh quan hệ. Nhóm structural không
+  có số có thể đóng vào subtotal không nhãn, rồi nhiều subtotal độc lập đóng
+  vào terminal family total. Duplicate subtotal, positive/duplicate adjustment,
+  unbound row, thiếu required role, hai complete populations hoặc equation lệch
+  đều fail closed với `mappings=[]`.
+
+  Bảng MBB có owner và complete declared population nhưng không in family total
+  vẫn READY cho các child và tuyệt đối không sinh root mapping. Ngược lại CTG
+  và BID có nhiều subtotal chỉ map RNID 1294 từ terminal printed total đã được
+  exact equation chứng minh, không lấy nhầm subtotal đầu. Exact query quét đủ
+  8.947 selected page versions, tạo 83 accepted clusters/fragments và 57 typed
+  absence dispositions. Có 557 exact equation receipts; E-0098/E-0153 khớp đủ
+  16/16 historical dispositions và 105/105 mapping records. Public SQLite
+  query/candidate replay dựng lại candidate từ canonical JSON và loại coherent
+  source/spec/audit drift.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family46-contingent-liabilities-and-commitments/sweep.json`,
+  SHA-256
+  `06793e4b4e3294ce69b59c6c695431015629407989fb11fccd4013a60abf0261`;
+  audit SHA-256
+  `4a76023101f3273730f64b303a3efa6b136a2e7624b64e49b80ae62fb3b7f805`.
+  Implementation commit `1375e0c`; 205 focused/adjacent/store/runner tests,
+  Ruff, format, compile, JSON, diff, byte-identical EXP replay, OFFICIAL reload
+  và SQLite integrity đều xanh. Cumulative results DB có 46 current selections
+  và 46 selection events, `quick_check`/foreign keys sạch, không SQLite sidecar,
+  SHA-256
+  `c9942d100db56c0a85624c8389980fc1c1712db4703fa457d7b1b8f5cd6055dc`.
+
 ## Next gate
 
-Family 46 là `CONTINGENT_LIABILITIES_AND_COMMITMENTS`, khóa comparator
-E-0098/E-0153 và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán phải
-tự inventory owner, optional intermediate groups, two-period/unit axes,
-missing printed family total, gross-minus-margin-to-net presentations và
-bounded continuation. Source-only granular L/C, guarantee, swap, margin-control
-và `Trong đó` rows không được cộng lặp hoặc ép vào leaf không tương ứng. Không
-route theo bank/file/page và chỉ promote OFFICIAL sau exhaustive 8.947-page
-inventory, public SQLite query/candidate replay, historical comparator và đủ
-140 dispositions.
+Family 47 là `FINANCIAL_INSTRUMENTS`, khóa comparator E-0099/E-0154 và tiếp
+tục dùng prompt Gemini tối giản, cố định. Thuật toán phải tự inventory bảng giá
+trị ghi sổ/giá trị hợp lý, asset/liability branches, continuation, unit và
+period axes; dấu `(*)` không công bố fair value phải giữ typed unavailable chứ
+không đổi thành zero hoặc sao chép carrying value. Không route theo
+bank/file/page và chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
+public SQLite query/candidate replay, historical comparator và đủ 140
+dispositions.
