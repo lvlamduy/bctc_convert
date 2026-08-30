@@ -1412,6 +1412,28 @@ Kết quả annual-2025:
 
 ## 52. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo
 
+### Gemini JSON-first current corpus — Family 51 OFFICIAL
+
+- **Kết quả:** 140 tài liệu, `READY=98`, `NOT_OBSERVED=42`,
+  `UNRESOLVED=0`; 976 mappings, 1.756 mapped values, 98 accepted clusters.
+- **Thuật toán:** generic categorical-period matrix tự inventory owner/reset
+  fence, toàn bộ currency rows, hai period columns và VND denominator; tự
+  chuẩn hóa decimal rate và giữ 323 source-only rows/646 cells khi schema
+  5935–5945 chưa có leaf tương ứng. Không có bank/file/page routing.
+- **Prompt/provider:** không gọi Gemini/API và không thay prompt. Graph,
+  period, denominator, normalization và mapping đều xử lý local.
+- **Replay:** public SQLite query/candidate replay exact trên 8.947 selected
+  page versions; comparator E-0104/E-0158 không có true mismatch. Legacy VIB
+  gán XAU vào USD được source hiện hành chứng minh là superseded, không bị tái
+  tạo.
+- **Authority:** OFFICIAL sweep SHA-256
+  `94875c3422cdd72ea0a8af5c2ffe36b90b16c163a95250abfdaa9a03474f5e76`,
+  audit SHA-256
+  `75029333e487b9cf1fad512aa5ca6486b63058e1605fa42a20a6fc6624faed97`,
+  run
+  `gjfafstorev1:run:56e3e661989b5d36f724003dd0241e7da5229a6af76ffef93284a81eec12d6de`,
+  implementation commit `3473741`.
+
 ### Annual-2025 — E-0158
 
 - **Đã map/xác minh:** MBB p103 map 10 đồng tiền; VPB p98 map 10; HDB p69

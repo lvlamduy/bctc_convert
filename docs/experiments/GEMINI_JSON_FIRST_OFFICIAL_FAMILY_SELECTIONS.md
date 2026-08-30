@@ -70,9 +70,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 48 | `CURRENCY_RISK` | 140 | 0 | 0 | 3.632 | `gjfafstorev1:run:58e6138c7064e5df016116e5a2849f9197183499454defda4c1d18d13b5ecd5f` |
 | 49 | `INTEREST_RATE_RISK` | 139 | 1 | 0 | 6.879 | `gjfafstorev1:run:023adeb792a95dfc112a1ce60bba346d7241f50f8bf135b12e97caeb28228529` |
 | 50 | `LIQUIDITY_RISK` | 138 | 2 | 0 | 4.482 | `gjfafstorev1:run:a0a8867ca78e6ebea42b8ce0d3d232d673a49ba1ee0972e44168faa44ed879cc` |
+| 51 | `EXCHANGE_RATE` | 98 | 42 | 0 | 976 | `gjfafstorev1:run:56e3e661989b5d36f724003dd0241e7da5229a6af76ffef93284a81eec12d6de` |
 
-Tại checkpoint này database có đủ đúng năm mươi current selection liên tục từ
-Family 1 đến Family 50. Family 51 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng năm mươi mốt current selection liên tục
+từ Family 1 đến Family 51. Family 52 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -1290,12 +1291,56 @@ Artifact OFFICIAL:
   `quick_check`/foreign keys sạch, không SQLite sidecar, SHA-256
   `6443a169a846640a9149f0cf07b8f1894efd2e8459aa218310da7751dcfa2b4a`.
 
+## Family 51 closure
+
+- Family 51 `EXCHANGE_RATE`: `READY=98`, `NOT_OBSERVED=42`,
+  `UNRESOLVED=0`, 976 mappings gồm 98 structural roots và 878 currency rows;
+  1.756 mapped rate values trên 98 accepted clusters. Toàn bộ 140 tài liệu có
+  terminal disposition và mọi unresolved trial có `mappings=[]`.
+
+  Generic categorical-period matrix resolver tự inventory owner/reset fence,
+  mapped và source-only currency populations, hai period columns, reporting
+  currency/denominator và decimal-rate semantics. Schema root 5935 có mười
+  child USD/EUR/GBP/JPY/CHF/AUD/CAD/SGD/THB/SEK. 323 source-only rows
+  CNY/DKK/HKD/KRW/LAK/MYR/NOK/NZD/RCN/SAR/SJC/XAU được giữ đầy đủ cùng 646
+  source cells và không bị gộp vào một leaf khác. Source-only row có số rate
+  không hợp lệ chỉ chặn chính row đó; mapped schema population vẫn phải exhaustive
+  và chính xác.
+
+  Period resolver nhận ngày nguồn đầy đủ hoặc typed relative year-end labels;
+  date conflict, nonstandard implied prior date, duplicate currency, unknown
+  mapped row, denominator conflict và source/candidate coherent drift đều fail
+  closed. Tỷ giá được chuẩn hóa local về phần trăm đơn vị nhỏ nhất; Gemini không
+  nhận graph, equation, schema, ReportNormId, bank/file/page rule hoặc đáp án,
+  và run này không gọi API/provider hay thay prompt.
+
+  Public SQLite query/candidate replay dựng lại đúng 8.947 selected page
+  versions. E-0104/E-0158 đối chiếu 100 historical mappings và 34 source-only
+  rows; không có true mismatch. Một legacy VIB assignment gán XAU vào USD được
+  canonical source chứng minh là superseded: USD là
+  `26.288,50/25.375,50`, còn XAU là `500,00/500,00`; thuật toán không tái tạo
+  sai lệch lịch sử đó.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family51-exchange-rate/sweep.json`,
+  SHA-256
+  `94875c3422cdd72ea0a8af5c2ffe36b90b16c163a95250abfdaa9a03474f5e76`;
+  audit SHA-256
+  `75029333e487b9cf1fad512aa5ca6486b63058e1605fa42a20a6fc6624faed97`,
+  audit ID
+  `gjxerav1:audit:7a96147f3ccb41c0f4755414b3f525c936d7b0069d2d026c56753b1b4cfbb7b5`.
+  Implementation commit `3473741`; focused/adversarial/adjacent tests, Ruff,
+  format, diff, exact SQLite replay và coherent-tamper rejection đều xanh.
+  Cumulative results DB có 51 current selections và 51 selection events,
+  `quick_check`/foreign keys sạch, không SQLite sidecar, SHA-256
+  `61098dee4fe1d62b5439f443f9594857e3ff12b4ab1fcfe791aa1d0df67497bb`.
+
 ## Next gate
 
-Family 51 là `EXCHANGE_RATE`, schema root 5935, khóa comparator E-0104/E-0158
-và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán local phải tự
-inventory owner/table/currency-row population, hai period columns, unit/rate
-semantics, duplicate/conflicting currencies và mọi source-only currency/vàng
-không có leaf schema. Không route theo bank/file/page và chỉ promote OFFICIAL
-sau exhaustive 8.947-page inventory, public SQLite query/candidate replay,
-historical comparator và đủ 140 dispositions.
+Family 52 là `INTERBANK_FUNDING`, family nguồn vốn 1040–1052 và comparator
+E-0105/E-0159. Thuật toán local phải tự inventory đúng owner/root, tiền gửi
+không kỳ hạn/có kỳ hạn, tổng tiền gửi, các khoản vay, tổng vay, period/unit,
+source-only child/subtotal và exhaustive direct frontiers; không được lẫn với
+family tài sản 575, route theo bank/file/page hoặc sửa source digit bằng phương
+trình. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
+query/candidate replay, historical comparator và đủ 140 dispositions.

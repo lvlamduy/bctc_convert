@@ -3434,6 +3434,35 @@ No Gemini/API call or prompt change was used. Row normalization, monotone exact
 coverage, graph/equation closure and partial-safe mapping are all local
 algorithm responsibilities.
 
+## Family 51 current corpus — exchange rate (`EXCHANGE_RATE`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family51-exchange-rate/sweep.json`
+
+- Census: 140 documents, `READY=98`, `NOT_OBSERVED=42`, `UNRESOLVED=0`,
+  976 mappings and 1.756 mapped values. Family51 adds no terminal unresolved
+  mapping entry.
+- The 98 accepted clusters contain 1.201 currency rows. Of those, 323 rows
+  and 646 cells are retained as explicit source-only evidence because the
+  schema root 5935 has no exact leaf for their currencies or gold. They are
+  not silently dropped, mapped to `OTHER`, or treated as terminal U merely
+  because the target schema is narrower than the source table.
+- Source-only inventory includes CNY, DKK, HKD, KRW, LAK, MYR, NOK, NZD, RCN,
+  SAR, SJC and XAU. Every row keeps its exact source label, cells, period axis
+  and denominator receipt. A later schema extension can replay this inventory
+  without rerunning Gemini.
+- E-0104/E-0158 comparator gaps are retained as superseded historical evidence.
+  In particular, the legacy VIB assignment of visible XAU `500,00/500,00` to
+  USD is not reproduced: canonical source binds USD to
+  `26.288,50/25.375,50` and keeps XAU source-only.
+
+No Gemini/API call or prompt change was used. Currency aliases, decimal
+normalization, relative-period binding, denominator proof, source-only
+retention and candidate replay are all deterministic local algorithm work.
+Duplicate/conflicting currencies, unknown mapped rows, ambiguous period or
+denominator evidence and coherent source-receipt drift remain authoritative
+fail-closed regressions.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
