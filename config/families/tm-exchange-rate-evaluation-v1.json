@@ -1,0 +1,32 @@
+{
+  "blank_zero_policy": "NO_BLANK_OR_DERIVED_RATE_VALUES",
+  "closure_policy": "EXHAUSTIVE_CATEGORY_ROWS_EXACT_TWO_PERIOD_VALUE_COVERAGE",
+  "family_id": "EXCHANGE_RATE",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["CATEGORY_ROWS_PERIOD_COLUMNS"],
+    "accepted_value_kinds": ["MONEY", "COUNT", "UNKNOWN"],
+    "canonical_rate_unit": "VND_HUNDREDTHS_PER_FOREIGN_CURRENCY_UNIT",
+    "comparative_period_aliases": ["Số đầu kỳ", "Số đầu năm"],
+    "current_period_aliases": ["Số cuối kỳ", "Số cuối năm"],
+    "incidental_amount_scale_aliases": ["Triệu đồng", "Triệu VND", "Nghìn đồng", "Nghìn VND", "Tỷ đồng", "Tỷ VND"],
+    "matrix_kind": "CATEGORICAL_PERIOD_MATRIX",
+    "max_continuation_pages": 0,
+    "minimum_mapped_category_roles": 3,
+    "numeric_scale_power10": 2,
+    "source_only_category_aliases": {
+      "SOURCE_CNY": ["CNY", "Nhân dân tệ", "Chinese Yuan"],
+      "SOURCE_DKK": ["DKK", "Krone Đan Mạch", "Danish Krone"],
+      "SOURCE_HKD": ["HKD", "Đô la Hồng Kông", "Hong Kong Dollar"],
+      "SOURCE_KRW": ["KRW", "Won Hàn Quốc", "Korean Won"],
+      "SOURCE_LAK": ["LAK", "Kip Lào", "Lao Kip"],
+      "SOURCE_MYR": ["MYR", "Ringgit Malaysia", "Malaysian Ringgit"],
+      "SOURCE_NOK": ["NOK", "Krone Na Uy", "Norwegian Krone"],
+      "SOURCE_NZD": ["NZD", "Đô la New Zealand", "New Zealand Dollar"],
+      "SOURCE_RCN": ["RCN"],
+      "SOURCE_SAR": ["SAR", "Saudi Riyal"],
+      "SOURCE_SJC": ["SJC"],
+      "SOURCE_XAU": ["XAU", "Vàng"]
+    }
+  }
+}

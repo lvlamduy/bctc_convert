@@ -1,0 +1,41 @@
+{
+  "children": [
+    {"matchers": [{"aliases": ["USD", "Đô la Mỹ", "US Dollar"], "within_role": null}], "presence": "OPTIONAL", "role": "USD", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["EUR", "Euro"], "within_role": null}], "presence": "OPTIONAL", "role": "EUR", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["GBP", "Bảng Anh", "Pound Sterling", "British Pound"], "within_role": null}], "presence": "OPTIONAL", "role": "GBP", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["JPY", "Yên Nhật", "Japanese Yen"], "within_role": null}], "presence": "OPTIONAL", "role": "JPY", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["CHF", "Franc Thụy Sĩ", "Swiss Franc"], "within_role": null}], "presence": "OPTIONAL", "role": "CHF", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["AUD", "Đô la Úc", "Australian Dollar"], "within_role": null}], "presence": "OPTIONAL", "role": "AUD", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["CAD", "Đô la Canada", "Canadian Dollar"], "within_role": null}], "presence": "OPTIONAL", "role": "CAD", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["SGD", "Đô la Singapore", "Singapore Dollar"], "within_role": null}], "presence": "OPTIONAL", "role": "SGD", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["THB", "Baht Thái", "Thai Baht"], "within_role": null}], "presence": "OPTIONAL", "role": "THB", "role_kind": "ADDITIVE_CHILD"},
+    {"matchers": [{"aliases": ["SEK", "Krona Thụy Điển", "Swedish Krona"], "within_role": null}], "presence": "OPTIONAL", "role": "SEK", "role_kind": "ADDITIVE_CHILD"}
+  ],
+  "family_id": "EXCHANGE_RATE",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Độ nhạy đối với tỷ giá",
+    "Mức tăng tỷ giá",
+    "Rủi ro tiền tệ",
+    "Rủi ro lãi suất"
+  ],
+  "limits": {"max_cluster_span_lines": 80, "max_continuation_pages": 1, "max_label_line_span": 3},
+  "parent": {
+    "aliases": [
+      "Tỷ giá một số loại ngoại tệ",
+      "Tỷ giá của một số loại ngoại tệ",
+      "Tỷ giá một số ngoại tệ",
+      "Exchange rates of selected foreign currencies"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "EXCHANGE_RATE"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["USD", "EUR", "GBP"]],
+  "structural_reset_aliases": [
+    "Độ nhạy đối với tỷ giá",
+    "Rủi ro tiền tệ",
+    "Rủi ro lãi suất",
+    "Rủi ro thanh khoản"
+  ]
+}

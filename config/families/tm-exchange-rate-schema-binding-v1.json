@@ -1,0 +1,17 @@
+{
+  "category_role_bindings": [
+    {"report_norm_id": 5936, "role": "USD"},
+    {"report_norm_id": 5937, "role": "EUR"},
+    {"report_norm_id": 5938, "role": "GBP"},
+    {"report_norm_id": 5939, "role": "JPY"},
+    {"report_norm_id": 5940, "role": "CHF"},
+    {"report_norm_id": 5941, "role": "AUD"},
+    {"report_norm_id": 5942, "role": "CAD"},
+    {"report_norm_id": 5943, "role": "SGD"},
+    {"report_norm_id": 5944, "role": "THB"},
+    {"report_norm_id": 5945, "role": "SEK"}
+  ],
+  "family_id": "EXCHANGE_RATE",
+  "family_root_report_norm_id": 5935,
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1"
+}
