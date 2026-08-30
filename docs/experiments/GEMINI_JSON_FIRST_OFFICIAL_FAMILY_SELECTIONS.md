@@ -62,9 +62,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 40 | `CASH_EQUIVALENTS` | 105 | 35 | 0 | 548 | `gjfafstorev1:run:b46dbf68ed1e3d57bf8f041e408e4aa74f09139931e1942148bc387befb03b6d` |
 | 41 | `SUBSIDIARY_ACQUISITION_DISPOSAL` | 0 | 140 | 0 | 0 | `gjfafstorev1:run:e07acd6ce0416c2af8ddcf5df43f3eff2729cc62441b1ab30e9a45063d75af91` |
 | 42 | `EMPLOYEE_INCOME` | 60 | 74 | 6 | 300 | `gjfafstorev1:run:f8840be909af03992b2ca3e4cb84b119d1765eeb35ce5046ecf395a2bc466ee0` |
+| 43 | `STATE_BUDGET_OBLIGATIONS` | 130 | 10 | 0 | 590 | `gjfafstorev1:run:7020a723348693036d463962f49a818ae142160d4b33e640e27c312ae226f7f1` |
 
-Tại checkpoint này database có đủ đúng bốn mươi hai current selection liên tục
-từ Family 1 đến Family 42. Family 43 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi ba current selection liên tục
+từ Family 1 đến Family 43. Family 44 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -980,14 +981,50 @@ Artifact OFFICIAL:
   DB có 42 current selections, `quick_check` và foreign keys sạch, không SQLite
   sidecar, SHA-256
   `a049a0b8dfb6e4540769c0656691e821664a7fbc1ff599cc0e029e9aa32558c3`.
+- Family 43 `STATE_BUDGET_OBLIGATIONS`: `READY=130`, `NOT_OBSERVED=10`,
+  `UNRESOLVED=0` và 590 mappings. Generic equity-matrix resolver inventory
+  toàn bộ bảng nghĩa vụ ngân sách dưới đúng owner/reset fence, tự xử lý
+  component rows, hierarchy `Trong đó`, nhánh phải thu/phải trả có dấu,
+  opening/increase/decrease/closing và decomposition nguồn. Root và mọi
+  component chỉ được phát sau khi horizontal totals cùng vertical
+  roll-forward đóng chính xác; prompt Gemini không đổi và không nhận graph,
+  phương trình, schema hay đáp án Family 43.
+
+  Hai lỗi nguồn cục bộ được sửa bằng cùng repair contract tối giản
+  `{observations:[{cell_id,source_text}]}`: ACB bổ sung đúng một ô số nhìn thấy;
+  HDB bổ sung một số và bốn dash nhìn thấy. Repair tạo effective frontier
+  `37413ca1...`; mọi policy, collateral, equation và mapping vẫn do code cục bộ
+  xác minh. Không có prompt riêng theo bank/file/page và không dùng Gemini để
+  tính hay chọn ReportNormId.
+
+  Exact query census là 130 accepted clusters/131 fragments và 10 typed
+  absence dispositions trên đủ 8.947 selected page versions. Có 1.446 exact
+  equation receipts. E-0095/E-0150 khớp 68/68 historical mappings; một
+  source-only historical row cũng khớp và không còn unresolved comparator.
+  Public SQLite replay tái dựng indexed evidence, repaired-page lineage và
+  toàn bộ candidates từ canonical/effective page JSON; coherent receipt và
+  effective-frontier tamper đều bị loại.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family43-state-budget-obligations/sweep.json`,
+  SHA-256
+  `af602f46ad6aaf6de72b38a34714d6f3b930ea2984c50d96fdb030ebb627fd13`;
+  audit SHA-256
+  `46386a0503931bcb44e470050ad9d4967dbd82aecafd1f49976bc2f4d4e66894`.
+  Implementation commit `46c03d8`; 167 focused/adjacent/regression tests,
+  Ruff, format, compile, JSON, diff, EXP/OFFICIAL replay và SQLite integrity
+  đều xanh. Cumulative results DB có 43 current selections, `quick_check` và
+  foreign keys sạch, không SQLite sidecar, SHA-256
+  `f8561036431a5c7117e1e6a050496e9dad23a4098bffa84e8f09dd8c77da6f38`.
 
 ## Next gate
 
-Family 43 là `STATE_BUDGET_OBLIGATIONS`. Khóa comparator E-0095/E-0150 và tiếp
-tục dùng prompt Gemini tối giản, cố định. Code phải tự inventory bảng cuốn chiếu
-nghĩa vụ ngân sách, period/unit/lane, các nhánh phải nộp và ứng trước, rồi dựng
-graph có dấu và phương trình opening + incurred - paid = closing. Không route
-theo bank/file/page, không ép Gemini tính số thuần hay sinh schema
-family-specific, không biến policy/isolated tax expense thành bảng nghĩa vụ.
-Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
-query/candidate replay, historical comparator và đủ 140 dispositions.
+Family 44 là `CUSTOMER_COLLATERAL_HELD`. Khóa comparator E-0096/E-0151 và tiếp
+tục dùng prompt Gemini tối giản, cố định. Code phải tự inventory đúng vùng
+customer-scoped, hai period lane, unit, family total và toàn bộ child frontier;
+phân biệt tài sản khách hàng với tài sản chính ngân hàng/TCTD khác, tự gộp các
+source row tương thích vào `OTHER_COLLATERAL` đúng một lần và chứng minh tổng
+trên cả hai kỳ. Không route theo bank/file/page, không ép Gemini chọn role hoặc
+serialization family-specific. Chỉ promote OFFICIAL sau exhaustive 8.947-page
+inventory, public SQLite query/candidate replay, historical comparator và đủ
+140 dispositions.
