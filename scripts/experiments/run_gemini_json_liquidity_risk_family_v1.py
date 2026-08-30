@@ -79,12 +79,12 @@ PINNED_RELEASE_METRICS = {
 }
 PINNED_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "5dfa0b22f4369e9f42ba498ef04dadf4885b601ed2628dd8da8c877bf1310b7d"
+        "a5459d53c210a1dd263d3cbf102648d225d63c3e87bd4233ff7fb3a54279293f"
     ),
     "accepted_cluster_count": 138,
     "accepted_fragment_count": 172,
     "candidate_disposition_axis_sha256": (
-        "88d6d2b590f017eb0ce09ea5e3d1fce58d8deeec2d0f3d5e24bb3e60fdd8be2b"
+        "047d850762a6dcb0a9a0633b3123fb76b5565f1bf32c068158ec2c080ff7b0e3"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {
@@ -142,7 +142,7 @@ PINNED_AXIS_COUNTS = {
     "unresolved_documents": 2,
 }
 PINNED_AXIS_SHA256 = {
-    "clusters": "5dfa0b22f4369e9f42ba498ef04dadf4885b601ed2628dd8da8c877bf1310b7d",
+    "clusters": "a5459d53c210a1dd263d3cbf102648d225d63c3e87bd4233ff7fb3a54279293f",
     "equations": "0d898effebcdbcf7bf0a3e409adb50f59ddc17eaf3819ce7e25420ee70ad8dac",
     "historical_documents": "c519d9ed3b6ed7d840c9b19c90a594b0ac9d205c610e9c3298eb9cf7182d626c",
     "historical_equations": "7f1a77dab50e88c28fabdd8be398a4461e749be06c0413890ba0cea511987591",
@@ -151,9 +151,9 @@ PINNED_AXIS_SHA256 = {
     "mappings": "e2fd2fb5ef4582f56f423c97d62513726df3ca690ff946e396db0b07b79730e4",
     "nonclosing_frontiers": "453edcbca8881552395e8e9bee0bcdb79b370d4f78d0e6a2383876311cd9b06e",
     "period_assignments": "6f624b4fe5fbf627aec40f21766b6017f70cb49fc05ffa12252eca9a298f6b3a",
-    "row_alignment_receipts": "bddb70dae2c95701fba9e4dd37be0f1f75fc24804deda0860f62db91117bb47b",
+    "row_alignment_receipts": "ad39f5f5cd7b1f4f6508d9b9ed9fb0abeec0488de88d2871f06d2162a7e87024",
     "source_only_columns": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
-    "table_receipts": "84d78593ec22b0fa76acf58f9c41e17e0bd2d5007204502a61779dc01eb1a8d0",
+    "table_receipts": "c18663b09f3d5608211e190bc15d1a81eff2d500d9be9d5767d6267133fcb1e0",
     "unit_receipts": "ddabbf0cebe0827dbf64d65757cad2ad14a47530452586018fa46cedfd973596",
     "unresolved_documents": "cc75330f557ad658f73f65faff0677e6fa37bac091af0b77fe3dfd15c6606a9a",
 }

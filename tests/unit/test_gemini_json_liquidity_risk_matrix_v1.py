@@ -275,6 +275,31 @@ def test_unique_missing_leading_blank_projects_one_core_row_without_gemini_retry
     assert first_liability["values"][0]["state"] == ("BLANK_ZERO_AFTER_ONE_UNKNOWN_EQUATION_EXACT")
 
 
+def test_unique_row_projection_survives_one_independent_source_residual() -> None:
+    table = _table()
+    table["rows"][0]["values_exact"] = ["10", *(["100"] * 8)]
+    table["rows"][1]["values_exact"] = [*(["40"] * 8), None]
+    table["rows"][2]["values_exact"] = ["10", "60", "60", "61", *(["60"] * 5)]
+    _compiled_specs, _cluster, candidate = _evaluate([_record(_page(table))])
+    assert candidate["status"] == READY
+    alignment = candidate["closure_receipt"]["table_receipts"][0]["classification"][
+        "liquidity_row_alignment_receipt"
+    ]
+    assert alignment["status"] == "UNIQUE_BOUNDARY_BLANK_OFFSET_EXACT"
+    liability = next(
+        item for item in alignment["effective_rows"] if item["role"] == "LIABILITY_TOTAL"
+    )
+    assert (liability["source_offset"], liability["source_span_column_ids"]) == (
+        1,
+        ["c1", "c9"],
+    )
+    assert not any(item["role"].startswith("WITHIN_LE1M:") for item in candidate["mappings"])
+    assert [
+        (item["currency_role"], item["equation_status"])
+        for item in candidate["closure_receipt"]["nonclosing_currency_frontiers"]
+    ] == [("WITHIN_LE1M", "MISMATCH")]
+
+
 def test_alignment_validator_rebuilds_the_exhaustive_minimum_span_frontier() -> None:
     table = _table()
     table["rows"][0]["values_exact"] = ["10", *(["100"] * 8)]

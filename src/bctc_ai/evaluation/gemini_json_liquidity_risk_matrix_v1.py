@@ -133,30 +133,40 @@ def _aligned_equations_exact_v1(
     return True
 
 
+def _exact_equation_column_indices_v1(
+    *, values_by_role: Mapping[str, list[Any]], mapped_column_indices: list[int]
+) -> set[int]:
+    return {
+        column_index
+        for column_index in mapped_column_indices
+        if _aligned_equations_exact_v1(
+            values_by_role=values_by_role,
+            mapped_column_indices=[column_index],
+        )
+    }
+
+
 def _alignment_candidate_projections_v1(
     *, raw_values_by_role: Mapping[str, list[Any]], mapped_column_indices: list[int]
 ) -> list[dict[str, dict[str, Any]]]:
     """Enumerate the unique minimum-span projections from the raw source axis."""
 
-    if not _aligned_equations_exact_v1(
-        values_by_role=raw_values_by_role,
-        mapped_column_indices=mapped_column_indices,
+    if (
+        set(raw_values_by_role) != set(_CORE_ROW_ROLE_AXIS)
+        or not mapped_column_indices
+        or len({len(axis) for axis in raw_values_by_role.values()}) != 1
     ):
-        if (
-            set(raw_values_by_role) != set(_CORE_ROW_ROLE_AXIS)
-            or not mapped_column_indices
-            or len({len(axis) for axis in raw_values_by_role.values()}) != 1
-        ):
-            return []
+        return []
     identity = {
         role: {"source_offset": 0, "source_span_column_ids": None} for role in _CORE_ROW_ROLE_AXIS
     }
-    if _aligned_equations_exact_v1(
+    raw_exact_columns = _exact_equation_column_indices_v1(
         values_by_role=raw_values_by_role,
         mapped_column_indices=mapped_column_indices,
-    ):
+    )
+    if raw_exact_columns == set(mapped_column_indices):
         return [identity]
-    candidate_projections: list[dict[str, dict[str, Any]]] = []
+    candidate_projections: list[tuple[dict[str, dict[str, Any]], set[int]]] = []
     column_count = len(next(iter(raw_values_by_role.values())))
     for shifted_role in _CORE_ROW_ROLE_AXIS:
         for start in range(column_count - 1):
@@ -168,18 +178,27 @@ def _alignment_candidate_projections_v1(
                         continue
                     projected = canonical_clone_v1(raw_values_by_role)
                     projected[shifted_role] = values
-                    if _aligned_equations_exact_v1(
+                    projected_exact_columns = _exact_equation_column_indices_v1(
                         values_by_role=projected,
                         mapped_column_indices=mapped_column_indices,
-                    ):
+                    )
+                    if raw_exact_columns < projected_exact_columns:
                         candidate = canonical_clone_v1(identity)
                         candidate[shifted_role] = {
                             "source_offset": offset,
                             "source_span_column_ids": span,
                         }
-                        candidate_projections.append(candidate)
+                        candidate_projections.append((candidate, projected_exact_columns))
     if not candidate_projections:
         return []
+    maximum_exact_coverage = max(
+        len(exact_columns) for _candidate, exact_columns in candidate_projections
+    )
+    candidate_projections = [
+        (candidate, exact_columns)
+        for candidate, exact_columns in candidate_projections
+        if len(exact_columns) == maximum_exact_coverage
+    ]
     minimum_affected_span = min(
         sum(
             0
@@ -189,11 +208,11 @@ def _alignment_candidate_projections_v1(
             + 1
             for projection in candidate.values()
         )
-        for candidate in candidate_projections
+        for candidate, _exact_columns in candidate_projections
     )
     return [
         candidate
-        for candidate in candidate_projections
+        for candidate, _exact_columns in candidate_projections
         if sum(
             0
             if projection["source_span_column_ids"] is None
@@ -280,7 +299,8 @@ def build_liquidity_row_alignment_receipt_v1(
         "raw_row_axis_sha256": canonical_json_sha256_v1(raw_axis),
         "rule": (
             "PRESERVE_VISIBLE_SEQUENCE_ONE_CORE_ROW_CONTIGUOUS_BOUNDARY_BLANK_SHIFT_"
-            "MINUS_ONE_OR_PLUS_ONE_UNIQUE_MINIMUM_AFFECTED_SPAN_ALL_MAPPED_"
+            "MINUS_ONE_OR_PLUS_ONE_PRESERVE_RAW_EXACT_COLUMNS_STRICTLY_INCREASE_"
+            "MAXIMUM_EXACT_COVERAGE_UNIQUE_MINIMUM_AFFECTED_SPAN_"
             "ASSET_MINUS_LIABILITY_EQUALS_NET"
         ),
         "status": status,
@@ -314,7 +334,8 @@ def validate_liquidity_row_alignment_receipt_v1(value: Any) -> dict[str, Any]:
         or value.get("rule")
         != (
             "PRESERVE_VISIBLE_SEQUENCE_ONE_CORE_ROW_CONTIGUOUS_BOUNDARY_BLANK_SHIFT_"
-            "MINUS_ONE_OR_PLUS_ONE_UNIQUE_MINIMUM_AFFECTED_SPAN_ALL_MAPPED_"
+            "MINUS_ONE_OR_PLUS_ONE_PRESERVE_RAW_EXACT_COLUMNS_STRICTLY_INCREASE_"
+            "MAXIMUM_EXACT_COVERAGE_UNIQUE_MINIMUM_AFFECTED_SPAN_"
             "ASSET_MINUS_LIABILITY_EQUALS_NET"
         )
         or type(value.get("candidate_offset_axes")) is not list
@@ -402,11 +423,6 @@ def validate_liquidity_row_alignment_receipt_v1(value: Any) -> dict[str, Any]:
             if projected is None:
                 raise _error("liquidity candidate alignment drops a visible value")
             projected_by_role[role] = projected
-        if not _aligned_equations_exact_v1(
-            values_by_role=projected_by_role,
-            mapped_column_indices=mapped_indices,
-        ):
-            raise _error("liquidity candidate alignment equations do not close")
     expected_candidate_axes = [
         [[role, projection[role]] for role in role_axis]
         for projection in _alignment_candidate_projections_v1(
@@ -454,7 +470,7 @@ def validate_liquidity_row_alignment_receipt_v1(value: Any) -> dict[str, Any]:
         {key: item for key, item in value.items() if key != "alignment_receipt_id"}
     ):
         raise _error("liquidity row alignment identity drifted")
-    if value["status"] != "NO_UNIQUE_EXACT_ALIGNMENT" and not _aligned_equations_exact_v1(
+    if value["status"] == "RAW_AXIS_EXACT" and not _aligned_equations_exact_v1(
         values_by_role=effective_by_role, mapped_column_indices=mapped_indices
     ):
         raise _error("liquidity aligned row equations do not close")
