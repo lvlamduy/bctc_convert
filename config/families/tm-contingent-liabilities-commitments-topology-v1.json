@@ -1,0 +1,221 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Nghĩa vụ tiềm ẩn", "Nghĩa vụ nợ tiềm ẩn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CONTINGENT_GROUP_SOURCE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Các cam kết đưa ra"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "COMMITMENT_GROUP_SOURCE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản bảo lãnh"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_GROUP_SOURCE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Bảo lãnh vay vốn", "Bảo lãnh vốn vay", "Cam kết bảo lãnh vay vốn"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_LOAN",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết trong nghiệp vụ L/C", "Cam kết trong nghiệp vụ LC", "Cam kết trong nghiệp vụ thư tín dụng", "Cam kết thanh toán", "Cam kết thanh toán LC"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "LETTER_OF_CREDIT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Bảo lãnh thanh toán", "Cam kết bảo lãnh thanh toán"], "within_role": "GUARANTEE_OTHER"},
+        {"aliases": ["Bảo lãnh thanh toán", "Cam kết bảo lãnh thanh toán"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_PAYMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Bảo lãnh thực hiện hợp đồng", "Cam kết bảo lãnh thực hiện hợp đồng"], "within_role": "GUARANTEE_OTHER"},
+        {"aliases": ["Bảo lãnh thực hiện hợp đồng", "Cam kết bảo lãnh thực hiện hợp đồng"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_PERFORMANCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Bảo lãnh dự thầu", "Cam kết bảo lãnh dự thầu"], "within_role": "GUARANTEE_OTHER"},
+        {"aliases": ["Bảo lãnh dự thầu", "Cam kết bảo lãnh dự thầu"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_BID",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Bảo lãnh khác", "Cam kết bảo lãnh khác", "Cam kết bảo lãnh khác (thanh toán, thực hiện hợp đồng, dự thầu, khác)"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_OTHER",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết giao dịch hối đoái", "Các cam kết giao dịch hối đoái"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FX_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết mua ngoại tệ"], "within_role": "FX_PARENT"},
+        {"aliases": ["Cam kết mua ngoại tệ"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "FX_BUY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết bán ngoại tệ"], "within_role": "FX_PARENT"},
+        {"aliases": ["Cam kết bán ngoại tệ"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "FX_SELL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết giao dịch hoán đổi", "Cam kết giao dịch hoán đổi tiền tệ", "Cam kết giao dịch hoán đổi ngoại tệ"], "within_role": "FX_PARENT"},
+        {"aliases": ["Cam kết giao dịch hoán đổi", "Cam kết giao dịch hoán đổi tiền tệ", "Cam kết giao dịch hoán đổi ngoại tệ"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "SWAP_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết mua giao dịch hoán đổi tiền tệ", "Cam kết mua giao dịch hoán đổi ngoại tệ", "Cam kết nhận - giao dịch hoán đổi ngoại tệ", "Cam kết nhận- giao dịch hoán đổi tiền tệ"], "within_role": "SWAP_PARENT"},
+        {"aliases": ["Cam kết mua giao dịch hoán đổi tiền tệ", "Cam kết mua giao dịch hoán đổi ngoại tệ", "Cam kết nhận - giao dịch hoán đổi ngoại tệ", "Cam kết nhận- giao dịch hoán đổi tiền tệ"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "SWAP_BUY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết bán giao dịch hoán đổi tiền tệ", "Cam kết bán giao dịch hoán đổi ngoại tệ", "Cam kết trả - giao dịch hoán đổi ngoại tệ", "Cam kết trả- giao dịch hoán đổi tiền tệ"], "within_role": "SWAP_PARENT"},
+        {"aliases": ["Cam kết bán giao dịch hoán đổi tiền tệ", "Cam kết bán giao dịch hoán đổi ngoại tệ", "Cam kết trả - giao dịch hoán đổi ngoại tệ", "Cam kết trả- giao dịch hoán đổi tiền tệ"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "SWAP_SELL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết mua bán giấy tờ có giá"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "VALUABLE_PAPER_COMMITMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết khác", "Các cam kết khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_COMMITMENTS",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết trong nghiệp vụ L/C trả ngay", "Thư tín dụng trả ngay"], "within_role": "LETTER_OF_CREDIT"}],
+      "presence": "OPTIONAL",
+      "role": "LC_SIGHT_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Cam kết trong nghiệp vụ L/C trả chậm", "Thư tín dụng trả chậm"], "within_role": "LETTER_OF_CREDIT"}],
+      "presence": "OPTIONAL",
+      "role": "LC_DEFERRED_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trừ: Tiền ký quỹ", "Tiền gửi ký quỹ"], "within_role": "LETTER_OF_CREDIT"}],
+      "presence": "OPTIONAL",
+      "role": "LC_MARGIN_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trừ: Tiền ký quỹ", "Tiền gửi ký quỹ"], "within_role": "GUARANTEE_OTHER"}],
+      "presence": "OPTIONAL",
+      "role": "GUARANTEE_MARGIN_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trừ: Tiền ký quỹ", "Tiền gửi ký quỹ"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FAMILY_MARGIN_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết hoán đổi lãi suất tiền tệ chéo - nhận"], "within_role": "OTHER_COMMITMENTS"},
+        {"aliases": ["Cam kết hoán đổi lãi suất tiền tệ chéo - nhận"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "CROSS_CURRENCY_SWAP_RECEIVE_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết hoán đổi lãi suất tiền tệ chéo - trả"], "within_role": "OTHER_COMMITMENTS"},
+        {"aliases": ["Cam kết hoán đổi lãi suất tiền tệ chéo - trả"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "CROSS_CURRENCY_SWAP_PAY_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Cam kết hoán đổi lãi suất một đồng tiền"], "within_role": "OTHER_COMMITMENTS"},
+        {"aliases": ["Cam kết hoán đổi lãi suất một đồng tiền"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "SINGLE_CURRENCY_SWAP_SOURCE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trong đó: hạn mức tín dụng chưa sử dụng có thể hủy ngang", "Hạn mức tín dụng chưa sử dụng có thể hủy ngang"], "within_role": "OTHER_COMMITMENTS"}],
+      "presence": "OPTIONAL",
+      "role": "CANCELLABLE_UNUSED_LIMIT_SOURCE",
+      "role_kind": "NONADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CONTINGENT_LIABILITIES_AND_COMMITMENTS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Các chỉ tiêu ngoài báo cáo tình hình tài chính",
+    "Các khoản cam kết và nợ tiềm ẩn theo loại tiền tệ",
+    "Phân tích các cam kết và nghĩa vụ nợ tiềm ẩn theo khu vực địa lý"
+  ],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",
+      "Nghĩa vụ nợ tiềm ẩn và các cam kết",
+      "Các hoạt động ngoại bảng khác mà TCTD phải chịu rủi ro đáng kể (trọng yếu)",
+      "Các hoạt động ngoại bảng mà Ngân hàng phải chịu rủi ro đáng kể",
+      "Các hoạt động ngoại bảng mà Ngân hàng và các công ty con phải chịu rủi ro đáng kể",
+      "Các cam kết ngoại bảng",
+      "Các cam kết ngoài báo cáo tình hình tài chính"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CONTINGENT_LIABILITIES_AND_COMMITMENTS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["LETTER_OF_CREDIT", "GUARANTEE_OTHER"]],
+  "structural_reset_aliases": [
+    "Các chỉ tiêu ngoài báo cáo tình hình tài chính",
+    "Các khoản cam kết và nợ tiềm ẩn theo loại tiền tệ",
+    "Phân tích các cam kết và nghĩa vụ nợ tiềm ẩn theo khu vực địa lý"
+  ]
+}

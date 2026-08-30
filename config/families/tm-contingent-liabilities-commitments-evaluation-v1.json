@@ -1,0 +1,104 @@
+{
+  "aggregate_duplicate_roles": [
+    "GUARANTEE_LOAN", "LETTER_OF_CREDIT", "GUARANTEE_PAYMENT", "GUARANTEE_PERFORMANCE",
+    "GUARANTEE_BID", "GUARANTEE_OTHER", "FX_PARENT", "FX_BUY", "FX_SELL", "SWAP_PARENT",
+    "SWAP_BUY", "SWAP_SELL", "VALUABLE_PAPER_COMMITMENT", "OTHER_COMMITMENTS"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "context_total_mapping_roles": ["LETTER_OF_CREDIT", "GUARANTEE_OTHER", "FX_PARENT", "SWAP_PARENT", "OTHER_COMMITMENTS"],
+  "corroboration_pairs": [],
+  "declared_result_role_policy": "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE",
+  "derived_role_equations": [],
+  "detail_context_roles": [],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "family_id": "CONTINGENT_LIABILITIES_AND_COMMITMENTS",
+  "family_root_population_policy": "WHOLE_TABLE",
+  "family_root_requirement": "OPTIONAL",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "mapped_source_subtotal_policy": "ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION",
+  "minimum_declared_detail_role_count": 2,
+  "minimum_source_visible_root_component_count": 2,
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "multi_metric_lane_equation": {
+    "component_terms": [{"metric": "GROSS", "sign": 1}, {"metric": "DEDUCTION", "sign": -1}],
+    "coverage_policy": "EVERY_VISIBLE_SOURCE_ROW_EXACT",
+    "metric_aliases": {
+      "DEDUCTION": ["Tiền gửi ký quỹ"],
+      "GROSS": ["Giá trị theo hợp đồng gộp"],
+      "NET": ["Giá trị theo hợp đồng thuần"]
+    },
+    "result_metric": "NET"
+  },
+  "owner_complete_population_policy": "EXACT_OWNER_WHOLE_MONEY_TABLE",
+  "owner_match_policy": "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX",
+  "owner_surface_kinds": ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "query_owner_aliases": [
+    "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",
+    "Nghĩa vụ nợ tiềm ẩn và các cam kết",
+    "Các hoạt động ngoại bảng khác mà TCTD phải chịu rủi ro đáng kể (trọng yếu)",
+    "Các hoạt động ngoại bảng mà Ngân hàng phải chịu rủi ro đáng kể",
+    "Các hoạt động ngoại bảng mà Ngân hàng và các công ty con phải chịu rủi ro đáng kể",
+    "Các cam kết ngoại bảng",
+    "Các cam kết ngoài báo cáo tình hình tài chính"
+  ],
+  "required_role_combination_mapping_policy": "REQUIRE_COMPLETE_COMBINATION_BEFORE_MAPPING",
+  "root_component_equation_policy": "DECLARED_DIRECT_SUM",
+  "root_component_roles": [
+    "CONTINGENT_GROUP_SOURCE", "COMMITMENT_GROUP_SOURCE", "GUARANTEE_GROUP_SOURCE",
+    "GUARANTEE_LOAN", "FX_PARENT", "LETTER_OF_CREDIT", "GUARANTEE_OTHER",
+    "VALUABLE_PAPER_COMMITMENT", "OTHER_COMMITMENTS", "FAMILY_MARGIN_SOURCE"
+  ],
+  "root_only_source_result_policy": "REQUIRE_MINIMUM_DECLARED_COMPONENTS",
+  "row_alias_prefix_roles": ["FX_BUY", "FX_SELL", "SWAP_BUY", "SWAP_SELL"],
+  "row_population_context_policy": "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES",
+  "role_unit_overrides": [],
+  "signed_context_frontier_equations": [
+    {
+      "allowed_component_roles": ["LETTER_OF_CREDIT", "LC_MARGIN_SOURCE", "FAMILY_MARGIN_SOURCE"],
+      "carrier_role": "LETTER_OF_CREDIT",
+      "policy": "FIRST_CARRIER_THEN_CONTIGUOUS_DECLARED_COMPONENTS_ENDING_IN_SIGNED_ADJUSTMENT",
+      "resolved_adjustment_role": "LC_MARGIN_SOURCE",
+      "source_adjustment_roles": ["LC_MARGIN_SOURCE", "FAMILY_MARGIN_SOURCE"]
+    },
+    {
+      "allowed_component_roles": [
+        "GUARANTEE_PAYMENT", "GUARANTEE_PERFORMANCE", "GUARANTEE_BID", "GUARANTEE_OTHER",
+        "GUARANTEE_MARGIN_SOURCE", "FAMILY_MARGIN_SOURCE"
+      ],
+      "carrier_role": "GUARANTEE_OTHER",
+      "policy": "FIRST_CARRIER_THEN_CONTIGUOUS_DECLARED_COMPONENTS_ENDING_IN_SIGNED_ADJUSTMENT",
+      "resolved_adjustment_role": "GUARANTEE_MARGIN_SOURCE",
+      "source_adjustment_roles": ["GUARANTEE_MARGIN_SOURCE", "FAMILY_MARGIN_SOURCE"]
+    }
+  ],
+  "source_reference_identity_policy": "EXACT_UNIQUE_SOURCE_IDENTITIES",
+  "source_result_query_policy": "OWNER_OR_EXACT_SOURCE_RESULT_ROW",
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "structural_parent_derivation_policy": "DECLARED_CONTEXT_CHILD_FRONTIER",
+  "table_context_roles": ["CONTINGENT_GROUP_SOURCE", "COMMITMENT_GROUP_SOURCE", "GUARANTEE_GROUP_SOURCE", "LETTER_OF_CREDIT", "GUARANTEE_OTHER", "FX_PARENT", "SWAP_PARENT", "OTHER_COMMITMENTS"],
+  "typed_control_exclusions": [
+    {"aliases": ["Theo loại tiền tệ", "Theo khu vực địa lý"], "disposition": "NON_CORE_ANALYTICAL_VIEW"}
+  ],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW",
+  "validation_only_roles": [
+    "CONTINGENT_GROUP_SOURCE", "COMMITMENT_GROUP_SOURCE", "GUARANTEE_GROUP_SOURCE",
+    "LC_SIGHT_SOURCE", "LC_DEFERRED_SOURCE", "LC_MARGIN_SOURCE", "GUARANTEE_MARGIN_SOURCE",
+    "FAMILY_MARGIN_SOURCE",
+    "CROSS_CURRENCY_SWAP_RECEIVE_SOURCE", "CROSS_CURRENCY_SWAP_PAY_SOURCE",
+    "SINGLE_CURRENCY_SWAP_SOURCE", "CANCELLABLE_UNUSED_LIMIT_SOURCE"
+  ]
+}

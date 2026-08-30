@@ -537,6 +537,25 @@ PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_HISTORICAL_ORACLES = (
         "size_bytes": 62982,
     },
 )
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_HISTORICAL_ORACLES = (
+    {
+        "format_version": "CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/E-0098-contingent-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "ea524a083b9ebb85f015f1a2a1938210b14447484acdef9ebf1b3514f9aab005",
+        "size_bytes": 161891,
+    },
+    {
+        "format_version": ("ANNUAL_2025_CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"),
+        "path": (
+            "docs/experiments/"
+            "E-0153-annual-2025-contingent-liabilities-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "dad7e01d30fb5005e2dcdaa26911069660ff42dc6d66c0903dff49a676435661",
+        "size_bytes": 197906,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1568,6 +1587,55 @@ PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AXIS_SHA256 = {
     "historical_comparator": ("99f2a122d6abe022168db1d8730987b44df3c29ad042b7dee7de5d4aa2807476"),
     "mappings": "1a3af1a3eef67951385004924c68ab3df1e6b65b53aec4a4ec3fc1803a02612f",
 }
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "af7b0479cfaa039fdc4c396a57211dac91f9fab07ffc837f392ae8459f30631d"
+    ),
+    "accepted_cluster_count": 83,
+    "accepted_fragment_count": 83,
+    "candidate_disposition_axis_sha256": (
+        "782affe11324900082825887678c98308f34e768dbda64f517f3b137ac8bbfdd"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 57, READY: 83, UNRESOLVED: 0},
+    "query_policy_sha256": "d7b36225705e1cf8a6f924eed395276d579a52ac41ecac116570bab7294a0f60",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 769,
+    "not_observed_count": 57,
+    "ready_count": 83,
+    "unresolved_count": 0,
+}
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AUDIT_METRICS = {
+    "equation_count": 557,
+    "historical_comparator_exact_count": 121,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 105,
+    "historical_mapping_record_count": 105,
+    "mapping_count": 769,
+}
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AXIS_COUNTS = {
+    "clusters": 83,
+    "equations": 557,
+    "historical_comparator": 121,
+    "mappings": 769,
+}
+PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AXIS_SHA256 = {
+    "clusters": "ded1a6f209b1f0af634a638fbc168e00c02b638caf712f49dec77b05fdd228c0",
+    "equations": "12abcb748b673bf80a362073c2cfbcc08fd7669d69670245f1db9296ded8bfde",
+    "historical_comparator": "78d8804b19d9136549ad222994664ea8857c98898ab9509c261facef43db269a",
+    "mappings": "d13db0d8337dbf83c4dd0e0b399cede27b8752d106784958f3e997f85c9522e5",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1815,6 +1883,8 @@ def _historical_oracle_refs(
         return PINNED_CUSTOMER_COLLATERAL_HELD_HISTORICAL_ORACLES
     if family_id == "BANK_PLEDGED_OR_DISCOUNTED_ASSETS":
         return PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_HISTORICAL_ORACLES
+    if family_id == "CONTINGENT_LIABILITIES_AND_COMMITMENTS":
+        return PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -2003,6 +2073,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": (PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AUDIT_METRICS),
             "query_receipt": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_QUERY_RECEIPT,
             "sweep_metrics": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_METRICS,
+        }
+    if family_id == "CONTINGENT_LIABILITIES_AND_COMMITMENTS":
+        return {
+            "axis_counts": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AXIS_SHA256,
+            "audit_metrics": (PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
@@ -2425,9 +2503,17 @@ def _historical_comparator_axis(
                     )
                 )
                 decimal_comparison = type(historical_decimals) is list
-                exact = (
-                    type(old_report_norm_id) is int
-                    and current is not None
+                exact_source_absence = bool(
+                    old_report_norm_id == compiled_specs["schema"]["family_root_report_norm_id"]
+                    and compiled_specs["schema"]["root_mapping_policy"]
+                    == "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY"
+                    and current is None
+                    and historical_coefficients is None
+                    and historical_decimals is None
+                )
+                exact = type(old_report_norm_id) is int and (
+                    exact_source_absence
+                    or current is not None
                     and (
                         decimal_comparison
                         and len(historical_decimals) in {1, 2}

@@ -86,6 +86,14 @@ def _bank_pledged_assets_compiled() -> dict:
     )
 
 
+def _contingent_liabilities_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-contingent-liabilities-commitments-topology-v1.json"),
+        _json("tm-contingent-liabilities-commitments-evaluation-v1.json"),
+        _json("tm-contingent-liabilities-commitments-schema-binding-v1.json"),
+    )
+
+
 def _columns(current: str = "31/12/2025", comparative: str = "31/12/2024") -> list[dict]:
     return [
         {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
@@ -215,6 +223,24 @@ def _evaluate_interest_expense(page: dict) -> tuple[dict, dict, dict]:
 
 def _evaluate_bank_pledged_assets(page: dict) -> tuple[dict, dict, dict]:
     compiled = _bank_pledged_assets_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, candidate
+
+
+def _evaluate_contingent_liabilities(page: dict) -> tuple[dict, dict, dict]:
+    compiled = _contingent_liabilities_compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[_record(page)], compiled_specs=compiled
     )
@@ -2715,3 +2741,431 @@ def test_bank_pledged_projection_policies_reject_invalid_declarations() -> None:
             evaluation,
             _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
         )
+
+
+def _contingent_multi_metric_page() -> dict:
+    columns = [
+        {
+            "header_path_exact": [
+                "31/12/2025",
+                "Triệu đồng",
+                "Giá trị theo hợp đồng gộp",
+            ],
+            "value_kind": "MONEY",
+        },
+        {
+            "header_path_exact": ["31/12/2025", "Triệu đồng", "Tiền gửi ký quỹ"],
+            "value_kind": "MONEY",
+        },
+        {
+            "header_path_exact": [
+                "31/12/2025",
+                "Triệu đồng",
+                "Giá trị theo hợp đồng thuần",
+            ],
+            "value_kind": "MONEY",
+        },
+        {
+            "header_path_exact": [
+                "31/12/2024",
+                "Triệu đồng",
+                "Giá trị theo hợp đồng gộp",
+            ],
+            "value_kind": "MONEY",
+        },
+        {
+            "header_path_exact": ["31/12/2024", "Triệu đồng", "Tiền gửi ký quỹ"],
+            "value_kind": "MONEY",
+        },
+        {
+            "header_path_exact": [
+                "31/12/2024",
+                "Triệu đồng",
+                "Giá trị theo hợp đồng thuần",
+            ],
+            "value_kind": "MONEY",
+        },
+    ]
+    table = _table(
+        None,
+        [
+            _row("Cam kết giao dịch hối đoái", ["100", None, "100", "80", None, "80"]),
+            _row("Cam kết trong nghiệp vụ thư tín dụng", ["22", "2", "20", "16", "1", "15"]),
+            _row("Bảo lãnh khác", ["11", "1", "10", "9", "1", "8"]),
+            _row("Các cam kết khác", ["5", "-", "5", "7", "-", "7"]),
+            _row(None, ["138", "3", "135", "112", "2", "110"], kind="TOTAL"),
+        ],
+        columns=columns,
+    )
+    return _page(
+        _section(
+            "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",
+            table,
+        )
+    )
+
+
+def test_declared_multi_metric_lane_maps_only_exact_result_metric() -> None:
+    page = _contingent_multi_metric_page()
+    compiled, cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["LETTER_OF_CREDIT"]["values"]] == [
+        20,
+        15,
+    ]
+    assert [cell["coefficient"] for cell in by_role["GUARANTEE_OTHER"]["values"]] == [
+        10,
+        8,
+    ]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        135,
+        110,
+    ]
+    table_receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert table_receipt["lane_axis"]["money_column_ordinals"] == [3, 6]
+    metric_equations = [
+        equation
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["equation_kind"]
+        == "EXACT_DECLARED_SOURCE_MULTI_METRIC_ROW_EQUATION_SELECTS_RESULT_LANE"
+    ]
+    assert len(metric_equations) == 10
+    assert {equation["status"] for equation in metric_equations} == {"EXACT"}
+
+    validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+        candidate,
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda table: table["rows"][1]["values_exact"].__setitem__(2, "21"),
+        lambda table: table["columns"][1]["header_path_exact"].__setitem__(
+            2, "Giá trị theo hợp đồng gộp"
+        ),
+        lambda table: table["columns"][1]["header_path_exact"].append(
+            "Giá trị theo hợp đồng thuần"
+        ),
+    ],
+)
+def test_declared_multi_metric_lane_fails_closed_on_equation_or_axis_drift(mutate) -> None:
+    page = _contingent_multi_metric_page()
+    table = page["sections"][0]["tables"][0]
+    mutate(table)
+    _compiled_specs, _cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def test_declared_multi_metric_policy_does_not_change_ordinary_two_period_table() -> None:
+    table = _table(
+        None,
+        [
+            _row("Cam kết giao dịch hối đoái", ["100", "80"]),
+            _row("Cam kết trong nghiệp vụ thư tín dụng", ["20", "15"]),
+            _row("Bảo lãnh khác", ["10", "8"]),
+            _row("Các cam kết khác", ["5", "7"]),
+            _row(None, ["135", "110"], kind="TOTAL"),
+        ],
+    )
+    page = _page(
+        _section(
+            "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",
+            table,
+        )
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == READY
+    assert candidate["closure_receipt"]["table_receipts"][0]["lane_axis"][
+        "money_column_ordinals"
+    ] == [1, 2]
+
+
+def test_multi_metric_sign_rejects_boolean_disguised_as_integer() -> None:
+    evaluation = _json("tm-contingent-liabilities-commitments-evaluation-v1.json")
+    evaluation["multi_metric_lane_equation"]["component_terms"][0]["sign"] = True
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="metric component term is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-contingent-liabilities-commitments-topology-v1.json"),
+            evaluation,
+            _json("tm-contingent-liabilities-commitments-schema-binding-v1.json"),
+        )
+
+
+def _contingent_signed_context_page() -> dict:
+    table = _table(
+        None,
+        [
+            _row("Bảo lãnh vay vốn", ["5", "4"]),
+            _row("Cam kết trong nghiệp vụ L/C", ["20", "15"]),
+            _row("Cam kết trong nghiệp vụ L/C", ["22", "16"]),
+            _row("- Trừ: Tiền ký quỹ", ["(2)", "(1)"]),
+            _row("Bảo lãnh khác", ["10", "8"]),
+            _row("- Cam kết bảo lãnh khác", ["11", "9"]),
+            _row("- Trừ: Tiền ký quỹ", ["(1)", "(1)"]),
+            _row("Các cam kết khác", ["5", "7"]),
+            _row(None, ["40", "34"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    return _page(
+        _section(
+            "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",
+            table,
+        )
+    )
+
+
+def test_signed_context_frontier_maps_net_carrier_without_double_counting() -> None:
+    page = _contingent_signed_context_page()
+    compiled, cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["LETTER_OF_CREDIT"]["values"]] == [
+        20,
+        15,
+    ]
+    assert [cell["coefficient"] for cell in by_role["GUARANTEE_OTHER"]["values"]] == [
+        10,
+        8,
+    ]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        40,
+        34,
+    ]
+    receipts = candidate["closure_receipt"]["table_receipts"][0]["signed_context_frontier_receipts"]
+    assert [receipt["carrier_role"] for receipt in receipts] == [
+        "LETTER_OF_CREDIT",
+        "GUARANTEE_OTHER",
+    ]
+    validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+        candidate,
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+
+    page["sections"][0]["tables"][0]["rows"][3]["values_exact"][0] = "(3)"
+    _compiled_specs, _cluster, mismatch = _evaluate_contingent_liabilities(page)
+    assert mismatch["status"] == UNRESOLVED
+    assert mismatch["mappings"] == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "DUPLICATE_ADJUSTMENT",
+        "POSITIVE_ADJUSTMENT",
+        "THIRD_CARRIER",
+        "REORDERED_FRONTIER",
+        "INTERVENING_UNDECLARED_ROW",
+    ),
+)
+def test_signed_context_frontier_fails_closed_on_ambiguous_source_shapes(
+    mutation: str,
+) -> None:
+    page = _contingent_signed_context_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    if mutation == "DUPLICATE_ADJUSTMENT":
+        rows.insert(4, _row("- Trừ: Tiền ký quỹ", ["(1)", "(1)"]))
+    elif mutation == "POSITIVE_ADJUSTMENT":
+        rows[3]["values_exact"] = ["2", "1"]
+    elif mutation == "THIRD_CARRIER":
+        rows.insert(3, _row("Cam kết trong nghiệp vụ L/C", ["23", "17"]))
+    elif mutation == "REORDERED_FRONTIER":
+        rows[2], rows[3] = rows[3], rows[2]
+    else:
+        rows.insert(3, _row("Khoản mục ngoại lai", ["1", "1"]))
+
+    compiled = _contingent_liabilities_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    if cluster["status"] != READY:
+        assert cluster["component_regions"] == []
+        return
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def test_exact_owner_complete_role_frontier_excludes_following_unrelated_money_table() -> None:
+    family = _table(
+        None,
+        [
+            _row("Bảo lãnh vay vốn", ["5", "4"]),
+            _row("Cam kết trong nghiệp vụ L/C", ["20", "15"]),
+            _row("Bảo lãnh khác", ["10", "8"]),
+            _row("Các cam kết khác", ["5", "7"]),
+        ],
+    )
+    unrelated = _table(
+        None,
+        [
+            _row("Đến 1 năm", ["3", "2"]),
+            _row("Trên 1 năm", ["4", "3"]),
+            _row(None, ["7", "5"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section("Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra", family),
+        _section("Cam kết thuê hoạt động", unrelated),
+    )
+    _compiled_specs, cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert cluster["status"] == READY
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s1", "t1")
+    ]
+    assert candidate["status"] == READY
+    assert len(candidate["mappings"]) == 4
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("UNBOUND_ROW", "MISSING_REQUIRED_ROLE", "SECOND_COMPLETE_TABLE"),
+)
+def test_exact_owner_complete_role_frontier_fails_closed_when_not_unique_or_complete(
+    mutation: str,
+) -> None:
+    family = _table(
+        None,
+        [
+            _row("Bảo lãnh vay vốn", ["5", "4"]),
+            _row("Cam kết trong nghiệp vụ L/C", ["20", "15"]),
+            _row("Bảo lãnh khác", ["10", "8"]),
+            _row("Các cam kết khác", ["5", "7"]),
+        ],
+    )
+    tables = [family]
+    if mutation == "UNBOUND_ROW":
+        family["rows"].append(_row("Khoản mục ngoại lai", ["1", "1"]))
+    elif mutation == "MISSING_REQUIRED_ROLE":
+        family["rows"].pop(2)
+    else:
+        tables.append(copy.deepcopy(family))
+    page = _page(_section("Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra", *tables))
+    compiled = _contingent_liabilities_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    if cluster["status"] != READY:
+        assert cluster["component_regions"] == []
+        return
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def _contingent_unlabeled_group_subtotals_page() -> dict:
+    table = _table(
+        None,
+        [
+            _row("Nghĩa vụ tiềm ẩn", [None, None], kind="GROUP"),
+            _row(
+                "Bảo lãnh vay vốn",
+                ["5", "4"],
+                hierarchy=["Nghĩa vụ tiềm ẩn", "Bảo lãnh vay vốn"],
+            ),
+            _row(
+                "Cam kết trong nghiệp vụ L/C",
+                ["20", "15"],
+                hierarchy=["Nghĩa vụ tiềm ẩn", "Cam kết trong nghiệp vụ L/C"],
+            ),
+            _row(
+                "Bảo lãnh khác",
+                ["10", "8"],
+                hierarchy=["Nghĩa vụ tiềm ẩn", "Bảo lãnh khác"],
+            ),
+            _row(None, ["35", "27"], kind="SUBTOTAL", hierarchy=["Nghĩa vụ tiềm ẩn", None]),
+            _row("Các cam kết đưa ra", [None, None], kind="GROUP"),
+            _row(
+                "Cam kết giao dịch hối đoái",
+                ["30", "20"],
+                hierarchy=["Các cam kết đưa ra", "Cam kết giao dịch hối đoái"],
+            ),
+            _row(
+                "Các cam kết khác",
+                ["5", "7"],
+                hierarchy=["Các cam kết đưa ra", "Các cam kết khác"],
+            ),
+            _row(None, ["35", "27"], kind="SUBTOTAL", hierarchy=["Các cam kết đưa ra", None]),
+            _row(None, ["70", "54"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    return _page(_section("Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra", table))
+
+
+def test_unlabeled_group_subtotals_close_terminal_family_total() -> None:
+    _compiled_specs, _cluster, candidate = _evaluate_contingent_liabilities(
+        _contingent_unlabeled_group_subtotals_page()
+    )
+    assert candidate["status"] == READY
+    equation_kinds = {
+        equation["equation_kind"] for equation in candidate["closure_receipt"]["equations"]
+    }
+    root = next(
+        mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"
+    )
+    assert [value["coefficient"] for value in root["values"]] == [70, 54]
+    assert {source_ref["row_id"] for source_ref in root["source_refs"]} == {"r10"}
+    assert "EXACT_LABEL_ONLY_GROUP_DIRECT_CHILDREN_EQUAL_UNLABELED_SUBTOTAL" in equation_kinds
+    assert "EXACT_CLOSED_STRUCTURAL_GROUP_SUBTOTALS_EQUAL_TERMINAL_TOTAL" in equation_kinds
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("INCOMPLETE_GROUP", "CONFLICTING_SUBTOTAL", "DUPLICATE_SUBTOTAL"),
+)
+def test_unlabeled_group_subtotals_fail_closed_when_frontier_is_not_exact(
+    mutation: str,
+) -> None:
+    page = _contingent_unlabeled_group_subtotals_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    if mutation == "INCOMPLETE_GROUP":
+        rows.pop(2)
+    elif mutation == "CONFLICTING_SUBTOTAL":
+        rows[4]["values_exact"][0] = "36"
+    else:
+        rows.insert(
+            5, _row(None, ["35", "27"], kind="SUBTOTAL", hierarchy=["Nghĩa vụ tiềm ẩn", None])
+        )
+    _compiled_specs, _cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    if mutation == "DUPLICATE_SUBTOTAL":
+        assert candidate["reasons"] == ["UNLABELED_STRUCTURAL_SUBTOTAL_NOT_UNIQUE"]
+        assert candidate["closure_receipt"]["table_receipts"][0][
+            "ambiguous_unlabeled_structural_subtotals"
+        ] == [
+            {
+                "hierarchy_path_normalized": ["nghia vu tiem an"],
+                "row_ordinals": [5, 6],
+            }
+        ]

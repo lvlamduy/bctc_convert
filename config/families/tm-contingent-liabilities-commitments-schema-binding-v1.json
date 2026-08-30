@@ -1,0 +1,23 @@
+{
+  "family_id": "CONTINGENT_LIABILITIES_AND_COMMITMENTS",
+  "family_root_report_norm_id": 1294,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1295, "role": "LETTER_OF_CREDIT"},
+    {"report_norm_id": 1296, "role": "GUARANTEE_LOAN"},
+    {"report_norm_id": 1297, "role": "GUARANTEE_PAYMENT"},
+    {"report_norm_id": 1298, "role": "GUARANTEE_PERFORMANCE"},
+    {"report_norm_id": 1299, "role": "GUARANTEE_BID"},
+    {"report_norm_id": 1300, "role": "GUARANTEE_OTHER"},
+    {"report_norm_id": 1301, "role": "FX_PARENT"},
+    {"report_norm_id": 1302, "role": "SWAP_PARENT"},
+    {"report_norm_id": 1303, "role": "VALUABLE_PAPER_COMMITMENT"},
+    {"report_norm_id": 1304, "role": "OTHER_COMMITMENTS"},
+    {"report_norm_id": 5741, "role": "FX_BUY"},
+    {"report_norm_id": 5742, "role": "FX_SELL"},
+    {"report_norm_id": 5743, "role": "SWAP_BUY"},
+    {"report_norm_id": 5744, "role": "SWAP_SELL"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "schema_period_type": "SNAPSHOT"
+}
