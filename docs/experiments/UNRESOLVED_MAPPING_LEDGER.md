@@ -3409,6 +3409,31 @@ unproven blank zero, invalid money, period/unit conflicts and coherently drifted
 candidate receipts remain authoritative adversarial gates; every incomplete or
 conflicting graph must return `UNRESOLVED` with `mappings=[]`.
 
+## Family 50 current corpus — liquidity risk (`LIQUIDITY_RISK`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family50-liquidity-risk/sweep.json`
+
+- Census: 140 documents, `READY=138`, `NOT_OBSERVED=2`, `UNRESOLVED=0`,
+  4.482 mappings, 4.074 mapped values and 1.364 equation receipts. Family50
+  adds no terminal unresolved mapping entry.
+- Ordinals 139 and 140 have no selected liquidity-risk matrix and remain typed
+  bounded absences with empty mappings.
+- Six source-visible bucket frontiers do not close and are retained without
+  mapping either their cells or structural branch: ordinal 10
+  `WITHIN_1_3M`/`WITHIN_1_5Y`; ordinal 137 `WITHIN_LE1M`, `WITHIN_1_3M`,
+  `WITHIN_3_12M` and `WITHIN_1_5Y`. Other exact buckets in the same tables map
+  independently; the visible source numbers are never changed or backsolved.
+- Source-only split `3–6M` and `6–12M` columns remain receipted and are never
+  silently collapsed into schema bucket `3–12M`. A nonclosing grand total,
+  ambiguous row shift, period/unit conflict, duplicate population, source-only
+  collapse, mapping deletion or coherent receipt drift remains an
+  authoritative fail-closed regression gate.
+
+No Gemini/API call or prompt change was used. Row normalization, monotone exact
+coverage, graph/equation closure and partial-safe mapping are all local
+algorithm responsibilities.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
