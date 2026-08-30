@@ -274,6 +274,12 @@ def _label_role(
 def _column_role(
     column: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> tuple[str | None, str | None, list[str]]:
+    if compiled_specs.get("liquidity_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+            classify_liquidity_column_role_v1,
+        )
+
+        return classify_liquidity_column_role_v1(column, compiled_specs=compiled_specs)
     if compiled_specs.get("interest_rate_risk_mode") is True:
         from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
             classify_interest_rate_column_role_v1,
@@ -383,7 +389,16 @@ def classify_gemini_json_currency_risk_matrix_table_v1(
 
     row_axis = []
     for ordinal, row in enumerate(rows, start=1):
-        if compiled_specs.get("interest_rate_risk_mode") is True:
+        if compiled_specs.get("liquidity_risk_mode") is True:
+            from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+                classify_liquidity_row_role_v1,
+            )
+
+            role, matches = classify_liquidity_row_role_v1(
+                row.get("label_exact"),
+                aliases_by_role=compiled_specs["aliases_by_role"],
+            )
+        elif compiled_specs.get("interest_rate_risk_mode") is True:
             from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
                 classify_interest_rate_row_role_v1,
             )
@@ -443,7 +458,7 @@ def classify_gemini_json_currency_risk_matrix_table_v1(
     missing = sorted(set(compiled_specs["required_currency_row_roles"]) - set(mapped_rows))
     reasons.extend(f"REQUIRED_CURRENCY_CORE_ROW_MISSING:{role}" for role in missing)
     status = "MATRIX_FRAGMENT" if declared_columns and mapped_rows and not reasons else "NOT_MATRIX"
-    return {
+    result = {
         "column_axis": column_axis,
         "column_declared_component_roles": sorted({item["role"] for item in declared_columns}),
         "component_axis": row_axis,
@@ -455,6 +470,19 @@ def classify_gemini_json_currency_risk_matrix_table_v1(
         "row_declared_component_roles": sorted(set(mapped_rows)),
         "status": status,
     }
+    if compiled_specs.get("liquidity_risk_mode") is True and set(
+        compiled_specs["required_currency_row_roles"]
+    ) <= set(result["mapped_component_roles"]):
+        from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+            build_liquidity_row_alignment_receipt_v1,
+            validate_liquidity_row_alignment_receipt_v1,
+        )
+
+        result["liquidity_row_alignment_receipt"] = build_liquidity_row_alignment_receipt_v1(
+            table, classification=result
+        )
+        validate_liquidity_row_alignment_receipt_v1(result["liquidity_row_alignment_receipt"])
+    return result
 
 
 def _row_signature(
@@ -547,7 +575,10 @@ def _currency_document_reporting_date_receipt_v1(
 ) -> dict[str, Any]:
     """Select the latest typed statement date and its latest explicit comparator."""
 
-    if compiled_specs is not None and compiled_specs.get("interest_rate_risk_mode") is True:
+    if compiled_specs is not None and (
+        compiled_specs.get("interest_rate_risk_mode") is True
+        or compiled_specs.get("liquidity_risk_mode") is True
+    ):
         from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
             interest_rate_document_reporting_date_receipt_v1,
         )
@@ -842,7 +873,10 @@ def coalesce_gemini_json_currency_risk_document_v1(
                     for continuation in continuation_markers
                 )
                 or (
-                    compiled_specs.get("interest_rate_risk_mode") is True
+                    (
+                        compiled_specs.get("interest_rate_risk_mode") is True
+                        or compiled_specs.get("liquidity_risk_mode") is True
+                    )
                     and first_position[0] - marker["position"][0] == 1
                     and not any(
                         marker["position"] < reset["position"] < first_position
@@ -881,8 +915,8 @@ def coalesce_gemini_json_currency_risk_document_v1(
                     }
                 elif (
                     compiled_specs.get("interest_rate_risk_mode") is True
-                    and first_position[0] - owner["position"][0] == 1
-                ):
+                    or compiled_specs.get("liquidity_risk_mode") is True
+                ) and first_position[0] - owner["position"][0] == 1:
                     continuation_evidence = {
                         "position": first_selected["position"],
                         "source_exact": owner["source_exact"],
@@ -970,7 +1004,10 @@ def _cell(
     }
     source_text = value
     normalization_state = None
-    if compiled_specs.get("interest_rate_risk_mode") is True:
+    if (
+        compiled_specs.get("interest_rate_risk_mode") is True
+        or compiled_specs.get("liquidity_risk_mode") is True
+    ):
         from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
             normalize_interest_rate_money_cell_v1,
         )
@@ -1270,6 +1307,16 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
             table, compiled_specs=compiled_specs
         )
         reasons.extend(classification["reasons"])
+        effective_values_by_row_id = {}
+        if compiled_specs.get("liquidity_risk_mode") is True:
+            alignment = classification.get("liquidity_row_alignment_receipt")
+            if type(alignment) is not dict or type(alignment.get("effective_rows")) is not list:
+                reasons.append("LIQUIDITY_RISK_ROW_ALIGNMENT_RECEIPT_MISSING")
+            else:
+                effective_values_by_row_id = {
+                    item["row_id"]: item["effective_values_exact"]
+                    for item in alignment["effective_rows"]
+                }
         assignment = assignment_by_key.get(
             (region["page_json_version_id"], region["section_id"], region["table_id"])
         )
@@ -1292,8 +1339,11 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
             for row_axis in classification["component_axis"]:
                 if row_axis["kind"] != "CORE_ROW":
                     continue
+                source_values = effective_values_by_row_id.get(
+                    row_axis["row_id"], row_by_id[row_axis["row_id"]]["values_exact"]
+                )
                 cell = _cell(
-                    value=row_by_id[row_axis["row_id"]]["values_exact"][column_index],
+                    value=source_values[column_index],
                     region=region,
                     row_id=row_axis["row_id"],
                     column_id=column_axis["column_id"],
@@ -1324,13 +1374,14 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
                 )
                 if frontier is not None:
                     nonclosing_frontiers.append(frontier)
-            if column_axis["kind"] == "MAPPED_CURRENCY" and all(
+            required_equations_exact = all(
                 equation["status"] == "EXACT"
                 for declaration, equation in zip(
                     compiled_specs["state_equations"], equations, strict=True
                 )
                 if declaration["required"]
-            ):
+            )
+            if column_axis["kind"] == "MAPPED_CURRENCY" and required_equations_exact:
                 exact_required_currency_roles.add(currency_role)
             all_equations.extend(canonical_clone_v1(equations))
             all_nonclosing_frontiers.extend(canonical_clone_v1(nonclosing_frontiers))
@@ -1342,14 +1393,24 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
                     "nonclosing_frontiers": nonclosing_frontiers,
                 }
             )
-            if column_axis["kind"] == "MAPPED_CURRENCY":
+            if column_axis["kind"] == "MAPPED_CURRENCY" and (
+                compiled_specs.get("liquidity_risk_mode") is not True or required_equations_exact
+            ):
                 for row_role, cell in cells_by_role.items():
                     if type(cell.get("coefficient")) is int:
                         cells_by_period_currency_row[
                             (assignment["period_role"], currency_role, row_role)
                         ] = cell
         if (
-            len(exact_required_currency_roles)
+            compiled_specs.get("liquidity_risk_mode") is True
+            and (
+                len(exact_required_currency_roles)
+                < compiled_specs["query_policy"]["minimum_mapped_currency_roles"]
+                or compiled_specs["grand_total_currency_role"] not in exact_required_currency_roles
+            )
+        ) or (
+            compiled_specs.get("liquidity_risk_mode") is not True
+            and len(exact_required_currency_roles)
             < compiled_specs["query_policy"]["minimum_mapped_currency_roles"]
         ):
             reasons.append("CURRENCY_RISK_REQUIRED_EQUATION_COVERAGE_INCOMPLETE")
@@ -1394,7 +1455,11 @@ def evaluate_gemini_json_currency_risk_cluster_v1(
         "unit_receipt": unit_receipt,
     }
     material = {
-        "claim_boundary": CURRENCY_RISK_CLAIM_BOUNDARY,
+        "claim_boundary": (
+            compiled_specs["claim_boundary"]
+            if compiled_specs.get("liquidity_risk_mode") is True
+            else CURRENCY_RISK_CLAIM_BOUNDARY
+        ),
         "closure_receipt": closure,
         "component_regions": canonical_clone_v1(checked_regions),
         "document_id": first["document_id"],
@@ -1458,7 +1523,12 @@ def validate_gemini_json_currency_risk_candidate_binding_v1(
     if (
         type(candidate) is not dict
         or set(candidate) != candidate_fields
-        or candidate.get("claim_boundary") != CURRENCY_RISK_CLAIM_BOUNDARY
+        or candidate.get("claim_boundary")
+        != (
+            compiled_specs["claim_boundary"]
+            if compiled_specs.get("liquidity_risk_mode") is True
+            else CURRENCY_RISK_CLAIM_BOUNDARY
+        )
         or candidate.get("family_id") != compiled_specs["family_id"]
         or candidate.get("document_id") != first["document_id"]
         or candidate.get("page_json_version_id") != first["page_json_version_id"]
@@ -1548,6 +1618,25 @@ def validate_gemini_json_currency_risk_candidate_binding_v1(
             or not same_typed_json_v1(receipt["period_assignment"], expected_period)
         ):
             raise _error("currency-risk indexed table projection drifted")
+        expected_liquidity_values_by_row_id = {}
+        row_id_by_role = {}
+        if compiled_specs.get("liquidity_risk_mode") is True:
+            from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+                validate_liquidity_row_alignment_receipt_v1,
+            )
+
+            alignment = validate_liquidity_row_alignment_receipt_v1(
+                receipt["classification"].get("liquidity_row_alignment_receipt")
+            )
+            expected_liquidity_values_by_row_id = {
+                item["row_id"]: item["effective_values_exact"]
+                for item in alignment["effective_rows"]
+            }
+            row_id_by_role = {
+                item["role"]: item["row_id"]
+                for item in receipt["classification"]["component_axis"]
+                if item["kind"] == "CORE_ROW"
+            }
         for resolved in receipt["resolved_columns"]:
             if (
                 type(resolved) is not dict
@@ -1574,6 +1663,26 @@ def validate_gemini_json_currency_risk_candidate_binding_v1(
                 ):
                     cell["coefficient"] = None
                     cell["state"] = "BLANK"
+            if compiled_specs.get("liquidity_risk_mode") is True:
+                column_index = column_axis.get("source_order", 0) - 1
+                for row_role, replay_cell in replay_cells.items():
+                    row_id = row_id_by_role.get(row_role)
+                    values = expected_liquidity_values_by_row_id.get(row_id)
+                    if (
+                        type(values) is not list
+                        or not 0 <= column_index < len(values)
+                        or not same_typed_json_v1(
+                            replay_cell,
+                            _cell(
+                                value=values[column_index],
+                                region=region,
+                                row_id=row_id,
+                                column_id=column_axis["column_id"],
+                                compiled_specs=compiled_specs,
+                            ),
+                        )
+                    ):
+                        raise _error("liquidity resolved cell is not bound to aligned source")
             replay_equations = []
             replay_nonclosing_frontiers = []
             for declaration in compiled_specs["state_equations"]:
@@ -1612,14 +1721,31 @@ def validate_gemini_json_currency_risk_candidate_binding_v1(
                 if declaration["required"]
             ):
                 exact_required_currency_roles.add(currency_role)
-            if column_axis.get("kind") == "MAPPED_CURRENCY":
+            required_equations_exact = all(
+                equation["status"] == "EXACT"
+                for declaration, equation in zip(
+                    compiled_specs["state_equations"], replay_equations, strict=True
+                )
+                if declaration["required"]
+            )
+            if column_axis.get("kind") == "MAPPED_CURRENCY" and (
+                compiled_specs.get("liquidity_risk_mode") is not True or required_equations_exact
+            ):
                 for row_role, cell in replay_cells.items():
                     if type(cell.get("coefficient")) is int:
                         cells[
                             (receipt["period_assignment"]["period_role"], currency_role, row_role)
                         ] = cell
         if (
-            len(exact_required_currency_roles)
+            compiled_specs.get("liquidity_risk_mode") is True
+            and (
+                len(exact_required_currency_roles)
+                < compiled_specs["query_policy"]["minimum_mapped_currency_roles"]
+                or compiled_specs["grand_total_currency_role"] not in exact_required_currency_roles
+            )
+        ) or (
+            compiled_specs.get("liquidity_risk_mode") is not True
+            and len(exact_required_currency_roles)
             < compiled_specs["query_policy"]["minimum_mapped_currency_roles"]
         ):
             coverage_incomplete = True

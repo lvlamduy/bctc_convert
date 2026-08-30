@@ -1,0 +1,37 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_ONE_UNKNOWN_DECLARED_EQUATION_EQUALS_ZERO",
+  "closure_policy": "EXACT_REQUIRED_EQUATION_COVERAGE_WITH_NONCLOSING_SOURCE_RETENTION",
+  "family_id": "LIQUIDITY_RISK",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["CORE_ROWS_CURRENCY_COLUMNS"],
+    "currency_role_aliases": {
+      "OVERDUE": ["Quá hạn"],
+      "OVERDUE_GT3M": ["Quá hạn trên 3 tháng"],
+      "OVERDUE_LE3M": ["Quá hạn đến 3 tháng", "Quá hạn dưới 3 tháng", "Quá hạn không quá 3 tháng"],
+      "TOTAL": ["Tổng cộng", "Tổng"],
+      "WITHIN_1_3M": ["Từ 1 tháng đến 3 tháng", "Từ trên 1 tháng đến 3 tháng", "Trên 1 tháng đến 3 tháng"],
+      "WITHIN_1_5Y": ["Từ 1 năm đến 5 năm", "Từ trên 1 năm đến 5 năm", "Trên 1 năm đến 5 năm"],
+      "WITHIN_3_12M": ["Từ 3 tháng đến 12 tháng", "Từ trên 3 tháng đến 12 tháng", "Trên 3 tháng đến 12 tháng"],
+      "WITHIN_GT5Y": ["Trên 5 năm"],
+      "WITHIN_LE1M": ["Dưới 1 tháng", "Đến 1 tháng", "Trong vòng 1 tháng", "Từ 1 tháng trở xuống"]
+    },
+    "grand_total_role": "TOTAL",
+    "matrix_kind": "CURRENCY_RISK_CLASSIFICATION",
+    "max_continuation_pages": 1,
+    "minimum_mapped_currency_roles": 2,
+    "required_row_roles": ["ASSET_TOTAL", "LIABILITY_TOTAL", "NET_LIQUIDITY_GAP"],
+    "source_only_currency_aliases": {
+      "WITHIN_3_6M_SOURCE": ["Từ 3 tháng đến 6 tháng", "Từ trên 3 tháng đến 6 tháng", "Trên 3 tháng đến 6 tháng"],
+      "WITHIN_6_12M_SOURCE": ["Từ 6 tháng đến 12 tháng", "Từ trên 6 tháng đến 12 tháng", "Trên 6 tháng đến 12 tháng"]
+    },
+    "state_equations": [
+      {"required": true, "result_role": "NET_LIQUIDITY_GAP", "term_multipliers": {"ASSET_TOTAL": 1, "LIABILITY_TOTAL": -1}}
+    ],
+    "unit_bindings": [
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "document_consensus_eligible": true, "magnitude_power10": 3},
+      {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 9}
+    ]
+  }
+}

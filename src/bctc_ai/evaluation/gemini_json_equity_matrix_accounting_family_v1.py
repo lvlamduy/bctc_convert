@@ -379,6 +379,21 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     except ValueError as exc:
         raise _error("equity-matrix topology spec is invalid") from exc
     if (
+        topology.get("family_id") == "LIQUIDITY_RISK"
+        and type(evaluation_spec) is dict
+        and type(evaluation_spec.get("matrix_policy")) is dict
+        and evaluation_spec["matrix_policy"].get("matrix_kind") == "CURRENCY_RISK_CLASSIFICATION"
+    ):
+        from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+            compile_gemini_json_liquidity_risk_matrix_specs_v1,
+        )
+
+        return compile_gemini_json_liquidity_risk_matrix_specs_v1(
+            topology=topology,
+            evaluation_spec=evaluation_spec,
+            schema_binding_spec=schema_binding_spec,
+        )
+    if (
         topology.get("family_id") == "INTEREST_RATE_RISK"
         and type(evaluation_spec) is dict
         and type(evaluation_spec.get("matrix_policy")) is dict
@@ -4567,6 +4582,14 @@ def coalesce_gemini_json_equity_matrix_document_v1(
 ) -> dict[str, Any]:
     """Select one complete matrix under one bounded owner/reset fence."""
 
+    if compiled_specs.get("liquidity_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_liquidity_risk_matrix_v1 import (
+            coalesce_gemini_json_liquidity_risk_document_v1,
+        )
+
+        return coalesce_gemini_json_liquidity_risk_document_v1(
+            page_records=page_records, compiled_specs=compiled_specs
+        )
     if compiled_specs.get("interest_rate_risk_mode") is True:
         from bctc_ai.evaluation.gemini_json_interest_rate_risk_matrix_v1 import (
             coalesce_gemini_json_interest_rate_risk_document_v1,
