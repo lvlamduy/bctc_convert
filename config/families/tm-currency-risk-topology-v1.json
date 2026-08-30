@@ -1,0 +1,61 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Tổng tài sản", "Tổng cộng tài sản", "Tổng tài sản Có"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "ASSET_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tổng nợ phải trả", "Tổng cộng nợ phải trả", "Nợ phải trả và vốn chủ sở hữu", "Tổng nợ phải trả và vốn chủ sở hữu"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "LIABILITY_TOTAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trạng thái tiền tệ nội bảng", "Trạng thái ngoại hối nội bảng", "Trạng thái ngoại tệ nội bảng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_INTERNAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trạng thái tiền tệ ngoại bảng", "Trạng thái ngoại hối ngoại bảng", "Trạng thái ngoại tệ ngoại bảng"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_EXTERNAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trạng thái tiền tệ nội, ngoại bảng", "Trạng thái tiền tệ nội bảng, ngoại bảng", "Trạng thái ngoại hối nội, ngoại bảng", "Trạng thái ngoại hối nội bảng, ngoại bảng", "Trạng thái ngoại tệ nội, ngoại bảng", "Trạng thái ngoại tệ nội bảng, ngoại bảng", "Tổng trạng thái", "Tổng trạng thái tiền tệ", "Tổng trạng thái ngoại hối", "Tổng trạng thái ngoại tệ"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_COMBINED",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CURRENCY_RISK",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Rủi ro lãi suất",
+    "Rủi ro thanh khoản",
+    "Rủi ro tín dụng",
+    "Phân tích tài sản và nợ phải trả theo kỳ đáo hạn"
+  ],
+  "limits": {"max_cluster_span_lines": 200, "max_continuation_pages": 1, "max_label_line_span": 3},
+  "parent": {
+    "aliases": [
+      "Rủi ro tiền tệ",
+      "Rủi ro ngoại hối",
+      "Phân loại tài sản và nợ phải trả theo loại tiền tệ",
+      "Phân loại tài sản và công nợ theo loại tiền tệ"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CURRENCY_RISK"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"]],
+  "structural_reset_aliases": [
+    "Rủi ro lãi suất",
+    "Rủi ro thanh khoản",
+    "Rủi ro giá cả thị trường",
+    "Rủi ro hoạt động"
+  ]
+}

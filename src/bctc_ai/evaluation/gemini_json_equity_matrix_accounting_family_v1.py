@@ -381,6 +381,20 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     if (
         type(evaluation_spec) is dict
         and type(evaluation_spec.get("matrix_policy")) is dict
+        and evaluation_spec["matrix_policy"].get("matrix_kind") == "CURRENCY_RISK_CLASSIFICATION"
+    ):
+        from bctc_ai.evaluation.gemini_json_currency_risk_matrix_v1 import (
+            compile_gemini_json_currency_risk_matrix_specs_v1,
+        )
+
+        return compile_gemini_json_currency_risk_matrix_specs_v1(
+            topology=topology,
+            evaluation_spec=evaluation_spec,
+            schema_binding_spec=schema_binding_spec,
+        )
+    if (
+        type(evaluation_spec) is dict
+        and type(evaluation_spec.get("matrix_policy")) is dict
         and evaluation_spec["matrix_policy"].get("matrix_kind") == "VALUATION_CLASSIFICATION"
     ):
         return _compile_valuation_matrix_specs_v1(
@@ -1238,6 +1252,14 @@ def classify_gemini_json_equity_matrix_table_v1(
 ) -> dict[str, Any]:
     """Classify one matrix fragment from its two declared axes only."""
 
+    if compiled_specs.get("currency_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_currency_risk_matrix_v1 import (
+            classify_gemini_json_currency_risk_matrix_table_v1,
+        )
+
+        return classify_gemini_json_currency_risk_matrix_table_v1(
+            table, compiled_specs=compiled_specs
+        )
     if compiled_specs.get("valuation_mode") is True:
         return _classify_valuation_matrix_table_v1(table, compiled_specs=compiled_specs)
 
@@ -1709,10 +1731,17 @@ def _local_unit_axis(
         # unit declaration.  Outside the typed table-unit slot, only an
         # explicit magnitude+currency phrase or a currency token is unit-like
         # enough to make an undeclared-unit claim.
-        if explicit_slot or re.search(
+        folded = _normalized(text)
+        unit_like = re.search(
             r"\b(?:(?:trieu|nghin|ty)\s+(?:dong|vnd|usd)|vnd|usd)\b",
-            _normalized(text),
-        ):
+            folded,
+        )
+        currency_axis_without_magnitude = (
+            compiled_specs.get("currency_risk_mode") is True
+            and not explicit_slot
+            and re.search(r"\b(?:trieu|nghin|ty)\b", folded) is None
+        )
+        if explicit_slot or unit_like and not currency_axis_without_magnitude:
             undeclared.append({"source_kind": source_kind, "text_exact": text})
         return None
 
@@ -3843,6 +3872,18 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
 ) -> dict[str, Any]:
     """Evaluate one exact matrix cluster and emit mappings only after closure."""
 
+    if compiled_specs.get("currency_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_currency_risk_matrix_v1 import (
+            evaluate_gemini_json_currency_risk_cluster_v1,
+        )
+
+        return evaluate_gemini_json_currency_risk_cluster_v1(
+            regions=regions,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+            query_receipt=query_receipt,
+            document_unit_context_evidence=document_unit_context_evidence,
+        )
     if compiled_specs.get("valuation_mode") is True:
         return _evaluate_valuation_matrix_cluster_v1(
             regions=regions,
@@ -4511,6 +4552,14 @@ def coalesce_gemini_json_equity_matrix_document_v1(
 ) -> dict[str, Any]:
     """Select one complete matrix under one bounded owner/reset fence."""
 
+    if compiled_specs.get("currency_risk_mode") is True:
+        from bctc_ai.evaluation.gemini_json_currency_risk_matrix_v1 import (
+            coalesce_gemini_json_currency_risk_document_v1,
+        )
+
+        return coalesce_gemini_json_currency_risk_document_v1(
+            page_records=page_records, compiled_specs=compiled_specs
+        )
     if compiled_specs.get("valuation_mode") is True:
         return _coalesce_valuation_matrix_document_v1(
             page_records=page_records, compiled_specs=compiled_specs
@@ -5464,6 +5513,17 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
     def validate_candidate(
         candidate: Any, *, document: Mapping[str, Any], cluster: Mapping[str, Any]
     ) -> dict[str, Any]:
+        if compiled_specs.get("currency_risk_mode") is True:
+            from bctc_ai.evaluation.gemini_json_currency_risk_matrix_v1 import (
+                validate_gemini_json_currency_risk_candidate_binding_v1,
+            )
+
+            return validate_gemini_json_currency_risk_candidate_binding_v1(
+                candidate,
+                document=document,
+                cluster=cluster,
+                compiled_specs=compiled_specs,
+            )
         if compiled_specs.get("valuation_mode") is True:
             return _validate_valuation_matrix_candidate_binding_v1(
                 candidate,

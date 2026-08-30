@@ -1,0 +1,39 @@
+{
+  "cell_role_bindings": [
+    {"currency_role": "EUR", "report_norm_id": 1354, "row_role": "ASSET_TOTAL"},
+    {"currency_role": "EUR", "report_norm_id": 5850, "row_role": "LIABILITY_TOTAL"},
+    {"currency_role": "EUR", "report_norm_id": 1376, "row_role": "STATE_INTERNAL"},
+    {"currency_role": "EUR", "report_norm_id": 1377, "row_role": "STATE_EXTERNAL"},
+    {"currency_role": "EUR", "report_norm_id": 1378, "row_role": "STATE_COMBINED"},
+    {"currency_role": "USD", "report_norm_id": 1380, "row_role": "ASSET_TOTAL"},
+    {"currency_role": "USD", "report_norm_id": 5852, "row_role": "LIABILITY_TOTAL"},
+    {"currency_role": "USD", "report_norm_id": 1402, "row_role": "STATE_INTERNAL"},
+    {"currency_role": "USD", "report_norm_id": 1403, "row_role": "STATE_EXTERNAL"},
+    {"currency_role": "USD", "report_norm_id": 1404, "row_role": "STATE_COMBINED"},
+    {"currency_role": "VND", "report_norm_id": 1406, "row_role": "ASSET_TOTAL"},
+    {"currency_role": "VND", "report_norm_id": 1418, "row_role": "LIABILITY_TOTAL"},
+    {"currency_role": "VND", "report_norm_id": 1428, "row_role": "STATE_INTERNAL"},
+    {"currency_role": "VND", "report_norm_id": 1429, "row_role": "STATE_EXTERNAL"},
+    {"currency_role": "VND", "report_norm_id": 1430, "row_role": "STATE_COMBINED"},
+    {"currency_role": "OTHER", "report_norm_id": 1432, "row_role": "ASSET_TOTAL"},
+    {"currency_role": "OTHER", "report_norm_id": 5854, "row_role": "LIABILITY_TOTAL"},
+    {"currency_role": "OTHER", "report_norm_id": 1454, "row_role": "STATE_INTERNAL"},
+    {"currency_role": "OTHER", "report_norm_id": 1455, "row_role": "STATE_EXTERNAL"},
+    {"currency_role": "OTHER", "report_norm_id": 1456, "row_role": "STATE_COMBINED"},
+    {"currency_role": "TOTAL", "report_norm_id": 1458, "row_role": "ASSET_TOTAL"},
+    {"currency_role": "TOTAL", "report_norm_id": 5856, "row_role": "LIABILITY_TOTAL"},
+    {"currency_role": "TOTAL", "report_norm_id": 1480, "row_role": "STATE_INTERNAL"},
+    {"currency_role": "TOTAL", "report_norm_id": 1481, "row_role": "STATE_EXTERNAL"},
+    {"currency_role": "TOTAL", "report_norm_id": 1482, "row_role": "STATE_COMBINED"}
+  ],
+  "currency_branch_bindings": [
+    {"currency_role": "EUR", "report_norm_id": 1353},
+    {"currency_role": "USD", "report_norm_id": 1379},
+    {"currency_role": "VND", "report_norm_id": 1405},
+    {"currency_role": "OTHER", "report_norm_id": 1431},
+    {"currency_role": "TOTAL", "report_norm_id": 1457}
+  ],
+  "family_id": "CURRENCY_RISK",
+  "family_root_report_norm_id": 1352,
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1"
+}

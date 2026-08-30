@@ -1,0 +1,39 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_ONE_UNKNOWN_DECLARED_EQUATION_EQUALS_ZERO",
+  "closure_policy": "EXACT_REQUIRED_EQUATION_COVERAGE_WITH_NONCLOSING_SOURCE_RETENTION",
+  "family_id": "CURRENCY_RISK",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["CORE_ROWS_CURRENCY_COLUMNS"],
+    "currency_role_aliases": {
+      "EUR": ["EUR", "EUR được quy đổi", "Đồng EUR", "Euro"],
+      "OTHER": ["Khác", "Ngoại tệ khác", "Ngoại tệ khác quy đổi", "Ngoại tệ khác được quy đổi", "Các ngoại tệ khác", "Các ngoại tệ khác quy đổi", "Các ngoại tệ khác được quy đổi", "Các loại ngoại tệ khác quy đổi", "Các loại ngoại tệ khác được quy đổi", "Các loại ngoại tệ khác đã QĐ", "Các đồng tiền khác", "Đồng tiền khác", "Tiền tệ khác"],
+      "TOTAL": ["Tổng cộng", "Tổng"],
+      "USD": ["USD", "USD được quy đổi", "Đồng USD", "Đô la Mỹ"],
+      "VND": ["VND", "Đồng Việt Nam", "Việt Nam đồng"]
+    },
+    "grand_total_role": "TOTAL",
+    "matrix_kind": "CURRENCY_RISK_CLASSIFICATION",
+    "max_continuation_pages": 1,
+    "minimum_mapped_currency_roles": 2,
+    "required_row_roles": ["ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"],
+    "source_only_currency_aliases": {
+      "AUD_SOURCE": ["AUD", "Đô la Úc"],
+      "CAD_SOURCE": ["CAD", "Đô la Canada"],
+      "CHF_SOURCE": ["CHF", "Franc Thụy Sĩ"],
+      "GBP_SOURCE": ["GBP", "Bảng Anh"],
+      "GOLD_SOURCE": ["Vàng", "Giá trị vàng tiền tệ", "XAU"],
+      "JPY_SOURCE": ["JPY", "Yên Nhật"],
+      "SGD_SOURCE": ["SGD", "Đô la Singapore"]
+    },
+    "state_equations": [
+      {"required": true, "result_role": "STATE_INTERNAL", "term_multipliers": {"ASSET_TOTAL": 1, "LIABILITY_TOTAL": -1}},
+      {"required": false, "result_role": "STATE_COMBINED", "term_multipliers": {"STATE_EXTERNAL": 1, "STATE_INTERNAL": 1}}
+    ],
+    "unit_bindings": [
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "document_consensus_eligible": true, "magnitude_power10": 3},
+      {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 9}
+    ]
+  }
+}
