@@ -68,9 +68,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 46 | `CONTINGENT_LIABILITIES_AND_COMMITMENTS` | 83 | 57 | 0 | 769 | `gjfafstorev1:run:a10b6421427aed6fe6c1f9972075eb451bc869a7091de2ff98d6b31b330358e7` |
 | 47 | `FINANCIAL_INSTRUMENTS` | 66 | 74 | 0 | 1.408 | `gjfafstorev1:run:7058ba455a4c01ef356bf0fe047696e769e2c01307ffd23235700ed39ef9020c` |
 | 48 | `CURRENCY_RISK` | 140 | 0 | 0 | 3.632 | `gjfafstorev1:run:58e6138c7064e5df016116e5a2849f9197183499454defda4c1d18d13b5ecd5f` |
+| 49 | `INTEREST_RATE_RISK` | 139 | 1 | 0 | 6.879 | `gjfafstorev1:run:023adeb792a95dfc112a1ce60bba346d7241f50f8bf135b12e97caeb28228529` |
 
-Tại checkpoint này database có đủ đúng bốn mươi tám current selection liên tục
-từ Family 1 đến Family 48. Family 49 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi chín current selection liên tục
+từ Family 1 đến Family 49. Family 50 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -1203,13 +1204,57 @@ Artifact OFFICIAL:
   sạch, không SQLite sidecar, SHA-256
   `9d9051f1090cdb5b8f54e728bc702a8b4c440ad5e5e89b5959e8a385609e1475`.
 
+## Family 49 closure
+
+- Family 49 `INTEREST_RATE_RISK`: `READY=139`, `NOT_OBSERVED=1`,
+  `UNRESOLVED=0`, 6.879 mappings, 6.788 mapped values và 3.118 equation
+  receipts. Generic interest-rate matrix resolver tự inventory 173 source
+  fragments trong 139 clusters, khóa repricing/maturity buckets,
+  asset/liability/internal/external/combined-state rows, period, unit,
+  continuation và complete source population. Ordinal 134 không có semantic
+  anchor được giữ typed `NOT_OBSERVED`; không tạo mapping giả.
+
+  Bốn vùng khó được xử lý bằng cùng repair contract tối giản
+  `{observations:[{cell_id,source_text}]}`. Ba trang có lỗi đọc nguồn được thay
+  bằng page versions có content-addressed lineage; một trang được xác nhận là
+  source presentation đúng và không tạo replacement. Gemini không nhận graph,
+  equation, schema, ReportNormId, bank/file/page rule hoặc đáp án. Thuật toán
+  local tự project observation lên JSON bất biến, kiểm exact row graph, source
+  totals và phương trình rồi mới cho phép mapping. Final replay tái sử dụng tám
+  sealed observations, gọi provider mới bằng zero.
+
+  Effective frontier `gjfepfv1:frontier:b5d5597e2b67a04fbf8bc3cc4809e880489fd1b19ac6b0d7346b5ff083ca94d2`
+  thay đúng ba trong 8.947 selected page versions. Public SQLite query/candidate
+  replay dựng lại toàn bộ candidate từ repaired canonical pages; coherent
+  source-receipt drift sau khi rehash bị loại. E-0102/E-0156 khớp 429/429
+  historical mappings và 141/141 historical equations. Hai legacy absences
+  được source JSON hiện tại supersede minh bạch; 214 nonclosing source
+  frontiers và 28 source-only columns vẫn được receipted, không bị backsolve hay
+  gộp tùy ý.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family49-interest-rate-risk/sweep.json`,
+  SHA-256
+  `4e7d53f405fbbe0e3c3db5d977de667037b60b0d3956c57284d52defef0e6449`;
+  audit SHA-256
+  `087203145c11d9ee2c8ac885b0fa6e8705fe85a62c565cf0f8cb5e565a938447`,
+  audit ID
+  `gjfirreav1:audit:a3a4da31b39926f94b5d61b7739b69f5aa4ebac1bb2f60d387eec4887711bc13`.
+  Implementation commits `a076259`, `978b9a1`, `78b3067` và `f9c0dc3`;
+  63 focused/adjacent/indexed/store/runner tests, Ruff, format, diff, exact
+  SQLite replay, coherent-tamper rejection và byte-identical EXP/OFFICIAL
+  artifacts đều xanh. Cumulative results DB có 49 current selections và 49
+  selection events, `quick_check`/foreign keys sạch, không SQLite sidecar,
+  SHA-256
+  `7c5ce5f869cec6bc12ffc71b7748a488c6249092e7836d3bf5ba35c1c34b9c0d`.
+
 ## Next gate
 
-Family 49 là `INTEREST_RATE_RISK`, schema root 1483, khóa comparator
-E-0102/E-0156 và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán phải
-tự inventory repricing/maturity buckets, asset/liability/internal/external/
-combined-state rows, nested subtotal, period, unit và continuation; bucket nguồn
-không có schema branch phải giữ typed source-only thay vì gộp tùy ý. Không route
-theo bank/file/page và chỉ promote OFFICIAL sau exhaustive 8.947-page inventory,
-public SQLite query/candidate replay, historical comparator và đủ 140
-dispositions.
+Family 50 là `LIQUIDITY_RISK`, schema root 1759, khóa comparator E-0103/E-0157
+và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán phải tự inventory
+combined/split overdue axes, maturity buckets, asset/liability/net-liquidity-gap
+rows, source-row aggregation, nested subtotal, period, unit và continuation;
+bucket nguồn không có schema branch phải giữ typed source-only thay vì gộp tùy
+ý. Không route theo bank/file/page và chỉ promote OFFICIAL sau exhaustive
+8.947-page inventory, public SQLite query/candidate replay, historical
+comparator và đủ 140 dispositions.
