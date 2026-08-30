@@ -64,9 +64,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 42 | `EMPLOYEE_INCOME` | 60 | 74 | 6 | 300 | `gjfafstorev1:run:f8840be909af03992b2ca3e4cb84b119d1765eeb35ce5046ecf395a2bc466ee0` |
 | 43 | `STATE_BUDGET_OBLIGATIONS` | 130 | 10 | 0 | 590 | `gjfafstorev1:run:7020a723348693036d463962f49a818ae142160d4b33e640e27c312ae226f7f1` |
 | 44 | `CUSTOMER_COLLATERAL_HELD` | 58 | 82 | 0 | 314 | `gjfafstorev1:run:22ab1fc5ae4d5c0a245737ad50fd3c331e0708eebbc4a0e2dff65dd1151d32c6` |
+| 45 | `BANK_PLEDGED_OR_DISCOUNTED_ASSETS` | 50 | 90 | 0 | 114 | `gjfafstorev1:run:c6fd41be57cc3e8ca11e74a59d66489f640bd4f85e2e51ea0d96098141854dc5` |
 
-Tại checkpoint này database có đủ đúng bốn mươi bốn current selection liên tục
-từ Family 1 đến Family 44. Family 45 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng bốn mươi lăm current selection liên tục
+từ Family 1 đến Family 45. Family 46 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -1053,15 +1054,53 @@ Artifact OFFICIAL:
   sidecar, SHA-256
   `17b8a8b95383c8e07a0f3cb0214f4f0b3a36ae886ef6c474036d5f905f5a7d68`.
 
+## Family 45 closure
+
+- Family 45 `BANK_PLEDGED_OR_DISCOUNTED_ASSETS`: `READY=50`,
+  `NOT_OBSERVED=90`, `UNRESOLVED=0` và 114 mappings. Generic multi-table
+  hierarchical resolver inventory đúng bank-owned owner/reset fence, khóa hai
+  period lane, unit, source total, direct child frontier và hierarchy
+  `Trong đó` mà không route theo bank/file/page. Customer collateral,
+  borrowing-facility text và policy mention chỉ là controls. Prompt Gemini vẫn
+  tối giản, cố định; graph, equation, hierarchy và mapping đều do thuật toán
+  local xây và kiểm chứng.
+
+  Hai primitive opt-in mới giữ tính tổng quát: complete owner MONEY-table có
+  thể tạo exact source population; validation-only carrier có thể project vào
+  residual leaf chỉ sau khi source equation tiêu thụ toàn bộ frontier. Wrapper
+  `Trong đó` được bind bằng source hierarchy. Trường hợp nguồn thật sự in cả
+  parent lẫn children vào cùng total không bị sửa hay ép thành một phương trình
+  giả: receipt riêng ghi nhận exact overlapping source hierarchy, chỉ cho phép
+  carrier validation-only, và vẫn giữ printed root cùng các child không trùng.
+
+  Exhaustive query quét đủ 8.947 selected page versions và sinh 50 accepted
+  clusters, 90 typed absence dispositions, 52 equation receipts. E-0097/E-0152
+  khớp đủ 16/16 historical dispositions và 18/18 mappings. Public SQLite query
+  và candidate replay dựng lại toàn bộ candidate từ canonical page JSON; các
+  coherent receipt/spec/candidate drift đều fail closed. Source contradiction
+  tại VPB ordinal 137 được đối chiếu trực tiếp với ảnh 300 dpi và giữ nguyên,
+  không gọi Gemini repair.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family45-bank-pledged-or-discounted-assets/sweep.json`,
+  SHA-256
+  `01e0ea23028f32e54e42a913f716e9a22998995e4b04c5143774c774198fdc64`;
+  audit SHA-256
+  `dd6255035e8b69dba24ea011a9e297921bbe160e2c6e833009cbce0c8fd870ec`.
+  Implementation commit `ec53443`; 293 focused/adjacent/regression tests,
+  Ruff, format, compile, JSON, diff, EXP/OFFICIAL replay và SQLite integrity
+  đều xanh. Cumulative results DB có 45 current selections và 45 selection
+  events, `quick_check` và foreign keys sạch, không SQLite sidecar, SHA-256
+  `4b42170b8bd308c122fed7d32d6b5c6955eea93ee3eb9653de66c57bbdca460e`.
+
 ## Next gate
 
-Family 45 là `BANK_PLEDGED_OR_DISCOUNTED_ASSETS`. Khóa comparator
-E-0097/E-0152 và tiếp tục dùng prompt Gemini tối giản, cố định. Code phải tự
-inventory đúng bank-owned owner/reset fence, hai period lane, unit, family
-total, direct child frontier và hierarchy `Trong đó`; customer collateral,
-borrowing-facility text và policy mention chỉ là controls. Generic valuable
-papers không được ép vào trading/investment leaf, còn source presentation
-double-count phải được giữ như contradiction thay vì biến thành phương trình.
-Không route theo bank/file/page và chỉ promote OFFICIAL sau exhaustive
-8.947-page inventory, public SQLite query/candidate replay, historical
-comparator và đủ 140 dispositions.
+Family 46 là `CONTINGENT_LIABILITIES_AND_COMMITMENTS`, khóa comparator
+E-0098/E-0153 và tiếp tục dùng prompt Gemini tối giản, cố định. Thuật toán phải
+tự inventory owner, optional intermediate groups, two-period/unit axes,
+missing printed family total, gross-minus-margin-to-net presentations và
+bounded continuation. Source-only granular L/C, guarantee, swap, margin-control
+và `Trong đó` rows không được cộng lặp hoặc ép vào leaf không tương ứng. Không
+route theo bank/file/page và chỉ promote OFFICIAL sau exhaustive 8.947-page
+inventory, public SQLite query/candidate replay, historical comparator và đủ
+140 dispositions.
