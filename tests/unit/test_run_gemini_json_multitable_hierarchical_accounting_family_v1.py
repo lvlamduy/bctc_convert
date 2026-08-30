@@ -64,6 +64,44 @@ def test_customer_collateral_release_profile_and_historical_oracles_are_pinned()
     ]
 
 
+def test_bank_pledged_assets_release_profile_and_historical_oracles_are_pinned() -> None:
+    compiled = runner.compile_gemini_json_flat_family_specs_v1(
+        _family_spec("tm-bank-pledged-discounted-assets-topology-v1.json"),
+        _family_spec("tm-bank-pledged-discounted-assets-evaluation-v1.json"),
+        _family_spec("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+    )
+    profile = runner._release_profile(compiled)
+    assert profile["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 114,
+        "not_observed_count": 90,
+        "ready_count": 50,
+        "unresolved_count": 0,
+    }
+    assert profile["audit_metrics"] == {
+        "equation_count": 52,
+        "historical_comparator_exact_count": 34,
+        "historical_disposition_exact_count": 16,
+        "historical_mapping_exact_count": 18,
+        "historical_mapping_record_count": 18,
+        "mapping_count": 114,
+    }
+    assert profile["axis_counts"] == {
+        "clusters": 50,
+        "equations": 52,
+        "historical_comparator": 34,
+        "mappings": 114,
+    }
+    assert profile["query_receipt"]["accepted_cluster_count"] == 50
+    assert profile["query_receipt"]["selected_page_count"] == 8947
+    assert [
+        item[0]["format_version"] for item in runner._historical_oracles(compiled_specs=compiled)
+    ] == [
+        "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "ANNUAL_2025_BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+    ]
+
+
 def test_employee_income_release_profile_decimal_oracles_and_axes_are_pinned() -> None:
     compiled = runner.compile_gemini_json_flat_family_specs_v1(
         _family_spec("tm-employee-income-topology-v1.json"),

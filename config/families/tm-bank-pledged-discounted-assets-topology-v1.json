@@ -1,0 +1,81 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {"aliases": ["Chứng khoán kinh doanh", "Chứng khoán nợ kinh doanh", "Giấy tờ có giá thuộc chứng khoán kinh doanh"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "TRADING_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chứng khoán đầu tư", "Giấy tờ có giá thuộc chứng khoán đầu tư"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "INVESTMENT_SECURITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Tài sản cố định"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "FIXED_ASSETS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Giấy tờ có giá", "Tài sản khác", "Tài sản khác đưa đi thế chấp, cầm cố"], "presence_anchor": false, "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_ASSETS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Giấy tờ có giá đưa đi thế chấp, cầm cố", "Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu", "Mệnh giá giấy tờ có giá đưa đi thế chấp, cầm cố"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "PLEDGED_VALUABLE_PAPERS_SOURCE",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Giấy tờ có giá bán và cam kết mua lại", "Mệnh giá giấy tờ có giá bán và cam kết mua lại"], "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "REPO_VALUABLE_PAPERS_SOURCE",
+      "role_kind": "STRUCTURAL_GROUP"
+    }
+  ],
+  "family_id": "BANK_PLEDGED_OR_DISCOUNTED_ASSETS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản, GTCG nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá nhận thế chấp và chiết khấu, tái chiết khấu của khách hàng",
+    "Tài sản, giấy tờ có giá nhận thế chấp và chiết khấu, tái chiết khấu của tổ chức tín dụng khác"
+  ],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+      "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+      "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu bởi Ngân hàng",
+      "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu bởi Ngân hàng"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "BANK_PLEDGED_OR_DISCOUNTED_ASSETS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["PLEDGED_VALUABLE_PAPERS_SOURCE"]
+  ],
+  "structural_reset_aliases": [
+    "Tài sản, GTCG nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá nhận thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá nhận thế chấp và chiết khấu, tái chiết khấu của khách hàng",
+    "Tài sản, giấy tờ có giá nhận thế chấp và chiết khấu, tái chiết khấu của tổ chức tín dụng khác"
+  ]
+}

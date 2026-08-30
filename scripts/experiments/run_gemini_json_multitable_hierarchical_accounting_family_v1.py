@@ -520,6 +520,23 @@ PINNED_CUSTOMER_COLLATERAL_HELD_HISTORICAL_ORACLES = (
         "size_bytes": 81332,
     },
 )
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_HISTORICAL_ORACLES = (
+    {
+        "format_version": "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": "docs/experiments/E-0097-bank-pledged-assets-8bank-codex-verified-mapping-v1.json",
+        "sha256": "874c5cbd317afcaecbc4a239d08dec86c0a87355ba4c644c2c10685a6703749a",
+        "size_bytes": 39994,
+    },
+    {
+        "format_version": "ANNUAL_2025_BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0152-annual-2025-bank-pledged-assets-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "1d096b0a00d178865c73cdcb9864d45c836a81aa70982c10b5e7e0a3bafcd34b",
+        "size_bytes": 62982,
+    },
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1502,6 +1519,55 @@ PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AXIS_SHA256 = {
     "historical_comparator": "829626348a9adbccb45414faf8f57b835b8a4d282e04bfca631a326e89e0078f",
     "mappings": "5f17fc29ac4b0823916c711f3dd368fe3940f7c12d3cfa9739c183fe2d7061a1",
 }
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "6cefa6164138797b82db80372f84687fb8ccf562df9880276d3fbff732ac4a10"
+    ),
+    "accepted_cluster_count": 50,
+    "accepted_fragment_count": 50,
+    "candidate_disposition_axis_sha256": (
+        "f527d591cd3f7011be0a6664eb1efdd341bd9db732487dcefff4253bedfa139f"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 90, READY: 50, UNRESOLVED: 0},
+    "query_policy_sha256": "764b83a359f0128bb983f3e1707832b6297d1184e042523f850d1f1785f7ab33",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 114,
+    "not_observed_count": 90,
+    "ready_count": 50,
+    "unresolved_count": 0,
+}
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AUDIT_METRICS = {
+    "equation_count": 52,
+    "historical_comparator_exact_count": 34,
+    "historical_disposition_exact_count": 16,
+    "historical_mapping_exact_count": 18,
+    "historical_mapping_record_count": 18,
+    "mapping_count": 114,
+}
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AXIS_COUNTS = {
+    "clusters": 50,
+    "equations": 52,
+    "historical_comparator": 34,
+    "mappings": 114,
+}
+PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AXIS_SHA256 = {
+    "clusters": "822ceffeb2161902484988247081834c1eccac7f9deb1e4f8d6ba27250a13701",
+    "equations": "0f7235bfd67491242921f7f379956c64fd52a1ae0a34ef6fe3aad91a760f3e3f",
+    "historical_comparator": ("99f2a122d6abe022168db1d8730987b44df3c29ad042b7dee7de5d4aa2807476"),
+    "mappings": "1a3af1a3eef67951385004924c68ab3df1e6b65b53aec4a4ec3fc1803a02612f",
+}
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -1747,6 +1813,8 @@ def _historical_oracle_refs(
         return PINNED_EMPLOYEE_INCOME_HISTORICAL_ORACLES
     if family_id == "CUSTOMER_COLLATERAL_HELD":
         return PINNED_CUSTOMER_COLLATERAL_HELD_HISTORICAL_ORACLES
+    if family_id == "BANK_PLEDGED_OR_DISCOUNTED_ASSETS":
+        return PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
@@ -1927,6 +1995,14 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "audit_metrics": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_CUSTOMER_COLLATERAL_HELD_QUERY_RECEIPT,
             "sweep_metrics": PINNED_CUSTOMER_COLLATERAL_HELD_RELEASE_METRICS,
+        }
+    if family_id == "BANK_PLEDGED_OR_DISCOUNTED_ASSETS":
+        return {
+            "axis_counts": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AXIS_SHA256,
+            "audit_metrics": (PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_AUDIT_METRICS),
+            "query_receipt": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_RELEASE_METRICS,
         }
     raise _error("multi-table hierarchical family has no pinned release profile")
 

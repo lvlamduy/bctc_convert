@@ -78,6 +78,14 @@ def _customer_collateral_compiled() -> dict:
     )
 
 
+def _bank_pledged_assets_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-bank-pledged-discounted-assets-topology-v1.json"),
+        _json("tm-bank-pledged-discounted-assets-evaluation-v1.json"),
+        _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+    )
+
+
 def _columns(current: str = "31/12/2025", comparative: str = "31/12/2024") -> list[dict]:
     return [
         {"header_path_exact": [current, "Triệu đồng"], "value_kind": "MONEY"},
@@ -189,6 +197,24 @@ def _evaluate_interest_income(page: dict) -> tuple[dict, dict, dict]:
 
 def _evaluate_interest_expense(page: dict) -> tuple[dict, dict, dict]:
     compiled = _interest_expense_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, candidate
+
+
+def _evaluate_bank_pledged_assets(page: dict) -> tuple[dict, dict, dict]:
+    compiled = _bank_pledged_assets_compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[_record(page)], compiled_specs=compiled
     )
@@ -2387,3 +2413,305 @@ def test_interest_expense_subtotal_does_not_hide_declared_role_on_other_side() -
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
     assert "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED" in candidate["reasons"]
+
+
+def test_bank_pledged_flat_validation_roles_project_to_other_after_exact_total() -> None:
+    table = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [
+            _row(
+                "Giấy tờ có giá đưa đi thế chấp, cầm cố "
+                "(Thuyết minh số 8.1 và thuyết minh số 13.1)",
+                ["60", "50"],
+            ),
+            _row("Giấy tờ có giá bán và cam kết mua lại", ["20", "10"]),
+            _row("Tài sản khác đưa đi thế chấp, cầm cố", ["10", "5"]),
+            _row(None, ["90", "65"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    other = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "OTHER_ASSETS")
+    assert [value["coefficient"] for value in other["values"]] == [90, 65]
+    assert {source_ref["row_id"] for source_ref in other["source_refs"]} == {
+        "r1",
+        "r2",
+        "r3",
+    }
+    receipts = candidate["closure_receipt"]["table_receipts"][0][
+        "validation_role_leaf_projection_receipts"
+    ]
+    assert {receipt["source_role"] for receipt in receipts} == {
+        "PLEDGED_VALUABLE_PAPERS_SOURCE",
+        "REPO_VALUABLE_PAPERS_SOURCE",
+    }
+
+
+def test_bank_pledged_parent_stays_validation_only_and_ordered_repo_projects_to_investment() -> (
+    None
+):
+    parent = "Giấy tờ có giá đưa đi thế chấp, cầm cố"
+    table = _table(
+        "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [
+            _row(parent, ["60", "50"]),
+            _row("Trong đó:", [None, None], kind="GROUP", hierarchy=["Trong đó:"]),
+            _row(
+                "- Giấy tờ có giá thuộc chứng khoán kinh doanh",
+                ["20", "10"],
+                hierarchy=[
+                    "Trong đó: Các khoản chi tiết",
+                    "- Giấy tờ có giá thuộc chứng khoán kinh doanh",
+                ],
+            ),
+            _row(
+                "- Giấy tờ có giá thuộc chứng khoán đầu tư",
+                ["40", "40"],
+                hierarchy=[
+                    "Trong đó: Các khoản chi tiết",
+                    "- Giấy tờ có giá thuộc chứng khoán đầu tư",
+                ],
+            ),
+            _row("Giấy tờ có giá bán và cam kết mua lại", ["15", "10"]),
+            _row("Tài sản khác đưa đi thế chấp, cầm cố", ["5", "5"]),
+            _row(None, ["80", "65"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [value["coefficient"] for value in by_role["TRADING_SECURITIES"]["values"]] == [
+        20,
+        10,
+    ]
+    assert [value["coefficient"] for value in by_role["INVESTMENT_SECURITIES"]["values"]] == [
+        55,
+        50,
+    ]
+    assert [value["coefficient"] for value in by_role["OTHER_ASSETS"]["values"]] == [5, 5]
+    mapped_source_rows = {
+        source_ref["row_id"]
+        for mapping in candidate["mappings"]
+        for source_ref in mapping["source_refs"]
+    }
+    assert "r1" not in mapped_source_rows
+    assert "r5" in mapped_source_rows
+
+    # A printed total that counts both a visible carrier and its disclosed
+    # ``Trong đó`` children is retained only through the explicit source-
+    # contradiction receipt. Child mappings still use the non-overlapping
+    # hierarchy; the engine neither silently fixes nor double-maps the parent.
+    table["rows"][-1]["values_exact"] = ["140", "115"]
+    double_counted_page = _page(_section("Thuyết minh", table))
+    compiled_specs, cluster, double_counted = _evaluate_bank_pledged_assets(double_counted_page)
+    assert double_counted["status"] == READY
+    double_counted_by_role = {mapping["role"]: mapping for mapping in double_counted["mappings"]}
+    assert [
+        value["coefficient"] for value in double_counted_by_role["FAMILY_ROOT_TOTAL"]["values"]
+    ] == [140, 115]
+    assert (
+        len(
+            double_counted["closure_receipt"]["table_receipts"][0][
+                "source_hierarchy_overlap_total_receipts"
+            ]
+        )
+        == 1
+    )
+
+    forged = copy.deepcopy(double_counted)
+    forged["closure_receipt"]["table_receipts"][0]["source_hierarchy_overlap_total_receipts"][0][
+        "overlap_edges"
+    ][0]["child_row_ordinal"] = 6
+    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in forged.items() if key != "candidate_id"}
+    )
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="candidate replay drifted",
+    ):
+        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+            forged,
+            regions=cluster["component_regions"],
+            page_json_by_version={VERSION_ID: double_counted_page},
+            compiled_specs=compiled_specs,
+            query_receipt=(
+                build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+                    cluster["component_regions"]
+                )
+            ),
+        )
+
+    table["rows"][-1]["values_exact"] = ["141", "115"]
+    _compiled_specs, _cluster, unexplained = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert unexplained["status"] == UNRESOLVED
+    assert unexplained["mappings"] == []
+
+    # The overlap exception cannot hide a mapped parent: only an explicitly
+    # validation-only carrier may coexist with its mapped detail frontier.
+    table["rows"][0]["label_exact"] = "Tài sản khác"
+    table["rows"][0]["hierarchy_path_exact"] = ["Tài sản khác"]
+    table["rows"][-1]["values_exact"] = ["140", "115"]
+    _compiled_specs, _cluster, mapped_parent = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert mapped_parent["status"] == UNRESOLVED
+    assert mapped_parent["mappings"] == []
+
+
+def test_bank_pledged_unaliased_rows_project_only_from_exact_source_total_frontier() -> None:
+    table = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [
+            _row("Tiền gửi có kỳ hạn tại TCTD khác", ["60", "50"]),
+            _row("Chứng khoán đầu tư", ["30", "20"]),
+            _row(None, ["90", "70"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [value["coefficient"] for value in by_role["INVESTMENT_SECURITIES"]["values"]] == [
+        30,
+        20,
+    ]
+    assert [value["coefficient"] for value in by_role["OTHER_ASSETS"]["values"]] == [60, 50]
+
+    table["rows"][-1]["values_exact"] = ["91", "70"]
+    _compiled_specs, _cluster, mismatch = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert mismatch["status"] == UNRESOLVED
+    assert mismatch["mappings"] == []
+
+
+def test_bank_pledged_exact_owner_whole_table_accepts_unaliased_terminal_frontier() -> None:
+    table = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [
+            _row("Trái phiếu đặc biệt do tổ chức khác phát hành", ["60", "50"]),
+            _row("Công cụ nợ chưa niêm yết", ["30", "20"]),
+            _row(None, ["90", "70"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    _compiled_specs, cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert cluster["status"] == READY
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [value["coefficient"] for value in by_role["OTHER_ASSETS"]["values"]] == [
+        90,
+        70,
+    ]
+    assert [value["coefficient"] for value in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        90,
+        70,
+    ]
+
+    table["rows"][-1]["values_exact"] = ["91", "70"]
+    _compiled_specs, _cluster, mismatch = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert mismatch["status"] == UNRESOLVED
+    assert mismatch["mappings"] == []
+
+
+def test_bank_pledged_exact_owner_single_declared_root_component_derives_root() -> None:
+    table = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [_row("Giấy tờ có giá", ["60", "50"])],
+    )
+    _compiled_specs, cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert cluster["status"] == READY
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [value["coefficient"] for value in by_role["OTHER_ASSETS"]["values"]] == [
+        60,
+        50,
+    ]
+    assert [value["coefficient"] for value in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        60,
+        50,
+    ]
+
+    ownerless = _table(None, [_row("Giấy tờ có giá", ["60", "50"])])
+    compiled = _bank_pledged_assets_compiled()
+    not_observed = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(_page(_section("Thuyết minh", ownerless)))],
+        compiled_specs=compiled,
+    )
+    assert not_observed["status"] == NOT_OBSERVED
+
+
+def test_bank_pledged_validation_leaf_without_exact_source_total_is_unresolved() -> None:
+    table = _table(
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        [_row("Giấy tờ có giá đưa đi thế chấp, cầm cố", ["60", "50"])],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_bank_pledged_assets(
+        _page(_section("Thuyết minh", table))
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def test_bank_pledged_projection_policies_reject_invalid_declarations() -> None:
+    evaluation = _json("tm-bank-pledged-discounted-assets-evaluation-v1.json")
+    evaluation["equation_consumed_unmatched_residual_anchor_policy"] = "VALUE_SEARCH"
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="unmatched residual anchor policy is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-bank-pledged-discounted-assets-topology-v1.json"),
+            evaluation,
+            _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+        )
+
+    evaluation = _json("tm-bank-pledged-discounted-assets-evaluation-v1.json")
+    evaluation["owner_complete_population_policy"] = "VALUE_SELECTED_COMPLETE_TABLE"
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="owner-complete population policy is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-bank-pledged-discounted-assets-topology-v1.json"),
+            evaluation,
+            _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+        )
+
+    evaluation = _json("tm-bank-pledged-discounted-assets-evaluation-v1.json")
+    evaluation["source_hierarchy_overlap_total_policy"] = "SEARCH_OVERLAPPING_VALUES"
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="source hierarchy overlap policy is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-bank-pledged-discounted-assets-topology-v1.json"),
+            evaluation,
+            _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+        )
+
+    evaluation = _json("tm-bank-pledged-discounted-assets-evaluation-v1.json")
+    evaluation["validation_role_leaf_projections"][0]["target_role"] = (
+        "PLEDGED_VALUABLE_PAPERS_SOURCE"
+    )
+    with pytest.raises(
+        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        match="validation leaf projection is invalid",
+    ):
+        compile_gemini_json_multitable_hierarchical_family_specs_v1(
+            _json("tm-bank-pledged-discounted-assets-topology-v1.json"),
+            evaluation,
+            _json("tm-bank-pledged-discounted-assets-schema-binding-v1.json"),
+        )

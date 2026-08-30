@@ -126,6 +126,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "context_residual_bindings",
         "duplicate_role_aggregation_policy",
         "duplicate_complete_table_population_policy",
+        "equation_consumed_unmatched_residual_anchor_policy",
         "equation_consumed_unmatched_residual_role",
         "family_root_population_policy",
         "family_root_requirement",
@@ -138,6 +139,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "mapped_source_subtotal_policy",
         "minimum_declared_detail_role_count",
         "minimum_source_visible_root_component_count",
+        "owner_complete_population_policy",
         "owner_match_policy",
         "owner_surface_kinds",
         "period_lane_policy",
@@ -155,8 +157,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "supplemental_detail_residuals",
         "source_result_query_policy",
         "source_reference_identity_policy",
+        "source_hierarchy_overlap_total_policy",
         "structural_parent_derivation_policy",
         "unmapped_direct_family_row_policy",
+        "validation_role_leaf_projections",
         "validation_only_roles",
         "accepted_value_column_kinds",
         "duration_month_resolution_policy",
@@ -207,6 +211,23 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX",
     }:
         raise _error("multi-table hierarchical owner match policy is invalid")
+    owner_complete_population_policy = evaluation_spec.get(
+        "owner_complete_population_policy", "DECLARED_COMPONENTS_ONLY"
+    )
+    if owner_complete_population_policy not in {
+        "DECLARED_COMPONENTS_ONLY",
+        "EXACT_OWNER_WHOLE_MONEY_TABLE",
+    }:
+        raise _error("multi-table hierarchical owner-complete population policy is invalid")
+    source_hierarchy_overlap_total_policy = evaluation_spec.get(
+        "source_hierarchy_overlap_total_policy",
+        "UNRESOLVED_ON_OVERLAPPING_SOURCE_HIERARCHY_TOTAL",
+    )
+    if source_hierarchy_overlap_total_policy not in {
+        "UNRESOLVED_ON_OVERLAPPING_SOURCE_HIERARCHY_TOTAL",
+        "MAP_EXACT_PRINTED_TOTAL_WITH_OVERLAPPING_SOURCE_HIERARCHY_RECEIPT",
+    }:
+        raise _error("multi-table hierarchical source hierarchy overlap policy is invalid")
     direct_frontier_policy = evaluation_spec.get(
         "direct_frontier_policy", "ALL_EXACT_SOURCE_FRONTIERS_UNIQUE"
     )
@@ -456,6 +477,14 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         if "validation_only_roles" in evaluation_spec
         else []
     )
+    if (
+        source_hierarchy_overlap_total_policy
+        == "MAP_EXACT_PRINTED_TOTAL_WITH_OVERLAPPING_SOURCE_HIERARCHY_RECEIPT"
+        and not validation_only_roles
+    ):
+        raise _error(
+            "multi-table hierarchical hierarchy-overlap mapping needs validation-only roles"
+        )
     non_money_metric_roles = (
         role_axis("non_money_metric_roles", allow_empty=True)
         if "non_money_metric_roles" in evaluation_spec
@@ -612,6 +641,36 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         or equation_consumed_unmatched_residual_role not in aggregate_duplicate_roles
     ):
         raise _error("multi-table hierarchical unmatched residual role is invalid")
+    equation_consumed_unmatched_residual_anchor_policy = evaluation_spec.get(
+        "equation_consumed_unmatched_residual_anchor_policy",
+        "DIRECT_RESIDUAL_ROLE_REQUIRED",
+    )
+    if equation_consumed_unmatched_residual_anchor_policy not in {
+        "DIRECT_RESIDUAL_ROLE_REQUIRED",
+        "EXACT_SOURCE_EQUATION_FRONTIER_SUFFICIENT",
+    } or (
+        equation_consumed_unmatched_residual_role is None
+        and equation_consumed_unmatched_residual_anchor_policy != "DIRECT_RESIDUAL_ROLE_REQUIRED"
+    ):
+        raise _error("multi-table hierarchical unmatched residual anchor policy is invalid")
+    validation_role_leaf_projections = []
+    leaf_projection_sources = set()
+    for projection in evaluation_spec.get("validation_role_leaf_projections", []):
+        if (
+            type(projection) is not dict
+            or set(projection) != {"source_role", "target_role"}
+            or projection.get("source_role") not in validation_only_roles
+            or projection["source_role"] in leaf_projection_sources
+            or projection.get("target_role") not in roles
+            or projection["target_role"] in validation_only_roles
+            or projection["source_role"] == projection["target_role"]
+            or child_by_role[projection["source_role"]]["role_kind"] != "STRUCTURAL_GROUP"
+            or child_by_role[projection["target_role"]]["role_kind"] != "ADDITIVE_CHILD"
+            or projection["target_role"] not in aggregate_duplicate_roles
+        ):
+            raise _error("multi-table hierarchical validation leaf projection is invalid")
+        leaf_projection_sources.add(projection["source_role"])
+        validation_role_leaf_projections.append(canonical_clone_v1(projection))
     row_alias_prefix_roles = (
         role_axis("row_alias_prefix_roles", allow_empty=True)
         if "row_alias_prefix_roles" in evaluation_spec
@@ -816,6 +875,10 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         projection["target_role"] not in bindings for projection in ordered_role_scope_projections
     ):
         raise _error("multi-table hierarchical ordered projection target is not mapped")
+    if any(
+        projection["target_role"] not in bindings for projection in validation_role_leaf_projections
+    ):
+        raise _error("multi-table hierarchical validation leaf projection target is not mapped")
     aliases_by_role = {role: _aliases(child) for role, child in child_by_role.items()}
     presence_anchor_roles = sorted(
         role
@@ -873,6 +936,8 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         query_policy["source_result_query_policy"] = source_result_query_policy
     if "minimum_declared_detail_role_count" in evaluation_spec:
         query_policy["minimum_declared_detail_role_count"] = minimum_declared_detail_role_count
+    if "owner_complete_population_policy" in evaluation_spec:
+        query_policy["owner_complete_population_policy"] = owner_complete_population_policy
     if "row_population_context_policy" in evaluation_spec:
         query_policy["row_population_context_policy"] = row_population_context_policy
     return {
@@ -903,6 +968,15 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "duplicate_role_aggregation_policy": duplicate_role_aggregation_policy,
         "engine_format_version": ENGINE_FORMAT_VERSION,
         "equation_consumed_unmatched_residual_role": (equation_consumed_unmatched_residual_role),
+        **(
+            {
+                "equation_consumed_unmatched_residual_anchor_policy": (
+                    equation_consumed_unmatched_residual_anchor_policy
+                )
+            }
+            if "equation_consumed_unmatched_residual_anchor_policy" in evaluation_spec
+            else {}
+        ),
         "evaluation": canonical_clone_v1(evaluation_spec),
         "family_root_population_policy": family_root_population_policy,
         "family_root_requirement": family_root_requirement,
@@ -922,6 +996,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "ordered_role_scope_projections": ordered_role_scope_projections,
         "mapped_source_subtotal_policy": mapped_source_subtotal_policy,
         "minimum_declared_detail_role_count": minimum_declared_detail_role_count,
+        **(
+            {"owner_complete_population_policy": owner_complete_population_policy}
+            if "owner_complete_population_policy" in evaluation_spec
+            else {}
+        ),
         "period_lane_policy": period_lane_policy,
         "primary_statement_family_root_subtree_policy": (
             primary_statement_family_root_subtree_policy
@@ -947,6 +1026,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "schema": canonical_clone_v1(schema_binding_spec),
         "source_result_query_policy": source_result_query_policy,
         "source_reference_identity_policy": source_reference_identity_policy,
+        **(
+            {"source_hierarchy_overlap_total_policy": source_hierarchy_overlap_total_policy}
+            if "source_hierarchy_overlap_total_policy" in evaluation_spec
+            else {}
+        ),
         "structural_parent_derivation_policy": structural_parent_derivation_policy,
         "supplemental_detail_residuals": supplemental_detail_residuals,
         "table_context_roles": table_context_roles,
@@ -955,6 +1039,11 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "unit_binding_by_alias": unit_binding_by_alias,
         "unit_bindings": unit_bindings,
         "unmapped_direct_family_row_policy": unmapped_direct_family_row_policy,
+        **(
+            {"validation_role_leaf_projections": validation_role_leaf_projections}
+            if validation_role_leaf_projections
+            else {}
+        ),
         "validation_only_roles": validation_only_roles,
     }
 
@@ -2693,6 +2782,48 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         compiled_specs["source_result_query_policy"] == "OWNER_OR_EXACT_SOURCE_RESULT_ROW"
     )
 
+    def exact_owner_whole_money_table_carrier(item: Mapping[str, Any]) -> bool:
+        """Recognize one complete table only from source structure.
+
+        This opt-in is intentionally independent of values and of document
+        identity.  It covers two source-authenticated shapes which cannot be
+        discovered from declared row aliases alone: a locally owned table with
+        one terminal source total, and a locally owned single declared root
+        component whose printed table has no total.  Every visible MONEY row
+        must belong to that same table population; arithmetic remains an
+        evaluator veto, never a query selector.
+        """
+
+        if compiled_specs.get("owner_complete_population_policy") != (
+            "EXACT_OWNER_WHOLE_MONEY_TABLE"
+        ):
+            return False
+        classification = item["classification"]
+        if not classification.get("owner_visible"):
+            return False
+        role_hits = classification.get("role_hits", [])
+        total_rows = classification.get("total_rows", [])
+        unbound_ordinals = set(classification.get("unbound_money_row_ordinals", []))
+        role_ordinals = {hit["row_ordinal"] for hit in role_hits}
+        total_ordinals = {row["row_ordinal"] for row in total_rows}
+        observed_ordinals = role_ordinals | total_ordinals | unbound_ordinals
+        if not observed_ordinals:
+            return False
+        terminal_total_frontier = bool(
+            len(total_ordinals) == 1
+            and max(observed_ordinals) in total_ordinals
+            and any(ordinal < max(observed_ordinals) for ordinal in observed_ordinals)
+        )
+        declared_roles = {hit["role"] for hit in role_hits}
+        sole_declared_root_component = bool(
+            not total_ordinals
+            and not unbound_ordinals
+            and len(role_hits) == 1
+            and len(role_ordinals) == 1
+            and declared_roles <= set(compiled_specs["root_component_roles"])
+        )
+        return bool(terminal_total_frontier or sole_declared_root_component)
+
     def source_result_population_carrier(item: Mapping[str, Any]) -> bool:
         classification = item["classification"]
         declared_root_roles = set(compiled_specs["root_component_roles"]).intersection(
@@ -2707,6 +2838,7 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                     "minimum_source_visible_root_component_count", 2
                 )
             )
+            or exact_owner_whole_money_table_carrier(item)
         )
 
     source_result_population_conflicts = []
@@ -2733,9 +2865,12 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
         family_root_row_visible = any(
             item["classification"].get("family_root_row_ordinals") for item in family_items
         )
+        owner_complete_population_visible = any(
+            exact_owner_whole_money_table_carrier(item) for item in family_items
+        )
         if (
             family_items
-            and (roles or family_root_row_visible)
+            and (roles or family_root_row_visible or owner_complete_population_visible)
             and (family_root_row_visible or not require_exact_source_result)
             and span <= compiled_specs["topology"]["limits"]["max_continuation_pages"]
         ):
@@ -6524,6 +6659,7 @@ def _extract_table_local_records(
     deferred_hierarchy_family_roots: list[tuple[int, dict[str, Any]]] = []
     label_only_structural_group_receipts = []
     projected_label_only_groups: set[int] = set()
+    source_hierarchy_overlap_total_receipts = []
 
     def transparent_disclosure_wrapper(row_ordinal: int) -> bool:
         """Return whether a blank GROUP only carries disclosure hierarchy.
@@ -6582,6 +6718,47 @@ def _extract_table_local_records(
             else:
                 expanded.append((ordinal, record))
         return expanded
+
+    def following_disclosure_wrapper_children(
+        carrier_ordinal: int,
+    ) -> list[tuple[int, dict[str, Any]]]:
+        """Recover children of an immediately following disclosure wrapper.
+
+        Some structured page responses preserve ``Trong đó / Of which`` in a
+        blank GROUP row but flatten its relationship to the preceding visible
+        carrier.  The child rows still carry a hierarchy path whose first
+        segment extends that wrapper label.  This source order + hierarchy
+        grammar identifies one bounded frontier before arithmetic is used as
+        a veto.  It never scans for a value-equal subset.
+        """
+
+        wrapper_ordinal = carrier_ordinal + 1
+        if wrapper_ordinal not in row_records or not transparent_disclosure_wrapper(
+            wrapper_ordinal
+        ):
+            return []
+        wrapper_label = _normalized(rows[wrapper_ordinal - 1].get("label_exact"))
+        if not wrapper_label:
+            return []
+        children = []
+        for ordinal in range(wrapper_ordinal + 1, len(rows) + 1):
+            record = row_records.get(ordinal)
+            if record is None:
+                continue
+            row = rows[ordinal - 1]
+            if row.get("row_kind") in {"SUBTOTAL", "TOTAL"}:
+                break
+            path = [
+                _normalized(value)
+                for value in (row.get("hierarchy_path_exact") or [])
+                if _normalized(value)
+            ]
+            if not path or not (
+                path[0] == wrapper_label or path[0].startswith(wrapper_label + " ")
+            ):
+                break
+            children.append((ordinal, record))
+        return children
 
     if optional_component_veto_source_result and len(family_root_ordinals) == 1:
         root_ordinal = next(iter(family_root_ordinals))
@@ -6643,10 +6820,14 @@ def _extract_table_local_records(
         if not label:
             continue
         direct = effective_direct_descendants(carrier_ordinal)
+        equation_kind = "EXACT_VISIBLE_HIERARCHY_DIRECT_CHILDREN_EQUAL_CARRIER"
+        if not direct:
+            direct = following_disclosure_wrapper_children(carrier_ordinal)
+            equation_kind = "EXACT_VISIBLE_CARRIER_FOLLOWED_BY_DISCLOSURE_WRAPPER_CHILDREN"
         if not direct:
             continue
         equation = _exact_equation(
-            kind="EXACT_VISIBLE_HIERARCHY_DIRECT_CHILDREN_EQUAL_CARRIER",
+            kind=equation_kind,
             components=[record for _ordinal, record in direct],
             result=carrier,
         )
@@ -7036,6 +7217,68 @@ def _extract_table_local_records(
             tuple(ordinal for ordinal, _record in component_axis): (kind, component_axis, equation)
             for kind, component_axis, equation in matches
         }
+        if (
+            not unique
+            and compiled_specs.get("source_hierarchy_overlap_total_policy")
+            == "MAP_EXACT_PRINTED_TOTAL_WITH_OVERLAPPING_SOURCE_HIERARCHY_RECEIPT"
+        ):
+            visible_component_axis = [
+                (ordinal, record)
+                for ordinal, record in sorted(row_records.items())
+                if frontier_lower_bound < ordinal < total_ordinal
+                and ordinal not in total_ordinals
+                and any(cell["source_text"] is not None for cell in record["cells"])
+            ]
+            visible_ordinals = {ordinal for ordinal, _record in visible_component_axis}
+            overlap_edges = sorted(
+                {
+                    (carrier_ordinal, child_ordinal)
+                    for carrier_ordinal in visible_ordinals
+                    for child_ordinal in proven_descendants(carrier_ordinal)
+                    if child_ordinal in visible_ordinals
+                }
+            )
+            overlap_carriers_are_validation_only = bool(overlap_edges) and all(
+                hit_by_row.get(carrier_ordinal) in set(compiled_specs["validation_only_roles"])
+                for carrier_ordinal, _child_ordinal in overlap_edges
+            )
+            overlap_equation = (
+                _exact_equation(
+                    kind=(
+                        "EXACT_PRINTED_TOTAL_EQUALS_SOURCE_VISIBLE_HIERARCHY_OVERLAPPING_FRONTIER"
+                    ),
+                    components=[record for _ordinal, record in visible_component_axis],
+                    result=total,
+                )
+                if overlap_carriers_are_validation_only
+                else None
+            )
+            if overlap_equation is not None:
+                unique = {
+                    tuple(ordinal for ordinal, _record in visible_component_axis): (
+                        "SOURCE_VISIBLE_HIERARCHY_OVERLAPPING_FRONTIER",
+                        visible_component_axis,
+                        overlap_equation,
+                    )
+                }
+                source_hierarchy_overlap_total_receipts.append(
+                    {
+                        "component_row_ordinals": sorted(visible_ordinals),
+                        "overlap_edges": [
+                            {
+                                "carrier_row_ordinal": carrier_ordinal,
+                                "child_row_ordinal": child_ordinal,
+                            }
+                            for carrier_ordinal, child_ordinal in overlap_edges
+                        ],
+                        "result_row_ordinal": total_ordinal,
+                        "rule": (
+                            "PRINTED_TOTAL_PRESERVED_ONLY_WHEN_EXACT_RAW_VISIBLE_ROW_"
+                            "SUM_EXPLICITLY_DOUBLE_COUNTS_A_PROVEN_SOURCE_HIERARCHY"
+                        ),
+                        "source_equation_id": overlap_equation["equation_id"],
+                    }
+                )
         if len(unique) != 1:
             continue
         _kind, component_axis, equation = next(iter(unique.values()))
@@ -7110,6 +7353,19 @@ def _extract_table_local_records(
             proven_roles.add(hit_by_row[total_ordinal])
         component_hit_roles = {
             hit_by_row[ordinal] for ordinal, _record in component_axis if ordinal in hit_by_row
+        }
+        validation_projection_targets_by_source: dict[str, set[str]] = defaultdict(set)
+        for projection in [
+            *compiled_specs.get("validation_role_leaf_projections", []),
+            *compiled_specs["ordered_role_scope_projections"],
+        ]:
+            validation_projection_targets_by_source[projection["source_role"]].add(
+                projection["target_role"]
+            )
+        root_eligible_component_hit_roles = {
+            target_role
+            for role in component_hit_roles
+            for target_role in (validation_projection_targets_by_source.get(role, {role}))
         }
         explicit_root_row_equals_total = bool(
             len(component_axis) == 1 and component_axis[0][0] in family_root_ordinals
@@ -7188,13 +7444,33 @@ def _extract_table_local_records(
             == "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
         ):
             terminal_total = not any(ordinal > total_ordinal for ordinal in row_records)
+            owner_complete_total_frontier = False
+            if compiled_specs.get("owner_complete_population_policy") == (
+                "EXACT_OWNER_WHOLE_MONEY_TABLE"
+            ) and classification.get("owner_visible"):
+                source_total_ordinals = {
+                    item["row_ordinal"] for item in classification.get("total_rows", [])
+                }
+                source_population_ordinals = (
+                    {hit["row_ordinal"] for hit in classification.get("role_hits", [])}
+                    | set(classification.get("unbound_money_row_ordinals", []))
+                    | source_total_ordinals
+                )
+                direct_component_ordinals = {ordinal for ordinal, _record in component_axis}
+                owner_complete_total_frontier = bool(
+                    terminal_total
+                    and source_total_ordinals == {total_ordinal}
+                    and direct_component_ordinals
+                    and direct_component_ordinals == source_population_ordinals - {total_ordinal}
+                )
             root_total_emitted = bool(
                 explicit_root_row_equals_total
                 or (
                     not context_total_preferred
                     and terminal_total
                     and component_hit_roles
-                    and component_hit_roles <= set(compiled_specs["root_component_roles"])
+                    and root_eligible_component_hit_roles
+                    <= set(compiled_specs["root_component_roles"])
                 )
                 or (
                     not context_total_preferred
@@ -7202,6 +7478,7 @@ def _extract_table_local_records(
                     and bool(classification.get("inverted_hierarchy_scope_rows"))
                     and classification["family_presence_anchor_visible"]
                 )
+                or (not context_total_preferred and owner_complete_total_frontier)
             )
         else:
             root_total_emitted = bool(
@@ -7209,7 +7486,8 @@ def _extract_table_local_records(
                 or (
                     not context_total_preferred
                     and component_hit_roles
-                    and component_hit_roles <= set(compiled_specs["root_component_roles"])
+                    and root_eligible_component_hit_roles
+                    <= set(compiled_specs["root_component_roles"])
                     and len(component_hit_roles)
                     >= compiled_specs["evaluation"].get(
                         "minimum_source_visible_root_component_count", 2
@@ -7331,6 +7609,102 @@ def _extract_table_local_records(
         consumed_ordinals.add(root_ordinal)
         proven_roles.add("FAMILY_ROOT_TOTAL")
 
+    exact_component_ordinals = {
+        source_ref["row_ordinal"]
+        for equation in equations
+        if equation["status"] == "EXACT"
+        for source_refs in equation["component_source_refs"]
+        for source_ref in source_refs
+    }
+    exact_result_ordinals = {
+        source_ref["row_ordinal"]
+        for equation in equations
+        if equation["status"] == "EXACT"
+        for source_ref in equation["result_source_refs"]
+    }
+    applied_ordered_scope_by_id = {
+        item["scope_id"]: item
+        for item in classification.get("ordered_role_scope_receipts", [])
+        if item["status"] == "UNIQUE_ORDERED_ROLE_SCOPE_APPLIED"
+    }
+
+    def has_more_specific_ordered_projection(source_role: str, row_ordinal: int) -> bool:
+        """Return whether an ordered projection supersedes a leaf fallback.
+
+        A generic source role may be a catch-all leaf in a flat presentation,
+        yet acquire a narrower accounting meaning inside one authenticated
+        ordered stage.  The ordered stage is structural evidence selected by
+        declared role boundaries, so it takes precedence over the otherwise
+        valid leaf-to-residual fallback.  No value participates in choosing
+        between the two projections.
+        """
+
+        return any(
+            projection["source_role"] == source_role
+            and (scope := applied_ordered_scope_by_id.get(projection["scope_id"])) is not None
+            and scope["start_row_ordinal"] < row_ordinal <= scope["terminal_row_ordinal"]
+            for projection in compiled_specs["ordered_role_scope_projections"]
+        )
+
+    validation_role_leaf_projection_receipts = []
+    for projection in compiled_specs.get("validation_role_leaf_projections", []):
+        source_role = projection["source_role"]
+        target_role = projection["target_role"]
+        projected_source_refs = []
+        for ordinal in sorted(
+            ordinal for ordinal, role in hit_by_row.items() if role == source_role
+        ):
+            # The same source label can be a leaf in one presentation and an
+            # accounting parent in another.  Only a leaf that participates in
+            # an exact printed source-total equation may flow to the declared
+            # catch-all.  A carrier with any visible descendant, or one that
+            # is itself an equation result, remains validation-only so parent
+            # and children can never be double-counted.
+            if (
+                ordinal not in row_records
+                or ordinal not in exact_component_ordinals
+                or ordinal in exact_result_ordinals
+                or has_more_specific_ordered_projection(source_role, ordinal)
+                or any(
+                    other_ordinal != ordinal
+                    and _row_is_strict_descendant(rows, other_ordinal, ordinal)
+                    and any(
+                        cell["source_text"] is not None
+                        for cell in row_records[other_ordinal]["cells"]
+                    )
+                    for other_ordinal in row_records
+                )
+            ):
+                continue
+            record = row_records[ordinal]
+            local_records.append(
+                _local_record(
+                    target_role,
+                    record["cells"],
+                    record["lane_keys"],
+                    record["source_refs"],
+                    (
+                        "SOURCE_VALIDATION_ROLE_LEAF_PROJECTED_TO_DECLARED_RESIDUAL_"
+                        "AFTER_EXACT_SOURCE_TOTAL"
+                    ),
+                    record["valuation_basis"],
+                )
+            )
+            proven_roles.add(target_role)
+            projected_source_refs.append(canonical_clone_v1(record["source_refs"][0]))
+        if projected_source_refs:
+            validation_role_leaf_projection_receipts.append(
+                {
+                    "projected_source_refs": projected_source_refs,
+                    "source_role": source_role,
+                    "target_role": target_role,
+                    "rule": (
+                        "VALIDATION_ONLY_STRUCTURAL_ROLE_PROJECTS_TO_DECLARED_RESIDUAL_"
+                        "IFF_LEAF_EXACT_SOURCE_TOTAL_COMPONENT_NOT_EQUATION_RESULT"
+                    ),
+                }
+            )
+
     derived_structural_parent_receipts = []
     equation_consumed_residual_projection_receipts = []
     residual_role = compiled_specs["equation_consumed_unmatched_residual_role"]
@@ -7338,14 +7712,34 @@ def _extract_table_local_records(
         residual_role is not None
         and any(hit["role"] == residual_role for hit in classification["role_hits"])
     )
-    if residual_role is not None and direct_residual_anchor_visible:
-        component_ordinals = {
+    anchorless_residual_projection = bool(
+        residual_role is not None
+        and compiled_specs.get(
+            "equation_consumed_unmatched_residual_anchor_policy",
+            "DIRECT_RESIDUAL_ROLE_REQUIRED",
+        )
+        == "EXACT_SOURCE_EQUATION_FRONTIER_SUFFICIENT"
+    )
+    if residual_role is not None and (
+        direct_residual_anchor_visible or anchorless_residual_projection
+    ):
+        source_total_component_ordinals = {
             source_ref["row_ordinal"]
             for equation in equations
             if equation["status"] == "EXACT"
+            and any(
+                source_ref.get("row_kind") in {"SUBTOTAL", "TOTAL"}
+                or source_ref["row_ordinal"] in family_root_ordinals
+                for source_ref in equation["result_source_refs"]
+            )
             for source_refs in equation["component_source_refs"]
             for source_ref in source_refs
         }
+        component_ordinals = (
+            exact_component_ordinals
+            if direct_residual_anchor_visible
+            else source_total_component_ordinals
+        )
         result_ordinals = {
             source_ref["row_ordinal"]
             for equation in equations
@@ -7904,6 +8298,12 @@ def _extract_table_local_records(
         receipt["label_only_structural_group_receipts"] = label_only_structural_group_receipts
     if derived_structural_parent_receipts:
         receipt["derived_structural_parent_receipts"] = derived_structural_parent_receipts
+    if validation_role_leaf_projection_receipts:
+        receipt["validation_role_leaf_projection_receipts"] = (
+            validation_role_leaf_projection_receipts
+        )
+    if source_hierarchy_overlap_total_receipts:
+        receipt["source_hierarchy_overlap_total_receipts"] = source_hierarchy_overlap_total_receipts
     receipt["source_only_rows"] = source_only_rows
     if source_result_row_receipt is not None:
         receipt["source_result_row_receipt"] = source_result_row_receipt

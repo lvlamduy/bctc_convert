@@ -1,0 +1,95 @@
+{
+  "aggregate_duplicate_roles": [
+    "TRADING_SECURITIES",
+    "INVESTMENT_SECURITIES",
+    "FIXED_ASSETS",
+    "OTHER_ASSETS",
+    "PLEDGED_VALUABLE_PAPERS_SOURCE",
+    "REPO_VALUABLE_PAPERS_SOURCE"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "context_total_mapping_roles": [],
+  "corroboration_pairs": [],
+  "declared_result_role_policy": "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE",
+  "derived_role_equations": [],
+  "detail_context_roles": [],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "equation_consumed_unmatched_residual_anchor_policy": "EXACT_SOURCE_EQUATION_FRONTIER_SUFFICIENT",
+  "equation_consumed_unmatched_residual_role": "OTHER_ASSETS",
+  "family_id": "BANK_PLEDGED_OR_DISCOUNTED_ASSETS",
+  "family_root_population_policy": "WHOLE_TABLE",
+  "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "mapped_source_subtotal_policy": "ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION",
+  "minimum_declared_detail_role_count": 1,
+  "minimum_source_visible_root_component_count": 1,
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "ordered_role_scope_projections": [
+    {
+      "scope_id": "EXPLICIT_SECURITIES_BREAKDOWN",
+      "source_role": "REPO_VALUABLE_PAPERS_SOURCE",
+      "target_role": "INVESTMENT_SECURITIES"
+    }
+  ],
+  "ordered_role_scopes": [
+    {
+      "scope_id": "EXPLICIT_SECURITIES_BREAKDOWN",
+      "scoped_roles": ["INVESTMENT_SECURITIES", "REPO_VALUABLE_PAPERS_SOURCE", "OTHER_ASSETS"],
+      "start_after_roles": ["TRADING_SECURITIES"],
+      "terminal_roles": ["OTHER_ASSETS"]
+    }
+  ],
+  "owner_complete_population_policy": "EXACT_OWNER_WHOLE_MONEY_TABLE",
+  "owner_match_policy": "CONTAINS_ALIAS",
+  "owner_surface_kinds": ["SECTION_TITLE", "SECTION_NARRATIVE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "query_owner_aliases": [
+    "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+    "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu bởi Ngân hàng",
+    "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu bởi Ngân hàng"
+  ],
+  "role_anchored_owner_fallback_policy": "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
+  "role_anchored_supplemental_roles": [],
+  "root_component_equation_policy": "DECLARED_DIRECT_SUM",
+  "root_component_roles": [
+    "TRADING_SECURITIES",
+    "INVESTMENT_SECURITIES",
+    "FIXED_ASSETS",
+    "OTHER_ASSETS"
+  ],
+  "root_only_source_result_policy": "REQUIRE_MINIMUM_DECLARED_COMPONENTS",
+  "row_alias_prefix_roles": [
+    "PLEDGED_VALUABLE_PAPERS_SOURCE",
+    "REPO_VALUABLE_PAPERS_SOURCE"
+  ],
+  "row_population_context_policy": "ONE_ANCHORED_OR_TWO_DECLARED_CHILD_ROLES",
+  "role_unit_overrides": [],
+  "source_reference_identity_policy": "EXACT_UNIQUE_SOURCE_IDENTITIES",
+  "source_hierarchy_overlap_total_policy": "MAP_EXACT_PRINTED_TOTAL_WITH_OVERLAPPING_SOURCE_HIERARCHY_RECEIPT",
+  "source_result_query_policy": "OWNER_OR_EXACT_SOURCE_RESULT_ROW",
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "structural_parent_derivation_policy": "DECLARED_CONTEXT_CHILD_FRONTIER",
+  "supplemental_owner_aliases": [],
+  "table_context_roles": [],
+  "typed_control_exclusions": [],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW",
+  "validation_only_roles": ["PLEDGED_VALUABLE_PAPERS_SOURCE", "REPO_VALUABLE_PAPERS_SOURCE"],
+  "validation_role_leaf_projections": [
+    {"source_role": "PLEDGED_VALUABLE_PAPERS_SOURCE", "target_role": "OTHER_ASSETS"},
+    {"source_role": "REPO_VALUABLE_PAPERS_SOURCE", "target_role": "OTHER_ASSETS"}
+  ]
+}
