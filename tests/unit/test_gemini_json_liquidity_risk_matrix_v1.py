@@ -171,7 +171,8 @@ def test_split_source_buckets_are_retained_but_not_mapped_to_combined_schema() -
     table["rows"][2]["values_exact"][5:7] = ["60", "60"]
     _compiled_specs, _cluster, candidate = _evaluate([_record(_page(table))])
     assert candidate["status"] == READY
-    assert len(candidate["mappings"]) == 34  # root + 8 mapped branches + 24 cells
+    assert len(candidate["mappings"]) == 33  # root + 8 source-bound branches + 24 cells
+    assert not any(item["role"] == "CURRENCY_BRANCH:WITHIN_3_12M" for item in candidate["mappings"])
     source_only = [
         item["column_axis"]["role"]
         for item in candidate["closure_receipt"]["table_receipts"][0]["resolved_columns"]
@@ -234,6 +235,7 @@ def test_one_nonclosing_bucket_is_retained_without_blocking_exact_buckets() -> N
     assert candidate["status"] == READY
     assert candidate["reasons"] == []
     assert not any(item["role"].startswith("OVERDUE:") for item in candidate["mappings"])
+    assert not any(item["role"] == "CURRENCY_BRANCH:OVERDUE" for item in candidate["mappings"])
     frontiers = candidate["closure_receipt"]["nonclosing_currency_frontiers"]
     assert [(item["currency_role"], item["equation_status"]) for item in frontiers] == [
         ("OVERDUE", "MISMATCH")
@@ -294,6 +296,7 @@ def test_unique_row_projection_survives_one_independent_source_residual() -> Non
         ["c1", "c9"],
     )
     assert not any(item["role"].startswith("WITHIN_LE1M:") for item in candidate["mappings"])
+    assert not any(item["role"] == "CURRENCY_BRANCH:WITHIN_LE1M" for item in candidate["mappings"])
     assert [
         (item["currency_role"], item["equation_status"])
         for item in candidate["closure_receipt"]["nonclosing_currency_frontiers"]
@@ -372,6 +375,7 @@ def test_ambiguous_equal_span_alignment_preserves_raw_rows_and_maps_only_exact_c
         for row in alignment["effective_rows"]
     )
     assert not any(item["role"].startswith("OVERDUE_GT3M:") for item in candidate["mappings"])
+    assert not any(item["role"] == "CURRENCY_BRANCH:OVERDUE_GT3M" for item in candidate["mappings"])
     assert [
         item["currency_role"]
         for item in candidate["closure_receipt"]["nonclosing_currency_frontiers"]

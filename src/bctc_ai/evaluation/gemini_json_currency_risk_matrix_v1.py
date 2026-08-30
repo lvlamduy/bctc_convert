@@ -1206,16 +1206,22 @@ def build_currency_risk_mappings_v1(
     periods = {item["period_role"]: item for item in period_assignments}
     if set(periods) not in ({"CURRENT_PERIOD"}, {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}):
         raise _error("currency-risk mapping period axis is incomplete")
+    active_currency_roles = {
+        currency_role
+        for (_period_role, currency_role, _row_role), cell in cells_by_period_currency_row.items()
+        if type(cell.get("coefficient")) is int
+    }
+    structural_roles = [("FAMILY", compiled_specs["family_root_report_norm_id"])]
+    structural_roles.extend(
+        (f"CURRENCY_BRANCH:{currency_role}", report_norm_id)
+        for currency_role, report_norm_id in compiled_specs[
+            "currency_branch_report_norm_id_by_role"
+        ].items()
+        if compiled_specs.get("liquidity_risk_mode") is not True
+        or currency_role in active_currency_roles
+    )
     mappings = []
-    for role, report_norm_id in [
-        ("FAMILY", compiled_specs["family_root_report_norm_id"]),
-        *[
-            (f"CURRENCY_BRANCH:{currency_role}", report_norm_id)
-            for currency_role, report_norm_id in compiled_specs[
-                "currency_branch_report_norm_id_by_role"
-            ].items()
-        ],
-    ]:
+    for role, report_norm_id in structural_roles:
         mapping = {
             "item_mapping_id": "gjeqmfv1:item:pending",
             "report_norm_id": report_norm_id,

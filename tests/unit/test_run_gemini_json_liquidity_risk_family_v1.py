@@ -101,7 +101,7 @@ def test_audit_content_rejects_unsealed_axis_mutation() -> None:
 def test_release_pins_lock_complete_140_document_mapping_axis() -> None:
     assert runner.PINNED_RELEASE_METRICS == {
         "document_count": 140,
-        "mapping_count": 4638,
+        "mapping_count": 4482,
         "not_observed_count": 2,
         "ready_count": 138,
         "unresolved_count": 0,
