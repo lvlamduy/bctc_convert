@@ -1,0 +1,54 @@
+{
+  "authority_kind": "PINNED_CONFIG",
+  "authority_ref": "config://family43/state-budget-obligations-target-observations-v1",
+  "base_corpus_manifest_index_id": "gjfccmiv1:index:61be9e5dc44a261d2dbf3f396b9624e29cb4ae591ea0a7fdb83051352e7b60e3",
+  "expected_plan_count": 2,
+  "expected_selected_page_count": 8947,
+  "expected_selected_page_frontier_sha256": "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8",
+  "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_RUNNER_CONFIG_V1",
+  "repair_source_family_run_id": "gjfafstorev1:run:adf2dafac027a3912af0709516a8b02df134366f047a1ad5ce8afa1e3c0bffa3",
+  "source_image_resolver_implementation_path": "src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py",
+  "source_image_runtime": {
+    "mupdf_version": "1.29.0",
+    "pymupdf_version": "1.28.0"
+  },
+  "table_repair_specs": [
+    {
+      "base_page_json_version_id": "gfpstorev1:json:c49e10d6a97f0e8c21068f3bbcc2a7f762c7a7fcfd2a6811d1651d702c2ef163",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        350,
+        2650,
+        2400,
+        3450
+      ],
+      "dash_zero_cell_ids": [],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s3",
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:aeacb5570fe817220f0d6483be86e7864a05bd4adf665b4a5ff695ef79ac265b",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        300,
+        380,
+        2350,
+        1700
+      ],
+      "dash_zero_cell_ids": [
+        "r3:c4",
+        "r4:c4",
+        "r6:c4",
+        "r9:c4"
+      ],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    }
+  ],
+  "writable_page_store_ref_path": "state/family43-pages.sqlite3",
+  "writable_results_database_ref_path": "state/family43-results.sqlite3"
+}

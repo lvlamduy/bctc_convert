@@ -60,6 +60,7 @@ REPAIR_SCOPE = "TABLE_ROLLFORWARD_CELLS"
 TARGET_OBSERVATION_FORMAT_VERSION = "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATIONS_V1"
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_FAMILY_CANDIDATE_ID = re.compile(r"^[a-z0-9]+:candidate:[0-9a-f]{64}$")
 _NODE = re.compile(r"^([strc])([1-9][0-9]*)$")
 _LOOSE_CELL = re.compile(r"^\s*[Rr]\s*0*([1-9][0-9]*)\s*:\s*[Cc]\s*0*([1-9][0-9]*)\s*$")
 _CELL_REFERENCE = re.compile(
@@ -795,7 +796,7 @@ def _build_rollforward_table_cell_repair_plans_v1(
             or type(frontier["document_ordinal"]) is not int
             or frontier["document_ordinal"] <= 0
             or type(frontier["candidate_id"]) is not str
-            or not frontier["candidate_id"].startswith("gjfafcv1:candidate:")
+            or _FAMILY_CANDIDATE_ID.fullmatch(frontier["candidate_id"]) is None
             or type(frontier["trigger_reasons"]) is not list
             or not frontier["trigger_reasons"]
             or any(type(reason) is not str or not reason for reason in frontier["trigger_reasons"])
@@ -1369,6 +1370,376 @@ def build_rollforward_table_cell_repair_plans_v1(
     )
 
 
+def _equity_matrix_repair_equations_v1(
+    *, table: Mapping[str, Any], closure: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], set[str], set[str]]:
+    """Rebuild exact horizontal and vertical identities from the typed matrix graph."""
+
+    component_axis = closure.get("component_axis")
+    movement_axis = closure.get("movement_axis")
+    if (
+        closure.get("orientation") != "COMPONENT_ROWS"
+        or type(component_axis) is not list
+        or not component_axis
+        or type(movement_axis) is not list
+        or len(movement_axis) != 4
+    ):
+        raise _error("equity-matrix repair requires one ordinary component-row matrix")
+    rows = {item.get("axis_id"): item for item in component_axis if type(item) is dict}
+    columns = {item.get("axis_role"): item.get("axis_id") for item in movement_axis}
+    if (
+        len(rows) != len(component_axis)
+        or set(columns) != {"OPENING", "INCREASE", "DECREASE", "CLOSING"}
+        or len(set(columns.values())) != 4
+    ):
+        raise _error("equity-matrix repair movement/component axes are ambiguous")
+    totals = [axis_id for axis_id, item in rows.items() if item.get("kind") == "GRAND_TOTAL"]
+    if len(totals) != 1:
+        raise _error("equity-matrix repair has no unique visible grand total")
+    grand_total = totals[0]
+    child_ids = set()
+    group_axes = []
+    for axis_id, item in rows.items():
+        if item.get("kind") != "MAPPED_COMPONENT_GROUP_TOTAL":
+            continue
+        hierarchy = item.get("hierarchy_resolution")
+        children = hierarchy.get("child_axis_ids") if type(hierarchy) is dict else None
+        if (
+            type(children) is not list
+            or not children
+            or any(child not in rows for child in children)
+        ):
+            raise _error("equity-matrix repair group-total frontier is invalid")
+        child_ids.update(children)
+        group_axes.append((axis_id, children))
+    direct_rows = [
+        axis_id
+        for axis_id, item in rows.items()
+        if axis_id != grand_total
+        and axis_id not in child_ids
+        and item.get("kind") != "SOURCE_ONLY_COMPONENT"
+    ]
+    if not direct_rows:
+        raise _error("equity-matrix repair horizontal frontier is empty")
+
+    equations = []
+    mismatch_rows = set()
+    mismatch_columns = set()
+
+    def coefficient(cell_id: str) -> int | None:
+        row_index, column_index = _cell_id(cell_id)
+        return _signed_integer(table["rows"][row_index]["values_exact"][column_index])
+
+    def add_equation(
+        equation_id: str,
+        *,
+        result_cell_id: str,
+        terms: list[dict[str, Any]],
+        row_axis_id: str | None = None,
+        column_axis_id: str | None = None,
+    ) -> None:
+        equation = {
+            "equation_id": equation_id,
+            "result_cell_id": result_cell_id,
+            "terms": terms,
+        }
+        equations.append(equation)
+        result = coefficient(result_cell_id)
+        values = [(term["multiplier"], coefficient(term["cell_id"])) for term in terms]
+        if result is None or any(value is None for _multiplier, value in values):
+            return
+        expected = sum(multiplier * value for multiplier, value in values if value is not None)
+        if result != expected:
+            if row_axis_id is not None:
+                mismatch_rows.add(row_axis_id)
+            if column_axis_id is not None:
+                mismatch_columns.add(column_axis_id)
+
+    for column_axis_id in columns.values():
+        add_equation(
+            f"horizontal-grand-{column_axis_id}",
+            result_cell_id=f"{grand_total}:{column_axis_id}",
+            terms=[
+                {"cell_id": f"{row_axis_id}:{column_axis_id}", "multiplier": 1}
+                for row_axis_id in direct_rows
+            ],
+            column_axis_id=column_axis_id,
+        )
+        for group_axis_id, children in group_axes:
+            add_equation(
+                f"horizontal-group-{group_axis_id}-{column_axis_id}",
+                result_cell_id=f"{group_axis_id}:{column_axis_id}",
+                terms=[
+                    {"cell_id": f"{child}:{column_axis_id}", "multiplier": 1} for child in children
+                ],
+                column_axis_id=column_axis_id,
+            )
+    for row_axis_id in rows:
+        add_equation(
+            f"vertical-rollforward-{row_axis_id}",
+            result_cell_id=f"{row_axis_id}:{columns['CLOSING']}",
+            terms=[
+                {"cell_id": f"{row_axis_id}:{columns['OPENING']}", "multiplier": 1},
+                {"cell_id": f"{row_axis_id}:{columns['INCREASE']}", "multiplier": 1},
+                {"cell_id": f"{row_axis_id}:{columns['DECREASE']}", "multiplier": -1},
+            ],
+            row_axis_id=row_axis_id,
+        )
+    return equations, mismatch_rows, mismatch_columns
+
+
+def build_equity_matrix_table_cell_repair_plans_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    page_store_path: Path,
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Derive minimal cell observations from an authenticated matrix failure graph.
+
+    The caller declares only source crops and cells whose printed dash state must
+    be preserved.  Candidate replay, invalid-cell coordinates, graph mismatch
+    intersections and every accounting equation are rebuilt locally.
+    """
+
+    sweep = validate_gemini_json_flat_family_sweep_v1(family_sweep)
+    compiled_spec_sources = {
+        "evaluation": canonical_clone_v1(sweep["specs"]["evaluation"]["value"]),
+        "schema_binding": canonical_clone_v1(sweep["specs"]["schema_binding"]["value"]),
+        "topology": canonical_clone_v1(sweep["specs"]["topology"]["value"]),
+    }
+    rebuilt_specs = compile_gemini_json_flat_family_specs_v1(
+        compiled_spec_sources["topology"],
+        compiled_spec_sources["evaluation"],
+        compiled_spec_sources["schema_binding"],
+    )
+    if rebuilt_specs.get(
+        "engine_format_version"
+    ) != "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1" or not same_typed_json_v1(
+        dict(compiled_specs), rebuilt_specs
+    ):
+        raise _error("equity-matrix repair compiled specs do not replay the sweep")
+    selected_ids = list(selected_page_json_version_ids)
+    if (
+        not selected_ids
+        or len(selected_ids) != len(set(selected_ids))
+        or any(
+            type(version_id) is not str or not version_id.startswith("gfpstorev1:json:")
+            for version_id in selected_ids
+        )
+    ):
+        raise _error("equity-matrix repair selected page frontier is invalid")
+    indexed_query_evidence = sweep.get("indexed_query_evidence")
+    if type(indexed_query_evidence) is not dict:
+        raise _error("equity-matrix repair sweep has no indexed query evidence")
+    from bctc_ai.storage.gemini_financial_page_store_v1 import (
+        validate_selected_equity_matrix_family_candidate_replays_v1,
+        validate_selected_equity_matrix_family_query_evidence_v1,
+    )
+
+    validate_selected_equity_matrix_family_query_evidence_v1(
+        page_store_path,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=rebuilt_specs,
+        indexed_query_evidence=indexed_query_evidence,
+    )
+    validate_selected_equity_matrix_family_candidate_replays_v1(
+        page_store_path,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=rebuilt_specs,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=sweep["trials"],
+    )
+    specs = list(table_repair_specs)
+    spec_fields = {
+        "base_page_json_version_id",
+        "collateral_cell_ids",
+        "collateral_equations",
+        "crop_bbox_pixels_xyxy",
+        "dash_zero_cell_ids",
+        "format_version",
+        "section_id",
+        "table_id",
+    }
+    checked_specs = []
+    version_ids = []
+    for raw in specs:
+        spec = _exact_keys(raw, spec_fields, "equity-matrix table repair spec")
+        if (
+            spec["format_version"] != TABLE_SPEC_FORMAT_VERSION
+            or spec["collateral_cell_ids"] != []
+            or spec["collateral_equations"] != []
+            or type(spec["dash_zero_cell_ids"]) is not list
+            or len(spec["dash_zero_cell_ids"]) != len(set(spec["dash_zero_cell_ids"]))
+        ):
+            raise _error("equity-matrix table repair spec is invalid")
+        _node_ordinal(spec["section_id"], "s", "equity-matrix repair section")
+        _node_ordinal(spec["table_id"], "t", "equity-matrix repair table")
+        for cell_id in spec["dash_zero_cell_ids"]:
+            _cell_id(cell_id)
+        version_ids.append(
+            _prefixed_hash(
+                spec["base_page_json_version_id"],
+                "gfpstorev1:json:",
+                "equity-matrix repair base page version",
+            )
+        )
+        checked_specs.append(canonical_clone_v1(spec))
+    if not checked_specs or len(version_ids) != len(set(version_ids)):
+        raise _error("equity-matrix repair spec axis is empty or duplicate")
+    evidence_axis = load_rollforward_table_page_evidence_v1(
+        page_store_path, page_json_version_ids=version_ids
+    )
+    evidence_by_version = {item["base_page_json_version_id"]: item for item in evidence_axis}
+    frontiers = []
+    pages = {}
+    invalid_reason = re.compile(
+        r"^MONEY_CELL_INVALID:(gfpstorev1:json:[0-9a-f]{64}):(r[1-9][0-9]*:c[1-9][0-9]*)$"
+    )
+    for spec in checked_specs:
+        version_id = spec["base_page_json_version_id"]
+        evidence = evidence_by_version[version_id]
+        page_json = evidence["page_json"]
+        _checked_page, table = _table(page_json, spec["section_id"], spec["table_id"])
+        matches = []
+        for trial in sweep["trials"]:
+            for candidate in trial.get("candidates", []):
+                regions = [
+                    region
+                    for region in candidate.get("component_regions", [])
+                    if region.get("page_json_version_id") == version_id
+                    and region.get("section_id") == spec["section_id"]
+                    and region.get("table_id") == spec["table_id"]
+                ]
+                if regions:
+                    matches.append((trial, candidate, regions[0]))
+        if len(matches) != 1:
+            raise _error("equity-matrix repair spec does not bind one candidate region")
+        trial, candidate, region = matches[0]
+        binding_without_crop = evidence["source_binding_without_crop"]
+        if (
+            trial.get("status") != UNRESOLVED
+            or candidate.get("status") != UNRESOLVED
+            or candidate.get("family_id") != sweep["family_id"]
+            or region.get("document_id") != binding_without_crop["document_id"]
+            or region.get("physical_page") != binding_without_crop["physical_page"]
+            or region.get("source_logical_name") != binding_without_crop["source_logical_name"]
+            or region.get("source_sha256") != binding_without_crop["source_sha256"]
+        ):
+            raise _error("equity-matrix repair candidate/source binding drifted")
+        closure = candidate.get("closure_receipt")
+        if type(closure) is not dict:
+            raise _error("equity-matrix repair candidate closure is absent")
+        equations, mismatch_rows, mismatch_columns = _equity_matrix_repair_equations_v1(
+            table=table, closure=closure
+        )
+        invalid_cells = set()
+        for reason in candidate.get("reasons", []):
+            match = invalid_reason.fullmatch(reason)
+            if match is not None:
+                if match.group(1) != version_id:
+                    raise _error("equity-matrix invalid-cell reason crosses page versions")
+                invalid_cells.add(match.group(2))
+        if invalid_cells:
+            primary_ids = invalid_cells
+        else:
+            primary_ids = {
+                f"{row_axis_id}:{column_axis_id}"
+                for row_axis_id in mismatch_rows
+                for column_axis_id in mismatch_columns
+            }
+            if len(primary_ids) != 1:
+                raise _error("equity-matrix mismatch graph does not isolate one source cell")
+        dash_ids = set(spec["dash_zero_cell_ids"])
+        if not dash_ids <= primary_ids:
+            raise _error("equity-matrix dash policy lies outside graph-derived target cells")
+        allowlist = []
+        for cell_id in sorted(primary_ids, key=_cell_id):
+            row_index, column_index = _cell_id(cell_id)
+            if row_index >= len(table["rows"]) or column_index >= len(table["columns"]):
+                raise _error("equity-matrix repair target lies outside the source table")
+            allowlist.append(
+                {
+                    "after_policy": "DASH_ZERO" if cell_id in dash_ids else "SIGNED_INTEGER",
+                    "before_exact": table["rows"][row_index]["values_exact"][column_index],
+                    "cell_id": cell_id,
+                    "change_policy": "MUST_CHANGE",
+                    "evidence_kind": "UNRESOLVED_FRONTIER",
+                }
+            )
+        checked_equations = _equations(
+            equations,
+            row_count=len(table["rows"]),
+            column_count=len(table["columns"]),
+            allowlist=allowlist,
+        )
+        source_binding = _source_binding(
+            {
+                **binding_without_crop,
+                "crop_bbox_pixels_xyxy": spec["crop_bbox_pixels_xyxy"],
+            }
+        )
+        frontiers.append(
+            {
+                "base_page_json_sha256": evidence["base_page_json_sha256"],
+                "base_page_json_version_id": version_id,
+                "candidate_id": candidate["candidate_id"],
+                "candidate_semantic_replay_sha256": canonical_json_sha256_v1(candidate),
+                "cell_allowlist": allowlist,
+                "compiled_spec_sources_sha256": canonical_json_sha256_v1(compiled_spec_sources),
+                "document_ordinal": trial["document_ordinal"],
+                "equations": checked_equations,
+                "family_id": sweep["family_id"],
+                "format_version": UNRESOLVED_FRONTIER_FORMAT_VERSION,
+                "indexed_query_evidence_sha256": canonical_json_sha256_v1(indexed_query_evidence),
+                "page_evidence_id": evidence["page_evidence_id"],
+                "repair_spec_sha256": canonical_json_sha256_v1(spec),
+                "selected_page_frontier_sha256": canonical_json_sha256_v1(selected_ids),
+                "section_id": spec["section_id"],
+                "source_binding": source_binding,
+                "sweep_id": sweep["sweep_id"],
+                "table_id": spec["table_id"],
+                "trigger_reasons": candidate["reasons"],
+            }
+        )
+        pages[version_id] = page_json
+    return _build_rollforward_table_cell_repair_plans_v1(
+        unresolved_frontier=frontiers,
+        page_json_by_version=pages,
+    )
+
+
+def build_accounting_table_cell_repair_plans_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    page_store_path: Path,
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Dispatch the one minimal observation contract to a typed family graph adapter."""
+
+    if (
+        compiled_specs.get("engine_format_version")
+        == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1"
+    ):
+        return build_equity_matrix_table_cell_repair_plans_v1(
+            compiled_specs=compiled_specs,
+            family_sweep=family_sweep,
+            page_store_path=page_store_path,
+            selected_page_json_version_ids=selected_page_json_version_ids,
+            table_repair_specs=table_repair_specs,
+        )
+    return build_rollforward_table_cell_repair_plans_v1(
+        compiled_specs=compiled_specs,
+        family_sweep=family_sweep,
+        page_store_path=page_store_path,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        table_repair_specs=table_repair_specs,
+    )
+
+
 def rollforward_table_repair_plan_authority_v1(
     *,
     compiled_spec_sources: Mapping[str, Any],
@@ -1573,7 +1944,7 @@ def _authoritative_plan_axis(
         sources["evaluation"],
         sources["schema_binding"],
     )
-    plans = build_rollforward_table_cell_repair_plans_v1(
+    plans = build_accounting_table_cell_repair_plans_v1(
         compiled_specs=compiled_specs,
         family_sweep=checked_sweep,
         page_store_path=page_store_path,
@@ -1787,7 +2158,11 @@ def _validated_plan(plan: Any) -> dict[str, Any]:
         "gfpstorev1:json:",
         "table repair base version",
     )
-    _prefixed_hash(plan.get("candidate_id"), "gjfafcv1:candidate:", "table repair candidate")
+    if (
+        type(plan.get("candidate_id")) is not str
+        or _FAMILY_CANDIDATE_ID.fullmatch(plan["candidate_id"]) is None
+    ):
+        raise _error("table repair candidate identity is invalid")
     _prefixed_hash(plan.get("sweep_id"), "gjfafsv1:sweep:", "table repair sweep")
     _prefixed_hash(
         plan.get("page_evidence_id"),

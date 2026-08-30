@@ -1,0 +1,99 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Thuế giá trị gia tăng", "Thuế GTGT", "Thuế GTGT đầu ra"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "VAT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế thu nhập doanh nghiệp", "Thuế TNDN", "Thuế TNDN hiện hành", "Thuế thu nhập doanh nghiệp hiện hành"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "CORPORATE_INCOME_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế thu nhập cá nhân", "Thuế TNCN"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "PERSONAL_INCOME_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế xuất nhập khẩu", "Thuế nhập khẩu", "Thuế xuất khẩu"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "IMPORT_EXPORT_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế tài nguyên"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "NATURAL_RESOURCE_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế sử dụng vốn NSNN", "Thuế sử dụng vốn ngân sách nhà nước"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "STATE_CAPITAL_USE_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế tiêu thụ đặc biệt", "Thuế TTĐB"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SPECIAL_CONSUMPTION_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thuế nhà đất", "Thuế đất", "Thuế sử dụng đất", "Thuế sử dụng đất phi nông nghiệp"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "HOUSE_LAND_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các loại thuế khác", "Thuế khác", "Các khoản thuế khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Các khoản phải nộp khác", "Các khoản phải nộp khác và các khoản phí, lệ phí", "Các loại thuế khác, các khoản phí, lệ phí và phải nộp khác", "Các loại thuế khác, phí và lệ phí", "Các loại thuế khác, phí, lệ phí và các khoản phải nộp khác", "Các khoản phí, lệ phí và phải nộp khác", "Các khoản phí, lệ phí và các khoản phải nộp khác", "Phí, lệ phí và các khoản phải nộp khác", "Tiền thuê đất"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_PAYABLE",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "STATE_BUDGET_OBLIGATIONS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Thuế thu nhập doanh nghiệp hoãn lại",
+    "Tài sản thuế thu nhập hoãn lại",
+    "Thuế thu nhập hiện hành",
+    "Chi phí thuế thu nhập doanh nghiệp",
+    "Đối chiếu thuế thu nhập doanh nghiệp"
+  ],
+  "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 2048, "max_label_line_span": 6},
+  "parent": {
+    "aliases": [
+      "Tình hình thực hiện nghĩa vụ với ngân sách nhà nước",
+      "Tình hình thực hiện nghĩa vụ đối với ngân sách nhà nước",
+      "Tình hình thực hiện nghĩa vụ với NSNN",
+      "Tình hình thực hiện nghĩa vụ đối với NSNN",
+      "Nghĩa vụ với Ngân sách Nhà nước",
+      "Nghĩa vụ đối với Ngân sách Nhà nước",
+      "Thuế và các khoản phải nộp Nhà nước",
+      "Các khoản phải nộp ngân sách nhà nước",
+      "Các khoản phải nộp ngân sách"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "STATE_BUDGET_OBLIGATIONS_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["VAT", "CORPORATE_INCOME_TAX"]],
+  "structural_reset_aliases": [
+    "Thuế thu nhập doanh nghiệp hoãn lại",
+    "Tài sản thuế thu nhập hoãn lại",
+    "Thuế thu nhập hiện hành",
+    "Chi phí thuế thu nhập doanh nghiệp",
+    "Đối chiếu thuế thu nhập doanh nghiệp",
+    "Các khoản phải trả khác"
+  ]
+}

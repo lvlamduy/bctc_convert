@@ -19,7 +19,9 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
 )
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
     SEARCH_NORMALIZATION_VERSION,
+    GeminiFinancialPageJsonV1Error,
     build_financial_page_json_prompt_v1,
+    decode_financial_page_json_text_v1,
     financial_page_json_response_schema_v1,
     normalize_search_text_v1,
     validate_financial_page_json_v1,
@@ -28,7 +30,11 @@ from bctc_ai.evaluation.gemini_json_first_batch_v1 import (
     BatchSubmissionV1,
     summarize_google_batch_operation_v1,
 )
-from bctc_ai.evaluation.gemini_json_first_provider_v1 import ProviderResultV1
+from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
+    GeminiJsonFirstProviderV1Error,
+    ProviderResultV1,
+    extract_completed_provider_response_text_v1,
+)
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     TABLE_POPULATION_PROJECTION_FORMAT_VERSION,
     project_whole_page_table_population_v1,
@@ -2998,6 +3004,89 @@ def validate_selected_investment_securities_family_candidate_replays_v1(
     return checked_trials
 
 
+def _sealed_raw_table_context_reprojection_v1(
+    *,
+    page_json_version_id: str,
+    canonical_page_json: Mapping[str, Any],
+    raw_response_bytes: bytes,
+    raw_response_sha256: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    """Recover only table captions discarded by an older canonicalizer.
+
+    The immutable provider envelope remains the source.  A projection is
+    admitted only when re-decoding it with the current small page contract
+    changes one or more ``title_exact`` fields from null to source text and
+    every other typed page field is byte-semantically identical.
+    """
+
+    if sha256(raw_response_bytes).hexdigest() != raw_response_sha256:
+        raise _error("equity-matrix raw response content reference drifted")
+    try:
+        response_text = extract_completed_provider_response_text_v1(raw_response_bytes)
+        projected = decode_financial_page_json_text_v1(response_text)
+    except (GeminiFinancialPageJsonV1Error, GeminiJsonFirstProviderV1Error):
+        return None
+    base = canonical_clone_v1(dict(canonical_page_json))
+    replay_without_titles = canonical_clone_v1(projected)
+    if (
+        type(base.get("sections")) is not list
+        or type(replay_without_titles.get("sections")) is not list
+        or len(base["sections"]) != len(replay_without_titles["sections"])
+    ):
+        return None
+    title_axis = []
+    for section_ordinal, (base_section, replay_section) in enumerate(
+        zip(base["sections"], replay_without_titles["sections"], strict=True), start=1
+    ):
+        base_tables = base_section.get("tables") if type(base_section) is dict else None
+        replay_tables = replay_section.get("tables") if type(replay_section) is dict else None
+        if (
+            type(base_tables) is not list
+            or type(replay_tables) is not list
+            or len(base_tables) != len(replay_tables)
+        ):
+            return None
+        for table_ordinal, (base_table, replay_table) in enumerate(
+            zip(base_tables, replay_tables, strict=True), start=1
+        ):
+            if type(base_table) is not dict or type(replay_table) is not dict:
+                return None
+            base_title = base_table.get("title_exact")
+            replay_title = replay_table.get("title_exact")
+            if replay_title != base_title:
+                if (
+                    base_title is not None
+                    or type(replay_title) is not str
+                    or not replay_title.strip()
+                ):
+                    return None
+                title_axis.append(
+                    {
+                        "base_title_exact": None,
+                        "projected_title_exact": replay_title,
+                        "section_id": f"s{section_ordinal}",
+                        "table_id": f"t{table_ordinal}",
+                    }
+                )
+            replay_table["title_exact"] = base_title
+    if not title_axis or not same_typed_json_v1(base, replay_without_titles):
+        return None
+    material = {
+        "base_page_json_sha256": canonical_json_sha256_v1(base),
+        "format_version": "GEMINI_JSON_SEALED_RAW_TABLE_CONTEXT_PROJECTION_V1",
+        "page_json_version_id": page_json_version_id,
+        "projected_page_json_sha256": canonical_json_sha256_v1(projected),
+        "raw_response_sha256": raw_response_sha256,
+        "rule": "ONLY_NULL_TABLE_TITLES_PROMOTED_FROM_AUTHENTICATED_OMITTED_TEXT_HEADERS",
+        "title_projection_axis": title_axis,
+    }
+    receipt = {
+        **material,
+        "projection_receipt_sha256": canonical_json_sha256_v1(material),
+    }
+    return projected, receipt
+
+
 def query_selected_equity_matrix_family_regions_v1(
     path: Path,
     *,
@@ -3041,7 +3130,8 @@ def query_selected_equity_matrix_family_regions_v1(
             SELECT selected.selection_ordinal, selected.page_json_version_id,
                    document.document_id, document.source_logical_name,
                    document.source_sha256, page.physical_page,
-                   version.canonical_json_bytes
+                   version.canonical_json_bytes, version.raw_response_sha256,
+                   version.raw_response_bytes
             FROM selected_equity_matrix_page AS selected
             JOIN page_json_version AS version USING(page_json_version_id)
             JOIN page USING(page_id)
@@ -3052,6 +3142,7 @@ def query_selected_equity_matrix_family_regions_v1(
         current_document_id = None
         current_document = None
         current_pages = []
+        current_raw_by_version = {}
         seen_document_ids = set()
         document_ordinal = 0
 
@@ -3059,12 +3150,56 @@ def query_selected_equity_matrix_family_regions_v1(
             if current_document is None:
                 return
             documents.append(canonical_clone_v1(current_document))
-            clusters.append(
-                coalesce_gemini_json_equity_matrix_document_v1(
-                    page_records=current_pages,
-                    compiled_specs=compiled_specs,
-                )
+            cluster = coalesce_gemini_json_equity_matrix_document_v1(
+                page_records=current_pages,
+                compiled_specs=compiled_specs,
             )
+            if (
+                cluster["status"] == "UNRESOLVED_GEMINI_JSON_FAMILY"
+                and "MULTIPLE_UNDATED_COMPONENT_ROW_MATRICES_UNDER_OWNER" in cluster["reasons"]
+            ):
+                target_versions = {
+                    item["page_json_version_id"] for item in cluster["declared_table_inventory"]
+                }
+                projected_pages = canonical_clone_v1(current_pages)
+                projection_receipts = []
+                for record in projected_pages:
+                    version_id = record["page_json_version_id"]
+                    if version_id not in target_versions:
+                        continue
+                    raw = current_raw_by_version[version_id]
+                    projection = _sealed_raw_table_context_reprojection_v1(
+                        page_json_version_id=version_id,
+                        canonical_page_json=record["page_json"],
+                        raw_response_bytes=raw["raw_response_bytes"],
+                        raw_response_sha256=raw["raw_response_sha256"],
+                    )
+                    if projection is None:
+                        continue
+                    record["page_json"], receipt = projection
+                    projection_receipts.append(receipt)
+                if projection_receipts:
+                    projected_cluster = coalesce_gemini_json_equity_matrix_document_v1(
+                        page_records=projected_pages,
+                        compiled_specs=compiled_specs,
+                    )
+                    if (
+                        projected_cluster["status"]
+                        == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+                    ):
+                        owner_receipt = canonical_clone_v1(projected_cluster["owner_receipt"])
+                        owner_receipt["context_projection_receipts"] = projection_receipts
+                        projected_cluster["owner_receipt"] = owner_receipt
+                        material = {
+                            key: value
+                            for key, value in projected_cluster.items()
+                            if key != "cluster_id"
+                        }
+                        projected_cluster["cluster_id"] = (
+                            "gjeqmfv1:cluster:" + canonical_json_sha256_v1(material)
+                        )
+                        cluster = projected_cluster
+            clusters.append(cluster)
 
         row_count = 0
         for row in cursor:
@@ -3083,6 +3218,7 @@ def query_selected_equity_matrix_family_regions_v1(
                     "source_sha256": row["source_sha256"],
                 }
                 current_pages = []
+                current_raw_by_version = {}
             selected_page_ordinal = len(current_pages) + 1
             try:
                 page_json = json.loads(bytes(row["canonical_json_bytes"]))
@@ -3098,6 +3234,10 @@ def query_selected_equity_matrix_family_regions_v1(
             }
             selected_page_axis.append(canonical_clone_v1(page_axis_record))
             current_pages.append({**page_axis_record, "page_json": page_json})
+            current_raw_by_version[row["page_json_version_id"]] = {
+                "raw_response_bytes": bytes(row["raw_response_bytes"]),
+                "raw_response_sha256": row["raw_response_sha256"],
+            }
         seal_document()
     if row_count != len(selected_page_json_version_ids):
         raise _error("selected equity-matrix page frontier is incomplete")

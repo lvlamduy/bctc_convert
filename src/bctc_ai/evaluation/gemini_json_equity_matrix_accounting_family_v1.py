@@ -62,6 +62,10 @@ _MAPPED_TOTAL_ROLES = {
     "DECREASE": "DECREASE_TOTAL",
     "CLOSING": "CLOSING_TOTAL",
 }
+_ROOT_MAPPING_POLICIES = {
+    "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_CELLS_ONLY",
+    "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_VECTOR_WITH_COMPONENT_VECTORS",
+}
 
 
 class GeminiJsonEquityMatrixAccountingFamilyV1Error(ValueError):
@@ -195,8 +199,17 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     }
     if (
         type(policy) is not dict
-        or set(policy) != policy_fields
-        or policy.get("accepted_orientations") != ["COMPONENT_COLUMNS", "COMPONENT_ROWS"]
+        or not policy_fields
+        <= set(policy)
+        <= policy_fields
+        | {"hierarchy_policy", "signed_branch_policy", "supplemental_movement_policy"}
+        or type(policy.get("accepted_orientations")) is not list
+        or not policy["accepted_orientations"]
+        or any(
+            orientation not in {"COMPONENT_COLUMNS", "COMPONENT_ROWS"}
+            for orientation in policy["accepted_orientations"]
+        )
+        or len(policy["accepted_orientations"]) != len(set(policy["accepted_orientations"]))
         or policy.get("max_continuation_pages") != 1
         or type(policy.get("minimum_mapped_component_roles")) is not int
         or policy["minimum_mapped_component_roles"] < 2
@@ -208,10 +221,137 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     movement_aliases = _compile_alias_map(policy["movement_role_aliases"], label="movement")
     if set(movement_aliases) != set(_MAPPED_MOVEMENT_ROLES):
         raise _error("equity-matrix movement roles are incomplete")
+    supplemental_policy = policy.get(
+        "supplemental_movement_policy",
+        {
+            "decomposition_equations": [],
+            "mapped_roles": [],
+            "primary_rollforward_additive_roles": [],
+            "role_aliases": {},
+        },
+    )
+    supplemental_fields = {
+        "decomposition_equations",
+        "mapped_roles",
+        "primary_rollforward_additive_roles",
+        "role_aliases",
+    }
+    if (
+        type(supplemental_policy) is not dict
+        or set(supplemental_policy) != supplemental_fields
+        or type(supplemental_policy.get("role_aliases")) is not dict
+    ):
+        raise _error("equity-matrix supplemental movement policy is invalid")
+    supplemental_aliases = (
+        _compile_alias_map(supplemental_policy["role_aliases"], label="supplemental movement")
+        if supplemental_policy["role_aliases"]
+        else {}
+    )
+    signed_branch_policy = policy.get(
+        "signed_branch_policy", {"branch_aliases": {}, "branch_multipliers": {}}
+    )
+    if (
+        type(signed_branch_policy) is not dict
+        or set(signed_branch_policy) != {"branch_aliases", "branch_multipliers"}
+        or type(signed_branch_policy.get("branch_aliases")) is not dict
+        or type(signed_branch_policy.get("branch_multipliers")) is not dict
+    ):
+        raise _error("equity-matrix signed branch policy is invalid")
+    signed_branch_aliases = (
+        _compile_alias_map(signed_branch_policy["branch_aliases"], label="signed branch")
+        if signed_branch_policy["branch_aliases"]
+        else {}
+    )
+    if (
+        set(signed_branch_aliases) != set(signed_branch_policy["branch_multipliers"])
+        or any(
+            type(multiplier) is not int or multiplier not in {-1, 1}
+            for multiplier in signed_branch_policy["branch_multipliers"].values()
+        )
+        or (
+            signed_branch_aliases
+            and set(signed_branch_policy["branch_multipliers"].values()) != {-1, 1}
+        )
+    ):
+        raise _error("equity-matrix signed branch projection is invalid")
+    supplemental_roles = set(supplemental_aliases)
+    primary_alias_axis = {
+        _normalized(alias) for aliases in movement_aliases.values() for alias in aliases
+    }
+    supplemental_alias_axis = {
+        _normalized(alias) for aliases in supplemental_aliases.values() for alias in aliases
+    }
+    if supplemental_roles & set(_MAPPED_MOVEMENT_ROLES) or (
+        primary_alias_axis & supplemental_alias_axis
+    ):
+        raise _error("primary and supplemental movement declarations collide")
+    for field in ("mapped_roles", "primary_rollforward_additive_roles"):
+        values = supplemental_policy.get(field)
+        if (
+            type(values) is not list
+            or len(values) != len(set(values))
+            or not set(values) <= supplemental_roles
+        ):
+            raise _error("supplemental movement role projection is invalid")
+    equations = supplemental_policy.get("decomposition_equations")
+    if type(equations) is not list:
+        raise _error("supplemental movement equations are invalid")
+    for equation in equations:
+        if (
+            type(equation) is not dict
+            or set(equation) != {"result_role", "term_multipliers"}
+            or equation.get("result_role")
+            not in {
+                *_MAPPED_MOVEMENT_ROLES,
+                *supplemental_roles,
+            }
+            or type(equation.get("term_multipliers")) is not dict
+            or not equation["term_multipliers"]
+            or any(
+                role not in {*_MAPPED_MOVEMENT_ROLES, *supplemental_roles}
+                or type(multiplier) is not int
+                or multiplier == 0
+                for role, multiplier in equation["term_multipliers"].items()
+            )
+        ):
+            raise _error("supplemental movement equation is invalid")
     source_only_aliases = _compile_alias_map(
         policy["source_only_component_aliases"], label="source-only component"
     )
     mapped_aliases = _aliases_by_role(topology)
+    hierarchy_policy = policy.get(
+        "hierarchy_policy",
+        {
+            "aggregate_duplicate_roles": [],
+            "disclosure_group_aliases": [],
+            "mapped_group_total_roles": [],
+        },
+    )
+    if (
+        type(hierarchy_policy) is not dict
+        or set(hierarchy_policy)
+        != {
+            "aggregate_duplicate_roles",
+            "disclosure_group_aliases",
+            "mapped_group_total_roles",
+        }
+        or type(hierarchy_policy.get("aggregate_duplicate_roles")) is not list
+        or len(hierarchy_policy["aggregate_duplicate_roles"])
+        != len(set(hierarchy_policy["aggregate_duplicate_roles"]))
+        or not set(hierarchy_policy["aggregate_duplicate_roles"]) <= set(mapped_aliases)
+        or type(hierarchy_policy.get("disclosure_group_aliases")) is not list
+        or any(
+            type(alias) is not str or not alias.strip()
+            for alias in hierarchy_policy["disclosure_group_aliases"]
+        )
+        or len({_normalized(alias) for alias in hierarchy_policy["disclosure_group_aliases"]})
+        != len(hierarchy_policy["disclosure_group_aliases"])
+        or type(hierarchy_policy.get("mapped_group_total_roles")) is not list
+        or len(hierarchy_policy["mapped_group_total_roles"])
+        != len(set(hierarchy_policy["mapped_group_total_roles"]))
+        or not set(hierarchy_policy["mapped_group_total_roles"]) <= set(mapped_aliases)
+    ):
+        raise _error("equity-matrix hierarchy policy is invalid")
     mapped_normalized = {
         _normalized(alias) for aliases in mapped_aliases.values() for alias in aliases
     }
@@ -236,8 +376,7 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         or schema_binding_spec.get("family_id") != topology["family_id"]
         or type(schema_binding_spec.get("family_root_report_norm_id")) is not int
         or schema_binding_spec["family_root_report_norm_id"] <= 0
-        or schema_binding_spec.get("root_mapping_policy")
-        != "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_CELLS_ONLY"
+        or schema_binding_spec.get("root_mapping_policy") not in _ROOT_MAPPING_POLICIES
     ):
         raise _error("equity-matrix schema binding spec is invalid")
 
@@ -268,11 +407,17 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         roles=set(mapped_aliases),
         label="component",
     )
-    movement_bindings = bindings(
-        schema_binding_spec["movement_total_bindings"],
-        roles=set(_MAPPED_TOTAL_ROLES.values()),
-        label="movement total",
-    )
+    root_mapping_policy = schema_binding_spec["root_mapping_policy"]
+    if root_mapping_policy == "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_CELLS_ONLY":
+        movement_bindings = bindings(
+            schema_binding_spec["movement_total_bindings"],
+            roles=set(_MAPPED_TOTAL_ROLES.values()),
+            label="movement total",
+        )
+    elif schema_binding_spec["movement_total_bindings"] != []:
+        raise _error("equity-matrix vector-root mode cannot bind movement totals")
+    else:
+        movement_bindings = {}
     all_ids = {
         schema_binding_spec["family_root_report_norm_id"],
         *component_bindings.values(),
@@ -295,11 +440,23 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         "evaluation": canonical_clone_v1(evaluation_spec),
         "family_id": topology["family_id"],
         "family_root_report_norm_id": schema_binding_spec["family_root_report_norm_id"],
-        "movement_aliases_by_role": movement_aliases,
+        "hierarchy_policy": canonical_clone_v1(hierarchy_policy),
+        "mapped_supplemental_movement_roles": canonical_clone_v1(
+            supplemental_policy["mapped_roles"]
+        ),
+        "movement_aliases_by_role": {**movement_aliases, **supplemental_aliases},
+        "movement_decomposition_equations": canonical_clone_v1(equations),
+        "movement_roles": [*_MAPPED_MOVEMENT_ROLES, *supplemental_aliases],
         "movement_total_report_norm_id_by_role": movement_bindings,
         "query_policy": query_policy,
+        "root_mapping_policy": root_mapping_policy,
         "schema": canonical_clone_v1(schema_binding_spec),
+        "signed_branch_aliases_by_role": signed_branch_aliases,
+        "signed_branch_multipliers": canonical_clone_v1(signed_branch_policy["branch_multipliers"]),
         "source_only_aliases_by_role": source_only_aliases,
+        "supplemental_rollforward_additive_roles": canonical_clone_v1(
+            supplemental_policy["primary_rollforward_additive_roles"]
+        ),
         "topology": topology,
         "total_aliases": canonical_clone_v1(policy["total_aliases"]),
         "unit_binding_by_alias": unit_by_alias,
@@ -343,11 +500,21 @@ def _header_members(column: Any) -> list[str]:
 
 
 def _role_matches(members: Sequence[Any], aliases_by_role: Mapping[str, list[str]]) -> list[str]:
-    return sorted(
-        role
-        for role, aliases in aliases_by_role.items()
-        if any(_matches(member, alias) for member in members for alias in aliases)
-    )
+    # Hierarchy paths are broad-to-specific. Resolve the deepest declared
+    # member first, then the longest alias within that member. This lets a
+    # child retain its own role under a mapped subtotal without double-matching
+    # the parent catch-all.
+    for member in reversed(members):
+        matches = [
+            (role, alias)
+            for role, aliases in aliases_by_role.items()
+            for alias in aliases
+            if _matches(member, alias)
+        ]
+        if matches:
+            longest = max(len(_normalized(alias)) for _role, alias in matches)
+            return sorted({role for role, alias in matches if len(_normalized(alias)) == longest})
+    return []
 
 
 def _unit_occurrences(surface: Any, *, compiled_specs: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -387,15 +554,108 @@ def _semantic_component_members(
     members: Sequence[str], *, compiled_specs: Mapping[str, Any]
 ) -> list[str]:
     result = []
-    aliases = sorted(compiled_specs["unit_binding_by_alias"], key=len, reverse=True)
+    unit_aliases = sorted(compiled_specs["unit_binding_by_alias"], key=len, reverse=True)
+    component_aliases = {
+        _normalized(alias)
+        for aliases_by_role in (
+            compiled_specs["aliases_by_role"],
+            compiled_specs["source_only_aliases_by_role"],
+        )
+        for aliases in aliases_by_role.values()
+        for alias in aliases
+    }
+    inferred_parent_aliases = {
+        _normalized(alias)
+        for role in compiled_specs["hierarchy_policy"]["mapped_group_total_roles"]
+        for alias in compiled_specs["aliases_by_role"][role]
+    } | {
+        _normalized(alias)
+        for alias in compiled_specs["hierarchy_policy"]["disclosure_group_aliases"]
+    }
     for member in members:
         folded = _normalized(member)
-        for alias in aliases:
+        for alias in unit_aliases:
             folded = re.sub(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", " ", folded)
         folded = " ".join(folded.split())
         if folded:
-            result.append(folded)
+            # Some page transcriptions flatten ``parent - child`` into one
+            # hierarchy member.  Recover only an explicitly declared group
+            # parent followed by an exact declared child alias.  An exact
+            # whole-surface alias always wins, so ordinary long labels such as
+            # ``Các loại thuế khác, phí và lệ phí`` are never split merely
+            # because they contain shorter aliases.
+            inferred = None
+            if folded not in component_aliases:
+                candidates = []
+                for parent in inferred_parent_aliases:
+                    prefix = f"{parent} "
+                    if folded.startswith(prefix):
+                        child = folded[len(prefix) :].strip()
+                        if child in component_aliases:
+                            candidates.append((len(parent), parent, child))
+                if candidates:
+                    _length, parent, child = max(candidates)
+                    inferred = [parent, child]
+            result.extend(inferred or [folded])
     return result
+
+
+def _promote_inferred_mapped_group_totals_v1(
+    component_axis: list[dict[str, Any]], *, compiled_specs: Mapping[str, Any]
+) -> None:
+    """Promote a source-visible group row when its following children prove hierarchy.
+
+    Gemini's optional ``row_kind`` is not authority.  Promotion is restricted
+    to roles declared by ``mapped_group_total_roles`` and requires a later,
+    strictly deeper semantic path under the exact group prefix.
+    """
+
+    allowed = set(compiled_specs["hierarchy_policy"]["mapped_group_total_roles"])
+    for index, item in enumerate(component_axis):
+        if item["kind"] != "MAPPED_COMPONENT" or item["role"] not in allowed:
+            continue
+        prefix = item["semantic_path"]
+        children = [
+            child
+            for child in component_axis[index + 1 :]
+            if _starts_with(child["semantic_path"], prefix)
+        ]
+        if not children:
+            continue
+        item["kind"] = "MAPPED_COMPONENT_GROUP_TOTAL"
+        item["group_prefix"] = canonical_clone_v1(prefix)
+        item["hierarchy_resolution"] = {
+            "child_axis_ids": [child["axis_id"] for child in children],
+            "rule": "DECLARED_MAPPED_GROUP_PROMOTED_BY_FOLLOWING_DEEPER_SEMANTIC_PATHS",
+        }
+
+
+def _promote_full_scope_group_total_v1(component_axis: list[dict[str, Any]]) -> None:
+    """Recognize a last-row total whose hierarchy prefix owns the full matrix."""
+
+    if not component_axis:
+        return
+    total = component_axis[-1]
+    prefix = total["group_prefix"]
+    prior = [
+        item
+        for item in component_axis[:-1]
+        if item["kind"] not in {"DISCLOSURE_GROUP_HEADER", "UNCLASSIFIED_COMPONENT_AXIS"}
+    ]
+    if (
+        total["kind"] != "GROUP_TOTAL"
+        or not prefix
+        or not prior
+        or not all(_starts_with(item["semantic_path"], prefix) for item in prior)
+    ):
+        return
+    total["kind"] = "GRAND_TOTAL"
+    total["group_prefix"] = []
+    total["hierarchy_resolution"] = {
+        "owned_axis_ids": [item["axis_id"] for item in prior],
+        "source_group_prefix": canonical_clone_v1(prefix),
+        "rule": "LAST_GROUP_TOTAL_PREFIX_OWNS_COMPLETE_PRECEDING_COMPONENT_POPULATION",
+    }
 
 
 def _component_record(
@@ -407,8 +667,41 @@ def _component_record(
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
     semantic_members = _semantic_component_members(members, compiled_specs=compiled_specs)
-    mapped = _role_matches(semantic_members, compiled_specs["aliases_by_role"])
-    source_only = _role_matches(semantic_members, compiled_specs["source_only_aliases_by_role"])
+    combined_aliases = {
+        **{
+            f"MAPPED:{role}": aliases for role, aliases in compiled_specs["aliases_by_role"].items()
+        },
+        **{
+            f"SOURCE_ONLY:{role}": aliases
+            for role, aliases in compiled_specs["source_only_aliases_by_role"].items()
+        },
+    }
+    combined_matches = _role_matches(semantic_members, combined_aliases)
+    mapped = [
+        role.removeprefix("MAPPED:") for role in combined_matches if role.startswith("MAPPED:")
+    ]
+    source_only = [
+        role.removeprefix("SOURCE_ONLY:")
+        for role in combined_matches
+        if role.startswith("SOURCE_ONLY:")
+    ]
+    branch_matches = sorted(
+        {
+            role
+            for member in semantic_members
+            for role, aliases in compiled_specs["signed_branch_aliases_by_role"].items()
+            if any(_matches(member, alias) for alias in aliases)
+        }
+    )
+    branch_role = branch_matches[0] if len(branch_matches) == 1 else None
+    disclosure_members = [
+        member
+        for member in semantic_members
+        if any(
+            _matches(member, alias)
+            for alias in compiled_specs["hierarchy_policy"]["disclosure_group_aliases"]
+        )
+    ]
     total_members = [
         member
         for member in semantic_members
@@ -418,21 +711,48 @@ def _component_record(
     group_prefix: list[str] = []
     if len(mapped) + len(source_only) > 1:
         reasons.append("COMPONENT_AXIS_MEMBER_MATCHES_MULTIPLE_DECLARED_ROLES")
+    if len(branch_matches) > 1:
+        reasons.append("COMPONENT_AXIS_MEMBER_MATCHES_MULTIPLE_SIGNED_BRANCHES")
     if total_members and (mapped or source_only):
         reasons.append("COMPONENT_AXIS_TOTAL_AND_LEAF_ROLES_CONFLICT")
     kind = "UNCLASSIFIED_COMPONENT_AXIS"
     role = None
-    if len(mapped) == 1 and not source_only and not total_members:
-        kind, role = "MAPPED_COMPONENT", mapped[0]
+    if branch_role is not None and row_kind == "GROUP" and not mapped and not source_only:
+        kind = "SIGNED_BRANCH_HEADER"
+        group_prefix = [_normalized(member) for member in semantic_members]
+    elif row_kind == "GROUP" and len(disclosure_members) == 1:
+        kind = "DISCLOSURE_GROUP_HEADER"
+        group_prefix = [_normalized(member) for member in semantic_members]
+    elif len(mapped) == 1 and not source_only and not total_members:
+        role = mapped[0]
+        if (
+            row_kind == "GROUP"
+            and role in compiled_specs["hierarchy_policy"]["mapped_group_total_roles"]
+        ):
+            kind = "MAPPED_COMPONENT_GROUP_TOTAL"
+            group_prefix = [_normalized(member) for member in semantic_members]
+        else:
+            kind = "MAPPED_COMPONENT"
     elif len(source_only) == 1 and not mapped and not total_members:
-        kind, role = "SOURCE_ONLY_COMPONENT", source_only[0]
-    elif row_kind == "TOTAL" or len(total_members) == 1:
+        role = source_only[0]
+        kind = "DISCLOSURE_COMPONENT" if disclosure_members else "SOURCE_ONLY_COMPONENT"
+    elif branch_role is not None and row_kind in {"SUBTOTAL", "TOTAL"}:
+        kind = "SIGNED_BRANCH_TOTAL"
+        group_prefix = [_normalized(member) for member in semantic_members]
+    elif row_kind in {"SUBTOTAL", "TOTAL"} or len(total_members) == 1:
         prefix = (
             semantic_members[:-1] if total_members and semantic_members[-1] in total_members else []
         )
+        if (
+            row_kind in {"SUBTOTAL", "TOTAL"}
+            and semantic_members
+            and not total_members
+            and not prefix
+        ):
+            prefix = semantic_members
         group_prefix = [_normalized(member) for member in prefix]
         kind = "GROUP_TOTAL" if prefix else "GRAND_TOTAL"
-    return {
+    result = {
         "axis_id": axis_id,
         "axis_ordinal": axis_ordinal,
         "kind": kind,
@@ -442,6 +762,12 @@ def _component_record(
         "role": role,
         "semantic_path": [_normalized(member) for member in semantic_members],
     }
+    if branch_role is not None:
+        result["signed_branch_role"] = branch_role
+        result["signed_branch_multiplier"] = compiled_specs["signed_branch_multipliers"][
+            branch_role
+        ]
+    return result
 
 
 def classify_gemini_json_equity_matrix_table_v1(
@@ -465,7 +791,11 @@ def classify_gemini_json_equity_matrix_table_v1(
         raise _error("equity-matrix column axis is invalid")
     row_components = [
         _component_record(
-            members=[row.get("label_exact")] if type(row.get("label_exact")) is str else [],
+            members=[
+                member
+                for member in row.get("hierarchy_path_exact", [])
+                if type(member) is str and member.strip()
+            ],
             row_kind=row.get("row_kind"),
             axis_id=f"r{ordinal}",
             axis_ordinal=ordinal,
@@ -473,6 +803,8 @@ def classify_gemini_json_equity_matrix_table_v1(
         )
         for ordinal, row in enumerate(rows, start=1)
     ]
+    _promote_inferred_mapped_group_totals_v1(row_components, compiled_specs=compiled_specs)
+    _promote_full_scope_group_total_v1(row_components)
     column_components = [
         _component_record(
             members=_header_members(column),
@@ -483,16 +815,21 @@ def classify_gemini_json_equity_matrix_table_v1(
         )
         for ordinal, column in enumerate(columns, start=1)
     ]
-    row_mapped = {item["role"] for item in row_components if item["kind"] == "MAPPED_COMPONENT"}
-    column_mapped = {
-        item["role"] for item in column_components if item["kind"] == "MAPPED_COMPONENT"
-    }
+    mapped_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    row_mapped = {item["role"] for item in row_components if item["kind"] in mapped_kinds}
+    column_mapped = {item["role"] for item in column_components if item["kind"] in mapped_kinds}
     minimum = compiled_specs["query_policy"]["minimum_mapped_component_roles"]
     orientations = []
-    if len(row_mapped) >= minimum and len(columns) >= 4:
+    accepted_orientations = compiled_specs["evaluation"]["matrix_policy"]["accepted_orientations"]
+    if (
+        "COMPONENT_ROWS" in accepted_orientations
+        and len(row_mapped) >= minimum
+        and len(columns) >= 4
+    ):
         orientations.append("COMPONENT_ROWS")
     if (
-        len(column_mapped) >= minimum
+        "COMPONENT_COLUMNS" in accepted_orientations
+        and len(column_mapped) >= minimum
         and sum(column.get("value_kind") == "MONEY" for column in columns) >= 4
     ):
         orientations.append("COMPONENT_COLUMNS")
@@ -522,11 +859,57 @@ def classify_gemini_json_equity_matrix_table_v1(
         if orientation == "COMPONENT_COLUMNS"
         else []
     )
-    roles = [item["role"] for item in component_axis if item["kind"] == "MAPPED_COMPONENT"]
-    if len(roles) != len(set(roles)):
+    roles = [item["role"] for item in component_axis if item["kind"] in mapped_kinds]
+    duplicate_roles = {role for role in roles if roles.count(role) > 1}
+    signed_branch_roles = {
+        item.get("signed_branch_role")
+        for item in component_axis
+        if item.get("signed_branch_role") is not None
+    }
+    signed_branch_mode = bool(signed_branch_roles) and orientation == "COMPONENT_ROWS"
+    signed_branch_complete = False
+    if signed_branch_mode:
+        signed_branch_complete = all(
+            sum(
+                item["kind"] == "SIGNED_BRANCH_HEADER"
+                and item.get("signed_branch_role") == branch_role
+                for item in component_axis
+            )
+            == 1
+            and sum(
+                item["kind"] == "SIGNED_BRANCH_TOTAL"
+                and item.get("signed_branch_role") == branch_role
+                for item in component_axis
+            )
+            == 1
+            and len(
+                {
+                    item["role"]
+                    for item in component_axis
+                    if item["kind"] in mapped_kinds
+                    and item.get("signed_branch_role") == branch_role
+                }
+            )
+            >= minimum
+            for branch_role in sorted(signed_branch_roles)
+        )
+        if not signed_branch_complete:
+            reasons.append("SIGNED_BRANCH_COMPONENT_POPULATION_INCOMPLETE")
+        for branch_role in sorted(signed_branch_roles):
+            branch_mapped_roles = [
+                item["role"]
+                for item in component_axis
+                if item["kind"] in mapped_kinds and item.get("signed_branch_role") == branch_role
+            ]
+            if len(branch_mapped_roles) != len(set(branch_mapped_roles)):
+                reasons.append("DUPLICATE_MAPPED_COMPONENT_ROLE_WITHIN_SIGNED_BRANCH")
+    if not signed_branch_mode and duplicate_roles - set(
+        compiled_specs["hierarchy_policy"]["aggregate_duplicate_roles"]
+    ):
         reasons.append("DUPLICATE_MAPPED_COMPONENT_ROLE")
     if (
         orientation is not None
+        and not signed_branch_mode
         and sum(item["kind"] == "GRAND_TOTAL" for item in component_axis) != 1
     ):
         reasons.append("EXACTLY_ONE_COMPONENT_GRAND_TOTAL_REQUIRED")
@@ -534,7 +917,7 @@ def classify_gemini_json_equity_matrix_table_v1(
         item["kind"] == "UNCLASSIFIED_COMPONENT_AXIS" for item in component_axis
     ):
         reasons.append("UNCLASSIFIED_COMPONENT_AXIS_PRESENT")
-    return {
+    result = {
         "column_declared_component_roles": sorted(column_mapped),
         "component_axis": component_axis,
         "component_axis_sha256": canonical_json_sha256_v1(component_axis),
@@ -544,6 +927,10 @@ def classify_gemini_json_equity_matrix_table_v1(
         "row_declared_component_roles": sorted(row_mapped),
         "status": "MATRIX_FRAGMENT" if orientation is not None and not reasons else "NOT_MATRIX",
     }
+    if signed_branch_mode:
+        result["matrix_mode"] = "SIGNED_BRANCH_FRAGMENT"
+        result["signed_branch_roles"] = sorted(signed_branch_roles)
+    return result
 
 
 def _checked_region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -604,12 +991,86 @@ def _checked_region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str,
             raise _error("equity-matrix fragments are not in source order")
         prior_key = key
         result.append(canonical_clone_v1(region))
-    if len(result) == 2 and (
-        result[1]["physical_page"] - result[0]["physical_page"] != 1
-        or result[1]["selected_page_ordinal"] - result[0]["selected_page_ordinal"] != 1
-    ):
-        raise _error("equity-matrix continuation fragments are not adjacent pages")
+    if len(result) == 2:
+        same_page_siblings = (
+            result[1]["page_json_version_id"] == result[0]["page_json_version_id"]
+            and result[1]["section_id"] == result[0]["section_id"]
+            and int(result[1]["table_id"][1:]) == int(result[0]["table_id"][1:]) + 1
+        )
+        adjacent_pages = (
+            result[1]["physical_page"] - result[0]["physical_page"] == 1
+            and result[1]["selected_page_ordinal"] - result[0]["selected_page_ordinal"] == 1
+        )
+        if not (same_page_siblings or adjacent_pages):
+            raise _error("equity-matrix fragments are not adjacent source siblings")
     return result
+
+
+def _validate_context_projection_receipts_v1(owner_receipt: Mapping[str, Any]) -> None:
+    receipts = owner_receipt.get("context_projection_receipts")
+    if receipts is None:
+        return
+    receipt_fields = {
+        "base_page_json_sha256",
+        "format_version",
+        "page_json_version_id",
+        "projected_page_json_sha256",
+        "projection_receipt_sha256",
+        "raw_response_sha256",
+        "rule",
+        "title_projection_axis",
+    }
+    title_fields = {
+        "base_title_exact",
+        "projected_title_exact",
+        "section_id",
+        "table_id",
+    }
+    if type(receipts) is not list or not receipts:
+        raise _error("equity-matrix context projection receipt axis is invalid")
+    versions = []
+    for receipt in receipts:
+        titles = receipt.get("title_projection_axis") if type(receipt) is dict else None
+        if (
+            type(receipt) is not dict
+            or set(receipt) != receipt_fields
+            or receipt.get("format_version") != "GEMINI_JSON_SEALED_RAW_TABLE_CONTEXT_PROJECTION_V1"
+            or _PAGE_VERSION.fullmatch(receipt.get("page_json_version_id", "")) is None
+            or any(
+                _SHA256.fullmatch(receipt.get(field, "")) is None
+                for field in (
+                    "base_page_json_sha256",
+                    "projected_page_json_sha256",
+                    "raw_response_sha256",
+                    "projection_receipt_sha256",
+                )
+            )
+            or receipt.get("rule")
+            != "ONLY_NULL_TABLE_TITLES_PROMOTED_FROM_AUTHENTICATED_OMITTED_TEXT_HEADERS"
+            or type(titles) is not list
+            or not titles
+            or any(
+                type(item) is not dict
+                or set(item) != title_fields
+                or item.get("base_title_exact") is not None
+                or type(item.get("projected_title_exact")) is not str
+                or not item["projected_title_exact"].strip()
+                or _SECTION_ID.fullmatch(item.get("section_id", "")) is None
+                or _TABLE_ID.fullmatch(item.get("table_id", "")) is None
+                for item in titles
+            )
+        ):
+            raise _error("equity-matrix context projection receipt drifted")
+        material = {
+            key: canonical_clone_v1(value)
+            for key, value in receipt.items()
+            if key != "projection_receipt_sha256"
+        }
+        if receipt["projection_receipt_sha256"] != canonical_json_sha256_v1(material):
+            raise _error("equity-matrix context projection receipt identity drifted")
+        versions.append(receipt["page_json_version_id"])
+    if len(versions) != len(set(versions)):
+        raise _error("equity-matrix context projection repeats one page version")
 
 
 def build_gemini_json_equity_matrix_region_query_receipt_v1(
@@ -620,6 +1081,7 @@ def build_gemini_json_equity_matrix_region_query_receipt_v1(
     checked = _checked_region_axis(regions)
     if type(owner_receipt) is not dict:
         raise _error("equity-matrix owner receipt is invalid")
+    _validate_context_projection_receipts_v1(owner_receipt)
     payload = {
         "component_region_axis_sha256": canonical_json_sha256_v1(checked),
         "component_regions": checked,
@@ -630,11 +1092,76 @@ def build_gemini_json_equity_matrix_region_query_receipt_v1(
 
 
 def _movement_matches(members: Sequence[str], *, compiled_specs: Mapping[str, Any]) -> list[str]:
-    return sorted(
-        role
-        for role, aliases in compiled_specs["movement_aliases_by_role"].items()
-        if any(_matches(member, alias) for member in members for alias in aliases)
-    )
+    # Header paths are ordered broad-to-specific. Resolve primary and
+    # supplemental semantics independently: a nested balance-side label such
+    # as ``Số đầu năm / Phải trả`` must remain OPENING, while ``Số cuối năm /
+    # Phải trả`` is a declared CLOSING decomposition term. Likewise a source
+    # visible business-combination increase refines the broad ``Phát sinh``
+    # parent. Compatibility comes only from the declarative supplemental
+    # policy; no column index or bank-specific phrase is used.
+    primary_roles = set(_MAPPED_MOVEMENT_ROLES)
+    primary: list[str] = []
+    supplemental: list[str] = []
+    for member in members:
+        match_surfaces = {
+            member,
+            re.sub(
+                r"\s+(?:trinh bay lai|da duoc trinh bay lai|da dieu chinh)$",
+                "",
+                member,
+            ).strip(),
+            # Column formulas commonly append a single parenthesized source
+            # marker after the visible unit, for example ``Số đã nộp (c)``.
+            # Normalization removes the parentheses.  Ignore only that final
+            # one-letter marker for movement matching; retain the literal
+            # member in the receipt and never strip words or digits.
+            re.sub(r"\s+[a-z]$", "", member).strip(),
+        }
+        matches = [
+            (role, alias)
+            for role, aliases in compiled_specs["movement_aliases_by_role"].items()
+            for alias in aliases
+            if any(_matches(surface, alias) for surface in match_surfaces if surface)
+        ]
+        primary_matches = [(role, alias) for role, alias in matches if role in primary_roles]
+        supplemental_matches = [
+            (role, alias) for role, alias in matches if role not in primary_roles
+        ]
+        if primary_matches:
+            longest = max(len(_normalized(alias)) for _role, alias in primary_matches)
+            primary = sorted(
+                {role for role, alias in primary_matches if len(_normalized(alias)) == longest}
+            )
+        if supplemental_matches:
+            longest = max(len(_normalized(alias)) for _role, alias in supplemental_matches)
+            supplemental = sorted(
+                {role for role, alias in supplemental_matches if len(_normalized(alias)) == longest}
+            )
+    if not primary:
+        return supplemental
+    if not supplemental:
+        return primary
+    additive_compatible = set()
+    decomposition_compatible = set()
+    if len(primary) == 1:
+        primary_role = primary[0]
+        if primary_role == "INCREASE":
+            additive_compatible.update(
+                set(supplemental) & set(compiled_specs["supplemental_rollforward_additive_roles"])
+            )
+        for declaration in compiled_specs["movement_decomposition_equations"]:
+            if declaration["result_role"] == primary_role:
+                decomposition_compatible.update(
+                    set(supplemental) & set(declaration["term_multipliers"])
+                )
+    if additive_compatible:
+        return sorted(additive_compatible)
+    if decomposition_compatible:
+        # Keep both candidates until the complete column frontier is visible.
+        # The graph resolver below selects decomposition terms only when every
+        # declared term plus an independent result column is present.
+        return sorted({*primary, *decomposition_compatible})
+    return primary
 
 
 def _movement_surface_record(
@@ -656,12 +1183,8 @@ def _movement_surface_record(
     folded = _normalized(source_exact)
     balance_marker = bool(re.search(r"\b(?:so du|du dau|du cuoi|tai ngay)\b", folded))
     reasons = []
-    if len(explicit_roles) > 1:
-        reasons.append("MOVEMENT_AXIS_SURFACE_MATCHES_MULTIPLE_ROLES")
     if len(dates) > 1:
         reasons.append("MOVEMENT_AXIS_SURFACE_HAS_MULTIPLE_DATES")
-    if dates and not balance_marker:
-        reasons.append("MOVEMENT_AXIS_DATE_HAS_NO_BALANCE_MARKER")
     return {
         "axis_id": axis_id,
         "axis_ordinal": axis_ordinal,
@@ -877,6 +1400,404 @@ def _dash_prefixed_numeric_coefficient(value: Any) -> int | None:
     return parsed["coefficient"] if parsed["state"] == "RAW_SIGNED_INTEGER" else None
 
 
+def _signed_branch_movement_axis_v1(
+    *, table: Mapping[str, Any], region: Mapping[str, Any], compiled_specs: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    raw = [
+        _movement_surface_record(
+            members=_header_members(column),
+            axis_id=f"c{ordinal}",
+            axis_ordinal=ordinal,
+            source_ref={**canonical_clone_v1(region), "column_id": f"c{ordinal}"},
+            compiled_specs=compiled_specs,
+        )
+        for ordinal, column in enumerate(table["columns"], start=1)
+    ]
+    reasons = [reason for item in raw for reason in item["reasons"]]
+    by_role = {role: [] for role in _MAPPED_MOVEMENT_ROLES}
+    for item in raw:
+        roles = [role for role in item["explicit_roles"] if role in by_role]
+        if len(roles) == 1:
+            by_role[roles[0]].append(item)
+        elif len(roles) > 1:
+            reasons.append("SIGNED_BRANCH_MOVEMENT_SURFACE_IS_AMBIGUOUS")
+    # A source matrix may print only the boundary dates (``1.1.2025`` and
+    # ``31.12.2025``), without an additional ``opening``/``closing`` label.
+    # Treat those dates as endpoint evidence only when they are the two unique
+    # outer columns in increasing order.  This is a structural/date grammar,
+    # not a column-index fallback: a date on an interior movement column,
+    # duplicate dates, or a date contradicting an explicit endpoint remains
+    # unresolved and is subsequently vetoed by the exact movement frontier.
+    if not by_role["OPENING"] or not by_role["CLOSING"]:
+        dated = [item for item in raw if len(item["dates"]) == 1]
+        if (
+            len(dated) == 2
+            and dated[0] is raw[0]
+            and dated[1] is raw[-1]
+            and dated[0]["dates"][0] < dated[1]["dates"][0]
+        ):
+            if not by_role["OPENING"]:
+                by_role["OPENING"].append(dated[0])
+            elif by_role["OPENING"] != [dated[0]]:
+                reasons.append("SIGNED_BRANCH_EXPLICIT_OPENING_CONTRADICTS_DATE_BOUNDARY")
+            if not by_role["CLOSING"]:
+                by_role["CLOSING"].append(dated[1])
+            elif by_role["CLOSING"] != [dated[1]]:
+                reasons.append("SIGNED_BRANCH_EXPLICIT_CLOSING_CONTRADICTS_DATE_BOUNDARY")
+    if any(len(by_role[role]) != 1 for role in _MAPPED_MOVEMENT_ROLES):
+        reasons.append("SIGNED_BRANCH_EXACT_PRIMARY_MOVEMENT_AXIS_REQUIRED")
+        return [], sorted(set(reasons))
+    selected = [by_role[role][0] for role in _MAPPED_MOVEMENT_ROLES]
+    if len({id(item) for item in selected}) != len(selected) or len(raw) != len(selected):
+        reasons.append("SIGNED_BRANCH_UNCONSUMED_OR_DUPLICATE_MOVEMENT_COLUMN")
+        return [], sorted(set(reasons))
+    if [item["axis_ordinal"] for item in selected] != sorted(
+        item["axis_ordinal"] for item in selected
+    ):
+        reasons.append("SIGNED_BRANCH_MOVEMENT_COLUMN_ORDER_DRIFTED")
+        return [], sorted(set(reasons))
+    for role, item in zip(_MAPPED_MOVEMENT_ROLES, selected, strict=True):
+        item["axis_role"] = role
+    return selected, sorted(set(reasons))
+
+
+def _signed_branch_derived_cell_v1(
+    *,
+    source_cells: Sequence[tuple[Mapping[str, Any], int]],
+    axis_role: str,
+) -> dict[str, Any]:
+    components = [
+        _mapping_value(cell, axis_role=axis_role, equation_multiplier=multiplier)
+        for cell, multiplier in source_cells
+    ]
+    return {
+        "aggregate_components": components,
+        "cell_ref": None,
+        "coefficient": sum(
+            component["coefficient"] * component["equation_multiplier"] for component in components
+        ),
+        "source_text": None,
+        "state": "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT",
+    }
+
+
+def _build_signed_branch_matrix_graph_v1(
+    *,
+    regions: Sequence[Mapping[str, Any]],
+    tables: Sequence[Mapping[str, Any]],
+    classifications: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    reasons = []
+    if any(
+        item.get("matrix_mode") != "SIGNED_BRANCH_FRAGMENT"
+        or item.get("orientation") != "COMPONENT_ROWS"
+        for item in classifications
+    ):
+        return {}, ["SIGNED_BRANCH_FRAGMENT_MODES_DIFFER"]
+    expected_branches = tuple(sorted(compiled_specs["signed_branch_multipliers"]))
+    visible_branches = {
+        role for item in classifications for role in item.get("signed_branch_roles", [])
+    }
+    if visible_branches != set(expected_branches):
+        return {}, ["SIGNED_BRANCH_EXACT_DECLARED_FRONTIER_REQUIRED"]
+    source_movement_axes = []
+    for region, table in zip(regions, tables, strict=True):
+        movement, movement_reasons = _signed_branch_movement_axis_v1(
+            table=table, region=region, compiled_specs=compiled_specs
+        )
+        source_movement_axes.append(movement)
+        reasons.extend(movement_reasons)
+    if reasons:
+        return {}, sorted(set(reasons))
+    if any(
+        [item["axis_role"] for item in movement] != list(_MAPPED_MOVEMENT_ROLES)
+        for movement in source_movement_axes
+    ):
+        return {}, ["SIGNED_BRANCH_MOVEMENT_AXES_DIFFER"]
+
+    raw_axis = []
+    raw_cells: dict[str, dict[str, dict[str, Any]]] = {}
+    for fragment_ordinal, (region, table, classification, movement_axis) in enumerate(
+        zip(regions, tables, classifications, source_movement_axes, strict=True), start=1
+    ):
+        for source_item, row in zip(classification["component_axis"], table["rows"], strict=True):
+            item = canonical_clone_v1(source_item)
+            item["source_axis_id"] = item["axis_id"]
+            item["source_fragment_ordinal"] = fragment_ordinal
+            item["axis_id"] = f"f{fragment_ordinal}:{item['source_axis_id']}"
+            item["axis_ordinal"] = len(raw_axis) + 1
+            raw_axis.append(item)
+            raw_cells[item["axis_id"]] = {}
+            if item["kind"] == "SIGNED_BRANCH_HEADER":
+                continue
+            for movement in movement_axis:
+                cell, reason = _parsed_cell(
+                    value=row["values_exact"][movement["axis_ordinal"] - 1],
+                    region=region,
+                    row_id=item["source_axis_id"],
+                    column_id=movement["axis_id"],
+                )
+                if reason:
+                    reasons.append(reason)
+                elif cell is not None:
+                    raw_cells[item["axis_id"]][movement["axis_role"]] = cell
+
+    branch_axes = {
+        branch_role: [item for item in raw_axis if item.get("signed_branch_role") == branch_role]
+        for branch_role in expected_branches
+    }
+    branch_movement_multipliers = {}
+    equations = []
+    for branch_role, branch_items in branch_axes.items():
+        totals = [item for item in branch_items if item["kind"] == "SIGNED_BRANCH_TOTAL"]
+        leaves = [
+            item
+            for item in branch_items
+            if item["kind"] in {"MAPPED_COMPONENT", "SOURCE_ONLY_COMPONENT"}
+        ]
+        if len(totals) != 1 or not leaves:
+            reasons.append("SIGNED_BRANCH_TOTAL_OR_LEAF_AXIS_INCOMPLETE")
+            continue
+        total = totals[0]
+        for axis_role in _MAPPED_MOVEMENT_ROLES:
+            result = raw_cells[total["axis_id"]].get(axis_role)
+            terms = [raw_cells[item["axis_id"]].get(axis_role) for item in leaves]
+            if result is None or any(cell is None for cell in terms):
+                reasons.append("SIGNED_BRANCH_HORIZONTAL_CELL_AXIS_INCOMPLETE")
+                continue
+            computed = sum(cell["coefficient"] for cell in terms if cell is not None)
+            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            equations.append(
+                {
+                    "axis_role": axis_role,
+                    "branch_role": branch_role,
+                    "computed_value": computed,
+                    "equation_kind": "VISIBLE_SIGNED_BRANCH_HORIZONTAL_TOTAL",
+                    "result": _cell_term(result),
+                    "status": status,
+                    "terms": [_cell_term(cell) for cell in terms if cell is not None],
+                    "total_axis_id": total["axis_id"],
+                }
+            )
+            if status != "EXACT":
+                reasons.append("SIGNED_BRANCH_HORIZONTAL_TOTAL_MISMATCH")
+        equation_items = [*leaves, total]
+        modes = []
+        for increase_multiplier in (1, -1):
+            for decrease_multiplier in (1, -1):
+                if all(
+                    raw_cells[item["axis_id"]]["OPENING"]["coefficient"]
+                    + increase_multiplier * raw_cells[item["axis_id"]]["INCREASE"]["coefficient"]
+                    + decrease_multiplier * raw_cells[item["axis_id"]]["DECREASE"]["coefficient"]
+                    == raw_cells[item["axis_id"]]["CLOSING"]["coefficient"]
+                    for item in equation_items
+                ):
+                    modes.append((increase_multiplier, decrease_multiplier))
+        if len(modes) > 1:
+            varying_roles = {
+                role
+                for role in ("INCREASE", "DECREASE")
+                if any(
+                    raw_cells[item["axis_id"]][role]["coefficient"] != 0 for item in equation_items
+                )
+            }
+            modes = [
+                mode
+                for mode in modes
+                if all(
+                    multiplier == 1
+                    for role, multiplier in zip(("INCREASE", "DECREASE"), mode, strict=True)
+                    if role not in varying_roles
+                )
+            ]
+        if len(modes) != 1:
+            reasons.append("SIGNED_BRANCH_VERTICAL_SIGN_MODE_NOT_UNIQUE")
+            continue
+        increase_multiplier, decrease_multiplier = modes[0]
+        branch_movement_multipliers[branch_role] = {
+            "CLOSING": 1,
+            "DECREASE": decrease_multiplier,
+            "INCREASE": increase_multiplier,
+            "OPENING": 1,
+        }
+        for item in equation_items:
+            opening = raw_cells[item["axis_id"]]["OPENING"]
+            increase = raw_cells[item["axis_id"]]["INCREASE"]
+            decrease = raw_cells[item["axis_id"]]["DECREASE"]
+            closing = raw_cells[item["axis_id"]]["CLOSING"]
+            computed = (
+                opening["coefficient"]
+                + increase_multiplier * increase["coefficient"]
+                + decrease_multiplier * decrease["coefficient"]
+            )
+            equations.append(
+                {
+                    "branch_role": branch_role,
+                    "component_axis_id": item["axis_id"],
+                    "computed_value": computed,
+                    "decrease_multiplier": decrease_multiplier,
+                    "equation_kind": "VERTICAL_SIGNED_BRANCH_ROLLFORWARD",
+                    "increase_multiplier": increase_multiplier,
+                    "result": _cell_term(closing),
+                    "status": "EXACT",
+                    "terms": [
+                        _cell_term(opening),
+                        _cell_term(increase, multiplier=increase_multiplier),
+                        _cell_term(decrease, multiplier=decrease_multiplier),
+                    ],
+                }
+            )
+    if reasons or set(branch_movement_multipliers) != set(expected_branches):
+        return {}, sorted(set(reasons))
+
+    role_order = []
+    for item in raw_axis:
+        if item["kind"] == "MAPPED_COMPONENT" and item["role"] not in role_order:
+            role_order.append(item["role"])
+    synthetic_axis = []
+    synthetic_cells = {}
+    for role in role_order:
+        source_items = [
+            item for item in raw_axis if item["kind"] == "MAPPED_COMPONENT" and item["role"] == role
+        ]
+        item = {
+            "axis_id": f"signed-net:{role}",
+            "axis_ordinal": len(synthetic_axis) + 1,
+            "group_prefix": [],
+            "kind": "MAPPED_COMPONENT",
+            "members_exact": [],
+            "reasons": [],
+            "role": role,
+            "semantic_path": [f"signed net {role.lower()}"],
+            "signed_branch_components": canonical_clone_v1(source_items),
+        }
+        synthetic_axis.append(item)
+        synthetic_cells[item["axis_id"]] = {}
+        for axis_role in _MAPPED_MOVEMENT_ROLES:
+            sources = []
+            for source_item in source_items:
+                branch_role = source_item["signed_branch_role"]
+                multiplier = compiled_specs["signed_branch_multipliers"][branch_role]
+                multiplier *= branch_movement_multipliers[branch_role][axis_role]
+                sources.append((raw_cells[source_item["axis_id"]][axis_role], multiplier))
+            synthetic_cells[item["axis_id"]][axis_role] = _signed_branch_derived_cell_v1(
+                source_cells=sources, axis_role=axis_role
+            )
+    branch_totals = [item for item in raw_axis if item["kind"] == "SIGNED_BRANCH_TOTAL"]
+    grand_total = {
+        "axis_id": "signed-net:FAMILY_TOTAL",
+        "axis_ordinal": len(synthetic_axis) + 1,
+        "group_prefix": [],
+        "kind": "GRAND_TOTAL",
+        "members_exact": [],
+        "reasons": [],
+        "role": None,
+        "semantic_path": ["signed net family total"],
+        "signed_branch_components": canonical_clone_v1(branch_totals),
+    }
+    synthetic_axis.append(grand_total)
+    synthetic_cells[grand_total["axis_id"]] = {}
+    for axis_role in _MAPPED_MOVEMENT_ROLES:
+        sources = []
+        for source_item in branch_totals:
+            branch_role = source_item["signed_branch_role"]
+            multiplier = compiled_specs["signed_branch_multipliers"][branch_role]
+            multiplier *= branch_movement_multipliers[branch_role][axis_role]
+            sources.append((raw_cells[source_item["axis_id"]][axis_role], multiplier))
+        synthetic_cells[grand_total["axis_id"]][axis_role] = _signed_branch_derived_cell_v1(
+            source_cells=sources, axis_role=axis_role
+        )
+
+    for item in synthetic_axis:
+        for axis_role in _MAPPED_MOVEMENT_ROLES:
+            result = synthetic_cells[item["axis_id"]][axis_role]
+            equations.append(
+                {
+                    "axis_role": axis_role,
+                    "component_axis_id": item["axis_id"],
+                    "computed_value": result["coefficient"],
+                    "equation_kind": "SIGNED_BRANCH_NET_COMPONENT_DERIVATION",
+                    "result": {
+                        "cell_ref": None,
+                        "coefficient": result["coefficient"],
+                        "multiplier": 1,
+                        "state": result["state"],
+                    },
+                    "status": "EXACT",
+                    "terms": [
+                        {
+                            "cell_ref": canonical_clone_v1(component["cell_ref"]),
+                            "coefficient": component["coefficient"],
+                            "multiplier": component["equation_multiplier"],
+                            "state": component["state"],
+                        }
+                        for component in result["aggregate_components"]
+                    ],
+                }
+            )
+        opening = synthetic_cells[item["axis_id"]]["OPENING"]
+        increase = synthetic_cells[item["axis_id"]]["INCREASE"]
+        decrease = synthetic_cells[item["axis_id"]]["DECREASE"]
+        closing = synthetic_cells[item["axis_id"]]["CLOSING"]
+        computed = opening["coefficient"] + increase["coefficient"] + decrease["coefficient"]
+        if computed != closing["coefficient"]:
+            reasons.append("SIGNED_BRANCH_NET_ROLLFORWARD_MISMATCH")
+        equations.append(
+            {
+                "component_axis_id": item["axis_id"],
+                "computed_value": computed,
+                "equation_kind": "VERTICAL_SIGNED_BRANCH_NET_ROLLFORWARD",
+                "result": {
+                    "cell_ref": None,
+                    "coefficient": closing["coefficient"],
+                    "multiplier": 1,
+                    "state": closing["state"],
+                },
+                "status": "EXACT" if computed == closing["coefficient"] else "MISMATCH",
+                "terms": [
+                    {
+                        "cell_ref": None,
+                        "coefficient": cell["coefficient"],
+                        "multiplier": 1,
+                        "state": cell["state"],
+                    }
+                    for cell in (opening, increase, decrease)
+                ],
+            }
+        )
+    movement_axis = []
+    for ordinal, _axis_role in enumerate(_MAPPED_MOVEMENT_ROLES):
+        item = canonical_clone_v1(source_movement_axes[0][ordinal])
+        item["signed_branch_source_axes"] = [
+            canonical_clone_v1(axis[ordinal]) for axis in source_movement_axes
+        ]
+        movement_axis.append(item)
+    return (
+        {
+            "alignment_receipts": [],
+            "component_axis": synthetic_axis,
+            "component_cells": synthetic_cells,
+            "equations": equations,
+            "movement_axis": movement_axis,
+            "movement_decomposition_equations": [],
+            "orientation": "COMPONENT_ROWS",
+            "period_block_receipt": None,
+            "signed_branch_mode": True,
+            "signed_branch_receipt": {
+                "branch_movement_multipliers": branch_movement_multipliers,
+                "branch_multipliers": canonical_clone_v1(
+                    compiled_specs["signed_branch_multipliers"]
+                ),
+                "raw_component_axis": raw_axis,
+                "rule": "EACH_BRANCH_HORIZONTAL_AND_VERTICAL_EXACT_BEFORE_SIGNED_NET_PROJECTION",
+            },
+            "supplemental_rollforward_additive_roles": [],
+        },
+        sorted(set(reasons)),
+    )
+
+
 def _build_matrix_graph(
     *,
     regions: Sequence[Mapping[str, Any]],
@@ -884,6 +1805,15 @@ def _build_matrix_graph(
     classifications: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
+    if classifications and any(
+        item.get("matrix_mode") == "SIGNED_BRANCH_FRAGMENT" for item in classifications
+    ):
+        return _build_signed_branch_matrix_graph_v1(
+            regions=regions,
+            tables=tables,
+            classifications=classifications,
+            compiled_specs=compiled_specs,
+        )
     reasons = []
     orientations = {item["orientation"] for item in classifications}
     if len(orientations) != 1 or None in orientations:
@@ -914,27 +1844,92 @@ def _build_matrix_graph(
             )
             for ordinal, column in enumerate(columns, start=1)
         ]
+        for declaration in compiled_specs["movement_decomposition_equations"]:
+            result_role = declaration["result_role"]
+            term_roles = set(declaration["term_multipliers"])
+            ambiguous_by_term = {
+                term_role: [
+                    item
+                    for item in raw_movement
+                    if set(item["explicit_roles"]) == {result_role, term_role}
+                ]
+                for term_role in term_roles
+            }
+            independent_results = [
+                item for item in raw_movement if item["explicit_roles"] == [result_role]
+            ]
+            complete = len(independent_results) == 1 and all(
+                len(items) == 1 for items in ambiguous_by_term.values()
+            )
+            for term_role, items in ambiguous_by_term.items():
+                for item in items:
+                    item["explicit_roles"] = [term_role] if complete else [result_role]
+        for item in raw_movement:
+            if len(item["explicit_roles"]) > 1:
+                item["reasons"].append("MOVEMENT_AXIS_SURFACE_MATCHES_MULTIPLE_ROLES")
         reasons.extend(reason for item in raw_movement for reason in item["reasons"])
-        by_role: dict[str, list[dict[str, Any]]] = {role: [] for role in _MAPPED_MOVEMENT_ROLES}
+        by_role: dict[str, list[dict[str, Any]]] = {
+            role: [] for role in compiled_specs["movement_roles"]
+        }
         for item in raw_movement:
             if len(item["explicit_roles"]) == 1:
                 by_role[item["explicit_roles"][0]].append(item)
         dated_balances = [
-            item for item in raw_movement if item["balance_marker"] and len(item["dates"]) == 1
+            item
+            for item in raw_movement
+            if len(item["dates"]) == 1 and (item["balance_marker"] or not item["explicit_roles"])
         ]
-        if not by_role["OPENING"] and len(dated_balances) >= 2:
+        distinct_dates = sorted({item["dates"][0] for item in dated_balances})
+        if len(distinct_dates) == 2:
+            opening_candidates = [
+                item
+                for item in dated_balances
+                if item["dates"] == [distinct_dates[0]] and not item["explicit_roles"]
+            ]
+            if not by_role["OPENING"] and len(opening_candidates) == 1:
+                by_role["OPENING"].append(opening_candidates[0])
+            closing_candidates = [
+                item
+                for item in dated_balances
+                if item["dates"] == [distinct_dates[1]]
+                and not item["explicit_roles"]
+                and any(
+                    _matches(member, alias)
+                    for member in _semantic_component_members(
+                        item["members_exact"], compiled_specs=compiled_specs
+                    )
+                    for alias in compiled_specs["total_aliases"]
+                )
+            ]
+            if not by_role["CLOSING"] and len(closing_candidates) == 1:
+                by_role["CLOSING"].append(closing_candidates[0])
+        if not by_role["OPENING"] and len(dated_balances) == 2:
             by_role["OPENING"].append(dated_balances[0])
-        if not by_role["CLOSING"] and len(dated_balances) >= 2:
+        if not by_role["CLOSING"] and len(dated_balances) == 2:
             by_role["CLOSING"].append(dated_balances[-1])
         if any(len(by_role[role]) != 1 for role in _MAPPED_MOVEMENT_ROLES):
             reasons.append("EXACT_OPENING_INCREASE_DECREASE_CLOSING_COLUMN_AXIS_REQUIRED")
         else:
-            movement_axis = [by_role[role][0] for role in _MAPPED_MOVEMENT_ROLES]
-            if [item["axis_ordinal"] for item in movement_axis] != sorted(
-                item["axis_ordinal"] for item in movement_axis
+            if any(
+                len(by_role[role]) > 1
+                for role in compiled_specs["movement_roles"]
+                if role not in _MAPPED_MOVEMENT_ROLES
             ):
+                reasons.append("DUPLICATE_SUPPLEMENTAL_MOVEMENT_COLUMN_ROLE")
+            selected_by_role = {
+                role: items[0] for role, items in by_role.items() if len(items) == 1
+            }
+            movement_axis = sorted(selected_by_role.values(), key=lambda item: item["axis_ordinal"])
+            if len(movement_axis) != len(raw_movement):
+                reasons.append("UNCLASSIFIED_OR_DUPLICATE_MOVEMENT_COLUMN_PRESENT")
+            primary_ordinals = [
+                selected_by_role[role]["axis_ordinal"] for role in _MAPPED_MOVEMENT_ROLES
+            ]
+            if primary_ordinals != sorted(primary_ordinals):
                 reasons.append("MOVEMENT_COLUMN_AXIS_ORDER_DRIFTED")
-            for item, role in zip(movement_axis, _MAPPED_MOVEMENT_ROLES, strict=True):
+            role_by_identity = {id(item): role for role, item in selected_by_role.items()}
+            for item in movement_axis:
+                role = role_by_identity[id(item)]
                 item["axis_role"] = role
         for component, row in zip(component_axis, table["rows"], strict=True):
             for movement in movement_axis:
@@ -1107,8 +2102,14 @@ def _build_matrix_graph(
                 {key: canonical_clone_v1(value) for key, value in item.items() if key != "row"}
                 for item in movement_axis
             ],
+            "movement_decomposition_equations": canonical_clone_v1(
+                compiled_specs["movement_decomposition_equations"]
+            ),
             "orientation": orientation,
             "period_block_receipt": period_block_receipt,
+            "supplemental_rollforward_additive_roles": canonical_clone_v1(
+                compiled_specs["supplemental_rollforward_additive_roles"]
+            ),
         },
         sorted(set(reasons)),
     )
@@ -1126,8 +2127,12 @@ def _equation_terms_for_total(
         for item in component_axis
         if item["kind"] in {"MAPPED_COMPONENT", "SOURCE_ONLY_COMPONENT"}
     ]
-    groups = [item for item in component_axis if item["kind"] == "GROUP_TOTAL"]
-    if total["kind"] == "GROUP_TOTAL":
+    groups = [
+        item
+        for item in component_axis
+        if item["kind"] in {"GROUP_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    ]
+    if total["kind"] in {"GROUP_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}:
         return [
             item for item in leaves if _starts_with(item["semantic_path"], total["group_prefix"])
         ]
@@ -1152,10 +2157,16 @@ def _cell_term(cell: Mapping[str, Any], *, multiplier: int = 1) -> dict[str, Any
 
 
 def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[str], int]:
+    if graph.get("signed_branch_mode") is True:
+        return canonical_clone_v1(graph["equations"]), [], 1
     axis = graph["component_axis"]
     cells = graph["component_cells"]
     movement = graph["movement_axis"]
-    totals = [item for item in axis if item["kind"] in {"GROUP_TOTAL", "GRAND_TOTAL"}]
+    totals = [
+        item
+        for item in axis
+        if item["kind"] in {"GROUP_TOTAL", "GRAND_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    ]
     reasons = []
     equations = []
     for move in movement:
@@ -1174,7 +2185,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                 "computed_value": computed,
                 "equation_kind": (
                     "VISIBLE_GROUP_HORIZONTAL_TOTAL"
-                    if total["kind"] == "GROUP_TOTAL"
+                    if total["kind"] in {"GROUP_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}
                     else "VISIBLE_GRAND_HORIZONTAL_TOTAL"
                 ),
                 "result": _cell_term(result),
@@ -1185,13 +2196,104 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
             equations.append(equation)
             if status != "EXACT":
                 reasons.append("HORIZONTAL_VISIBLE_TOTAL_MISMATCH")
+    disclosure_headers = [item for item in axis if item["kind"] == "DISCLOSURE_GROUP_HEADER"]
+    for header in disclosure_headers:
+        prior = [
+            item
+            for item in axis
+            if item["axis_ordinal"] < header["axis_ordinal"]
+            and item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+        ]
+        terms = [
+            item
+            for item in axis
+            if item["kind"] == "DISCLOSURE_COMPONENT"
+            and _starts_with(item["semantic_path"], header["group_prefix"])
+        ]
+        if not prior or not terms:
+            reasons.append("DISCLOSURE_GROUP_COMPONENT_AXIS_INCOMPLETE")
+            continue
+        result_axis = prior[-1]
+        for move in movement:
+            role = move["axis_role"]
+            result = cells[result_axis["axis_id"]].get(role)
+            term_cells = [cells[item["axis_id"]].get(role) for item in terms]
+            if result is None or any(item is None for item in term_cells):
+                reasons.append("DISCLOSURE_GROUP_CELL_AXIS_INCOMPLETE")
+                continue
+            computed = sum(item["coefficient"] for item in term_cells if item is not None)
+            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            equations.append(
+                {
+                    "axis_role": role,
+                    "computed_value": computed,
+                    "disclosure_group_axis_id": header["axis_id"],
+                    "equation_kind": "VISIBLE_DISCLOSURE_CHILDREN_EQUAL_PRIOR_MAPPED_COMPONENT",
+                    "result": _cell_term(result),
+                    "status": status,
+                    "terms": [_cell_term(item) for item in term_cells if item is not None],
+                    "total_axis_id": result_axis["axis_id"],
+                }
+            )
+            if status != "EXACT":
+                reasons.append("DISCLOSURE_GROUP_VISIBLE_TOTAL_MISMATCH")
+    present_movement_roles = {item["axis_role"] for item in movement}
+    for declaration in graph.get("movement_decomposition_equations", []):
+        declared_roles = {
+            declaration["result_role"],
+            *declaration["term_multipliers"],
+        }
+        # A decomposition may refine a primary movement (for example the
+        # visible closing balance into payable and receivable columns).  The
+        # primary result by itself must not activate that optional layout: the
+        # ordinary four-column matrix also contains CLOSING.  Activate only
+        # when at least one declared supplemental term is source-visible, then
+        # require the complete declared frontier.
+        supplemental_terms = declared_roles - set(_MAPPED_MOVEMENT_ROLES)
+        if not (supplemental_terms & present_movement_roles):
+            continue
+        present_declared = declared_roles & present_movement_roles
+        if present_declared != declared_roles:
+            reasons.append("SUPPLEMENTAL_MOVEMENT_DECOMPOSITION_AXIS_INCOMPLETE")
+            continue
+        for item in axis:
+            result = cells[item["axis_id"]][declaration["result_role"]]
+            term_cells = [
+                (
+                    cells[item["axis_id"]][role],
+                    multiplier,
+                )
+                for role, multiplier in declaration["term_multipliers"].items()
+            ]
+            computed = sum(cell["coefficient"] * multiplier for cell, multiplier in term_cells)
+            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            equations.append(
+                {
+                    "component_axis_id": item["axis_id"],
+                    "computed_value": computed,
+                    "equation_kind": "DECLARED_SUPPLEMENTAL_MOVEMENT_DECOMPOSITION",
+                    "result": _cell_term(result),
+                    "status": status,
+                    "terms": [
+                        _cell_term(cell, multiplier=multiplier) for cell, multiplier in term_cells
+                    ],
+                }
+            )
+            if status != "EXACT":
+                reasons.append("SUPPLEMENTAL_MOVEMENT_DECOMPOSITION_MISMATCH")
     sign_multiplier = 1
     if graph["orientation"] == "COMPONENT_ROWS":
+        additive_roles = [
+            role
+            for role in graph.get("supplemental_rollforward_additive_roles", [])
+            if role in present_movement_roles
+        ]
         exact_modes = []
         for candidate in (1, -1):
             if all(
                 cells[item["axis_id"]]["OPENING"]["coefficient"]
                 + cells[item["axis_id"]]["INCREASE"]["coefficient"]
+                + sum(cells[item["axis_id"]][role]["coefficient"] for role in additive_roles)
                 + candidate * cells[item["axis_id"]]["DECREASE"]["coefficient"]
                 == cells[item["axis_id"]]["CLOSING"]["coefficient"]
                 for item in axis
@@ -1213,6 +2315,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
             computed = (
                 opening["coefficient"]
                 + increase["coefficient"]
+                + sum(cells[item["axis_id"]][role]["coefficient"] for role in additive_roles)
                 + sign_multiplier * decrease["coefficient"]
             )
             status = "EXACT" if computed == closing["coefficient"] else "MISMATCH"
@@ -1227,6 +2330,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                     "terms": [
                         _cell_term(opening),
                         _cell_term(increase),
+                        *[_cell_term(cells[item["axis_id"]][role]) for role in additive_roles],
                         _cell_term(decrease, multiplier=sign_multiplier),
                     ],
                 }
@@ -1273,7 +2377,11 @@ def _component_column_row_alignment_candidates(
     tokens = [
         (ordinal, cell) for ordinal, cell in enumerate(source_cells) if cell["coefficient"] != 0
     ]
-    totals = [item for item in axis if item["kind"] in {"GROUP_TOTAL", "GRAND_TOTAL"}]
+    totals = [
+        item
+        for item in axis
+        if item["kind"] in {"GROUP_TOTAL", "GRAND_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    ]
     candidates: dict[tuple[int, ...], dict[str, Any]] = {}
     # The matrix widths in the sealed policy are small (the production maximum
     # is eleven).  Enumerating monotone placements preserves Gemini's token
@@ -1462,13 +2570,51 @@ def _mapping_value(
         if cell["state"] == "BLANK_ZERO_IF_EQUATION_EXACT"
         else cell["state"]
     )
-    return {
+    result = {
         "axis_role": axis_role,
         "cell_ref": canonical_clone_v1(cell["cell_ref"]),
         "coefficient": cell["coefficient"],
         "equation_multiplier": equation_multiplier,
         "source_text": cell["source_text"],
         "state": state,
+    }
+    if cell.get("state") == "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT":
+        result["aggregate_components"] = canonical_clone_v1(cell["aggregate_components"])
+    return result
+
+
+def _aggregate_component_axis_v1(
+    *, role: str, items: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    return {
+        "axis_id": f"aggregate:{role}",
+        "axis_ordinals": [item["axis_ordinal"] for item in items],
+        "kind": "AGGREGATED_MAPPED_COMPONENT",
+        "member_axes": canonical_clone_v1(list(items)),
+        "role": role,
+        "rule": "DECLARED_DUPLICATE_ROLE_SOURCE_ROWS_SUM_AFTER_EACH_ROW_GRAPH_EXACT",
+    }
+
+
+def _aggregate_mapping_value_v1(
+    cells: Sequence[Mapping[str, Any]], *, axis_role: str, equation_multiplier: int
+) -> dict[str, Any]:
+    components = [
+        _mapping_value(
+            cell,
+            axis_role=axis_role,
+            equation_multiplier=equation_multiplier,
+        )
+        for cell in cells
+    ]
+    return {
+        "aggregate_components": components,
+        "axis_role": axis_role,
+        "cell_ref": None,
+        "coefficient": sum(item["coefficient"] for item in components),
+        "equation_multiplier": equation_multiplier,
+        "source_text": None,
+        "state": "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT",
     }
 
 
@@ -1478,7 +2624,12 @@ def _build_mappings(
     result = []
     movement_roles = [item["axis_role"] for item in graph["movement_axis"]]
     selected_child_roles = (
-        list(_MAPPED_MOVEMENT_ROLES)
+        [
+            role
+            for role in movement_roles
+            if role in _MAPPED_MOVEMENT_ROLES
+            or role in compiled_specs["mapped_supplemental_movement_roles"]
+        ]
         if graph["orientation"] == "COMPONENT_ROWS"
         else [
             "OPENING",
@@ -1487,44 +2638,87 @@ def _build_mappings(
         ]
     )
     grand_total = next(item for item in graph["component_axis"] if item["kind"] == "GRAND_TOTAL")
-    for axis_role in selected_child_roles:
-        if axis_role not in movement_roles:
-            continue
-        total_role = _MAPPED_TOTAL_ROLES[axis_role]
-        cell = graph["component_cells"][grand_total["axis_id"]][axis_role]
+    if (
+        compiled_specs["root_mapping_policy"]
+        == "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_VECTOR_WITH_COMPONENT_VECTORS"
+    ):
         payload = {
+            "component_axis": canonical_clone_v1(grand_total),
             "item_mapping_id": "gjeqmfv1:item:pending",
-            "report_norm_id": compiled_specs["movement_total_report_norm_id_by_role"][total_role],
-            "role": total_role,
-            "row_id": f"movement:{axis_role}",
+            "report_norm_id": compiled_specs["family_root_report_norm_id"],
+            "role": "FAMILY_TOTAL",
+            "row_id": "component:FAMILY_TOTAL",
             "unit": unit,
             "values": [
                 _mapping_value(
-                    cell,
+                    graph["component_cells"][grand_total["axis_id"]][axis_role],
                     axis_role=axis_role,
                     equation_multiplier=sign_multiplier if axis_role == "DECREASE" else 1,
                 )
+                for axis_role in selected_child_roles
+                if axis_role in graph["component_cells"][grand_total["axis_id"]]
             ],
         }
         payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
             {key: value for key, value in payload.items() if key != "item_mapping_id"}
         )
         result.append(payload)
-    for item in graph["component_axis"]:
-        if item["kind"] != "MAPPED_COMPONENT":
-            continue
-        role = item["role"]
-        values = [
-            _mapping_value(
-                graph["component_cells"][item["axis_id"]][axis_role],
-                axis_role=axis_role,
-                equation_multiplier=sign_multiplier if axis_role == "DECREASE" else 1,
+    else:
+        for axis_role in selected_child_roles:
+            if axis_role not in movement_roles:
+                continue
+            total_role = _MAPPED_TOTAL_ROLES[axis_role]
+            cell = graph["component_cells"][grand_total["axis_id"]][axis_role]
+            payload = {
+                "item_mapping_id": "gjeqmfv1:item:pending",
+                "report_norm_id": compiled_specs["movement_total_report_norm_id_by_role"][
+                    total_role
+                ],
+                "role": total_role,
+                "row_id": f"movement:{axis_role}",
+                "unit": unit,
+                "values": [
+                    _mapping_value(
+                        cell,
+                        axis_role=axis_role,
+                        equation_multiplier=sign_multiplier if axis_role == "DECREASE" else 1,
+                    )
+                ],
+            }
+            payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+                {key: value for key, value in payload.items() if key != "item_mapping_id"}
             )
-            for axis_role in selected_child_roles
-            if axis_role in graph["component_cells"][item["axis_id"]]
-        ]
+            result.append(payload)
+    mapped_by_role: dict[str, list[Mapping[str, Any]]] = {}
+    for item in graph["component_axis"]:
+        if item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}:
+            mapped_by_role.setdefault(item["role"], []).append(item)
+    for role, items in mapped_by_role.items():
+        if len(items) == 1:
+            item = items[0]
+            component_axis = canonical_clone_v1(item)
+            values = [
+                _mapping_value(
+                    graph["component_cells"][item["axis_id"]][axis_role],
+                    axis_role=axis_role,
+                    equation_multiplier=sign_multiplier if axis_role == "DECREASE" else 1,
+                )
+                for axis_role in selected_child_roles
+                if axis_role in graph["component_cells"][item["axis_id"]]
+            ]
+        else:
+            component_axis = _aggregate_component_axis_v1(role=role, items=items)
+            values = [
+                _aggregate_mapping_value_v1(
+                    [graph["component_cells"][item["axis_id"]][axis_role] for item in items],
+                    axis_role=axis_role,
+                    equation_multiplier=sign_multiplier if axis_role == "DECREASE" else 1,
+                )
+                for axis_role in selected_child_roles
+                if all(axis_role in graph["component_cells"][item["axis_id"]] for item in items)
+            ]
         payload = {
-            "component_axis": canonical_clone_v1(item),
+            "component_axis": component_axis,
             "item_mapping_id": "gjeqmfv1:item:pending",
             "report_norm_id": compiled_specs["component_report_norm_id_by_role"][role],
             "role": role,
@@ -1645,10 +2839,14 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
         "source_only_component_axes": [
             canonical_clone_v1(item)
             for item in graph.get("component_axis", [])
-            if item["kind"] == "SOURCE_ONLY_COMPONENT"
+            if item["kind"] in {"SOURCE_ONLY_COMPONENT", "DISCLOSURE_COMPONENT"}
         ],
         "unit_receipt": unit_receipt,
     }
+    if graph.get("signed_branch_mode") is True:
+        closure_receipt["signed_branch_receipt"] = canonical_clone_v1(
+            graph["signed_branch_receipt"]
+        )
     candidate = {
         "candidate_id": "gjeqmfv1:candidate:pending",
         "claim_boundary": CLAIM_BOUNDARY,
@@ -1689,7 +2887,11 @@ def validate_gemini_json_equity_matrix_family_candidate_replay_v1(
         document_unit_context_evidence=document_unit_context_evidence,
     )
     if not same_typed_json_v1(value, expected):
-        raise _error("equity-matrix candidate does not replay from selected canonical JSON")
+        source = value.get("source_logical_name") if type(value) is dict else None
+        raise _error(
+            "equity-matrix candidate does not replay from selected canonical JSON"
+            + (f": {source}" if type(source) is str and source else "")
+        )
     return expected
 
 
@@ -1931,11 +3133,84 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                             "position": position,
                             "record": record,
                             "section_id": section_id,
+                            "table_title_exact": table.get("title_exact"),
                             "table_id": table_id,
                         }
                     )
     selected = [item for item in inventory if item["classification"]["status"] == "MATRIX_FRAGMENT"]
+    authenticated_comparative_keys: set[tuple[str, str, str]] = set()
+    period_selection_receipt = None
     reasons = []
+    if (
+        len(selected) == 2
+        and selected[0]["position"][:2] == selected[1]["position"][:2]
+        and all(item["classification"]["orientation"] == "COMPONENT_ROWS" for item in selected)
+        and same_typed_json_v1(
+            _component_projection(selected[0]["classification"]["component_axis"]),
+            _component_projection(selected[1]["classification"]["component_axis"]),
+        )
+    ):
+        dated = []
+        for item in selected:
+            dates = sorted(
+                date_item.isoformat()
+                for date_item in _header_dates(item.get("table_title_exact") or "")
+            )
+            if len(dates) == 1:
+                dated.append((dates[0], item))
+        if len(dated) == 2 and dated[0][0] != dated[1][0]:
+            dated.sort(key=lambda pair: pair[0])
+            comparative = dated[0][1]
+            current = dated[1][1]
+            selected = [current]
+            authenticated_comparative_keys.add(
+                (
+                    comparative["record"]["page_json_version_id"],
+                    comparative["section_id"],
+                    comparative["table_id"],
+                )
+            )
+            period_selection_receipt = {
+                "comparative_date": dated[0][0],
+                "comparative_table_id": comparative["table_id"],
+                "current_date": dated[1][0],
+                "current_table_id": current["table_id"],
+                "page_json_version_id": current["record"]["page_json_version_id"],
+                "rule": "UNIQUE_LATEST_SOURCE_DATED_SAME_PAGE_COMPONENT_ROW_MATRIX",
+            }
+    signed_fragments = [
+        item
+        for item in selected
+        if item["classification"].get("matrix_mode") == "SIGNED_BRANCH_FRAGMENT"
+    ]
+    if signed_fragments:
+        expected_branches = set(compiled_specs["signed_branch_multipliers"])
+        occurrence_count = {
+            branch_role: sum(
+                branch_role in item["classification"].get("signed_branch_roles", [])
+                for item in signed_fragments
+            )
+            for branch_role in expected_branches
+        }
+        if len(signed_fragments) != len(selected) or any(
+            count != 1 for count in occurrence_count.values()
+        ):
+            reasons.append("SIGNED_BRANCH_EXACT_DECLARED_DOCUMENT_FRONTIER_REQUIRED")
+    elif len(selected) > 1 and all(
+        item["classification"]["orientation"] == "COMPONENT_ROWS" for item in selected
+    ):
+        # Two row-oriented tables are either an explicitly dated current /
+        # comparative pair (reduced above) or an unresolved duplicate period
+        # population.  Only signed branches have a declarative sibling
+        # composition grammar; source order alone cannot choose or merge the
+        # remaining ordinary tables.
+        reasons.append("MULTIPLE_UNDATED_COMPONENT_ROW_MATRICES_UNDER_OWNER")
+    if inventory and not selected:
+        reasons.extend(
+            reason for item in inventory for reason in item["classification"].get("reasons", [])
+        )
+        if not reasons:
+            reasons.append("DECLARED_COMPONENT_EVIDENCE_NOT_COMPLETE_MATRIX")
     owner_receipt = None
     if selected:
         first_position = min(item["position"] for item in selected)
@@ -1972,6 +3247,8 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                 "reset_fence_axis": fenced_resets,
                 "rule": "LATEST_EXPLICIT_OWNER_WITHIN_ONE_PAGE_RESET_FREE_INTERVAL",
             }
+            if period_selection_receipt is not None:
+                owner_receipt["period_selection_receipt"] = period_selection_receipt
             selected_keys = {
                 (
                     item["record"]["page_json_version_id"],
@@ -2007,6 +3284,12 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                     item["table_id"],
                 )
                 not in selected_keys
+                and (
+                    item["record"]["page_json_version_id"],
+                    item["section_id"],
+                    item["table_id"],
+                )
+                not in authenticated_comparative_keys
             ]
             if unconsumed:
                 reasons.append("UNCONSUMED_DECLARED_COMPONENT_EVIDENCE_IN_OWNER_INTERVAL")
@@ -2023,7 +3306,16 @@ def coalesce_gemini_json_equity_matrix_document_v1(
         {
             "classification": canonical_clone_v1(item["classification"]),
             "disposition": (
-                "SELECTED_MATRIX_FRAGMENT" if item in selected else "UNSELECTED_DECLARED_ROLE_TABLE"
+                "SELECTED_MATRIX_FRAGMENT"
+                if item in selected
+                else "AUTHENTICATED_COMPARATIVE_MATRIX_FRAGMENT"
+                if (
+                    item["record"]["page_json_version_id"],
+                    item["section_id"],
+                    item["table_id"],
+                )
+                in authenticated_comparative_keys
+                else "UNSELECTED_DECLARED_ROLE_TABLE"
             ),
             "page_json_version_id": item["record"]["page_json_version_id"],
             "physical_page": item["record"]["physical_page"],
@@ -2331,6 +3623,10 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         regions = cluster["component_regions"]
         first = regions[0]
         closure = candidate.get("closure_receipt") if type(candidate) is dict else None
+        signed_closure = type(closure) is dict and "signed_branch_receipt" in closure
+        expected_closure_fields = closure_fields | (
+            {"signed_branch_receipt"} if signed_closure else set()
+        )
         if (
             type(candidate) is not dict
             or set(candidate) != candidate_fields
@@ -2349,7 +3645,11 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
             or candidate["reasons"] != sorted(set(candidate["reasons"]))
             or type(candidate.get("mappings")) is not list
             or type(closure) is not dict
-            or set(closure) != closure_fields
+            or set(closure) != expected_closure_fields
+            or signed_closure != bool(compiled_specs["signed_branch_multipliers"])
+            and signed_closure
+            or signed_closure
+            and type(closure.get("signed_branch_receipt")) is not dict
             or closure.get("orientation") not in {"COMPONENT_COLUMNS", "COMPONENT_ROWS"}
             or type(closure.get("component_axis")) is not list
             or type(closure.get("movement_axis")) is not list
@@ -2376,17 +3676,25 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         if candidate["candidate_id"] != "gjeqmfv1:candidate:" + canonical_json_sha256_v1(material):
             raise _error("equity-matrix candidate identity drifted")
         component_axis = closure["component_axis"]
+        mapped_component_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+        mapped_source_by_role: dict[str, list[dict[str, Any]]] = {}
+        for item in component_axis:
+            if type(item) is dict and item.get("kind") in mapped_component_kinds:
+                mapped_source_by_role.setdefault(item.get("role"), []).append(item)
+        allowed_aggregates = set(compiled_specs["hierarchy_policy"]["aggregate_duplicate_roles"])
         mapped_components = {
-            item.get("role"): item
-            for item in component_axis
-            if type(item) is dict and item.get("kind") == "MAPPED_COMPONENT"
+            role: (
+                items[0]
+                if len(items) == 1
+                else _aggregate_component_axis_v1(role=role, items=items)
+            )
+            for role, items in mapped_source_by_role.items()
         }
         if (
             None in mapped_components
-            or len(mapped_components)
-            != sum(
-                type(item) is dict and item.get("kind") == "MAPPED_COMPONENT"
-                for item in component_axis
+            or any(
+                len(items) > 1 and role not in allowed_aggregates
+                for role, items in mapped_source_by_role.items()
             )
             or sum(
                 type(item) is dict and item.get("kind") == "GRAND_TOTAL" for item in component_axis
@@ -2398,7 +3706,12 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
             item.get("axis_role") for item in closure["movement_axis"] if type(item) is dict
         ]
         expected_axis_roles = (
-            list(_MAPPED_MOVEMENT_ROLES)
+            [
+                role
+                for role in movement_roles
+                if role in _MAPPED_MOVEMENT_ROLES
+                or role in compiled_specs["mapped_supplemental_movement_roles"]
+            ]
             if closure["orientation"] == "COMPONENT_ROWS"
             else [
                 "OPENING",
@@ -2406,19 +3719,38 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                 "CLOSING",
             ]
         )
-        expected_total_roles = {_MAPPED_TOTAL_ROLES[role] for role in expected_axis_roles}
-        expected_roles = set(mapped_components) | expected_total_roles
+        vector_root_mode = (
+            compiled_specs["root_mapping_policy"]
+            == "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_VECTOR_WITH_COMPONENT_VECTORS"
+        )
+        expected_total_roles = (
+            set()
+            if vector_root_mode
+            else {_MAPPED_TOTAL_ROLES[role] for role in expected_axis_roles}
+        )
+        expected_root_roles = {"FAMILY_TOTAL"} if vector_root_mode else set()
+        expected_roles = set(mapped_components) | expected_total_roles | expected_root_roles
+        grand_total = next(
+            item
+            for item in component_axis
+            if type(item) is dict and item.get("kind") == "GRAND_TOTAL"
+        )
         canonical_unit = closure["unit_receipt"].get("canonical_unit")
         seen_roles = set()
         region_hashes = {canonical_json_sha256_v1(item) for item in regions}
         for mapping in candidate["mappings"]:
             role = mapping.get("role") if type(mapping) is dict else None
-            fields = mapping_fields | ({"component_axis"} if role in mapped_components else set())
+            component_vector_role = role in mapped_components or role in expected_root_roles
+            fields = mapping_fields | ({"component_axis"} if component_vector_role else set())
             values = mapping.get("values") if type(mapping) is dict else None
             expected_rnid = (
                 compiled_specs["component_report_norm_id_by_role"].get(role)
                 if role in mapped_components
-                else compiled_specs["movement_total_report_norm_id_by_role"].get(role)
+                else (
+                    compiled_specs["family_root_report_norm_id"]
+                    if role in expected_root_roles
+                    else compiled_specs["movement_total_report_norm_id_by_role"].get(role)
+                )
             )
             if (
                 type(mapping) is not dict
@@ -2439,6 +3771,13 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                     )
                 )
                 or (
+                    role in expected_root_roles
+                    and (
+                        mapping.get("row_id") != "component:FAMILY_TOTAL"
+                        or not same_typed_json_v1(mapping.get("component_axis"), grand_total)
+                    )
+                )
+                or (
                     role in expected_total_roles
                     and mapping.get("row_id")
                     != f"movement:{next(key for key, value in _MAPPED_TOTAL_ROLES.items() if value == role)}"
@@ -2455,22 +3794,74 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                 raise _error("equity-matrix mapping identity drifted")
             for value in values:
                 cell_ref = value.get("cell_ref") if type(value) is dict else None
+                aggregate_components = (
+                    value.get("aggregate_components") if type(value) is dict else None
+                )
+                aggregate_value = aggregate_components is not None
+                signed_aggregate = (
+                    aggregate_value
+                    and value.get("state") == "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT"
+                )
                 if (
                     type(value) is not dict
-                    or set(value) != value_fields
-                    or value.get("axis_role") not in _MAPPED_MOVEMENT_ROLES
+                    or set(value)
+                    != (
+                        value_fields | {"aggregate_components"} if aggregate_value else value_fields
+                    )
+                    or value.get("axis_role") not in compiled_specs["movement_roles"]
                     or type(value.get("coefficient")) is not int
                     or type(value.get("equation_multiplier")) is not int
                     or type(value.get("state")) is not str
                     or not value["state"]
                     or value.get("source_text") is not None
                     and type(value["source_text"]) is not str
-                    or type(cell_ref) is not dict
-                    or set(cell_ref) != {"column_id", "locator", "row_id"}
-                    or _COLUMN_ID.fullmatch(cell_ref.get("column_id", "")) is None
-                    or _ROW_ID.fullmatch(cell_ref.get("row_id", "")) is None
-                    or type(cell_ref.get("locator")) is not dict
-                    or canonical_json_sha256_v1(cell_ref["locator"]) not in region_hashes
+                    or (
+                        not aggregate_value
+                        and (
+                            type(cell_ref) is not dict
+                            or set(cell_ref) != {"column_id", "locator", "row_id"}
+                            or _COLUMN_ID.fullmatch(cell_ref.get("column_id", "")) is None
+                            or _ROW_ID.fullmatch(cell_ref.get("row_id", "")) is None
+                            or type(cell_ref.get("locator")) is not dict
+                            or canonical_json_sha256_v1(cell_ref["locator"]) not in region_hashes
+                        )
+                    )
+                    or (
+                        aggregate_value
+                        and (
+                            cell_ref is not None
+                            or value.get("source_text") is not None
+                            or value.get("state")
+                            not in {
+                                "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT",
+                                "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT",
+                            }
+                            or type(aggregate_components) is not list
+                            or len(aggregate_components) < (1 if signed_aggregate else 2)
+                            or any(
+                                type(component) is not dict
+                                or set(component) != value_fields
+                                or component.get("axis_role") != value.get("axis_role")
+                                or (
+                                    not signed_aggregate
+                                    and component.get("equation_multiplier")
+                                    != value.get("equation_multiplier")
+                                )
+                                or type(component.get("cell_ref")) is not dict
+                                or canonical_json_sha256_v1(component["cell_ref"].get("locator"))
+                                not in region_hashes
+                                for component in aggregate_components
+                            )
+                            or sum(
+                                component["coefficient"]
+                                * (component["equation_multiplier"] if signed_aggregate else 1)
+                                for component in aggregate_components
+                            )
+                            != value.get("coefficient")
+                            or signed_aggregate
+                            and value.get("equation_multiplier") != 1
+                        )
+                    )
                 ):
                     raise _error("equity-matrix mapping value provenance drifted")
             expected_mapping_axis = (

@@ -1,0 +1,19 @@
+{
+  "component_role_bindings": [
+    {"report_norm_id": 1270, "role": "VAT"},
+    {"report_norm_id": 1271, "role": "CORPORATE_INCOME_TAX"},
+    {"report_norm_id": 1272, "role": "PERSONAL_INCOME_TAX"},
+    {"report_norm_id": 1273, "role": "IMPORT_EXPORT_TAX"},
+    {"report_norm_id": 1274, "role": "NATURAL_RESOURCE_TAX"},
+    {"report_norm_id": 1275, "role": "STATE_CAPITAL_USE_TAX"},
+    {"report_norm_id": 1276, "role": "SPECIAL_CONSUMPTION_TAX"},
+    {"report_norm_id": 1277, "role": "HOUSE_LAND_TAX"},
+    {"report_norm_id": 1278, "role": "OTHER_TAX"},
+    {"report_norm_id": 1279, "role": "OTHER_PAYABLE"}
+  ],
+  "family_id": "STATE_BUDGET_OBLIGATIONS",
+  "family_root_report_norm_id": 1269,
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1",
+  "movement_total_bindings": [],
+  "root_mapping_policy": "SOURCE_VISIBLE_MATRIX_GRAND_TOTAL_VECTOR_WITH_COMPONENT_VECTORS"
+}

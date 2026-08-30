@@ -8,6 +8,7 @@ import bctc_ai.evaluation.gemini_json_first_provider_v1 as provider
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     GeminiJsonFirstProviderV1Error,
     call_gemini_json_first_v1,
+    extract_completed_provider_response_text_v1,
     load_google_api_key_slots_v1,
     replay_google_standard_provider_result_v1,
 )
@@ -87,6 +88,16 @@ def _openrouter_response() -> bytes:
             },
         }
     ).encode()
+
+
+@pytest.mark.parametrize(
+    "response",
+    [_google_response, _google_generate_content_response, _openrouter_response],
+)
+def test_completed_provider_text_replays_without_an_api_call(response) -> None:
+    assert extract_completed_provider_response_text_v1(response()) == (
+        '{"status":"NO_RELEVANT_FINANCIAL_CONTENT","sections":[]}'
+    )
 
 
 def _openrouter_zero_usage_error() -> bytes:

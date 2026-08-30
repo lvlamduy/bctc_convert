@@ -410,6 +410,33 @@ def _openrouter_response_v1(raw: bytes) -> tuple[str, str, str, str, dict[str, A
     return text, response_id, model, provider, accounting
 
 
+def extract_completed_provider_response_text_v1(raw: bytes) -> str:
+    """Recover model text from one already-sealed successful provider envelope.
+
+    This is a read-only replay helper.  It accepts only the three response
+    envelopes already validated by this module (Google interaction,
+    Google generateContent/batch, or OpenRouter), including their terminal and
+    token-accounting checks.  It never calls a provider and never relaxes the
+    page response schema.
+    """
+
+    response = _json_object(raw, "sealed provider")
+    if "choices" in response:
+        text, _response_id, _model, _provider, _accounting = _openrouter_response_v1(raw)
+        return text
+    if "candidates" in response:
+        text, _response_id, _model, _accounting = _google_generate_content_response_v1(
+            raw, service_tier=GOOGLE_STANDARD_SERVICE_TIER
+        )
+        return text
+    if "steps" in response:
+        text, _response_id, _model, _accounting = _google_response_v1(
+            raw, service_tier=GOOGLE_SERVICE_TIER
+        )
+        return text
+    raise GeminiJsonFirstProviderV1Error("sealed provider response envelope is unsupported")
+
+
 def _google_body_v1(
     *,
     image: bytes,

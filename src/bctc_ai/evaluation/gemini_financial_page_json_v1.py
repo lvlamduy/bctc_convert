@@ -60,6 +60,10 @@ _MODEL_DASH_ANNOTATION = re.compile(
 )
 _DASH_PACK = re.compile(r"\A\s*[-–—_](?:\s+[-–—_])+\s*\Z")
 _DASH_NOISE_PACK = re.compile(r"\A\s*[-–—_]\s*[^0-9A-Za-z\s.,()%]{1,3}\s*[-–—_]\s*\Z")
+_EXPLICIT_CALENDAR_DATE = re.compile(
+    r"(?<!\d)(?:0?[1-9]|[12]\d|3[01])\s*[/.-]\s*(?:0?[1-9]|1[0-2])"
+    r"\s*[/.-]\s*(?:19|20)\d{2}(?!\d)"
+)
 _ROW_LABEL_HEADER_ANCHORS = frozenset(
     {
         "ben lien quan",
@@ -970,6 +974,22 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
         missing_count == 1
         and omitted[0]["value_kind"] == "TEXT"
         and all(_row_label_matches_hierarchy_leaf_v1(row) for row in rows)
+        and all(
+            all(
+                _cell_matches_value_kind_v1(cell, column["value_kind"])
+                for cell, column in zip(row["values_exact"], columns[missing_count:], strict=True)
+            )
+            for row in rows
+        )
+    )
+    contextual_source_exact = "\n".join(
+        item for item in omitted[0]["header_path_exact"] if type(item) is str and item.strip()
+    )
+    contextual_text_header = (
+        generic_text_key
+        and table["title_exact"] is None
+        and bool(contextual_source_exact)
+        and _EXPLICIT_CALENDAR_DATE.search(contextual_source_exact) is not None
     )
     for column in omitted:
         header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
@@ -982,6 +1002,14 @@ def _normalize_omitted_leading_structural_columns_v1(table: dict[str, Any]) -> b
             return False
     if any(not _row_label_matches_hierarchy_leaf_v1(row) for row in rows):
         return False
+    if contextual_text_header:
+        # A model may serialize a merged period/table caption as a leading
+        # TEXT value column while every row already contains only the actual
+        # numeric suffix.  Do not silently discard that source-visible
+        # context: promote the exact ordered header members to ``title_exact``
+        # before removing the proxy column.  This is schema normalization;
+        # no date, period, family, or accounting role is inferred here.
+        table["title_exact"] = contextual_source_exact
     table["columns"] = columns[missing_count:]
     return True
 

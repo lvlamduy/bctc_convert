@@ -45,7 +45,7 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
 )
 from bctc_ai.evaluation.gemini_json_rollforward_table_repair_v1 import (  # noqa: E402
     GeminiJsonRollforwardTableRepairV1Error,
-    build_rollforward_table_cell_repair_plans_v1,
+    build_accounting_table_cell_repair_plans_v1,
     build_rollforward_table_repair_attempt_v1,
     build_rollforward_table_repair_overlay_v1,
     build_rollforward_table_repair_prompt_v1,
@@ -96,7 +96,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "ce175855cb14032dd4a38cb87b16da975d40860c01853f683c08b1924c6ea707"
+PROJECTOR_IMPLEMENTATION_SHA256 = "865e433e4860fd5c75ea52f8e729acf5151aaf71aea87c3c7eb0858b8423c6e6"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )
@@ -738,7 +738,7 @@ def _prepare(
         compiled_spec_sources["evaluation"],
         compiled_spec_sources["schema_binding"],
     )
-    plans = build_rollforward_table_cell_repair_plans_v1(
+    plans = build_accounting_table_cell_repair_plans_v1(
         compiled_specs=compiled_specs,
         family_sweep=sweep.value,
         page_store_path=source_page_store,
@@ -2054,7 +2054,7 @@ def _run_rollforward_table_repair_on_private_sqlite_v1(
         label="frozen source family-results database",
     )
     if writable_store is not None:
-        rebuilt = build_rollforward_table_cell_repair_plans_v1(
+        rebuilt = build_accounting_table_cell_repair_plans_v1(
             compiled_specs=prepared.compiled_specs,
             family_sweep=prepared.family_sweep,
             page_store_path=writable_store,

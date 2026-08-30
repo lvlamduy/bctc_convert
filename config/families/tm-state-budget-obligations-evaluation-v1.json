@@ -1,0 +1,59 @@
+{
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT",
+  "closure_policy": "EXACT_HORIZONTAL_TOTALS_AND_VERTICAL_ROLLFORWARD_ALL_SELECTED_CELLS",
+  "family_id": "STATE_BUDGET_OBLIGATIONS",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["COMPONENT_ROWS"],
+    "hierarchy_policy": {
+      "aggregate_duplicate_roles": ["OTHER_PAYABLE"],
+      "disclosure_group_aliases": ["Trong đó"],
+      "mapped_group_total_roles": ["OTHER_TAX"]
+    },
+    "max_continuation_pages": 1,
+    "minimum_mapped_component_roles": 2,
+    "movement_role_aliases": {
+      "CLOSING": ["Dư cuối kỳ", "Dư cuối năm", "Số còn phải nộp cuối kỳ", "Số còn phải nộp cuối năm", "Số cuối kỳ", "Số cuối năm", "Số dư cuối", "Số dư cuối kỳ", "Số dư cuối năm"],
+      "DECREASE": ["Đã nộp", "Đã nộp trong kỳ", "Số đã nộp", "Số đã nộp trong kỳ", "Số đã nộp/cấn trừ", "Số đã nộp và cấn trừ", "Đã trả", "Đã trả trong kỳ", "Số đã trả", "Số đã trả trong kỳ", "Phát sinh giảm"],
+      "INCREASE": ["Phải nộp", "Phải nộp trong kỳ", "Số phải nộp", "Số phải nộp trong kỳ", "Số phải nộp và điều chỉnh", "Số phải nộp, điều chỉnh khác", "Số phải thu/ phải nộp", "Phát sinh trong kỳ", "Phát sinh trong năm", "Phát sinh tăng"],
+      "OPENING": ["Dư đầu kỳ", "Dư đầu năm", "Số còn phải nộp đầu kỳ", "Số còn phải nộp đầu năm", "Số đầu kỳ", "Số đầu năm", "Số dư đầu", "Số dư đầu kỳ", "Số dư đầu năm"]
+    },
+    "source_only_component_aliases": {
+      "CONTRACTOR_TAX": ["Thuế nhà thầu"],
+      "BANK_CIT_DETAIL": ["Thuế TNDN của Ngân hàng", "Thuế TNDN của Vietcombank"],
+      "FEES_AND_CHARGES": ["Phí và lệ phí", "Các khoản phí và lệ phí"],
+      "LAND_RENT": ["Tiền thuê đất và mặt nước"],
+      "LEGACY_VFC_TAX": ["Nghĩa vụ thuế năm 2008 của VFC", "Nghĩa vụ thuế năm 2008 của VFC đã được Ngân hàng nộp vào Ngân sách Nhà nước", "Nghĩa vụ thuế năm 2008 của VFC đã được Vietcombank nộp vào Ngân sách Nhà nước", "Nghĩa vụ thuế năm 2008 của Vinafico", "Nghĩa vụ thuế năm 2008 của Vinafico đã được Ngân hàng nộp vào NSNN", "Nghĩa vụ thuế năm 2008 của Vinafico đã được Ngân hàng nộp vào Ngân sách Nhà nước", "Nghĩa vụ thuế năm 2008 của Vinafico đã được Vietcombank nộp vào NSNN", "Nghĩa vụ thuế năm 2008 của Vinafico đã được Vietcombank nộp vào Ngân sách Nhà nước"],
+      "LICENSE_TAX": ["Thuế môn bài"],
+      "PRIOR_YEAR_TAX_ADJUSTMENT": ["Điều chỉnh thuế các năm trước"]
+    },
+    "signed_branch_policy": {
+      "branch_aliases": {
+        "PAYABLE": ["b. Phải trả", "b. Các khoản phải trả"],
+        "RECEIVABLE": ["a. Phải thu", "a. Các khoản phải thu"]
+      },
+      "branch_multipliers": {"PAYABLE": 1, "RECEIVABLE": -1}
+    },
+    "supplemental_movement_policy": {
+      "decomposition_equations": [
+        {
+          "result_role": "CLOSING",
+          "term_multipliers": {"CLOSING_OFFSET": 1, "CLOSING_PAYABLE": 1}
+        }
+      ],
+      "mapped_roles": ["BUSINESS_COMBINATION_INCREASE"],
+      "primary_rollforward_additive_roles": ["BUSINESS_COMBINATION_INCREASE"],
+      "role_aliases": {
+        "BUSINESS_COMBINATION_INCREASE": ["Tăng do hợp nhất kinh doanh"],
+        "CLOSING_OFFSET": ["Phải thu", "Ứng trước", "Tạm nộp"],
+        "CLOSING_PAYABLE": ["Phải trả"]
+      }
+    },
+    "total_aliases": ["Cộng", "Tổng", "Tổng cộng"],
+    "unit_bindings": [
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Đơn vị: triệu đồng", "Đơn vị tính: triệu đồng"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "document_consensus_eligible": true, "magnitude_power10": 3},
+      {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 9}
+    ]
+  }
+}

@@ -1010,6 +1010,35 @@ def test_movement_table_soft_replay_rejects_ambiguous_or_nonexact_rows(headers, 
         validate_financial_page_json_v1(page)
 
 
+def test_leading_context_text_header_is_promoted_instead_of_silently_dropped() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["title_exact"] = None
+    table["columns"] = [
+        {
+            "header_path_exact": ["Kỳ sáu tháng\nkết thúc ngày 30/6/2026"],
+            "value_kind": "TEXT",
+        },
+        {"header_path_exact": ["Số dư đầu kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số phải nộp"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số đã nộp"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Số dư cuối kỳ"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Thuế giá trị gia tăng",
+            "hierarchy_path_exact": ["Thuế giá trị gia tăng"],
+            "row_kind": "ITEM",
+            "values_exact": ["10", "5", "3", "12"],
+        }
+    ]
+    checked = validate_financial_page_json_v1(page)
+    checked_table = checked["sections"][0]["tables"][0]
+    assert checked_table["title_exact"] == "Kỳ sáu tháng\nkết thúc ngày 30/6/2026"
+    assert len(checked_table["columns"]) == 4
+    assert checked_table["rows"][0]["values_exact"] == ["10", "5", "3", "12"]
+
+
 def test_dash_annotation_pack_and_arithmetic_total_close_one_nine_cell_row() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
