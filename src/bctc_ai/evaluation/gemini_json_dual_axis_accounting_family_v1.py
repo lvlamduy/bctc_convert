@@ -8,6 +8,7 @@ PDF geometry and has no bank, filename, note, year, or page routing rule.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from datetime import date
 from typing import Any
@@ -29,10 +30,12 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 FORMAT_VERSION = "GEMINI_JSON_DUAL_AXIS_ACCOUNTING_FAMILY_CANDIDATE_V1"
 _REPORTING_PERIOD_ENDS = {(3, 31), (6, 30), (9, 30), (12, 31)}
+_MONEY_MAGNITUDE = re.compile(r"\b(nghin|trieu|ty)\s+(?:dong|vnd)\b")
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_EXACT_OPPOSITE_AXIS_METRIC_QUALIFIER_"
     "TWO_ROLE_ROW_OR_COLUMN_TRANSPOSE_ONE_OR_TWO_PERIOD_SAME_OR_ADJACENT_"
-    "TABLE_CLUSTER_EXACT_TOTAL_PERIOD_UNIT_AND_EXHAUSTIVE_GRAPH_NO_GEOMETRY_"
+    "TABLE_CLUSTER_EXACT_VISIBLE_ROLE_OR_TOTAL_PERIOD_UNIT_AND_EXHAUSTIVE_GRAPH_"
+    "WITH_TYPED_UNMAPPED_SOURCE_BLANKS_NO_ZERO_INFERENCE_NO_GEOMETRY_"
     "PPOCR_VIETOCR_BANK_FILE_PAGE_NOTE_ROUTING_OR_NONZERO_BACKSOLVE_AUTHORITY"
 )
 
@@ -98,6 +101,14 @@ def _unit_alias(text: Any, aliases: list[str]) -> str | None:
     longest = max((len(alias) for alias in matches), default=0)
     selected = sorted(alias for alias in matches if len(alias) == longest)
     return selected[0] if len(selected) == 1 else None
+
+
+def _money_magnitudes(text: Any) -> set[str]:
+    return (
+        set()
+        if type(text) is not str
+        else {match.group(1) for match in _MONEY_MAGNITUDE.finditer(_normalized(text))}
+    )
 
 
 def _context_surface_records(
@@ -171,6 +182,7 @@ def _unique_parent_context(
     page_json_by_version: Mapping[str, dict[str, Any]],
     parent_aliases: list[str],
     hard_negative_aliases: list[str],
+    structural_reset_aliases: list[str],
 ) -> tuple[dict[str, Any] | None, list[str]]:
     local, sibling = _context_surface_records(
         regions=regions,
@@ -181,6 +193,8 @@ def _unique_parent_context(
         folded = _normalized(record["text_exact"])
         if any(alias in folded for alias in hard_negative_aliases):
             reasons.append("HARD_NEGATIVE_FAMILY_TITLE_PRESENT")
+        if any(alias in folded for alias in structural_reset_aliases):
+            reasons.append("STRUCTURAL_RESET_FAMILY_TITLE_PRESENT")
     for scope, records in (("TARGET_SECTION", local), ("SAME_PAGE_SIBLING_SECTION", sibling)):
         matches = []
         for record in records:
@@ -428,20 +442,36 @@ def _unit_evidence_for_projection(
     document_context: Mapping[str, Any],
     unit_aliases: list[str],
 ) -> tuple[dict[str, Any] | None, list[str]]:
-    records = document_context.get("unit_evidence")
-    if type(records) is not list:
+    document_records = document_context.get("unit_evidence")
+    local_records = projection.get("local_unit_evidence")
+    if (
+        type(document_records) is not list
+        or type(local_records) is not list
+        or any(type(record) is not dict for record in [*local_records, *document_records])
+    ):
         raise _error("dual-axis document unit context is invalid")
+    records_by_hash = {
+        canonical_json_sha256_v1(record): record for record in [*local_records, *document_records]
+    }
+    records = [records_by_hash[key] for key in sorted(records_by_hash)]
     source = projection["source_ref"]
+    accepted_magnitudes = {
+        magnitude for alias in unit_aliases for magnitude in _money_magnitudes(alias)
+    }
     candidates = []
+    conflicting_local_scale_records = []
     for record in records:
         if type(record) is not dict:
             raise _error("dual-axis document unit evidence is invalid")
-        alias = _unit_alias(record.get("text_exact"), unit_aliases)
-        if alias is None:
-            continue
         same_page = record.get("physical_page") == source["physical_page"]
         same_section = same_page and record.get("section_id") == source["section_id"]
         same_table = same_section and record.get("table_id") == source["table_id"]
+        observed_magnitudes = _money_magnitudes(record.get("text_exact"))
+        if same_table and observed_magnitudes - accepted_magnitudes:
+            conflicting_local_scale_records.append(canonical_clone_v1(record))
+        alias = _unit_alias(record.get("text_exact"), unit_aliases)
+        if alias is None:
+            continue
         if same_table and record.get("source_kind") == "TABLE_UNIT":
             scope_rank = 0
             scope = "SOURCE_TABLE_UNIT"
@@ -466,6 +496,8 @@ def _unit_evidence_for_projection(
                 "source_evidence": canonical_clone_v1(record),
             }
         )
+    if conflicting_local_scale_records:
+        return None, ["DUAL_AXIS_SOURCE_TABLE_MONEY_UNIT_SCALE_CONFLICT"]
     if not candidates:
         return None, ["DUAL_AXIS_MONEY_UNIT_EVIDENCE_IS_ABSENT"]
     ordered = sorted(
@@ -481,14 +513,6 @@ def _unit_evidence_for_projection(
         ),
     )
     best = ordered[0]
-    equally_local = [
-        candidate
-        for candidate in ordered
-        if (candidate["scope_rank"], candidate["distance_pages"])
-        == (best["scope_rank"], best["distance_pages"])
-    ]
-    if len({candidate["declared_unit_alias"] for candidate in equally_local}) != 1:
-        return None, ["DUAL_AXIS_MONEY_UNIT_BEST_SCOPE_IS_AMBIGUOUS"]
     return best, []
 
 
@@ -526,6 +550,29 @@ def _project_source_table(
     column_leaves = [
         _axis_leaf(column["header_path_exact"], unit_aliases=unit_aliases) for column in columns
     ]
+    local_unit_evidence = []
+    if type(table.get("unit_exact")) is str and table["unit_exact"]:
+        local_unit_evidence.append(
+            {
+                "physical_page": region["physical_page"],
+                "section_id": region["section_id"],
+                "source_kind": "TABLE_UNIT",
+                "table_id": region["table_id"],
+                "text_exact": table["unit_exact"],
+            }
+        )
+    for column_ordinal, column in enumerate(columns, start=1):
+        for text_exact in column["header_path_exact"]:
+            if type(text_exact) is str and text_exact:
+                local_unit_evidence.append(
+                    {
+                        "physical_page": region["physical_page"],
+                        "section_id": region["section_id"],
+                        "source_kind": f"COLUMN_HEADER:c{column_ordinal}",
+                        "table_id": region["table_id"],
+                        "text_exact": text_exact,
+                    }
+                )
     orientation = region.get("orientation")
     role_values: dict[str, Any] = {}
     role_sources: dict[str, dict[str, Any]] = {}
@@ -642,6 +689,7 @@ def _project_source_table(
         return None, ["DUAL_AXIS_UNBOUND_VISIBLE_VALUES:" + ",".join(unmatched_numeric)]
 
     blank_derived_roles = []
+    unmapped_blank_roles = []
     effective_values = dict(role_values)
     for role in role_order:
         if role_values[role] is not None:
@@ -654,6 +702,12 @@ def _project_source_table(
             return None, [f"BLANK_ROLE_CELL_IS_NOT_DECLARED_ZERO_DERIVABLE:{role}"]
         other = next(other for other in role_order if other != role)
         if not total_visible or total_value is None or role_values[other] is None:
+            if (
+                policy["source_blank_mapping_policy"]
+                == "OMIT_ROLE_WHEN_SOURCE_BLANK_AND_NO_EXACT_ZERO_EQUATION"
+            ):
+                unmapped_blank_roles.append(role)
+                continue
             return None, [f"BLANK_ROLE_CELL_HAS_NO_EXACT_TOTAL_EQUATION:{role}"]
         try:
             inferred = (
@@ -666,11 +720,20 @@ def _project_source_table(
         effective_values[role] = "0"
         blank_derived_roles.append(role)
     try:
-        role_coefficients = [_money(effective_values[role])["coefficient"] for role in role_order]
+        role_coefficients = [
+            (
+                None
+                if role in unmapped_blank_roles
+                else _money(effective_values[role])["coefficient"]
+            )
+            for role in role_order
+        ]
         total_coefficient = _money(total_value)["coefficient"] if total_visible else None
     except ValueError:
         return None, ["DUAL_AXIS_VALUE_OR_TOTAL_IS_NOT_EXACT_INTEGER"]
-    if total_visible and total_coefficient != sum(role_coefficients):
+    if total_visible and total_coefficient != sum(
+        coefficient for coefficient in role_coefficients if coefficient is not None
+    ):
         return None, ["DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"]
 
     source_ref = {
@@ -690,8 +753,10 @@ def _project_source_table(
     return (
         {
             "blank_derived_roles": blank_derived_roles,
+            "unmapped_blank_roles": unmapped_blank_roles,
             "effective_values": effective_values,
             "local_period_evidence": _table_period_evidence(section=section, table=table),
+            "local_unit_evidence": local_unit_evidence,
             "metric_source": metric_source,
             "orientation": orientation,
             "role_coefficients": role_coefficients,
@@ -741,6 +806,8 @@ def _projection_role_cell_receipt(projection: Mapping[str, Any], *, role: str) -
         "value_disposition": (
             "DERIVED_ZERO_FROM_EXACT_VISIBLE_TOTAL_AND_OTHER_ROLE"
             if role in projection["blank_derived_roles"]
+            else "UNMAPPED_SOURCE_BLANK"
+            if role in projection["unmapped_blank_roles"]
             else "VISIBLE_SOURCE_VALUE"
         ),
     }
@@ -777,6 +844,8 @@ def _projection_equation_receipt(
         "mode": (
             "VISIBLE_TOTAL_EXACTLY_EQUALS_EXHAUSTIVE_ROLE_PAIR"
             if projection["total_visible"]
+            else "EXHAUSTIVE_ROLE_PAIR_WITH_TYPED_UNMAPPED_SOURCE_BLANK"
+            if projection["unmapped_blank_roles"]
             else "EXHAUSTIVE_ROLE_PAIR_WITHOUT_PRINTED_TOTAL"
         ),
         "role_cells": role_cells,
@@ -854,6 +923,7 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
         page_json_by_version=page_json_by_version,
         parent_aliases=compiled_specs["topology"]["parent"]["aliases"],
         hard_negative_aliases=compiled_specs["topology"]["hard_negative_aliases"],
+        structural_reset_aliases=compiled_specs["topology"]["structural_reset_aliases"],
     )
     reasons.extend(parent_reasons)
     projections = []
@@ -961,56 +1031,117 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
                 "value_kind": "MONEY",
             }
         )
-    rows = []
-    for role in role_order:
-        rows.append(
+    primary_projection = projections[0]
+    unmapped_blank_roles = [
+        role
+        for role in role_order
+        if any(role in projection["unmapped_blank_roles"] for projection in projections)
+    ]
+    mapped_roles = [role for role in role_order if role not in unmapped_blank_roles]
+    if not mapped_roles:
+        return _failed_candidate(
+            compiled_specs=compiled_specs,
+            primary_region=primary_region,
+            reasons=["DUAL_AXIS_NO_VISIBLE_ROLE_REMAINS_FOR_MAPPING"],
+            receipt=receipt,
+        )
+    if unmapped_blank_roles:
+        result = _candidate_result(
+            topology=compiled_specs["topology"],
+            page_json_version_id=primary_projection["source_ref"]["page_json_version_id"],
+            physical_page=primary_projection["source_ref"]["physical_page"],
+            section_id=primary_projection["source_ref"]["section_id"],
+            table_id=primary_projection["source_ref"]["table_id"],
+            reasons=[],
+        )
+        result["mappings"] = [
             {
+                "columns": canonical_clone_v1(columns),
                 "hierarchy_path_exact": [compiled_specs["query_aliases_by_role"][role][0]],
                 "label_exact": compiled_specs["query_aliases_by_role"][role][0],
-                "row_kind": "ITEM",
-                "values_exact": [
-                    projection["effective_values"][role] for projection in projections
+                "report_norm_id": compiled_specs["bindings"][role],
+                "role": role,
+                "row_id": f"r{role_order.index(role) + 1}",
+                "values": [
+                    canonical_clone_v1(_money(projection["role_values"][role]))
+                    for projection in projections
                 ],
             }
+            for role in mapped_roles
+        ]
+        result["parent_binding_kind"] = (
+            "UNIQUE_EXACT_DUAL_AXIS_ANCHOR_CLUSTER"
+            if parent_context is None
+            else "EXPLICIT_SECTION_OR_TABLE_TITLE"
         )
-    if all(projection["total_visible"] for projection in projections):
-        rows.append(
-            {
-                "hierarchy_path_exact": [None],
-                "label_exact": None,
-                "row_kind": "TOTAL",
-                "values_exact": [projection["total_source_text"] for projection in projections],
-            }
+        result["closure_receipt"] = {
+            "equations": [],
+            "family_root_mapping_policy": compiled_specs["schema"]["family_root_mapping_policy"],
+            "inferred_ambiguous_provision_role": None,
+            "period_value_column_axis": {
+                "money_column_indices": list(range(len(columns))),
+                "percent_column_indices": [],
+                "period_signatures": [
+                    ["DATE", projection["period"].isoformat()] for projection in projections
+                ],
+                "source_value_kind_sequence": ["MONEY"] * len(columns),
+                "unit_disposition": "EXPLICIT_TABLE_OR_COLUMN_MONEY_UNIT",
+            },
+            "rule": "EXACT_VISIBLE_DUAL_AXIS_CHILD_ROLE_WITH_TYPED_UNMAPPED_SOURCE_BLANK",
+            "source_blank_mapping_policy": policy["source_blank_mapping_policy"],
+            "unmapped_source_blank_roles": unmapped_blank_roles,
+            "used_anonymous_result_row_ids": [],
+        }
+    else:
+        rows = []
+        for role in role_order:
+            rows.append(
+                {
+                    "hierarchy_path_exact": [compiled_specs["query_aliases_by_role"][role][0]],
+                    "label_exact": compiled_specs["query_aliases_by_role"][role][0],
+                    "row_kind": "ITEM",
+                    "values_exact": [
+                        projection["effective_values"][role] for projection in projections
+                    ],
+                }
+            )
+        if all(projection["total_visible"] for projection in projections):
+            rows.append(
+                {
+                    "hierarchy_path_exact": [None],
+                    "label_exact": None,
+                    "row_kind": "TOTAL",
+                    "values_exact": [projection["total_source_text"] for projection in projections],
+                }
+            )
+        projected_table = {
+            "columns": columns,
+            "continuation": "NONE",
+            "rows": rows,
+            "title_exact": None if parent_context is None else parent_context["text_exact"],
+            "unit_exact": unit_receipts[0]["source_evidence"]["text_exact"],
+        }
+        projected_page = {
+            "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+            "sections": [
+                {
+                    "content_kind": "FINANCIAL_NOTE",
+                    "narratives_exact": [],
+                    "statement_type": "NOT_APPLICABLE",
+                    "tables": [projected_table],
+                    "title_exact": None,
+                }
+            ],
+            "status": "FINANCIAL_NOTE_CONTENT",
+        }
+        result = evaluate_gemini_json_hierarchical_family_table_v1(
+            page_json=projected_page,
+            page_json_version_id=primary_projection["source_ref"]["page_json_version_id"],
+            physical_page=primary_projection["source_ref"]["physical_page"],
+            section_id="s1",
+            table_id="t1",
+            compiled_specs=compiled_specs,
         )
-    projected_table = {
-        "columns": columns,
-        "continuation": "NONE",
-        "rows": rows,
-        "title_exact": None if parent_context is None else parent_context["text_exact"],
-        "unit_exact": unit_receipts[0]["source_evidence"]["text_exact"],
-    }
-    projected_page = {
-        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
-        "sections": [
-            {
-                "content_kind": "FINANCIAL_NOTE",
-                "narratives_exact": [],
-                "statement_type": "NOT_APPLICABLE",
-                "tables": [projected_table],
-                "title_exact": None,
-            }
-        ],
-        "status": "FINANCIAL_NOTE_CONTENT",
-    }
-    primary_projection = projections[0]
-    result = evaluate_gemini_json_hierarchical_family_table_v1(
-        page_json=projected_page,
-        page_json_version_id=primary_projection["source_ref"]["page_json_version_id"],
-        physical_page=primary_projection["source_ref"]["physical_page"],
-        section_id="s1",
-        table_id="t1",
-        compiled_specs=compiled_specs,
-    )
     blank_by_role_and_lane = {
         (role, lane)
         for lane, projection in enumerate(projections)

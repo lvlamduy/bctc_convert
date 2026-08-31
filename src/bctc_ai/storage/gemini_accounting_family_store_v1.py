@@ -937,7 +937,11 @@ def ingest_gemini_accounting_family_sweep_v1(
         raise _error("family run kind must be EXPERIMENTAL or OFFICIAL")
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
     source_replay_format = checked_sweep["format_version"]
-    if source_replay_format in {
+    dual_axis_source_replay = (
+        type(checked_sweep["specs"]["evaluation"]["value"].get("dual_axis_projection_policy"))
+        is dict
+    )
+    if dual_axis_source_replay or source_replay_format in {
         "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1",
@@ -971,7 +975,18 @@ def ingest_gemini_accounting_family_sweep_v1(
             )
             if list(selected_page_json_version_ids) != authoritative_selected_ids:
                 raise _error("caller page frontier differs from authenticated corpus authority")
-            if source_replay_format == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1":
+            if dual_axis_source_replay:
+                from bctc_ai.storage.gemini_financial_page_store_v1 import (
+                    validate_selected_dual_axis_family_candidate_replays_v1,
+                )
+
+                validate_selected_dual_axis_family_candidate_replays_v1(
+                    source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    trials=checked_sweep["trials"],
+                )
+            elif source_replay_format == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1":
                 from bctc_ai.storage.gemini_financial_page_store_v1 import (
                     validate_selected_equity_matrix_family_candidate_replays_v1,
                 )

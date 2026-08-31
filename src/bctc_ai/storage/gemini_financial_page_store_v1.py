@@ -5798,7 +5798,8 @@ _DUAL_AXIS_YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 def _dual_axis_folded_label_v1(value: Any) -> str:
     if type(value) is not str:
         return ""
-    return normalize_search_text_v1(value)["text_ascii_folded"]
+    folded = normalize_search_text_v1(value)["text_ascii_folded"]
+    return " ".join(re.sub(r"[^a-z0-9%]+", " ", folded).split())
 
 
 def _dual_axis_header_leaf_v1(
@@ -5885,7 +5886,7 @@ def query_selected_dual_axis_family_regions_v1(
     folded_metrics = set(folded_aliases(metric_aliases))
     folded_roles = {role: set(folded_aliases(aliases)) for role, aliases in role_aliases.items()}
     folded_units = set(folded_aliases(unit_aliases))
-    selected_page_extraction_receipts_v1(
+    selected_page_json_provenance_receipts_v1(
         path,
         page_json_version_ids=selected_page_json_version_ids,
     )
@@ -5933,8 +5934,10 @@ def query_selected_dual_axis_family_regions_v1(
                 ),
             ],
         )
-        row_hits = connection.execute(
-            """
+        row_hits = [
+            dict(row)
+            for row in connection.execute(
+                """
             SELECT r.page_json_version_id, r.section_id, r.table_id,
                    r.row_id, r.source_order, r.label_exact,
                    a.axis_kind, a.role
@@ -5944,11 +5947,71 @@ def query_selected_dual_axis_family_regions_v1(
             ORDER BY s.selection_ordinal, r.section_id, r.table_id,
                      r.source_order, r.row_id, a.axis_kind, a.role
             """
+            ).fetchall()
+        ]
+        # Frozen row indexes retain punctuation in ``label_ascii_folded`` while
+        # the accounting alias compiler deliberately removes it.  Inventory
+        # only those punctuation-bearing labels through the same canonicalizer
+        # so row- and column-oriented variants have identical semantics.
+        punctuation_rows = connection.execute(
+            """
+            SELECT r.page_json_version_id, r.section_id, r.table_id,
+                   r.row_id, r.source_order, r.label_exact
+            FROM row_node AS r
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            WHERE r.label_ascii_folded GLOB '*[^a-z0-9 %]*'
+            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
+                     r.source_order, r.row_id
+            """
         ).fetchall()
+        seen_row_hits = {
+            (
+                row["page_json_version_id"],
+                row["section_id"],
+                row["table_id"],
+                row["row_id"],
+                row["axis_kind"],
+                row["role"],
+            )
+            for row in row_hits
+        }
+        for raw in punctuation_rows:
+            row = dict(raw)
+            folded = _dual_axis_folded_label_v1(row["label_exact"])
+            matches = []
+            if folded in folded_metrics:
+                matches.append(("METRIC", "METRIC"))
+            matches.extend(
+                ("ROLE", role) for role, aliases in folded_roles.items() if folded in aliases
+            )
+            for axis_kind, role in matches:
+                identity = (
+                    row["page_json_version_id"],
+                    row["section_id"],
+                    row["table_id"],
+                    row["row_id"],
+                    axis_kind,
+                    role,
+                )
+                if identity in seen_row_hits:
+                    continue
+                seen_row_hits.add(identity)
+                row_hits.append({**row, "axis_kind": axis_kind, "role": role})
+        row_hits.sort(
+            key=lambda row: (
+                row["page_json_version_id"],
+                row["section_id"],
+                row["table_id"],
+                row["source_order"],
+                row["row_id"],
+                row["axis_kind"],
+                row["role"],
+            )
+        )
         hits_by_table: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
         for row in row_hits:
             key = (row["page_json_version_id"], row["section_id"], row["table_id"])
-            hits_by_table.setdefault(key, []).append(dict(row))
+            hits_by_table.setdefault(key, []).append(row)
         candidate_keys = sorted(
             key
             for key, hits in hits_by_table.items()
@@ -6173,7 +6236,7 @@ def query_selected_dual_axis_family_regions_v1(
             )
     for row in unit_rows:
         folded = _dual_axis_folded_label_v1(row["text_exact"])
-        if folded in folded_units:
+        if any(folded == unit or folded.endswith(" " + unit) for unit in folded_units):
             append_context(
                 context_by_source[row["source_logical_name"]]["unit_evidence"],
                 row,
@@ -6262,6 +6325,134 @@ def query_selected_dual_axis_family_regions_v1(
         },
         "regions": regions,
     }
+
+
+def validate_selected_dual_axis_family_candidate_replays_v1(
+    path: Path,
+    *,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    trials: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Rebuild every dual-axis trial from one authenticated selected frontier."""
+
+    from bctc_ai.evaluation.gemini_json_dual_axis_accounting_family_v1 import (
+        evaluate_gemini_json_dual_axis_family_cluster_v1,
+    )
+    from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+        NOT_OBSERVED,
+        READY,
+        UNRESOLVED,
+    )
+    from bctc_ai.source_structure.contracts_v1 import same_typed_json_v1
+
+    policy = compiled_specs.get("dual_axis_projection_policy")
+    if type(policy) is not dict:
+        raise _error("selected dual-axis candidate replay policy is absent")
+    version_ids = list(selected_page_json_version_ids)
+    provenance = selected_page_json_provenance_receipts_v1(
+        path,
+        page_json_version_ids=version_ids,
+    )
+    selected_documents = []
+    seen_sources = set()
+    for record in provenance:
+        source = record["source_logical_name"]
+        if selected_documents and selected_documents[-1]["source_logical_name"] == source:
+            if selected_documents[-1]["source_sha256"] != record["source_sha256"]:
+                raise _error("selected dual-axis document source hash drifted")
+            continue
+        if source in seen_sources:
+            raise _error("selected dual-axis document page frontier is not contiguous")
+        seen_sources.add(source)
+        selected_documents.append(
+            {
+                "document_ordinal": len(selected_documents) + 1,
+                "source_logical_name": source,
+                "source_sha256": record["source_sha256"],
+            }
+        )
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=version_ids,
+        metric_aliases=policy["metric_aliases"],
+        role_aliases={
+            role: compiled_specs["query_aliases_by_role"][role]
+            for role in policy["projected_role_order"]
+        },
+        unit_aliases=policy["unit_aliases"],
+        adjacent_page_radius=1,
+    )
+    regions_by_source: dict[str, list[dict[str, Any]]] = {}
+    for region in queried["regions"]:
+        regions_by_source.setdefault(region["source_logical_name"], []).append(region)
+    candidate_version_ids = list(
+        dict.fromkeys(region["page_json_version_id"] for region in queried["regions"])
+    )
+    loaded = (
+        load_page_json_versions_v1(path, page_json_version_ids=candidate_version_ids)
+        if candidate_version_ids
+        else []
+    )
+    page_json_by_version = {
+        record["page_json_version_id"]: record["page_json"] for record in loaded
+    }
+    if set(page_json_by_version) != set(candidate_version_ids):
+        raise _error("selected dual-axis candidate page JSON axis is incomplete")
+
+    rebuilt_trials = []
+    for document in selected_documents:
+        source = document["source_logical_name"]
+        regions = regions_by_source.get(source, [])
+        candidates = []
+        if regions:
+            candidates.append(
+                evaluate_gemini_json_dual_axis_family_cluster_v1(
+                    regions=regions,
+                    page_json_by_version=page_json_by_version,
+                    document_context=queried["document_context_by_source"][source],
+                    compiled_specs=dict(compiled_specs),
+                    query_receipt=queried["query_receipt"],
+                )
+            )
+        ready = [candidate for candidate in candidates if candidate["status"] == READY]
+        unresolved = [candidate for candidate in candidates if candidate["status"] == UNRESOLVED]
+        if len(ready) == 1:
+            status = READY
+            selected_candidate_id = ready[0]["candidate_id"]
+            mappings = ready[0]["mappings"]
+            reasons = []
+        elif not candidates:
+            status = NOT_OBSERVED
+            selected_candidate_id = None
+            mappings = []
+            reasons = []
+        else:
+            status = UNRESOLVED
+            selected_candidate_id = None
+            mappings = []
+            reasons = sorted(
+                {
+                    *(["MULTIPLE_EXACT_GEMINI_JSON_FAMILY_REGIONS"] if len(ready) > 1 else []),
+                    *(reason for candidate in unresolved for reason in candidate["reasons"]),
+                }
+            )
+        rebuilt_trials.append(
+            {
+                "candidate_count": len(candidates),
+                "candidates": candidates,
+                **document,
+                "mappings": mappings,
+                "reasons": reasons,
+                "selected_candidate_id": selected_candidate_id,
+                "status": status,
+            }
+        )
+    supplied_trials = [dict(trial) for trial in trials]
+    if not same_typed_json_v1(supplied_trials, rebuilt_trials):
+        raise _error("selected dual-axis sweep trials do not replay from canonical page JSON")
+    return rebuilt_trials
 
 
 def usage_summary_v1(path: Path) -> dict[str, Any]:

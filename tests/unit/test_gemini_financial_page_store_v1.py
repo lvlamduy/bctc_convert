@@ -444,6 +444,37 @@ def test_dual_axis_query_shortlists_rows_then_decodes_exact_transposed_headers(
     }
 
 
+def test_dual_axis_query_retains_decorated_document_table_unit_carrier(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    page = _dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN")
+    table = page["sections"][0]["tables"][0]
+    table["columns"][0]["header_path_exact"] = ["Cho vay khách hàng"]
+    table["unit_exact"] = "Đơn vị: Triệu VND"
+    row = _ingest(path, page_json=page)
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[row["page_json_version_id"]],
+        metric_aliases=["Cho vay khách hàng"],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND"],
+    )
+
+    assert queried["document_context_by_source"]["report.pdf"]["unit_evidence"] == [
+        {
+            "physical_page": 7,
+            "section_id": "s1",
+            "source_kind": "TABLE_UNIT",
+            "table_id": "t1",
+            "text_exact": "Đơn vị: Triệu VND",
+        }
+    ]
+
+
 def test_dual_axis_header_removes_only_declared_complete_unit_suffix() -> None:
     folded, exact = _dual_axis_header_leaf_v1(
         json.dumps(["Hợp đồng"]),

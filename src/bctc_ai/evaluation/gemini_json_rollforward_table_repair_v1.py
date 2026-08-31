@@ -3433,8 +3433,10 @@ def _source_graph_gate_v1(
 def _after_policy(cell: Mapping[str, Any], policy: str) -> None:
     coefficient = _signed_integer(cell["source_text"])
     if policy == "DASH_ZERO":
-        if cell["visual_state"] != "DASH" or coefficient != 0:
-            raise _error("roll-forward table repair expected one source-transcribed dash zero")
+        if cell["visual_state"] not in {"DASH", "PRINTED_ZERO"} or coefficient != 0:
+            raise _error(
+                "roll-forward table repair expected one source-transcribed dash zero or printed zero"
+            )
         return
     if policy == "SIGNED_INTEGER":
         if cell["visual_state"] == "BLANK" or coefficient is None:

@@ -286,6 +286,28 @@ def test_one_period_exhaustive_table_uses_document_period_and_unit_context() -> 
     assert result["dual_axis_projection_receipt"]["period_axis"]["periods"] == ["2025-12-31"]
 
 
+def test_repeated_visible_dash_is_canonical_zero_without_changing_raw_source() -> None:
+    version = _version("9")
+    page = _row_page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"][1]["values_exact"][0] = "--"
+    table["rows"][2]["values_exact"][0] = "120"
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="ROW_ROLES_METRIC_COLUMN"),
+                page,
+            )
+        ],
+        _context("31/12/2025"),
+    )
+
+    assert result["status"] == READY
+    foreign = next(mapping for mapping in result["mappings"] if mapping["role"] == "FOREIGN_TOTAL")
+    assert foreign["values"] == [{"coefficient": 0, "source_text": "--", "state": "DASH_ZERO"}]
+
+
 def test_column_orientation_adjacent_pair_preserves_dash_and_derives_only_foreign_blank() -> None:
     current_version = _version("c")
     prior_version = _version("d")
@@ -425,9 +447,11 @@ def test_adjacent_period_cluster_requires_explicit_continuation_binding() -> Non
         ("DUPLICATE_METRIC", "METRIC_ROW_ROLE_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"),
         ("DUPLICATE_ROLE", "METRIC_ROW_ROLE_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"),
         ("HARD_NEGATIVE", "HARD_NEGATIVE_FAMILY_TITLE_PRESENT"),
+        ("STRUCTURAL_RESET", "STRUCTURAL_RESET_FAMILY_TITLE_PRESENT"),
         ("BLANK_DOMESTIC", "BLANK_ROLE_CELL_IS_NOT_DECLARED_ZERO_DERIVABLE:DOMESTIC_TOTAL"),
         ("BLANK_FOREIGN_NO_TOTAL", "BLANK_ROLE_CELL_HAS_NO_EXACT_TOTAL_EQUATION:FOREIGN_TOTAL"),
         ("TOTAL_MISMATCH", "DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"),
+        ("UNIT_SCALE_CONFLICT", "DUAL_AXIS_SOURCE_TABLE_MONEY_UNIT_SCALE_CONFLICT"),
     ],
 )
 def test_dual_axis_adversarial_cells_and_context_fail_closed(mutation: str, reason: str) -> None:
@@ -445,12 +469,16 @@ def test_dual_axis_adversarial_cells_and_context_fail_closed(mutation: str, reas
         table["rows"][0]["values_exact"].insert(1, table["rows"][0]["values_exact"][0])
     elif mutation == "HARD_NEGATIVE":
         page["sections"][0]["title_exact"] = "Báo cáo bộ phận theo khu vực địa lý"
+    elif mutation == "STRUCTURAL_RESET":
+        page["sections"][0]["title_exact"] = "Phân tích theo loại hình doanh nghiệp"
     elif mutation == "BLANK_DOMESTIC":
         page = _column_page(current=True, blank_role="DOMESTIC_TOTAL")
     elif mutation == "BLANK_FOREIGN_NO_TOTAL":
         page = _column_page(current=True, blank_role="FOREIGN_TOTAL", include_total=False)
     elif mutation == "TOTAL_MISMATCH":
         table["rows"][0]["values_exact"][-1] = "999"
+    elif mutation == "UNIT_SCALE_CONFLICT":
+        table["unit_exact"] = "Tỷ VND / Triệu VND"
 
     result = _evaluate(
         [
@@ -466,7 +494,7 @@ def test_dual_axis_adversarial_cells_and_context_fail_closed(mutation: str, reas
     assert reason in result["reasons"]
 
 
-def test_nonadjacent_period_cluster_and_same_best_scope_unit_conflict_fail_closed() -> None:
+def test_nonadjacent_period_cluster_fails_but_equivalent_unit_spellings_canonicalize() -> None:
     current_version = _version("f")
     prior_version = _version("1")
     pages = [
@@ -505,9 +533,9 @@ def test_nonadjacent_period_cluster_and_same_best_scope_unit_conflict_fail_close
         }
         for alias in ("Triệu đồng", "Triệu VND")
     ]
-    conflict = _evaluate(one, context)
-    assert conflict["status"] == UNRESOLVED
-    assert "DUAL_AXIS_MONEY_UNIT_BEST_SCOPE_IS_AMBIGUOUS" in conflict["reasons"]
+    equivalent = _evaluate(one, context)
+    assert equivalent["status"] == READY
+    assert equivalent["reasons"] == []
 
 
 def test_mixed_orientation_and_duplicate_period_clusters_fail_closed() -> None:

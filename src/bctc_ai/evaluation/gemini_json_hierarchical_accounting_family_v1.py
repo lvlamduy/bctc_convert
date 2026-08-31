@@ -439,7 +439,7 @@ def _money(value: Any) -> dict[str, Any]:
     if type(value) is not str or not value.strip():
         raise _error("Gemini JSON hierarchy money cell is invalid")
     body = value.strip()
-    if body in _DASHES:
+    if body and all(character in _DASHES for character in body):
         return {"coefficient": 0, "source_text": value, "state": "DASH_ZERO"}
     negative = body.startswith("(") and body.endswith(")")
     body = body[1:-1].strip() if negative else body
@@ -854,7 +854,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             "total_aliases",
             "unit_aliases",
         }
-        if type(raw_projection) is not dict or set(raw_projection) != expected_fields:
+        if type(raw_projection) is not dict or frozenset(raw_projection) not in {
+            frozenset(expected_fields),
+            frozenset(expected_fields | {"source_blank_mapping_policy"}),
+        }:
             raise _error("Gemini JSON dual-axis projection policy fields are invalid")
         normalized_alias_lists: dict[str, list[str]] = {}
         for field in ("metric_aliases", "total_aliases", "unit_aliases"):
@@ -871,6 +874,10 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             normalized_alias_lists[field] = normalized
         projected_roles = raw_projection["projected_role_order"]
         blank_zero_derivable_roles = raw_projection["blank_zero_derivable_roles"]
+        source_blank_mapping_policy = raw_projection.get(
+            "source_blank_mapping_policy",
+            "REQUIRE_ALL_ROLES_OR_EXACT_ZERO_DERIVATION",
+        )
         topology_child_roles = {child["role"] for child in topology["children"]}
         if (
             raw_projection["format_version"] != "GEMINI_JSON_DUAL_AXIS_PROJECTION_POLICY_V1"
@@ -883,6 +890,11 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
             != "EXACT_OPPOSITE_AXIS_QUALIFIER_AND_EXHAUSTIVE_ROLE_PAIR"
             or raw_projection["blank_role_cell_policy"]
             != "ALLOW_ZERO_ONLY_WHEN_EXACT_TOTAL_EQUALS_OTHER_ROLE"
+            or source_blank_mapping_policy
+            not in {
+                "REQUIRE_ALL_ROLES_OR_EXACT_ZERO_DERIVATION",
+                "OMIT_ROLE_WHEN_SOURCE_BLANK_AND_NO_EXACT_ZERO_EQUATION",
+            }
             or type(projected_roles) is not list
             or len(projected_roles) != 2
             or len(set(projected_roles)) != 2
@@ -896,6 +908,7 @@ def _compile_specs(topology_spec: Any, evaluation_spec: Any, schema_spec: Any) -
         dual_axis_projection_policy = {
             **canonical_clone_v1(raw_projection),
             **normalized_alias_lists,
+            "source_blank_mapping_policy": source_blank_mapping_policy,
         }
     elif evaluation_format == "ACCOUNTING_FAMILY_EVALUATION_SPEC_V8":
         raw_projection = evaluation_spec["title_axis_projection_policy"]

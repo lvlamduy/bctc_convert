@@ -1698,7 +1698,9 @@ def test_attempt_rejects_incoherent_token_or_cache_accounting(corpus: dict) -> N
             )
 
 
-def test_audit_dash_zero_policy_rejects_printed_zero_for_all_21_cells(corpus: dict) -> None:
+def test_dash_zero_policy_accepts_equivalent_printed_zero_and_preserves_raw_text(
+    corpus: dict,
+) -> None:
     dash_cells = [
         (plan, item["cell_id"])
         for plan in corpus["plans"]
@@ -1716,15 +1718,26 @@ def test_audit_dash_zero_policy_rejects_printed_zero_for_all_21_cells(corpus: di
                 "source_text": "0",
                 "visual_state": "PRINTED_ZERO",
             }
-        with pytest.raises(GeminiJsonRollforwardTableRepairV1Error, match="dash zero"):
-            merge_rollforward_table_repair_v1(
-                page,
-                plan=plan,
-                repair=repair,
-                page_store_path=corpus["store"],
-                authority=corpus["authority"],
-                repair_spec_authority=corpus["repair_spec_authority"],
-            )
+        merged, receipt = merge_rollforward_table_repair_v1(
+            page,
+            plan=plan,
+            repair=repair,
+            page_store_path=corpus["store"],
+            authority=corpus["authority"],
+            repair_spec_authority=corpus["repair_spec_authority"],
+        )
+        table = merged["sections"][int(plan["section_id"][1:]) - 1]["tables"][
+            int(plan["table_id"][1:]) - 1
+        ]
+        for item in selected:
+            row, column = (int(part[1:]) - 1 for part in item["cell_id"].split(":"))
+            assert table["rows"][row]["values_exact"][column] == "0"
+        projected = receipt["changes"][0]["response_projection"]
+        assert all(
+            observation["source_text"] == "0"
+            for observation in projected["normalized_observations"]
+            if observation["cell_id"] in {item["cell_id"] for item in selected}
+        )
 
 
 def test_audit_crop_rejects_coherent_crop_and_spec_self_reseal(corpus: dict) -> None:

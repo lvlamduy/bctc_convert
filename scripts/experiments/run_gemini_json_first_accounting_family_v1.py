@@ -1613,6 +1613,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             sweep["indexed_query_evidence"],
         ):
             raise _error("roll-forward sweep and public SQLite replay drifted")
+    if dual_axis_projection:
+        from bctc_ai.storage.gemini_financial_page_store_v1 import (
+            validate_selected_dual_axis_family_candidate_replays_v1,
+        )
+
+        validate_selected_dual_axis_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            trials=sweep["trials"],
+        )
     repair_plans = (
         []
         if rollforward_projection
@@ -1652,12 +1663,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         corpus_index_ref=_file_ref(args.corpus_index),
         implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
         run_kind=args.run_kind,
-        source_page_database=database if rollforward_projection else None,
-        selected_page_json_version_ids=selected_ids if rollforward_projection else None,
-        corpus_artifact_root=artifact_root if rollforward_projection else None,
+        source_page_database=(database if rollforward_projection or dual_axis_projection else None),
+        selected_page_json_version_ids=(
+            selected_ids if rollforward_projection or dual_axis_projection else None
+        ),
+        corpus_artifact_root=(
+            artifact_root if rollforward_projection or dual_axis_projection else None
+        ),
         effective_page_artifact_root=(
             effective_artifact_root
-            if rollforward_projection and effective_page_frontier is not None
+            if (rollforward_projection or dual_axis_projection)
+            and effective_page_frontier is not None
             else None
         ),
     )
