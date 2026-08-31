@@ -71,9 +71,10 @@ cho PP-OCR, VietOCR hoặc geometry quay lại đường production.
 | 49 | `INTEREST_RATE_RISK` | 139 | 1 | 0 | 6.879 | `gjfafstorev1:run:023adeb792a95dfc112a1ce60bba346d7241f50f8bf135b12e97caeb28228529` |
 | 50 | `LIQUIDITY_RISK` | 138 | 2 | 0 | 4.482 | `gjfafstorev1:run:a0a8867ca78e6ebea42b8ce0d3d232d673a49ba1ee0972e44168faa44ed879cc` |
 | 51 | `EXCHANGE_RATE` | 98 | 42 | 0 | 976 | `gjfafstorev1:run:56e3e661989b5d36f724003dd0241e7da5229a6af76ffef93284a81eec12d6de` |
+| 52 | `INTERBANK_FUNDING` | 140 | 0 | 0 | 1.652 | `gjfafstorev1:run:7a1eb3461bed349ed703f128bdecd29992ddaed69ed3ad6d6d6a52861b9cee18` |
 
-Tại checkpoint này database có đủ đúng năm mươi mốt current selection liên tục
-từ Family 1 đến Family 51. Family 52 chưa được promote và không được bỏ qua.
+Tại checkpoint này database có đủ đúng năm mươi hai current selection liên tục
+từ Family 1 đến Family 52. Family 53 chưa được promote và không được bỏ qua.
 
 ## Family 4 closure
 
@@ -1335,12 +1336,57 @@ Artifact OFFICIAL:
   `quick_check`/foreign keys sạch, không SQLite sidecar, SHA-256
   `61098dee4fe1d62b5439f443f9594857e3ff12b4ab1fcfe791aa1d0df67497bb`.
 
+## Family 52 closure
+
+- Family 52 `INTERBANK_FUNDING`: `READY=140`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=0`, 1.652 mappings và 868 exact closure receipts trên 140
+  accepted clusters/189 source fragments. Mọi tài liệu có đúng một terminal
+  disposition; không trial nào mang mapping khi chưa READY.
+
+  Generic multi-table hierarchical resolver tự inventory toàn bộ MONEY table,
+  owner/reset fence, compound row, label-only group, subtotal/total, period,
+  unit và direct frontier. Nó tự dựng graph nhiều tầng cho tiền gửi không kỳ
+  hạn/có kỳ hạn, tổng tiền gửi, vay VND/ngoại tệ, chiết khấu/cầm cố và root
+  1040–1052; validation-only row, `Trong đó`, nonadditive child và source-only
+  parent không được cộng hai lần. Không có bank/file/page routing trong
+  primitive.
+
+  Base frontier đóng `READY=137/UNRESOLVED=3`. Ba HDB region có đúng năm ô
+  nguồn bị Gemini JSON đọc thành malformed/blank trong khi ảnh 300 dpi in dấu
+  gạch. Repair planner tự suy target từ failure graph và local total equations;
+  Gemini chỉ nhận schema tối giản
+  `{observations:[{cell_id,source_text}]}` cùng crop/row/header nhìn thấy, không
+  nhận đáp án, graph, equation, ReportNormId hay policy. Ba low-tier call đều
+  RESOLVED ngay lần đầu, tổng chi phí `$0.002536125000`; effective frontier chỉ
+  thay đúng ba page-version và full-corpus replay sau đó đạt 140/140 READY.
+
+  Public SQLite query/candidate replay dựng lại đúng 8.947 selected page
+  versions trên effective frontier. E-0159 đối chiếu exact 95 historical
+  mappings + 8 dispositions; hai auxiliary rows IFC/UPAS vẫn được giữ trong
+  source inventory, không bị ép vào schema leaf hay cộng thêm. Candidate source
+  receipt, mapping axis, embedded schema/root, period/unit, extra declared row,
+  reset fence và release-frontier drift đều là fail-closed regression gates.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family52-interbank-funding/sweep.json`,
+  SHA-256
+  `cdca8976875ea4fedbd61c85372befc00f43f84b4c387fa2b90c9bae6163cfff`;
+  audit SHA-256
+  `accd0c1e13956e88c64fc3ea91109859e37a0d53310ed6d551be89cee1150ebf`,
+  audit ID
+  `gjmthfeav1:audit:82bea50a2859ee5e44a371f2bc71d4d24d7a870acfbca437cf887213d05113f5`.
+  Implementation commit `3353379`; 231 focused/adversarial/adjacent tests,
+  Ruff, format, compile, JSON, diff, byte-identical EXP/OFFICIAL artifact và
+  exact SQLite source/candidate/store replay đều xanh. Cumulative results DB có
+  52 current selections và 52 selection events, `quick_check`/foreign keys
+  sạch, không SQLite sidecar, SHA-256
+  `0d7ba6ce3cb78534fce1f5b651a9bd149b86976209847b1b040f4f75c3db4e26`.
+
 ## Next gate
 
-Family 52 là `INTERBANK_FUNDING`, family nguồn vốn 1040–1052 và comparator
-E-0105/E-0159. Thuật toán local phải tự inventory đúng owner/root, tiền gửi
-không kỳ hạn/có kỳ hạn, tổng tiền gửi, các khoản vay, tổng vay, period/unit,
-source-only child/subtotal và exhaustive direct frontiers; không được lẫn với
-family tài sản 575, route theo bank/file/page hoặc sửa source digit bằng phương
-trình. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public SQLite
-query/candidate replay, historical comparator và đủ 140 dispositions.
+Family 53 là family `Kinh doanh và đầu tư chứng khoán — phân theo khu vực địa
+lý`, comparator E-0160. Thuật toán phải tự inventory owner/reset, hai period
+lanes, trading/investment branch, geographic axis, visible totals và source-only
+variants; không route theo bank/file/page hoặc đẩy graph/equation/schema sang
+prompt Gemini. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public
+SQLite query/candidate replay, historical comparator và đủ 140 dispositions.

@@ -1491,6 +1491,31 @@ Kết quả annual-2025:
 
 ## 53. Tiền, vàng gửi và vay các tổ chức tín dụng khác — nguồn vốn
 
+### Gemini JSON-first current corpus — Family 52 OFFICIAL
+
+- **Kết quả:** 140 tài liệu, `READY=140`, `NOT_OBSERVED=0`,
+  `UNRESOLVED=0`; 1.652 mappings, 868 phương trình và 140 accepted clusters từ
+  189 source fragments.
+- **Thuật toán:** generic multi-table hierarchical resolver tự inventory
+  owner/reset fence, toàn bộ MONEY table, compound/label-only rows,
+  subtotal/total, period/unit và exhaustive direct frontier. Graph nhiều tầng
+  tự khép đúng root nguồn vốn 1040–1052 mà không route theo bank/file/page.
+- **Prompt/provider:** ba HDB region có năm dấu gạch bị JSON nguồn đọc
+  malformed/blank. Planner suy allowlist từ failure graph; Gemini chỉ trả
+  `cell_id + source_text` theo một schema observation tối giản. Ba low-tier call
+  đều RESOLVED, không retry; graph, equation, policy và mapping vẫn xử lý local.
+- **Replay:** effective frontier thay đúng ba page-version; public SQLite
+  query/candidate replay exact trên 8.947 selected page versions. Comparator
+  E-0159 exact 103/103; auxiliary IFC/UPAS được giữ source-only và không cộng
+  thêm.
+- **Authority:** OFFICIAL sweep SHA-256
+  `cdca8976875ea4fedbd61c85372befc00f43f84b4c387fa2b90c9bae6163cfff`,
+  audit SHA-256
+  `accd0c1e13956e88c64fc3ea91109859e37a0d53310ed6d551be89cee1150ebf`,
+  run
+  `gjfafstorev1:run:7a1eb3461bed349ed703f128bdecd29992ddaed69ed3ad6d6d6a52861b9cee18`,
+  implementation commit `3353379`.
+
 ### Annual-2025 — E-0159
 
 - **Đã map/xác minh:** ACB p61, MBB p64, VPB p58–59, HDB p44, VCB p52,

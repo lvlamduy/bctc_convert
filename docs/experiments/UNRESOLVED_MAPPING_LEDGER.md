@@ -3463,6 +3463,30 @@ Duplicate/conflicting currencies, unknown mapped rows, ambiguous period or
 denominator evidence and coherent source-receipt drift remain authoritative
 fail-closed regressions.
 
+## Family 52 current corpus — interbank funding (`INTERBANK_FUNDING`)
+
+Current OFFICIAL exact-replay result:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family52-interbank-funding/sweep.json`
+
+- Census: 140 documents, `READY=140`, `NOT_OBSERVED=0`, `UNRESOLVED=0`,
+  1.652 mappings and 868 exact equations. Family52 adds no terminal unresolved
+  mapping entry.
+- The generic resolver inventories all declared and unbound MONEY rows inside
+  the authenticated owner/reset interval, then closes label-only, compound,
+  subtotal and total frontiers before mapping. Auxiliary IFC/UPAS populations
+  remain replayable source evidence; they are not silently dropped or mapped to
+  a broader leaf.
+- Three source regions needed visual observation because five visible dashes
+  were malformed/blank in base JSON. The one fixed provider contract was only
+  `{observations:[{cell_id,source_text}]}`; all five observations were `-`, all
+  three jobs resolved on low tier, and the effective frontier replaced exactly
+  three page versions. No prompt-specific graph, equation, schema ID or answer
+  was sent to Gemini.
+- E-0159 comparator is exact 103/103. Full SQLite query/candidate/store replay
+  covers all 8.947 selected pages; extra declared rows, ambiguous hierarchy,
+  mixed-depth totals, period/unit conflicts, source-receipt drift and mapping
+  deletion remain authoritative fail-closed regressions.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
