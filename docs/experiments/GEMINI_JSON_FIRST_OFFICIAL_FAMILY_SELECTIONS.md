@@ -1382,11 +1382,54 @@ Artifact OFFICIAL:
   sạch, không SQLite sidecar, SHA-256
   `0d7ba6ce3cb78534fce1f5b651a9bd149b86976209847b1b040f4f75c3db4e26`.
 
+## Family 53 closure
+
+- Family 53 `SECURITIES_GEOGRAPHY`: `READY=119`, `NOT_OBSERVED=21`,
+  `UNRESOLVED=0`, 232 mappings trên 119 accepted clusters và 155 exact
+  source-table closures. Mọi tài liệu có đúng một terminal disposition; không
+  trial nào chưa READY mang mapping.
+
+  Generic dual-axis resolver tự inventory owner/reset fence, geography role,
+  metric branch, row/column transpose, một hoặc hai bảng kỳ, period và unit.
+  Nó hỗ trợ geography ở hàng với metric ở cột hoặc metric ở hàng với geography
+  ở cột; không route theo bank/file/page và không đưa graph, equation, schema,
+  ReportNormId hay đáp án family vào prompt Gemini. Các cách viết tương đương
+  `Triệu đồng`/`Triệu VND`, dấu gạch kế toán và punctuation được canonicalize
+  local nhưng raw source vẫn được giữ.
+
+  Sáu HDB filing có đúng một geography role nhìn thấy và role còn lại là ô
+  nguồn thật sự trống. Thuật toán chỉ map role nhìn thấy, giữ sáu blank trong
+  `UNMAPPED_SOURCE_BLANK` receipt và tuyệt đối không backsolve/đổi blank thành
+  zero. Một bounded repair attempt trước release trả `0 RESOLVED/6 ABSTAINED`,
+  không publish page-version và không ảnh hưởng OFFICIAL frontier; run OFFICIAL
+  này không gọi API/provider hoặc thay prompt.
+
+  Public SQLite query/candidate replay dựng lại đúng 8.947 selected page
+  versions. E-0160 khớp 12 historical mappings và một bounded absence; một
+  historical CTG absence được canonical JSON nguồn chứng minh là superseded,
+  historical mismatch bằng zero. Release audit khóa 119 cluster, 232 mapping,
+  155 source closures, sáu source blanks và 14 comparator records.
+
+  OFFICIAL sweep là
+  `/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family53-securities-geography/sweep.json`,
+  SHA-256
+  `60a05e582f9239d786e054f8f945b6d8746455723646f937826092a72d8fcd12`;
+  audit SHA-256
+  `ca37bcdbbd0f9e748a4b47cf16ef59ca845d1a38cac0110eab74003e094ab3ce`,
+  audit ID
+  `gjsgrauditv1:audit:ed7d7fe7647289ca0785426d7ce7f1ae4b6afdd08472f8c1ebca9f324e7b9333`.
+  Implementation commit `a2a27cc`; 140 focused/adversarial/adjacent tests,
+  Ruff, format, compile, JSON, diff, byte-identical EXP/OFFICIAL artifact và
+  exact SQLite source/candidate/store replay đều xanh. Cumulative results DB có
+  53 current selections và 53 selection events, `quick_check`/foreign keys
+  sạch, không SQLite sidecar, SHA-256
+  `8984188087bb59b6edf9d7479d4f270607fee59714ba471719d01423e5ed8b67`.
+
 ## Next gate
 
-Family 53 là family `Kinh doanh và đầu tư chứng khoán — phân theo khu vực địa
-lý`, comparator E-0160. Thuật toán phải tự inventory owner/reset, hai period
-lanes, trading/investment branch, geographic axis, visible totals và source-only
+Family 54 là family `Báo cáo bộ phận hợp nhất`, comparator E-0161. Thuật toán
+phải tự inventory owner/reset, nhánh lĩnh vực kinh doanh và địa lý, các segment
+columns/rows, kỳ, unit, inter-segment elimination, subtotal/total và source-only
 variants; không route theo bank/file/page hoặc đẩy graph/equation/schema sang
 prompt Gemini. Chỉ promote OFFICIAL sau exhaustive 8.947-page inventory, public
 SQLite query/candidate replay, historical comparator và đủ 140 dispositions.
