@@ -496,3 +496,55 @@ def test_audit_replay_rejects_coherent_axis_and_embedded_schema_drift(
                 "trials": forged_sweep["trials"],
             },
         )
+
+
+def test_interbank_funding_release_profiles_bind_base_and_repaired_frontiers() -> None:
+    compiled = runner.compile_gemini_json_flat_family_specs_v1(
+        _family_spec("tm-interbank-funding-topology-v1.json"),
+        _family_spec("tm-interbank-funding-evaluation-v1.json"),
+        _family_spec("tm-interbank-funding-schema-binding-v1.json"),
+    )
+
+    base = runner._release_profile(
+        compiled,
+        selected_page_json_frontier_sha256=(runner.PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256),
+    )
+    assert base["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 1613,
+        "not_observed_count": 0,
+        "ready_count": 137,
+        "unresolved_count": 3,
+    }
+
+    repaired = runner._release_profile(
+        compiled,
+        selected_page_json_frontier_sha256=(
+            runner.PINNED_INTERBANK_FUNDING_EFFECTIVE_PAGE_JSON_FRONTIER_SHA256
+        ),
+    )
+    assert repaired["selected_page_json_frontier_sha256"] == (
+        "610b72858f2417c9da1afd7fefb02e195243639e6600d593ba8360b659475349"
+    )
+    assert repaired["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 1652,
+        "not_observed_count": 0,
+        "ready_count": 140,
+        "unresolved_count": 0,
+    }
+    assert repaired["axis_counts"] == {
+        "clusters": 140,
+        "equations": 868,
+        "historical_comparator": 103,
+        "mappings": 1652,
+    }
+
+    with pytest.raises(
+        runner.RunGeminiJsonMultitableHierarchicalAccountingFamilyV1Error,
+        match="release frontier is not pinned",
+    ):
+        runner._release_profile(
+            compiled,
+            selected_page_json_frontier_sha256="0" * 64,
+        )

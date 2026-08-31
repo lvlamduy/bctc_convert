@@ -1,0 +1,21 @@
+{
+  "family_id": "INTERBANK_FUNDING",
+  "family_root_report_norm_id": 1040,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 1041, "role": "DEPOSIT_PARENT"},
+    {"report_norm_id": 1042, "role": "TERM_DEPOSIT"},
+    {"report_norm_id": 1043, "role": "TERM_DEPOSIT_VND"},
+    {"report_norm_id": 1044, "role": "TERM_DEPOSIT_FOREIGN"},
+    {"report_norm_id": 1045, "role": "DEMAND_DEPOSIT"},
+    {"report_norm_id": 1046, "role": "DEMAND_DEPOSIT_VND"},
+    {"report_norm_id": 1047, "role": "DEMAND_DEPOSIT_FOREIGN"},
+    {"report_norm_id": 1048, "role": "BORROWING"},
+    {"report_norm_id": 1049, "role": "BORROWING_VND"},
+    {"report_norm_id": 1050, "role": "BORROWING_VND_DISCOUNT"},
+    {"report_norm_id": 1051, "role": "BORROWING_VND_COLLATERAL"},
+    {"report_norm_id": 1052, "role": "BORROWING_FOREIGN"}
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+  "schema_period_type": "SNAPSHOT"
+}

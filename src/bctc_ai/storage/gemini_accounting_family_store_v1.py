@@ -254,9 +254,19 @@ def _stored_candidate_repair_target_replays_v1(
         if type(stored_candidate.get("closure_receipt")) is dict
         else None
     )
-    component_regions = (
-        query_receipt.get("component_regions", []) if type(query_receipt) is dict else []
-    )
+    component_regions = []
+    if type(query_receipt) is dict:
+        legacy_regions = query_receipt.get("component_regions")
+        region_axis = query_receipt.get("region_axis")
+        if type(legacy_regions) is list:
+            component_regions = legacy_regions
+        elif (
+            query_receipt.get("format_version")
+            == "GEMINI_JSON_MULTITABLE_HIERARCHICAL_REGION_QUERY_RECEIPT_V1"
+            and type(region_axis) is list
+            and query_receipt.get("region_axis_sha256") == canonical_json_sha256_v1(region_axis)
+        ):
+            component_regions = region_axis
     matching_components = [
         region
         for region in component_regions

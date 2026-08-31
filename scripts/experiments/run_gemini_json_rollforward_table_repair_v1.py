@@ -106,7 +106,7 @@ _CORPUS_INDEX_ID = re.compile(r"^gjfccmiv1:index:[0-9a-f]{64}$")
 _THINKING_LEVELS = ("low", "medium", "high")
 RUNNER_IMPLEMENTATION_PATH = "scripts/experiments/run_gemini_json_rollforward_table_repair_v1.py"
 PROJECTOR_IMPLEMENTATION_PATH = "src/bctc_ai/evaluation/gemini_json_rollforward_table_repair_v1.py"
-PROJECTOR_IMPLEMENTATION_SHA256 = "e22feeb191aeee9158384c0ab324100d2575f8592b24c2165b7877cf30c882e5"
+PROJECTOR_IMPLEMENTATION_SHA256 = "ac0cf8fbda858e9d1e1ece594f41a93e7ab74cbfc27dcd56b90806369bc4d97b"
 DETERMINISTIC_PROJECTION_CONTRACT_VERSION = (
     "GEMINI_JSON_ROLLFORWARD_TARGET_OBSERVATION_PROJECTION_CONTRACT_V1"
 )

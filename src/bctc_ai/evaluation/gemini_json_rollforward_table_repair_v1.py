@@ -1893,6 +1893,370 @@ def build_interest_rate_risk_matrix_table_cell_repair_plans_v1(
     )
 
 
+def _multitable_hierarchical_zero_observation_equations_v1(
+    *,
+    candidate: Mapping[str, Any],
+    region: Mapping[str, Any],
+    target_ids: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Bind direct dash observations to an existing visible component total.
+
+    The target value still comes exclusively from the image observation.  The
+    equation is a post-observation veto: adding one observed zero detail to the
+    already exact, visible top-level component frontier must leave the printed
+    total unchanged.  It is never used to manufacture or backsolve the target.
+    """
+
+    closure = candidate.get("closure_receipt")
+    if type(closure) is not dict:
+        raise _error("multi-table zero-observation candidate closure is absent")
+
+    def local_source_ref(value: Any) -> dict[str, Any] | None:
+        if type(value) is not dict or type(value.get("locator")) is not dict:
+            return None
+        locator = value["locator"]
+        if any(
+            locator.get(key) != region.get(key)
+            for key in ("page_json_version_id", "section_id", "table_id")
+        ):
+            return None
+        row_id = value.get("row_id")
+        money_columns = value.get("money_column_ordinals")
+        if (
+            type(row_id) is not str
+            or re.fullmatch(r"r[1-9][0-9]*", row_id) is None
+            or type(money_columns) is not list
+            or not money_columns
+            or any(type(item) is not int or item <= 0 for item in money_columns)
+        ):
+            return None
+        return value
+
+    totals = []
+    for equation in closure.get("equations", []):
+        if (
+            type(equation) is not dict
+            or equation.get("status") != "EXACT"
+            or equation.get("equation_kind")
+            != "EXACT_VISIBLE_TOP_LEVEL_DIRECT_FRONTIER_EQUAL_PRINTED_TOTAL"
+        ):
+            continue
+        result_refs = equation.get("result_source_refs")
+        component_axes = equation.get("component_source_refs")
+        if (
+            type(result_refs) is not list
+            or len(result_refs) != 1
+            or type(component_axes) is not list
+            or not component_axes
+        ):
+            continue
+        result_ref = local_source_ref(result_refs[0])
+        components = []
+        for axis in component_axes:
+            if type(axis) is not list or len(axis) != 1:
+                components = []
+                break
+            source_ref = local_source_ref(axis[0])
+            if source_ref is None:
+                components = []
+                break
+            components.append(source_ref)
+        if result_ref is not None and components:
+            totals.append((result_ref, components))
+    if len(totals) != 1:
+        raise _error("multi-table zero observation lacks one exact local printed total")
+    result_ref, component_refs = totals[0]
+    result_row_id = result_ref["row_id"]
+    component_row_ids = [item["row_id"] for item in component_refs]
+    if len(component_row_ids) != len(set(component_row_ids)):
+        raise _error("multi-table zero-observation component frontier is duplicate")
+    result_columns = set(result_ref["money_column_ordinals"])
+    equations = []
+    for target_id in sorted(target_ids, key=_cell_id):
+        target_row, target_column = _cell_id(target_id)
+        column_ordinal = target_column + 1
+        if column_ordinal not in result_columns or f"r{target_row + 1}" in component_row_ids:
+            raise _error("multi-table zero observation lies outside the exact total lanes")
+        material = {
+            "component_row_ids": component_row_ids,
+            "result_cell_id": f"{result_row_id}:c{column_ordinal}",
+            "target_cell_id": target_id,
+        }
+        equations.append(
+            {
+                "equation_id": "multitable-zero:" + canonical_json_sha256_v1(material),
+                "result_cell_id": material["result_cell_id"],
+                "terms": [
+                    {
+                        "cell_id": f"{row_id}:c{column_ordinal}",
+                        "multiplier": 1,
+                    }
+                    for row_id in component_row_ids
+                ]
+                + [{"cell_id": target_id, "multiplier": 1}],
+            }
+        )
+    return equations
+
+
+def _multitable_hierarchical_zero_observation_target_ids_v1(
+    *, table: Mapping[str, Any], table_receipt: Mapping[str, Any]
+) -> list[str]:
+    """Return only malformed visible money cells and conditional blank cells."""
+
+    invalid_row_reason = re.compile(r"^MONEY_CELL_NOT_EXACT_INTEGER:(r[1-9][0-9]*)$")
+    parse_reasons = table_receipt.get("parse_reasons", [])
+    unproven_rows = table_receipt.get("unproven_conditional_zero_rows", [])
+    if (
+        type(parse_reasons) is not list
+        or type(unproven_rows) is not list
+        or any(type(reason) is not str for reason in parse_reasons)
+    ):
+        raise _error("multi-table zero-observation receipt frontier is invalid")
+    target_ids = set()
+    for reason in parse_reasons:
+        match = invalid_row_reason.fullmatch(reason)
+        if match is None:
+            raise _error("multi-table zero observation cannot repair this parse failure")
+        row_index = _node_ordinal(match.group(1), "r", "invalid multi-table money row")
+        if row_index >= len(table["rows"]):
+            raise _error("multi-table invalid money row lies outside the table")
+        for column_index, column in enumerate(table["columns"]):
+            source_text = table["rows"][row_index]["values_exact"][column_index]
+            if (
+                column["value_kind"] == "MONEY"
+                and source_text is not None
+                and _signed_integer(source_text) is None
+            ):
+                target_ids.add(f"r{row_index + 1}:c{column_index + 1}")
+    for row_ordinal in unproven_rows:
+        if type(row_ordinal) is not int or not 1 <= row_ordinal <= len(table["rows"]):
+            raise _error("multi-table conditional-zero row ordinal is invalid")
+        row = table["rows"][row_ordinal - 1]
+        for column_index, column in enumerate(table["columns"]):
+            if column["value_kind"] == "MONEY" and row["values_exact"][column_index] is None:
+                target_ids.add(f"r{row_ordinal}:c{column_index + 1}")
+    if not target_ids:
+        raise _error("multi-table zero-observation graph derives no target cell")
+    return sorted(target_ids, key=_cell_id)
+
+
+def build_multitable_hierarchical_zero_observation_repair_plans_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    family_sweep: Mapping[str, Any],
+    page_store_path: Path,
+    selected_page_json_version_ids: Sequence[str],
+    table_repair_specs: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build minimal dash observations from a replayed multi-table failure graph.
+
+    Only invalid visible money cells and blank cells named by the evaluator's
+    conditional-zero frontier can become targets.  The provider sees neither
+    that policy nor the equations; both remain local acceptance gates.
+    """
+
+    sweep = validate_gemini_json_flat_family_sweep_v1(family_sweep)
+    compiled_spec_sources = {
+        "evaluation": canonical_clone_v1(sweep["specs"]["evaluation"]["value"]),
+        "schema_binding": canonical_clone_v1(sweep["specs"]["schema_binding"]["value"]),
+        "topology": canonical_clone_v1(sweep["specs"]["topology"]["value"]),
+    }
+    rebuilt_specs = compile_gemini_json_flat_family_specs_v1(
+        compiled_spec_sources["topology"],
+        compiled_spec_sources["evaluation"],
+        compiled_spec_sources["schema_binding"],
+    )
+    if rebuilt_specs.get(
+        "engine_format_version"
+    ) != "GEMINI_JSON_MULTITABLE_HIERARCHICAL_ACCOUNTING_FAMILY_V1" or not same_typed_json_v1(
+        dict(compiled_specs), rebuilt_specs
+    ):
+        raise _error("multi-table zero-observation specs do not replay the sweep")
+    selected_ids = list(selected_page_json_version_ids)
+    if (
+        not selected_ids
+        or len(selected_ids) != len(set(selected_ids))
+        or any(
+            type(version_id) is not str or not version_id.startswith("gfpstorev1:json:")
+            for version_id in selected_ids
+        )
+    ):
+        raise _error("multi-table zero-observation selected frontier is invalid")
+    indexed_query_evidence = sweep.get("indexed_query_evidence")
+    if type(indexed_query_evidence) is not dict:
+        raise _error("multi-table zero-observation sweep has no indexed query evidence")
+    from bctc_ai.storage.gemini_financial_page_store_v1 import (
+        validate_selected_multitable_hierarchical_family_candidate_replays_v1,
+    )
+
+    validate_selected_multitable_hierarchical_family_candidate_replays_v1(
+        page_store_path,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=rebuilt_specs,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=sweep["trials"],
+    )
+    spec_fields = {
+        "base_page_json_version_id",
+        "collateral_cell_ids",
+        "collateral_equations",
+        "crop_bbox_pixels_xyxy",
+        "dash_zero_cell_ids",
+        "format_version",
+        "section_id",
+        "table_id",
+    }
+    checked_specs = []
+    version_ids = []
+    for raw in table_repair_specs:
+        spec = _exact_keys(raw, spec_fields, "multi-table zero-observation repair spec")
+        if (
+            spec["format_version"] != TABLE_SPEC_FORMAT_VERSION
+            or spec["collateral_cell_ids"] != []
+            or spec["collateral_equations"] != []
+            or type(spec["dash_zero_cell_ids"]) is not list
+            or len(spec["dash_zero_cell_ids"]) != len(set(spec["dash_zero_cell_ids"]))
+        ):
+            raise _error("multi-table zero-observation repair spec is invalid")
+        _node_ordinal(spec["section_id"], "s", "multi-table repair section")
+        _node_ordinal(spec["table_id"], "t", "multi-table repair table")
+        for cell_id in spec["dash_zero_cell_ids"]:
+            _cell_id(cell_id)
+        version_ids.append(
+            _prefixed_hash(
+                spec["base_page_json_version_id"],
+                "gfpstorev1:json:",
+                "multi-table repair base page version",
+            )
+        )
+        checked_specs.append(canonical_clone_v1(spec))
+    if not checked_specs or len(version_ids) != len(set(version_ids)):
+        raise _error("multi-table zero-observation repair spec axis is empty or duplicate")
+    evidence_axis = load_rollforward_table_page_evidence_v1(
+        page_store_path, page_json_version_ids=version_ids
+    )
+    evidence_by_version = {item["base_page_json_version_id"]: item for item in evidence_axis}
+    frontiers = []
+    pages = {}
+    for spec in checked_specs:
+        version_id = spec["base_page_json_version_id"]
+        evidence = evidence_by_version[version_id]
+        page_json = evidence["page_json"]
+        _checked_page, table = _table(page_json, spec["section_id"], spec["table_id"])
+        matches = []
+        for trial in sweep["trials"]:
+            for candidate in trial.get("candidates", []):
+                for region in candidate.get("component_regions", []):
+                    if (
+                        region.get("page_json_version_id") == version_id
+                        and region.get("section_id") == spec["section_id"]
+                        and region.get("table_id") == spec["table_id"]
+                    ):
+                        matches.append((trial, candidate, region))
+        if len(matches) != 1:
+            raise _error("multi-table zero-observation spec does not bind one candidate region")
+        trial, candidate, region = matches[0]
+        binding_without_crop = evidence["source_binding_without_crop"]
+        if (
+            trial.get("status") != UNRESOLVED
+            or candidate.get("status") != UNRESOLVED
+            or candidate.get("family_id") != sweep["family_id"]
+            or any(
+                region.get(key) != binding_without_crop.get(key)
+                for key in ("document_id", "physical_page", "source_logical_name", "source_sha256")
+            )
+        ):
+            raise _error("multi-table zero-observation candidate/source binding drifted")
+        allowed_reasons = {
+            "INVALID_VISIBLE_SOURCE_MONEY_CELL",
+            "UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW",
+        }
+        if not candidate.get("reasons") or any(
+            reason not in allowed_reasons
+            and not reason.startswith("UNPROVEN_CONDITIONAL_SOURCE_CELL_IN_MAPPING_ROLE:")
+            for reason in candidate["reasons"]
+        ):
+            raise _error("multi-table zero observation cannot repair this candidate failure")
+        closure = candidate.get("closure_receipt")
+        table_receipts = closure.get("table_receipts") if type(closure) is dict else None
+        receipts = [
+            item
+            for item in table_receipts or []
+            if type(item) is dict
+            and all(
+                item.get("region", {}).get(key) == region.get(key)
+                for key in ("page_json_version_id", "section_id", "table_id")
+            )
+        ]
+        if len(receipts) != 1:
+            raise _error("multi-table zero-observation table receipt is not unique")
+        receipt = receipts[0]
+        target_ids = _multitable_hierarchical_zero_observation_target_ids_v1(
+            table=table, table_receipt=receipt
+        )
+        if set(spec["dash_zero_cell_ids"]) != set(target_ids):
+            raise _error(
+                "multi-table image dash authority does not exact-bind the graph-derived target"
+            )
+        allowlist = [
+            {
+                "after_policy": "DASH_ZERO",
+                "before_exact": table["rows"][_cell_id(cell_id)[0]]["values_exact"][
+                    _cell_id(cell_id)[1]
+                ],
+                "cell_id": cell_id,
+                "change_policy": "MUST_CHANGE",
+                "evidence_kind": "UNRESOLVED_FRONTIER",
+            }
+            for cell_id in target_ids
+        ]
+        equations = _multitable_hierarchical_zero_observation_equations_v1(
+            candidate=candidate,
+            region=region,
+            target_ids=target_ids,
+        )
+        source_binding = _source_binding(
+            {
+                **binding_without_crop,
+                "crop_bbox_pixels_xyxy": spec["crop_bbox_pixels_xyxy"],
+            }
+        )
+        frontiers.append(
+            {
+                "base_page_json_sha256": evidence["base_page_json_sha256"],
+                "base_page_json_version_id": version_id,
+                "candidate_id": candidate["candidate_id"],
+                "candidate_semantic_replay_sha256": canonical_json_sha256_v1(candidate),
+                "cell_allowlist": allowlist,
+                "compiled_spec_sources_sha256": canonical_json_sha256_v1(compiled_spec_sources),
+                "document_ordinal": trial["document_ordinal"],
+                "equations": _equations(
+                    equations,
+                    row_count=len(table["rows"]),
+                    column_count=len(table["columns"]),
+                    allowlist=allowlist,
+                ),
+                "family_id": sweep["family_id"],
+                "format_version": UNRESOLVED_FRONTIER_FORMAT_VERSION,
+                "indexed_query_evidence_sha256": canonical_json_sha256_v1(indexed_query_evidence),
+                "page_evidence_id": evidence["page_evidence_id"],
+                "repair_spec_sha256": canonical_json_sha256_v1(spec),
+                "selected_page_frontier_sha256": canonical_json_sha256_v1(selected_ids),
+                "section_id": spec["section_id"],
+                "source_binding": source_binding,
+                "sweep_id": sweep["sweep_id"],
+                "table_id": spec["table_id"],
+                "trigger_reasons": candidate["reasons"],
+            }
+        )
+        pages[version_id] = page_json
+    return _build_rollforward_table_cell_repair_plans_v1(
+        unresolved_frontier=frontiers,
+        page_json_by_version=pages,
+    )
+
+
 def build_accounting_table_cell_repair_plans_v1(
     *,
     compiled_specs: Mapping[str, Any],
@@ -1916,6 +2280,17 @@ def build_accounting_table_cell_repair_plans_v1(
         == "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1"
     ):
         return build_equity_matrix_table_cell_repair_plans_v1(
+            compiled_specs=compiled_specs,
+            family_sweep=family_sweep,
+            page_store_path=page_store_path,
+            selected_page_json_version_ids=selected_page_json_version_ids,
+            table_repair_specs=table_repair_specs,
+        )
+    if (
+        compiled_specs.get("engine_format_version")
+        == "GEMINI_JSON_MULTITABLE_HIERARCHICAL_ACCOUNTING_FAMILY_V1"
+    ):
+        return build_multitable_hierarchical_zero_observation_repair_plans_v1(
             compiled_specs=compiled_specs,
             family_sweep=family_sweep,
             page_store_path=page_store_path,

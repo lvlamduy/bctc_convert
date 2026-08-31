@@ -1016,7 +1016,7 @@ def _source_ref(
     *,
     money_column_ordinals: Sequence[int],
 ) -> dict[str, Any]:
-    return {
+    material = {
         "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
         "label_exact": row.get("label_exact"),
         "locator": canonical_clone_v1(region),
@@ -1025,6 +1025,13 @@ def _source_ref(
         "row_kind": row.get("row_kind"),
         "row_ordinal": row_ordinal,
     }
+    projection = row.get("_compound_row_projection")
+    if type(projection) is dict:
+        material["compound_row_projection"] = canonical_clone_v1(projection)
+        material["row_id"] = (
+            f"r{projection['source_row_ordinal']}#line{projection['subrow_ordinal']}"
+        )
+    return material
 
 
 def _source_money(value: Any) -> dict[str, Any]:

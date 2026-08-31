@@ -70,6 +70,14 @@ def _interest_expense_compiled() -> dict:
     )
 
 
+def _interbank_funding_compiled() -> dict:
+    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+        _json("tm-interbank-funding-topology-v1.json"),
+        _json("tm-interbank-funding-evaluation-v1.json"),
+        _json("tm-interbank-funding-schema-binding-v1.json"),
+    )
+
+
 def _customer_collateral_compiled() -> dict:
     return compile_gemini_json_multitable_hierarchical_family_specs_v1(
         _json("tm-customer-collateral-held-topology-v1.json"),
@@ -205,6 +213,24 @@ def _evaluate_interest_income(page: dict) -> tuple[dict, dict, dict]:
 
 def _evaluate_interest_expense(page: dict) -> tuple[dict, dict, dict]:
     compiled = _interest_expense_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=receipt,
+    )
+    return compiled, cluster, candidate
+
+
+def _evaluate_interbank_funding(page: dict) -> tuple[dict, dict, dict]:
+    compiled = _interbank_funding_compiled()
     cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[_record(page)], compiled_specs=compiled
     )
@@ -2110,6 +2136,657 @@ def test_interest_income_unmapped_direct_money_child_is_unresolved() -> None:
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
     assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+def test_inactive_sibling_money_table_is_inventoried_without_becoming_family_population() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    active = _table(
+        owner,
+        [
+            _row(owner, [None, None], kind="GROUP", hierarchy=[owner]),
+            _row(
+                "Tiền gửi các TCTD khác",
+                ["10", "8"],
+                kind="SUBTOTAL",
+                hierarchy=[owner, "Tiền gửi các TCTD khác"],
+            ),
+            _row(
+                "Tiền gửi không kỳ hạn",
+                ["4", "3"],
+                hierarchy=[owner, "Tiền gửi các TCTD khác", "Tiền gửi không kỳ hạn"],
+            ),
+            _row(
+                "Tiền gửi có kỳ hạn",
+                ["6", "5"],
+                hierarchy=[owner, "Tiền gửi các TCTD khác", "Tiền gửi có kỳ hạn"],
+            ),
+            _row(
+                "Vay các TCTD khác",
+                ["5", "4"],
+                hierarchy=[owner, "Vay các TCTD khác"],
+            ),
+            _row(None, ["15", "12"], kind="TOTAL", hierarchy=[owner, None]),
+        ],
+    )
+    unrelated = _table(
+        "Tài sản bảo đảm cho các khoản vay",
+        [
+            _row("Tiền gửi có kỳ hạn tại các TCTD khác", ["2", "1"]),
+            _row("Chứng khoán đầu tư", ["3", "2"]),
+        ],
+    )
+    _compiled_specs, cluster, candidate = _evaluate_interbank_funding(
+        _page(_section(owner, active, unrelated))
+    )
+    assert len(cluster["component_regions"]) == 2
+    assert candidate["status"] == READY
+    assert not candidate["reasons"]
+    assert {
+        "DEMAND_DEPOSIT",
+        "TERM_DEPOSIT",
+        "DEPOSIT_PARENT",
+        "BORROWING",
+    } <= {mapping["role"] for mapping in candidate["mappings"]}
+    assert len(candidate["closure_receipt"]["table_receipts"]) == 2
+    assert {
+        row["source_ref"]["locator"]["table_id"]
+        for row in candidate["closure_receipt"]["source_only_unmapped_rows"]
+    } == {"t1"}
+
+
+def test_extra_money_row_in_active_interbank_population_remains_unresolved() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    active = _table(
+        owner,
+        [
+            _row(owner, [None, None], kind="GROUP", hierarchy=[owner]),
+            _row(
+                "Tiền gửi các TCTD khác",
+                ["10", "8"],
+                kind="SUBTOTAL",
+                hierarchy=[owner, "Tiền gửi các TCTD khác"],
+            ),
+            _row(
+                "Tiền gửi không kỳ hạn",
+                ["4", "3"],
+                hierarchy=[owner, "Tiền gửi các TCTD khác", "Tiền gửi không kỳ hạn"],
+            ),
+            _row(
+                "Tiền gửi có kỳ hạn",
+                ["6", "5"],
+                hierarchy=[owner, "Tiền gửi các TCTD khác", "Tiền gửi có kỳ hạn"],
+            ),
+            _row(
+                "Vay các TCTD khác",
+                ["5", "4"],
+                hierarchy=[owner, "Vay các TCTD khác"],
+            ),
+            _row(
+                "Khoản vay chưa có schema binding",
+                ["1", "1"],
+                hierarchy=[owner, "Khoản vay chưa có schema binding"],
+            ),
+            _row(None, ["16", "13"], kind="TOTAL", hierarchy=[owner, None]),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(
+        _page(_section(owner, active))
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+def _interbank_compound_row_page(*, comparative_value: str = "1\n5") -> dict:
+    owner = "Tiền gửi và vay các TCTD khác"
+    deposit = "Tiền gửi của các TCTD khác"
+    borrowing = "Vay các TCTD khác"
+    borrowing_vnd = "Bằng VND"
+    compound_label = "Vay chiết khấu giấy tờ có giá\nVay cầm cố"
+    return _page(
+        _section(
+            owner,
+            _table(
+                owner,
+                [
+                    _row(owner, [None, None], kind="GROUP", hierarchy=[owner]),
+                    _row(
+                        deposit,
+                        ["10", "8"],
+                        kind="SUBTOTAL",
+                        hierarchy=[owner, deposit],
+                    ),
+                    _row(
+                        "Tiền gửi không kỳ hạn",
+                        ["4", "3"],
+                        hierarchy=[owner, deposit, "Tiền gửi không kỳ hạn"],
+                    ),
+                    _row(
+                        "Tiền gửi có kỳ hạn",
+                        ["6", "5"],
+                        hierarchy=[owner, deposit, "Tiền gửi có kỳ hạn"],
+                    ),
+                    _row(
+                        borrowing,
+                        ["12", "10"],
+                        kind="SUBTOTAL",
+                        hierarchy=[owner, borrowing],
+                    ),
+                    _row(
+                        borrowing_vnd,
+                        ["7", "6"],
+                        kind="SUBTOTAL",
+                        hierarchy=[owner, borrowing, borrowing_vnd],
+                    ),
+                    _row(
+                        compound_label,
+                        ["2\n5", comparative_value],
+                        hierarchy=[owner, borrowing, f"{borrowing_vnd}\n{compound_label}"],
+                    ),
+                    _row(
+                        "Bằng ngoại tệ",
+                        ["5", "4"],
+                        hierarchy=[owner, borrowing, "Bằng ngoại tệ"],
+                    ),
+                    _row(None, ["22", "18"], kind="TOTAL", hierarchy=[owner, None]),
+                ],
+            ),
+        )
+    )
+
+
+def test_exact_line_aligned_compound_source_row_projects_distinct_declared_roles() -> None:
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(
+        _interbank_compound_row_page()
+    )
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["BORROWING_VND_DISCOUNT"]["values"]] == [2, 1]
+    assert [cell["coefficient"] for cell in by_role["BORROWING_VND_COLLATERAL"]["values"]] == [5, 5]
+    assert {ref["row_id"] for ref in by_role["BORROWING_VND_DISCOUNT"]["source_refs"]} == {
+        "r7#line1"
+    }
+    assert {ref["row_id"] for ref in by_role["BORROWING_VND_COLLATERAL"]["source_refs"]} == {
+        "r7#line2"
+    }
+    receipt = candidate["closure_receipt"]["table_receipts"][0]["classification"]
+    assert len(receipt["compound_row_projection_receipts"]) == 1
+    assert receipt["compound_row_projection_receipts"][0]["projected_roles"] == [
+        "BORROWING_VND_DISCOUNT",
+        "BORROWING_VND_COLLATERAL",
+    ]
+
+
+def test_compound_source_row_with_incomplete_value_axis_stays_raw_and_fails_closed() -> None:
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(
+        _interbank_compound_row_page(comparative_value="6")
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert not candidate["closure_receipt"]["table_receipts"][0]["classification"].get(
+        "compound_row_projection_receipts"
+    )
+
+
+def test_direct_disclosure_prefix_uses_nearest_preceding_structural_scope() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    borrowing = "Vay các TCTD khác"
+    table = _table(
+        owner,
+        [
+            _row(borrowing, ["12", "10"], kind="SUBTOTAL", hierarchy=[borrowing]),
+            _row("Bằng VND", ["7", "6"], kind="SUBTOTAL", hierarchy=[borrowing, "Bằng VND"]),
+            _row(
+                "Trong đó: Vay chiết khấu, tái chiết khấu",
+                ["2", "1"],
+                hierarchy=[borrowing, "Trong đó: Vay chiết khấu, tái chiết khấu"],
+            ),
+            _row(
+                "Bằng ngoại tệ",
+                ["5", "4"],
+                hierarchy=[borrowing, "Bằng ngoại tệ"],
+            ),
+        ],
+    )
+    section = _section(owner, table)
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, table, compiled_specs=_interbank_funding_compiled()
+    )
+    assert (3, "BORROWING_VND_DISCOUNT") in [
+        (hit["row_ordinal"], hit["role"]) for hit in classification["role_hits"]
+    ]
+    assert any(
+        receipt["row_ordinal"] == 3
+        and receipt["rule"]
+        == "NEAREST_PRECEDING_DECLARED_STRUCTURAL_ROLE_PLUS_EXACT_DISCLOSURE_PREFIX_SCOPES_CHILD"
+        for receipt in classification["hierarchy_path_scope_resolutions"]
+    )
+
+
+def test_section_context_scopes_only_noncontrol_table_among_typed_control_siblings() -> None:
+    borrowing = "Vay các tổ chức tài chính, tổ chức tín dụng khác"
+    active = _table(
+        None,
+        [
+            _row("Bằng VND", ["7", "6"]),
+            _row(
+                "Trong đó: vay chiết khấu giấy tờ có giá",
+                ["2", "1"],
+                hierarchy=["Bằng VND", "Trong đó: vay chiết khấu giấy tờ có giá"],
+            ),
+            _row("Bằng ngoại tệ", ["5", "4"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    control = _table(
+        None,
+        [_row("Đến 6 tháng", ["12", "10"]), _row(None, ["12", "10"], kind="TOTAL")],
+    )
+    section = _section(borrowing, active, control)
+    compiled = _interbank_funding_compiled()
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, active, compiled_specs=compiled
+    )
+    assert classification["context_roles"] == ["BORROWING"]
+    assert not classification["ambiguous_rows"]
+    assert [(hit["row_ordinal"], hit["role"]) for hit in classification["role_hits"]] == [
+        (1, "BORROWING_VND"),
+        (2, "BORROWING_VND_DISCOUNT"),
+        (3, "BORROWING_FOREIGN"),
+    ]
+    control_classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, control, compiled_specs=compiled
+    )
+    assert control_classification["typed_control_disposition"] == (
+        "BORROWING_ORIGINAL_MATURITY_SCHEDULE_OUTSIDE_FAMILY_VALUE_POPULATION"
+    )
+
+
+def test_section_context_ignores_percentage_sibling_when_scoping_sole_money_table() -> None:
+    borrowing = "Vay các tổ chức tín dụng khác"
+    active = _table(
+        None,
+        [
+            _row("Bằng VND", ["7", "6"]),
+            _row("Bằng ngoại tệ", ["5", "4"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    rate = _table(
+        None,
+        [_row("Tiền vay bằng VND", ["6,3", "4,1"])],
+        columns=[
+            {"header_path_exact": ["31/12/2025", "%"], "value_kind": "PERCENT"},
+            {"header_path_exact": ["31/12/2024", "%"], "value_kind": "PERCENT"},
+        ],
+        unit="%",
+    )
+    section = _section(borrowing, active, rate)
+    compiled = _interbank_funding_compiled()
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, active, compiled_specs=compiled
+    )
+    assert classification["context_roles"] == ["BORROWING"]
+    assert [(hit["row_ordinal"], hit["role"]) for hit in classification["role_hits"]] == [
+        (1, "BORROWING_VND"),
+        (2, "BORROWING_FOREIGN"),
+    ]
+
+
+def test_nested_label_only_interbank_groups_bind_their_printed_subtotals() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    deposit = "Tiền gửi của các TCTD khác"
+    demand = "Tiền gửi không kỳ hạn"
+    term = "Tiền gửi có kỳ hạn"
+    borrowing = "Vay các TCTD khác"
+    table = _table(
+        owner,
+        [
+            _row(deposit, [None, None], kind="GROUP", hierarchy=[deposit]),
+            _row(demand, [None, None], kind="GROUP", hierarchy=[deposit, demand]),
+            _row("- Bằng VND", ["5", "3"], hierarchy=[deposit, demand, "- Bằng VND"]),
+            _row(
+                "- Bằng ngoại tệ",
+                ["1", "1"],
+                hierarchy=[deposit, demand, "- Bằng ngoại tệ"],
+            ),
+            _row(None, ["6", "4"], kind="SUBTOTAL", hierarchy=[deposit, demand, None]),
+            _row(term, [None, None], kind="GROUP", hierarchy=[deposit, term]),
+            _row("- Bằng VND", ["10", "8"], hierarchy=[deposit, term, "- Bằng VND"]),
+            _row(
+                "- Bằng ngoại tệ",
+                ["2", "1"],
+                hierarchy=[deposit, term, "- Bằng ngoại tệ"],
+            ),
+            _row(None, ["12", "9"], kind="SUBTOTAL", hierarchy=[deposit, term, None]),
+            _row(
+                "Tổng tiền gửi của các TCTD khác",
+                ["18", "13"],
+                kind="TOTAL",
+                hierarchy=[deposit, "Tổng tiền gửi của các TCTD khác"],
+            ),
+            _row(borrowing, [None, None], kind="GROUP", hierarchy=[borrowing]),
+            _row("Bằng VND", ["7", "6"], hierarchy=[borrowing, "Bằng VND"]),
+            _row("Bằng ngoại tệ", ["3", "2"], hierarchy=[borrowing, "Bằng ngoại tệ"]),
+            _row(
+                "Tổng vay các TCTD khác",
+                ["10", "8"],
+                kind="TOTAL",
+                hierarchy=[borrowing, "Tổng vay các TCTD khác"],
+            ),
+            _row(
+                "Tổng tiền gửi và vay các TCTD khác",
+                ["28", "21"],
+                kind="TOTAL",
+                hierarchy=["Tổng tiền gửi và vay các TCTD khác"],
+            ),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(
+        _page(_section(owner, table))
+    )
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["DEMAND_DEPOSIT"]["values"]] == [6, 4]
+    assert [cell["coefficient"] for cell in by_role["TERM_DEPOSIT"]["values"]] == [12, 9]
+    assert [cell["coefficient"] for cell in by_role["DEPOSIT_PARENT"]["values"]] == [18, 13]
+    assert [cell["coefficient"] for cell in by_role["BORROWING"]["values"]] == [10, 8]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [28, 21]
+
+
+def test_compound_numbered_table_owner_includes_following_same_outline_branch() -> None:
+    deposit = _table(
+        "19. TIỀN GỬI VÀ VAY CÁC TCTD KHÁC\n19.1. Tiền gửi của các TCTD khác",
+        [
+            _row("Tiền gửi không kỳ hạn", ["4", "3"]),
+            _row("Tiền gửi có kỳ hạn", ["6", "5"]),
+            _row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    borrowing = _table(
+        "19.2. Vay các TCTD khác",
+        [
+            _row("Phải trả về nghiệp vụ UPAS L/C", ["5", "4"], kind="GROUP"),
+            _row(
+                "Bằng VND",
+                ["2", "1"],
+                hierarchy=["Phải trả về nghiệp vụ UPAS L/C唯Bằng VND"],
+            ),
+            _row(
+                "Bằng ngoại tệ",
+                ["3", "3"],
+                hierarchy=["Phải trả về nghiệp vụ UPAS L/C唯Bằng ngoại tệ"],
+            ),
+            _row("Vay các TCTD khác", ["7", "6"], kind="GROUP"),
+            _row("Bằng VND", ["4", "2"], hierarchy=["Vay các TCTD khác", "Bằng VND"]),
+            _row(
+                "Bằng ngoại tệ",
+                ["3", "4"],
+                hierarchy=["Vay các TCTD khác", "Bằng ngoại tệ"],
+            ),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    reset = _table(
+        "20. Chứng khoán kinh doanh",
+        [_row("Khoản mục khác", ["99", "88"])],
+    )
+    page = _page(_section("Thuyết minh", deposit, borrowing, reset))
+    _compiled_specs, cluster, candidate = _evaluate_interbank_funding(page)
+    assert cluster["status"] == READY
+    assert [
+        (region["section_id"], region["table_id"]) for region in cluster["component_regions"]
+    ] == [
+        ("s1", "t1"),
+        ("s1", "t2"),
+    ]
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["BORROWING"]["values"]] == [12, 10]
+    assert [cell["coefficient"] for cell in by_role["BORROWING_VND"]["values"]] == [6, 3]
+    assert [cell["coefficient"] for cell in by_role["BORROWING_FOREIGN"]["values"]] == [6, 7]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [22, 18]
+
+
+def test_same_outline_typed_control_narrative_does_not_cut_active_balance_table() -> None:
+    deposit = _table(
+        None,
+        [
+            _row("Tiền gửi không kỳ hạn", ["4", "3"]),
+            _row("Tiền gửi có kỳ hạn", ["6", "5"]),
+            _row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    borrowing = _table(
+        None,
+        [
+            _row("Bằng VND", ["7", "6"]),
+            _row("Bằng ngoại tệ", ["5", "4"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    rate_control = _table(
+        None,
+        [
+            _row("Đến 6 tháng", ["12", "10"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section("18. TIỀN GỬI VÀ VAY CÁC TCTD KHÁC"),
+        _section("18.1 Tiền gửi của các TCTD khác", deposit),
+        _section(
+            "18.2 Vay các TCTD khác",
+            borrowing,
+            rate_control,
+            narratives=["Mức lãi suất tiền gửi và tiền vay vào thời điểm cuối kỳ"],
+        ),
+        _section("19. TIỀN GỬI CỦA KHÁCH HÀNG"),
+    )
+    _compiled_specs, cluster, candidate = _evaluate_interbank_funding(page)
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s2", "t1"),
+        ("s3", "t1"),
+    ]
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["BORROWING"]["values"]] == [12, 10]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        22,
+        18,
+    ]
+
+
+def test_flattened_label_only_paths_use_contiguous_declared_child_graph() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    table = _table(
+        owner,
+        [
+            _row("Tiền gửi không kỳ hạn", [None, None], kind="GROUP"),
+            _row("Bằng VND", ["4", "3"], hierarchy=["Tiền gửi không kỳ hạn-Bằng VND"]),
+            _row(
+                "Bằng ngoại tệ",
+                ["1", "1"],
+                hierarchy=["Tiền gửi không kỳ hạn-Bằng ngoại tệ"],
+            ),
+            _row("Tiền gửi có kỳ hạn", [None, None], kind="GROUP"),
+            _row("Bằng VND", ["6", "5"], hierarchy=["Tiền gửi có kỳ hạn-Bằng VND"]),
+            _row(
+                "Bằng ngoại tệ",
+                ["2", "1"],
+                hierarchy=["Tiền gửi có kỳ hạn-Bằng ngoại tệ"],
+            ),
+            _row("Vay các TCTD khác", [None, None], kind="GROUP"),
+            _row("Bằng VND", ["7", "6"], hierarchy=["Vay các TCTD khác-Bằng VND"]),
+            _row(
+                "Bằng ngoại tệ",
+                ["3", "2"],
+                hierarchy=["Vay các TCTD khác-Bằng ngoại tệ"],
+            ),
+            _row(None, ["23", "18"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(
+        _page(_section(owner, table))
+    )
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["DEMAND_DEPOSIT"]["values"]] == [5, 4]
+    assert [cell["coefficient"] for cell in by_role["TERM_DEPOSIT"]["values"]] == [8, 6]
+    assert [cell["coefficient"] for cell in by_role["BORROWING"]["values"]] == [10, 8]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        23,
+        18,
+    ]
+
+
+def test_nonadditive_disclosures_do_not_enter_context_total_frontier() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    deposit = _table(
+        None,
+        [
+            _row("Tiền gửi không kỳ hạn", ["4", "3"]),
+            _row("Tiền gửi có kỳ hạn", ["6", "5"]),
+            _row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    borrowing = _table(
+        None,
+        [
+            _row("Bằng VND", ["7", "6"]),
+            _row("Trong đó:", [None, None], kind="GROUP"),
+            _row(
+                "Vay chiết khấu, tái chiết khấu",
+                ["2", "1"],
+                hierarchy=["Trong đó:", "Vay chiết khấu, tái chiết khấu"],
+            ),
+            _row("Bằng ngoại tệ", ["5", "4"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section(owner),
+        _section("8.1 Tiền gửi của các TCTD khác", deposit),
+        _section("8.2 Vay các TCTD khác", borrowing),
+    )
+    _compiled_specs, _cluster, candidate = _evaluate_interbank_funding(page)
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["BORROWING"]["values"]] == [12, 10]
+    assert [cell["coefficient"] for cell in by_role["BORROWING_VND_DISCOUNT"]["values"]] == [2, 1]
+
+
+def test_partial_top_level_component_cannot_synthesize_family_root() -> None:
+    table = _table(
+        None,
+        [
+            _row("Tiền gửi không kỳ hạn", ["4", "3"]),
+            _row("Tiền gửi có kỳ hạn", ["6", "5"]),
+            _row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    section = _section("18.1 Tiền gửi của các TCTD khác", table)
+    page = _page(section)
+    compiled = _interbank_funding_compiled()
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        page, section, table, compiled_specs=compiled
+    )
+    region = {
+        "component_roles": sorted(
+            {
+                *(hit["role"] for hit in classification["role_hits"]),
+                *classification["context_roles"],
+            }
+        ),
+        "document_id": DOCUMENT_ID,
+        "document_ordinal": 1,
+        "fragment_ordinal": 1,
+        "page_json_version_id": VERSION_ID,
+        "physical_page": 1,
+        "section_id": "s1",
+        "selected_page_ordinal": 1,
+        "source_logical_name": "fixture.pdf",
+        "source_sha256": SOURCE_SHA256,
+        "table_id": "t1",
+    }
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=[region],
+        page_json_by_version={VERSION_ID: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1([region]),
+    )
+    assert candidate["status"] == READY
+    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+        "DEMAND_DEPOSIT",
+        "DEPOSIT_PARENT",
+        "TERM_DEPOSIT",
+    }
+    assert candidate["closure_receipt"]["root_component_sum_receipts"] == []
+
+
+def test_extended_structural_borrowing_label_is_declaratively_classified() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    table = _table(
+        None,
+        [
+            _row("Tiền gửi không kỳ hạn", [None, None], kind="GROUP"),
+            _row(
+                "Bằng VND",
+                ["4", "3"],
+                hierarchy=["Tiền gửi không kỳ hạn", "Bằng VND"],
+            ),
+            _row(
+                "Bằng ngoại tệ",
+                ["1", "1"],
+                hierarchy=["Tiền gửi không kỳ hạn", "Bằng ngoại tệ"],
+            ),
+            _row("Tiền gửi có kỳ hạn", [None, None], kind="GROUP"),
+            _row(
+                "Bằng VND",
+                ["6", "5"],
+                hierarchy=["Tiền gửi có kỳ hạn", "Bằng VND"],
+            ),
+            _row(
+                "Bằng ngoại tệ",
+                ["2", "1"],
+                hierarchy=["Tiền gửi có kỳ hạn", "Bằng ngoại tệ"],
+            ),
+            _row(None, ["13", "10"], kind="SUBTOTAL", hierarchy=[None]),
+            _row("Vay các TCTD khác", [None, None], kind="GROUP"),
+            _row("Bằng VND", ["3", "2"], hierarchy=["Vay các TCTD khác", "Bằng VND"]),
+            _row("Trong đó:", [None, None], kind="GROUP"),
+            _row(
+                "Vay chiết khấu, tái chiết khấu",
+                ["1", "1"],
+                hierarchy=["Vay các TCTD khác", "Trong đó:", "Vay chiết khấu, tái chiết khấu"],
+            ),
+            _row(
+                'Vay các TCTD, tổ chức tài chính ("TCTC") khác',
+                [None, None],
+                kind="GROUP",
+            ),
+            _row(
+                "Bằng ngoại tệ",
+                ["2", "2"],
+                hierarchy=[
+                    'Vay các TCTD, tổ chức tài chính ("TCTC") khác',
+                    "Bằng ngoại tệ",
+                ],
+            ),
+            _row(None, ["5", "4"], kind="SUBTOTAL", hierarchy=[None]),
+            _row(None, ["18", "14"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    section = _section(owner, table)
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section),
+        section,
+        table,
+        compiled_specs=_interbank_funding_compiled(),
+    )
+    assert (12, "BORROWING") in [
+        (hit["row_ordinal"], hit["role"]) for hit in classification["role_hits"]
+    ]
 
 
 @pytest.mark.parametrize(

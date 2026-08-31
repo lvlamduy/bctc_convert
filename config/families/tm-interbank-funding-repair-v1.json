@@ -1,0 +1,72 @@
+{
+  "authority_kind": "PINNED_CONFIG",
+  "authority_ref": "config://family52/interbank-funding-target-observations-v1",
+  "base_corpus_manifest_index_id": "gjfccmiv1:index:61be9e5dc44a261d2dbf3f396b9624e29cb4ae591ea0a7fdb83051352e7b60e3",
+  "expected_plan_count": 3,
+  "expected_selected_page_count": 8947,
+  "expected_selected_page_frontier_sha256": "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8",
+  "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_RUNNER_CONFIG_V1",
+  "repair_source_family_run_id": "gjfafstorev1:run:5d0949687f9af0990d83a57d9dc6d9de7ee0486e17bbaa9291b3a71508af0476",
+  "source_image_resolver_implementation_path": "src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py",
+  "source_image_runtime": {
+    "mupdf_version": "1.29.0",
+    "pymupdf_version": "1.28.0"
+  },
+  "table_repair_specs": [
+    {
+      "base_page_json_version_id": "gfpstorev1:json:4b5ecb935a3196688a8c44e9ea91e3a730effdf6493ac1a42ae153a0e6f91e06",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        350,
+        1250,
+        2350,
+        2550
+      ],
+      "dash_zero_cell_ids": [
+        "r3:c1"
+      ],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t2"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:c2e0ac0c32ac253117143fdfd9fff4e39ee55571e5b6468238fe24ae9eb33fcd",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        300,
+        300,
+        2300,
+        1100
+      ],
+      "dash_zero_cell_ids": [
+        "r3:c2",
+        "r4:c1"
+      ],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_version_id": "gfpstorev1:json:05b247acdf17d0595980b729a0e9687842072464e0f8823723daa00ff84e7780",
+      "collateral_cell_ids": [],
+      "collateral_equations": [],
+      "crop_bbox_pixels_xyxy": [
+        300,
+        250,
+        2300,
+        1050
+      ],
+      "dash_zero_cell_ids": [
+        "r3:c2",
+        "r4:c2"
+      ],
+      "format_version": "GEMINI_JSON_ROLLFORWARD_TABLE_REPAIR_SPEC_V1",
+      "section_id": "s1",
+      "table_id": "t1"
+    }
+  ],
+  "writable_page_store_ref_path": "state/family52-pages.sqlite3",
+  "writable_results_database_ref_path": "state/family52-results.sqlite3"
+}

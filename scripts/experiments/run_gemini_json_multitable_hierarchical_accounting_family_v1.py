@@ -556,6 +556,20 @@ PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_HISTORICAL_ORACLES = (
         "size_bytes": 197906,
     },
 )
+PINNED_INTERBANK_FUNDING_HISTORICAL_ORACLES = (
+    {
+        "format_version": "ANNUAL_2025_INTERBANK_FUNDING_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0159-annual-2025-interbank-funding-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "0b793fb700dd82b791cb0b03214ca04223ea74eb111fbd666434ce3be8ab297a",
+        "size_bytes": 196902,
+    },
+)
+PINNED_INTERBANK_FUNDING_EFFECTIVE_PAGE_JSON_FRONTIER_SHA256 = (
+    "610b72858f2417c9da1afd7fefb02e195243639e6600d593ba8360b659475349"
+)
 PINNED_GOVERNMENT_SBV_LIABILITIES_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
         "c33d90d1ac9405426fe8e87ddfe0947f8d12a5c1f679eb4b53a3e6d58dc6b97a"
@@ -1885,10 +1899,16 @@ def _historical_oracle_refs(
         return PINNED_BANK_PLEDGED_OR_DISCOUNTED_ASSETS_HISTORICAL_ORACLES
     if family_id == "CONTINGENT_LIABILITIES_AND_COMMITMENTS":
         return PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_HISTORICAL_ORACLES
+    if family_id == "INTERBANK_FUNDING":
+        return PINNED_INTERBANK_FUNDING_HISTORICAL_ORACLES
     raise _error("multi-table hierarchical family has no pinned historical oracle profile")
 
 
-def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
+def _release_profile(
+    compiled_specs: Mapping[str, Any],
+    *,
+    selected_page_json_frontier_sha256: str | None = None,
+) -> dict[str, Any]:
     family_id = compiled_specs["topology"]["family_id"]
     if family_id == "OTHER_ASSETS":
         return {
@@ -2082,6 +2102,137 @@ def _release_profile(compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
             "query_receipt": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_QUERY_RECEIPT,
             "sweep_metrics": PINNED_CONTINGENT_LIABILITIES_AND_COMMITMENTS_RELEASE_METRICS,
         }
+    if family_id == "INTERBANK_FUNDING":
+        if (
+            selected_page_json_frontier_sha256
+            == PINNED_INTERBANK_FUNDING_EFFECTIVE_PAGE_JSON_FRONTIER_SHA256
+        ):
+            return {
+                "axis_counts": {
+                    "clusters": 140,
+                    "equations": 868,
+                    "historical_comparator": 103,
+                    "mappings": 1652,
+                },
+                "axis_sha256": {
+                    "clusters": (
+                        "66344bd3f8b65ad2ffea8deec42084114f0c68b5921a3e1e3cbdb10c4bee9f4e"
+                    ),
+                    "equations": (
+                        "a546fad63bd3ec2d7d44eeff2482a508f6adea767698104e151b2ed86707134d"
+                    ),
+                    "historical_comparator": (
+                        "cdcc8250d3812cc337da203283157f45445cf50b805b3fc26b8adc45799ccf06"
+                    ),
+                    "mappings": (
+                        "2dda5d499e20e749e5af56d476dbcebdcb251fb9995777c4aabb62e3e85f5b21"
+                    ),
+                },
+                "audit_metrics": {
+                    "equation_count": 868,
+                    "historical_comparator_exact_count": 103,
+                    "historical_disposition_exact_count": 8,
+                    "historical_mapping_exact_count": 95,
+                    "historical_mapping_record_count": 95,
+                    "mapping_count": 1652,
+                },
+                "query_receipt": {
+                    "accepted_cluster_axis_sha256": (
+                        "cef3380ba4e951cf2ef34064f56cde8832587224e7b3164a560011cf336946c7"
+                    ),
+                    "accepted_cluster_count": 140,
+                    "accepted_fragment_count": 189,
+                    "candidate_disposition_axis_sha256": (
+                        "3d8283a701d74a50de0a77796e817e69b228c53cbd08bb921e5c0b4cfb444d95"
+                    ),
+                    "candidate_disposition_count": 140,
+                    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+                    "query_policy_sha256": (
+                        "680d9a771cded4375e2e42943dbfc38b1ad1900b9c08ae20e45ff61054e5ea7b"
+                    ),
+                    "selected_document_axis_sha256": (
+                        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+                    ),
+                    "selected_document_count": 140,
+                    "selected_page_axis_sha256": (
+                        "121a738bd14104f222eff2c17b0b4101fb8303258f6763d8f308878f7ecc1c6d"
+                    ),
+                    "selected_page_count": 8947,
+                    "selected_page_json_frontier_sha256": (
+                        PINNED_INTERBANK_FUNDING_EFFECTIVE_PAGE_JSON_FRONTIER_SHA256
+                    ),
+                },
+                "selected_page_json_frontier_sha256": (
+                    PINNED_INTERBANK_FUNDING_EFFECTIVE_PAGE_JSON_FRONTIER_SHA256
+                ),
+                "sweep_metrics": {
+                    "document_count": 140,
+                    "mapping_count": 1652,
+                    "not_observed_count": 0,
+                    "ready_count": 140,
+                    "unresolved_count": 0,
+                },
+            }
+        if selected_page_json_frontier_sha256 not in {
+            None,
+            PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+        }:
+            raise _error("interbank-funding release frontier is not pinned")
+        return {
+            "axis_counts": {
+                "clusters": 137,
+                "equations": 844,
+                "historical_comparator": 103,
+                "mappings": 1613,
+            },
+            "axis_sha256": {
+                "clusters": "30d317b368849ca57042ee59412853991540fe0394f8313397261856cf084829",
+                "equations": "acb85a7f707668a752a99ce76def117eb042045a8cecb359a1c5bb929588ccea",
+                "historical_comparator": (
+                    "cdcc8250d3812cc337da203283157f45445cf50b805b3fc26b8adc45799ccf06"
+                ),
+                "mappings": "c1785a23d4bda5e05ac18ca90c46d742ad2a5b9a80b370d2662a7e25dba52353",
+            },
+            "audit_metrics": {
+                "equation_count": 844,
+                "historical_comparator_exact_count": 103,
+                "historical_disposition_exact_count": 8,
+                "historical_mapping_exact_count": 95,
+                "historical_mapping_record_count": 95,
+                "mapping_count": 1613,
+            },
+            "query_receipt": {
+                "accepted_cluster_axis_sha256": (
+                    "208ffdad4c9dcff78cd310942a527280e988b81f2a99a41bb857f7686b237fe3"
+                ),
+                "accepted_cluster_count": 140,
+                "accepted_fragment_count": 189,
+                "candidate_disposition_axis_sha256": (
+                    "c574d75f7cb00fe8be066a26d25e58f2b6e77cb8c0036c6b95b03883909babfa"
+                ),
+                "candidate_disposition_count": 140,
+                "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+                "query_policy_sha256": (
+                    "680d9a771cded4375e2e42943dbfc38b1ad1900b9c08ae20e45ff61054e5ea7b"
+                ),
+                "selected_document_axis_sha256": (
+                    "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+                ),
+                "selected_document_count": 140,
+                "selected_page_axis_sha256": (
+                    "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+                ),
+                "selected_page_count": 8947,
+                "selected_page_json_frontier_sha256": (PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256),
+            },
+            "sweep_metrics": {
+                "document_count": 140,
+                "mapping_count": 1613,
+                "not_observed_count": 0,
+                "ready_count": 137,
+                "unresolved_count": 3,
+            },
+        }
     raise _error("multi-table hierarchical family has no pinned release profile")
 
 
@@ -2272,6 +2423,26 @@ def _historical_comparator_axis(
                         historical_coefficients = [by_period_role[current_key]]
                         if comparative_key in by_period_role:
                             historical_coefficients.append(by_period_role[comparative_key])
+                    elif (
+                        oracle["format_version"]
+                        == "ANNUAL_2025_INTERBANK_FUNDING_8BANK_CODEX_VERIFIED_MAPPING_V1"
+                        and len(source_values) in {1, 2}
+                        and all(
+                            type(item) is dict
+                            and item.get("period_role") is None
+                            and item.get("axis_role") is None
+                            and type(item.get("normalized_value")) is int
+                            for item in source_values
+                        )
+                    ):
+                        # This audited oracle predates explicit period-role
+                        # fields but seals values in visible current-then-
+                        # comparative column order.  Preserve that declared
+                        # order only for its pinned format; never infer it from
+                        # values or apply it to arbitrary legacy envelopes.
+                        historical_coefficients = [
+                            item["normalized_value"] for item in source_values
+                        ]
                     elif (
                         len(decimal_by_period_role) == len(source_values)
                         and set(decimal_by_period_role) in valid_roles
@@ -2555,7 +2726,7 @@ def _historical_comparator_axis(
                         }
                     )
                 axis.append(record)
-    if len(axis) != expected_mapping_count + 16:
+    if len(axis) != expected_mapping_count + 8 * len(oracle_refs):
         raise _error("historical multi-table comparator denominator drifted")
     return axis, oracle_refs
 
@@ -2842,14 +3013,18 @@ def _assert_release_pins(
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
 ) -> None:
-    profile = _release_profile(compiled_specs)
+    selected_frontier_sha256 = canonical_json_sha256_v1(list(selected_ids))
+    profile = _release_profile(
+        compiled_specs,
+        selected_page_json_frontier_sha256=selected_frontier_sha256,
+    )
     actual = {
         "audit_metrics": audit.get("audit_metrics"),
         "axis_counts": audit.get("axis_counts"),
         "axis_sha256": audit.get("axis_sha256"),
         "corpus_manifest_index_id": index.get("corpus_manifest_index_id"),
         "query_receipt": indexed.get("query_receipt"),
-        "selected_page_json_frontier_sha256": canonical_json_sha256_v1(list(selected_ids)),
+        "selected_page_json_frontier_sha256": selected_frontier_sha256,
         "sweep_metrics": sweep.get("metrics"),
     }
     mismatches = []

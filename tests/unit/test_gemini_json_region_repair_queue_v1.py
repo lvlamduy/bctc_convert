@@ -60,6 +60,65 @@ def _reference(name: str, digit: str) -> dict:
     return {"path": name, "sha256": digit * 64, "size_bytes": 123}
 
 
+def test_stored_multitable_candidate_repair_targets_one_hashed_region_axis_component() -> None:
+    version_id = "gfpstorev1:json:" + "1" * 64
+    source_name = "HDB/2026/example.pdf"
+    source_sha256 = "2" * 64
+    status = "UNRESOLVED_GEMINI_JSON_FAMILY"
+    region_axis = [
+        {
+            "page_json_version_id": version_id,
+            "physical_page": 28,
+            "section_id": "s1",
+            "source_logical_name": source_name,
+            "source_sha256": source_sha256,
+            "table_id": "t1",
+        },
+        {
+            "page_json_version_id": version_id,
+            "physical_page": 28,
+            "section_id": "s1",
+            "source_logical_name": source_name,
+            "source_sha256": source_sha256,
+            "table_id": "t2",
+        },
+    ]
+    candidate = {
+        "closure_receipt": {
+            "query_receipt": {
+                "format_version": ("GEMINI_JSON_MULTITABLE_HIERARCHICAL_REGION_QUERY_RECEIPT_V1"),
+                "region_axis": region_axis,
+                "region_axis_sha256": canonical_json_sha256_v1(region_axis),
+            }
+        },
+        "status": status,
+    }
+    plan = {
+        "base_page_json_version_id": version_id,
+        "candidate_semantic_replay_sha256": canonical_json_sha256_v1(candidate),
+        "physical_page": 28,
+        "section_id": "s1",
+        "source_logical_name": source_name,
+        "source_sha256": source_sha256,
+        "table_id": "t2",
+    }
+    assert _stored_candidate_repair_target_replays_v1(
+        plan=plan,
+        candidate_row=(version_id, 28, "s1", "t1", status, source_name, source_sha256),
+        stored_trial={"status": status},
+        stored_candidate=candidate,
+    )
+
+    forged = deepcopy(candidate)
+    forged["closure_receipt"]["query_receipt"]["region_axis"][1]["table_id"] = "t3"
+    assert not _stored_candidate_repair_target_replays_v1(
+        plan=plan,
+        candidate_row=(version_id, 28, "s1", "t1", status, source_name, source_sha256),
+        stored_trial={"status": status},
+        stored_candidate=forged,
+    )
+
+
 def test_invalid_money_cell_becomes_database_pending_region_job(tmp_path) -> None:
     topology, evaluation, schema = _specs()
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)

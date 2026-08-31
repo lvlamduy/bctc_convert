@@ -1,0 +1,433 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tiền gửi của các TCTD khác",
+            "Tiền gửi của TCTD khác",
+            "Tiền gửi của các tổ chức tín dụng khác",
+            "Tiền, vàng gửi của các TCTD khác",
+            "Tiền, vàng gửi của các tổ chức tín dụng khác",
+            "Tiền gửi của các TCTC, TCTD khác",
+            "Tiền gửi của các tổ chức tài chính, tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPOSIT_PARENT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tiền gửi không kỳ hạn",
+            "Tiền, vàng gửi không kỳ hạn",
+            "Tiền gửi không kỳ hạn KKH",
+            "Tiền gửi KKH",
+            "Tiền gửi thanh toán của các TCTD khác",
+            "Tiền gửi không kỳ hạn của các TCTD khác",
+            "Tiền gửi không kỳ hạn của các tổ chức tín dụng khác",
+            "Tiền, vàng gửi không kỳ hạn của các TCTD khác",
+            "Tiền, vàng gửi không kỳ hạn của các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEMAND_DEPOSIT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng VND", "Bằng Đồng Việt Nam", "Bằng tiền đồng", "Bằng tiền VNĐ"],
+          "within_role": "DEMAND_DEPOSIT"
+        },
+        {
+          "aliases": [
+            "Tiền gửi không kỳ hạn bằng VND",
+            "Tiền gửi không kỳ hạn bằng Đồng Việt Nam",
+            "Tiền gửi KKH bằng VND",
+            "Tiền gửi thanh toán của các TCTD khác bằng VND"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEMAND_DEPOSIT_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng ngoại tệ", "Bằng ngoại hối", "Bằng vàng và ngoại tệ"],
+          "within_role": "DEMAND_DEPOSIT"
+        },
+        {
+          "aliases": [
+            "Tiền gửi không kỳ hạn bằng ngoại tệ",
+            "Tiền gửi không kỳ hạn bằng vàng, ngoại tệ",
+            "Tiền gửi KKH bằng ngoại tệ",
+            "Tiền gửi thanh toán của các TCTD khác bằng ngoại tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEMAND_DEPOSIT_FOREIGN",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tiền gửi có kỳ hạn",
+            "Tiền, vàng gửi có kỳ hạn",
+            "Tiền gửi có kỳ hạn CKH",
+            "Tiền gửi CKH",
+            "Tiền gửi có kỳ hạn của các TCTD khác",
+            "Tiền gửi có kỳ hạn của các tổ chức tín dụng khác",
+            "Tiền, vàng gửi có kỳ hạn của các TCTD khác",
+            "Tiền, vàng gửi có kỳ hạn của các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TERM_DEPOSIT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng VND", "Bằng Đồng Việt Nam", "Bằng tiền đồng", "Bằng tiền VNĐ"],
+          "within_role": "TERM_DEPOSIT"
+        },
+        {
+          "aliases": [
+            "Tiền gửi có kỳ hạn bằng VND",
+            "Tiền gửi có kỳ hạn bằng Đồng Việt Nam",
+            "Tiền gửi CKH bằng VND",
+            "Tiền gửi có kỳ hạn của các TCTD khác bằng VND",
+            "Tiền gửi có kỳ hạn của các TCTC, TCTD khác bằng VND"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TERM_DEPOSIT_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng ngoại tệ", "Bằng ngoại hối", "Bằng vàng và ngoại tệ"],
+          "within_role": "TERM_DEPOSIT"
+        },
+        {
+          "aliases": [
+            "Tiền gửi có kỳ hạn bằng ngoại tệ",
+            "Tiền gửi có kỳ hạn bằng vàng, ngoại tệ",
+            "Tiền gửi CKH bằng ngoại tệ",
+            "Tiền gửi có kỳ hạn của các TCTD khác bằng ngoại tệ",
+            "Tiền gửi có kỳ hạn của các TCTC, TCTD khác bằng ngoại tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TERM_DEPOSIT_FOREIGN",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vay các TCTD khác",
+            "Tiền vay các TCTD khác",
+            "Vay các tổ chức tín dụng khác",
+            "Tiền vay các tổ chức tín dụng khác",
+            "Vay các TCTD, TCTC khác",
+            "Vay các TCTC, TCTD khác",
+            "Vay các TCTD, tổ chức tài chính (\"TCTC\") khác",
+            "Vay các tổ chức tín dụng, tổ chức tài chính khác",
+            "Vay các tổ chức tài chính, tổ chức tín dụng khác",
+            "Vay các Tổ chức tài chính (TCTC), Tổ chức tín dụng (TCTD) khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng VND", "Bằng Đồng Việt Nam", "Bằng tiền đồng", "Bằng tiền VNĐ"],
+          "within_role": "BORROWING"
+        },
+        {
+          "aliases": [
+            "Vay bằng VND",
+            "Tiền vay bằng VND",
+            "Tiền vay các TCTD khác bằng VND",
+            "Tiền vay các tổ chức tín dụng khác bằng VND",
+            "Tiền vay các TCTC, TCTD khác bằng VND"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_VND",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng ngoại tệ", "Bằng ngoại hối", "Bằng vàng và ngoại tệ"],
+          "within_role": "BORROWING"
+        },
+        {
+          "aliases": [
+            "Vay bằng ngoại tệ",
+            "Tiền vay bằng ngoại tệ",
+            "Tiền vay các TCTD khác bằng ngoại tệ",
+            "Tiền vay các tổ chức tín dụng khác bằng ngoại tệ",
+            "Tiền vay các TCTC, TCTD khác bằng ngoại tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_FOREIGN",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vay chiết khấu, tái chiết khấu",
+            "Trong đó: vay chiết khấu, tái chiết khấu",
+            "Vay chiết khấu, tái chiết khấu giấy tờ có giá",
+            "Vay chiết khấu giấy tờ có giá",
+            "Trong đó: Vay chiết khấu giấy tờ có giá"
+          ],
+          "within_role": "BORROWING_VND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_VND_DISCOUNT",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vay cầm cố, thế chấp",
+            "Vay cầm cố, thế chấp giấy tờ có giá",
+            "Vay cầm cố giấy tờ có giá",
+            "Vay cầm cố GTCG",
+            "Vay cầm cố"
+          ],
+          "within_role": "BORROWING_VND"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_VND_COLLATERAL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vay chiết khấu, tái chiết khấu",
+            "Trong đó: vay chiết khấu, tái chiết khấu",
+            "Vay chiết khấu, tái chiết khấu giấy tờ có giá",
+            "Vay chiết khấu giấy tờ có giá",
+            "Trong đó: Vay chiết khấu giấy tờ có giá"
+          ],
+          "within_role": "BORROWING_FOREIGN"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_FOREIGN_DISCOUNT_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vay cầm cố, thế chấp",
+            "Vay cầm cố, thế chấp giấy tờ có giá",
+            "Vay cầm cố giấy tờ có giá",
+            "Vay cầm cố GTCG",
+            "Vay cầm cố"
+          ],
+          "within_role": "BORROWING_FOREIGN"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_FOREIGN_COLLATERAL_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Vốn vay từ Công ty Tài chính Quốc tế IFC",
+            "Vốn vay từ Công ty Tài chính Quốc tế",
+            "Vốn vay từ IFC",
+            "Trong đó: vốn vay từ Công ty Tài chính Quốc tế IFC",
+            "Trong đó: vốn vay từ Công ty Tài chính Quốc tế"
+          ],
+          "within_role": "BORROWING_FOREIGN"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_IFC_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Phải trả về nghiệp vụ UPAS LC",
+            "Phải trả về nghiệp vụ UPAS L/C",
+            "Phải trả nghiệp vụ UPAS LC",
+            "Phải trả nghiệp vụ UPAS L/C",
+            "Phải trả về nghiệp vụ thư tín dụng trả chậm",
+            "Phải trả nghiệp vụ thư tín dụng trả chậm"
+          ],
+          "within_role": "BORROWING"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_UPAS_DETAIL",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng VND", "Bằng Đồng Việt Nam", "Bằng tiền đồng", "Bằng tiền VNĐ"],
+          "within_role": "BORROWING_UPAS_DETAIL"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_UPAS_VND_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Bằng ngoại tệ", "Bằng ngoại hối", "Bằng vàng và ngoại tệ"],
+          "within_role": "BORROWING_UPAS_DETAIL"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_UPAS_FOREIGN_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Vay theo hồ sơ tín dụng", "Vay khác"], "within_role": "BORROWING"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "BORROWING_OTHER_DETAIL",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng tiền gửi của các TCTD khác",
+            "Tổng tiền gửi của các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_DEPOSIT_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng vay các TCTD khác",
+            "Tổng vay các tổ chức tín dụng khác",
+            "Tổng tiền vay các TCTD khác",
+            "Tổng tiền vay các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_BORROWING_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng tiền gửi và vay các TCTD khác",
+            "Tổng tiền gửi và vay các tổ chức tín dụng khác",
+            "Tổng tiền gửi và vay các tổ chức tài chính, tổ chức tín dụng khác",
+            "Tổng tiền gửi và vay các tổ chức tín dụng, tổ chức tài chính khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_FAMILY_TOTAL",
+      "role_kind": "TOTAL"
+    }
+  ],
+  "family_id": "INTERBANK_FUNDING",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tiền gửi và cho vay các TCTD khác",
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền, vàng gửi tại và cho vay các TCTD khác",
+    "Tiền gửi của khách hàng",
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Rủi ro thanh khoản",
+    "Rủi ro tiền tệ",
+    "Mức lãi suất tiền gửi và tiền vay"
+  ],
+  "limits": {"max_cluster_span_lines": 96, "max_continuation_pages": 1, "max_label_line_span": 4},
+  "parent": {
+    "aliases": [
+      "Tiền gửi và vay các TCTD khác",
+      "Tiền, vàng gửi và vay các TCTD khác",
+      "Tiền gửi và vay các tổ chức tín dụng khác",
+      "Tiền gửi của và vay các tổ chức tín dụng khác",
+      "Tiền, vàng gửi và vay các tổ chức tín dụng khác",
+      "Tiền gửi và vay các TCTD, TCTC khác",
+      "Tiền gửi và vay các TCTC, TCTD khác",
+      "Tiền gửi và vay các tổ chức tín dụng, tổ chức tài chính khác",
+      "Tiền gửi và vay các tổ chức tài chính, tổ chức tín dụng khác"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "INTERBANK_FUNDING"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["DEMAND_DEPOSIT", "TERM_DEPOSIT", "BORROWING"],
+    ["DEPOSIT_PARENT", "BORROWING"]
+  ],
+  "structural_reset_aliases": [
+    "Tiền gửi và cho vay các TCTD khác",
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền gửi của khách hàng",
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Mức lãi suất tiền gửi và tiền vay",
+    "Phân tích chất lượng",
+    "Rủi ro thanh khoản",
+    "Rủi ro tiền tệ",
+    "Phát hành giấy tờ có giá"
+  ]
+}

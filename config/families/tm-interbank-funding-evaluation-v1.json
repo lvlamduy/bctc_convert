@@ -1,0 +1,117 @@
+{
+  "aggregate_duplicate_roles": [
+    "DEPOSIT_PARENT",
+    "DEMAND_DEPOSIT",
+    "DEMAND_DEPOSIT_VND",
+    "DEMAND_DEPOSIT_FOREIGN",
+    "TERM_DEPOSIT",
+    "TERM_DEPOSIT_VND",
+    "TERM_DEPOSIT_FOREIGN",
+    "BORROWING",
+    "BORROWING_VND",
+    "BORROWING_FOREIGN",
+    "BORROWING_VND_DISCOUNT",
+    "BORROWING_VND_COLLATERAL"
+  ],
+  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "context_total_mapping_roles": ["DEPOSIT_PARENT", "DEMAND_DEPOSIT", "TERM_DEPOSIT", "BORROWING"],
+  "corroboration_pairs": [],
+  "declared_result_role_policy": "SOURCE_ROW_KIND_OR_DECLARED_SUBTOTAL_TOTAL_ROLE",
+  "derived_role_equations": [
+    {"component_roles": ["DEMAND_DEPOSIT", "TERM_DEPOSIT"], "result_role": "DEPOSIT_PARENT"}
+  ],
+  "detail_context_roles": [],
+  "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_ACTIVE_FAMILY_POPULATION",
+  "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "family_id": "INTERBANK_FUNDING",
+  "family_root_population_policy": "WHOLE_TABLE",
+  "family_root_requirement": "OPTIONAL",
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
+  "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "mapped_source_subtotal_policy": "ALLOW_SOURCE_VISIBLE_DECLARED_ROLE_WITH_NONADDITIVE_CHILDREN_OR_ROOT_COMPONENT_EQUATION",
+  "minimum_declared_detail_role_count": 3,
+  "minimum_source_visible_root_component_count": 2,
+  "money_unit_bindings": [
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+    {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
+    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+  ],
+  "owner_complete_population_policy": "DECLARED_COMPONENTS_ONLY",
+  "owner_match_policy": "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX",
+  "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+  "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "query_owner_aliases": [
+    "Tiền gửi và vay các TCTD khác",
+    "Tiền, vàng gửi và vay các TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi của và vay các tổ chức tín dụng khác",
+    "Tiền, vàng gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các TCTD, TCTC khác",
+    "Tiền gửi và vay các TCTC, TCTD khác",
+    "Tiền gửi và vay các tổ chức tín dụng, tổ chức tài chính khác",
+    "Tiền gửi và vay các tổ chức tài chính, tổ chức tín dụng khác"
+  ],
+  "root_component_equation_policy": "DECLARED_DIRECT_SUM",
+  "root_component_roles": ["DEPOSIT_PARENT", "BORROWING"],
+  "root_only_source_result_policy": "REQUIRE_MINIMUM_DECLARED_COMPONENTS",
+  "row_population_context_policy": "AT_LEAST_TWO_DECLARED_CHILD_ROLES",
+  "role_unit_overrides": [],
+  "source_reference_identity_policy": "EXACT_UNIQUE_SOURCE_IDENTITIES",
+  "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
+  "structural_parent_derivation_policy": "DECLARED_CONTEXT_CHILD_FRONTIER",
+  "supplemental_owner_aliases": [],
+  "table_context_roles": ["DEPOSIT_PARENT", "DEMAND_DEPOSIT", "TERM_DEPOSIT", "BORROWING"],
+  "typed_control_exclusions": [
+    {
+      "aliases": ["Mức lãi suất tiền gửi và tiền vay", "Mức lãi suất tiền gửi", "Mức lãi suất vay"],
+      "disposition": "INTEREST_RATE_SCHEDULE_OUTSIDE_FAMILY_VALUE_POPULATION",
+      "surface_kinds": ["TABLE_TITLE"]
+    },
+    {
+      "aliases": [
+        "theo kỳ hạn gốc",
+        "theo thời hạn gốc",
+        "by original maturity",
+        "Đến 6 tháng",
+        "Đến 06 tháng",
+        "Từ trên 6 tháng đến 12 tháng",
+        "Từ trên 06 tháng đến 12 tháng",
+        "Từ trên 12 tháng đến 5 năm",
+        "Từ trên 5 năm trở lên",
+        "Trên 5 năm"
+      ],
+      "disposition": "BORROWING_ORIGINAL_MATURITY_SCHEDULE_OUTSIDE_FAMILY_VALUE_POPULATION",
+      "surface_kinds": ["ROW_LABEL_POPULATION", "TABLE_TITLE"]
+    }
+  ],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW",
+  "validation_only_roles": [
+    "BORROWING_IFC_DETAIL",
+    "BORROWING_UPAS_DETAIL",
+    "BORROWING_UPAS_VND_DETAIL",
+    "BORROWING_UPAS_FOREIGN_DETAIL",
+    "BORROWING_OTHER_DETAIL",
+    "BORROWING_FOREIGN_DISCOUNT_DETAIL",
+    "BORROWING_FOREIGN_COLLATERAL_DETAIL",
+    "EXPLICIT_DEPOSIT_TOTAL",
+    "EXPLICIT_BORROWING_TOTAL",
+    "EXPLICIT_FAMILY_TOTAL"
+  ],
+  "validation_role_leaf_projections": [
+    {
+      "source_role": "BORROWING_UPAS_VND_DETAIL",
+      "target_role": "BORROWING_VND"
+    },
+    {
+      "source_role": "BORROWING_UPAS_FOREIGN_DETAIL",
+      "target_role": "BORROWING_FOREIGN"
+    }
+  ]
+}
