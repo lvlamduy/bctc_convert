@@ -23,9 +23,9 @@ older queue priorities where they conflict.
   `google-vertex/global/flex`, service tier `flex`; direct Google và mọi
   provider/model fallback đều bị khóa. Runner dừng trước request đầu tiên nếu
   paid frontier chứa một ngân hàng cũ hoặc route/provider/tier bị thay đổi.
-- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Chưa khởi
-  chạy API ở checkpoint này; cần hoàn tất cost/disk/S3 staging gate trước lần
-  gọi đầu tiên.
+- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Paid run đã
+  bắt đầu sau khi cost/disk/S3 staging gate đạt yêu cầu; runner resume theo
+  từng page và không gửi lại page đã có extraction hợp lệ.
 - Theo chi phí OpenRouter Vertex Flex đã đo trên chính corpus cũ, paid frontier
   15.968 trang có ước tính cơ sở khoảng **28,8 USD**; ngân sách vận hành an toàn
   là **32–36 USD** để bao gồm retry có receipt. Với 20 worker và độ trễ lịch sử,
@@ -36,6 +36,17 @@ older queue priorities where they conflict.
   universe/plan/matrix đã được backup và restore-test thành công tại S3 child
   checkpoint `20260901T151341Z-27-bank-2025-current-vertex-flex-frontier-fe3f3867f955`;
   nguồn cha vẫn là snapshot dự án hiện hành, không thay đổi chính sách backup.
+- Paid-run checkpoint đầu tiên đã được snapshot bằng SQLite backup nhất quán và
+  restore-test S3 thành công. Snapshot
+  `20260901T160618Z-27-bank-2025-current-vertex-flex-paid-checkpoint-001-29efcdf778c7`
+  chứa 1.401 file / 14.470.152 byte; manifest
+  `4e38fa14a5f4e06811ca7fd80d51387589445234bba037980d389911ed7dc9ba`
+  và run record
+  `f45e0910a55a0d42177876cbbb3074d52354f871a472ffbeca787c53dd1fbc12`
+  đều đã tải ngược và kiểm byte/hash. Snapshot ghi nhận 253 page extraction hợp
+  lệ, chi phí 0,914059875 USD, 5 PDF terminal `FAILED` có frontier page lỗi
+  riêng, 1 PDF đang `RUNNING` và 273 PDF chưa bắt đầu; đây là checkpoint giữa
+  run, không phải kết quả corpus cuối.
 
 ## Checkpoint tổng hợp family dễ đọc — 2026-09-01
 
