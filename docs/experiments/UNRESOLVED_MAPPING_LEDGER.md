@@ -1,6 +1,12 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-24 (UTC)
+Updated: 2026-09-01 (UTC)
+
+> Bản kiểm tra PDF dễ đọc, gồm đính chính ID 612, 618/619/621/622,
+> 775/776/780/782, tiền gửi, TSCĐ và giấy tờ có giá:
+> [`UNRESOLVED_MAPPING_LEDGER_READABLE.md`](UNRESOLVED_MAPPING_LEDGER_READABLE.md).
+> Các dòng lịch sử trong file này vẫn được giữ để truy vết; chúng không phủ định
+> một mapping hiện hành đã được xác thực bằng source ref.
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -30,6 +36,12 @@ Family 3**; that outside denominator is **134 annual-2025 + 71
 historical/current**. This replaces the stale 143/101 summary, which omitted
 E-0158/E-0159/E-0161 and historical/current OPEN rows. Bank/report/page fields
 are evidence locators only, never matching rules.
+
+Family54 bổ sung bên dưới một inventory riêng gồm các PDF `READY` có
+`SOURCE_ONLY`. Inventory này không cộng thêm vào canonical OPEN vì nó mở rộng
+các schema decision E-0161 đã có và ghi các metric ngoài topology, chứ không
+phải terminal unresolved document. `SOURCE_ONLY` không đồng nghĩa với
+`UNRESOLVED`, và 95 PDF `NOT_OBSERVED` cũng không phải schema gap.
 
 <a id="canonical-open-source-rows"></a>
 
@@ -3134,7 +3146,11 @@ Annual-2025 resolving result: E-0120
 
 ## E-0161 — annual-2025 `Báo cáo bộ phận hợp nhất`
 
-- Review status: `OPEN_SOURCE_VARIANTS_WITH_SUPPORTED_SUBSET_VERIFIED`.
+- Review status:
+  `SUPERSEDED_AS_EXECUTION_STATUS_RETAINED_AS_SCHEMA_DECISION_QUEUE`.
+  Các dòng `ASEG-*` là baseline annual: chúng không còn là terminal unresolved
+  document, nhưng semantic/schema decision chưa được phê duyệt vẫn ở OPEN.
+  Inventory 39 PDF hiện hành bên dưới ghi nơi chúng còn xuất hiện.
 - Whole-PDF scan tìm đúng một vùng báo cáo bộ phận trong cả tám BCTC. Phần
   schema hỗ trợ đã được xác minh qua 73 binding cấu trúc, 208 mapping số và
   43 phương trình; VPB không có nhánh địa lý chi tiết, HDB/VIB không có nhánh
@@ -3167,6 +3183,83 @@ Annual-2025 resolving result: E-0120
 | ASEG-015 | BID | 37 | Cho thuê tài chính / Chứng khoán / Khác | Các trục nguồn không đồng nhất với các trục business hiện có. |
 | ASEG-016 | BID | 38 | Trong nước / Nước ngoài | Không tương đương với ba trục Bắc/Trung/Nam của schema. |
 | ASEG-017 | VIB | 61 | Tài sản cố định — Miền Trung | Ô nguồn nhìn thấy là trống, không phải dấu `-` hay số 0. |
+
+## Family 54 current corpus — consolidated segment report (`CONSOLIDATED_SEGMENT_REPORT`)
+
+Current OFFICIAL exact-replay result:
+`gjfafstorev1:run:5f0f1eefb90b0a3825db6f138ac859f7d75ed7ce2e029e1cfbb23a37f9ba4a6b`
+from sweep
+`gjfafsv1:sweep:f64f58eb3c277afd6a587cfda71b53e81c8db4bf14ff03a46174eacf56d8ab2f`.
+
+- Census: 140 PDF, `READY=45`, `NOT_OBSERVED=95`, `UNRESOLVED=0`;
+  1.311 mapping group/2.283 mapping value/1.578 phương trình. Family54 không
+  có terminal unresolved document.
+- 39 PDF READY vẫn có 6.860 ô `SOURCE_ONLY`: 4.708 ô chỉ ngoài scope theo
+  metric, 304 ô chỉ ngoài schema theo axis và 1.848 ô ngoài cả hai chiều,
+  tương ứng 1.149 source-row instance và 132 source-column instance.
+- Sáu PDF READY không có source-only là MBB 2025 quý 1/quý 2/quý 3/quý 4 và
+  MBB 2026 quý 1/quý 2.
+- 95 PDF `NOT_OBSERVED` gồm ACB 15, BID 15, CTG 15, HDB 14, MBB 9, VCB 9,
+  VIB 9 và VPB 9. Đây là báo cáo công ty mẹ/riêng lẻ hoặc PDF không có
+  semantic anchor của family, không phải thiếu khoản mục schema.
+
+Mã nguyên nhân: `AXIS_SCHEMA_GAP` là cột bộ phận không có RNID đồng nghĩa
+chính xác; `AXIS_AGGREGATION_NOT_AUTHENTICATED` là nguồn tách các trục nhưng
+schema chỉ có trục gộp; `METRIC_OUTSIDE_FAMILY54_TOPOLOGY` là dòng không thuộc
+sáu metric `ASSETS`, `LIABILITIES`, `FIXED_ASSETS`, `REVENUE`, `EXPENSE`,
+`PROFIT_BEFORE_TAX`; `SOURCE_BLANK_NON_MAPPING` là blank thật;
+`INVALID_MONEY_SOURCE_NON_TARGET` là text tiền malformed trên metric ngoài
+scope. Metric ngoài Family54 có thể đã thuộc family schema khác, nên không được
+kết luận chung là schema toàn hệ thống thiếu concept.
+
+| Ord | Bank/năm/PDF | Trang | Axis chưa map | Metric ngoài topology (row instance) | Ô source-only | Ghi chú |
+| ---: | --- | --- | --- | ---: | ---: | --- |
+| 7 | ACB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 95–99 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | schema gap/gộp chưa xác thực; 10 blank |
+| 8 | ACB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 91–95 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | cùng quyết định; 8 blank |
+| 17 | ACB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 90–94 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | cùng quyết định; 43 blank |
+| 25 | BID/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 37 | Cho thuê tài chính; Chứng khoán; Khác | 20 | 149 | `AXIS_SCHEMA_GAP`; 19 blank |
+| 40 | CTG/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 82–84 | Dịch vụ tài chính phi ngân hàng; Khác | 44 | 244 | `AXIS_SCHEMA_GAP`; 20 blank |
+| 41 | CTG/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 76–78 | Dịch vụ tài chính phi ngân hàng; Khác | 40 | 224 | `AXIS_SCHEMA_GAP`; 6 blank |
+| 50 | CTG/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 49–50 | Dịch vụ tài chính phi ngân hàng; Khác | 20 | 112 | `AXIS_SCHEMA_GAP` |
+| 59 | HDB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 61 | Nước ngoài | 8 | 50 | `AXIS_SCHEMA_GAP`; 11 blank |
+| 60 | HDB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 55 | Nước ngoài | 8 | 50 | `AXIS_SCHEMA_GAP` |
+| 75 | MBB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 83–90 | Nước ngoài | 52 | 324 | `AXIS_SCHEMA_GAP` |
+| 76 | MBB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 80–87 | Nước ngoài | 54 | 336 | `AXIS_SCHEMA_GAP` |
+| 84 | MBB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 83–90 | Nước ngoài | 53 | 330 | `AXIS_SCHEMA_GAP`; 2 blank |
+| 93 | VCB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 71–72 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 94 | VCB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 51–52 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 95 | VCB/2025/`BCTC Hợp nhất quý 1 năm 2025.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 96 | VCB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 97 | VCB/2025/`BCTC Hợp nhất quý 3 năm 2025.pdf` | 41–42 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP`; 1 blank |
+| 98 | VCB/2025/`BCTC Hợp nhất quý 4 năm 2025.pdf` | 58–59 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 102 | VCB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 55–56 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 103 | VCB/2026/`BCTC Hợp nhất quý 1 năm 2026.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 38 | 233 | `AXIS_SCHEMA_GAP` |
+| 104 | VCB/2026/`BCTC Hợp nhất quý 2 năm 2026.pdf` | 42–43 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP`; 1 blank |
+| 111 | VIB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 61–62 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 112 | VIB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 60–61 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 113 | VIB/2025/`BCTC Hợp nhất Soát xét 9 tháng đầu năm 2025.pdf` | 59–60 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 114 | VIB/2025/`BCTC Hợp nhất Soát xét quý 1 năm 2025.pdf` | 61–62 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 115 | VIB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 56–57 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 116 | VIB/2025/`BCTC Hợp nhất quý 4 năm 2025.pdf` | 57–58 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 120 | VIB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 58–59 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 121 | VIB/2026/`BCTC Hợp nhất Soát xét quý 1 năm 2026.pdf` | 58–59 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 122 | VIB/2026/`BCTC Hợp nhất quý 2 năm 2026.pdf` | 55–56 | Không có | 26 | 104 | chỉ metric ngoài topology |
+| 123 | VPB/2025/`1-bctc-hop-nhat.pdf` | 92 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 129 | VPB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 96 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 130 | VPB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 100 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP`; 16 blank |
+| 131 | VPB/2025/`BCTC Hợp nhất quý 1 năm 2025.pdf` | 92 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | 2 ô `-"` invalid, ngoài metric target |
+| 132 | VPB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 90 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 133 | VPB/2025/`Bctc-hop-nhat-1901.pdf` | 90 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 135 | VPB/2026/`1.-BCTC-hop-nhat.pdf` | 86 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 137 | VPB/2026/`3-bctc-hop-nhat-ban-tra-cuu.pdf` | 88 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 140 | VPB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 102–105 | Hoạt động kinh doanh chứng khoán; Hoạt động kinh doanh khác | 26 | 172 | `AXIS_SCHEMA_GAP` |
+
+Tất cả 39 PDF đồng thời có `METRIC_OUTSIDE_FAMILY54_TOPOLOGY`. Có 76 nhãn
+normalized/125 cách viết exact, chủ yếu là thu nhập/chi phí lãi, dịch vụ và
+hoạt động khác, dự phòng, thuế, lợi nhuận sau thuế, tiền mặt/tài sản khác/nợ
+nội bộ và doanh thu/chi phí nội bộ. Label exact, raw cell, period, unit và state
+nằm trong `sweep.audit.json -> axes.source_only_cells`; muốn promote phải thêm
+RNID/semantic binding rồi replay, không map theo tên gần nhất.
 
 ## Append policy
 

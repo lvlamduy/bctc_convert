@@ -1,10 +1,32 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-23T14:55:26Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-09-01 (human review and schema-alias checkpoint; older formal
+artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## 2026-09-01 human review/schema checkpoint
+
+- The Flask review application is live on port 8000 and now follows exact
+  mapping source receipts across pages/tables/rows. Aggregate mappings, fixed-
+  asset total-column mappings and corroborating presentations are no longer
+  mislabeled as visible-but-unmapped. Missing display headers are recovered
+  from the exact Gemini source columns.
+- The full 140-PDF × eight-bank review confirms existing technical mappings for
+  provision movements, savings/escrow deposits, tangible/intangible fixed
+  assets, investment property and issued valuable papers. Readable details are
+  in `docs/experiments/COMPLETED_TM_FAMILIES_READABLE.md`.
+- Tracked schema policy now binds trading-security price-decrease provision to
+  RNID 612 and recognizes the exact loan-enterprise aliases directed by the
+  user: combined company row 775, cooperative 776, individual 780 and other
+  subjects 782. The review UI exposes the persisted-run delta explicitly:
+  29 provision rows, 28 listing-status rows in seven PDFs, and 31 enterprise-
+  subject rows in thirteen PDFs require a new authenticated family replay.
+- No historical READY/NOT_OBSERVED/UNRESOLVED count was overwritten without a
+  replay. Current-vs-persisted distinctions and the reason for each are recorded
+  in `docs/experiments/UNRESOLVED_MAPPING_LEDGER_READABLE.md`.
 
 ## Current family-first expansion checkpoint
 

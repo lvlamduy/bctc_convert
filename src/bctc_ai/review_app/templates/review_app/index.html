@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BCTC Review Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='review_app/review.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">B</div>
+      <div>
+        <p class="eyebrow">BCTC AI · REVIEW WORKSPACE</p>
+        <h1>Đối chiếu Gemini với schema</h1>
+      </div>
+      <div class="connection" id="connection-state">
+        <span class="connection-dot"></span>
+        <span>Đang kiểm tra dữ liệu</span>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <aside class="sidebar">
+        <section class="sidebar-section family-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BƯỚC 1</p>
+              <h2>Chọn family</h2>
+            </div>
+            <span class="count-badge" id="family-count">—</span>
+          </div>
+          <label class="search-control">
+            <span class="sr-only">Tìm family</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+            <input id="family-search" type="search" placeholder="Tìm family..." autocomplete="off">
+          </label>
+          <div class="family-list" id="family-list" aria-live="polite"></div>
+        </section>
+
+        <section class="sidebar-section filters-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BƯỚC 2</p>
+              <h2>Lọc báo cáo</h2>
+            </div>
+            <button class="text-button" id="clear-filters" type="button">Xóa lọc</button>
+          </div>
+          <div class="filter-grid">
+            <label>Ngân hàng<select id="filter-bank"><option value="">Tất cả</option></select></label>
+            <label>Năm<select id="filter-year"><option value="">Tất cả</option></select></label>
+            <label>Kỳ<select id="filter-period"><option value="">Tất cả</option></select></label>
+            <label>Loại báo cáo<select id="filter-scope"><option value="">Tất cả</option></select></label>
+            <label>Kiểm toán<select id="filter-assurance"><option value="">Tất cả</option></select></label>
+            <label>Trạng thái
+              <select id="filter-status">
+                <option value="">Tất cả</option>
+                <option value="READY">Đã map</option>
+                <option value="UNRESOLVED">Cần kiểm tra</option>
+                <option value="NOT_OBSERVED">Không xuất hiện</option>
+              </select>
+            </label>
+          </div>
+          <label class="search-control document-search">
+            <span class="sr-only">Tìm PDF</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+            <input id="document-search" type="search" placeholder="Tìm tên file PDF..." autocomplete="off">
+          </label>
+        </section>
+
+        <section class="sidebar-section documents-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BƯỚC 3</p>
+              <h2>Chọn PDF</h2>
+            </div>
+            <span class="count-badge" id="document-count">—</span>
+          </div>
+          <div class="document-list" id="document-list" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <section class="workspace" id="workspace">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-illustration" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <p class="eyebrow">SẴN SÀNG ĐỐI CHIẾU</p>
+          <h2>Chọn một PDF để bắt đầu</h2>
+          <p>Ảnh nguồn, bảng Gemini và kết quả map schema sẽ được đặt cạnh nhau để kiểm tra từng dòng.</p>
+        </div>
+
+        <div class="review-view is-hidden" id="review-view">
+          <section class="document-header">
+            <div class="document-title-block">
+              <div class="header-tags" id="document-tags"></div>
+              <h2 id="document-title">—</h2>
+              <p id="document-path">—</p>
+            </div>
+            <div class="document-metrics">
+              <div><span>Family</span><strong id="metric-family">—</strong></div>
+              <div><span>Mapping</span><strong id="metric-mapping">—</strong></div>
+              <div><span>Trang liên quan</span><strong id="metric-pages">—</strong></div>
+            </div>
+          </section>
+
+          <section class="notice is-hidden" id="review-notice"></section>
+
+          <nav class="page-tabs" id="page-tabs" aria-label="Các trang PDF liên quan"></nav>
+
+          <section class="comparison-grid">
+            <article class="review-panel pdf-panel">
+              <header class="panel-header">
+                <div><span class="panel-number">01</span><h3>Trang PDF gốc</h3></div>
+                <div class="panel-actions">
+                  <button type="button" id="zoom-out" title="Thu nhỏ">−</button>
+                  <span id="zoom-label">100%</span>
+                  <button type="button" id="zoom-in" title="Phóng to">+</button>
+                </div>
+              </header>
+              <div class="pdf-canvas" id="pdf-canvas">
+                <span class="pan-hint">Giữ chuột và kéo để di chuyển trang</span>
+                <img id="page-image" alt="Ảnh trang PDF đang đối chiếu">
+                <div class="image-placeholder is-hidden" id="image-placeholder">
+                  <strong>Chưa có ảnh trang</strong>
+                  <span>Đặt biến <code>BCTC_PDF_ROOT</code> tới thư mục chứa PDF để bật chế độ xem ảnh.</span>
+                </div>
+              </div>
+            </article>
+
+            <div class="resize-handle" data-resize-handle="0" role="separator" aria-label="Kéo để đổi độ rộng phần PDF" title="Kéo trái/phải để đổi độ rộng; nhấp đúp để đặt lại">
+              <span></span>
+            </div>
+
+            <article class="review-panel gemini-panel">
+              <header class="panel-header">
+                <div><span class="panel-number">02</span><h3>Kết quả Gemini</h3></div>
+                <span class="panel-meta" id="gemini-meta">—</span>
+              </header>
+              <div class="table-selector" id="table-selector"></div>
+              <div class="data-table-wrap" id="gemini-table-wrap"></div>
+            </article>
+
+            <div class="resize-handle" data-resize-handle="1" role="separator" aria-label="Kéo để đổi độ rộng phần Gemini và mapping" title="Kéo trái/phải để đổi độ rộng; nhấp đúp để đặt lại">
+              <span></span>
+            </div>
+
+            <article class="review-panel mapping-panel">
+              <header class="panel-header">
+                <div><span class="panel-number">03</span><h3>Mapping vào schema</h3></div>
+                <span class="panel-meta" id="mapping-meta">—</span>
+              </header>
+              <label class="search-control mapping-search">
+                <span class="sr-only">Tìm mapping</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+                <input id="mapping-search" type="search" placeholder="Tìm ReportNormId hoặc khoản mục...">
+              </label>
+              <div class="mapping-list" id="mapping-list"></div>
+            </article>
+          </section>
+
+          <details class="coverage-panel" open>
+            <summary>04 · Khoản mục chưa map, chưa thấy và đang vướng</summary>
+            <div id="coverage-content"></div>
+          </details>
+
+          <details class="glossary-panel" open>
+            <summary>Chú giải cách đọc kết quả</summary>
+            <div class="glossary-grid">
+              <div><strong>Đã map trực tiếp</strong><span>Số và nhãn trên dòng PDF được nối trực tiếp tới ReportNormId.</span></div>
+              <div><strong>Đã map qua quy tắc</strong><span>Dòng nguồn tham gia một phép tính/đối chiếu xác định duy nhất. Đây vẫn là mapping hợp lệ, không phải SOURCE_ONLY.</span></div>
+              <div><strong>Dòng đối chiếu — ID đã map từ nguồn khác</strong><span>Dòng này khớp cùng ID schema, nhưng giá trị chính thức đã được lấy từ một bảng/ô nguồn có thẩm quyền khác. Không phải khoản mục chưa map và không được map trùng.</span></div>
+              <div><strong>Chỉ dùng đối chiếu (SOURCE_ONLY)</strong><span>Dòng vẫn được giữ để kiểm tra tổng hoặc cấu trúc nhưng không phải khoản mục đích của family hiện tại. Không đồng nghĩa thiếu schema.</span></div>
+              <div><strong>Có trên PDF nhưng chưa map</strong><span>Nhãn và ngữ cảnh khớp một ID schema, nhưng bảng đang bị chặn hoặc không phải candidate được chọn. Đây khác với SOURCE_ONLY.</span></div>
+              <div><strong>Chưa thấy trong PDF</strong><span>Khoản mục được family hỗ trợ nhưng không xuất hiện trong phạm vi bảng Gemini liên quan của PDF đang chọn. Đây không phải lỗi.</span></div>
+              <div><strong>Vướng</strong><span>Có bảng hoặc dòng thực tế nhưng chưa đủ điều kiện cấu trúc để map an toàn; phần lý do ghi rõ ngay bên dưới.</span></div>
+              <div><strong>Dòng 1 · Dòng chi tiết</strong><span>“Dòng 1” là vị trí trong bảng Gemini; “Dòng chi tiết” là loại hàng mà Gemini nhìn thấy.</span></div>
+            </div>
+          </details>
+
+          <details class="diagnostic-panel" id="diagnostic-panel">
+            <summary>Thông tin kiểm tra và lý do chưa xử lý</summary>
+            <div id="diagnostic-content"></div>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast is-hidden" id="toast" role="status"></div>
+    <script src="{{ url_for('static', filename='review_app/review.js') }}" defer></script>
+  </body>
+</html>

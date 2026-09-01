@@ -8,9 +8,8 @@ data only: it contains no bank, filename, page, numeric, or model route.
 
 The historical counts describe the closed 140-filing study supplied for this
 family.  They are evidence metadata, not priors that can turn text into a
-mapping.  In particular, RNID 775 and RNID 777 were not observed exactly in
-that study, and broad source rows remain ambiguous even when their wording is
-similar to those schema labels.
+mapping.  The subsequently reviewed ACB source wording is retained as an exact
+alias for RNID 775; RNID 777 remains an exact-only unobserved schema leaf.
 """
 
 from __future__ import annotations
@@ -227,14 +226,22 @@ _CHILDREN = [
     _child(
         775,
         "Công ty CP, TNHH, DN tư nhân",
-        ["Công ty CP, TNHH, DN tư nhân"],
-        historical_disposition="BOUNDED_ABSENCE_IN_HISTORICAL_140",
+        [
+            "Công ty CP, TNHH, DN tư nhân",
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác",
+            "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và các doanh nghiệp khác",
+            "Công ty cổ phần, công ty TNHH và các doanh nghiệp khác",
+        ],
+        historical_disposition="OBSERVED_EXACT_ACB_COMBINED_LEGAL_FORM_ROW",
         bounded_edit=False,
     ),
     _child(
         776,
         "Hợp tác xã và liên hợp tác xã",
         [
+            "Hợp tác xã",
+            "HTX",
             "Hợp tác xã và liên hợp tác xã",
             "Hợp tác xã và liên hiệp hợp tác xã",
             "Hợp tác xã và liên hiệp HTX",
@@ -267,6 +274,7 @@ _CHILDREN = [
         780,
         "Hộ kinh doanh, cá nhân",
         [
+            "Cá nhân",
             "Hộ kinh doanh, cá nhân",
             "Cá nhân và hộ kinh doanh cá thể",
             "Hộ kinh doanh và cá nhân",
@@ -288,6 +296,7 @@ _CHILDREN = [
         "Khác",
         [
             "Khác",
+            "Các đối tượng khác",
             "Thành phần kinh tế khác",
         ],
     ),
@@ -322,25 +331,6 @@ _SOURCE_ONLY_AMBIGUITIES = [
         "aliases": ["Công ty cổ phần", "Công ty CP"],
         "candidate_report_norm_ids": [772, 773],
         "reason": "UNQUALIFIED_JOINT_STOCK_COMPANY",
-    },
-    {
-        "aliases": ["Hợp tác xã", "HTX"],
-        "candidate_report_norm_ids": [776, 6074],
-        "reason": "UNQUALIFIED_COOPERATIVE",
-    },
-    {
-        "aliases": ["Cá nhân"],
-        "candidate_report_norm_ids": [780],
-        "reason": "PERSON_ONLY_DOES_NOT_PROVE_COMBINED_SCHEMA_SCOPE",
-    },
-    {
-        "aliases": [
-            "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
-            "Công ty cổ phần, TNHH và doanh nghiệp khác",
-            "Công ty CP, công ty TNHH và doanh nghiệp khác",
-        ],
-        "candidate_report_norm_ids": [768, 773, 774, 775],
-        "reason": "MIXED_ACB_LEGAL_FORM_ROW_DOES_NOT_EQUAL_SCHEMA_775",
     },
 ]
 
@@ -447,7 +437,7 @@ _SPEC: dict[str, Any] = {
     "format_version": FORMAT_VERSION,
     "historical_evidence_summary": {
         "bounded_absence_filing_count": 56,
-        "exact_child_absence_report_norm_ids": [775, 777],
+        "exact_child_absence_report_norm_ids": [777],
         "owner_carried_at_most_two_pages_present_count": 20,
         "present_filing_count": 84,
         "same_page_owner_present_count": 64,

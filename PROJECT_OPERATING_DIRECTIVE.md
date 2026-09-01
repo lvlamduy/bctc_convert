@@ -1,5 +1,23 @@
 # Project operating directive
 
+> **2026-08-26 supersession:** the active ingestion/mapping architecture is
+> [`docs/GEMINI_JSON_FIRST_PROJECT_GOAL.md`](docs/GEMINI_JSON_FIRST_PROJECT_GOAL.md).
+> Sections below remain historical operating context only where they require
+> PP-OCR/VietOCR/geometry or a frozen V3 reader. The current pipeline uses
+> Gemini page→hierarchical JSON without those dependencies, then restarts
+> mapping at Family 1. Git/S3/Codex, fail-closed and generalization policies
+> remain in force.
+
+> **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
+> structurally focused. Gemini supplies visible observations; deterministic code
+> owns normalization, graph construction, period/unit resolution, equations and
+> mapping. Do not require the model to echo untouched data or satisfy family
+> logic. Escalation is automatic and limited to a small predeclared prompt set
+> for typed missing-row, column-width or missing-context failures; never tune a
+> prompt interactively per bank/file/page. A validator must preserve usable
+> mappings and canonicalize harmless representation drift instead of rejecting
+> correct evidence to force one preferred serialization.
+
 > Authority: user-supplied high-level objective and current operating tactics.
 > This file is the standing prioritization reference for every execution turn.
 > Read it together with `PROJECT_GOAL.md`; where older queues conflict, this

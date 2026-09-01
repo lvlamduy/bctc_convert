@@ -409,6 +409,12 @@
             "Dự phòng giảm giá chứng khoán kinh doanh"
           ],
           "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        },
+        {
+          "aliases": [
+            "Dự phòng giảm giá chứng khoán kinh doanh"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",

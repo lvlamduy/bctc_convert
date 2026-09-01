@@ -71,6 +71,16 @@ def test_family12_topology_spec_is_schema_free_shared_v3_data() -> None:
         "required_role_combinations"
     ]
     assert "Các giao dịch với bên liên quan" in spec["hard_negative_aliases"]
+    assert (
+        "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"
+        in leaf_roles["COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS"]["matchers"][0]["aliases"]
+    )
+    assert (
+        "Hợp tác xã"
+        in leaf_roles["COOPERATIVE_AND_COOPERATIVE_UNION_LOANS"]["matchers"][0]["aliases"]
+    )
+    assert "Cá nhân" in leaf_roles["HOUSEHOLD_AND_INDIVIDUAL_LOANS"]["matchers"][0]["aliases"]
+    assert "Các đối tượng khác" in leaf_roles["OTHER_ENTERPRISE_LOANS"]["matchers"][0]["aliases"]
     assert {
         "bank",
         "bank_code",

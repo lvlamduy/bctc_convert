@@ -104,7 +104,7 @@ def test_spec_locks_schema_history_and_safety_policy() -> None:
     ]
     assert spec["historical_evidence_summary"] == {
         "bounded_absence_filing_count": 56,
-        "exact_child_absence_report_norm_ids": [775, 777],
+        "exact_child_absence_report_norm_ids": [777],
         "owner_carried_at_most_two_pages_present_count": 20,
         "present_filing_count": 84,
         "same_page_owner_present_count": 64,
@@ -465,42 +465,36 @@ def test_accentless_vietnamese_row_maps_without_fuzzy_authority() -> None:
     )
 
 
-def test_unqualified_and_acb_combined_rows_remain_source_only_ambiguous() -> None:
-    ambiguous = [
-        "Công ty cổ phần",
+def test_reviewed_acb_combined_and_broad_rows_bind_declared_schema_leaves() -> None:
+    exact_rows = [
         "Hợp tác xã",
         "Cá nhân",
         "Công ty cổ phần, công ty TNHH và doanh nghiệp khác",
+        "Các đối tượng khác",
     ]
     result = build_loan_enterprise_family12_graph_v1(
-        [_page(1, _table_lines(rows=["Công ty TNHH", *ambiguous]))]
+        [_page(1, _table_lines(rows=["Công ty TNHH", *exact_rows, "Công ty cổ phần"]))]
     )
 
-    assert _binding_ids(result) == [768]
-    for surface in ambiguous:
-        row = _row_by_surface(result, surface)
-        assert row["report_norm_id"] is None
-        assert row["status"] == "SOURCE_ONLY_AMBIGUOUS"
-    assert _row_by_surface(result, ambiguous[-1])["candidate_report_norm_ids"] == [
-        768,
-        773,
-        774,
-        775,
-    ]
+    assert _binding_ids(result) == [768, 775, 776, 780, 782]
+    assert _row_by_surface(result, "Hợp tác xã")["report_norm_id"] == 776
+    assert _row_by_surface(result, "Cá nhân")["report_norm_id"] == 780
+    assert _row_by_surface(result, exact_rows[2])["report_norm_id"] == 775
+    assert _row_by_surface(result, "Các đối tượng khác")["report_norm_id"] == 782
+    ambiguous = _row_by_surface(result, "Công ty cổ phần")
+    assert ambiguous["report_norm_id"] is None
+    assert ambiguous["status"] == "SOURCE_ONLY_AMBIGUOUS"
 
 
 def test_source_only_rows_are_retained_when_no_schema_binding_survives() -> None:
     result = build_loan_enterprise_family12_graph_v1(
-        [_page(1, _table_lines(rows=["Công ty cổ phần", "Hợp tác xã"]))]
+        [_page(1, _table_lines(rows=["Công ty cổ phần"]))]
     )
 
     assert result["regions"] == []
     assert result["near_regions"][0]["reason"] == ("NO_UNIQUE_SCHEMA_ROW_WITH_VALUE_GEOMETRY")
     rows = result["near_regions"][0]["source_only_row_proposals"]
-    assert [row["status"] for row in rows] == [
-        "SOURCE_ONLY_AMBIGUOUS",
-        "SOURCE_ONLY_AMBIGUOUS",
-    ]
+    assert [row["status"] for row in rows] == ["SOURCE_ONLY_AMBIGUOUS"]
     assert result["near_regions"][0]["source_only_geometry_proposal"] is not None
     assert result["near_regions"][0]["shared_scoped_table_v1"]["enforcement"] == (
         "ADVISORY_CHALLENGER"

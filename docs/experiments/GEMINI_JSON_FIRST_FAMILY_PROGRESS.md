@@ -6,20 +6,25 @@ JSON. Thứ tự bắt buộc là Family 1 đến Family cuối cùng; không b�
 
 ## Corpus ingestion checkpoint
 
-- Checkpoint 2026-08-26: `2.197/8.947` trang có page JSON hợp lệ (24,6%),
-  thuộc 39 tài liệu; 37/140 tài liệu đã hoàn tất toàn bộ task tại checkpoint.
-- Phân loại theo version mới nhất của từng trang: 1.777 trang thuyết minh, 243
-  trang báo cáo tài chính chính, 176 trang không có nội dung tài chính liên quan
-  và 1 trang `UNRESOLVED_PAGE`.
-- Usage cộng dồn: 4.416.181 input tokens, 3.332.802 output tokens, 118.295
-  thought tokens; chi phí ước tính/billed cộng dồn `7.6885764375 USD`.
-- Supervisor V23 đang chạy tiếp Google Batch và OpenRouter; checkpoint này chưa
-  phải corpus freeze. ACB H1/2025 hợp nhất trang 22 là trang provider-filter
-  duy nhất đang OPEN, không chặn các task còn lại.
+- Checkpoint vận hành 2026-08-27: ledger đã đóng `8.429/8.947` trang
+  (`94,21%`) và `135/140` tài liệu; còn `518` trang trong `5` tài liệu. Đây
+  vẫn chưa phải corpus freeze và chưa cấp quyền chạy Family 1.
+- Mọi request mới từ checkpoint này chạy duy nhất qua OpenRouter với model
+  `google/gemini-3.7-flash`, provider Google Vertex Flex và tối đa 25 request
+  hữu ích song song. Google standard, Google Batch và Google fallback đều bị
+  vô hiệu hóa; các page-version Google cũ chỉ được giữ làm lịch sử/cache.
+- Usage tại checkpoint: 19.648.259 input tokens, 12.700.766 output tokens,
+  455.229 thought tokens; chi phí cộng dồn `22.952865937500 USD`, trong đó
+  `11.038881937500 USD` là OpenRouter và `11.913984000000 USD` là các lượt
+  Google đã hoàn thành trước khi bị vô hiệu hóa.
+- Supervisor lưu ngay từng raw/canonical page JSON, retry theo đúng page và
+  không gửi lại các page đã cache. Sau khi đủ 8.947 trang, lệnh freeze sẽ replay
+  ảnh nguyên trang/prompt/provider selection, snapshot store+ledger và mới công
+  bố số phân loại page chính thức.
 
 | Family | Trạng thái JSON-first | Bằng chứng |
 |---:|---|---|
-| 1 | BLOCKED_BY_CORPUS_JSON_INGESTION | Chưa chạy mapping |
+| 1 | PENDING_COMPLETE_CORPUS_JSON_FREEZE | Chưa chạy mapping |
 
 Các family tiếp theo chỉ được thêm khi Family trước có disposition chính thức
 hoặc blocker được ghi rõ trong unresolved ledger mới.

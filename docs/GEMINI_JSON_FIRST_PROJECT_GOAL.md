@@ -33,7 +33,8 @@ chưa từng thấy, theo kiến trúc mới:
 PDF BCTC bất biến
 → render từng trang thành ảnh đủ nét
 → pilot: Gemini 3.7 Flash qua OpenRouter, khóa Google Vertex Flex
-→ corpus: Gemini 3.7 Flash qua Google Batch API trực tiếp
+→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter Google Vertex Flex,
+  OpenRouter-only; không gọi Google API
 → JSON nhiều tầng, schema-blind, giữ nguyên chữ và giá trị nhìn thấy
 → JSON/database được version hóa và lập chỉ mục
 → truy hồi vùng ứng viên nhỏ theo từng accounting family
@@ -42,15 +43,19 @@ PDF BCTC bất biến
 → structured data / Excel / provenance / unresolved
 ```
 
-Gemini là reader duy nhất của đường xử lý mới. Giai đoạn pilot khóa đúng model
-`google/gemini-3.7-flash` và provider `google-vertex/global/flex`, tắt mọi
-fallback. Corpus ưu tiên Google Batch API gọi trực tiếp bằng hai credential
-Google; key không được chuyển qua OpenAI/OpenRouter. Sau gate một trang, chạy
-song song Google Batch và OpenRouter image Batch nếu capability được chứng minh;
-nếu OpenRouter Batch không hỗ trợ ảnh thì dùng OpenRouter Vertex Flex song song.
-Mọi batch phải resume theo batch/document/page, không submit trùng, và chỉ đổi
-route theo lỗi quota/capacity/unsupported có kiểu rõ ràng. Không được cố ý gửi
-request vô ích chỉ để đốt quota.
+Gemini là reader duy nhất của đường xử lý mới. Model được khóa đúng
+`google/gemini-3.7-flash` và OpenRouter provider
+`google-vertex/global/flex`, tắt mọi provider/model fallback. Từ ngày
+2026-08-27, hai credential Google không còn ngân sách nên phần corpus còn lại
+chạy **OpenRouter-only**: không gọi Google standard, Google Batch hay Google
+fallback. Tham số đường dẫn key Google có thể còn xuất hiện trong CLI để tương
+thích ngược, nhưng child request bắt buộc mang `google-standard-mode=disabled`
+và không được sử dụng key đó. Các page-version Google đã hoàn thành trước thời
+điểm chuyển route vẫn được giữ bất biến trong database; khi cùng một
+source/image/prompt/schema có cả Google và OpenRouter version thì manifest hiện
+hành ưu tiên `OPENROUTER/flex`, không xóa version lịch sử. Mọi request phải
+resume theo document/page, không submit trùng, và chỉ retry từ failure receipt
+có kiểu rõ ràng. Không được cố ý gửi request vô ích chỉ để đốt quota.
 
 Không sử dụng PP-OCR 6,
 VietOCR, OCR fusion, word/line bounding box hoặc thuật toán phụ thuộc geometry
@@ -372,8 +377,7 @@ không ghi đè source JSON.
 ## 11. Hiệu năng và vận hành
 
 - Render/call theo page content hash; unchanged page là cache hit.
-- Bounded concurrency phù hợp quota OpenRouter ở pilot và Google Batch ở corpus;
-  retry có backoff, idempotency
+- Bounded concurrency phù hợp quota OpenRouter hiện hành; retry có backoff, idempotency
   và hard budget.
 - Raw response phải được lưu trước semantic validation để debug mà không gọi
   model lại.
@@ -397,10 +401,11 @@ data_collection: deny
 structured JSON Schema: required
 ```
 
-Corpus production dùng Google Batch API trực tiếp bằng hai key Google, không
-qua Flex/OpenRouter. Chỉ submit batch sau khi contract đã freeze và workflow
-chấp nhận kết quả bất đồng bộ; không đổi model/prompt/schema giữa OpenRouter
-Flex evaluation và Google Batch mà không chạy equivalence panel.
+Corpus production hiện chạy OpenRouter Google Vertex Flex, stateless,
+OpenRouter-only và tối đa 25–30 request hữu ích đồng thời. Các Google Batch đã
+hoàn thành trước 2026-08-27 chỉ là version lịch sử/cached input; không submit
+batch Google mới và không dùng Google fallback. Không đổi model/prompt/schema
+trong lúc corpus đang chạy nếu chưa có equivalence panel và version mới.
 
 ## 12. Lộ trình thực hiện
 

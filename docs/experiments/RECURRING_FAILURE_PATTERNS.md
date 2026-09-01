@@ -554,8 +554,172 @@ Trạng thái:
   `NO_RELEVANT_FINANCIAL_CONTENT`. Raw response và finish reason được giữ; trang
   `simple` hợp lệ được projection bằng code, còn trang thiếu source content đi
   qua bounded provider/tile fallback với receipt source/page/coverage riêng.
-- **Status:** `OPEN`; cần composite page-version receipt và fallback độc lập đóng
-  được GJF-OPEN-001 trước khi freeze toàn corpus.
+- **Status:** `MITIGATED`; GJF-OPEN-001 đã đóng bằng current document-manifest
+  selection trên ảnh nguyên trang. Corpus supervisor hiện phân loại độc lập
+  `RECITATION → scope`, semantic/JSON → `items`, giữ prompt hash riêng và chỉ
+  đóng task khi current page frontier phát lại đầy đủ. Full-corpus freeze vẫn là
+  release gate cuối, không phải điều kiện để giữ case này OPEN.
+
+## RFP-021 — Upload ảnh Batch bị ngắt bị nhầm là batch đã submit
+
+- **Failure pattern:** process bị ngắt sau khi upload một phần ảnh lên Google
+  Files API nhưng trước khi tạo JSONL, manifest và submission response. Lần chạy
+  tiếp thấy artifact directory không rỗng rồi dừng vĩnh viễn; nếu xóa mù hoặc
+  submit lại sau một response bị mất thì có thể mất forensic evidence hoặc tạo
+  batch trùng.
+- **Evidence:** hai attempt production bị ngắt ở ranh giới pre-submission giữ
+  lần lượt 17 và 10 receipt ảnh, không có `batch-input.json`, manifest,
+  submission response hoặc batch ID. Chúng được dời nguyên vẹn sang
+  `abandoned-google-attempts`; attempt sạch sau đó tiếp tục từ ledger mà không
+  submit trùng.
+- **Cause:** resumability trước đây chỉ hiểu hai trạng thái directory rỗng hoặc
+  có `submission-receipt.json`, chưa mô hình hóa upload frontier dở.
+- **Anti-fix:** không `rm` receipt upload; không coi directory không rỗng là bằng
+  chứng batch đã submit; không tự resubmit nếu đã có JSONL/manifest/submission
+  response nhưng thiếu receipt, vì authority boundary khi đó không còn đủ.
+- **Current primitive:** chỉ quarantine tự động khi top-level chứa đúng một
+  `uploaded-files/`, mọi file là single-link JSON receipt của một image và chưa
+  có `batch-input.json`. Quarantine có content ID, SHA/size từng receipt và là
+  thao tác move có thể phục hồi. Bất kỳ shape muộn hơn vẫn fail-closed để audit
+  provider trước khi tiếp tục.
+- **Status:** `MITIGATED`; focused positive/unsafe-boundary falsifier và corpus
+  resume thực tế đã qua.
+
+## RFP-022 — Prompt ngắn bỏ placeholder của ô trống trong bảng nhiều cột
+
+- **Failure pattern:** model nhận đúng số cột và chép đúng các số nhìn thấy,
+  nhưng với hàng có một hoặc nhiều ô trống nó chỉ trả các ô có giá trị. Vector
+  `values_exact` vì vậy ngắn hơn `columns` và không còn cách xác định chắc chắn
+  số thuộc cột nào nếu chỉ nhìn JSON.
+- **Evidence:** VCB quý 3/2025 công ty mẹ, trang vật lý 40, ảnh nguyên trang
+  300-DPI SHA `01c6e5fd...`: cả prompt `simple` và `items` đều trả 5 cột nhưng
+  một số subtotal chỉ có 4, 2 hoặc 1 phần tử, cùng lỗi
+  `row values do not align with table value columns`. Một retry `balanced` trên
+  đúng ảnh buộc giữ `null` ở ô trống, qua validation và đóng manifest 52 trang
+  `gfdmv1:manifest:f79ea864...` với 505 hàng/1.807 ô; không OCR lại 51 trang đã
+  hợp lệ. VCB quý 1/2026 hợp nhất p34 lặp lại cùng signature trên bảng biến động
+  vốn 11 cột: `simple`/`items` cho hàng 10 hoặc 9 phần tử, còn `balanced` trả
+  7/7 hàng đúng 11 vị trí, page JSON SHA `d557be04...`, rồi đóng manifest 53
+  trang `gfdmv1:manifest:d0d157d6...` mà không OCR lại 52 trang tốt.
+- **Cause:** prompt ngắn nhấn mạnh chép đủ giá trị nhìn thấy nhưng chưa nói rõ ô
+  trống vẫn chiếm một vị trí trong vector ngang; JSON Schema chỉ kiểm tra kiểu,
+  không biểu diễn được ràng buộc độ dài bằng số cột của cùng table.
+- **Anti-fix:** không tự chèn `null` theo phỏng đoán, không nới validator cho
+  vector lệch cột, không dùng geometry/OCR cũ để gán số vào cột và không chạy lại
+  toàn tài liệu.
+- **Current primitive:** semantic failure trước hết dùng prompt `items`; chỉ khi
+  retry đó vẫn là semantic failure mới dùng một retry `balanced` có hash/version
+  riêng trên đúng page-image SHA. Prompt cuối yêu cầu `values_exact` bằng đúng số
+  cột, dùng `null` cho ô thật sự trống và chuẩn hóa mọi ô chỉ có dấu gạch thành
+  chuỗi `"0"`, nên glyph dấu gạch không thể dính vào số lân cận. Nếu provider
+  retry ngắn chuyển thành semantic failure, scheduler tiếp tục đúng chuỗi
+  `simple → items → balanced` thay vì dừng sớm. Manifest hiện hành bind prompt
+  riêng theo trang; cơ chế resume kiểm tra lại toàn bộ image frontier rồi niêm
+  phong ledger mà không gọi provider lại.
+- **Status:** `MITIGATED`; actual recovery VCB 52/53 trang và MBB Q4 hợp nhất
+  61 trang (GJF-CLOSED-016), stale-image/cascade falsifiers và 175 test Gemini
+  JSON-first đã qua.
+
+## RFP-023 — Google Files upload-start 429 làm chết toàn corpus supervisor
+
+- **Failure pattern:** một Files API upload-start trả HTTP 429 trước khi tạo
+  upload session; batch subprocess thoát 1 nhưng supervisor coi đây là lỗi ngoài
+  disposition, hủy các submit future khác và dừng toàn corpus.
+- **Evidence:** task HDB quý 2/2025 công ty mẹ p1–30
+  `gjfptaskv1:1f6dd08d...` lặp đúng hai lần. Cả hai lần attempt directory rỗng,
+  không có upload receipt, JSONL, manifest, submission response hoặc batch ID;
+  direct diagnostic xác nhận exception chính xác
+  `Google file upload start returned HTTP 429`.
+- **Cause:** uploader có typed exception nhưng subprocess boundary làm mất kiểu;
+  scheduler chỉ chấp nhận exit 0 và không có cooldown cho pre-submission rate
+  limiting.
+- **Anti-fix:** không đánh dấu task `FAILED`, không tăng attempt ledger khi chưa
+  submit, không xóa/quarantine evidence sau ranh giới JSONL/manifest, không
+  restart supervisor liên tục và không đoán rằng HTTP 429 đã tạo batch.
+- **Current primitive:** subprocess error giữ return code/stdout/stderr nội bộ;
+  chỉ upload-start 429/5xx/timeout trước ranh giới submission được đổi thành
+  `RETRYABLE_GOOGLE_UPLOAD_START`. Supervisor ghi receipt content-addressed,
+  giữ task ở trạng thái cũ, giới hạn đúng một Google uploader và dùng cooldown
+  toàn cục 30 giây để các task không đồng loạt thử lại. Nếu đã có JSONL,
+  manifest hoặc submission evidence thì vẫn fail-closed; partial image-upload
+  frontier chỉ được xử lý bởi quarantine receipt của RFP-021.
+- **Status:** `OPEN`; commit `c91a997fc8472ea182b593ec20c952353a73f8db`,
+  181 test Gemini JSON-first và actual deferral receipt đã qua. Cần một actual
+  retry sau deferral tạo batch ID mà không trùng trước khi chuyển `MITIGATED`.
+
+## RFP-024 — PDF CropBox/MediaBox cắt mất nội dung scan trước khi gửi Gemini
+
+- **Failure pattern:** ảnh nhìn như nguyên trang theo renderer mặc định nhưng
+  thực tế chỉ là phần giao với `CropBox/MediaBox`; bảng bị mất cột hoặc góc dù
+  model và prompt đều đúng.
+- **Evidence:** ACB kiểm toán năm 2025 công ty mẹ p57 xoay 270°. Page box chỉ
+  595,68×842,40 pt nhưng scan source vẽ từ x=-124,277 tới x=719,957 pt. Ảnh cũ
+  3.510×2.482 px SHA `97aa43fa...` làm cả `simple` và `items` trả
+  `UNRESOLVED_PAGE` vì mất cột bên phải. Ảnh whole-page 3.510×3.535 px SHA
+  `ea85078c...` giữ toàn painted source và trả đủ bảng 7 cột, 13 hàng/91 ô.
+- **Cause:** PDF page-box metadata không bao hết image XObject đã được đặt lên
+  trang; rasterizer chuẩn tôn trọng box nên cắt pixel trước khi model nhận ảnh.
+- **Anti-fix:** không crop theo bảng/geometry, không nới semantic validator để
+  chấp nhận bảng thiếu cột, không ghép JSON từ ảnh cũ với ảnh mới và không suy
+  đoán phần đã bị cắt. Phần con dấu vốn chỉ là một strip ảnh rời trong PDF cũng
+  không được “vẽ bù”.
+- **Current primitive:** renderer đọc toàn `MediaBox`, kiểm tra display-list
+  painted bounds và chỉ mở rộng canvas vật lý trong giới hạn niêm phong; receipt
+  bind source SHA, box gốc/chọn, DPI, kích thước và image SHA. Current document
+  manifest chỉ nhận đúng page version mang image SHA whole-page; cache ảnh cũ
+  trở thành stale và phải reprocess.
+- **Status:** `MITIGATED`; GJF-CLOSED-014/GJF-CLOSED-017 và cuộc kiểm tra repair
+  toàn corpus đã xác định 644 trang thuộc 21 tài liệu cần whole-page handling.
+  Trong 636 trang đã OCR, render lại trực tiếp từ PDF ở 300 DPI khớp tuyệt đối
+  SHA/kích thước với page-version trong database (`636/636`, mismatch `0`);
+  tám trang chưa OCR sẽ dùng primitive mới ngay từ request đầu. Không còn
+  `REPAIR_REQUIRED` trong status frontier đã kiểm tra.
+
+## RFP-025 — Validator ép Gemini chép lại ngoài scope và làm mất mapping đúng
+
+- **Failure pattern:** crop/table response đã đọc đúng toàn bộ ô cần sửa và mọi
+  phương trình đều đóng, nhưng validator loại response vì model đổi newline ở
+  header, gộp unit vào header, trim khoảng trắng quanh dash hoặc biểu diễn khác
+  một ô ngoài allowlist. Scheduler sau đó đổi thinking/prompt và trả tiền nhiều
+  lần cho cùng một evidence đúng; tệ hơn, terminal có thể ghi `COMPLETE` khi vẫn
+  còn job `ABSTAINED`.
+- **Evidence:** Family 13 table-repair ngày 2026-08-27 tạo 14 attempt. Trong 12
+  response có bảng, cả 12 đều đúng target/collateral và equation; sáu crop đều
+  khớp trực quan. Chỉ cần 7 attempt sớm nhất để đóng đủ 6 job. Validator cũ chỉ
+  nhận 3 job vì so byte toàn bảng; run cũ ghi sai `COMPLETE` với
+  `RESOLVED=3, ABSTAINED=3` và tạo partial overlay, hiện đã quarantine.
+- **Cause:** prompt bắt model vừa OCR vừa tái tạo schema/trạng thái/context và
+  echo mọi ô byte-exact; validator trở thành layout serializer thay vì chiếu
+  observation lên source graph bất biến. Retry thay prompt được dùng thay cho
+  việc sửa canonicalizer/mapper.
+- **Anti-fix:** không thêm điều kiện/prompt riêng theo bank/file/page; không bắt
+  Gemini sinh graph, ReportNormId, phương trình hoặc lặp lại ô ngoài scope;
+  không retry billed response chỉ để đổi serialization; không publish nếu bất
+  kỳ planned job nào chưa `RESOLVED`.
+- **Required primitive:** một schema nhỏ cố định
+  `{observations:[{cell_id,source_text}]}`. Code canonicalize cell ref, dash,
+  blank, printed zero, số âm/dấu phân cách; identical duplicates corroborate,
+  conflicting target duplicates fail. Observation ngoài allowlist bị bỏ qua và
+  lưu diagnostic; immutable base page cung cấp mọi ô còn lại. Chỉ thiếu/xung đột
+  target hoặc structure thật sự thiếu mới tự động chuyển theo tập prompt bounded
+  đã khai báo (`simple → items → balanced/context`). Graph, unit, period và
+  equation được code kiểm sau projection, không backsolve trong prompt.
+- **Release gate:** ưu tiên offline reproject raw response đã niêm phong và không
+  gọi provider lại. Chỉ `RESOLVED == planned_job_count` và `ABSTAINED == 0` mới
+  tạo overlay/frontier, publish cả DB pair và ghi terminal `COMPLETE`; mọi trạng
+  thái khác giữ DB đích nguyên byte và ghi `INCOMPLETE`.
+- **Status:** `CLOSED` ngày 2026-08-28. Primitive hiện dùng đúng schema tối giản
+  `{observations:[{cell_id,source_text}]}`; 12/12 response bảng đã niêm phong
+  được reproject, sáu job đóng `RESOLVED=6/ABSTAINED=0` với
+  `provider_call_count=0`. Thuật toán tự canonicalize representation drift,
+  giữ nguyên base ngoài target, kiểm graph/equation cục bộ và chỉ publish khi
+  đủ toàn bộ job. Family 13 đã OFFICIAL `R140/N0/U0/M1281`; Family 14 dùng
+  source-replay cùng nguyên tắc và đã OFFICIAL `R64/N76/U0/M254`. Runtime chỉ
+  tạo một work database cho mỗi database-role cần publish (page/results) và tối
+  đa một immutable source view trong suốt lần chạy, rồi xóa sau atomic publish;
+  tuyệt đối không tạo snapshot theo attempt, job hoặc prompt. Các database
+  nguồn/effective/production content-addressed còn lại là authority, không phải
+  biến thể tạm của cùng một kết quả.
 
 ## Pre-change gate
 

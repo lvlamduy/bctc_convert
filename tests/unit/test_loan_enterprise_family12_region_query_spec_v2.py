@@ -445,7 +445,7 @@ def test_query_rehashes_exact_adapter_and_rejects_dependency_drift(tmp_path: Pat
     adapter = _PROJECT_ROOT / reference["path"]
 
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
-        "fffrrv2:query:542e7b1fad5c1488b12019f94ed00d363a2e7b5d817fa00223a7c51522e15886"
+        "fffrrv2:query:c7da96a121058907ccb86d936be3f54bffe163555249843cb4d2eee1c5ab3334"
     )
     assert reference["size_bytes"] == adapter.stat().st_size
     assert reference["sha256"] == hashlib.sha256(adapter.read_bytes()).hexdigest()

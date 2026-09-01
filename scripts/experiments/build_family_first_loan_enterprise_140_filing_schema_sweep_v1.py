@@ -15,7 +15,9 @@ sys.path.insert(0, os.fspath(PROJECT_ROOT))
 sys.path.insert(0, os.fspath(PROJECT_ROOT / "src"))
 
 from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1  # noqa: E402
-from bctc_ai.evaluation import accounting_family_column_context_v1 as column_v1  # noqa: E402
+from bctc_ai.evaluation import (  # noqa: E402
+    accounting_family_column_context_multilevel_v2 as column_v2,
+)
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1  # noqa: E402
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1  # noqa: E402
 from bctc_ai.evaluation import (  # noqa: E402
@@ -834,14 +836,14 @@ def _column_gate(
 ) -> tuple[dict[str, Any] | None, list[str] | None]:
     resolved = []
     for layout in _COLUMN_LAYOUTS:
-        context = column_v1.build_accounting_family_column_context_v1(
+        context = column_v2.build_accounting_family_column_context_multilevel_v2(
             axis,
             pages,
             spec,
             period_semantics="BALANCE_COMPARATIVE",
             expected_lane_unit_kinds=layout,
         )
-        column_v1.validate_accounting_family_column_context_replay_v1(
+        column_v2.validate_accounting_family_column_context_multilevel_replay_v2(
             context,
             axis,
             pages,

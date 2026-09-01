@@ -830,6 +830,7 @@ def test_tracked_trading_securities_specs_partition_variants_without_bank_routes
     assert direct["DEBT_LISTED"]["schema_id"] == 618
     assert direct["EQUITY_UNLISTED"]["schema_id"] == 622
     assert direct["OTHER_UNLISTED"]["schema_id"] == 625
+    assert direct["PROVISION_PRICE_DECREASE"]["schema_id"] == 612
     assert aggregates == []
     assert binding["ignored_roles"] == [
         "DEBT_SECURITIES_GROUP",
@@ -837,7 +838,6 @@ def test_tracked_trading_securities_specs_partition_variants_without_bank_routes
         "OTHER_TRADING_SECURITIES_GROUP",
         "EXPLICIT_GROSS_TOTAL",
         "TRADING_SECURITIES_PROVISION_GROUP",
-        "PROVISION_PRICE_DECREASE",
         "PROVISION_GENERAL",
         "PROVISION_SPECIFIC",
         "EXPLICIT_NET_TOTAL",

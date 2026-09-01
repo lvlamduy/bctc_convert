@@ -2,6 +2,11 @@
 
 Phạm vi: ACB, MBB, VPB, HDB, VCB, CTG, BID, VIB.
 
+> Bản dashboard dành cho người đọc và checkpoint rà schema ngày 2026-09-01:
+> [`COMPLETED_TM_FAMILIES_READABLE.md`](COMPLETED_TM_FAMILIES_READABLE.md).
+> Bản này tiếp tục giữ lịch sử kỹ thuật; không dùng các receipt lịch sử bên dưới
+> để kết luận một dòng hiện hành là chưa map nếu dashboard đã nối được source ref.
+
 Queue family-first lấy thứ tự chuẩn trực tiếp từ `display_order` trong
 `reference/schemas/schema_graph.jsonl`. Các section lịch sử từ Family 15 trở đi
 chưa được đánh lại số sau khi schema thay đổi, nên không được dùng làm authority
@@ -1510,8 +1515,44 @@ Kết quả annual-2025:
 
 ## 55. Báo cáo bộ phận hợp nhất
 
+### Gemini JSON-first current corpus — Family 54 OFFICIAL
+
+- **OFFICIAL store:**
+  `gjfafstorev1:run:5f0f1eefb90b0a3825db6f138ac859f7d75ed7ce2e029e1cfbb23a37f9ba4a6b`,
+  sweep
+  `gjfafsv1:sweep:f64f58eb3c277afd6a587cfda71b53e81c8db4bf14ff03a46174eacf56d8ab2f`.
+  Corpus có 140 PDF và frontier 8.947 trang đã xác thực.
+- **Kết quả cuối:** `READY=45`, `NOT_OBSERVED=95`, `UNRESOLVED=0`;
+  1.311 mapping group, 2.283 mapping value, 1.578 phương trình, 8.998
+  period assignment và 152 ô trống nguồn. Không còn PDF nào bị chặn ở trạng
+  thái unresolved.
+- **Phần đã map vào schema:** matrix Family54 chỉ khai báo sáu metric
+  `ASSETS`, `LIABILITIES`, `FIXED_ASSETS`, `REVENUE`, `EXPENSE`,
+  `PROFIT_BEFORE_TAX` trên các trục business/geographic có RNID. Mọi mapping
+  giữ branch, period role, period end, unit, source cell và phương trình tổng.
+- **Phần nhìn thấy nhưng chưa map vào topology Family54:** 39/45 PDF READY có
+  6.860 ô `SOURCE_ONLY`, quy về 1.149 dòng metric nguồn và 132 cột trục nguồn.
+  Những dòng metric ngoài sáu metric nêu trên và các trục như `Nước ngoài`,
+  `Cho thuê tài chính`, `Chứng khoán`, `Quản lý quỹ`, `Dịch vụ tài chính phi
+  ngân hàng` được giữ source-only, không ép vào leaf gần tên. Danh sách theo
+  đúng bank/PDF/page và nguyên nhân nằm ở `UNRESOLVED_MAPPING_LEDGER.md`, mục
+  “Family 54 current corpus”.
+- **Sáu PDF READY không có source-only:** MBB 2025 quý 1, quý 2, quý 3, quý 4
+  và MBB 2026 quý 1, quý 2. 95 PDF `NOT_OBSERVED` là báo cáo công ty mẹ/riêng
+  lẻ hoặc PDF không có semantic anchor của family, không phải schema gap.
+- **Hai ô nguồn malformed:** VPB quý 1/2025 có hai ô `-"` trên metric ngoài
+  scope; chúng giữ state `INVALID_MONEY_SOURCE`, không bị đổi thành số.
+- **Không xử lý:** family 5750 `Giao dịch với các bên liên quan` vẫn
+  `SKIPPED_BY_USER`.
+
+Artifact review hiện hành:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family54-consolidated-segment-report/sweep.audit.json`.
+
 ### Annual-2025 — E-0161
 
+- **Trạng thái lịch sử:** baseline E-0161 đã được Family54 OFFICIAL và
+  corrigendum E-0179 thay thế. 17 dòng `ASEG-*` vẫn là schema-decision queue,
+  không còn là 17 terminal unresolved document của engine hiện hành.
 - **Đã map/xác minh:** whole-PDF scan tìm đúng một vùng báo cáo bộ phận tại
   ACB p95–99, MBB p83–90, VPB p95–97, HDB p60–61, VCB p71–72, CTG p81–84,
   BID p36–38 và VIB p61–62. Phần schema hỗ trợ có 73 binding cấu trúc, 208
@@ -1520,8 +1561,8 @@ Kết quả annual-2025:
 - **Không có nhánh chi tiết trong báo cáo:** VPB không có bảng bộ phận theo
   địa lý; HDB và VIB không có bảng bộ phận theo lĩnh vực kinh doanh. Đây là
   bounded absence của đúng nhánh, không phải absence của toàn family.
-- **Có nhưng còn khoản mục chưa map:** 17 biến thể nguồn chưa đồng nhất với
-  trục schema hiện hành, gồm các trục `Nước ngoài`, trục gộp
+- **Inventory lịch sử chưa map:** baseline ghi 17 biến thể nguồn chưa đồng
+  nhất với trục schema tại thời điểm E-0161, gồm các trục `Nước ngoài`, trục gộp
   `Miền Trung và Tây Nguyên`, các lĩnh vực cho thuê tài chính/chứng khoán/tài
   chính phi ngân hàng và hai trường hợp nhãn kết quả bộ phận chưa nói rõ lợi
   nhuận trước thuế. Chi tiết bank/trang/tên nguồn nằm trong
@@ -1596,4 +1637,4 @@ dùng.
 | Rủi ro thanh khoản | ✓ p92 | ✓ p100 | ✓ p90 | ✓ p67 | ✓ p82 | ✓ p79 | ✓ p69 | ✓ p74 | Annual-2025: 0 OPEN, 181 mapping/181 ô/54 phương trình, 9 DASH→0; lượt hiện hành trước giữ 4 trục/12 ô VPB OPEN |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p103 | ✓\* p98 | ✓\* p69 | — | ✓\* p85 | ✓ p70 | ✓\* p77 | Annual-2025: 19 dòng OPEN, 55 mapping/110 ô; HDB dùng kỳ tài liệu cho `Số cuối năm/Số đầu năm`. Lượt hiện hành trước: 15 OPEN/46 mapping |
 | Giao dịch với các bên liên quan | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | Không xử lý theo chỉ đạo người dùng; không diễn giải thành absence hay unresolved mapping |
-| Báo cáo bộ phận hợp nhất | ✓\* p95–99 | ✓\* p83–90 | ✓\* p95–97 | ✓\* p60–61 | ✓\* p71–72 | ✓\* p81–84 | ✓\* p36–38 | ✓\* p61–62 | 17 biến thể nguồn giữ OPEN; 73 binding cấu trúc/208 mapping số/43 phương trình |
+| Báo cáo bộ phận hợp nhất | ✓\* 3/18 PDF | ✓\* 9/18 | ✓\* 9/18 | ✓\* 2/16 | ✓\* 9/18 | ✓\* 3/18 | ✓\* 1/16 | ✓\* 9/18 | Family54 OFFICIAL: 45 READY/95 NOT_OBSERVED/0 U; 1.311 mapping/2.283 giá trị/1.578 phương trình; 39 PDF có source-only được liệt kê riêng trong ledger |

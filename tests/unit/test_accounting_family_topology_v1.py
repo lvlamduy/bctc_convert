@@ -1251,6 +1251,35 @@ def test_trading_region_stops_before_derivative_heading_with_asset_liability_qua
     ]
 
 
+def test_trading_exact_price_decrease_provision_is_a_direct_child_without_group_row() -> None:
+    spec = json.loads(
+        (_ROOT / "config/families/tm-trading-securities-topology-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "7 CHỨNG KHOÁN KINH DOANH",
+                    "Chứng khoán nợ",
+                    "100",
+                    "Chứng khoán vốn",
+                    "200",
+                    "Dự phòng giảm giá chứng khoán kinh doanh",
+                    "(10)",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert "PROVISION_PRICE_DECREASE" in {
+        item["role"] for item in result["regions"][0]["child_matches"]
+    }
+
+
 def test_continuation_budget_and_next_page_reset_both_fail_closed() -> None:
     pages = [
         _page(

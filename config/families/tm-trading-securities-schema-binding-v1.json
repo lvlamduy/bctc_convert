@@ -9,7 +9,6 @@
     "OTHER_TRADING_SECURITIES_GROUP",
     "EXPLICIT_GROSS_TOTAL",
     "TRADING_SECURITIES_PROVISION_GROUP",
-    "PROVISION_PRICE_DECREASE",
     "PROVISION_GENERAL",
     "PROVISION_SPECIFIC",
     "EXPLICIT_NET_TOTAL"
@@ -94,6 +93,10 @@
     {
       "report_norm_id": 625,
       "role": "OTHER_UNLISTED"
+    },
+    {
+      "report_norm_id": 612,
+      "role": "PROVISION_PRICE_DECREASE"
     }
   ]
 }

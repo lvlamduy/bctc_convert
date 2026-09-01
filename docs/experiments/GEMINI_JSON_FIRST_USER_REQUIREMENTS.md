@@ -6,25 +6,49 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 
 ## 1. Provider và credential
 
+- **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.
+  Từ checkpoint này, mọi request OCR mới phải đi duy nhất qua OpenRouter với
+  model `google/gemini-3.7-flash`, provider
+  `google-vertex/global/flex`; Google standard, Google Batch và mọi Google
+  fallback đều bị vô hiệu hóa. CLI cũ có thể vẫn nhận `--google-key-file` để
+  tương thích ngược, nhưng `--openrouter-only` và child
+  `--google-standard-mode disabled` là bắt buộc. Không được thử lại Google để
+  dò quota.
+- Page-version Google đã hoàn thành trước override vẫn được giữ làm dữ liệu
+  bất biến, không OCR lại chỉ vì đổi route. Khi có nhiều version hợp lệ cùng
+  source/image/prompt/schema, manifest chọn theo thứ tự đã niêm phong
+  `OPENROUTER/flex → GOOGLE_GEMINI_BATCH_API/batch →
+  GOOGLE_GEMINI_API/standard`; thứ tự này chỉ chọn dữ liệu đã có và tuyệt đối
+  không cấp quyền gọi Google.
 - Giai đoạn thử prompt/case khó dùng OpenRouter trước.
 - Model thử nghiệm chính là `google/gemini-3.7-flash`.
 - OpenRouter phải khóa đúng provider Google Vertex Flex
   `google-vertex/global/flex`, tắt provider/model fallback và yêu cầu provider hỗ
   trợ đầy đủ tham số. Không được tự chuyển sang host rẻ, model lượng tử hóa hoặc
   model khác.
-- Hai key Google trong `docs/experiments/gemma.txt` được gọi thẳng Google API,
-  ưu tiên Google Batch sau khi prompt/contract freeze; key không bao giờ chuyển
-  qua OpenAI/OpenRouter. Key đuôi `UrJOHw` đã được kiểm tra trực tiếp bằng
-  `generateContent` và dùng được. Có thể dùng một request Google standard có
-  kiểm soát để xác minh transport/model, nhưng không đốt quota bằng retry vô ích.
-- Sau pilot phải chạy song song Google Batch trực tiếp và OpenRouter Batch nếu
-  image Batch thật sự được provider hỗ trợ; nếu không, dùng OpenRouter Google
-  Vertex Flex song song. Capability phải được chứng minh bằng request ảnh, không
-  suy từ Batch text. Chỉ fallback theo lỗi quota/capacity/unsupported có kiểu rõ
-  ràng; semantic JSON sai không được dùng làm lý do đổi credential/provider.
+- Hai key Google trong `docs/experiments/gemma.txt` chỉ còn là credential lịch
+  sử, không được gọi trong lượt chạy hiện hành và không bao giờ được chuyển qua
+  OpenAI/OpenRouter. Việc từng kiểm tra key đuôi `UrJOHw` bằng `generateContent`
+  không còn là quyền gọi lại sau override.
+- Kế hoạch cũ chạy song song Google Batch/OpenRouter Batch đã kết thúc khi quota
+  Google cạn và image Batch OpenRouter không cung cấp đường ảnh dùng được.
+  OpenRouter Google Vertex Flex đồng bộ, stateless và bounded-concurrency là
+  route corpus duy nhất hiện tại. Semantic JSON sai chỉ được đổi prompt theo
+  receipt; không đổi provider/model.
 - Batch phải resumable theo batch/document/page: lưu batch ID, request ID,
   provider, credential slot ẩn danh, trạng thái poll, request thành công/thất
   bại, token và chi phí; không submit lại job khi process khởi động lại.
+- Batch failure phải được phân tuyến từ receipt có kiểu ngay ở cấp page:
+  `RECITATION → scope`, lỗi JSON/semantic → `items`, lỗi transport/provider →
+  prompt mặc định và được phép chuyển OpenRouter ↔ Google theo policy. Một
+  upload bị ngắt trước khi có JSONL/manifest/submission response phải được dời
+  nguyên vẹn vào quarantine có content hash rồi mới tạo attempt sạch; không xóa
+  receipt upload và không suy đoán rằng một batch đã hoặc chưa được submit khi
+  đã vượt qua ranh giới này.
+- Nếu đúng page vẫn thất bại semantic sau `items` vì vector hàng không khớp số
+  cột, cho phép đúng một retry `balanced` có prompt hash riêng để bắt model giữ
+  `null` cho ô thật sự trống. Không tự chèn placeholder, không nới kiểm tra độ
+  rộng hàng và không OCR lại các page đã hợp lệ.
 - Không in, commit, upload hoặc ghi key vào artifact/log/database. File key phải
   có mode `0600`.
 
@@ -33,14 +57,41 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 - Chỉ dùng 200 hoặc 300 DPI. Không dùng DPI thấp hơn cho pilot hay corpus.
 - Mặc định 300 DPI cho PDF scan, chữ nhỏ hoặc mờ. Chỉ dùng 200 DPI khi trang
   born-digital/scan rõ đã qua kiểm tra đọc được.
+- Ảnh gửi LLM phải là **toàn bộ trang vật lý**, không crop theo bảng, vùng chữ
+  hay `CropBox` lỗi của PDF. Renderer lấy toàn `MediaBox` và chỉ được mở rộng
+  canvas có giới hạn khi chứng minh có nét vẽ thật nằm ngoài box; tọa độ chỉ
+  dùng để phục hồi canvas, không được dùng làm authority bảng/hierarchy/family.
 - Mỗi kết quả phải bind SHA-256 PDF, số trang vật lý, SHA-256 ảnh, DPI, kích
   thước pixel và MIME type.
+- Manifest hoàn tất của tài liệu phải bind đúng SHA-256 ảnh nguyên trang của
+  từng page-version. Kết quả OCR cũ sinh từ ảnh bị cắt hoặc image SHA khác phải
+  được coi là stale và không được tái sử dụng.
 - Trước khi chạy toàn corpus phải thử trọn một PDF có nhiều loại trang: báo cáo
   chính, thuyết minh/bảng, continuation và trang không liên quan.
 
 ## 3. Prompt và JSON
 
 - Prompt phải ngắn, rõ, schema-blind và có cùng một contract ổn định.
+- **Operational override 2026-08-27 — prompt cố định, thuật toán bao quát:**
+  không được đẩy logic mapping, graph, phương trình, điều kiện family hoặc việc
+  chép lại dữ liệu ngoài scope vào prompt. Gemini chỉ đọc cấu trúc/ô nhìn thấy
+  theo một schema nhỏ và ổn định; code phải chuẩn hóa các biểu diễn tương đương,
+  chiếu output lên JSON nguồn bất biến rồi tự xử lý hierarchy, lane, period,
+  unit, graph và phương trình. Với repair theo vùng, model chỉ trả các
+  observation mục tiêu dạng `cell_id + source_text`; mọi ô ngoài allowlist luôn
+  lấy nguyên từ DB và không được bắt Gemini echo byte-exact.
+- Chỉ duy trì một tập nhỏ prompt version được khai báo trước, dùng tự động theo
+  typed failure: mặc định `simple`; thiếu khoản mục dùng `items`; lệch độ rộng
+  hàng/cột dùng `balanced`; thiếu owner/header/continuation mới dùng một prompt
+  bổ sung context có giới hạn. Không được ngồi canh rồi sửa prompt ad hoc theo
+  từng bank/file/page, không retry chỉ để ép một serialization ưa thích, và
+  không đổi prompt khi output đã đủ dữ liệu để code map chính xác.
+- Validator cứng chỉ bảo vệ dữ liệu thực sự cần để map: JSON parse/type, target
+  bắt buộc, độ đầy đủ hàng/cột cần thiết, xung đột quan sát và source binding.
+  Khác newline/whitespace/header placement, dash spelling, field mềm hoặc thay
+  đổi ngoài scope phải được canonicalizer/projection xử lý và lưu diagnostic,
+  không làm mất mapping đúng. Graph và phương trình xác minh projection sau đó;
+  validator không được biến thành một layout parser thứ hai.
 - Gemini chuyển từng trang thành JSON nhiều tầng, giữ nguyên chính tả, thứ tự,
   chữ số, dấu phân cách, ngoặc âm, phần trăm, dấu gạch và ô trống. Không dịch,
   sửa digit, tính lại hoặc tự đặt nhãn cho hàng không nhãn.
@@ -61,8 +112,10 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 - Prompt `items` là một prompt version riêng cho projection chỉ-khoản-mục; không
   được ghi output `items` dưới cache key/hash của prompt `simple`. Trang
   `simple` đã hợp lệ có thể được chiếu bỏ narrative bằng code, nhưng receipt
-  tổng hợp phải bind đúng page-version được chọn. Trang bị `RECITATION` mới
-  được gọi lại bằng `items` hoặc route khác theo failure policy.
+  tổng hợp phải bind đúng page-version được chọn. Retry phải phân loại theo từng
+  page: `RECITATION` dùng prompt `scope`; JSON/semantic `UNRESOLVED_PAGE` dùng
+  prompt `items`; lỗi provider khác mới dùng lại prompt mặc định. Mỗi biến thể
+  có artifact/cache key riêng và bị giới hạn số lần thử.
 - ID và số thứ tự kỹ thuật phải được suy ra từ vị trí mảng trong code/database,
   không bắt LLM sinh để tránh tốn token và sai bộ đếm.
 - Raw response luôn được lưu trước validation. Chỉ lỗi JSON/hợp đồng dữ liệu cơ
@@ -98,6 +151,12 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 
 - Lưu raw response, canonical page JSON và các projection section/table/row/cell
   vào database có index.
+- Không tạo snapshot database theo từng prompt, attempt, job hoặc từng biến thể
+  output của Gemini. Một run chỉ được dùng một source view bất biến và một cặp
+  database staging dùng chung (page + results); chỉ publish cặp staging sau khi
+  toàn bộ frontier đã được thuật toán chuẩn hóa, graph/mapping xác minh và đóng
+  đầy đủ. Retry chỉ thêm observation/receipt có version, không nhân bản toàn bộ
+  database.
 - Giữ nguyên tiếng Việt có dấu làm authority. Bản không dấu chỉ là projection
   tìm kiếm có version, không được ghi đè hay làm mapping authority.
 - Sau khi toàn corpus đã có JSON, bắt đầu mapping lại từ Family 1 đến Family cuối
@@ -113,8 +172,14 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 - Lưu theo từng attempt: provider/model/tier ẩn danh credential slot, elapsed,
   HTTP/outcome, input/output/thought/cached/total token và chi phí USD thực tế
   hoặc nhãn ước tính rõ ràng.
-- Retry chỉ cho lỗi provider chưa tính phí hoặc lỗi retryable có kiểu rõ ràng;
-  không retry JSON/semantic sai để che lỗi và tiêu tiền.
+- Khi chạy nhiều request song song, mỗi future/page hoàn tất phải ghi ngay raw
+  response, canonical JSON, telemetry và database; không giữ cả tài liệu trong
+  RAM rồi mới ghi cuối cùng. Khởi động lại phải tiếp tục từ page/batch ledger và
+  không gửi lại page đã có manifest hiện hành.
+- Retry provider chỉ dành cho lỗi chưa tính phí hoặc retryable có kiểu rõ ràng.
+  Lỗi JSON/semantic chỉ được thử đúng một projection prompt đã khai báo
+  (`items`) để kiểm tra tính đầy đủ; không lặp cùng prompt/provider để che lỗi,
+  và nếu vẫn sai phải giữ `UNRESOLVED_PAGE` cùng toàn bộ chi phí/attempt.
 - `RECITATION` là finish reason độc lập của từng response, không phải context
   giữa các request. Mỗi request vẫn stateless; không dùng chat history hay
   `cachedContent`. Retry nguyên ảnh/prompt/provider giống hệt phải bounded vì
