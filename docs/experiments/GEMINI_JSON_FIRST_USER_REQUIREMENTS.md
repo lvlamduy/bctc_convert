@@ -25,6 +25,27 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   gửi lại cả PDF hoặc page đã có cache chỉ vì process khởi động lại.
 - Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên.
 
+### Cổng chống gửi trùng tám ngân hàng cũ
+
+Đây là điều kiện bắt buộc, không phải khuyến nghị:
+
+| Nhóm | Mã ngân hàng | Quyền gọi Gemini mới |
+| --- | --- | --- |
+| Đã có JSON, chỉ tái sử dụng | ACB, BID, CTG, HDB, MBB, VCB, VIB, VPB | **CẤM GỬI LẠI**; chỉ đọc manifest/store/cache bất biến |
+| Paid frontier hiện hành | ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB | Được gửi riêng các page chưa có kết quả hợp lệ, qua Vertex Flex |
+
+Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
+`relative_path`/mã ngân hàng trong paid ledger với danh sách tám mã cũ. Nếu giao
+khác rỗng thì phải dừng **trước request đầu tiên**. Việc đổi kỳ, đổi loại báo cáo,
+khởi động lại process hoặc chạy repair không tự tạo quyền gửi lại. Page đã có
+JSON hợp lệ phải được lấy lại theo source hash và manifest; repair chỉ được phép
+nhắm đúng page thất bại có receipt.
+
+Kiểm tra vận hành ngày 2026-09-01: paid ledger có **279 PDF**, chỉ thuộc đúng 19
+ngân hàng mới nêu trên; giao với `ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB` là **rỗng**.
+Điều kiện này phải được kiểm tra lại ở mỗi checkpoint, không được suy ra từ lần
+kiểm tra cũ.
+
 ## 1. Provider và credential
 
 - **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.
