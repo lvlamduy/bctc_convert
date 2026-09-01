@@ -47,6 +47,10 @@ older queue priorities where they conflict.
   từ lãi thuần**, family số 31 là **Thu nhập, chi phí và lãi thuần dịch vụ**, và
   family số 55 là **Báo cáo bộ phận hợp nhất**. Federated review cache danh mục
   family ngay khi xác thực manifest để không quét lại 55 SQLite run cho mỗi PDF.
+- Ledger dễ đọc dịch các reason kỹ thuật hiện hành thành giải thích tiếng Việt
+  ở phần nội dung chính; reason gốc chỉ còn trong `<details>` truy vết. Phân loại
+  nguyên nhân vẫn được tính từ receipt gốc để các từ mô tả như “đầu kỳ/cuối kỳ”
+  trong câu dịch không làm đổi category.
 
 ## 2026-09-01 human review/schema checkpoint
 

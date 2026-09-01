@@ -144,3 +144,30 @@ def test_ledgers_reject_family_metrics_that_do_not_match_documents() -> None:
             expected_family_count=1,
             expected_document_count=2,
         )
+
+
+def test_machine_reason_is_explained_in_vietnamese_and_kept_only_as_trace() -> None:
+    repository = _Repository()
+    original_review = repository.review
+
+    def review(family_id: str, source_sha256: str) -> dict:
+        payload = original_review(family_id, source_sha256)
+        if source_sha256 == "b" * 64:
+            payload["coverage"]["unresolved_tables"][0]["reason_labels"] = [
+                "horizontal visible total mismatch",
+                "row alignment has no horizontal exact placement",
+            ]
+        return payload
+
+    repository.review = review
+    _completed, ledger, _metrics = builder.build_ledgers(
+        repository,
+        notes_by_order={},
+        expected_family_count=1,
+        expected_document_count=2,
+    )
+
+    assert "Tổng nhìn thấy trên PDF không khớp phép cộng" in ledger
+    assert "Chưa xác định được vị trí hàng theo chiều ngang" in ledger
+    assert "technical_reason=horizontal visible total mismatch; row alignment" in ledger
+    assert "Phân loại nguyên nhân:** **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH**" in ledger

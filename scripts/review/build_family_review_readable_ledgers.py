@@ -22,6 +22,48 @@ class BuildFamilyReviewReadableLedgersError(RuntimeError):
     """The exact review corpus cannot support one complete human ledger."""
 
 
+_REASON_TRANSLATIONS = {
+    "declared source result component equation mismatch:securities interest": (
+        "Phép cộng các thành phần nguồn của thu nhập từ chứng khoán không khớp "
+        "dòng kết quả in trên PDF."
+    ),
+    "horizontal visible total mismatch": (
+        "Tổng nhìn thấy trên PDF không khớp phép cộng các thành phần theo hàng."
+    ),
+    "invalid visible source money cell": (
+        "Có ô tiền nhìn thấy nhưng chuỗi nguồn không phải một số tiền hợp lệ; "
+        "cần mở PDF để kiểm tra lại nguồn/OCR."
+    ),
+    "required declared role combination not complete": (
+        "Chưa có đủ bộ khoản mục bắt buộc để xác định chắc cấu trúc family."
+    ),
+    "required source visible exact family root not proven": (
+        "Chưa chứng minh được một dòng gốc trực tiếp, duy nhất và nhìn thấy cho family này."
+    ),
+    "row alignment has no horizontal exact placement": (
+        "Chưa xác định được vị trí hàng theo chiều ngang một cách duy nhất."
+    ),
+    "source ratio metric not exactly resolved": (
+        "Chưa xác định chính xác cột hoặc chỉ tiêu tỷ lệ từ nguồn."
+    ),
+    "unmapped direct family source money row": (
+        "Có dòng tiền trực tiếp thuộc family nhưng chưa xác định được ReportNormId phù hợp."
+    ),
+    "unmapped top level source only row not declared validation role": (
+        "Có dòng cấp cao nhất chưa map và cũng chưa được xác định là dòng kiểm soát."
+    ),
+    "unproven conditional blank zero source row": (
+        "Dòng nguồn trống hoặc bằng 0 có điều kiện nhưng chưa đủ bằng chứng xác nhận ý nghĩa."
+    ),
+    "unproven conditional source cell in mapping role:union activity expense": (
+        "Ô nguồn dùng cho chi phí hoạt động công đoàn chưa đủ bằng chứng để map."
+    ),
+    "vertical component rollforward mismatch": (
+        "Biến động các thành phần theo chiều dọc không khép với số đầu kỳ và cuối kỳ."
+    ),
+}
+
+
 def _error(message: str) -> BuildFamilyReviewReadableLedgersError:
     return BuildFamilyReviewReadableLedgersError(message)
 
@@ -34,6 +76,25 @@ def _text(value: Any, fallback: str = "Không xác định") -> str:
 
 def _cell(value: Any) -> str:
     return _text(value, "—").replace("|", "\\|").replace("\n", "<br>")
+
+
+def _human_reason(value: str) -> str:
+    clauses = [clause.strip() for clause in value.split(";") if clause.strip()]
+    translated: list[str] = []
+    for clause in clauses:
+        human = _REASON_TRANSLATIONS.get(clause.casefold())
+        if human is not None:
+            translated.append(human)
+            continue
+        if "_" in clause or re.fullmatch(r"[a-z0-9 :/.-]+", clause):
+            translated.append(
+                "Điều kiện kiểm tra tự động chưa đạt; mã gốc được giữ ở phần truy vết kỹ thuật."
+            )
+            continue
+        translated.append(clause)
+    return " ".join(dict.fromkeys(translated)) or (
+        "Có nội dung nguồn nhưng chưa đủ bằng chứng để map chắc chắn."
+    )
 
 
 def _notes(path: Path | None) -> dict[int, str]:
@@ -94,11 +155,12 @@ def _record(
     kind: str,
     item: dict[str, Any],
 ) -> dict[str, Any]:
-    explanation = _text(
+    technical_explanation = _text(
         item.get("explanation")
         or "; ".join(item.get("reason_labels") or item.get("candidate_reason_labels") or []),
         "Candidate có nội dung nguồn nhưng chưa đủ bằng chứng để map chắc chắn.",
     )
+    explanation = _human_reason(technical_explanation)
     classification = _text(item.get("classification"), kind)
     return {
         "family_order": family["order"],
@@ -117,8 +179,9 @@ def _record(
         "report_norm_id": item.get("report_norm_id"),
         "schema_name": item.get("schema_name"),
         "reason": explanation,
+        "technical_reason": technical_explanation if technical_explanation != explanation else None,
         "classification": classification,
-        "category": _category(explanation, classification),
+        "category": _category(technical_explanation, classification),
         "kind": kind,
         "status": status,
         "source_sha256": document["source_sha256"],
@@ -391,6 +454,11 @@ def _ledger_markdown(records: list[dict[str, Any]], metrics: dict[str, int]) -> 
                     "",
                     f"`source_sha256={item['source_sha256']}; section={item['section_id']}; "
                     f"table={item['table_id']}; row={item['row_id']}`",
+                    *(
+                        ["", f"`technical_reason={_text(item['technical_reason'])}`"]
+                        if item["technical_reason"]
+                        else []
+                    ),
                     "",
                     "</details>",
                     "",
