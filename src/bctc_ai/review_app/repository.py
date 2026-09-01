@@ -897,12 +897,6 @@ class ReviewRepository:
             "report_norm_id": report_norm_id,
             "schema_name": schema.get("name") or f"ReportNormId {report_norm_id}",
             "schema_parent_id": schema.get("parent_id"),
-            "schema_parent_name": self._schema_names.get(schema.get("parent_id"), {}).get("name"),
-            "schema_display_order": schema.get("display_order"),
-            "schema_parent_display_order": self._schema_names.get(schema.get("parent_id"), {}).get(
-                "display_order"
-            ),
-            "schema_hierarchy_level": schema.get("hierarchy_level"),
             "role": mapping.get("role"),
             "row_id": mapping.get("row_id"),
             "source_label": source_label,
@@ -1186,14 +1180,6 @@ class ReviewRepository:
                     "report_norm_id": report_norm_id,
                     "schema_name": schema.get("name") or f"ReportNormId {report_norm_id}",
                     "schema_parent_id": schema.get("parent_id"),
-                    "schema_parent_name": self._schema_names.get(schema.get("parent_id"), {}).get(
-                        "name"
-                    ),
-                    "schema_display_order": schema.get("display_order"),
-                    "schema_parent_display_order": self._schema_names.get(
-                        schema.get("parent_id"), {}
-                    ).get("display_order"),
-                    "schema_hierarchy_level": schema.get("hierarchy_level"),
                     "role": role,
                     "row_id": row["id"],
                     "source_label": row["label"],
@@ -1700,17 +1686,6 @@ class ReviewRepository:
                 gemini_tables,
                 normalized_mappings,
                 specs,
-            )
-        )
-        normalized_mappings.sort(
-            key=lambda mapping: (
-                mapping.get("schema_display_order")
-                if isinstance(mapping.get("schema_display_order"), int)
-                else 10**9,
-                mapping.get("report_norm_id")
-                if isinstance(mapping.get("report_norm_id"), int)
-                else 10**9,
-                str(mapping.get("mapping_ordinal") or ""),
             )
         )
         self._attach_mapping_headers(normalized_mappings, gemini_tables)

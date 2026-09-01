@@ -325,8 +325,6 @@ function filteredMappings() {
   return state.review.mappings.filter((mapping) => !query || [
     mapping.report_norm_id,
     mapping.schema_name,
-    mapping.schema_parent_id,
-    mapping.schema_parent_name,
     mapping.source_label,
     mapping.role,
   ].some((value) => String(value ?? "").toLocaleLowerCase("vi").includes(query)));
@@ -398,57 +396,27 @@ function mappingValueCell(mapping, value) {
 
 function renderMappings() {
   const mappings = filteredMappings();
+  const periodHeaders = [...new Set(
+    state.review.mappings.flatMap((mapping) => mapping.values.map((value) => value.header)).filter(Boolean)
+  )];
   byId("mapping-meta").textContent = `${mappings.length}/${state.review.mappings.length} khoản mục`;
   const list = byId("mapping-list");
-  const groups = [];
-  const groupByKey = new Map();
-  mappings.forEach((mapping) => {
-    const key = mapping.schema_parent_id != null
-      ? `parent:${mapping.schema_parent_id}`
-      : "direct";
-    if (!groupByKey.has(key)) {
-      const group = {
-        key,
-        parentId: mapping.schema_parent_id,
-        parentName: mapping.schema_parent_name,
-        mappings: [],
-      };
-      groupByKey.set(key, group);
-      groups.push(group);
-    }
-    groupByKey.get(key).mappings.push(mapping);
-  });
-  list.innerHTML = groups.length ? groups.map((group) => {
-    const periodHeaders = [...new Set(
-      group.mappings.flatMap((mapping) => mapping.values.map((value) => value.header)).filter(Boolean)
-    )];
-    if (!periodHeaders.length) return "";
-    return `<section class="mapping-schema-group">
-      <header class="mapping-group-heading">
-        <span>Nhóm khoản mục schema</span>
-        <strong>${escapeHtml(group.parentName || "Khoản mục trực tiếp")}</strong>
-        ${group.parentId != null ? `<b>ID ${escapeHtml(group.parentId)}</b>` : ""}
-        <small>${group.mappings.length} khoản mục con có mapping trong PDF này</small>
-      </header>
-      <table class="mapping-table">
-        <thead><tr>
-          <th>Khoản mục con / ReportNormId</th>
-          ${periodHeaders.map((header) => `<th><span class="column-header">${headerMarkup(header)}</span></th>`).join("")}
-        </tr></thead>
-        <tbody>${group.mappings.map((mapping) => {
-          const mappingIndex = state.review.mappings.indexOf(mapping);
-          return `<tr tabindex="0" data-mapping-index="${mapping.mapping_ordinal ?? mappingIndex}" title="Nhấn để đối chiếu dòng nguồn bên Gemini">
-            <td>
-              <span class="mapping-schema-name">${escapeHtml(mapping.schema_name)}</span>
-              <span class="norm-id">ID ${escapeHtml(mapping.report_norm_id)}</span>
-              <small class="mapping-source">${mappingSourceDescription(mapping)}${mapping.role ? ` · Vai trò: ${escapeHtml(mapping.role)}` : ""}</small>
-            </td>
-            ${periodHeaders.map((header) => `<td>${mappingValueCell(mapping, mapping.values.find((value) => value.header === header))}</td>`).join("")}
-          </tr>`;
-        }).join("")}</tbody>
-      </table>
-    </section>`;
-  }).join("") : '<div class="empty-panel">Không có mapping hoặc chưa xác định được cột kỳ.</div>';
+  list.innerHTML = mappings.length && periodHeaders.length ? `
+    <table class="mapping-table">
+      <thead><tr>
+        <th>Khoản mục schema / ReportNormId</th>
+        ${periodHeaders.map((header) => `<th><span class="column-header">${headerMarkup(header)}</span></th>`).join("")}
+      </tr></thead>
+      <tbody>${mappings.map((mapping, index) => `
+        <tr tabindex="0" data-mapping-index="${mapping.mapping_ordinal ?? index}" title="Nhấn để đối chiếu dòng nguồn bên Gemini">
+          <td>
+            <span class="mapping-schema-name">${escapeHtml(mapping.schema_name)}</span>
+            <span class="norm-id">ID ${escapeHtml(mapping.report_norm_id)}</span>
+            <small class="mapping-source">${mappingSourceDescription(mapping)}${mapping.role ? ` · Vai trò: ${escapeHtml(mapping.role)}` : ""}</small>
+          </td>
+          ${periodHeaders.map((header) => `<td>${mappingValueCell(mapping, mapping.values.find((value) => value.header === header))}</td>`).join("")}
+        </tr>`).join("")}</tbody>
+    </table>` : '<div class="empty-panel">Không có mapping hoặc chưa xác định được cột kỳ.</div>';
   list.querySelectorAll("[data-mapping-index]").forEach((row) => {
     row.addEventListener("click", () => focusMapping(row.dataset.mappingIndex));
     row.addEventListener("keydown", (event) => {
