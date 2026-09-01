@@ -278,3 +278,151 @@ def test_repair_one_calls_only_failed_pages_and_seals_mixed_prompt_manifest(
     )
     manifest_command = commands[-1]
     assert manifest_command[manifest_command.index("--page-prompt-variant") + 1] == "3=items"
+
+
+def _batch_args(tmp_path: Path) -> Namespace:
+    return Namespace(
+        artifact_root=tmp_path / "artifacts",
+        bundle=tmp_path / "bundle.json",
+        command="repair-failed",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=4,
+        plan=tmp_path / "plan.json",
+        provider_timeout_seconds=900,
+        source_root=tmp_path / "sources",
+    )
+
+
+def test_batch_repair_refuses_a_nonterminal_ledger(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {"corpus_plan": {"corpus_plan_id": "plan-1"}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger: [
+            {
+                "relative_path": "vietstock_bctc/N01/2025/report.pdf",
+                "state": "RUNNING",
+                "task_id": "gjfptaskv1:" + "a" * 64,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        target,
+        "_repair_one",
+        lambda *_args, **_kwargs: pytest.fail("provider repair must not start"),
+    )
+
+    with pytest.raises(
+        target.RunGeminiJsonFirst27BankVertexFlexV1Error,
+        match="quiescent terminal ledger",
+    ):
+        target._repair_failed(_batch_args(tmp_path), environment={"PYTHONPATH": "src"})
+
+
+def test_batch_repair_processes_each_failed_task_once_in_source_order(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    tasks = [
+        {
+            "relative_path": "vietstock_bctc/N02/2025/b.pdf",
+            "state": "FAILED",
+            "task_id": "task-b",
+        },
+        {
+            "relative_path": "vietstock_bctc/N00/2025/already-complete.pdf",
+            "state": "SUCCEEDED",
+            "task_id": "task-complete",
+        },
+        {
+            "relative_path": "vietstock_bctc/N01/2025/a.pdf",
+            "state": "FAILED",
+            "task_id": "task-a",
+        },
+    ]
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {"corpus_plan": {"corpus_plan_id": "plan-1"}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _ledger: tasks)
+    called: list[str] = []
+
+    def repair_one(args: Namespace, *, environment: dict[str, str]) -> dict[str, object]:
+        assert environment == {"PYTHONPATH": "src"}
+        called.append(args.task_id)
+        return {
+            "disposition": "SUCCEEDED" if args.task_id == "task-a" else "NEEDS_RETRY",
+            "task_id": args.task_id,
+        }
+
+    monkeypatch.setattr(target, "_repair_one", repair_one)
+
+    result = target._repair_failed(_batch_args(tmp_path), environment={"PYTHONPATH": "src"})
+
+    assert called == ["task-a", "task-b"]
+    assert result == {
+        "disposition": "NEEDS_RETRY",
+        "initial_failed_task_count": 2,
+        "remaining_task_count": 1,
+        "remaining_task_ids": ["task-b"],
+        "repaired_task_count": 1,
+        "results": [
+            {"disposition": "SUCCEEDED", "task_id": "task-a"},
+            {"disposition": "NEEDS_RETRY", "task_id": "task-b"},
+        ],
+    }
+
+
+def test_batch_repair_is_a_noop_when_every_task_succeeded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {"corpus_plan": {"corpus_plan_id": "plan-1"}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger: [
+            {
+                "relative_path": "vietstock_bctc/N01/2025/report.pdf",
+                "state": "SUCCEEDED",
+                "task_id": "task-complete",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        target,
+        "_repair_one",
+        lambda *_args, **_kwargs: pytest.fail("provider repair must not start"),
+    )
+
+    result = target._repair_failed(_batch_args(tmp_path), environment={"PYTHONPATH": "src"})
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["initial_failed_task_count"] == 0
+    assert result["results"] == []

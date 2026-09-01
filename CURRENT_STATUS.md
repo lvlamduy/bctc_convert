@@ -44,6 +44,12 @@ older queue priorities where they conflict.
   kiểm byte PDF trước provider call và chỉ seal `FAILED → SUCCEEDED` sau khi
   current whole-document manifest xác thực đủ mọi page. Bộ regression liên quan
   đạt **74/74**; implementation đã push tại commit `db72b9c`.
+- Orchestrator đã bổ sung `repair-failed` cho giai đoạn sau main pass. Lệnh này
+  fail-closed nếu ledger còn bất kỳ task PENDING/RUNNING/retry trung gian nào,
+  bỏ qua toàn bộ PDF SUCCEEDED và gọi lại chính `repair-one` đúng một lần cho
+  từng PDF FAILED theo thứ tự ổn định. Một vòng còn lỗi sẽ trả NEEDS_RETRY để
+  người vận hành chủ động mở vòng kế tiếp; nó không tự lặp vô hạn và không mở
+  rộng page frontier. Regression 27-bank/supervisor/provider pin đạt **70/70**.
 - Theo chi phí OpenRouter Vertex Flex đã đo trên chính corpus cũ, paid frontier
   15.968 trang có ước tính cơ sở khoảng **28,8 USD**; ngân sách vận hành an toàn
   là **32–36 USD** để bao gồm retry có receipt. Ước tính ban đầu 6–10 giờ ở 20

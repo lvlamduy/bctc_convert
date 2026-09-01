@@ -58,7 +58,7 @@ def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "status", "run", "run-one", "repair-one"):
+    for name in ("init", "status", "run", "run-one", "repair-one", "repair-failed"):
         command = commands.add_parser(name)
         command.add_argument("--bundle", type=Path, required=True)
         command.add_argument("--plan", type=Path, required=True)
@@ -70,7 +70,7 @@ def _parser() -> argparse.ArgumentParser:
                 default="simple",
             )
             command.add_argument("--max-task-attempts", type=int, default=3)
-        if name in {"run", "run-one", "repair-one"}:
+        if name in {"run", "run-one", "repair-one", "repair-failed"}:
             command.add_argument("--source-root", type=Path, required=True)
             command.add_argument("--database", type=Path, required=True)
             command.add_argument("--artifact-root", type=Path, required=True)
@@ -357,12 +357,60 @@ def _repair_one(args: argparse.Namespace, *, environment: dict[str, str]) -> dic
     }
 
 
+def _repair_failed(args: argparse.Namespace, *, environment: dict[str, str]) -> dict[str, Any]:
+    """Run one bounded repair round over a quiescent terminal ledger.
+
+    This deliberately delegates every task to ``_repair_one`` so the batch path
+    cannot broaden the document/page frontier or relax the provider pin. A
+    subsequent round is explicit: tasks whose bounded page repair still fails
+    remain ``FAILED`` and are reported as ``NEEDS_RETRY``.
+    """
+
+    bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != bundle["corpus_plan"]["corpus_plan_id"]:
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "repair ledger and provider-pinned plan disagree"
+        )
+    tasks = list_corpus_tasks_v1(args.ledger)
+    active = sorted(
+        (task for task in tasks if task["state"] not in {"FAILED", "SUCCEEDED"}),
+        key=lambda task: (task["relative_path"], task["task_id"]),
+    )
+    if active:
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "batch repair requires a quiescent terminal ledger"
+        )
+    failed = sorted(
+        (task for task in tasks if task["state"] == "FAILED"),
+        key=lambda task: (task["relative_path"], task["task_id"]),
+    )
+    results: list[dict[str, Any]] = []
+    for task in failed:
+        task_values = {**vars(args), "command": "repair-one", "task_id": task["task_id"]}
+        task_args = argparse.Namespace(**task_values)
+        results.append(_repair_one(task_args, environment=environment))
+    remaining = [result["task_id"] for result in results if result["disposition"] != "SUCCEEDED"]
+    return {
+        "disposition": "NEEDS_RETRY" if remaining else "SUCCEEDED",
+        "initial_failed_task_count": len(failed),
+        "remaining_task_count": len(remaining),
+        "remaining_task_ids": remaining,
+        "repaired_task_count": len(failed) - len(remaining),
+        "results": results,
+    }
+
+
 def main() -> int:
     args = _parser().parse_args()
     environment = dict(os.environ)
     environment["PYTHONPATH"] = str(ROOT / "src")
-    if args.command == "repair-one":
-        result = _repair_one(args, environment=environment)
+    if args.command in {"repair-one", "repair-failed"}:
+        result = (
+            _repair_one(args, environment=environment)
+            if args.command == "repair-one"
+            else _repair_failed(args, environment=environment)
+        )
         print(json.dumps(result, sort_keys=True))
         return 0 if result["disposition"] == "SUCCEEDED" else 2
     command = _supervisor_command(args)
