@@ -298,10 +298,13 @@ def enqueue_gemini_family_region_repair_plans_v1(
     *,
     family_run_id: str,
     plans: Sequence[Mapping[str, Any]],
+    required_run_kind: str | None = None,
 ) -> list[str]:
     """Append deterministic pending repair jobs emitted by one stored family run."""
 
     checked = [dict(plan) for plan in plans]
+    if required_run_kind not in {None, "EXPERIMENTAL", "OFFICIAL"}:
+        raise _error("family region repair required run kind is invalid")
     if any(
         plan.get("format_version") != "GEMINI_JSON_REGION_REPAIR_QUEUE_V1"
         or type(plan.get("repair_job_id")) is not str
@@ -318,13 +321,20 @@ def enqueue_gemini_family_region_repair_plans_v1(
     ):
         raise _error("family region repair plan is invalid")
     with _connect(path) as connection:
-        connection.executescript(_REGION_REPAIR_QUEUE_SCHEMA)
+        connection.executescript("BEGIN IMMEDIATE;\n" + _REGION_REPAIR_QUEUE_SCHEMA)
         run = connection.execute(
             "SELECT family_id,sweep_sha256,sweep_bytes FROM family_run WHERE family_run_id=?",
             (family_run_id,),
         ).fetchone()
         if run is None:
             raise _error("family region repair run is absent")
+        if required_run_kind is not None:
+            authorized = connection.execute(
+                "SELECT 1 FROM family_run_execution WHERE family_run_id=? AND run_kind=? LIMIT 1",
+                (family_run_id, required_run_kind),
+            ).fetchone()
+            if authorized is None:
+                raise _error("family region repair run lacks required execution authorization")
         sweep_payload = bytes(run["sweep_bytes"])
         if sha256(sweep_payload).hexdigest() != run["sweep_sha256"]:
             raise _error("family region repair source sweep bytes drifted")
@@ -482,7 +492,8 @@ def pending_gemini_family_region_repair_plans_v1(
             "(SELECT COUNT(*) FROM family_region_repair_attempt AS a "
             " WHERE a.repair_job_id=j.repair_job_id) AS attempt_count "
             "FROM family_region_repair_job AS j JOIN family_run AS r USING(family_run_id) "
-            f"{where} ORDER BY r.family_id,j.document_ordinal,j.repair_job_id",
+            f"{where} ORDER BY "
+            "r.family_id,j.document_ordinal,j.physical_page,j.repair_job_id",
             parameters,
         ).fetchall()
     result = []
@@ -506,6 +517,95 @@ def pending_gemini_family_region_repair_plans_v1(
             }
         )
     return result
+
+
+def resolved_gemini_family_region_repair_candidate_replacements_v1(
+    path: Path,
+    *,
+    family_run_id: str,
+    candidate_id: str,
+    exclude_repair_job_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return authenticated prior successful page repairs for one candidate.
+
+    This is intentionally narrower than the terminal overlay: only attempts whose
+    validator returned ``RESOLVED`` participate in an in-flight composed replay.
+    Stable/no-change evidence remains auditable but cannot authorize a downstream
+    page repair.
+    """
+
+    if (
+        type(family_run_id) is not str
+        or not family_run_id.startswith("gjfafstorev1:run:")
+        or type(candidate_id) is not str
+        or not candidate_id
+        or (
+            exclude_repair_job_id is not None
+            and (
+                type(exclude_repair_job_id) is not str
+                or not exclude_repair_job_id.startswith("gjfrrqv1:job:")
+            )
+        )
+    ):
+        raise _error("family repair composed-candidate identity is invalid")
+    with _connect(path, readonly=True) as connection:
+        try:
+            jobs = connection.execute(
+                "SELECT repair_job_id,document_ordinal,candidate_id,"
+                "base_page_json_version_id,physical_page,plan_sha256,plan_bytes,"
+                "selected_page_json_version_id "
+                "FROM family_region_repair_job WHERE family_run_id=? "
+                "AND candidate_id=? AND status='RESOLVED' "
+                "ORDER BY physical_page,repair_job_id",
+                (family_run_id, candidate_id),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            raise _error("family repair composed-candidate tables are absent") from exc
+        replacements = []
+        for job in jobs:
+            if job["repair_job_id"] == exclude_repair_job_id:
+                continue
+            payload = bytes(job["plan_bytes"])
+            if sha256(payload).hexdigest() != job["plan_sha256"]:
+                raise _error("family repair composed-candidate plan bytes drifted")
+            try:
+                plan = json.loads(payload)
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("family repair composed-candidate plan JSON is invalid") from exc
+            material = {key: plan[key] for key in plan if key != "repair_job_id"}
+            attempt = connection.execute(
+                "SELECT outcome,page_json_version_id FROM family_region_repair_attempt "
+                "WHERE repair_job_id=? ORDER BY attempt_ordinal DESC LIMIT 1",
+                (job["repair_job_id"],),
+            ).fetchone()
+            selected = job["selected_page_json_version_id"]
+            if (
+                plan.get("repair_job_id") != job["repair_job_id"]
+                or job["repair_job_id"] != "gjfrrqv1:job:" + canonical_json_sha256_v1(material)
+                or plan.get("candidate_id") != job["candidate_id"]
+                or plan.get("document_ordinal") != job["document_ordinal"]
+                or plan.get("base_page_json_version_id") != job["base_page_json_version_id"]
+                or plan.get("physical_page") != job["physical_page"]
+                or attempt is None
+                or attempt["outcome"] != "RESOLVED"
+                or attempt["page_json_version_id"] != selected
+                or type(selected) is not str
+                or not selected.startswith("gfpstorev1:json:")
+            ):
+                raise _error("family repair composed-candidate result does not replay")
+            replacements.append(
+                {
+                    "base_page_json_version_id": job["base_page_json_version_id"],
+                    "document_ordinal": job["document_ordinal"],
+                    "physical_page": job["physical_page"],
+                    "plan": plan,
+                    "repair_job_id": job["repair_job_id"],
+                    "selected_page_json_version_id": selected,
+                }
+            )
+    if len({item["base_page_json_version_id"] for item in replacements}) != len(replacements):
+        raise _error("family repair composed candidate replaces one page more than once")
+    return replacements
 
 
 def record_gemini_family_region_repair_attempt_v1(

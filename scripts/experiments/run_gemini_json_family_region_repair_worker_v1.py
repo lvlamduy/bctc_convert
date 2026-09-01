@@ -35,6 +35,9 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     load_page_json_versions_v1,
     query_selected_hierarchical_title_axis_family_regions_v1,
 )
+from scripts.experiments import (  # noqa: E402
+    run_gemini_json_segment_report_region_repair_queue_v1 as segment_repair,
+)
 from scripts.experiments.run_gemini_json_region_repair_v1 import (  # noqa: E402
     run as run_region_repair_v1,
 )
@@ -42,6 +45,18 @@ from scripts.experiments.run_gemini_json_region_repair_v1 import (  # noqa: E402
 
 class RunGeminiJsonFamilyRegionRepairWorkerV1Error(RuntimeError):
     pass
+
+
+_SEGMENT_REPORT_FAMILY_ID = "CONSOLIDATED_SEGMENT_REPORT"
+
+
+def _segment_repair_mode_v1(*, plan: dict[str, Any], compiled: dict[str, Any]) -> bool:
+    is_segment_plan = plan.get("family_id") == _SEGMENT_REPORT_FAMILY_ID
+    if is_segment_plan != (compiled.get("segment_report_mode") is True):
+        raise RunGeminiJsonFamilyRegionRepairWorkerV1Error(
+            "repair plan and compiled segment-report modes disagree"
+        )
+    return is_segment_plan
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -110,7 +125,18 @@ def _repair_args(
     )
 
 
-def _targeted_repair_is_accepted(plan: dict[str, Any], candidate: dict[str, Any]) -> bool:
+def _targeted_repair_is_accepted(
+    plan: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    compiled_specs: dict[str, Any] | None = None,
+) -> bool:
+    if plan.get("family_id") == _SEGMENT_REPORT_FAMILY_ID:
+        return segment_repair.segment_targeted_repair_is_accepted_v1(
+            plan,
+            candidate,
+            compiled_specs=compiled_specs,
+        )
     if candidate["status"] == READY:
         return True
     before = set(plan["trigger_reasons"])
@@ -408,6 +434,19 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             thinking_level = current["next_thinking_level"]
             attempt_ordinal = current["attempt_count"] + 1
             try:
+                is_segment_plan = _segment_repair_mode_v1(plan=plan, compiled=compiled)
+                base_page = None
+                if is_segment_plan:
+                    # Reject a forged scope, candidate, or external spec triplet
+                    # before invoking the provider. Recheck after the observation
+                    # to close the mutable-results-database interval as well.
+                    base_page = segment_repair.stored_segment_repair_authority_v1(
+                        results_database=args.results_database,
+                        family_run_id=selected["family_run_id"],
+                        plan=plan,
+                        compiled_specs=compiled,
+                        page_database=args.page_database,
+                    )[-1]
                 observation = run_region_repair_v1(
                     _repair_args(
                         args,
@@ -416,21 +455,39 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         attempt_ordinal=attempt_ordinal,
                     )
                 )
-                version_id = observation["database_identities"]["page_json_version_id"]
+                version_id = (
+                    segment_repair.authenticate_segment_repair_observation_v1(
+                        plan=plan,
+                        observation=observation,
+                        page_database=args.page_database,
+                    )
+                    if is_segment_plan
+                    else observation["database_identities"]["page_json_version_id"]
+                )
                 repaired_page = load_page_json_versions_v1(
                     args.page_database,
                     page_json_version_ids=[version_id],
                 )[0]["page_json"]
-                base_page = load_page_json_versions_v1(
-                    args.page_database,
-                    page_json_version_ids=[plan["base_page_json_version_id"]],
-                )[0]["page_json"]
+                if base_page is None:
+                    base_page = load_page_json_versions_v1(
+                        args.page_database,
+                        page_json_version_ids=[plan["base_page_json_version_id"]],
+                    )[0]["page_json"]
                 if plan.get("query_disposition_sha256") is not None:
                     candidate = _evaluate_indexed_query_disposition_repair_v1(
                         plan=plan,
                         repaired_page_json_version_id=version_id,
                         compiled_specs=compiled,
                         page_database=args.page_database,
+                    )
+                elif is_segment_plan:
+                    candidate = segment_repair.evaluate_segment_report_repair_observation_v1(
+                        plan=plan,
+                        repaired_page_json_version_id=version_id,
+                        compiled_specs=compiled,
+                        page_database=args.page_database,
+                        results_database=args.results_database,
+                        family_run_id=selected["family_run_id"],
                     )
                 elif (
                     compiled.get("engine_format_version")
@@ -459,7 +516,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         table_id=plan["table_id"],
                         compiled_specs=compiled,
                     )
-                resolved = _targeted_repair_is_accepted(plan, candidate)
+                resolved = _targeted_repair_is_accepted(
+                    plan,
+                    candidate,
+                    compiled_specs=compiled,
+                )
                 stable_source = not resolved and _repair_target_evidence(
                     base_page, plan
                 ) == _repair_target_evidence(repaired_page, plan)
