@@ -590,6 +590,79 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
     ]
 
 
+def test_openrouter_task_can_forbid_direct_google_fallback(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "MBB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 0,
+        "last_receipt_json": None,
+        "relative_path": "MBB/report.pdf",
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "PENDING",
+        "task_id": "task-1",
+    }
+    commands = []
+
+    def command(argv, *, expected):
+        commands.append(argv)
+        assert expected == {0, 2}
+        return 2, {
+            "disposition": "NEEDS_RETRY",
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [1],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "transition_corpus_task_v1",
+        lambda _ledger, **kwargs: {**task, "state": kwargs["next_state"]},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: "1" * 64},
+    )
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
+            "pages": [{"physical_page": 1, "status": "UNRESOLVED_PAGE"}],
+        },
+    )
+
+    target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=1,
+        google_key_file=tmp_path / "google",
+        google_key_slot=1,
+        provider_timeout_seconds=60,
+        max_attempts=1,
+        openrouter_only=True,
+    )
+
+    assert commands
+    assert all(
+        command[command.index("--google-standard-mode") + 1] == "disabled" for command in commands
+    )
+
+
 def test_interrupted_google_file_uploads_are_preserved_before_clean_resubmission(
     tmp_path,
 ) -> None:

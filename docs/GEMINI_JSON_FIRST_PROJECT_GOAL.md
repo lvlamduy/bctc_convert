@@ -24,6 +24,24 @@
 Phần còn lại của tài liệu là execution contract và definition of done cho goal
 statement trên.
 
+### Phạm vi corpus đang mở rộng (checkpoint 2026-09-01)
+
+- Phạm vi thời gian: **Quý 1/2025 đến hiện tại**.
+- Ma trận theo dõi gồm đủ 27 ngân hàng, nhưng paid provider frontier chỉ gồm 19
+  ngân hàng mới: ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB,
+  SHB, SSB, STB, TCB, TPB, VAB và VBB.
+- ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có Gemini JSON hiện hành. Tất cả
+  dữ liệu của tám ngân hàng này phải lấy từ manifest/store/cache đã xác thực;
+  không gửi lại OpenRouter. PDF mới ngoài manifest của tám ngân hàng này chỉ
+  được ghi vào inventory và chờ quyền riêng của người dùng.
+- Mọi request mới đi duy nhất qua OpenRouter, model
+  `google/gemini-3.7-flash`, provider `google-vertex/global/flex`, service tier
+  `flex`; direct Google và mọi fallback provider/model đều bị vô hiệu hóa.
+- Denominator đã xác thực ở checkpoint: corpus cũ **140 PDF / 8.947 trang** chỉ
+  tái sử dụng; paid frontier mới **279 PDF / 15.968 trang**. Runner phải chứng
+  minh paid frontier không chứa ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB trước request
+  đầu tiên.
+
 ## 1. Mục tiêu duy nhất
 
 Xây dựng pipeline tổng quát, có thể mở rộng và chạy được trên BCTC ngân hàng

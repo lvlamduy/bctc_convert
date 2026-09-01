@@ -241,6 +241,11 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--google-watch-max-seconds", type=float, default=172_800.0)
     run.add_argument("--provider-timeout-seconds", type=int, default=900)
     run.add_argument("--max-fallback-attempts", type=int, default=2)
+    run.add_argument(
+        "--openrouter-only",
+        action="store_true",
+        help="Disable direct-Google fallback for every OpenRouter task.",
+    )
     return parser
 
 
@@ -2773,6 +2778,7 @@ def _run_openrouter(
     google_key_slot: int,
     provider_timeout_seconds: int,
     max_attempts: int,
+    openrouter_only: bool = False,
 ) -> dict[str, Any]:
     retry_frontiers = _retry_prompt_frontiers_v1(task)
     retry_pages = (
@@ -2822,7 +2828,7 @@ def _run_openrouter(
             "--google-key-slot",
             str(google_key_slot),
             "--google-standard-mode",
-            "on-provider-error",
+            "disabled" if openrouter_only else "on-provider-error",
             "--timeout-seconds",
             str(provider_timeout_seconds),
         ]
@@ -3171,6 +3177,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 google_key_slot=_google_slot_for_task_v1(openrouter[0]["task_id"], google_slots),
                 provider_timeout_seconds=args.provider_timeout_seconds,
                 max_attempts=summary["max_task_attempts"],
+                openrouter_only=getattr(args, "openrouter_only", False),
             )
         available = _google_submit_capacity_v1(
             active_count=len(active_google),

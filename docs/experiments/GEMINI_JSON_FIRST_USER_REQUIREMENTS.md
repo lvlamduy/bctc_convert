@@ -4,6 +4,36 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
+## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-01
+
+- Khoảng thời gian chính thức của đợt mở rộng là **từ Quý 1/2025 đến thời
+  điểm hiện tại**. Không đưa năm 2024 vào hàng đợi Gemini của đợt này.
+- Tổng universe gồm 27 ngân hàng. Tám ngân hàng đã hoàn tất JSON là **ACB,
+  BID, CTG, HDB, MBB, VCB, VIB và VPB**. Các PDF/page đã có manifest hiện hành
+  của tám ngân hàng này phải tái sử dụng từ store/cache bất biến; **không được
+  gửi lại Gemini/OpenRouter**.
+- Mười chín ngân hàng mới được phép vào paid provider frontier là **ABB, BAB,
+  BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB,
+  VAB và VBB**.
+- Ma trận kiểm kê có thể hiển thị đủ 27 ngân hàng để con người theo dõi, nhưng
+  corpus plan phải tách rõ `REUSE_EXISTING_GEMINI_JSON` cho tám ngân hàng cũ và
+  `NEW_VERTEX_FLEX_FRONTIER` cho mười chín ngân hàng mới. Một plan chứa ngân
+  hàng cũ trong paid frontier phải fail-closed trước request đầu tiên.
+- Nếu phát hiện PDF mới của một trong tám ngân hàng chưa có trong manifest cũ,
+  không được tự gọi Gemini. Trường hợp đó phải ghi riêng vào inventory và chờ
+  người dùng cấp quyền mở rộng frontier.
+- Mọi request mới chỉ được đi qua **OpenRouter → Google Vertex Flex**, model
+  `google/gemini-3.7-flash`, provider `google-vertex/global/flex`, service tier
+  `flex`. Direct Google, Google Standard, Google Batch và mọi provider/model
+  fallback đều bị cấm.
+- Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên; không
+  được vì mở rộng corpus mà bỏ qua checkpoint hoặc ghi đè artifact cũ.
+- Inventory byte/page đã xác thực tại checkpoint này gồm **140 PDF / 8.947
+  trang** của tám ngân hàng cũ chỉ để tái sử dụng, và **279 PDF / 15.968 trang**
+  của mười chín ngân hàng mới được phép vào Vertex Flex frontier. Tổng này phải
+  được kiểm tra lại nếu nguồn thay đổi; tuyệt đối không biến 140 PDF cũ thành
+  request mới chỉ vì chạy lại inventory hoặc đổi manifest trình bày.
+
 ## 1. Provider và credential
 
 - **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.
@@ -40,7 +70,8 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   bại, token và chi phí; không submit lại job khi process khởi động lại.
 - Batch failure phải được phân tuyến từ receipt có kiểu ngay ở cấp page:
   `RECITATION → scope`, lỗi JSON/semantic → `items`, lỗi transport/provider →
-  prompt mặc định và được phép chuyển OpenRouter ↔ Google theo policy. Một
+  retry có giới hạn trên đúng OpenRouter Google Vertex Flex với prompt mặc định;
+  không được chuyển sang Google trực tiếp hoặc provider khác. Một
   upload bị ngắt trước khi có JSONL/manifest/submission response phải được dời
   nguyên vẹn vào quarantine có content hash rồi mới tạo attempt sạch; không xóa
   receipt upload và không suy đoán rằng một batch đã hoặc chưa được submit khi

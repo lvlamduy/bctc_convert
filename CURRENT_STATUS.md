@@ -6,6 +6,33 @@ Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATI
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
+## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
+
+- Phạm vi được người dùng chốt là **từ Quý 1/2025 đến hiện tại**, tổng cộng 27
+  ngân hàng. Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có
+  Gemini JSON nên chỉ tái sử dụng corpus hiện hành; không được gửi lại
+  Gemini/OpenRouter và không được tính lại vào chi phí paid frontier.
+- Đã khôi phục/đối chiếu đúng **588/588** đường dẫn PDF năm 2025–2026 từ S3:
+  296 file được khôi phục, 292 file đã có đúng nội dung nên được dùng lại.
+  Thao tác này chỉ kiểm tra nguồn PDF, chưa thực hiện request Gemini.
+- Inventory mới nhận diện 279 PDF của 19 ngân hàng mới, tổng **15.968 trang**
+  được phép vào paid frontier. Plan thực thi đã được kiểm tra độc lập: chỉ có
+  ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB,
+  TCB, TPB, VAB và VBB; **không có ngân hàng nào trong tám ngân hàng cũ**.
+- Route duy nhất được phép là OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`, service tier `flex`; direct Google và mọi
+  provider/model fallback đều bị khóa. Runner dừng trước request đầu tiên nếu
+  paid frontier chứa một ngân hàng cũ hoặc route/provider/tier bị thay đổi.
+- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Chưa khởi
+  chạy API ở checkpoint này; cần hoàn tất cost/disk/S3 staging gate trước lần
+  gọi đầu tiên.
+- Theo chi phí OpenRouter Vertex Flex đã đo trên chính corpus cũ, paid frontier
+  15.968 trang có ước tính cơ sở khoảng **28,8 USD**; ngân sách vận hành an toàn
+  là **32–36 USD** để bao gồm retry có receipt. Với 20 worker và độ trễ lịch sử,
+  thời gian provider dự kiến khoảng **6–10 giờ**; nên dành một ngày làm việc cho
+  cả render, ingest, kiểm tra và checkpoint S3. Tám ngân hàng cũ không nằm trong
+  phép tính này.
+
 ## Checkpoint tổng hợp family dễ đọc — 2026-09-01
 
 - Đã chuẩn hóa bảng trạng thái của **toàn bộ 55 family** tại
