@@ -38,6 +38,47 @@ Các biến tùy chọn:
 - `BCTC_REVIEW_CACHE_DIR`: nơi cache ảnh trang đã render;
 - `BCTC_REVIEW_DEBUG=1`: bật Flask debug khi phát triển.
 
+## Ghép nhiều corpus/run mà không sửa selection production
+
+Để xem chung tám ngân hàng cũ và mười chín ngân hàng mới, đặt
+`BCTC_REVIEW_RUN_MANIFEST` tới một JSON review-only. Mỗi nguồn khóa chính xác
+family, run, results DB, page DB và thư mục PDF:
+
+```json
+{
+  "format_version": "BCTC_FAMILY_REVIEW_RUN_MANIFEST_V1",
+  "sources": [
+    {
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "family_run_id": "run-cu-da-xac-thuc",
+      "results_database": "/data/old-8/family-results.sqlite3",
+      "page_database": "/data/old-8/page-store.sqlite3",
+      "pdf_root": "/workspace/bctc-ai/vietstock_bctc"
+    },
+    {
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "family_run_id": "run-moi-da-xac-thuc",
+      "results_database": "/data/new-19/family-results.sqlite3",
+      "page_database": "/data/new-19/page-store.sqlite3",
+      "pdf_root": "/workspace/bctc-ai/vietstock_bctc"
+    }
+  ]
+}
+```
+
+Sau đó chạy:
+
+```bash
+export BCTC_REVIEW_RUN_MANIFEST=/data/review/27-bank-family-runs.json
+uv run python scripts/review/run_family_review_app.py
+```
+
+Manifest có thể chứa nhiều run nguồn cho cùng family. Dashboard cộng các số
+liệu và hợp nhất danh sách PDF theo `source_sha256`, nhưng vẫn đọc từng DB ở chế
+độ chỉ đọc. Run không cần trở thành `family_current_selection`; vì vậy review
+27 ngân hàng không thay đổi selection lịch sử. Cấu hình bị trùng PDF trong cùng
+family hoặc trỏ sai `family_run_id` sẽ bị từ chối trước khi server nhận traffic.
+
 Nếu page store và results store có sẵn nhưng thiếu `BCTC_PDF_ROOT`, người dùng
 vẫn xem được dữ liệu Gemini và mapping. Cột ảnh sẽ báo rõ chưa có file PDF thay
 vì âm thầm hiển thị sai trang.

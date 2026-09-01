@@ -21,6 +21,12 @@ older queue priorities where they conflict.
   paid frontier có giao tập rỗng với tám mã cũ.
 - Resume/retry diễn ra theo từng page có receipt; page đã hoàn tất không bị gửi
   lại. Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
+- Review app đã có chế độ manifest nhiều exact run để ghép kết quả tám ngân
+  hàng cũ và mười chín ngân hàng mới theo từng family mà không sửa
+  `family_current_selection` trong bất kỳ DB nguồn nào. Mỗi source khóa rõ
+  `family_id`, `family_run_id`, results DB, page DB và PDF root; số liệu được
+  cộng, PDF được khử trùng theo source identity, còn manifest sai run hoặc làm
+  trùng cùng PDF trong một family bị từ chối. Chế độ một DB cũ vẫn tương thích.
 
 ## 2026-09-01 human review/schema checkpoint
 

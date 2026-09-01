@@ -82,6 +82,9 @@ class ReviewSettings:
     pdf_root: Path | None
     schema_path: Path
     cache_directory: Path
+    family_id: str | None = None
+    family_run_id: str | None = None
+    run_manifest: Path | None = None
 
     @classmethod
     def from_environment(cls) -> ReviewSettings:
@@ -98,6 +101,11 @@ class ReviewSettings:
                 )
             ).expanduser(),
             cache_directory=cache,
+            run_manifest=(
+                Path(os.environ["BCTC_REVIEW_RUN_MANIFEST"]).expanduser().resolve(strict=False)
+                if os.environ.get("BCTC_REVIEW_RUN_MANIFEST")
+                else None
+            ),
         )
 
 
@@ -262,6 +270,8 @@ class ReviewRepository:
 
     def __init__(self, settings: ReviewSettings):
         self.settings = settings
+        if bool(settings.family_id) != bool(settings.family_run_id):
+            raise ValueError("family_id và family_run_id phải được cấu hình cùng nhau")
         self._schema_names = self._load_schema_names(settings.schema_path)
         self._spec_cache: dict[str, dict[str, Any]] = {}
 
@@ -319,15 +329,28 @@ class ReviewRepository:
 
     def families(self) -> list[dict[str, Any]]:
         with self._results() as connection:
-            rows = connection.execute(
-                """
-                SELECT selection.family_id, run.document_count, run.ready_count,
-                       run.not_observed_count, run.unresolved_count, run.mapping_count
-                FROM family_current_selection AS selection
-                JOIN family_run AS run USING (family_run_id)
-                ORDER BY selection.family_id
-                """
-            ).fetchall()
+            if self.settings.family_run_id:
+                rows = connection.execute(
+                    """
+                    SELECT family_id, document_count, ready_count, not_observed_count,
+                           unresolved_count, mapping_count
+                    FROM family_run
+                    WHERE family_run_id = ? AND family_id = ?
+                    """,
+                    (self.settings.family_run_id, self.settings.family_id),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT selection.family_id, run.document_count, run.ready_count,
+                           run.not_observed_count, run.unresolved_count, run.mapping_count
+                    FROM family_current_selection AS selection
+                    JOIN family_run AS run USING (family_run_id)
+                    ORDER BY selection.family_id
+                    """
+                ).fetchall()
+        if self.settings.family_run_id and not rows:
+            raise LookupError("Review manifest trỏ tới family run không tồn tại")
         order_by_family = {
             family_id: index for index, family_id in enumerate(FAMILY_ORDER, start=1)
         }
@@ -348,6 +371,19 @@ class ReviewRepository:
 
     def _document_rows(self, family_id: str) -> list[sqlite3.Row]:
         with self._results() as connection:
+            if self.settings.family_run_id:
+                if family_id != self.settings.family_id:
+                    return []
+                return connection.execute(
+                    """
+                    SELECT document_ordinal, source_logical_name, source_sha256, status,
+                           candidate_count, mapping_count, reasons_json
+                    FROM family_trial
+                    WHERE family_run_id = ?
+                    ORDER BY document_ordinal
+                    """,
+                    (self.settings.family_run_id,),
+                ).fetchall()
             return connection.execute(
                 """
                 SELECT trial.document_ordinal, trial.source_logical_name,
@@ -440,15 +476,29 @@ class ReviewRepository:
 
     def _trial(self, family_id: str, source_sha256: str) -> sqlite3.Row:
         with self._results() as connection:
-            row = connection.execute(
-                """
-                SELECT trial.*, selection.family_run_id
-                FROM family_current_selection AS selection
-                JOIN family_trial AS trial USING (family_run_id)
-                WHERE selection.family_id = ? AND trial.source_sha256 = ?
-                """,
-                (family_id, source_sha256),
-            ).fetchone()
+            if self.settings.family_run_id:
+                row = (
+                    connection.execute(
+                        """
+                        SELECT trial.*, trial.family_run_id
+                        FROM family_trial AS trial
+                        WHERE trial.family_run_id = ? AND trial.source_sha256 = ?
+                        """,
+                        (self.settings.family_run_id, source_sha256),
+                    ).fetchone()
+                    if family_id == self.settings.family_id
+                    else None
+                )
+            else:
+                row = connection.execute(
+                    """
+                    SELECT trial.*, selection.family_run_id
+                    FROM family_current_selection AS selection
+                    JOIN family_trial AS trial USING (family_run_id)
+                    WHERE selection.family_id = ? AND trial.source_sha256 = ?
+                    """,
+                    (family_id, source_sha256),
+                ).fetchone()
         if row is None:
             raise LookupError("Không tìm thấy PDF trong family đang chọn")
         return row

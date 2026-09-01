@@ -25,6 +25,7 @@ def _results_database(path: Path) -> None:
         );
         CREATE TABLE family_run (
             family_run_id TEXT PRIMARY KEY,
+            family_id TEXT NOT NULL,
             document_count INTEGER NOT NULL,
             ready_count INTEGER NOT NULL,
             not_observed_count INTEGER NOT NULL,
@@ -105,7 +106,10 @@ def _results_database(path: Path) -> None:
         "INSERT INTO family_current_selection VALUES (?, ?)",
         ("LOAN_QUALITY_CLASSIFICATION", "run-1"),
     )
-    connection.execute("INSERT INTO family_run VALUES (?, ?, ?, ?, ?, ?)", ("run-1", 1, 1, 0, 0, 1))
+    connection.execute(
+        "INSERT INTO family_run VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("run-1", "LOAN_QUALITY_CLASSIFICATION", 1, 1, 0, 0, 1),
+    )
     connection.execute(
         "INSERT INTO family_trial VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         ("run-1", 1, SOURCE_NAME, SOURCE_SHA, "READY", 1, "candidate-1", 1, b"[]", b"{}"),
@@ -317,6 +321,98 @@ def test_review_aligns_gemini_row_with_schema_mapping(client) -> None:
     assert payload["gemini_tables"][0]["rows"][0]["mapping_state"] == "MAPPED"
     assert payload["coverage"]["summary"]["visible_unmapped_items"] == 0
     assert payload["pages"][0]["physical_page"] == 2
+
+
+def test_review_manifest_federates_exact_runs_without_current_selection(tmp_path: Path) -> None:
+    schema = tmp_path / "schema.jsonl"
+    schema.write_text(
+        json.dumps(
+            {"schema_id": 747, "canonical_name": "Nhóm 1: Nợ đủ tiêu chuẩn"},
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    sources = []
+    second_sha = "b" * 64
+    second_name = "vietstock_bctc/ABB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf"
+    for ordinal, (run_id, source_sha, source_name) in enumerate(
+        (("run-1", SOURCE_SHA, SOURCE_NAME), ("run-2", second_sha, second_name)), start=1
+    ):
+        root = tmp_path / f"source-{ordinal}"
+        results = root / "results.sqlite3"
+        pages = root / "pages.sqlite3"
+        pdf_root = root / "vietstock_bctc"
+        root.mkdir()
+        pdf_root.mkdir()
+        _results_database(results)
+        _page_database(pages)
+        with sqlite3.connect(results) as connection:
+            connection.execute("DELETE FROM family_current_selection")
+            if run_id != "run-1":
+                for table in ("family_run", "family_trial", "family_candidate", "family_mapping"):
+                    connection.execute(
+                        f"UPDATE {table} SET family_run_id = ? WHERE family_run_id = 'run-1'",
+                        (run_id,),
+                    )
+                connection.execute(
+                    "UPDATE family_trial SET source_sha256 = ?, source_logical_name = ?",
+                    (source_sha, source_name),
+                )
+            connection.commit()
+        if source_sha != SOURCE_SHA:
+            with sqlite3.connect(pages) as connection:
+                connection.execute(
+                    "UPDATE document SET source_sha256 = ?, source_logical_name = ?",
+                    (source_sha, source_name),
+                )
+                connection.commit()
+        sources.append(
+            {
+                "family_id": "LOAN_QUALITY_CLASSIFICATION",
+                "family_run_id": run_id,
+                "results_database": str(results),
+                "page_database": str(pages),
+                "pdf_root": str(pdf_root),
+            }
+        )
+    manifest = tmp_path / "review-runs.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "format_version": "BCTC_FAMILY_REVIEW_RUN_MANIFEST_V1",
+                "sources": sources,
+            }
+        ),
+        encoding="utf-8",
+    )
+    app = create_app(
+        ReviewSettings(
+            results_database=None,
+            page_database=None,
+            pdf_root=None,
+            schema_path=schema,
+            cache_directory=tmp_path / "cache",
+            run_manifest=manifest,
+        )
+    )
+    app.config.update(TESTING=True)
+    client = app.test_client()
+
+    options = client.get("/api/options").get_json()
+    family = options["families"][0]
+    assert family["document_count"] == 2
+    assert family["ready_count"] == 2
+    assert family["run_source_count"] == 2
+    assert options["banks"] == ["ABB", "ACB"]
+    assert options["configuration"]["source_count"] == 2
+    documents = client.get("/api/documents?family_id=LOAN_QUALITY_CLASSIFICATION").get_json()[
+        "documents"
+    ]
+    assert [document["bank"] for document in documents] == ["ABB", "ACB"]
+    review = client.get(f"/api/review/LOAN_QUALITY_CLASSIFICATION/{second_sha}")
+    assert review.status_code == 200
+    assert review.get_json()["document"]["bank"] == "ABB"
 
 
 def test_page_image_is_rendered_from_configured_pdf(client) -> None:

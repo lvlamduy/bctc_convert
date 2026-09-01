@@ -6,14 +6,15 @@ import os
 
 from flask import Flask, jsonify, render_template, request, send_file
 
-from .repository import ReviewRepository, ReviewSettings
+from .federated import build_review_repository
+from .repository import ReviewSettings
 
 
 def create_app(settings: ReviewSettings | None = None) -> Flask:
     """Create a configured read-only review application."""
 
     app = Flask(__name__)
-    repository = ReviewRepository(settings or ReviewSettings.from_environment())
+    repository = build_review_repository(settings or ReviewSettings.from_environment())
     app.extensions["bctc_review_repository"] = repository
 
     @app.get("/")
