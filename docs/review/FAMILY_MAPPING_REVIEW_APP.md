@@ -97,6 +97,22 @@ khớp trial frontier, mọi source SHA có trong page store và đúng file PDF
 tại. Nó cũng chặn hai run của cùng family chứa trùng PDF. Output là write-once:
 nếu file đã tồn tại với nội dung khác, lệnh dừng thay vì ghi đè.
 
+Từ manifest đã niêm phong, tạo hai file Markdown dễ đọc bằng:
+
+```bash
+uv run python scripts/review/build_family_review_readable_ledgers.py \
+  --run-manifest /data/review/27-bank-family-runs.json \
+  --notes-template docs/experiments/COMPLETED_TM_FAMILIES_READABLE.md \
+  --completed-output docs/experiments/COMPLETED_TM_FAMILIES_27BANK.md \
+  --ledger-output docs/experiments/UNRESOLVED_MAPPING_LEDGER_27BANK.md
+```
+
+Renderer kiểm tra chéo `READY + NOT_OBSERVED + UNRESOLVED` với trial frontier
+của từng family, tách riêng `UNRESOLVED`, `CÓ TRÊN PDF NHƯNG CHƯA MAP` và
+`SOURCE_ONLY`, đồng thời khử trùng theo PDF/page/table/row/ID. Nó không tự kết
+luận `CHƯA CÓ TRONG SCHEMA`: khi chưa có bằng chứng rà toàn schema, dòng được
+giữ ở nhóm chưa đủ thông tin hoặc nghi thuộc family khác.
+
 Nếu page store và results store có sẵn nhưng thiếu `BCTC_PDF_ROOT`, người dùng
 vẫn xem được dữ liệu Gemini và mapping. Cột ảnh sẽ báo rõ chưa có file PDF thay
 vì âm thầm hiển thị sai trang.

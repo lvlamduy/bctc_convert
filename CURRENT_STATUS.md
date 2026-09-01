@@ -31,6 +31,12 @@ older queue priorities where they conflict.
   bổ sung và all-family receipt mới. Trước khi ghi file write-once, builder xác
   minh exact run/family, trial count, source SHA trong page store và sự tồn tại
   của từng PDF; các SQLite nguồn luôn được mở read-only.
+- Renderer ledger 27 ngân hàng đã được chuẩn bị: nó kiểm tra lại tổng
+  READY/NOT_OBSERVED/UNRESOLVED theo từng family, thống kê riêng dòng chưa map
+  và SOURCE_ONLY trong PDF READY, rồi ghi từng record với ngân hàng, kỳ, loại
+  báo cáo, file, trang, nhãn nguồn, cha, ID gần nhất và lý do. Record được khử
+  trùng; renderer không tự tuyên bố thiếu schema khi chưa có bằng chứng rà toàn
+  schema.
 
 ## 2026-09-01 human review/schema checkpoint
 
