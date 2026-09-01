@@ -1,0 +1,54 @@
+{
+  "blank_zero_policy": "PRESERVE_SOURCE_BLANK_WITHOUT_BACKSOLVE",
+  "closure_policy": "MAP_EXACT_AXIS_METRIC_INTERSECTIONS_AND_VALIDATE_VISIBLE_TOTALS",
+  "family_id": "CONSOLIDATED_SEGMENT_REPORT",
+  "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
+  "matrix_policy": {
+    "accepted_orientations": ["METRIC_ROWS", "METRIC_COLUMNS"],
+    "matrix_kind": "SEGMENT_REPORT_MATRIX",
+    "branch_aliases": {
+      "BUSINESS": ["Bộ phận chia theo lĩnh vực kinh doanh", "Báo cáo bộ phận chính yếu theo lĩnh vực kinh doanh", "Báo cáo bộ phận theo lĩnh vực kinh doanh"],
+      "GEOGRAPHIC": ["Bộ phận chia theo khu vực địa lý", "Báo cáo bộ phận theo khu vực địa lý", "Báo cáo bộ phận thứ yếu theo khu vực địa lý"]
+    },
+    "business_axis_aliases": {
+      "BANK": ["Ngân hàng", "Hoạt động ngân hàng", "Hoạt động ngân hàng và tín dụng", "Hoạt động tài chính ngân hàng", "Tài chính Ngân hàng", "Dịch vụ tài chính ngân hàng"],
+      "DEBT_ASSET": ["Quản lý nợ", "Quản lý nợ và khai thác tài sản", "Khai thác nợ - Quản lý tài sản", "Hoạt động quản lý nợ và khai thác tài sản", "HĐ quản lý nợ và khai thác tài sản"],
+      "ELIMINATION": ["Loại trừ", "Điều chỉnh", "Điều chỉnh hợp nhất", "Điều chỉnh nội bộ", "Loại trừ/Phân loại"],
+      "INSURANCE": ["Bảo hiểm", "Hoạt động bảo hiểm", "Hoạt động kinh doanh bảo hiểm"],
+      "SECURITIES_FUND": ["Chứng khoán Quản lý quỹ", "Chứng khoán và quản lý quỹ", "Chứng khoán/Quản lý quỹ"],
+      "TOTAL": ["Tổng", "Tổng cộng"]
+    },
+    "consolidated_scope_aliases": ["Báo cáo tài chính hợp nhất", "Thuyết minh báo cáo tài chính hợp nhất"],
+    "geographic_axis_aliases": {
+      "CENTRAL": ["Miền Trung"],
+      "ELIMINATION": ["Loại trừ", "Điều chỉnh", "Điều chỉnh hợp nhất", "Điều chỉnh nội bộ", "Loại trừ/Phân loại"],
+      "NORTH": ["Miền Bắc"],
+      "OTHER": ["Khu vực khác", "Khác"],
+      "SOUTH": ["Miền Nam"],
+      "TOTAL": ["Tổng", "Tổng cộng"]
+    },
+    "max_continuation_pages": 12,
+    "minimum_mapped_axis_roles": 2,
+    "separate_scope_aliases": ["Báo cáo tài chính riêng lẻ", "Thuyết minh báo cáo tài chính riêng lẻ", "Báo cáo tài chính công ty mẹ", "Thuyết minh báo cáo tài chính công ty mẹ"],
+    "source_only_axis_aliases": [
+      "Cho thuê tài chính",
+      "Chứng khoán",
+      "Hoạt động chứng khoán",
+      "Hoạt động kinh doanh chứng khoán",
+      "Hoạt động kinh doanh khác",
+      "Quản lý quỹ",
+      "Hoạt động công ty tài chính",
+      "Dịch vụ tài chính phi ngân hàng",
+      "Tài chính phi ngân hàng",
+      "Nước ngoài",
+      "Miền Trung và Tây Nguyên",
+      "Miền Trung Tây Nguyên",
+      "Khác"
+    ],
+    "unit_bindings": [
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Đơn vị: triệu đồng", "Đơn vị tính: triệu đồng"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+      {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
+      {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9}
+    ]
+  }
+}

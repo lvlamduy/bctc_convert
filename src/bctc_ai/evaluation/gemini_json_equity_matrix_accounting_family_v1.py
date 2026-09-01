@@ -381,6 +381,20 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     if (
         type(evaluation_spec) is dict
         and type(evaluation_spec.get("matrix_policy")) is dict
+        and evaluation_spec["matrix_policy"].get("matrix_kind") == "SEGMENT_REPORT_MATRIX"
+    ):
+        from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+            compile_gemini_json_segment_report_matrix_specs_v1,
+        )
+
+        return compile_gemini_json_segment_report_matrix_specs_v1(
+            topology=topology,
+            evaluation_spec=evaluation_spec,
+            schema_binding_spec=schema_binding_spec,
+        )
+    if (
+        type(evaluation_spec) is dict
+        and type(evaluation_spec.get("matrix_policy")) is dict
         and evaluation_spec["matrix_policy"].get("matrix_kind") == "CATEGORICAL_PERIOD_MATRIX"
     ):
         from bctc_ai.evaluation.gemini_json_categorical_period_matrix_v1 import (
@@ -1617,6 +1631,17 @@ def build_gemini_json_equity_matrix_region_query_receipt_v1(
     regions: Sequence[Mapping[str, Any]], *, owner_receipt: Mapping[str, Any]
 ) -> dict[str, Any]:
     """Seal exact component regions and their externally indexed owner fence."""
+
+    if (
+        type(owner_receipt) is dict
+        and owner_receipt.get("rule")
+        == "EXPLICIT_CONSOLIDATED_SEGMENT_OWNER_RESET_FREE_MULTI_TABLE_INTERVAL"
+    ):
+        from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+            build_segment_report_region_query_receipt_v1,
+        )
+
+        return build_segment_report_region_query_receipt_v1(regions, owner_receipt=owner_receipt)
 
     checked = _checked_region_axis(regions)
     if type(owner_receipt) is not dict:
@@ -3924,6 +3949,19 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
 ) -> dict[str, Any]:
     """Evaluate one exact matrix cluster and emit mappings only after closure."""
 
+    if compiled_specs.get("segment_report_mode") is True:
+        from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+            evaluate_gemini_json_segment_report_cluster_v1,
+        )
+
+        return evaluate_gemini_json_segment_report_cluster_v1(
+            regions=regions,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+            query_receipt=query_receipt,
+            document_unit_context_evidence=document_unit_context_evidence,
+        )
+
     if compiled_specs.get("exchange_rate_mode") is True:
         from bctc_ai.evaluation.gemini_json_categorical_period_matrix_v1 import (
             evaluate_gemini_json_categorical_period_matrix_cluster_v1,
@@ -4616,6 +4654,15 @@ def coalesce_gemini_json_equity_matrix_document_v1(
 ) -> dict[str, Any]:
     """Select one complete matrix under one bounded owner/reset fence."""
 
+    if compiled_specs.get("segment_report_mode") is True:
+        from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+            coalesce_gemini_json_segment_report_document_v1,
+        )
+
+        return coalesce_gemini_json_segment_report_document_v1(
+            page_records=page_records, compiled_specs=compiled_specs
+        )
+
     if compiled_specs.get("exchange_rate_mode") is True:
         from bctc_ai.evaluation.gemini_json_categorical_period_matrix_v1 import (
             coalesce_gemini_json_categorical_period_matrix_document_v1,
@@ -5125,7 +5172,14 @@ def validate_gemini_json_indexed_equity_matrix_query_evidence_v1(
         ):
             raise _error("indexed equity-matrix disposition semantics drifted")
         if cluster["status"] == READY:
-            _checked_region_axis(regions)
+            if compiled_specs.get("segment_report_mode") is True:
+                from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+                    checked_segment_report_region_axis_v1,
+                )
+
+                checked_segment_report_region_axis_v1(regions)
+            else:
+                _checked_region_axis(regions)
             accepted.append(cluster)
     if not same_typed_json_v1(value["accepted_clusters"], accepted):
         raise _error("indexed equity-matrix accepted projection drifted")
@@ -5601,6 +5655,17 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
     def validate_candidate(
         candidate: Any, *, document: Mapping[str, Any], cluster: Mapping[str, Any]
     ) -> dict[str, Any]:
+        if compiled_specs.get("segment_report_mode") is True:
+            from bctc_ai.evaluation.gemini_json_segment_report_matrix_v1 import (
+                validate_gemini_json_segment_report_candidate_binding_v1,
+            )
+
+            return validate_gemini_json_segment_report_candidate_binding_v1(
+                candidate,
+                document=document,
+                cluster=cluster,
+                compiled_specs=compiled_specs,
+            )
         if compiled_specs.get("exchange_rate_mode") is True:
             from bctc_ai.evaluation.gemini_json_categorical_period_matrix_v1 import (
                 validate_gemini_json_categorical_period_matrix_candidate_binding_v1,

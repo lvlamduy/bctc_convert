@@ -1,0 +1,64 @@
+{
+  "children": [
+    {
+      "matchers": [{"aliases": ["Tài sản", "Tổng tài sản", "Tài sản bộ phận"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "ASSETS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Nợ phải trả", "Tổng nợ phải trả", "Nợ phải trả bộ phận"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "LIABILITIES",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tài sản cố định", "TSCĐ"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "FIXED_ASSETS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Doanh thu", "Thu nhập"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "REVENUE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "EXPENSE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lợi nhuận trước thuế", "Tổng lợi nhuận trước thuế", "Kết quả kinh doanh trước thuế", "Kết quả kinh doanh bộ phận (trước thuế)"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "PROFIT_BEFORE_TAX",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CONSOLIDATED_SEGMENT_REPORT",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Báo cáo bộ phận riêng lẻ",
+    "Giao dịch với các bên liên quan",
+    "Báo cáo tình hình tài chính",
+    "Báo cáo kết quả hoạt động kinh doanh",
+    "Báo cáo lưu chuyển tiền tệ"
+  ],
+  "limits": {"max_continuation_pages": 12, "max_cluster_span_lines": 8192, "max_label_line_span": 6},
+  "parent": {
+    "aliases": ["Báo cáo bộ phận", "Báo cáo bộ phận hợp nhất", "Thông tin báo cáo bộ phận"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "SEGMENT_REPORT_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [["ASSETS", "LIABILITIES"], ["REVENUE", "EXPENSE"], ["PROFIT_BEFORE_TAX"]],
+  "structural_reset_aliases": [
+    "Giao dịch với các bên liên quan",
+    "Thu nhập lãi và các khoản thu nhập tương tự",
+    "Quản lý rủi ro tài chính",
+    "Cam kết và nợ tiềm tàng",
+    "Sự kiện phát sinh sau ngày kết thúc kỳ kế toán"
+  ]
+}
