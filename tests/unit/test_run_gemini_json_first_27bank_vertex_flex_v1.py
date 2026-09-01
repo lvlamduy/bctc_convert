@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from argparse import Namespace
+from hashlib import sha256
 from pathlib import Path
+
+import pytest
 
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     build_gemini_json_first_vertex_flex_expansion_v1,
@@ -140,3 +144,137 @@ def test_run_one_targets_one_task_and_remains_openrouter_only(tmp_path: Path) ->
     assert command[command.index("--task-id") + 1] == task_id
     assert command[-1] == "--openrouter-only"
     assert "--google-key-file" not in command
+
+
+def test_terminal_retry_recovers_exact_failed_page_variants() -> None:
+    failed, variants = target._retry_prompt_variants(
+        {
+            "adaptive_retry_results": [
+                {"physical_pages": [3], "prompt_variant": "items", "result": {}},
+            ],
+            "alternate_prompt_variants": [
+                {"physical_pages": [2], "prompt_variant": "scope"},
+            ],
+            "failed_pages": [2, 3],
+        },
+        document_page_count=4,
+        default_variant="simple",
+    )
+
+    assert failed == [2, 3]
+    assert variants == {1: "simple", 2: "scope", 3: "items", 4: "simple"}
+
+
+def test_terminal_retry_rejects_an_out_of_document_page() -> None:
+    with pytest.raises(
+        target.RunGeminiJsonFirst27BankVertexFlexV1Error,
+        match="terminal page frontier",
+    ):
+        target._retry_prompt_variants(
+            {"failed_pages": [4]},
+            document_page_count=3,
+            default_variant="simple",
+        )
+
+
+def test_repair_one_calls_only_failed_pages_and_seals_mixed_prompt_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_root = tmp_path / "sources"
+    relative_path = "vietstock_bctc/N01/2025/report.pdf"
+    source = source_root / relative_path
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"one authenticated PDF")
+    task_id = "gjfptaskv1:" + "f" * 64
+    receipt = {
+        "adaptive_retry_results": [
+            {"physical_pages": [3], "prompt_variant": "items", "result": {}},
+        ],
+        "alternate_prompt_variants": [
+            {"physical_pages": [3], "prompt_variant": "items"},
+        ],
+        "failed_pages": [2, 3],
+    }
+    task = {
+        "artifact_relative_path": "tasks/ff/task",
+        "document_page_count": 4,
+        "last_receipt_json": json.dumps(receipt).encode(),
+        "relative_path": relative_path,
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": sha256(source.read_bytes()).hexdigest(),
+        "source_size_bytes": source.stat().st_size,
+        "state": "FAILED",
+        "task_id": task_id,
+    }
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {
+            "corpus_plan": {
+                "corpus_plan_id": "plan-1",
+                "policy": {"dpi": 300},
+            }
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _ledger: [task])
+    commands: list[list[str]] = []
+
+    def fake_command(
+        command: list[str], *, environment: dict[str, str], expected: set[int]
+    ) -> tuple[int, dict[str, object]]:
+        assert environment["PYTHONPATH"]
+        commands.append(command)
+        if "document-manifest-current" in command:
+            assert expected == {0}
+            return 0, {
+                "disposition": "SUCCEEDED",
+                "document_manifest_id": "gfdmv1:manifest:" + "a" * 64,
+            }
+        pages = [
+            int(command[index + 1])
+            for index, value in enumerate(command)
+            if value == "--physical-page"
+        ]
+        assert expected == {0, 2}
+        return 0, {"disposition": "SUCCEEDED", "failed_pages": [], "pages": pages}
+
+    monkeypatch.setattr(target, "_json_subprocess", fake_command)
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        bundle=tmp_path / "bundle.json",
+        command="repair-one",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=4,
+        plan=tmp_path / "plan.json",
+        provider_timeout_seconds=900,
+        source_root=source_root,
+        task_id=task_id,
+    )
+
+    result = target._repair_one(args, environment={"PYTHONPATH": "src"})
+
+    assert result["disposition"] == "SUCCEEDED"
+    provider_commands = [command for command in commands if "--physical-page" in command]
+    assert len(provider_commands) == 2
+    assert {
+        tuple(
+            int(command[index + 1])
+            for index, value in enumerate(command)
+            if value == "--physical-page"
+        )
+        for command in provider_commands
+    } == {(2,), (3,)}
+    assert all("--google-key-file" not in command for command in provider_commands)
+    assert all(
+        command[command.index("--google-standard-mode") + 1] == "disabled"
+        for command in provider_commands
+    )
+    manifest_command = commands[-1]
+    assert manifest_command[manifest_command.index("--page-prompt-variant") + 1] == "3=items"
