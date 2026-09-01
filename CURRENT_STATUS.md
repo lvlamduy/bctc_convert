@@ -32,6 +32,10 @@ older queue priorities where they conflict.
   thời gian provider dự kiến khoảng **6–10 giờ**; nên dành một ngày làm việc cho
   cả render, ingest, kiểm tra và checkpoint S3. Tám ngân hàng cũ không nằm trong
   phép tính này.
+- Git checkpoint đã được push trên nhánh `codex/27-bank-2025-current`. Bốn file
+  universe/plan/matrix đã được backup và restore-test thành công tại S3 child
+  checkpoint `20260901T151341Z-27-bank-2025-current-vertex-flex-frontier-fe3f3867f955`;
+  nguồn cha vẫn là snapshot dự án hiện hành, không thay đổi chính sách backup.
 
 ## Checkpoint tổng hợp family dễ đọc — 2026-09-01
 
