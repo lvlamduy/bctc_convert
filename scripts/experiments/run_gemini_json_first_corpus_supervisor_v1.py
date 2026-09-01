@@ -3381,11 +3381,26 @@ def run_one_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         max_attempts=summary["max_task_attempts"],
         openrouter_only=True,
     )
+    receipt_bytes = task_result.get("last_receipt_json")
+    if type(receipt_bytes) is not bytes:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task result lacks its exact receipt bytes"
+        )
+    state = task_result.get("state")
+    if state not in {"SUCCEEDED", "FAILED", "NEEDS_RETRY"}:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task result is not terminal or retryable"
+        )
     return {
         "corpus_run_id": summary["corpus_run_id"],
+        "disposition": state,
         "ledger": corpus_ledger_summary_v1(args.ledger),
-        "task_id": args.task_id,
-        "task_result": task_result,
+        "task": {
+            "attempt_count": task_result["attempt_count"],
+            "last_receipt_sha256": sha256(receipt_bytes).hexdigest(),
+            "state": state,
+            "task_id": args.task_id,
+        },
     }
 
 

@@ -116,7 +116,12 @@ def test_single_openrouter_task_runner_is_resumable_and_forces_no_google(
 
     def run_openrouter(**kwargs):
         calls.append(kwargs)
-        return {"disposition": "SUCCEEDED", "task_id": kwargs["task"]["task_id"]}
+        return {
+            "attempt_count": 1,
+            "last_receipt_json": canonical_json_bytes_v1({"completed": True}),
+            "state": "SUCCEEDED",
+            "task_id": kwargs["task"]["task_id"],
+        }
 
     monkeypatch.setattr(target, "_run_openrouter", run_openrouter)
     result = target.run_one_openrouter_task(
@@ -135,7 +140,8 @@ def test_single_openrouter_task_runner_is_resumable_and_forces_no_google(
         )
     )
 
-    assert result["task_id"] == task_id
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["task"]["task_id"] == task_id
     assert result["ledger"]["progress"] == [
         {
             "pages": 2,
