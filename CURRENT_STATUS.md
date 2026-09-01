@@ -23,6 +23,12 @@ older queue priorities where they conflict.
   `google-vertex/global/flex`, service tier `flex`; direct Google và mọi
   provider/model fallback đều bị khóa. Runner dừng trước request đầu tiên nếu
   paid frontier chứa một ngân hàng cũ hoặc route/provider/tier bị thay đổi.
+- Kiểm tra lại trực tiếp ledger paid-run đang chạy cho thấy đúng **279/279
+  đường dẫn duy nhất** thuộc 19 mã `ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB,
+  NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB`; giao với tập tám mã
+  cũ `ACB, BID, CTG, HDB, MBB, VCB, VIB, VPB` bằng rỗng. Đây là chốt runtime:
+  tám ngân hàng cũ chỉ được đọc từ manifest JSON hiện hành, không được tạo task
+  paid mới dù PDF nguồn vẫn còn trên local/S3.
 - Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Paid run đã
   bắt đầu sau khi cost/disk/S3 staging gate đạt yêu cầu; runner resume theo
   từng page và không gửi lại page đã có extraction hợp lệ.
