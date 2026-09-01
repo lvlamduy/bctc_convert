@@ -246,6 +246,26 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable direct-Google fallback for every OpenRouter task.",
     )
+    run_one = commands.add_parser("run-openrouter-task")
+    run_one.add_argument("--plan", type=Path, required=True)
+    run_one.add_argument("--ledger", type=Path, required=True)
+    run_one.add_argument("--task-id", required=True)
+    run_one.add_argument("--source-root", type=Path, required=True)
+    run_one.add_argument("--database", type=Path, required=True)
+    run_one.add_argument("--artifact-root", type=Path, required=True)
+    run_one.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    run_one.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    run_one.add_argument("--openrouter-workers", type=int, default=20)
+    run_one.add_argument("--provider-timeout-seconds", type=int, default=900)
+    run_one.add_argument(
+        "--openrouter-only",
+        action="store_true",
+        help="Required: disable direct-Google fallback for this task.",
+    )
     return parser
 
 
@@ -3309,6 +3329,66 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     return result
 
 
+def run_one_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Run one exact pending Flex document and leave the corpus ledger resumable."""
+
+    if args.openrouter_only is not True:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task execution requires --openrouter-only"
+        )
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter worker bound lies outside 1..30"
+        )
+    plan = _plan(args.plan)
+    if not args.ledger.is_file():
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task execution requires an initialized corpus ledger"
+        )
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
+    matches = [
+        task for task in list_corpus_tasks_v1(args.ledger) if task["task_id"] == args.task_id
+    ]
+    if len(matches) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task execution requires one exact ledger task"
+        )
+    task = matches[0]
+    if task["route"] != OPENROUTER_ROUTE or task["state"] not in {
+        "PENDING",
+        "RUNNING",
+        "NEEDS_RETRY",
+    }:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "single-task execution requires one runnable OpenRouter task"
+        )
+    args.artifact_root.mkdir(parents=True, exist_ok=True)
+    _write_or_verify(args.artifact_root / "corpus-plan.json", canonical_json_bytes_v1(plan))
+    task_result = _run_openrouter(
+        task=task,
+        plan=plan,
+        ledger=args.ledger,
+        source_root=args.source_root,
+        database=args.database,
+        artifact_root=args.artifact_root,
+        openrouter_key_file=args.openrouter_key_file,
+        openrouter_workers=args.openrouter_workers,
+        google_key_file=args.google_key_file,
+        google_key_slot=1,
+        provider_timeout_seconds=args.provider_timeout_seconds,
+        max_attempts=summary["max_task_attempts"],
+        openrouter_only=True,
+    )
+    return {
+        "corpus_run_id": summary["corpus_run_id"],
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "task_id": args.task_id,
+        "task_result": task_result,
+    }
+
+
 def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     """Replay immutable semantic responses and seal one formerly failed document."""
 
@@ -3614,6 +3694,8 @@ def main() -> int:
         result = accelerate_google_document(args)
     elif args.command == "accelerate-pending-google":
         result = accelerate_pending_google_documents(args)
+    elif args.command == "run-openrouter-task":
+        result = run_one_openrouter_task(args)
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

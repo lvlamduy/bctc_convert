@@ -93,6 +93,62 @@ def test_init_and_status_cli_are_exact_and_resume_visible(tmp_path) -> None:
     assert sum(item["tasks"] for item in payload["progress"]) == _plan()["summary"]["task_count"]
 
 
+def test_single_openrouter_task_runner_is_resumable_and_forces_no_google(
+    monkeypatch, tmp_path
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/report.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical_json_bytes_v1(plan))
+    ledger = tmp_path / "ledger.sqlite3"
+    target.initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan)
+    task_id = target.list_corpus_tasks_v1(ledger)[0]["task_id"]
+    calls = []
+
+    def run_openrouter(**kwargs):
+        calls.append(kwargs)
+        return {"disposition": "SUCCEEDED", "task_id": kwargs["task"]["task_id"]}
+
+    monkeypatch.setattr(target, "_run_openrouter", run_openrouter)
+    result = target.run_one_openrouter_task(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "unused-google-key",
+            ledger=ledger,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_only=True,
+            openrouter_workers=2,
+            plan=plan_path,
+            provider_timeout_seconds=60,
+            source_root=tmp_path / "sources",
+            task_id=task_id,
+        )
+    )
+
+    assert result["task_id"] == task_id
+    assert result["ledger"]["progress"] == [
+        {
+            "pages": 2,
+            "route": target.OPENROUTER_ROUTE,
+            "state": "PENDING",
+            "tasks": 1,
+        }
+    ]
+    assert len(calls) == 1
+    assert calls[0]["openrouter_only"] is True
+    assert calls[0]["task"]["task_id"] == task_id
+
+
 def test_source_binding_and_subprocess_json_receipt_are_fail_closed(tmp_path) -> None:
     root = tmp_path / "root"
     source = root / "MBB" / "a.pdf"

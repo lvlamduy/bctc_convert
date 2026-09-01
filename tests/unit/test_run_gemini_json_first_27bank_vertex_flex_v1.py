@@ -115,3 +115,28 @@ def test_run_command_always_includes_openrouter_only_and_no_provider_override(
     assert "--google-key-file" not in command
     assert "--google-standard-mode" not in command
     assert command[command.index("--openrouter-key-file") + 1] == str(tmp_path / "openrouter")
+
+
+def test_run_one_targets_one_task_and_remains_openrouter_only(tmp_path: Path) -> None:
+    bundle, plan = _files(tmp_path)
+    task_id = "gjfptaskv1:" + "f" * 64
+    args = Namespace(
+        artifact_root=tmp_path / "artifacts",
+        bundle=bundle,
+        command="run-one",
+        database=tmp_path / "store.sqlite3",
+        ledger=tmp_path / "ledger.sqlite3",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=20,
+        plan=plan,
+        provider_timeout_seconds=900,
+        source_root=tmp_path / "sources",
+        task_id=task_id,
+    )
+
+    command = target._supervisor_command(args)
+
+    assert command[2] == "run-openrouter-task"
+    assert command[command.index("--task-id") + 1] == task_id
+    assert command[-1] == "--openrouter-only"
+    assert "--google-key-file" not in command

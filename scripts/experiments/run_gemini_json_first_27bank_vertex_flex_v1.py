@@ -46,7 +46,7 @@ def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "status", "run"):
+    for name in ("init", "status", "run", "run-one"):
         command = commands.add_parser(name)
         command.add_argument("--bundle", type=Path, required=True)
         command.add_argument("--plan", type=Path, required=True)
@@ -58,20 +58,24 @@ def _parser() -> argparse.ArgumentParser:
                 default="simple",
             )
             command.add_argument("--max-task-attempts", type=int, default=3)
-        if name == "run":
+        if name in {"run", "run-one"}:
             command.add_argument("--source-root", type=Path, required=True)
             command.add_argument("--database", type=Path, required=True)
             command.add_argument("--artifact-root", type=Path, required=True)
             command.add_argument("--openrouter-key-file", type=Path, required=True)
             command.add_argument("--openrouter-workers", type=int, default=20)
             command.add_argument("--provider-timeout-seconds", type=int, default=900)
+        if name == "run-one":
+            command.add_argument("--task-id", required=True)
+        if name == "run":
             command.add_argument("--max-fallback-attempts", type=int, default=2)
     return parser
 
 
 def _supervisor_command(args: argparse.Namespace) -> list[str]:
     _load_bundle_and_plan(args.bundle, args.plan)
-    command = [sys.executable, str(SUPERVISOR), args.command]
+    supervisor_command = "run-openrouter-task" if args.command == "run-one" else args.command
+    command = [sys.executable, str(SUPERVISOR), supervisor_command]
     if args.command == "status":
         return [*command, "--ledger", str(args.ledger)]
     command.extend(("--plan", str(args.plan), "--ledger", str(args.ledger)))
@@ -99,11 +103,13 @@ def _supervisor_command(args: argparse.Namespace) -> list[str]:
             str(args.openrouter_workers),
             "--provider-timeout-seconds",
             str(args.provider_timeout_seconds),
-            "--max-fallback-attempts",
-            str(args.max_fallback_attempts),
-            "--openrouter-only",
         )
     )
+    if args.command == "run":
+        command.extend(("--max-fallback-attempts", str(args.max_fallback_attempts)))
+    else:
+        command.extend(("--task-id", args.task_id))
+    command.append("--openrouter-only")
     return command
 
 
