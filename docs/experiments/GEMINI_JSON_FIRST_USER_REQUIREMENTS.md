@@ -4,6 +4,27 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
+## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-01
+
+- Khoảng thời gian của đợt mở rộng là **từ Quý 1/2025 đến thời điểm hiện tại**;
+  không đưa năm 2024 vào hàng đợi Gemini của đợt này.
+- Tám ngân hàng **ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB** đã hoàn tất bước
+  Gemini trả JSON. Mọi PDF/page đã có trong manifest hiện hành của tám ngân hàng
+  này phải dùng lại từ store/cache bất biến; **tuyệt đối không gửi lại Gemini
+  hoặc OpenRouter**.
+- Nếu phát hiện PDF mới của một trong tám ngân hàng trên nhưng PDF đó chưa có
+  trong manifest cũ, chỉ ghi vào inventory và chờ người dùng cấp quyền riêng;
+  không tự động xem đó là dữ liệu cần gửi Gemini.
+- Paid frontier mới chỉ gồm mười chín ngân hàng **ABB, BAB, BVB, EIB, KLB, LPB,
+  MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB**.
+- Mọi request mới chỉ được đi qua **OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`**, service tier `flex`. Direct Google, Google
+  Standard, Google Batch và mọi fallback provider/model đều bị cấm.
+- Runner phải dừng trước request đầu tiên nếu paid frontier chứa một trong tám
+  ngân hàng cũ. Khi resume, chỉ page chưa có kết quả hợp lệ mới được retry; không
+  gửi lại cả PDF hoặc page đã có cache chỉ vì process khởi động lại.
+- Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên.
+
 ## 1. Provider và credential
 
 - **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.

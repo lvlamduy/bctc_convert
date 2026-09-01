@@ -7,6 +7,21 @@ Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATI
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
+## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
+
+- Phạm vi chính thức là **Quý 1/2025 đến hiện tại**.
+- ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có Gemini JSON và chỉ được tái sử
+  dụng từ manifest/store/cache; không gửi lại Gemini/OpenRouter và không tính
+  vào chi phí paid frontier.
+- Paid frontier chỉ gồm ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB,
+  SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB. Route duy nhất là OpenRouter →
+  `google/gemini-3.7-flash` → `google-vertex/global/flex`, tier `flex`.
+- Inventory đã xác thực có 140 PDF/8.947 trang của tám ngân hàng cũ để tái sử
+  dụng và 279 PDF/15.968 trang của mười chín ngân hàng mới được phép gửi. Ledger
+  paid frontier có giao tập rỗng với tám mã cũ.
+- Resume/retry diễn ra theo từng page có receipt; page đã hoàn tất không bị gửi
+  lại. Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
+
 ## 2026-09-01 human review/schema checkpoint
 
 - The Flask review application is live on port 8000 and now follows exact
