@@ -118,13 +118,42 @@ def test_run_invokes_exact_family_specs_and_writes_receipt(
     monkeypatch.setattr(runner, "_checked_corpus", lambda _path: corpus)
     monkeypatch.setattr(runner, "_plan", lambda: {**plan, "jobs": [family]})
 
-    def fake_run(command: list[str], *, cwd: Path, check: bool) -> SimpleNamespace:
+    sweep = {
+        "family_id": family["family_id"],
+        "metrics": {"ready": 1},
+        "sweep_id": "sweep-1",
+    }
+    monkeypatch.setattr(
+        runner,
+        "load_gemini_accounting_family_sweep_v1",
+        lambda _database, _family_run_id: sweep,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: Path,
+        check: bool,
+        capture_output: bool,
+        text: bool,
+    ) -> SimpleNamespace:
         assert cwd == runner.ROOT
         assert check is False
+        assert capture_output is True
+        assert text is True
         calls.append(command)
         output = Path(command[command.index("--output") + 1])
-        output.write_text("{}\n", encoding="utf-8")
-        return SimpleNamespace(returncode=0)
+        output.write_text(json.dumps(sweep) + "\n", encoding="utf-8")
+        child = {
+            "disposition": "SUCCEEDED",
+            "family_run_id": "gjfafstorev1:run:" + "a" * 64,
+            "metrics": sweep["metrics"],
+            "output": str(output),
+            "results_database": str(tmp_path / "results.sqlite3"),
+            "run_kind": "EXPERIMENTAL",
+            "sweep_id": sweep["sweep_id"],
+        }
+        return SimpleNamespace(returncode=0, stdout=json.dumps(child) + "\n")
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
     args = argparse.Namespace(
@@ -141,6 +170,9 @@ def test_run_invokes_exact_family_specs_and_writes_receipt(
     assert receipt["disposition"] == "SUCCEEDED"
     assert receipt["selected_family_count"] == 1
     assert [item["family_id"] for item in receipt["completed"]] == ["CASH_PRECIOUS_METALS"]
+    assert receipt["completed"][0]["family_run_id"].startswith("gjfafstorev1:run:")
+    assert receipt["completed"][0]["metrics"] == {"ready": 1}
+    assert receipt["completed"][0]["sweep_id"] == "sweep-1"
     assert receipt["deferred"] == []
     assert len(calls) == 1
     assert calls[0][1].endswith("run_gemini_json_first_accounting_family_v1.py")
@@ -157,13 +189,42 @@ def test_net_interest_family_invokes_the_visible_source_result_runner(
     monkeypatch.setattr(runner, "_checked_corpus", lambda _path: corpus)
     monkeypatch.setattr(runner, "_plan", lambda: {**plan, "jobs": [net_interest]})
 
-    def fake_run(command: list[str], *, cwd: Path, check: bool) -> SimpleNamespace:
+    sweep = {
+        "family_id": net_interest["family_id"],
+        "metrics": {"ready": 1},
+        "sweep_id": "sweep-net-interest",
+    }
+    monkeypatch.setattr(
+        runner,
+        "load_gemini_accounting_family_sweep_v1",
+        lambda _database, _family_run_id: sweep,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: Path,
+        check: bool,
+        capture_output: bool,
+        text: bool,
+    ) -> SimpleNamespace:
         assert cwd == runner.ROOT
         assert check is False
+        assert capture_output is True
+        assert text is True
         calls.append(command)
         output = Path(command[command.index("--output") + 1])
-        output.write_text("{}\n", encoding="utf-8")
-        return SimpleNamespace(returncode=0)
+        output.write_text(json.dumps(sweep) + "\n", encoding="utf-8")
+        child = {
+            "disposition": "SUCCEEDED",
+            "family_run_id": "gjfafstorev1:run:" + "b" * 64,
+            "metrics": sweep["metrics"],
+            "output": str(output),
+            "results_database": str(tmp_path / "results.sqlite3"),
+            "run_kind": "EXPERIMENTAL",
+            "sweep_id": sweep["sweep_id"],
+        }
+        return SimpleNamespace(returncode=0, stdout=json.dumps(child) + "\n")
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
     args = argparse.Namespace(
@@ -209,3 +270,60 @@ def test_run_fails_if_family_runner_does_not_write_output(
         match="family runner failed",
     ):
         runner._run(args)
+
+
+def test_child_receipt_rejects_missing_run_lineage(tmp_path: Path) -> None:
+    output = tmp_path / "family.json"
+    output.write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(
+        runner.RunGeminiJsonAllAccountingFamiliesV1Error,
+        match="receipt drifted",
+    ):
+        runner._child_receipt(
+            SimpleNamespace(returncode=0, stdout="{}\n"),
+            job={"family_id": "CASH_PRECIOUS_METALS", "schema_order": 1},
+            output=output,
+            results_database=tmp_path / "results.sqlite3",
+            run_kind="EXPERIMENTAL",
+        )
+
+
+def test_child_receipt_rejects_stored_sweep_from_another_family(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "family.json"
+    sweep = {
+        "family_id": "OTHER_FAMILY",
+        "metrics": {"ready": 1},
+        "sweep_id": "sweep-1",
+    }
+    output.write_text(json.dumps(sweep) + "\n", encoding="utf-8")
+    database = tmp_path / "results.sqlite3"
+    family_run_id = "gjfafstorev1:run:" + "c" * 64
+    monkeypatch.setattr(
+        runner,
+        "load_gemini_accounting_family_sweep_v1",
+        lambda _database, _family_run_id: sweep,
+    )
+    receipt = {
+        "disposition": "SUCCEEDED",
+        "family_run_id": family_run_id,
+        "metrics": sweep["metrics"],
+        "output": str(output),
+        "results_database": str(database),
+        "run_kind": "EXPERIMENTAL",
+        "sweep_id": sweep["sweep_id"],
+    }
+
+    with pytest.raises(
+        runner.RunGeminiJsonAllAccountingFamiliesV1Error,
+        match="stored family sweep drifted",
+    ):
+        runner._child_receipt(
+            SimpleNamespace(returncode=0, stdout=json.dumps(receipt) + "\n"),
+            job={"family_id": "CASH_PRECIOUS_METALS", "schema_order": 1},
+            output=output,
+            results_database=database,
+            run_kind="EXPERIMENTAL",
+        )

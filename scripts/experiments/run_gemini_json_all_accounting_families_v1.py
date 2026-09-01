@@ -23,6 +23,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     compile_gemini_json_flat_family_specs_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1  # noqa: E402
+from bctc_ai.storage.gemini_accounting_family_store_v1 import (  # noqa: E402
+    load_gemini_accounting_family_sweep_v1,
+)
 from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E402
     validate_current_corpus_manifest_index_v1,
 )
@@ -537,6 +540,52 @@ def _selected_jobs(plan: dict[str, Any], selectors: list[str]) -> list[dict[str,
     return selected
 
 
+def _child_receipt(
+    completed_process: subprocess.CompletedProcess[str],
+    *,
+    job: dict[str, Any],
+    output: Path,
+    results_database: Path,
+    run_kind: str,
+) -> dict[str, Any]:
+    if completed_process.returncode != 0 or output.is_symlink() or not output.is_file():
+        raise RunGeminiJsonAllAccountingFamiliesV1Error(
+            f"family runner failed at schema order {job['schema_order']}"
+        )
+    lines = [line for line in completed_process.stdout.splitlines() if line.strip()]
+    try:
+        receipt = json.loads(lines[-1])
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise RunGeminiJsonAllAccountingFamiliesV1Error(
+            f"family runner returned no valid receipt at schema order {job['schema_order']}"
+        ) from exc
+    if (
+        type(receipt) is not dict
+        or receipt.get("disposition") != "SUCCEEDED"
+        or receipt.get("run_kind") != run_kind
+        or receipt.get("output") != str(output)
+        or receipt.get("results_database") != str(results_database)
+        or type(receipt.get("family_run_id")) is not str
+        or not receipt["family_run_id"].startswith("gjfafstorev1:run:")
+        or type(receipt.get("sweep_id")) is not str
+    ):
+        raise RunGeminiJsonAllAccountingFamiliesV1Error(
+            f"family runner receipt drifted at schema order {job['schema_order']}"
+        )
+    stored = load_gemini_accounting_family_sweep_v1(results_database, receipt["family_run_id"])
+    materialized = _load_json(output)
+    if (
+        stored != materialized
+        or stored.get("sweep_id") != receipt["sweep_id"]
+        or stored.get("family_id") != job["family_id"]
+        or stored.get("metrics") != receipt.get("metrics")
+    ):
+        raise RunGeminiJsonAllAccountingFamiliesV1Error(
+            f"stored family sweep drifted at schema order {job['schema_order']}"
+        )
+    return receipt
+
+
 def _run(args: argparse.Namespace) -> dict[str, Any]:
     index = _checked_corpus(args.corpus_index)
     plan = _plan()
@@ -575,16 +624,24 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
             "--output",
             str(output),
         ]
-        completed_process = subprocess.run(command, cwd=ROOT, check=False)
-        if completed_process.returncode != 0 or output.is_symlink() or not output.is_file():
-            raise RunGeminiJsonAllAccountingFamiliesV1Error(
-                f"family runner failed at schema order {job['schema_order']}"
-            )
+        completed_process = subprocess.run(
+            command, cwd=ROOT, check=False, capture_output=True, text=True
+        )
+        child = _child_receipt(
+            completed_process,
+            job=job,
+            output=output,
+            results_database=args.results_database,
+            run_kind=args.run_kind,
+        )
         completed.append(
             {
                 "family_id": job["family_id"],
+                "family_run_id": child["family_run_id"],
+                "metrics": child["metrics"],
                 "output": str(output),
                 "schema_order": job["schema_order"],
+                "sweep_id": child["sweep_id"],
             }
         )
     receipt = {
