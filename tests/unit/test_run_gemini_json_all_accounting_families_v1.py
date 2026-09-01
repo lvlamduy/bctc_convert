@@ -17,12 +17,13 @@ def test_plan_is_schema_ordered_exhaustive_and_compilable() -> None:
     assert plan["family_count"] == 55
     assert [job["schema_order"] for job in plan["jobs"]] == list(range(1, 56))
     assert len({job["family_id"] for job in plan["jobs"]}) == 55
-    assert plan["jobs"][29] == {
-        "execution_kind": "DERIVED_VISIBLE_STATEMENT_LINE",
-        "family_id": "NET_INTEREST_INCOME",
-        "schema_order": 30,
-        "vietnamese_name": "Thu nhập từ lãi thuần",
-    }
+    assert plan["jobs"][29]["execution_kind"] == "ACCOUNTING_FAMILY_RUNNER"
+    assert plan["jobs"][29]["family_id"] == "NET_INTEREST_INCOME"
+    assert plan["jobs"][29]["schema_order"] == 30
+    assert plan["jobs"][29]["vietnamese_name"] == "Thu nhập từ lãi thuần"
+    assert plan["jobs"][29]["runner"].endswith(
+        "run_gemini_json_multitable_hierarchical_accounting_family_v1.py"
+    )
     assert plan["jobs"][-1]["family_id"] == "CONSOLIDATED_SEGMENT_REPORT"
     assert plan["jobs"][-1]["runner"].endswith(
         "run_gemini_json_segment_report_accounting_family_v1.py"
@@ -146,19 +147,25 @@ def test_run_invokes_exact_family_specs_and_writes_receipt(
     assert json.loads((args.output_dir / "run-receipt.json").read_bytes()) == receipt
 
 
-def test_derived_family_is_explicitly_deferred(
+def test_net_interest_family_invokes_the_visible_source_result_runner(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan = runner._plan()
-    derived = plan["jobs"][29]
+    net_interest = plan["jobs"][29]
     corpus = _index()
+    calls: list[list[str]] = []
     monkeypatch.setattr(runner, "_checked_corpus", lambda _path: corpus)
-    monkeypatch.setattr(runner, "_plan", lambda: {**plan, "jobs": [derived]})
-    monkeypatch.setattr(
-        runner.subprocess,
-        "run",
-        lambda *_args, **_kwargs: pytest.fail("derived family must not invoke a subprocess"),
-    )
+    monkeypatch.setattr(runner, "_plan", lambda: {**plan, "jobs": [net_interest]})
+
+    def fake_run(command: list[str], *, cwd: Path, check: bool) -> SimpleNamespace:
+        assert cwd == runner.ROOT
+        assert check is False
+        calls.append(command)
+        output = Path(command[command.index("--output") + 1])
+        output.write_text("{}\n", encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
     args = argparse.Namespace(
         artifact_root=tmp_path / "artifacts",
         corpus_index=tmp_path / "index.json",
@@ -170,15 +177,11 @@ def test_derived_family_is_explicitly_deferred(
 
     receipt = runner._run(args)
 
-    assert receipt["disposition"] == "NEEDS_DERIVED_PROJECTION"
-    assert receipt["completed"] == []
-    assert receipt["deferred"] == [
-        {
-            "family_id": "NET_INTEREST_INCOME",
-            "reason": "DERIVED_VISIBLE_STATEMENT_LINE_REQUIRES_DEDICATED_PROJECTION",
-            "schema_order": 30,
-        }
-    ]
+    assert receipt["disposition"] == "SUCCEEDED"
+    assert receipt["deferred"] == []
+    assert [item["family_id"] for item in receipt["completed"]] == ["NET_INTEREST_INCOME"]
+    assert len(calls) == 1
+    assert calls[0][1].endswith("run_gemini_json_multitable_hierarchical_accounting_family_v1.py")
 
 
 def test_run_fails_if_family_runner_does_not_write_output(

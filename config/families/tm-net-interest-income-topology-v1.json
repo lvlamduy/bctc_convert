@@ -1,0 +1,67 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thu nhập lãi và các khoản thu nhập tương tự",
+            "Thu nhập lãi và các thu nhập tương tự"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTEREST_INCOME_COMPONENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi phí lãi và các chi phí tương tự",
+            "Chi phí lãi và các khoản chi phí tương tự",
+            "Chi phí lãi và các khoản tương tự chi phí lãi"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTEREST_EXPENSE_COMPONENT",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "NET_INTEREST_INCOME",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Lãi thuần từ kinh doanh ngoại hối",
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lãi thuần từ mua bán chứng khoán đầu tư"
+  ],
+  "limits": {
+    "max_continuation_pages": 1,
+    "max_cluster_span_lines": 256,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": [
+      "Thu nhập lãi thuần",
+      "Thu nhập từ lãi thuần"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "NET_INTEREST_INCOME_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "INTEREST_INCOME_COMPONENT",
+      "INTEREST_EXPENSE_COMPONENT"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Thu nhập từ hoạt động dịch vụ",
+    "Lãi thuần từ hoạt động dịch vụ",
+    "Kinh doanh ngoại hối",
+    "Mua bán chứng khoán kinh doanh"
+  ]
+}

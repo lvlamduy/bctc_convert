@@ -380,8 +380,6 @@ GENERIC_FORMATS = frozenset(
 
 
 def _spec_paths(job: FamilyJob) -> tuple[Path, Path, Path] | None:
-    if job.family_id == "NET_INTEREST_INCOME":
-        return None
     root = ROOT / "config/families"
     topology = job.topology or f"tm-{job.stem}-topology-v1.json"
     evaluation = job.evaluation or f"tm-{job.stem}-evaluation-v1.json"

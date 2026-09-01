@@ -285,6 +285,7 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
     if primary_statement_family_root_subtree_policy not in {
         "DISABLED",
         "EXACT_PARENT_GROUP_UNDER_VISIBLE_TOTAL_WITH_COMPLETE_DECLARED_CHILD_FRONTIER",
+        "EXACT_SOURCE_RESULT_ROW_WITH_OPTIONAL_DECLARED_COMPONENT_EQUATION_VETO",
     }:
         raise _error("multi-table hierarchical primary-statement subtree policy is invalid")
     label_only_structural_group_policy = evaluation_spec.get(
@@ -349,6 +350,12 @@ def compile_gemini_json_multitable_hierarchical_family_specs_v1(
         "REQUIRED_EXACT_SOURCE_RESULT_ROW",
     }:
         raise _error("multi-table hierarchical source-result query policy is invalid")
+    if (
+        primary_statement_family_root_subtree_policy
+        == "EXACT_SOURCE_RESULT_ROW_WITH_OPTIONAL_DECLARED_COMPONENT_EQUATION_VETO"
+        and source_result_query_policy != "REQUIRED_EXACT_SOURCE_RESULT_ROW"
+    ):
+        raise _error("primary statement exact-result policy needs an exact-result query")
     source_reference_identity_policy = evaluation_spec.get(
         "source_reference_identity_policy", "PRESERVE_SOURCE_PRESENTATIONS"
     )
@@ -2488,6 +2495,41 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
             }
         )
         typed_control_disposition = None
+    primary_statement_exact_source_result_receipts = []
+    if (
+        typed_control_disposition == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+        and compiled_specs["primary_statement_family_root_subtree_policy"]
+        == "EXACT_SOURCE_RESULT_ROW_WITH_OPTIONAL_DECLARED_COMPONENT_EQUATION_VETO"
+        and section.get("statement_type") == "INCOME_STATEMENT"
+        and family_root_row_ordinals
+    ):
+        primary_statement_exact_source_result_receipts = [
+            {
+                "declared_component_roles": sorted(
+                    {
+                        hit["role"]
+                        for hit in role_hits
+                        if hit["role"] in compiled_specs["root_component_roles"]
+                    }
+                ),
+                "source_result_row_ordinal": row_ordinal,
+                "rule": (
+                    "PRIMARY_INCOME_STATEMENT_EXACT_SOURCE_RESULT_ROW_WITH_"
+                    "OPTIONAL_DECLARED_COMPONENT_EQUATION_VETO"
+                ),
+            }
+            for row_ordinal in family_root_row_ordinals
+        ]
+        typed_control_override_receipts.append(
+            {
+                "control_disposition": typed_control_disposition,
+                "exact_source_result_receipts": canonical_clone_v1(
+                    primary_statement_exact_source_result_receipts
+                ),
+                "rule": ("PRIMARY_STATEMENT_CONTROL_OVERRIDDEN_ONLY_BY_EXACT_SOURCE_RESULT_ROW"),
+            }
+        )
+        typed_control_disposition = None
     column_header_control_dispositions = {
         exclusion["disposition"]
         for exclusion in compiled_specs["typed_control_exclusions"]
@@ -2546,6 +2588,10 @@ def classify_gemini_json_multitable_hierarchical_table_v1(
     if primary_statement_family_root_subtree_receipts:
         material["primary_statement_family_root_subtree_receipts"] = (
             primary_statement_family_root_subtree_receipts
+        )
+    if primary_statement_exact_source_result_receipts:
+        material["primary_statement_exact_source_result_receipts"] = (
+            primary_statement_exact_source_result_receipts
         )
     if compiled_specs["row_population_context_policy"] == "AT_LEAST_TWO_DECLARED_CHILD_ROLES":
         material["ordered_root_scope_resolutions"] = ordered_root_scope_resolutions
@@ -3018,6 +3064,28 @@ def coalesce_gemini_json_multitable_hierarchical_document_v1(
                             "table_id": f"t{table_ordinal}",
                         }
                     )
+
+    if (
+        compiled_specs["primary_statement_family_root_subtree_policy"]
+        == "EXACT_SOURCE_RESULT_ROW_WITH_OPTIONAL_DECLARED_COMPONENT_EQUATION_VETO"
+    ):
+        primary_result_positions = {
+            tuple(item["position"])
+            for item in table_axis
+            if item["classification"].get("primary_statement_exact_source_result_receipts")
+        }
+        if primary_result_positions:
+            # A note may repeat the same net result later in the document.
+            # The typed primary income statement is the authoritative direct
+            # presentation; selecting it also prevents a harmless repeated
+            # note total from becoming two competing owner clusters.  When
+            # the primary row is absent, the ordinary exact-result owner path
+            # remains available for a note-only disclosure.
+            owner_markers = [
+                marker
+                for marker in owner_markers
+                if tuple(marker["position"]) in primary_result_positions
+            ]
 
     if compiled_specs["document_cluster_policy"] == (
         "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
@@ -3701,6 +3769,11 @@ def _duration_semantic_period_roles(value: str) -> list[str]:
     folded = re.sub(r"\bthang\s+dau\s+nam\b", " ", _normalized(value))
     folded = re.sub(
         r"\b(?:luy\s+ke\s+)?(?:tu\s+)?dau\s+nam(?:\s+den\s+cuoi\s+quy(?:\s+nay)?)?\b",
+        " ",
+        folded,
+    )
+    folded = re.sub(
+        r"\b(?:luy\s+ke\s+)?tu\s+dau\s+ky\s+den\b",
         " ",
         folded,
     )
@@ -5515,6 +5588,51 @@ def _derive_complete_top_level_family_root(
             )
         root = existing_roots[0]
         component_records = [record for record in output if record["role"] != "FAMILY_ROOT_TOTAL"]
+        signed_source_result_policy = (
+            compiled_specs["root_component_equation_policy"]
+            == "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE"
+        )
+        local_primary_equations = [
+            equation
+            for equation in source_equations
+            if equation.get("status") == "EXACT"
+            and equation.get("equation_kind")
+            == "EXACT_UNIQUE_DECLARED_ROOT_COMPONENT_SIGN_ORIENTATION_EQUAL_PRINTED_TOTAL"
+            and canonical_json_sha256_v1(equation.get("result_source_refs", []))
+            == canonical_json_sha256_v1(root["source_refs"])
+            and len(equation.get("component_source_refs", []))
+            == len(compiled_specs["root_component_roles"])
+        ]
+        if (
+            signed_source_result_policy
+            and source_result_component_evidence_roles
+            and not component_records
+            and len(local_primary_equations) == 1
+        ):
+            equation = local_primary_equations[0]
+            root["state"] = (
+                "SOURCE_VISIBLE_EXACT_RESULT_VALIDATED_BY_LOCAL_PRIMARY_COMPONENT_EQUATION"
+            )
+            return (
+                [root],
+                [],
+                [
+                    {
+                        "coefficients": _coefficients(root),
+                        "component_roles": canonical_clone_v1(
+                            compiled_specs["root_component_roles"]
+                        ),
+                        "result_role": "FAMILY_ROOT_TOTAL",
+                        "rule": (
+                            "PRIMARY_SOURCE_VISIBLE_EXACT_RESULT_ROW_VETOED_BY_UNIQUE_"
+                            "LOCAL_SIGNED_COMPONENT_EQUATION"
+                        ),
+                        "source_equation_id": equation["equation_id"],
+                        "source_refs": canonical_clone_v1(root["source_refs"]),
+                    }
+                ],
+                [],
+            )
         if not source_result_component_evidence_roles:
             if any(
                 cell["source_text"] is None or cell["state"].endswith("_IF_EQUATION_EXACT")
@@ -5550,7 +5668,7 @@ def _derive_complete_top_level_family_root(
         components = []
         for role in compiled_specs["root_component_roles"]:
             matches = by_role.get(role, [])
-            if len(matches) != 1 or role not in proven_roles:
+            if len(matches) != 1 or (role not in proven_roles and not signed_source_result_policy):
                 return (
                     output,
                     [],
@@ -5558,11 +5676,38 @@ def _derive_complete_top_level_family_root(
                     ["SOURCE_RESULT_DECLARED_COMPONENT_POPULATION_NOT_EXACT:" + role],
                 )
             components.append(matches[0])
-        equation = _exact_equation(
-            kind="EXACT_SOURCE_RESULT_EQUALS_COMPLETE_DECLARED_ROOT_COMPONENTS",
-            components=components,
-            result=root,
-        )
+        if signed_source_result_policy:
+            multiplier_candidates = [
+                [1, *suffix]
+                for suffix in product((-1, 1), repeat=max(0, len(components) - 1))
+                if _local_equation(
+                    equation_kind=(
+                        "EXACT_SOURCE_RESULT_EQUALS_UNIQUE_SIGNED_DECLARED_ROOT_COMPONENTS"
+                    ),
+                    components=components,
+                    result=root,
+                    multipliers=[1, *suffix],
+                )["status"]
+                == "EXACT"
+            ]
+            equation = (
+                _local_equation(
+                    equation_kind=(
+                        "EXACT_SOURCE_RESULT_EQUALS_UNIQUE_SIGNED_DECLARED_ROOT_COMPONENTS"
+                    ),
+                    components=components,
+                    result=root,
+                    multipliers=multiplier_candidates[0],
+                )
+                if len(multiplier_candidates) == 1
+                else None
+            )
+        else:
+            equation = _exact_equation(
+                kind="EXACT_SOURCE_RESULT_EQUALS_COMPLETE_DECLARED_ROOT_COMPONENTS",
+                components=components,
+                result=root,
+            )
         if equation is None:
             return output, [], [], ["SOURCE_RESULT_DECLARED_COMPONENT_EQUATION_MISMATCH"]
         root["state"] = "SOURCE_VISIBLE_EXACT_RESULT_VALIDATED_BY_COMPLETE_COMPONENT_EQUATION"
@@ -7066,10 +7211,16 @@ def _extract_table_local_records(
     family_root_ordinals = set(classification.get("family_root_row_ordinals", []))
     declared_role_ordinals = {hit["row_ordinal"] for hit in classification["role_hits"]}
     document_source_result_carrier = bool(
-        compiled_specs["document_cluster_policy"]
-        == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
-        and classification.get("typed_control_disposition") == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
-        and family_root_ordinals
+        family_root_ordinals
+        and (
+            (
+                compiled_specs["document_cluster_policy"]
+                == "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT"
+                and classification.get("typed_control_disposition")
+                == "PRIMARY_FINANCIAL_STATEMENT_SUMMARY"
+            )
+            or classification.get("primary_statement_exact_source_result_receipts")
+        )
     )
     source_result_population_ordinals = family_root_ordinals | {
         hit["row_ordinal"]

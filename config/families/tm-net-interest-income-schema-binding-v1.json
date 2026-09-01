@@ -1,0 +1,17 @@
+{
+  "family_id": "NET_INTEREST_INCOME",
+  "family_root_report_norm_id": 5985,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {
+      "report_norm_id": 1143,
+      "role": "INTEREST_INCOME_COMPONENT"
+    },
+    {
+      "report_norm_id": 1151,
+      "role": "INTEREST_EXPENSE_COMPONENT"
+    }
+  ],
+  "root_mapping_policy": "SOURCE_VISIBLE_EXACT_RESULT_WITH_OPTIONAL_COMPLETE_COMPONENT_EQUATION_VETO",
+  "schema_period_type": "DURATION"
+}

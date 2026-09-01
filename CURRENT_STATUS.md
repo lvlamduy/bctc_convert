@@ -65,6 +65,15 @@ older queue priorities where they conflict.
   lệ, chi phí 0,914059875 USD, 5 PDF terminal `FAILED` có frontier page lỗi
   riêng, 1 PDF đang `RUNNING` và 273 PDF chưa bắt đầu; đây là checkpoint giữa
   run, không phải kết quả corpus cuối.
+- Family số 30 **Thu nhập từ lãi thuần** đã được đưa vào orchestrator chung bằng
+  cấu hình khai báo, không mở prompt mới và không gọi Gemini. Cơ chế chỉ nhận
+  dòng kết quả nhìn thấy trực tiếp trên Báo cáo kết quả hoạt động kinh doanh;
+  Thu nhập lãi và Chi phí lãi chỉ dùng để kiểm tra dấu/phép cộng khi cùng xuất
+  hiện, tuyệt đối không lấy phép trừ để tự tạo giá trị còn thiếu. Replay chỉ đọc
+  52 PDF đã có JSON trong store hiện hành cho kết quả **43 READY + 9
+  NOT_OBSERVED + 0 UNRESOLVED**; toàn bộ 43 candidate READY đều qua đóng phương
+  trình. Đây là kiểm tra giữa run, chưa thay thế census chính thức sau khi đủ
+  27 ngân hàng. Bộ regression liên quan đạt **177/177**.
 
 ## Checkpoint tổng hợp family dễ đọc — 2026-09-01
 
