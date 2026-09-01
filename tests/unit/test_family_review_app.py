@@ -245,9 +245,18 @@ def client(tmp_path: Path):
             json.dumps(record, ensure_ascii=False)
             for record in (
                 {
+                    "schema_id": 746,
+                    "canonical_name": "Phân tích chất lượng cho vay",
+                    "parent_id": 745,
+                    "display_order": 100,
+                    "hierarchy_level": 2,
+                },
+                {
                     "schema_id": 747,
                     "canonical_name": "Nhóm 1: Nợ đủ tiêu chuẩn",
                     "parent_id": 746,
+                    "display_order": 101,
+                    "hierarchy_level": 3,
                 },
                 {
                     "schema_id": 616,
@@ -302,6 +311,9 @@ def test_review_aligns_gemini_row_with_schema_mapping(client) -> None:
     assert payload["gemini_tables"][0]["columns"][0]["label"] == "30/06/2025\nTriệu VND"
     assert payload["mappings"][0]["report_norm_id"] == 747
     assert payload["mappings"][0]["schema_name"] == "Nhóm 1: Nợ đủ tiêu chuẩn"
+    assert payload["mappings"][0]["schema_parent_id"] == 746
+    assert payload["mappings"][0]["schema_parent_name"] == "Phân tích chất lượng cho vay"
+    assert payload["mappings"][0]["schema_display_order"] == 101
     assert payload["mappings"][0]["values"][0]["coefficient"] == 2_474_846
     assert payload["mappings"][0]["values"][0]["header"] == "30/06/2025\nTriệu VND"
     assert payload["mappings"][0]["values"][0]["physical_page"] == 2
