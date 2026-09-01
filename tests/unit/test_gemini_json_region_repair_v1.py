@@ -200,6 +200,7 @@ def test_table_axis_repair_changes_only_bound_title_and_column_headers() -> None
     )
     assert "mọi ngày/kỳ" in prompt
     assert "tiêu đề tiểu mục" in prompt
+    assert "không rút gọn chỉ còn dòng tiểu mục" in prompt
     assert table_axis_repair_response_schema_v1()["additionalProperties"] is False
     repair = {
         "all_targets_transcribed": True,
