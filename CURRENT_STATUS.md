@@ -65,6 +65,14 @@ older queue priorities where they conflict.
   lệ, chi phí 0,914059875 USD, 5 PDF terminal `FAILED` có frontier page lỗi
   riêng, 1 PDF đang `RUNNING` và 273 PDF chưa bắt đầu; đây là checkpoint giữa
   run, không phải kết quả corpus cuối.
+- Paid-run checkpoint thứ hai cũng đã backup và restore-test thành công, với
+  **6.870 file / 64.266.371 byte**. Snapshot là
+  `20260901T182308Z-27-bank-2025-current-vertex-flex-paid-checkpoint-002-29efcdf778c7`;
+  manifest `f27878e5052fb9ddd98281b67b005c7a8485755f3f2a38cadef1cbb624bca5d7`
+  và run record `549ccb604c4181e05ef67fd073091f924e0416365fff02180bbeaaf74030dc53`
+  đều đã được tải ngược và kiểm đúng byte. Có 4.871 object mới được tải lên và
+  1.270 object trùng nội dung được dùng lại; đây vẫn là checkpoint giữa run,
+  không phải corpus cuối hay quyền gửi lại tám ngân hàng cũ.
 
 ## Checkpoint tổng hợp family dễ đọc — 2026-09-01
 
