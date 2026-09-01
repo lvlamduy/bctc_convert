@@ -26,6 +26,42 @@ runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
 
+def test_net_interest_historical_oracle_accepts_its_single_verified_mapping_axis() -> None:
+    compiled = runner.compile_gemini_json_flat_family_specs_v1(
+        _family_spec("tm-net-interest-income-topology-v1.json"),
+        _family_spec("tm-net-interest-income-evaluation-v1.json"),
+        _family_spec("tm-net-interest-income-schema-binding-v1.json"),
+    )
+
+    oracles = runner._historical_oracles(compiled_specs=compiled)
+    profile = runner._release_profile(compiled)
+
+    assert [item[0]["format_version"] for item in oracles] == [
+        "ANNUAL_2025_NET_INTEREST_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1"
+    ]
+    assert (
+        sum(
+            len(runner._historical_verified_mappings(trial))
+            for _oracle_ref, oracle in oracles
+            for trial in oracle["trials"]
+        )
+        == 8
+    )
+    assert profile["sweep_metrics"] == {
+        "document_count": 140,
+        "mapping_count": 140,
+        "not_observed_count": 0,
+        "ready_count": 140,
+        "unresolved_count": 0,
+    }
+    assert profile["axis_counts"] == {
+        "clusters": 140,
+        "equations": 140,
+        "historical_comparator": 16,
+        "mappings": 140,
+    }
+
+
 def test_customer_collateral_release_profile_and_historical_oracles_are_pinned() -> None:
     compiled = runner.compile_gemini_json_flat_family_specs_v1(
         _family_spec("tm-customer-collateral-held-topology-v1.json"),

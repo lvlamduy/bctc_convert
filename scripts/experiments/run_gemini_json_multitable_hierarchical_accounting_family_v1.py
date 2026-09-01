@@ -251,6 +251,17 @@ PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES = (
         "size_bytes": 114053,
     },
 )
+PINNED_NET_INTEREST_INCOME_HISTORICAL_ORACLES = (
+    {
+        "format_version": "ANNUAL_2025_NET_INTEREST_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1",
+        "path": (
+            "docs/experiments/"
+            "E-0136-annual-2025-net-interest-income-8bank-codex-verified-mapping-v1.json"
+        ),
+        "sha256": "838f987c51aeebc1cb3e97015aa3ff3a377c91ce2153d05b4d7ba4f9371af6f4",
+        "size_bytes": 118687,
+    },
+)
 PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES = (
     {
         "format_version": "SERVICE_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1",
@@ -863,6 +874,55 @@ PINNED_INTEREST_EXPENSE_RELEASE_AXIS_SHA256 = {
     "equations": "4ad1ecf1856b100e9fa129ba75debdd191d186d7d10fafa9d9ec6b22866eb9c9",
     "historical_comparator": "a5c67153914dc233d191373559d01e8d896d0a6632e079071827d2ffbd90150e",
     "mappings": "e5e1afac7053bae79597a52594b97cfe960941f2f4ec775ea402fda320e64203",
+}
+PINNED_NET_INTEREST_INCOME_QUERY_RECEIPT = {
+    "accepted_cluster_axis_sha256": (
+        "c9c9f4b7fa979a612fdadec25ed99a887de60f38763ac3aaf32e04b529c15924"
+    ),
+    "accepted_cluster_count": 140,
+    "accepted_fragment_count": 140,
+    "candidate_disposition_axis_sha256": (
+        "e4c155989daf3f70f3578d534dec5116af7465939dd4848234eb706dae587b8e"
+    ),
+    "candidate_disposition_count": 140,
+    "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
+    "query_policy_sha256": "4d0b22de3e185e06473a0ad2f86e634a4348670b4861feac8447f694e10c42ff",
+    "selected_document_axis_sha256": (
+        "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
+    ),
+    "selected_document_count": 140,
+    "selected_page_axis_sha256": (
+        "04d461370f74243e4f6e01c27b688afabf6c0e86d9fa6ec5dc12b7ef20c1810c"
+    ),
+    "selected_page_count": 8947,
+    "selected_page_json_frontier_sha256": PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256,
+}
+PINNED_NET_INTEREST_INCOME_RELEASE_METRICS = {
+    "document_count": 140,
+    "mapping_count": 140,
+    "not_observed_count": 0,
+    "ready_count": 140,
+    "unresolved_count": 0,
+}
+PINNED_NET_INTEREST_INCOME_RELEASE_AUDIT_METRICS = {
+    "equation_count": 140,
+    "historical_comparator_exact_count": 16,
+    "historical_disposition_exact_count": 8,
+    "historical_mapping_exact_count": 8,
+    "historical_mapping_record_count": 8,
+    "mapping_count": 140,
+}
+PINNED_NET_INTEREST_INCOME_RELEASE_AXIS_COUNTS = {
+    "clusters": 140,
+    "equations": 140,
+    "historical_comparator": 16,
+    "mappings": 140,
+}
+PINNED_NET_INTEREST_INCOME_RELEASE_AXIS_SHA256 = {
+    "clusters": "0a0b29fcec1bb717e3baabcbf0b38a55fde33837100daa598c91447bf1055968",
+    "equations": "df2520d1d8a45310c1f61d1009aaa79051c268ed68ed1697e4a355f6c54d2b94",
+    "historical_comparator": "35bbd9fe3bcb94ced5069f3ebc48f70af28adbbcf44e61d03baa0cd029c25f8a",
+    "mappings": "7da18ac96f46056b145a4df64eb7ced3670a634366d8eb13a80683ae56ff8c71",
 }
 PINNED_SERVICE_ACTIVITY_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
@@ -1867,6 +1927,8 @@ def _historical_oracle_refs(
         return PINNED_INTEREST_INCOME_HISTORICAL_ORACLES
     if family_id == "INTEREST_EXPENSE":
         return PINNED_INTEREST_EXPENSE_HISTORICAL_ORACLES
+    if family_id == "NET_INTEREST_INCOME":
+        return PINNED_NET_INTEREST_INCOME_HISTORICAL_ORACLES
     if family_id == "SERVICE_ACTIVITY":
         return PINNED_SERVICE_ACTIVITY_HISTORICAL_ORACLES
     if family_id == "FX_GOLD_ACTIVITY":
@@ -1970,6 +2032,14 @@ def _release_profile(
             "audit_metrics": PINNED_INTEREST_EXPENSE_RELEASE_AUDIT_METRICS,
             "query_receipt": PINNED_INTEREST_EXPENSE_QUERY_RECEIPT,
             "sweep_metrics": PINNED_INTEREST_EXPENSE_RELEASE_METRICS,
+        }
+    if family_id == "NET_INTEREST_INCOME":
+        return {
+            "axis_counts": PINNED_NET_INTEREST_INCOME_RELEASE_AXIS_COUNTS,
+            "axis_sha256": PINNED_NET_INTEREST_INCOME_RELEASE_AXIS_SHA256,
+            "audit_metrics": PINNED_NET_INTEREST_INCOME_RELEASE_AUDIT_METRICS,
+            "query_receipt": PINNED_NET_INTEREST_INCOME_QUERY_RECEIPT,
+            "sweep_metrics": PINNED_NET_INTEREST_INCOME_RELEASE_METRICS,
         }
     if family_id == "SERVICE_ACTIVITY":
         return {
@@ -2236,6 +2306,22 @@ def _release_profile(
     raise _error("multi-table hierarchical family has no pinned release profile")
 
 
+def _historical_verified_mappings(trial: Mapping[str, Any]) -> list[dict[str, Any]]:
+    mappings = trial.get("verified_mappings")
+    mapping = trial.get("verified_mapping")
+    if mappings is not None and mapping is not None:
+        raise _error("historical multi-table mapping axis has two representations")
+    if mappings is not None:
+        if type(mappings) is not list or any(type(item) is not dict for item in mappings):
+            raise _error("historical multi-table mapping axis is invalid")
+        return mappings
+    if mapping is not None:
+        if type(mapping) is not dict:
+            raise _error("historical multi-table mapping axis is invalid")
+        return [mapping]
+    return []
+
+
 def _historical_oracles(
     *, compiled_specs: Mapping[str, Any]
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -2253,9 +2339,8 @@ def _historical_oracles(
             or type(metrics.get("mapping_verified_count")) is not int
             or type(trials) is not list
             or len(trials) != 8
-            or sum(
-                len(trial.get("verified_mappings", [])) for trial in trials if type(trial) is dict
-            )
+            or any(type(trial) is not dict for trial in trials)
+            or sum(len(_historical_verified_mappings(trial)) for trial in trials)
             != metrics["mapping_verified_count"]
         ):
             raise _error("pinned multi-table historical oracle drifted")
@@ -2315,9 +2400,7 @@ def _historical_comparator_axis(
             trial = current_trials.get(source_sha256)
             if trial is None:
                 raise _error("historical multi-table source does not join one current trial")
-            historical_mappings = oracle_trial.get("verified_mappings", [])
-            if type(historical_mappings) is not list:
-                raise _error("historical multi-table mapping axis is invalid")
+            historical_mappings = _historical_verified_mappings(oracle_trial)
             expected_status = READY if historical_mappings else NOT_OBSERVED
             axis.append(
                 {

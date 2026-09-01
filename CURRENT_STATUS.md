@@ -80,6 +80,13 @@ older queue priorities where they conflict.
   NOT_OBSERVED + 0 UNRESOLVED**; toàn bộ 43 candidate READY đều qua đóng phương
   trình. Đây là kiểm tra giữa run, chưa thay thế census chính thức sau khi đủ
   27 ngân hàng. Bộ regression liên quan đạt **177/177**.
+- Replay chính thức Family 30 trên corpus JSON bất biến của tám ngân hàng cũ đã
+  hoàn tất ở chế độ `EXPERIMENTAL`: **140 PDF khảo sát, 140 READY, 0
+  NOT_OBSERVED, 0 UNRESOLVED, 140 mapping và 140 phương trình kiểm tra**. Audit
+  và SQLite replay đều khớp trọn vẹn; SQLite đạt `integrity_check=ok`, không có
+  lỗi khóa ngoại. Kết quả nằm trong results DB riêng và không tạo
+  `family_current_selection`, vì vậy không thay đổi selection lịch sử và tuyệt
+  đối không phát sinh request Gemini/OpenRouter cho tám ngân hàng cũ.
 - Run receipt của orchestrator 55 family giờ bắt buộc lưu trực tiếp
   `family_run_id`, `sweep_id` và metrics của từng family, rồi tải lại đúng sweep
   vừa commit từ SQLite để so với file materialized trước khi chấp nhận. Điều này
