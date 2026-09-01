@@ -22,8 +22,17 @@ older queue priorities where they conflict.
   RNID 612 and recognizes the exact loan-enterprise aliases directed by the
   user: combined company row 775, cooperative 776, individual 780 and other
   subjects 782. The review UI exposes the persisted-run delta explicitly:
-  29 provision rows, 28 listing-status rows in seven PDFs, and 31 enterprise-
-  subject rows in thirteen PDFs require a new authenticated family replay.
+  29 provision rows, 20 listing-status rows in seven PDFs, 14 issuer rows in
+  three PDFs, and 31 enterprise-subject rows in thirteen PDFs require a new
+  authenticated family replay. These rows are shown as current-policy mappings,
+  not as missing schema. One VPB parent-company Q2/2025 government-security row
+  remains visible-but-unmapped because its comparative source token is two
+  stacked dashes and cannot be interpreted safely.
+- Roll-forward mapping headers now bind the actual source lane and endpoint:
+  general, specific and margin/advance provisions no longer all display the
+  first column, and an opening balance uses 31.12.2024 rather than the 2025
+  report date. The 140-PDF review of every user-named family has zero remaining
+  visible-unmapped rows except the single VPB source/OCR case above.
 - No historical READY/NOT_OBSERVED/UNRESOLVED count was overwritten without a
   replay. Current-vs-persisted distinctions and the reason for each are recorded
   in `docs/experiments/UNRESOLVED_MAPPING_LEDGER_READABLE.md`.

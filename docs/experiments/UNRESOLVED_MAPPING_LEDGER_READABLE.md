@@ -21,8 +21,9 @@ chiếu toàn bộ schema và phân thành hai nhóm:
 
 | Nội dung PDF | Kết luận schema | Trạng thái sau rà soát |
 | --- | --- | --- |
-| Dự phòng giảm giá chứng khoán kinh doanh | ID 612 | Đã bổ sung binding; 29 PDF chờ replay mapping chính thức. |
-| Chứng khoán nợ/vốn — đã niêm yết/chưa niêm yết | ID 618/619/621/622 dưới nhánh 616 | 28 dòng trong 7 PDF chờ replay; nhánh 617/620 là nhãn cấu trúc khi không có ô số riêng. |
+| Dự phòng giảm giá chứng khoán kinh doanh | ID 612 | Website đã map theo rule hiện hành trong 29 PDF; chờ replay để ghi chính thức vào store. |
+| Chứng khoán nợ/vốn — đã niêm yết/chưa niêm yết | ID 618/619/621/622 dưới nhánh 616 | Website đã map 20 dòng trong 7 PDF; nhánh 617/620 là nhãn cấu trúc khi không có ô số riêng. |
+| Chứng khoán theo tổ chức phát hành | ID 595/596/597/602/603/605 | Rà toàn corpus tìm thêm 14 dòng trong 3 PDF có alias chính xác; website đã map theo rule hiện hành, chờ replay store. |
 | Công ty cổ phần, công ty TNHH và doanh nghiệp khác | ID 775 | Alias chính xác đã bổ sung. |
 | Hợp tác xã | ID 776 | Alias chính xác đã bổ sung; không còn giữ mơ hồ với nhãn gộp khác. |
 | Cá nhân | ID 780 | Xác nhận `Hộ kinh doanh, cá nhân` bao hàm dòng `Cá nhân`. |
@@ -32,11 +33,28 @@ chiếu toàn bộ schema và phân thành hai nhóm:
 | Đầu kỳ/tăng giảm/cuối kỳ của TSCĐ và BĐS đầu tư | Các child dưới 869/883/5964 và các nhánh tương ứng | Đã lấy cột `Tổng cộng` để map; parent là nút cấu trúc, không tự tạo ô số giả. |
 | Phát hành giấy tờ có giá | Root 1100 và các leaf 1101–1112 phù hợp | Mapping hiện hành đã có; dòng cùng ID ở bảng phụ được ghi là đối chiếu, không còn báo “chưa map”. |
 
-Tổng phạm vi alias mới chờ replay là **29 dòng ID 612 trong 29 PDF**, **28 dòng
-niêm yết trong 7 PDF**, và **31 dòng đối tượng doanh nghiệp trong 13 PDF**.
+Tổng phạm vi website đang chiếu theo rule mới nhưng store chưa replay là **29
+dòng ID 612 trong 29 PDF**, **20 dòng niêm yết trong 7 PDF**, **14 dòng issuer
+trong 3 PDF**, và **31 dòng đối tượng doanh nghiệp trong 13 PDF**.
 Chúng được tách khỏi 15 PDF `UNRESOLVED` dưới đây vì nguyên nhân không phải OCR,
 thiếu schema hay thiếu quan hệ cha/con; đây là thay đổi chính sách mapping có
 bằng chứng người dùng và schema hiện hữu.
+
+### Một dòng chứng khoán còn cần mở PDF kiểm tra
+
+- **Family:** Chứng khoán kinh doanh.
+- **Ngân hàng/kỳ/báo cáo:** VPB, quý 2/2025, BCTC công ty mẹ, chưa kiểm toán.
+- **File:** `BCTC Công ty mẹ quý 2 năm 2025.pdf`.
+- **Trang PDF:** 31.
+- **Khoản mục:** `Chứng khoán Chính phủ, chính quyền địa phương`.
+- **Khoản mục cha:** Chứng khoán nợ thuộc chứng khoán kinh doanh.
+- **Schema gần nhất:** ID 595 `Do Chính phủ phát hành (NHNN, Kho bạc)`; đây là
+  cùng bản chất, không phải thiếu schema.
+- **Giá trị Gemini:** kỳ hiện tại `8.933`; ô kỳ so sánh được đọc thành hai dấu
+  gạch trên hai dòng (`-` và `-`).
+- **Lý do chưa map:** không thể kết luận chắc token này là một dấu gạch bằng 0,
+  hai ô bị nhập làm một, hay lỗi OCR. Không map nửa hàng và không tự đoán số.
+- **Phân loại:** **LỖI SOURCE/OCR; CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH GIÁ TRỊ**.
 
 <a id="unresolved"></a>
 

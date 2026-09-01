@@ -38,10 +38,16 @@ cho thấy hai loại kết quả khác nhau:
   khác”, không còn bị gọi là “chưa map”.
 - **Quy tắc schema đã được bổ sung, cần replay family để trở thành mapping lưu
   chính thức:** 29 PDF có `Dự phòng giảm giá chứng khoán kinh doanh` → ID 612;
-  7 PDF có 28 dòng phân loại niêm yết → ID 618/619/621/622; 13 PDF có 31 dòng
-  đối tượng doanh nghiệp → ID 775/776/780/782. Các dòng này hiện được màn hình
-  ghi riêng là “Có trên PDF nhưng chưa map”, không còn bị xếp SOURCE_ONLY hay
-  kết luận nhầm là thiếu schema.
+  7 PDF có 20 dòng phân loại niêm yết → ID 618/619/621/622; 13 PDF có 31 dòng
+  đối tượng doanh nghiệp → ID 775/776/780/782. Rà lại toàn bộ 140 PDF còn xác
+  nhận thêm 14 dòng issuer đã có ID 595/596/597/602/603/605 trong 3 PDF. Màn
+  hình hiện hiển thị các dòng này ngay trong bảng mapping với nhãn “Đã map theo
+  rule hiện hành; chờ replay”, thay vì gọi là SOURCE_ONLY hoặc thiếu schema.
+- **Còn đúng một dòng chứng khoán khớp schema nhưng chưa được phép map:** VPB,
+  BCTC công ty mẹ quý 2/2025, trang 31, `Chứng khoán Chính phủ, chính quyền địa
+  phương` → ID 595. Ô so sánh được Gemini đọc thành hai dấu gạch chồng dòng
+  (`-`/`-`), nên chưa thể xác định là một số 0 hay lỗi tách dòng; website giữ
+  dòng này ở “Có trên PDF nhưng chưa map” để người dùng kiểm tra ảnh nguồn.
 
 Các kiểm tra cụ thể đã xác nhận:
 

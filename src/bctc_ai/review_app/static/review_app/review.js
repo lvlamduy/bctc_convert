@@ -358,6 +358,9 @@ function headerMarkup(header) {
 }
 
 function mappingSourceDescription(mapping) {
+  const policyNote = mapping.policy_overlay_label
+    ? ` · ${escapeHtml(mapping.policy_overlay_label)}`
+    : "";
   const exactRefs = mapping.source_refs || [];
   if (exactRefs.length) {
     const sources = exactRefs
@@ -367,13 +370,13 @@ function mappingSourceDescription(mapping) {
         return `${ref.physical_page ? `trang ${ref.physical_page}, ` : ""}${friendlyRowId(ref.row_id)}${label ? `: ${escapeHtml(label)}` : ""}`;
       })
       .join("; ");
-    return exactRefs.length === 1 ? `Nguồn trực tiếp: ${sources}` : `Tổng hợp/đối chiếu từ ${sources}`;
+    return (exactRefs.length === 1 ? `Nguồn trực tiếp: ${sources}` : `Tổng hợp/đối chiếu từ ${sources}`) + policyNote;
   }
-  if (!mapping.is_derived) return `Nguồn trực tiếp: ${escapeHtml(mapping.source_label)}`;
+  if (!mapping.is_derived) return `Nguồn trực tiếp: ${escapeHtml(mapping.source_label)}${policyNote}`;
   const source = mapping.derived_source_rows?.length
     ? mapping.derived_source_rows.map((row) => `${friendlyRowId(row.row_id)}: ${escapeHtml(row.label)}`).join(", ")
     : mapping.derived_from_row_ids.map(friendlyRowId).join(", ");
-  return `Map qua quy tắc từ ${source}`;
+  return `Map qua quy tắc từ ${source}${policyNote}`;
 }
 
 function mappingValueCell(mapping, value) {

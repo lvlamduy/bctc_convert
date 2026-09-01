@@ -449,6 +449,470 @@ def test_schema_coverage_exposes_listing_status_branch_instead_of_source_only(cl
     ]
 
 
+def test_current_trading_policy_projects_provision_and_listing_values(client) -> None:
+    repository = client.application.extensions["bctc_review_repository"]
+    specs = {
+        "schema_binding": {
+            "family_report_norm_id": 592,
+            "role_bindings": [
+                {"role": "PROVISION_PRICE_DECREASE", "report_norm_id": 612},
+                {"role": "DEBT_LISTED", "report_norm_id": 618},
+                {"role": "DEBT_UNLISTED", "report_norm_id": 619},
+                {"role": "EQUITY_LISTED", "report_norm_id": 621},
+                {"role": "EQUITY_UNLISTED", "report_norm_id": 622},
+            ],
+        },
+        "topology": {
+            "family_id": "TRADING_SECURITIES",
+            "children": [
+                {
+                    "role": "DEBT_SECURITIES_GROUP",
+                    "role_kind": "STRUCTURAL_GROUP",
+                    "matchers": [{"aliases": ["Chứng khoán nợ"], "within_role": None}],
+                },
+                {
+                    "role": "EQUITY_SECURITIES_GROUP",
+                    "role_kind": "STRUCTURAL_GROUP",
+                    "matchers": [{"aliases": ["Chứng khoán vốn"], "within_role": None}],
+                },
+                {
+                    "role": "PROVISION_PRICE_DECREASE",
+                    "matchers": [
+                        {
+                            "aliases": ["Dự phòng giảm giá chứng khoán kinh doanh"],
+                            "within_role": None,
+                        }
+                    ],
+                },
+                {
+                    "role": "DEBT_LISTED",
+                    "matchers": [
+                        {"aliases": ["Đã niêm yết"], "within_role": "DEBT_SECURITIES_GROUP"}
+                    ],
+                },
+                {
+                    "role": "DEBT_UNLISTED",
+                    "matchers": [
+                        {
+                            "aliases": ["Chưa niêm yết"],
+                            "within_role": "DEBT_SECURITIES_GROUP",
+                        }
+                    ],
+                },
+                {
+                    "role": "EQUITY_LISTED",
+                    "matchers": [
+                        {
+                            "aliases": ["Đã niêm yết"],
+                            "within_role": "EQUITY_SECURITIES_GROUP",
+                        }
+                    ],
+                },
+                {
+                    "role": "EQUITY_UNLISTED",
+                    "matchers": [
+                        {
+                            "aliases": ["Chưa niêm yết"],
+                            "within_role": "EQUITY_SECURITIES_GROUP",
+                        }
+                    ],
+                },
+            ],
+        },
+    }
+    pages = [
+        {
+            "physical_page": 47,
+            "canonical": {
+                "sections": [
+                    {
+                        "title_exact": "7 CHỨNG KHOÁN KINH DOANH",
+                        "tables": [{"title_exact": "7.1 Chi tiết chứng khoán kinh doanh"}],
+                    }
+                ]
+            },
+        },
+        {
+            "physical_page": 48,
+            "canonical": {
+                "sections": [
+                    {
+                        "title_exact": "Thuyết minh báo cáo tài chính hợp nhất",
+                        "tables": [
+                            {"title_exact": "7 CHỨNG KHOÁN KINH DOANH (tiếp theo)"},
+                            {"title_exact": "7.3 Tình trạng niêm yết"},
+                        ],
+                    }
+                ]
+            },
+        },
+    ]
+    columns = [
+        {"id": "c1", "label": "31.12.2025\nTriệu VND", "value_kind": "MONEY"},
+        {"id": "c2", "label": "31.12.2024\nTriệu VND", "value_kind": "MONEY"},
+    ]
+    tables = [
+        {
+            "physical_page": 47,
+            "page_json_version_id": "page-47",
+            "section_id": "s2",
+            "table_id": "t1",
+            "table_title": "7.1 Chi tiết chứng khoán kinh doanh",
+            "unit": "Triệu VND",
+            "candidate_status": "READY",
+            "candidate_reasons": [],
+            "columns": columns,
+            "rows": [
+                {
+                    "id": "r10",
+                    "label": "Dự phòng giảm giá chứng khoán kinh doanh",
+                    "hierarchy": ["Dự phòng giảm giá chứng khoán kinh doanh"],
+                    "values": ["(163.476)", "(147.937)"],
+                }
+            ],
+        },
+        {
+            "physical_page": 48,
+            "page_json_version_id": "page-48",
+            "section_id": "s1",
+            "table_id": "t2",
+            "table_title": "7.3 Tình trạng niêm yết",
+            "unit": None,
+            "candidate_status": "UNRESOLVED",
+            "candidate_reasons": ["FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW"],
+            "columns": columns,
+            "rows": [
+                {
+                    "id": "r1",
+                    "label": "Chứng khoán nợ",
+                    "hierarchy": ["Chứng khoán nợ"],
+                    "values": [None, None],
+                },
+                {
+                    "id": "r2",
+                    "label": "Đã niêm yết",
+                    "hierarchy": ["Chứng khoán nợ", "Đã niêm yết"],
+                    "values": ["1.274.577", "841.743"],
+                },
+                {
+                    "id": "r3",
+                    "label": "Chưa niêm yết",
+                    "hierarchy": ["Chứng khoán nợ", "Chưa niêm yết"],
+                    "values": ["1.270.000", None],
+                },
+                {
+                    "id": "r4",
+                    "label": "Chứng khoán vốn",
+                    "hierarchy": ["Chứng khoán vốn"],
+                    "values": [None, None],
+                },
+                {
+                    "id": "r5",
+                    "label": "Đã niêm yết",
+                    "hierarchy": ["Chứng khoán vốn", "Đã niêm yết"],
+                    "values": ["4.137.322", "3.130.761"],
+                },
+                {
+                    "id": "r6",
+                    "label": "Chưa niêm yết",
+                    "hierarchy": ["Chứng khoán vốn", "Chưa niêm yết"],
+                    "values": ["26.459", "56.584"],
+                },
+            ],
+        },
+    ]
+
+    mappings = repository._current_policy_mappings("TRADING_SECURITIES", pages, tables, [], specs)
+
+    assert [mapping["report_norm_id"] for mapping in mappings] == [
+        618,
+        619,
+        621,
+        622,
+        612,
+    ]
+    by_id = {mapping["report_norm_id"]: mapping for mapping in mappings}
+    assert [value["coefficient"] for value in by_id[612]["values"]] == [-163_476, -147_937]
+    assert [value["coefficient"] for value in by_id[618]["values"]] == [1_274_577, 841_743]
+    assert [value["coefficient"] for value in by_id[619]["values"]] == [1_270_000, None]
+    assert by_id[612]["policy_overlay"] is True
+
+
+def test_current_trading_policy_rejects_investment_listing_table(client) -> None:
+    repository = client.application.extensions["bctc_review_repository"]
+    pages = [
+        {
+            "physical_page": 53,
+            "canonical": {
+                "sections": [
+                    {
+                        "title_exact": "Thuyết minh báo cáo tài chính hợp nhất",
+                        "tables": [
+                            {"title_exact": "10 CHỨNG KHOÁN ĐẦU TƯ"},
+                            {"title_exact": "10.3 Tình trạng niêm yết"},
+                        ],
+                    }
+                ]
+            },
+        }
+    ]
+    specs = {
+        "schema_binding": {
+            "family_report_norm_id": 592,
+            "role_bindings": [{"role": "DEBT_LISTED", "report_norm_id": 618}],
+        },
+        "topology": {
+            "family_id": "TRADING_SECURITIES",
+            "children": [
+                {
+                    "role": "DEBT_SECURITIES_GROUP",
+                    "role_kind": "STRUCTURAL_GROUP",
+                    "matchers": [{"aliases": ["Chứng khoán nợ"], "within_role": None}],
+                },
+                {
+                    "role": "DEBT_LISTED",
+                    "matchers": [
+                        {"aliases": ["Đã niêm yết"], "within_role": "DEBT_SECURITIES_GROUP"}
+                    ],
+                },
+            ],
+        },
+    }
+    tables = [
+        {
+            "physical_page": 53,
+            "page_json_version_id": "page-53",
+            "section_id": "s1",
+            "table_id": "t2",
+            "table_title": "10.3 Tình trạng niêm yết",
+            "unit": "Triệu VND",
+            "candidate_status": "UNRESOLVED",
+            "candidate_reasons": ["FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW"],
+            "columns": [{"id": "c1", "label": "31.12.2025", "value_kind": "MONEY"}],
+            "rows": [
+                {
+                    "id": "r1",
+                    "label": "Chứng khoán nợ",
+                    "hierarchy": ["Chứng khoán nợ"],
+                    "values": [None],
+                },
+                {
+                    "id": "r2",
+                    "label": "Đã niêm yết",
+                    "hierarchy": ["Chứng khoán nợ", "Đã niêm yết"],
+                    "values": ["39.410.741"],
+                },
+            ],
+        }
+    ]
+
+    assert repository._current_policy_mappings("TRADING_SECURITIES", pages, tables, [], specs) == []
+
+
+def test_current_trading_policy_projects_exact_leaf_from_structurally_blocked_table(
+    client,
+) -> None:
+    repository = client.application.extensions["bctc_review_repository"]
+    pages = [
+        {
+            "physical_page": 41,
+            "canonical": {
+                "sections": [
+                    {
+                        "title_exact": "6 CHỨNG KHOÁN KINH DOANH",
+                        "tables": [{"title_exact": "6.1 Chứng khoán nợ"}],
+                    }
+                ]
+            },
+        }
+    ]
+    specs = {
+        "schema_binding": {
+            "family_report_norm_id": 592,
+            "role_bindings": [{"role": "DEBT_GOVERNMENT", "report_norm_id": 595}],
+        },
+        "topology": {
+            "family_id": "TRADING_SECURITIES",
+            "children": [
+                {
+                    "role": "DEBT_GOVERNMENT",
+                    "role_kind": "ADDITIVE_CHILD",
+                    "matchers": [
+                        {
+                            "aliases": ["Chứng khoán Chính phủ, chính quyền địa phương"],
+                            "within_role": None,
+                        }
+                    ],
+                }
+            ],
+        },
+    }
+    tables = [
+        {
+            "physical_page": 41,
+            "page_json_version_id": "page-41",
+            "section_id": "s1",
+            "table_id": "t1",
+            "section_title": "6 CHỨNG KHOÁN KINH DOANH",
+            "table_title": "6.1 Chứng khoán nợ",
+            "unit": "Triệu đồng",
+            "candidate_status": "UNRESOLVED",
+            "candidate_reasons": [
+                "FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED",
+                "HIERARCHICAL_SOLUTION_COUNT_NOT_ONE:0",
+            ],
+            "columns": [
+                {"id": "c1", "label": "31.12.2025\nTriệu đồng", "value_kind": "MONEY"},
+                {"id": "c2", "label": "31.12.2024\nTriệu đồng", "value_kind": "MONEY"},
+            ],
+            "rows": [
+                {
+                    "id": "r2",
+                    "label": "Chứng khoán Chính phủ, chính quyền địa phương",
+                    "hierarchy": [
+                        "Chứng khoán nợ",
+                        "Chứng khoán Chính phủ, chính quyền địa phương",
+                    ],
+                    "values": ["1.528.994", "623.734"],
+                }
+            ],
+        }
+    ]
+
+    mappings = repository._current_policy_mappings("TRADING_SECURITIES", pages, tables, [], specs)
+
+    assert len(mappings) == 1
+    assert mappings[0]["report_norm_id"] == 595
+    assert [value["coefficient"] for value in mappings[0]["values"]] == [1_528_994, 623_734]
+
+
+def test_trading_coverage_keeps_unowned_securities_row_as_source_only(client) -> None:
+    repository = client.application.extensions["bctc_review_repository"]
+    specs = {
+        "schema_binding": {
+            "family_report_norm_id": 592,
+            "role_bindings": [{"role": "DEBT_GOVERNMENT", "report_norm_id": 595}],
+        },
+        "topology": {
+            "family_id": "TRADING_SECURITIES",
+            "children": [
+                {
+                    "role": "DEBT_GOVERNMENT",
+                    "role_kind": "ADDITIVE_CHILD",
+                    "matchers": [{"aliases": ["Chứng khoán Chính phủ"], "within_role": None}],
+                }
+            ],
+        },
+    }
+    pages = [
+        {
+            "physical_page": 45,
+            "canonical": {
+                "sections": [{"title_exact": "Thuyết minh báo cáo tài chính", "tables": []}]
+            },
+        }
+    ]
+    tables = [
+        {
+            "physical_page": 45,
+            "section_id": "s1",
+            "table_id": "t1",
+            "table_title": None,
+            "section_title": "Thuyết minh báo cáo tài chính",
+            "candidate_status": "UNRESOLVED",
+            "candidate_status_label": "Cần kiểm tra",
+            "candidate_reasons": ["FAMILY_PARENT_NOT_VISIBLE"],
+            "candidate_reason_labels": ["Chưa nối chắc được với family"],
+            "rows": [
+                {
+                    "id": "r1",
+                    "label": "Chứng khoán Chính phủ",
+                    "hierarchy": ["Chứng khoán Chính phủ"],
+                    "values": ["40.580.673", "37.452.901"],
+                }
+            ],
+        }
+    ]
+
+    coverage = repository._schema_coverage(pages, tables, [], specs)
+
+    assert coverage["visible_unmapped"] == []
+    assert coverage["source_only"][0]["classification"] == "NGHI THUỘC FAMILY KHÁC"
+
+
+def test_current_loan_enterprise_policy_maps_exact_user_confirmed_aliases(client) -> None:
+    repository = client.application.extensions["bctc_review_repository"]
+    role_ids = {
+        "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS": 775,
+        "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS": 776,
+        "HOUSEHOLD_AND_INDIVIDUAL_LOANS": 780,
+        "OTHER_ENTERPRISE_LOANS": 782,
+    }
+    labels = {
+        "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS": (
+            "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"
+        ),
+        "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS": "Hợp tác xã",
+        "HOUSEHOLD_AND_INDIVIDUAL_LOANS": "Cá nhân",
+        "OTHER_ENTERPRISE_LOANS": "Các đối tượng khác",
+    }
+    specs = {
+        "schema_binding": {
+            "family_report_norm_id": 756,
+            "role_bindings": [
+                {"role": role, "report_norm_id": report_norm_id}
+                for role, report_norm_id in role_ids.items()
+            ],
+        },
+        "topology": {
+            "family_id": "LOAN_ENTERPRISE_FAMILY12",
+            "children": [
+                {
+                    "role": role,
+                    "role_kind": "ADDITIVE_CHILD",
+                    "matchers": [{"aliases": [label], "within_role": None}],
+                }
+                for role, label in labels.items()
+            ],
+        },
+    }
+    table = {
+        "physical_page": 50,
+        "page_json_version_id": "page-50",
+        "section_id": "s1",
+        "table_id": "t2",
+        "table_title": "9.2 Theo đối tượng khách hàng",
+        "unit": "Triệu VND",
+        "candidate_status": "READY",
+        "candidate_reasons": [],
+        "columns": [
+            {"id": "c1", "label": "31.12.2025\nTriệu VND", "value_kind": "MONEY"},
+            {"id": "c2", "label": "31.12.2025\nTỷ lệ", "value_kind": "PERCENT"},
+            {"id": "c3", "label": "31.12.2024\nTriệu VND", "value_kind": "MONEY"},
+            {"id": "c4", "label": "31.12.2024\nTỷ lệ", "value_kind": "PERCENT"},
+        ],
+        "rows": [
+            {
+                "id": f"r{ordinal}",
+                "label": label,
+                "hierarchy": [label],
+                "values": [f"{ordinal}.000", "1,00%", f"{ordinal - 1}.000", "1,00%"],
+            }
+            for ordinal, label in enumerate(labels.values(), start=3)
+        ],
+    }
+
+    mappings = repository._current_policy_mappings(
+        "LOAN_ENTERPRISE_FAMILY12", [], [table], [], specs
+    )
+
+    assert {mapping["report_norm_id"] for mapping in mappings} == {775, 776, 780, 782}
+    assert all(len(mapping["values"]) == 2 for mapping in mappings)
+    assert all(
+        [value["column_id"] for value in mapping["values"]] == ["c1", "c3"] for mapping in mappings
+    )
+
+
 def test_schema_coverage_uses_aggregate_source_refs_instead_of_reporting_false_unmapped(
     client,
 ) -> None:
@@ -537,6 +1001,8 @@ def test_normalized_mapping_reads_rollforward_top_level_cell_and_locator(client)
             "row_id": "r7",
             "row_label_exact": "Tại ngày 31 tháng 12 năm 2025",
             "period_date": "2025-12-31",
+            "endpoint_date": "2024-12-31",
+            "column_ordinal": 2,
             "locator": {
                 "page_json_version_id": PAGE_VERSION,
                 "section_id": "s1",
@@ -555,3 +1021,6 @@ def test_normalized_mapping_reads_rollforward_top_level_cell_and_locator(client)
     assert mapping["values"][0]["coefficient"] == 4_982_250
     assert mapping["source_refs"][0]["row_id"] == "r7"
     assert mapping["source_refs"][0]["physical_page"] == 2
+    assert mapping["source_refs"][0]["column_id"] == "c2"
+    assert mapping["values"][0]["column_id"] == "c2"
+    assert mapping["period_date"] == "2024-12-31"

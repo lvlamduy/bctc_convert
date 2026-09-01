@@ -14,6 +14,10 @@ from typing import Any
 
 import fitz
 
+from bctc_ai.evaluation.family_first_numeric_cell_evidence_v1 import (
+    parse_visible_financial_numeric_token_v1,
+)
+
 from .constants import (
     FAMILY_ORDER,
     STATUS_NAMES_VI,
@@ -53,6 +57,13 @@ _PERIOD_PATTERNS = (
     (re.compile(r"(?:^|\D)3q(?:20\d{2})", re.IGNORECASE), "Q3", "Quý 3"),
     (re.compile(r"(?:^|\D)4q(?:20\d{2})", re.IGNORECASE), "Q4", "Quý 4"),
 )
+
+_LOAN_ENTERPRISE_CURRENT_POLICY_ROLES = {
+    "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
+    "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
+    "HOUSEHOLD_AND_INDIVIDUAL_LOANS",
+    "OTHER_ENTERPRISE_LOANS",
+}
 
 
 def _configured_path(variable: str, candidates: Iterable[Path]) -> Path | None:
@@ -593,6 +604,53 @@ class ReviewRepository:
             )
         return result
 
+    def _preceding_page_payloads(
+        self, source_sha256: str, physical_pages: Iterable[int]
+    ) -> list[dict[str, Any]]:
+        """Load a unique immediately preceding page as bounded owner context."""
+
+        target_pages = sorted({page - 1 for page in physical_pages if page > 1})
+        if not target_pages:
+            return []
+        placeholders = ",".join("?" for _ in target_pages)
+        with self._pages() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT version.page_json_version_id, version.page_status,
+                       version.canonical_json_bytes, page.physical_page,
+                       page.pixel_width AS width, page.pixel_height AS height,
+                       document.source_logical_name, document.source_sha256
+                FROM page_json_version AS version
+                JOIN page USING (page_id)
+                JOIN document USING (document_id)
+                WHERE document.source_sha256 = ?
+                  AND page.physical_page IN ({placeholders})
+                ORDER BY page.physical_page, version.page_json_version_id
+                """,
+                [source_sha256, *target_pages],
+            ).fetchall()
+        rows_by_page: dict[int, list[sqlite3.Row]] = {}
+        for row in rows:
+            rows_by_page.setdefault(row["physical_page"], []).append(row)
+        result = []
+        for physical_page in target_pages:
+            page_rows = rows_by_page.get(physical_page, [])
+            if len(page_rows) != 1:
+                continue
+            row = page_rows[0]
+            result.append(
+                {
+                    "page_json_version_id": row["page_json_version_id"],
+                    "page_status": row["page_status"],
+                    "physical_page": row["physical_page"],
+                    "width": row["width"],
+                    "height": row["height"],
+                    "source_logical_name": row["source_logical_name"],
+                    "canonical": _json_load(row["canonical_json_bytes"], {}),
+                }
+            )
+        return result
+
     def _gemini_tables(
         self,
         pages: list[dict[str, Any]],
@@ -739,6 +797,10 @@ class ReviewRepository:
         top_level_locator = (
             mapping.get("locator") if isinstance(mapping.get("locator"), dict) else {}
         )
+        top_level_column_id = mapping.get("column_id")
+        column_ordinal = mapping.get("column_ordinal")
+        if not top_level_column_id and isinstance(column_ordinal, int) and column_ordinal > 0:
+            top_level_column_id = f"c{column_ordinal}"
         if top_level_locator and mapping.get("row_id"):
             page_json_version_id = top_level_locator.get("page_json_version_id")
             source_refs.append(
@@ -749,7 +811,7 @@ class ReviewRepository:
                     "section_id": top_level_locator.get("section_id"),
                     "table_id": top_level_locator.get("table_id"),
                     "row_id": mapping.get("row_id"),
-                    "column_id": mapping.get("column_id"),
+                    "column_id": top_level_column_id,
                     "label_exact": mapping.get("row_label_exact") or mapping.get("label_exact"),
                     "hierarchy_path_exact": mapping.get("row_hierarchy_path_exact") or [],
                     "coefficient": (mapping.get("cell") or {}).get("coefficient")
@@ -827,7 +889,7 @@ class ReviewRepository:
                     "section_id": effective_locator.get("section_id"),
                     "table_id": effective_locator.get("table_id"),
                     "row_id": cell_ref.get("row_id") or mapping.get("row_id"),
-                    "column_id": cell_ref.get("column_id"),
+                    "column_id": cell_ref.get("column_id") or top_level_column_id,
                 }
             )
         return {
@@ -844,7 +906,9 @@ class ReviewRepository:
             or str(mapping.get("row_id") or "").startswith(("aggregate:", "corroborated:"))
             or len(source_refs) > 1,
             "unit": mapping.get("unit"),
-            "period_date": mapping.get("period_date") or mapping.get("endpoint_date"),
+            # Opening/closing roll-forward rows carry an exact endpoint in addition
+            # to the report period. Prefer that visible date for the review header.
+            "period_date": mapping.get("endpoint_date") or mapping.get("period_date"),
             "values": values,
             "source_locator": default_locator or {},
             "source_refs": source_refs,
@@ -961,6 +1025,204 @@ class ReviewRepository:
                     value["display_source_label"] = source_row["label"]
 
     @staticmethod
+    def _trading_page_context(pages: list[dict[str, Any]]) -> dict[int, dict[str, bool]]:
+        """Identify the visible family owner on each trading-security page."""
+
+        direct: dict[int, dict[str, bool]] = {}
+        for page in pages:
+            surfaces: list[str] = []
+            for section in page.get("canonical", {}).get("sections", []):
+                surfaces.append(_semantic_label(section.get("title_exact")))
+                surfaces.extend(
+                    _semantic_label(table.get("title_exact")) for table in section.get("tables", [])
+                )
+            direct[page["physical_page"]] = {
+                "trading": any("chung khoan kinh doanh" in surface for surface in surfaces),
+                "investment": any("chung khoan dau tu" in surface for surface in surfaces),
+            }
+        result = {physical_page: dict(context) for physical_page, context in direct.items()}
+        for physical_page in sorted(direct):
+            context = direct[physical_page]
+            preceding = direct.get(physical_page - 1)
+            if not context["trading"] and not context["investment"] and preceding:
+                result[physical_page] = dict(preceding)
+        return result
+
+    def _current_policy_mappings(
+        self,
+        family_id: str,
+        pages: list[dict[str, Any]],
+        gemini_tables: list[dict[str, Any]],
+        mappings: list[dict[str, Any]],
+        specs: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Project exact tracked aliases that post-date the persisted review run.
+
+        These rows are deliberately marked as a current-policy projection.  The
+        persisted store remains immutable until the authenticated family replay,
+        while the human review screen no longer hides an exact schema match.
+        """
+
+        if family_id not in {"TRADING_SECURITIES", "LOAN_ENTERPRISE_FAMILY12"}:
+            return []
+        catalog = self._role_catalog(specs)
+        page_context = self._trading_page_context(pages)
+        eligible_roles = (
+            {
+                role
+                for role in catalog["report_norm_id_by_role"]
+                if catalog["children"].get(role, {}).get("role_kind") != "STRUCTURAL_GROUP"
+            }
+            if family_id == "TRADING_SECURITIES"
+            else _LOAN_ENTERPRISE_CURRENT_POLICY_ROLES
+        )
+        persisted_ids = {
+            mapping.get("report_norm_id")
+            for mapping in mappings
+            if isinstance(mapping.get("report_norm_id"), int)
+        }
+        matches_by_role: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+        for table in gemini_tables:
+            reasons = set(table.get("candidate_reasons") or [])
+            if family_id == "TRADING_SECURITIES":
+                context = page_context.get(table["physical_page"], {})
+                if not context.get("trading") or context.get("investment"):
+                    continue
+                if table.get("candidate_status") not in {"READY", "UNRESOLVED"}:
+                    continue
+            elif table.get("candidate_status") != "READY" or reasons:
+                continue
+
+            active_group_role: str | None = None
+            table_surfaces = {
+                _semantic_label(table.get("table_title")),
+                _semantic_label(table.get("section_title")),
+            }
+            structural_surface_roles = {
+                role
+                for role, child in catalog["children"].items()
+                if child.get("role_kind") == "STRUCTURAL_GROUP"
+                and table_surfaces.intersection(catalog["aliases_by_role"].get(role, set()))
+            }
+            if len(structural_surface_roles) == 1:
+                active_group_role = next(iter(structural_surface_roles))
+            for row in table["rows"]:
+                role, ambiguity = self._row_role(row, catalog, active_group_role)
+                child = catalog["children"].get(role, {}) if role else {}
+                if child.get("role_kind") == "STRUCTURAL_GROUP":
+                    active_group_role = role
+                if ambiguity or role not in eligible_roles:
+                    continue
+                report_norm_id = catalog["report_norm_id_by_role"].get(role)
+                if not isinstance(report_norm_id, int) or report_norm_id in persisted_ids:
+                    continue
+                matches_by_role.setdefault(role, []).append((table, row))
+
+        projected: list[dict[str, Any]] = []
+        for role in sorted(matches_by_role):
+            matches = matches_by_role[role]
+            if len(matches) != 1:
+                continue
+            table, row = matches[0]
+            values: list[dict[str, Any]] = []
+            safe = True
+            money_columns = [
+                (ordinal, column, row["values"][ordinal - 1])
+                for ordinal, column in enumerate(table["columns"], start=1)
+                if column.get("value_kind") == "MONEY"
+            ]
+            if not money_columns:
+                continue
+            for _ordinal, column, raw_value in money_columns:
+                if raw_value is None or not str(raw_value).strip():
+                    coefficient = None
+                    state = "SOURCE_BLANK"
+                else:
+                    parsed = parse_visible_financial_numeric_token_v1(str(raw_value))
+                    coefficient = parsed.get("coefficient")
+                    if coefficient is None:
+                        safe = False
+                        break
+                    state = (
+                        "DASH_ZERO"
+                        if parsed.get("classification") == "DASH_ZERO"
+                        else "RAW_SIGNED_INTEGER"
+                    )
+                values.append(
+                    {
+                        "header": column["label"],
+                        "axis_role": None,
+                        "period_end": None,
+                        "coefficient": coefficient,
+                        "source_text": raw_value,
+                        "state": state,
+                        "state_label": VALUE_STATE_NAMES_VI[state],
+                        "physical_page": table["physical_page"],
+                        "page_json_version_id": table["page_json_version_id"],
+                        "section_id": table["section_id"],
+                        "table_id": table["table_id"],
+                        "row_id": row["id"],
+                        "column_id": column["id"],
+                    }
+                )
+            if not safe:
+                continue
+            if not any(value["coefficient"] is not None for value in values):
+                continue
+            report_norm_id = catalog["report_norm_id_by_role"][role]
+            schema = self._schema_names.get(report_norm_id, {})
+            projected.append(
+                {
+                    "mapping_ordinal": (
+                        f"current-policy:{report_norm_id}:p{table['physical_page']}:"
+                        f"{table['section_id']}:{table['table_id']}:{row['id']}"
+                    ),
+                    "report_norm_id": report_norm_id,
+                    "schema_name": schema.get("name") or f"ReportNormId {report_norm_id}",
+                    "schema_parent_id": schema.get("parent_id"),
+                    "role": role,
+                    "row_id": row["id"],
+                    "source_label": row["label"],
+                    "derived_from_row_ids": [],
+                    "derived_from_roles": [],
+                    "derived_source_rows": [],
+                    "is_derived": False,
+                    "unit": table.get("unit"),
+                    "period_date": None,
+                    "values": values,
+                    "source_locator": {
+                        "physical_page": table["physical_page"],
+                        "page_json_version_id": table["page_json_version_id"],
+                        "section_id": table["section_id"],
+                        "table_id": table["table_id"],
+                    },
+                    "source_refs": [
+                        {
+                            "physical_page": table["physical_page"],
+                            "page_json_version_id": table["page_json_version_id"],
+                            "section_id": table["section_id"],
+                            "table_id": table["table_id"],
+                            "row_id": row["id"],
+                            "column_id": None,
+                            "money_column_ordinals": [
+                                ordinal for ordinal, _column, _value in money_columns
+                            ],
+                            "label_exact": row["label"],
+                            "hierarchy_path_exact": row["hierarchy"],
+                            "coefficient": None,
+                            "source_text": None,
+                            "state": None,
+                        }
+                    ],
+                    "policy_overlay": True,
+                    "policy_overlay_label": (
+                        "Đã map theo rule hiện hành; chờ replay để ghi vào kho kết quả"
+                    ),
+                }
+            )
+        return projected
+
+    @staticmethod
     def _role_catalog(specs: dict[str, Any]) -> dict[str, Any]:
         topology = specs.get("topology") if isinstance(specs.get("topology"), dict) else {}
         binding = (
@@ -1048,6 +1310,12 @@ class ReviewRepository:
         specs: dict[str, Any],
     ) -> dict[str, Any]:
         catalog = self._role_catalog(specs)
+        topology = specs.get("topology") if isinstance(specs.get("topology"), dict) else {}
+        trading_page_context = (
+            self._trading_page_context(pages)
+            if topology.get("family_id") == "TRADING_SECURITIES"
+            else {}
+        )
         mapped_ids = {
             mapping["report_norm_id"]
             for mapping in mappings
@@ -1098,6 +1366,12 @@ class ReviewRepository:
                 "HARD_NEGATIVE" in str(reason).upper()
                 for reason in table.get("candidate_reasons", [])
             )
+            page_context = trading_page_context.get(table["physical_page"], {})
+            outside_trading_scope = topology.get(
+                "family_id"
+            ) == "TRADING_SECURITIES" and not page_context.get("trading")
+            if page_context.get("investment") and not page_context.get("trading"):
+                hard_negative = True
             active_group_role: str | None = None
             table_surfaces = {
                 _semantic_label(table.get("table_title")),
@@ -1167,6 +1441,19 @@ class ReviewRepository:
                         }
                     )
                     continue
+                if outside_trading_scope:
+                    source_only.append(
+                        common
+                        | {
+                            "classification": "NGHI THUỘC FAMILY KHÁC",
+                            "explanation": (
+                                "Nhãn dòng gần với schema chứng khoán kinh doanh, nhưng không "
+                                "có tiêu đề/chủ sở hữu bảng xác nhận family này trong phạm vi "
+                                "liền kề. Giữ SOURCE_ONLY để tránh nhầm với chứng khoán đầu tư."
+                            ),
+                        }
+                    )
+                    continue
                 if hard_negative:
                     source_only.append(
                         common
@@ -1182,6 +1469,10 @@ class ReviewRepository:
                 if role and isinstance(report_norm_id, int):
                     seen_roles.add(role)
                     parent_id = schema.get("parent_id")
+                    invalid_money = any(
+                        "MONEY_CELL_IS_NOT_EXACT_INTEGER" in str(reason).upper()
+                        for reason in table.get("candidate_reasons", [])
+                    )
                     item = common | {
                         "classification": "CÓ TRÊN PDF NHƯNG CHƯA MAP",
                         "role": role,
@@ -1190,8 +1481,12 @@ class ReviewRepository:
                         "schema_parent_id": parent_id,
                         "schema_parent_name": self._schema_names.get(parent_id, {}).get("name"),
                         "explanation": (
-                            "Nhãn nguồn khớp một khoản mục schema, nhưng candidate bảng chưa "
-                            "được chọn hoặc đang bị chặn bởi điều kiện cấu trúc."
+                            "Nhãn nguồn khớp schema nhưng có ít nhất một ô số không đọc được "
+                            "thành số nguyên chính xác; cần kiểm tra trực tiếp PDF/OCR, không "
+                            "được tự đoán giá trị."
+                            if invalid_money
+                            else "Nhãn nguồn khớp một khoản mục schema, nhưng candidate bảng "
+                            "chưa được chọn hoặc đang bị chặn bởi điều kiện cấu trúc."
                         ),
                     }
                     row["mapping_state"] = "VISIBLE_UNMAPPED"
@@ -1310,6 +1605,17 @@ class ReviewRepository:
             refs.extend(_collect_page_refs(candidate.get("component_regions", [])))
             refs.extend(_collect_page_refs(candidate.get("mappings", [])))
         pages = self._page_payloads(source_sha256, refs)
+        policy_pages = pages
+        if family_id == "TRADING_SECURITIES":
+            preceding_pages = self._preceding_page_payloads(
+                source_sha256, [page["physical_page"] for page in pages]
+            )
+            known_versions = {page["page_json_version_id"] for page in pages}
+            policy_pages = pages + [
+                page
+                for page in preceding_pages
+                if page["page_json_version_id"] not in known_versions
+            ]
         reasons = _json_load(trial["reasons_json"], [])
         document = _document_metadata(trial["source_logical_name"])
         document.update(
@@ -1372,13 +1678,23 @@ class ReviewRepository:
             )
             for mapping in mappings
         ]
+        specs = self._family_specs(trial["family_run_id"])
+        normalized_mappings.extend(
+            self._current_policy_mappings(
+                family_id,
+                policy_pages,
+                gemini_tables,
+                normalized_mappings,
+                specs,
+            )
+        )
         self._attach_mapping_headers(normalized_mappings, gemini_tables)
         self._attach_derived_source_context(normalized_mappings, gemini_tables)
         coverage = self._schema_coverage(
-            pages,
+            policy_pages,
             gemini_tables,
             normalized_mappings,
-            self._family_specs(trial["family_run_id"]),
+            specs,
         )
         return {
             "family": {"id": family_id, "name": family_name(family_id)},
@@ -1388,7 +1704,8 @@ class ReviewRepository:
                 "raw_status": trial["status"],
                 "status_label": STATUS_NAMES_VI.get(normalized_status, normalized_status),
                 "candidate_count": trial["candidate_count"],
-                "mapping_count": trial["mapping_count"],
+                "mapping_count": len(normalized_mappings),
+                "persisted_mapping_count": trial["mapping_count"],
                 "reasons": reasons,
                 "reason_labels": [reason_name(reason) for reason in reasons],
             },
