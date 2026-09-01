@@ -1,0 +1,39 @@
+{
+  "branch_bindings": [
+    {
+      "axis_bindings": [
+        {"parent_report_norm_id": 5807, "role": "BANK"},
+        {"parent_report_norm_id": 5814, "role": "SECURITIES_FUND"},
+        {"parent_report_norm_id": 5821, "role": "INSURANCE"},
+        {"parent_report_norm_id": 5828, "role": "DEBT_ASSET"},
+        {"parent_report_norm_id": 5835, "role": "ELIMINATION"},
+        {"parent_report_norm_id": 5842, "role": "TOTAL"}
+      ],
+      "branch_report_norm_id": 5806,
+      "role": "BUSINESS"
+    },
+    {
+      "axis_bindings": [
+        {"parent_report_norm_id": 5764, "role": "NORTH"},
+        {"parent_report_norm_id": 5771, "role": "CENTRAL"},
+        {"parent_report_norm_id": 5778, "role": "SOUTH"},
+        {"parent_report_norm_id": 5785, "role": "OTHER"},
+        {"parent_report_norm_id": 5792, "role": "ELIMINATION"},
+        {"parent_report_norm_id": 5799, "role": "TOTAL"}
+      ],
+      "branch_report_norm_id": 5763,
+      "role": "GEOGRAPHIC"
+    }
+  ],
+  "family_id": "CONSOLIDATED_SEGMENT_REPORT",
+  "family_root_report_norm_id": 5762,
+  "format_version": "ACCOUNTING_SEGMENT_REPORT_MATRIX_SCHEMA_BINDING_SPEC_V1",
+  "metric_offsets": [
+    {"offset": 1, "role": "ASSETS"},
+    {"offset": 2, "role": "LIABILITIES"},
+    {"offset": 3, "role": "FIXED_ASSETS"},
+    {"offset": 4, "role": "REVENUE"},
+    {"offset": 5, "role": "EXPENSE"},
+    {"offset": 6, "role": "PROFIT_BEFORE_TAX"}
+  ]
+}

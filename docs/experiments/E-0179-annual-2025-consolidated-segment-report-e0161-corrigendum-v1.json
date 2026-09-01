@@ -1,0 +1,996 @@
+{
+  "authority": {
+    "algorithm_outputs_used_as_source_truth": false,
+    "base_oracle_mutated": false,
+    "corrections_bounded_to_exact_reviewed_rows": true,
+    "independent_source_pdf_page_reviewed": true,
+    "selected_canonical_json_cross_checked": true
+  },
+  "axis_operations": [
+    {
+      "after": {
+        "axis_role": "BANK",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 35740232,
+        "oracle_status": "CORRECTED_BY_CODEX_SOURCE_REVIEW",
+        "parent_report_norm_id": 5807,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5813,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "BANK",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 28631155,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5807,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5813,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "INSURANCE",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 678928,
+        "oracle_status": "CORRECTED_BY_CODEX_SOURCE_REVIEW",
+        "parent_report_norm_id": 5821,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5827,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "INSURANCE",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 550530,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5821,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5827,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "ELIMINATION",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 745105,
+        "oracle_status": "CORRECTED_BY_CODEX_SOURCE_REVIEW",
+        "parent_report_norm_id": 5835,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5841,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "ELIMINATION",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 759295,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5835,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5841,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "TOTAL",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 37787518,
+        "oracle_status": "CORRECTED_BY_CODEX_SOURCE_REVIEW",
+        "parent_report_norm_id": 5842,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5848,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "TOTAL",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 30430130,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5842,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5848,
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "BANK",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 26364164,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5807,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5813,
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "DEBT_ASSET",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 8703,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5828,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5834,
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "INSURANCE",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 638441,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5821,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5827,
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "ELIMINATION",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": -1473416,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5835,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5841,
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "assignments",
+      "before": {
+        "axis_role": "TOTAL",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 30624949,
+        "oracle_status": "VERIFIED_BY_CODEX",
+        "parent_report_norm_id": 5842,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5848,
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          15118,
+          35740232,
+          52608,
+          555527,
+          678928,
+          745105
+        ],
+        "computed_total": 37787518,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "status": "EXACT",
+        "visible_total": 37787518
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          12618,
+          28631155,
+          42050,
+          434482,
+          550530,
+          759295
+        ],
+        "computed_total": 30430130,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "status": "EXACT",
+        "visible_total": 30430130
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          -1473416,
+          26364164,
+          4475585,
+          611472,
+          638441,
+          8703
+        ],
+        "computed_total": 30624949,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "status": "EXACT",
+        "visible_total": 30624949
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "after": {
+        "physical_page": 96,
+        "reason": "SOURCE_ROW_LABEL_DOES_NOT_EXPLICITLY_AUTHENTICATE_PROFIT_BEFORE_TAX",
+        "source_label": "Kết quả kinh doanh bộ phận",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "status": "UNRESOLVED"
+      },
+      "axis_name": "open_source_items",
+      "operation": "ADD_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "FINANCE_LEASE_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 52608,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "source_only_components",
+      "before": {
+        "axis_role": "FINANCE_LEASE_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 42050,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "SECURITIES_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 555527,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "source_only_components",
+      "before": {
+        "axis_role": "SECURITIES_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 434482,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "OTHER_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 15118,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "axis_name": "source_only_components",
+      "before": {
+        "axis_role": "OTHER_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 12618,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "source_state": "VALUE"
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "axis_name": "source_only_components",
+      "before": {
+        "axis_role": "FINANCE_COMPANY_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 611472,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "source_only_components",
+      "before": {
+        "axis_role": "SECURITIES_SOURCE_ONLY",
+        "branch": "BUSINESS",
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "normalized_value": 4475585,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "source_state": "VALUE"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "blank_cells",
+      "before": {
+        "axis_role": "CENTRAL_BLANK_SOURCE_ONLY",
+        "branch": "GEOGRAPHIC",
+        "metric_role": "FIXED_ASSETS",
+        "normalized_value": null,
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "source_state": "BLANK"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "axis_name": "blank_cells",
+      "before": {
+        "axis_role": "CENTRAL_BLANK_SOURCE_ONLY",
+        "branch": "GEOGRAPHIC",
+        "metric_role": "FIXED_ASSETS",
+        "normalized_value": null,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "source_state": "BLANK"
+      },
+      "operation": "REMOVE_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "CENTRAL",
+        "branch": "GEOGRAPHIC",
+        "metric_role": "FIXED_ASSETS",
+        "normalized_value": 0,
+        "oracle_status": "CORRECTED_BY_SOURCE_PDF_REVIEW",
+        "parent_report_norm_id": 5771,
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "report_norm_id": 5774,
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "operation": "ADD_EXACT"
+    },
+    {
+      "after": {
+        "axis_role": "CENTRAL",
+        "branch": "GEOGRAPHIC",
+        "metric_role": "FIXED_ASSETS",
+        "normalized_value": 0,
+        "oracle_status": "CORRECTED_BY_SOURCE_PDF_REVIEW",
+        "parent_report_norm_id": 5771,
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "report_norm_id": 5774,
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "source_state": "VALUE"
+      },
+      "axis_name": "assignments",
+      "operation": "ADD_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          0,
+          1002025,
+          26760926,
+          417932,
+          648445
+        ],
+        "computed_total": 28829328,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 28829328
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          1002025,
+          26760926,
+          417932,
+          648445
+        ],
+        "computed_total": 28829328,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 28829328
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          0,
+          132990,
+          397833,
+          5026150,
+          59574
+        ],
+        "computed_total": 5616547,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5616547
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          132990,
+          397833,
+          5026150,
+          59574
+        ],
+        "computed_total": 5616547,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5616547
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          0,
+          138,
+          1711510,
+          221686,
+          40343,
+          55147
+        ],
+        "computed_total": 2028824,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "status": "EXACT",
+        "visible_total": 2028824
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          138,
+          1711510,
+          221686,
+          40343,
+          55147
+        ],
+        "computed_total": 2028824,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "status": "EXACT",
+        "visible_total": 2028824
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          0,
+          1540665,
+          31139240,
+          626189,
+          962264
+        ],
+        "computed_total": 34268358,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 34268358
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          1540665,
+          31139240,
+          626189,
+          962264
+        ],
+        "computed_total": 34268358,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 34268358
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "BUSINESS",
+        "component_values": [
+          0,
+          166443,
+          353749,
+          4858928,
+          51296
+        ],
+        "computed_total": 5430416,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5430416
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "BUSINESS",
+        "component_values": [
+          166443,
+          353749,
+          4858928,
+          51296
+        ],
+        "computed_total": 5430416,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5430416
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          1114,
+          845745
+        ],
+        "computed_total": 846859,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "status": "EXACT",
+        "visible_total": 846859
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": null,
+        "computed_total": null,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "NOT_TESTABLE_BLANK_COMPONENT_NOT_COERCED_TO_ZERO",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "status": "NOT_TESTABLE",
+        "visible_total": null
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          1461056,
+          23139579,
+          25933,
+          4202760
+        ],
+        "computed_total": 28829328,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 28829328
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          1461056,
+          23139579,
+          25933,
+          4202760
+        ],
+        "computed_total": 28829328,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 28829328
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          153718,
+          235841,
+          47907,
+          4992950
+        ],
+        "computed_total": 5430416,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5430416
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          153718,
+          235841,
+          47907,
+          4992950
+        ],
+        "computed_total": 5430416,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5430416
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          1609,
+          793660
+        ],
+        "computed_total": 795269,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "status": "EXACT",
+        "visible_total": 795269
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": null,
+        "computed_total": null,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "NOT_TESTABLE_BLANK_COMPONENT_NOT_COERCED_TO_ZERO",
+        "period_end": "2024-12-31",
+        "period_role": "COMPARATIVE_PERIOD",
+        "source_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "status": "NOT_TESTABLE",
+        "visible_total": null
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          204175,
+          363451,
+          4970480,
+          78441
+        ],
+        "computed_total": 5616547,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5616547
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          204175,
+          363451,
+          4970480,
+          78441
+        ],
+        "computed_total": 5616547,
+        "metric_role": "FIXED_ASSETS",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 5616547
+      },
+      "operation": "REPLACE_EXACT"
+    },
+    {
+      "after": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          0,
+          2120016,
+          22998270,
+          39689,
+          9110383
+        ],
+        "computed_total": 34268358,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_INCLUDING_PRINTED_DASH_ZERO_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 34268358
+      },
+      "axis_name": "equations",
+      "before": {
+        "branch": "GEOGRAPHIC",
+        "component_values": [
+          2120016,
+          22998270,
+          39689,
+          9110383
+        ],
+        "computed_total": 34268358,
+        "metric_role": "PROFIT_BEFORE_TAX",
+        "oracle_name": "ALL_VISIBLE_SOURCE_AXES_EQUAL_PRINTED_TOTAL",
+        "period_end": "2025-12-31",
+        "period_role": "CURRENT_PERIOD",
+        "source_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "status": "EXACT",
+        "visible_total": 34268358
+      },
+      "operation": "REPLACE_EXACT"
+    }
+  ],
+  "base_oracle_ref": {
+    "format_version": "ANNUAL_2025_CONSOLIDATED_SEGMENT_REPORT_8BANK_CODEX_VERIFIED_MAPPING_V1",
+    "path": "docs/experiments/E-0161-annual-2025-consolidated-segment-report-8bank-codex-verified-mapping-v1.json",
+    "result_id": "annual2025csr8bcv1:result:8395c0524c6b1345910d057fc8bca97aba732231d7379e7c7d0eccb645f79707",
+    "sha256": "a5f05672ce4ba96142020645e072925be829ab3cff34fefc0c373527b813e416",
+    "size_bytes": 451303
+  },
+  "claim_boundary": "PINNED_EXACT_AXIS_CORRIGENDUM_TO_E0161_FOR_SOURCE_PDF_REVIEWED_ANNUAL_2025_SEGMENT_REPORT_ROWS_AND_VISIBLE_DASH_ZERO_CELLS_ONLY_NO_ALGORITHM_OUTPUT_AS_TRUTH_NO_OTHER_ORACLE_OR_EXPORT_AUTHORITY",
+  "format_version": "ANNUAL_2025_CONSOLIDATED_SEGMENT_REPORT_E0161_CORRIGENDUM_V1",
+  "metrics": {
+    "corrected_axis_counts": {
+      "historical_assignments": 205,
+      "historical_blank_cells": 0,
+      "historical_bounded_absences": 3,
+      "historical_documents": 8,
+      "historical_equations": 44,
+      "historical_open_source_items": 18,
+      "historical_source_only_equation_components": 30,
+      "historical_structures": 73
+    },
+    "operation_count": 32,
+    "source_evidence_count": 5
+  },
+  "result_id": "e0179:result:27886c57fa294481460dcb65b7b219c0304c5f62c3c43459d79b95ebbfb9253b",
+  "source_evidence": [
+    {
+      "bank_code": "BID",
+      "canonical_json_sha256": "e624a1a2575539b4de6400933470d35ad17a108817544d3d7a774cf5adc9d121",
+      "finding": "E0161_PROFIT_BEFORE_TAX_EXPECTATIONS_USED_THE_VISIBLE_AFTER_TAX_ROW",
+      "misattributed_label_exact": "LỢI NHUẬN SAU THUẾ",
+      "misattributed_values_exact": [
+        "28.631.155",
+        "42.050",
+        "550.530",
+        "434.482",
+        "12.618",
+        "759.295",
+        "30.430.130"
+      ],
+      "page_json_version_id": "gfpstorev1:json:1f5e33debd3ef479aeaae6093566b356410d50bc87984ce9584c301d18a1a588",
+      "physical_page": 37,
+      "review_authority": "INDEPENDENT_SOURCE_PDF_PAGE_AND_SELECTED_CANONICAL_JSON",
+      "source_logical_name": "vietstock_bctc/BID/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_pdf_sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+      "visible_metric_label_exact": "TỔNG LỢI NHUẬN TRƯỚC THUẾ",
+      "visible_values_exact": [
+        "35.740.232",
+        "52.608",
+        "678.928",
+        "555.527",
+        "15.118",
+        "745.105",
+        "37.787.518"
+      ]
+    },
+    {
+      "bank_code": "VPB",
+      "canonical_json_sha256": "9540d2d727f045a0ac5b6122f3d85a575eade0c50f055b43783875d6b519985c",
+      "finding": "VISIBLE_ROW_LABEL_DOES_NOT_EXPLICITLY_AUTHENTICATE_PROFIT_BEFORE_TAX",
+      "page_json_version_id": "gfpstorev1:json:2b3cdbecd79d3ab53fb3000c7272028868f58de4416ae21160b4cc6a5b9666e4",
+      "physical_page": 96,
+      "review_authority": "INDEPENDENT_SOURCE_PDF_PAGE_AND_SELECTED_CANONICAL_JSON",
+      "source_logical_name": "vietstock_bctc/VPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_pdf_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+      "visible_metric_label_exact": "Kết quả kinh doanh bộ phận",
+      "visible_values_exact": [
+        "26.364.164",
+        "611.472",
+        "8.703",
+        "4.475.585",
+        "638.441",
+        "(1.473.416)",
+        "30.624.949"
+      ]
+    },
+    {
+      "affected_metric_roles": [
+        "FIXED_ASSETS",
+        "PROFIT_BEFORE_TAX"
+      ],
+      "bank_code": "MBB",
+      "finding": "PDF_VISIBLE_DASH_CELLS_ARE_ZERO_COMPONENTS_IN_EXACT_SEGMENT_TOTAL_EQUATIONS",
+      "physical_pages": [
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90
+      ],
+      "review_authority": "INDEPENDENT_SOURCE_PDF_PAGES_AND_SELECTED_CANONICAL_JSON",
+      "source_logical_name": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_pdf_sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80"
+    },
+    {
+      "affected_axis_role": "CENTRAL",
+      "affected_metric_role": "FIXED_ASSETS",
+      "bank_code": "VIB",
+      "finding": "PDF_VISIBLE_DASH_CELLS_ARE_ZERO_NOT_BLANK_AND_THE_TOTAL_EQUATIONS_ARE_EXACT",
+      "page_json_version_ids": [
+        "gfpstorev1:json:cd7a6086856083f8bd60cbc430f863b505289fc8be8c6f7a17d3c20c8f28db6e",
+        "gfpstorev1:json:32f174db7a540eccf0a500cd3e5b5fb101ebcd934345ee97a0496c0c00780562"
+      ],
+      "physical_pages": [
+        61,
+        62
+      ],
+      "review_authority": "INDEPENDENT_SOURCE_PDF_PAGES_AND_SELECTED_CANONICAL_JSON",
+      "source_logical_name": "vietstock_bctc/VIB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_pdf_sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7"
+    },
+    {
+      "affected_metric_role": "FIXED_ASSETS",
+      "bank_code": "VPB",
+      "finding": "PDF_VISIBLE_DASH_CELL_IS_A_ZERO_COMPONENT_IN_THE_EXACT_SEGMENT_TOTAL_EQUATION",
+      "page_json_version_id": "gfpstorev1:json:2b3cdbecd79d3ab53fb3000c7272028868f58de4416ae21160b4cc6a5b9666e4",
+      "physical_page": 96,
+      "review_authority": "INDEPENDENT_SOURCE_PDF_PAGE_AND_SELECTED_CANONICAL_JSON",
+      "source_logical_name": "vietstock_bctc/VPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_pdf_sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0"
+    }
+  ],
+  "state": "CODEX_SOURCE_REVIEW_CORRIGENDUM_COMPLETE"
+}
