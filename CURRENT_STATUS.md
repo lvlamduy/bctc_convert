@@ -37,6 +37,16 @@ older queue priorities where they conflict.
   báo cáo, file, trang, nhãn nguồn, cha, ID gần nhất và lý do. Record được khử
   trùng; renderer không tự tuyên bố thiếu schema khi chưa có bằng chứng rà toàn
   schema.
+- Dry-run bất biến trên đúng 140 PDF cũ đã kiểm tra đủ **55 family × 140 PDF =
+  7.700 lượt family–PDF**: **5.279 READY + 2.406 NOT_OBSERVED + 15
+  UNRESOLVED = 7.700**. Ledger chi tiết có 27.929 record đã khử trùng, tách
+  riêng 15 trường hợp UNRESOLVED, 522 khoản mục có trên PDF nhưng chưa map và
+  SOURCE_ONLY trong PDF READY. Đây là kiểm tra offline trên JSON cũ; không phát
+  sinh request Gemini nào.
+- Thứ tự hiển thị đã khóa đủ 55 family theo schema; family số 30 là **Thu nhập
+  từ lãi thuần**, family số 31 là **Thu nhập, chi phí và lãi thuần dịch vụ**, và
+  family số 55 là **Báo cáo bộ phận hợp nhất**. Federated review cache danh mục
+  family ngay khi xác thực manifest để không quét lại 55 SQLite run cho mỗi PDF.
 
 ## 2026-09-01 human review/schema checkpoint
 

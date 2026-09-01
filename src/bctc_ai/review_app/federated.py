@@ -91,6 +91,18 @@ class FederatedReviewRepository:
         self.settings = settings
         self._repositories = _load_manifest(settings)
         self._source_repositories: dict[str, ReviewRepository] = {}
+        self._repository_families = [
+            (repository, repository.families()) for repository in self._repositories
+        ]
+        # Filter labels are repository-independent.  Cache one template while
+        # the exact run is being authenticated so request handling never has
+        # to rescan a child run merely to rebuild the same option catalogue.
+        self._option_template = self._repositories[0].options()
+        repositories_by_family: dict[str, list[ReviewRepository]] = {}
+        for repository, families in self._repository_families:
+            for family in families:
+                repositories_by_family.setdefault(family["id"], []).append(repository)
+        self._repositories_by_family = repositories_by_family
 
     @property
     def ready(self) -> bool:
@@ -119,8 +131,8 @@ class FederatedReviewRepository:
 
     def families(self) -> list[dict[str, Any]]:
         grouped: dict[str, dict[str, Any]] = {}
-        for repository in self._repositories:
-            for family in repository.families():
+        for _repository, families in self._repository_families:
+            for family in families:
                 existing = grouped.setdefault(
                     family["id"],
                     {
@@ -149,11 +161,7 @@ class FederatedReviewRepository:
         )
 
     def _repositories_for_family(self, family_id: str) -> list[ReviewRepository]:
-        return [
-            repository
-            for repository in self._repositories
-            if any(family["id"] == family_id for family in repository.families())
-        ]
+        return list(self._repositories_by_family.get(family_id, []))
 
     def options(self) -> dict[str, Any]:
         families = self.families()
@@ -164,8 +172,7 @@ class FederatedReviewRepository:
             if families
             else ""
         )
-        repositories = self._repositories_for_family(default_family) if default_family else []
-        payload = repositories[0].options() if repositories else self._repositories[0].options()
+        payload = dict(self._option_template)
         documents = self.documents(default_family, {}) if default_family else []
         payload.update(
             {

@@ -8,11 +8,23 @@ import fitz
 import pytest
 
 from bctc_ai.review_app import create_app
+from bctc_ai.review_app.constants import FAMILY_ORDER, family_name
 from bctc_ai.review_app.repository import ReviewSettings
 
 SOURCE_SHA = "a" * 64
 PAGE_VERSION = "page-json-version-1"
 SOURCE_NAME = "vietstock_bctc/ACB/2025/BCTC Hợp nhất quý 2 năm 2025 Soát xét.pdf"
+
+
+def test_family_order_includes_net_interest_income_at_schema_position_30() -> None:
+    assert len(FAMILY_ORDER) == 55
+    assert FAMILY_ORDER[27:31] == (
+        "INTEREST_INCOME",
+        "INTEREST_EXPENSE",
+        "NET_INTEREST_INCOME",
+        "SERVICE_ACTIVITY",
+    )
+    assert family_name("NET_INTEREST_INCOME") == "Thu nhập từ lãi thuần"
 
 
 def _results_database(path: Path) -> None:
@@ -397,6 +409,9 @@ def test_review_manifest_federates_exact_runs_without_current_selection(tmp_path
         )
     )
     app.config.update(TESTING=True)
+    repository = app.extensions["bctc_review_repository"]
+    for child in repository._repositories:
+        child.families = lambda: (_ for _ in ()).throw(AssertionError("family cache missed"))
     client = app.test_client()
 
     options = client.get("/api/options").get_json()
