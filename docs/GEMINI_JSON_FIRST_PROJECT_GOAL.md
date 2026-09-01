@@ -24,6 +24,24 @@
 Phần còn lại của tài liệu là execution contract và definition of done cho goal
 statement trên.
 
+## Phạm vi corpus đang thực hiện — checkpoint 2026-09-01
+
+- Chỉ khảo sát các báo cáo từ **Quý 1/2025 đến thời điểm hiện tại** trong đợt
+  mở rộng 27 ngân hàng.
+- Tám ngân hàng **ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB** đã có Gemini JSON.
+  Toàn bộ PDF/page hiện hữu của tám ngân hàng này phải tái sử dụng từ
+  manifest/store/cache bất biến; **không được gửi lại Gemini hoặc OpenRouter**.
+- Nếu inventory phát hiện PDF mới của tám ngân hàng trên nhưng chưa có trong
+  manifest cũ, chỉ ghi nhận để con người duyệt; không tự động đưa vào paid
+  frontier.
+- Paid frontier chỉ gồm mười chín ngân hàng **ABB, BAB, BVB, EIB, KLB, LPB,
+  MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB**.
+- Request mới chỉ được dùng OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`, tier `flex`. Resume và retry theo đúng page còn
+  thiếu; không gửi lại page đã có JSON hợp lệ và không gửi lại toàn PDF chỉ vì
+  một vài page lỗi.
+- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
+
 ## 1. Mục tiêu duy nhất
 
 Xây dựng pipeline tổng quát, có thể mở rộng và chạy được trên BCTC ngân hàng
