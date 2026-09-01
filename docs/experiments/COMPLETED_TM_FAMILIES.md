@@ -22,6 +22,87 @@ Quy ước:
   `UNRESOLVED` (hoặc ghi rõ zero unresolved). Thiếu một trong hai cập nhật thì
   family chưa được xem là hoàn tất bàn giao.
 
+<a id="bang-trang-thai-hien-hanh"></a>
+
+## Bảng trạng thái hiện hành — đọc nhanh toàn bộ 55 family
+
+Bảng này là authority để trả lời family nào đã xử lý đến đâu tại checkpoint
+2026-09-01. Có 54 family đã chạy trên cùng tập 140 PDF; riêng **Thu nhập từ
+lãi thuần** là family statement đã hoàn tất trên 8 BCTC hợp nhất kiểm toán năm
+2025 và chưa có lượt 140 PDF độc lập. `READY + NOT_OBSERVED + UNRESOLVED` luôn
+bằng số PDF khảo sát. `NOT_OBSERVED` chỉ có nghĩa family không xuất hiện trong
+đúng phạm vi PDF đã kiểm tra, không phải lỗi. “Source-only” là dòng/cột vẫn
+được lưu để kiểm tra nhưng không được ép vào schema; chi tiết và cách phân loại
+nằm trong [ledger](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh).
+
+| # | Family (tên dễ đọc) | PDF khảo sát | READY | NOT_OBSERVED | UNRESOLVED | Dòng/cột còn chưa map trong PDF READY | Cấu trúc chung và biến thể đáng chú ý |
+| ---: | --- | ---: | ---: | ---: | ---: | --- | --- |
+| 1 | Tiền, kim loại quý và đá quý | 140 | 72 | 68 | 0 | 0 | Tiền VND/ngoại tệ, vàng tiền tệ và tổng; một số ngân hàng tách thêm chứng từ ngoại tệ hoặc kim loại quý khác. |
+| 2 | Tiền gửi tại Ngân hàng Nhà nước | 140 | 71 | 69 | 0 | 0 | VND/ngoại tệ/tổng, đôi khi lồng theo NHNN Việt Nam hoặc quốc gia; parent và child không bị cộng hai lần. |
+| 3 | Tiền gửi tại và cho vay các TCTD khác — tài sản | 140 | 140 | 0 | 0 | 0 | Tiền gửi, cho vay, dự phòng và tổng; hỗ trợ cây tiền tệ, quốc gia và nhiều subtotal. |
+| 4 | Chứng khoán kinh doanh | 140 | 111 | 29 | 0 | 0 | Chứng khoán nợ/vốn/khác và dự phòng; issuer view và niêm yết/chưa niêm yết là hai cách trình bày thay thế. |
+| 5 | Công cụ tài chính phái sinh | 140 | 126 | 14 | 0 | 0 | Giá trị dương/âm theo hợp đồng hoặc tiền tệ; MBB có header nhiều tầng, VCB thường không có note chi tiết. |
+| 6 | Cho vay theo loại hình | 140 | 140 | 0 | 0 | 0 | Các loại khoản vay, margin/ứng trước và tổng; bảng có thể có hai hoặc bốn lane tiền–tỷ lệ. |
+| 7 | Cho vay theo ngành nghề kinh doanh | 140 | 98 | 42 | 0 | 0 | Danh mục ngành biến thiên; có nhãn gộp như “Thương mại, dịch vụ” và thứ tự ngành khác nhau giữa ngân hàng. |
+| 8 | Chất lượng cho vay | 140 | 140 | 0 | 0 | 0 | Năm nhóm nợ và margin; 122 bảng ngang, 18 bảng VIB xếp kỳ dọc/nhiều cột tài sản. |
+| 9 | Dư nợ theo thời gian/thời hạn gốc | 140 | 140 | 0 | 0 | 0 | Ngắn/trung/dài hạn và margin; HDB có population bổ sung chỉ dùng để kiểm tra tổng. |
+| 10 | Cho vay theo loại tiền tệ | 140 | 10 | 130 | 0 | 0 | VND và ngoại tệ/vàng; chỉ ACB và HDB trình bày đúng family trong corpus hiện hành. |
+| 11 | Cho vay theo khu vực địa lý | 140 | 41 | 99 | 0 | 0 | Khu vực có thể nằm ở hàng hoặc cột; các bảng địa lý của population rộng hơn không bị thu hẹp thành cho vay khách hàng. |
+| 12 | Cho vay theo loại hình doanh nghiệp/đối tượng khách hàng | 140 | 84 | 56 | 0 | 0 | Doanh nghiệp theo pháp lý, cá nhân và nhóm khác; VCB có một số nhãn gộp, MBB có group parent chỉ để kiểm tra. |
+| 13 | Biến động dự phòng rủi ro cho vay | 140 | 140 | 0 | 0 | 0 | Đầu kỳ, trích lập, hoàn nhập/sử dụng và cuối kỳ theo từng lane dự phòng; có bảng nhiều trang. |
+| 14 | Hoạt động mua nợ | 140 | 64 | 76 | 0 | 0 | Giá mua, gốc, lãi, dự phòng và tổng; HDB có biến thể chỉ trình bày principal. |
+| 15 | Tiền gửi khách hàng theo loại/kỳ hạn/đối tượng | 140 | 140 | 0 | 0 | 0 | Không kỳ hạn/có kỳ hạn, tổ chức/cá nhân, tiền tệ và tổng; subgroup có thể đổi thứ tự hoặc bị lược. |
+| 16 | Chứng khoán đầu tư | 140 | 140 | 0 | 0 | 0 | Sẵn sàng để bán/giữ đến đáo hạn, nợ/vốn, dự phòng và chất lượng; một số nguồn gộp Chính phủ hoặc TCTD. |
+| 17 | Các khoản đầu tư dài hạn khác | 140 | 140 | 0 | 0 | 0 | Công ty con/liên kết/liên doanh và đầu tư khác, có giá gốc–dự phòng–giá trị còn lại. |
+| 18 | Tăng, giảm tài sản cố định hữu hình | 140 | 72 | 68 | 0 | 0 | Nguyên giá, khấu hao, tăng/giảm và giá trị còn lại; bảng xoay và bảng nhiều trang đều được nhận diện. |
+| 19 | Tăng, giảm tài sản cố định thuê tài chính | 140 | 0 | 140 | 0 | 0 | Đã quét đúng ranh giới note; không PDF nào có bảng chi tiết family này. |
+| 20 | Tăng, giảm tài sản cố định vô hình | 140 | 72 | 68 | 0 | 0 | Nguyên giá, khấu hao lũy kế, tăng/giảm và giá trị còn lại; nhãn phần mềm/quyền sử dụng đất khác nhau. |
+| 21 | Tăng, giảm bất động sản đầu tư | 140 | 12 | 128 | 0 | 0 | Nguyên giá, khấu hao và giá trị còn lại; ACB có hai bảng anh em cần ghép có kiểm soát. |
+| 22 | Tài sản Có khác | 140 | 78 | 62 | 0 | [304 dòng/67 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Cây phải thu, chi phí chờ phân bổ, tài sản thuế và tài sản khác; ngân hàng dùng nhiều child riêng ngoài family hiện tại. |
+| 23 | Nợ Chính phủ và Ngân hàng Nhà nước | 140 | 140 | 0 | 0 | [45 dòng/31 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Tiền gửi/vay/tài trợ theo VND–ngoại tệ và chương trình; các parent/subtotal nguồn được giữ riêng. |
+| 24 | Vốn nhận tài trợ, ủy thác đầu tư và cho vay chịu rủi ro | 140 | 76 | 64 | 0 | [12 dòng/4 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Nguồn vốn theo chương trình/dự án và tổng; một số tên dự án chỉ là chi tiết nguồn. |
+| 25 | Phát hành giấy tờ có giá | 140 | 140 | 0 | 0 | [336 dòng/54 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Trái phiếu/chứng chỉ tiền gửi theo kỳ hạn, mệnh giá, chiết khấu/phụ trội; nhiều dòng là trục hoặc subtotal kiểm tra. |
+| 26 | Các khoản phải trả và công nợ khác | 140 | 140 | 0 | 0 | [412 dòng/77 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Lãi phải trả, thuế, nội bộ và phải trả khác; chi tiết lãi theo công cụ thường nằm dưới parent đã map. |
+| 27 | Vốn và các quỹ | 140 | 137 | 0 | 3 | [147 cột/91 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh); [3 PDF U](UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh) | Ma trận cột thành phần vốn × hàng biến động đầu kỳ–tăng/giảm–cuối kỳ; BID/VIB có bảng xoay và quỹ riêng. |
+| 28 | Thu nhập lãi và các khoản tương tự | 140 | 136 | 0 | 4 | [42 dòng/34 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh); [4 PDF U](UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh) | Tiền gửi, cho vay, chứng khoán, bảo lãnh, thuê tài chính, mua nợ và khác; có parent–child chứng khoán và dòng gộp TCTD. |
+| 29 | Chi phí lãi và các khoản tương tự | 140 | 140 | 0 | 0 | [32 dòng/32 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Lãi tiền gửi, tiền vay, giấy tờ có giá và khác; parent/root nguồn có thể chỉ làm phép kiểm tra. |
+| 30 | Thu nhập từ lãi thuần | 8 | 8 | 0 | 0 | 0 | Dòng statement = thu nhập lãi trừ chi phí lãi; VIB đảo provider order nhưng geometry vẫn xác định đúng. |
+| 31 | Thu nhập, chi phí và lãi thuần dịch vụ | 140 | 68 | 72 | 0 | [51 dòng/10 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Thu/chi/net với các dịch vụ; ACB tách hai note, CTG có nhãn gộp tư vấn–ủy thác–đại lý. |
+| 32 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | 140 | 72 | 68 | 0 | [61 dòng/61 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Thu, chi, chênh lệch và net; nguồn có thể gộp FX với vàng và dùng nhiều biến thể dấu. |
+| 33 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | 140 | 103 | 37 | 0 | [11 dòng/11 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Thu, chi, dự phòng và net; vai trò dự phòng có thể vắng nhưng không được tự sinh 0. |
+| 34 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | 140 | 112 | 28 | 0 | [62 dòng/26 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Thu, chi, dự phòng và net; bảng gộp kinh doanh/đầu tư được giới hạn đúng subtree. |
+| 35 | Lãi thuần chứng khoán kinh doanh và đầu tư gộp | 140 | 12 | 128 | 0 | [4 dòng/4 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Chỉ map khi PDF in đúng dòng net gộp; không tổng hợp từ hai family chứng khoán khác. |
+| 36 | Thu nhập góp vốn, mua cổ phần và cổ tức | 140 | 118 | 22 | 0 | [36 dòng/36 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Cổ tức trực tiếp, vốn kinh doanh/đầu tư, dài hạn và equity method; parent/group không bị map lặp. |
+| 37 | Chi phí quản lý chung/chi phí hoạt động | 140 | 138 | 0 | 2 | [284 dòng/108 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh); [2 PDF U](UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh) | Thuế phí, nhân viên, tài sản, quản lý, bảo hiểm, dự phòng và khác; VPB có hierarchy `Trong đó`, HDB có ô trống có điều kiện. |
+| 38 | Chi phí dự phòng rủi ro tín dụng | 140 | 64 | 76 | 0 | [51 dòng/21 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Trích lập/hoàn nhập theo loại rủi ro và tổng; một số row chỉ là component kiểm tra family root. |
+| 39 | Thu nhập, chi phí và lãi thuần hoạt động khác | 140 | 72 | 68 | 0 | 0 | Thu, chi và net từ hoạt động khác; map theo frontier nguồn khép đúng từng kỳ. |
+| 40 | Chi phí thuế thu nhập doanh nghiệp | 140 | 69 | 71 | 0 | [282 dòng/69 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Thuế hiện hành/hoãn lại và reconciliation; nhiều dòng điều chỉnh chỉ phục vụ phép đối chiếu. |
+| 41 | Tiền và các khoản tương đương tiền | 140 | 105 | 35 | 0 | [1 dòng/1 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Tiền, tiền gửi ngắn hạn và khoản tương đương; một owner/group không số được giữ cấu trúc. |
+| 42 | Mua mới và thanh lý công ty con | 140 | 0 | 140 | 0 | 0 | Đã quét các note và đối chứng âm; không có bảng giao dịch đủ điều kiện trong 140 PDF. |
+| 43 | Thu nhập nhân viên ngân hàng | 140 | 60 | 74 | 6 | [6 PDF U](UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh) | Số người, quỹ lương/thu nhập và bình quân tháng; MBB in số người không ghi “bình quân”, VCB in số cuối kỳ. |
+| 44 | Nghĩa vụ với ngân sách Nhà nước | 140 | 130 | 10 | 0 | [43 cột/20 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Đầu kỳ, phát sinh, đã nộp và cuối kỳ theo sắc thuế; CTG có nhánh phải thu/phải trả có dấu. |
+| 45 | Tài sản thế chấp của khách hàng ngân hàng đang nắm giữ | 140 | 58 | 82 | 0 | [25 dòng/20 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Loại tài sản bảo đảm và tổng; các owner/`Trong đó` dùng kiểm tra chứ không phát sinh mapping mới. |
+| 46 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | 140 | 50 | 90 | 0 | [74 dòng/36 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Phân theo tiền gửi, chứng khoán kinh doanh/đầu tư và nghiệp vụ repo; “GTCG” gộp không bị ép tách. |
+| 47 | Nghĩa vụ nợ tiềm ẩn và các cam kết | 140 | 83 | 57 | 0 | [249 dòng/44 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Bảo lãnh, L/C, hạn mức, swap và ký quỹ; nhiều `Trong đó`/khấu trừ là control không cộng lặp. |
+| 48 | Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý | 140 | 66 | 74 | 0 | 0 | Tài sản/nợ tài chính × giá ghi sổ/giá trị hợp lý; nhiều ngân hàng không công bố bảng chi tiết. |
+| 49 | Rủi ro tiền tệ | 140 | 140 | 0 | 0 | 0 | Tài sản, nợ, nội/ngoại bảng và trạng thái theo tiền tệ; ngân hàng khác nhau về số loại tiền và vàng. |
+| 50 | Rủi ro lãi suất | 140 | 139 | 1 | 0 | 0 | Tài sản/nợ theo bucket tái định giá và trạng thái; một PDF không có family, không phải U. |
+| 51 | Rủi ro thanh khoản | 140 | 138 | 2 | 0 | 0 | Dòng tài sản/nợ theo bucket đáo hạn; bucket và cách gộp nội/ngoại bảng khác nhau. |
+| 52 | Tỷ giá ngoại tệ cuối kỳ | 140 | 98 | 42 | 0 | [323 loại tiền/64 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Mã tiền × tỷ giá hiện tại/so sánh; có XAU và nhiều mã hiếm ngoài danh sách family. |
+| 53 | Tiền gửi và vay các TCTD khác — nguồn vốn | 140 | 140 | 0 | 0 | [135 dòng/54 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Tiền gửi/vay theo đối tác, tiền tệ và nghiệp vụ; IFC, UPAS L/C và subgroup repo được giữ đúng cấp. |
+| 54 | Kinh doanh và đầu tư chứng khoán theo khu vực địa lý | 140 | 119 | 21 | 0 | [6 ô trống/6 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-hien-hanh) | Trong nước/nước ngoài hoặc quốc gia; ô trắng thật không được đổi thành 0. |
+| 55 | Báo cáo bộ phận hợp nhất | 140 | 45 | 95 | 0 | [1.149 dòng + 132 cột/39 PDF](UNRESOLVED_MAPPING_LEDGER.md#source-only-family54) | Ma trận bộ phận kinh doanh/địa lý × tài sản, nợ, TSCĐ, doanh thu, chi phí, LNTT; axis và orientation khác mạnh giữa ngân hàng. |
+
+Tổng current census của 54 family chạy đủ corpus là **7.560 lượt
+family–PDF**. Bảng trên đã kiểm tra chéo từng dòng: 54/54 dòng đều có
+`READY + NOT_OBSERVED + UNRESOLVED = 140`; chỉ bốn family còn terminal
+`UNRESOLVED`, tổng cộng **15 PDF**. Các con số source-only là instance nguồn,
+không phải số concept schema duy nhất và không cộng vào `UNRESOLVED`.
+
+Các section 1–55 bên dưới là phụ lục diễn giải và lịch sử checkpoint. Khi con
+số lịch sử khác bảng hiện hành, dùng bảng hiện hành; không dùng mã run, mã
+artifact hay SHA làm tên nhận diện family.
+
 ## 1. Tiền, kim loại quý và đá quý
 
 - **Đã xác minh trên ma trận family-first hiện có:** 72/140 filing, gồm ACB 6,
@@ -1555,8 +1636,51 @@ Kết quả annual-2025:
 
 ## 55. Báo cáo bộ phận hợp nhất
 
+### Gemini JSON-first current corpus — Family 54 OFFICIAL
+
+- **OFFICIAL store:**
+  `gjfafstorev1:run:5f0f1eefb90b0a3825db6f138ac859f7d75ed7ce2e029e1cfbb23a37f9ba4a6b`,
+  sweep
+  `gjfafsv1:sweep:f64f58eb3c277afd6a587cfda71b53e81c8db4bf14ff03a46174eacf56d8ab2f`.
+  Corpus có 140 PDF và frontier 8.947 trang đã xác thực.
+- **Kết quả cuối:** `READY=45`, `NOT_OBSERVED=95`, `UNRESOLVED=0`;
+  1.311 mapping group, 2.283 mapping value, 1.578 phương trình, 8.998
+  period assignment và 152 ô trống nguồn. Không còn PDF nào bị chặn ở trạng
+  thái unresolved.
+- **Phần đã map vào schema:** matrix Family54 chỉ khai báo sáu metric
+  `ASSETS`, `LIABILITIES`, `FIXED_ASSETS`, `REVENUE`, `EXPENSE`,
+  `PROFIT_BEFORE_TAX` trên các trục business/geographic có RNID trong
+  `tm-consolidated-segment-report-schema-binding-v1.json`. Mọi mapping đều giữ
+  branch, period role, period end, unit, source cell và phương trình tổng.
+- **Phần nhìn thấy nhưng chưa map vào topology Family54:** 39/45 PDF READY có
+  6.860 ô `SOURCE_ONLY`, quy về 1.149 dòng metric nguồn và 132 cột trục nguồn.
+  Đây không phải terminal failure: 4.708 ô chỉ source-only theo metric, 304 ô
+  chỉ source-only theo axis và 1.848 ô theo cả hai chiều. Những dòng metric như
+  thu nhập lãi, chi phí lãi, dự phòng, thuế, lợi nhuận sau thuế... nằm ngoài
+  sáu metric của matrix Family54; các trục như `Nước ngoài`, `Cho thuê tài
+  chính`, `Chứng khoán`, `Quản lý quỹ`, `Dịch vụ tài chính phi ngân hàng`...
+  chưa có trục RNID đồng nghĩa chính xác hoặc rộng/hẹp khác schema. Danh sách
+  theo đúng bank/PDF/page và nguyên nhân nằm ở
+  `UNRESOLVED_MAPPING_LEDGER.md`, mục “Family 54 current corpus”.
+- **Sáu PDF READY không có source-only:** MBB 2025 quý 1, quý 2, quý 3, quý 4
+  và MBB 2026 quý 1, quý 2. 95 PDF `NOT_OBSERVED` là báo cáo công ty mẹ/riêng
+  lẻ hoặc PDF không có semantic anchor của báo cáo bộ phận hợp nhất; chúng
+  không phải khoản mục schema bị bỏ sót.
+- **Hai ô nguồn malformed được giữ làm chẩn đoán:** VPB quý 1/2025 có hai ô
+  `-"` trên dòng metric ngoài scope; chúng có state `INVALID_MONEY_SOURCE`,
+  không được đổi thành số và không làm mất các mapping mục tiêu đã chứng minh.
+- **Không xử lý:** family 5750 `Giao dịch với các bên liên quan` vẫn
+  `SKIPPED_BY_USER`, không bị nhập nhầm vào báo cáo bộ phận.
+
+Artifact review hiện hành:
+`/tmp/gemini-json-first-corpus-production-v2/artifacts/current-family-results/family54-consolidated-segment-report/sweep.audit.json`.
+
 ### Annual-2025 — E-0161
 
+- **Trạng thái lịch sử:** baseline E-0161 đã được Family54 OFFICIAL và
+  corrigendum E-0179 thay thế. 17 dòng `ASEG-*` của baseline được giữ trong
+  ledger làm lịch sử quyết định; không còn được hiểu là 17 terminal unresolved
+  của engine hiện hành.
 - **Đã map/xác minh:** whole-PDF scan tìm đúng một vùng báo cáo bộ phận tại
   ACB p95–99, MBB p83–90, VPB p95–97, HDB p60–61, VCB p71–72, CTG p81–84,
   BID p36–38 và VIB p61–62. Phần schema hỗ trợ có 73 binding cấu trúc, 208
@@ -1565,8 +1689,8 @@ Kết quả annual-2025:
 - **Không có nhánh chi tiết trong báo cáo:** VPB không có bảng bộ phận theo
   địa lý; HDB và VIB không có bảng bộ phận theo lĩnh vực kinh doanh. Đây là
   bounded absence của đúng nhánh, không phải absence của toàn family.
-- **Có nhưng còn khoản mục chưa map:** 17 biến thể nguồn chưa đồng nhất với
-  trục schema hiện hành, gồm các trục `Nước ngoài`, trục gộp
+- **Inventory lịch sử chưa map:** baseline ghi 17 biến thể nguồn chưa đồng
+  nhất với trục schema tại thời điểm E-0161, gồm các trục `Nước ngoài`, trục gộp
   `Miền Trung và Tây Nguyên`, các lĩnh vực cho thuê tài chính/chứng khoán/tài
   chính phi ngân hàng và hai trường hợp nhãn kết quả bộ phận chưa nói rõ lợi
   nhuận trước thuế. Chi tiết bank/trang/tên nguồn nằm trong
@@ -1577,7 +1701,11 @@ Kết quả annual-2025:
 Kết quả annual-2025:
 `docs/experiments/E-0161-annual-2025-consolidated-segment-report-8bank-codex-verified-mapping-v1.json`.
 
-## Bảng tổng hợp
+## Phụ lục bảng tổng hợp theo checkpoint lịch sử
+
+Phụ lục này giữ số liệu annual-2025 và các lượt cũ để truy vết. Nó **không**
+phải dashboard hiện hành; khi số khác với
+[bảng trạng thái 55 family](#bang-trang-thai-hien-hanh), dùng bảng ở đầu file.
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
 thấy vùng nguồn nhưng chưa map; **✓\*** đã map phần mục tiêu, còn hàng ngoài lõi
@@ -1641,4 +1769,4 @@ dùng.
 | Rủi ro thanh khoản | ✓ p92 | ✓ p100 | ✓ p90 | ✓ p67 | ✓ p82 | ✓ p79 | ✓ p69 | ✓ p74 | Annual-2025: 0 OPEN, 181 mapping/181 ô/54 phương trình, 9 DASH→0; lượt hiện hành trước giữ 4 trục/12 ô VPB OPEN |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p103 | ✓\* p98 | ✓\* p69 | — | ✓\* p85 | ✓ p70 | ✓\* p77 | Annual-2025: 19 dòng OPEN, 55 mapping/110 ô; HDB dùng kỳ tài liệu cho `Số cuối năm/Số đầu năm`. Lượt hiện hành trước: 15 OPEN/46 mapping |
 | Giao dịch với các bên liên quan | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | Không xử lý theo chỉ đạo người dùng; không diễn giải thành absence hay unresolved mapping |
-| Báo cáo bộ phận hợp nhất | ✓\* p95–99 | ✓\* p83–90 | ✓\* p95–97 | ✓\* p60–61 | ✓\* p71–72 | ✓\* p81–84 | ✓\* p36–38 | ✓\* p61–62 | 17 biến thể nguồn giữ OPEN; 73 binding cấu trúc/208 mapping số/43 phương trình |
+| Báo cáo bộ phận hợp nhất | ✓\* 3/18 PDF | ✓\* 9/18 | ✓\* 9/18 | ✓\* 2/16 | ✓\* 9/18 | ✓\* 3/18 | ✓\* 1/16 | ✓\* 9/18 | Family54 OFFICIAL: 45 READY/95 NOT_OBSERVED/0 U; 1.311 mapping/2.283 giá trị/1.578 phương trình; 39 PDF có source-only được liệt kê riêng trong ledger |

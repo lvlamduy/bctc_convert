@@ -1,10 +1,31 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-25T13:52:17Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-09-01 (UTC family-ledger checkpoint; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## Checkpoint tổng hợp family dễ đọc — 2026-09-01
+
+- Đã chuẩn hóa bảng trạng thái của **toàn bộ 55 family** tại
+  [`COMPLETED_TM_FAMILIES.md`](docs/experiments/COMPLETED_TM_FAMILIES.md#bang-trang-thai-hien-hanh).
+  Trong đó 54 family có current census 140 PDF: **7.560 lượt family–PDF =
+  5.139 READY + 2.406 NOT_OBSERVED + 15 UNRESOLVED**. Family `Thu nhập từ
+  lãi thuần` chưa có lượt 140 PDF độc lập và giữ checkpoint annual-2025:
+  **8 khảo sát / 8 READY / 0 NOT_OBSERVED / 0 UNRESOLVED**.
+- Chỉ bốn family còn terminal U: **Vốn và các quỹ 3 PDF; Thu nhập nhân viên
+  6 PDF; Thu nhập lãi 4 PDF; Chi phí hoạt động 2 PDF**. Từng PDF, kỳ, loại báo
+  cáo, assurance, trang, khoản mục, schema gần nhất và nguyên nhân đã nằm tại
+  [`UNRESOLVED_MAPPING_LEDGER.md`](docs/experiments/UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh).
+- `NOT_OBSERVED`, terminal `UNRESOLVED` và `SOURCE_ONLY` đã được tách rõ.
+  Queue 205 dòng cũ được giữ làm lịch sử quyết định schema/source, không còn
+  được mô tả như 205 PDF terminal U. Family54 có 39 PDF READY với source-only
+  và các family khác có source-only đều được thống kê riêng, không làm tăng U.
+- Cross-check máy: 55/55 dòng dashboard khớp nguồn được chọn; mọi family 140-PDF
+  đều thỏa `READY + NOT_OBSERVED + UNRESOLVED = 140`; 15 khóa U không trùng.
+  Checkpoint này chỉ thay cách tổng hợp/trình bày, không sửa disposition hay
+  mapping kỹ thuật đã có.
 
 ## Current family-first expansion checkpoint
 

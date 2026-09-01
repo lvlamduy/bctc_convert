@@ -1,46 +1,117 @@
-# Unresolved mapping and adjudication review ledger
+# Sổ các khoản mục chưa map và các trường hợp cần xem lại
 
-Updated: 2026-08-25 (UTC)
+Cập nhật: 2026-09-01 (UTC).
 
-This is the cumulative human-readable file requested for every source item or
-family region that could not initially be mapped.  Entries remain here after
-resolution so the project owner can audit the original issue, the adjudication,
-and the exact result that closed it.  `NO_COMPLETE_REGION` alone never means a
-family is absent; report-level absence is recorded only when the project owner
-explicitly confirms it for the bound PDF.
+File này ưu tiên thông tin để con người mở đúng PDF: tên family, ngân hàng, kỳ,
+loại báo cáo, assurance, tên file, trang, nhãn nguồn, quan hệ cha/con, schema
+gần nhất và kết luận. Mã kỹ thuật và SHA chỉ còn ở phụ lục lịch sử để truy vết,
+không phải cách nhận diện chính.
 
-This is the single cross-family review file.  Every new unresolved entry records,
-when applicable: family, bank, report and reporting period, exact PDF/page/region
-locator, raw VietOCR Transformer text, accentless normalized text, independent
-pixel transcription when they disagree, visible values and axes, nearest schema
-candidate, accounting/structure checks that passed or failed, the unresolved
-reason, and the next evidence needed.  Bank/report/page fields are evidence
-locators only and are never parser or mapping conditions.
+Ba trạng thái được tách tuyệt đối:
 
-Completion rule: every family checkpoint must update both this ledger and
-`COMPLETED_TM_FAMILIES.md` in the same change. A nonzero unresolved count must
-have one auditable filing row per unresolved trial here; a zero count must be
-stated explicitly. A family is not complete for handoff if either file is
-missing that update.
+- **NOT_OBSERVED**: đã kiểm tra đúng phạm vi nhưng family không xuất hiện. Đây
+  là kết quả hợp lệ, không vào ledger lỗi và không phải thiếu schema.
+- **UNRESOLVED**: PDF có nội dung thật nhưng chưa thể map chắc chắn hoặc chưa
+  khép được cấu trúc/số nguồn. Mọi PDF U hiện hành được liệt kê ngay bên dưới.
+- **SOURCE_ONLY**: nguồn vẫn được giữ trong receipt nhưng không map ở family
+  đang xét, thường vì là parent/subtotal/control, thuộc family khác, hoặc còn
+  chờ quyết định schema. SOURCE_ONLY không tự động biến PDF thành U.
 
-Ledger total: **545 entries = 205 OPEN + 340 closed/history**. The 340 is the
-existing **210 row/graph resolutions + 88 confirmed bound-report family
-absences + 42 superseded Family 3 review rows**. The canonical OPEN queue now
-contains **205 rows outside Family 3**: **134 annual-2025 + 71
-historical/current**. This replaces the stale 247/298 summary after E-0178 closed
-all 42 current Family 3 trials, and also replaces the older 143/101 summary which omitted
-E-0158/E-0159/E-0161 and historical/current OPEN rows. Bank/report/page fields
-are evidence locators only, never matching rules.
+<a id="unresolved-hien-hanh"></a>
+
+## UNRESOLVED hiện hành — 15 PDF, bốn family
+
+Đây là danh sách terminal U của 54 lượt current-corpus. Mỗi dòng là một PDF;
+nếu một PDF có nhiều khoản mục liên quan, chúng được ghi chung trong cột nguồn
+để không đếm trùng PDF. Không dòng nào dưới đây là `NOT_OBSERVED`.
+
+| Family | Ngân hàng | Kỳ / loại báo cáo / assurance | Tên file PDF | Trang PDF | Khoản mục nguồn; cha/con liên quan | Schema gần nhất đã rà | Vì sao chưa map | Phân loại nguyên nhân |
+| --- | --- | --- | --- | ---: | --- | --- | --- | --- |
+| Vốn và các quỹ | BID | Năm 2025; hợp nhất; kiểm toán | `BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 53 | `Quỹ đầu tư phát triển`; cha: `Vốn và các quỹ`; cùng ma trận vốn điều lệ, các quỹ, lợi nhuận chưa phân phối | Root 1128; gần nhất 6013 `Quỹ dự trữ bổ sung vốn điều lệ`, 6014 `Quỹ dự phòng tài chính`, 6015 `Quỹ khác`; không leaf nào đồng nhất | `Quỹ đầu tư phát triển` là thành phần riêng nhưng schema chưa có leaf đúng bản chất; đồng thời tổng ngang, căn hàng và roll-forward dọc của bảng chưa cùng khép nên không thể phát hành các mapping còn lại | **CHƯA CÓ TRONG SCHEMA**; **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH CẤU TRÚC** |
+| Vốn và các quỹ | BID | Quý 1/2026; hợp nhất; chưa kiểm toán | `BCTC Hợp nhất quý 1 năm 2026.pdf` | 26 | `Quỹ đầu tư phát triển`; cha: `Vốn và các quỹ`; các hàng đầu kỳ/phát sinh/cuối kỳ | Root 1128; các ID gần 6013–6015 đều khác bản chất | Thiếu leaf chính xác và ba phép kiểm tra ma trận vốn vẫn mâu thuẫn; không ép vào `Quỹ khác` | **CHƯA CÓ TRONG SCHEMA**; **KHÔNG XÁC ĐỊNH ĐƯỢC CỘT/KỲ/QUAN HỆ** |
+| Vốn và các quỹ | VIB | Quý 1/2025; hợp nhất; soát xét | `BCTC Hợp nhất Soát xét quý 1 năm 2025.pdf` | 50 | `Quỹ đầu tư phát triển`; cha: `Vốn và các quỹ`; các hàng biến động vốn | Root 1128; gần nhất 6013–6015 nhưng không tương đương | Thành phần nhìn thấy có số nhưng chưa có leaf đúng; căn hàng và tổng vốn chưa cho một nghiệm cấu trúc duy nhất | **CHƯA CÓ TRONG SCHEMA**; **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH** |
+| Thu nhập nhân viên | MBB | 6 tháng 2025; công ty mẹ; soát xét | `BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf` | 60 | `Số lượng cán bộ, công nhân (người)`; cùng bảng với `Tổng thu nhập...` và `Thu nhập bình quân tháng` | 1261 `Số lượng nhân viên` | Tên nguồn không nói “bình quân”, trong khi số được dùng làm mẫu số của thu nhập bình quân; chưa đủ authority để khẳng định đây là số bình quân hay số tại một thời điểm | **CÓ ID GẦN NGHĨA NHƯNG KHÁC/CHƯA RÕ BẢN CHẤT** |
+| Thu nhập nhân viên | MBB | 6 tháng 2025; hợp nhất; soát xét | `BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 77 | `Số lượng cán bộ, công nhân viên (người)`; cùng bảng với tổng thu nhập và thu nhập bình quân | 1261 `Số lượng nhân viên` | Cùng bất định “số lượng” so với “bình quân”; bộ ba vai trò bắt buộc chưa được chứng minh hoàn chỉnh | **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH** |
+| Thu nhập nhân viên | MBB | 6 tháng 2026; công ty mẹ; soát xét | `BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2026.pdf` | 63 | `Số lượng cán bộ, công nhân viên (người)`; tổng thu nhập; thu nhập bình quân tháng | 1261 `Số lượng nhân viên` | Nhãn không xác định loại số người theo kỳ; không map chỉ vì phép chia gần khớp | **CÓ ID GẦN NGHĨA NHƯNG KHÁC/CHƯA RÕ BẢN CHẤT** |
+| Thu nhập nhân viên | MBB | 6 tháng 2026; hợp nhất; soát xét | `BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 80 | `Số lượng cán bộ, công nhân viên (người)`; tổng thu nhập; thu nhập bình quân tháng | 1261 `Số lượng nhân viên` | Thiếu qualifier “bình quân” và chưa khép chắc ratio metric cho cả hai kỳ | **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH** |
+| Thu nhập nhân viên | VCB | Năm 2025; công ty mẹ; kiểm toán | `BCTC Công ty mẹ Kiểm toán năm 2025.pdf` | 59 | `Tổng số cán bộ, công nhân viên tại ngày 31 tháng 12 (người)`; cha liên quan: `Thu nhập của cán bộ, công nhân viên`; con: `Tổng quỹ lương và phụ cấp`, `Thu nhập bình quân tháng/người` | 1261 `Số lượng nhân viên`; 1263 quỹ lương; 1268 thu nhập bình quân | Số người **tại ngày cuối kỳ** không chắc đồng nhất với denominator bình quân dùng để tính thu nhập tháng; không thay đổi bản chất theo phép tính | **CÓ ID GẦN NGHĨA NHƯNG KHÁC BẢN CHẤT** |
+| Thu nhập nhân viên | VCB | Năm 2025; hợp nhất; kiểm toán | `BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 64 | Cùng nhãn `Tổng số cán bộ... tại ngày 31 tháng 12`; cùng quỹ lương và thu nhập bình quân | 1261, 1263, 1268 | Chưa xác định chắc số cuối kỳ có được schema 1261 và phép tính bình quân cho phép dùng trực tiếp hay không | **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH** |
+| Thu nhập lãi | BID | 6 tháng 2025; hợp nhất; soát xét | `BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 44 | Cha `Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ` = 4.973.626; con `chứng khoán kinh doanh` 126.852 và `chứng khoán đầu tư` 4.846.773 | 1146 `Thu lãi từ kinh doanh, đầu tư chứng khoán` | Hai child cộng 4.973.625, lệch 1 so với parent; root family cũng chưa được chứng minh bằng một total nguồn chính xác. Có ID đúng nghĩa, vấn đề là số/cấu trúc nguồn | **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH**; **LỆCH PHƯƠNG TRÌNH NGUỒN** |
+| Thu nhập lãi | MBB | Quý 2/2025; hợp nhất; chưa kiểm toán | `BCTC Hợp nhất quý 2 năm 2025.pdf` | 46 | Group `Thu nhập lãi và các khoản thu nhập tương tự`; các child tiền gửi, cho vay, chứng khoán, bảo lãnh, mua nợ, khác; subtotal không nhãn | 1143 `Thu nhập lãi và các khoản thu nhập tương tự` | ID root tồn tại nhưng PDF biểu diễn root bằng group trống và subtotal không nhãn trong bảng còn chứa family chi phí lãi; chưa có source-visible exact root đủ authority | **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH QUAN HỆ CHA/CON** |
+| Thu nhập lãi | VPB | 6 tháng 2026; công ty mẹ; soát xét | `BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2026.pdf` | 61 | `Thu nhập lãi tiền gửi và cho vay TCTD khác`; cha `Thu nhập lãi và các khoản thu nhập tương tự` | 1144 chỉ là lãi tiền gửi; 6075 là lãi cho vay khách hàng và TCTD khác; không ID nào bằng đúng “tiền gửi + cho vay TCTD khác” | Một số nguồn gộp hai bản chất không thể tách; không được chia theo các ID gần nghĩa hoặc ép toàn bộ vào một ID | **CÓ ID GẦN NGHĨA NHƯNG KHÁC BẢN CHẤT**; **KHOẢN MỤC MỚI, CẦN ĐÁNH GIÁ CÓ TẠO ID MỚI HAY KHÔNG** |
+| Thu nhập lãi | VPB | 6 tháng 2026; hợp nhất; soát xét | `BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 71 | Cùng dòng gộp `Thu nhập lãi tiền gửi và cho vay TCTD khác`; cha là root thu nhập lãi | 1144 và 6075 đều chỉ phù hợp một phần | Dòng có tiền và tham gia đúng tổng nhưng schema hiện tại không có concept gộp đồng nhất; giữ nguyên, không phân bổ suy diễn | **CÓ ID GẦN NGHĨA NHƯNG KHÁC BẢN CHẤT** |
+| Chi phí hoạt động | HDB | Quý 1/2025; công ty mẹ; chưa kiểm toán | `BCTC Công ty mẹ quý 1 năm 2025.pdf` | 43 | `Chi về các hoạt động đoàn thể` dưới `Chi phí cho hoạt động quản lý công vụ`: hiện kỳ 214, so sánh để trống; liên quan: dòng dự phòng tổng quát trống cả hai kỳ | 1216 `Chi về hoạt động đoàn thể của TCTD` | ID đã đúng nhưng ô kỳ so sánh là blank, chưa có phương trình đầy đủ chứng minh blank = 0; không tự điền 0 | **KHÔNG XÁC ĐỊNH ĐƯỢC CỘT/KỲ/GIÁ TRỊ** |
+| Chi phí hoạt động | VPB | Quý 1/2026; riêng lẻ/công ty mẹ; chưa kiểm toán | `4-bctc-rieng-le-ban-tra-cuu.pdf` | 57 | `Trích lập/(hoàn nhập) dự phòng rủi ro khác` và child `...nợ phải thu khó đòi...` có token `494带有`; source-only thêm `Chi thuê tài sản`, `Chi phí công nghệ thông tin`, `Chi về thuế GTGT đầu vào không được khấu trừ`; cha lần lượt là nhóm dự phòng, `Chi về tài sản`, và root chi phí hoạt động | Gần nhất 1218/1220 cho dự phòng nhưng qualifier khác; 1212 chỉ là parent chi tài sản; không có leaf chính xác cho thuê tài sản/CNTT/VAT | Token tiền chứa ký tự lạ nên không biết số thật; family root không khép. Ba child chi phí nhìn rõ chưa có leaf riêng nhưng là SOURCE_ONLY, không phải lý do duy nhất làm PDF U | **LỖI SOURCE/OCR**; **CHƯA CÓ TRONG SCHEMA** (ba child); **CHƯA ĐỦ THÔNG TIN ĐỂ XÁC ĐỊNH** |
+
+Kiểm tra trùng dùng khóa `(family, ngân hàng, tên file, trang)`: **15/15 khóa
+duy nhất**. Theo family: Vốn và các quỹ 3; Thu nhập nhân viên 6; Thu nhập lãi
+4; Chi phí hoạt động 2. Các số này khớp đúng cột U trong
+[bảng tổng hợp](COMPLETED_TM_FAMILIES.md#bang-trang-thai-hien-hanh).
+
+<a id="source-only-hien-hanh"></a>
+
+## SOURCE_ONLY hiện hành — tách khỏi UNRESOLVED
+
+Bảng dưới là inventory của các receipt `READY` có dòng/cột không phát hành
+mapping. Số là **instance nguồn**, không phải số concept duy nhất. Các dòng
+parent/subtotal/`Trong đó` đã dùng để khép phép tính vẫn là source-only để
+tránh double-count; vì vậy không được kết luận tất cả là thiếu schema.
+
+| Family | PDF READY có source-only | Số instance | Ví dụ nhìn thấy trên PDF | Kết luận hiện hành |
+| --- | ---: | ---: | --- | --- |
+| Tài sản/GTCG ngân hàng đem thế chấp | 36 | 74 dòng | `Giấy tờ có giá đưa đi thế chấp/cầm cố/chiết khấu` | Nhãn gộp không cho phép tách chứng khoán kinh doanh và đầu tư; **CÓ ID GẦN NGHĨA NHƯNG KHÁC BẢN CHẤT**. |
+| Vốn và các quỹ | 91 | 147 cột | Quỹ đầu tư phát triển, cổ phiếu quỹ, vốn xây dựng cơ bản, chênh lệch đánh giá tài sản | Một phần là schema gap thật, một phần là component ngoài binding; xem queue source-row phía dưới. |
+| Thu nhập góp vốn/cổ tức | 36 | 36 dòng | `Trong đó`, cổ tức từ chứng khoán vốn | Parent/subtotal hoặc dòng gộp; **SOURCE_ONLY — KIỂM TRA CẤU TRÚC**. |
+| Tiền và tương đương tiền | 1 | 1 dòng | `Tiền và các khoản tương đương tiền gồm có:` | Owner không số; **SOURCE_ONLY — NÚT CẤU TRÚC**. |
+| Lãi thuần chứng khoán gộp | 4 | 4 dòng | Dự phòng đầu tư dài hạn | Thuộc family chi phí/dự phòng khác, không phải kết quả net gộp. |
+| Cam kết và nợ tiềm ẩn | 44 | 249 dòng | Ký quỹ, L/C chi tiết, swap, hạn mức có thể hủy ngang | Có cả control không cộng và leaf chưa có; chi tiết per-PDF nằm trong canonical queue. |
+| Chi phí dự phòng tín dụng | 21 | 51 dòng | Trích lập/hoàn nhập theo note con | Component kiểm tra tổng; có thể thuộc family dự phòng biến động. |
+| Tài sản thế chấp của khách hàng | 20 | 25 dòng | `Của khách hàng`, `Trong đó` | Parent/nút cấu trúc; không map lặp với child. |
+| Vốn tài trợ/ủy thác | 4 | 12 dòng | Tên chương trình/dự án cụ thể | Chi tiết nguồn dưới aggregate; **SOURCE_ONLY — CHI TIẾT NGOÀI TOPOLOGY**. |
+| Tỷ giá ngoại tệ | 64 | 323 loại-tiền instance | XAU, DKK, NZD, HKD, CNY, NOK, KRW, LAK | Mã tiền nhìn thấy nhưng ngoài danh sách family; cần đánh giá schema/alias theo từng mã. |
+| Kinh doanh vàng và ngoại hối | 61 | 61 dòng | Dòng net/root với nhiều cách viết | Root/control dùng để kiểm tra thu–chi; không map lặp. |
+| Nợ Chính phủ/NHNN | 31 | 45 dòng | Parent tổng, VND/ngoại tệ, tên chương trình | Parent/subtotal hoặc chương trình cụ thể; không đồng nghĩa thiếu schema. |
+| Thuế thu nhập doanh nghiệp | 69 | 282 dòng | Điều chỉnh thuế, thuế phải trả/nộp | Reconciliation/control và nhiều child ngoài bộ mapping chính. |
+| Tiền gửi/vay TCTD khác — nguồn vốn | 54 | 135 dòng | `Trong đó`, IFC, UPAS L/C, vay cầm cố/chiết khấu | Subgroup/control; một số nghi thuộc family khác. |
+| Chi phí lãi | 32 | 32 dòng | Root chi phí lãi; tiền gửi và vay TCTD gộp | Root/control hoặc dòng gộp không tách. |
+| Thu nhập lãi | 34 | 42 dòng | Root; child chứng khoán kinh doanh/đầu tư | Parent/child dùng phép tính; bốn PDF U được tách ở bảng trên. |
+| Hoạt động chứng khoán đầu tư | 26 | 62 dòng | Thu/chi chứng khoán kinh doanh, dự phòng dài hạn | Sibling thuộc family khác hoặc control của bảng gộp. |
+| Phát hành giấy tờ có giá | 54 | 336 dòng | Mệnh giá, chiết khấu, phụ trội, kỳ hạn | Nhiều dòng là trục/subtotal; các semantic gap thật nằm trong canonical queue. |
+| Chi phí hoạt động | 108 | 284 dòng | `Trong đó`, thuê tài sản, CNTT, VAT không khấu trừ | Parent/control và ba nhóm chưa có leaf; hai PDF U được tách ở trên. |
+| Tài sản Có khác | 67 | 304 dòng | Phải thu NSNN/bảo hiểm/tài trợ thương mại, thuế hoãn lại | Nhiều child đặc thù; canonical queue ghi các quyết định schema per-PDF. |
+| Các khoản phải trả khác | 77 | 412 dòng | Lãi phải trả chi tiết theo tiền gửi, vay, GTCG, phái sinh | Child chi tiết dưới parent đã map; không cộng/mapping lặp. |
+| Kinh doanh chứng khoán | 11 | 11 dòng | Một số row sibling/parent ngoài subtree | Giữ để khép bảng, không thuộc kết quả family mục tiêu. |
+| Hoạt động dịch vụ | 10 | 51 dòng | Child dịch vụ gộp hoặc group kiểm tra | Có thể cần alias/aggregate riêng; không tự chia số nguồn. |
+| Nghĩa vụ ngân sách | 20 | 43 cột | Trục sắc thuế/phải thu–phải trả bổ sung | Component axis ngoài binding, vẫn tham gia roll-forward. |
+| Chứng khoán theo địa lý | 6 | 6 ô | Ô nguồn blank ở category không map | **SOURCE_BLANK**, không phải 0 và không phải schema gap. |
+| Báo cáo bộ phận hợp nhất | 39 | 1.149 dòng + 132 cột (6.860 ô) | Axis bộ phận ngoài binding và metric ngoài sáu metric lõi | Có bảng per-PDF riêng tại [Family báo cáo bộ phận](#source-only-family54). |
+
+Các trường hợp schema-decision đã được human-review từ các checkpoint trước
+vẫn nằm trong bảng canonical 205 dòng dưới đây. Con số 205 là **queue lịch sử
+cần quyết định schema/source**, không phải 205 PDF terminal U hiện hành. Các
+SHA/mã artifact trong phần đó chỉ là cột truy vết kỹ thuật ở cuối dòng.
+Đó cũng là danh sách cần dùng khi muốn mở từng PDF để quyết định tạo ID/alias
+hoặc sửa source. Những instance cơ học còn lại trong bảng SOURCE_ONLY phía
+trên (owner, group, subtotal, `Trong đó`, ô blank và sibling thuộc family khác)
+không phải candidate tạo schema; liệt kê lại hàng nghìn lần theo PDF sẽ biến
+control kế toán thành lỗi mapping và làm ledger khó đọc.
+
+Quy tắc hoàn tất: mỗi checkpoint family phải cập nhật đồng thời file này và
+`COMPLETED_TM_FAMILIES.md`. Không được đổi một `SOURCE_ONLY` thành “chưa có
+schema”, hoặc đổi `NOT_OBSERVED` thành lỗi, nếu chưa rà schema và source cụ thể.
 
 <a id="canonical-open-source-rows"></a>
 
-## Canonical OPEN — một dòng cho mỗi source-row/filing
+## Queue quyết định schema/source lịch sử — một dòng cho mỗi source-row/filing
 
-Đây là queue OPEN duy nhất có hiệu lực để con người review: **205 dòng**, gồm
+Đây là queue human-review tích lũy: **205 dòng**, gồm
 **134 dòng annual-2025 + 71 dòng historical/current** ngoài Family 3; đủ 38 dòng
 E-0158/E-0159/E-0161 từng bị index bỏ sót. 42 dòng Family 3 cũ đã chuyển thành
 closed history bởi E-0178 và nằm ngoài marker canonical này. PM-001 không thuộc
-queue vì period gap cũ đã stale/superseded khi corpus có VPB Q2/2026.
+queue vì period gap cũ đã stale/superseded khi corpus có VPB Q2/2026. Queue này
+không thay cho bảng 15 PDF `UNRESOLVED` hiện hành ở đầu file: một dòng lịch sử
+có thể vẫn cần quyết định schema dù PDF current đã `READY` với dòng đó ở trạng
+thái `SOURCE_ONLY`.
 
 DIRECT_PIXEL_REVIEW_2026-08-24 chỉ dùng cho sáu physical page vừa mở trực tiếp. PERSISTED_CODEX_PIXEL_REVIEW/PERSISTED_PIXEL_CROP_REVIEW là tái sử dụng artifact pixel/crop đã niêm phong, không giả là vừa mở lại PDF. Mọi dòng OPEN đều có bằng chứng trực tiếp hoặc persisted.
 
@@ -3148,7 +3219,12 @@ Annual-2025 resolving result: E-0120
 
 ## E-0161 — annual-2025 `Báo cáo bộ phận hợp nhất`
 
-- Review status: `OPEN_SOURCE_VARIANTS_WITH_SUPPORTED_SUBSET_VERIFIED`.
+- Review status:
+  `SUPERSEDED_AS_EXECUTION_STATUS_RETAINED_AS_SCHEMA_DECISION_QUEUE`.
+  Các dòng `ASEG-*` dưới đây là baseline annual lịch sử: chúng không còn là
+  terminal unresolved document, nhưng các semantic/schema decision chưa được
+  schema owner phê duyệt vẫn ở canonical OPEN. Inventory 39 PDF hiện hành bên
+  dưới cho biết nơi các quyết định này còn xuất hiện.
 - Whole-PDF scan tìm đúng một vùng báo cáo bộ phận trong cả tám BCTC. Phần
   schema hỗ trợ đã được xác minh qua 73 binding cấu trúc, 208 mapping số và
   43 phương trình; VPB không có nhánh địa lý chi tiết, HDB/VIB không có nhánh
@@ -3486,6 +3562,106 @@ Current OFFICIAL exact-replay result:
   covers all 8.947 selected pages; extra declared rows, ambiguous hierarchy,
   mixed-depth totals, period/unit conflicts, source-receipt drift and mapping
   deletion remain authoritative fail-closed regressions.
+
+<a id="source-only-family54"></a>
+
+## Family 54 current corpus — consolidated segment report (`CONSOLIDATED_SEGMENT_REPORT`)
+
+Current OFFICIAL exact-replay result:
+`gjfafstorev1:run:5f0f1eefb90b0a3825db6f138ac859f7d75ed7ce2e029e1cfbb23a37f9ba4a6b`
+from sweep
+`gjfafsv1:sweep:f64f58eb3c277afd6a587cfda71b53e81c8db4bf14ff03a46174eacf56d8ab2f`.
+
+- Census: 140 PDF, `READY=45`, `NOT_OBSERVED=95`, `UNRESOLVED=0`;
+  1.311 mapping group/2.283 mapping value/1.578 phương trình. Vì vậy Family54
+  không có terminal unresolved document.
+- 39 PDF READY vẫn có 6.860 ô `SOURCE_ONLY`: 4.708 ô chỉ ngoài scope theo
+  metric, 304 ô chỉ ngoài schema theo axis và 1.848 ô ngoài cả hai chiều.
+  Chúng quy về 1.149 source-row instance và 132 source-column instance; bảng
+  dưới đây là inventory theo đúng PDF chứ không che chúng bằng `U=0`.
+- Sáu PDF READY không có source-only là MBB 2025 quý 1/quý 2/quý 3/quý 4 và
+  MBB 2026 quý 1/quý 2.
+- 95 PDF `NOT_OBSERVED` không đi vào bảng unresolved mapping: ACB 15, BID 15,
+  CTG 15, HDB 14, MBB 9, VCB 9, VIB 9 và VPB 9. Chúng là báo cáo công ty
+  mẹ/riêng lẻ hoặc PDF không có semantic anchor của báo cáo bộ phận hợp nhất;
+  đó là absence/scope disposition, không phải thiếu leaf schema.
+
+### Mã nguyên nhân
+
+- `AXIS_SCHEMA_GAP`: cột bộ phận nhìn thấy nhưng không có axis RNID đồng nghĩa
+  chính xác trong binding Family54. Không được ép `Nước ngoài` vào `OTHER`,
+  `Miền Trung và Tây Nguyên` vào `CENTRAL`, hoặc một trục chứng khoán hẹp vào
+  `SECURITIES_FUND` rộng hơn.
+- `AXIS_AGGREGATION_NOT_AUTHENTICATED`: nguồn tách `Chứng khoán` và `Quản lý
+  quỹ`, trong khi schema có một trục gộp. Chưa có phép cộng/authority đủ để tự
+  gộp; `Cho thuê tài chính`, `Dịch vụ tài chính phi ngân hàng`, `Khác` và các
+  trục công ty tài chính tương tự cũng không có leaf đồng nghĩa chính xác.
+- `METRIC_OUTSIDE_FAMILY54_TOPOLOGY`: dòng nguồn không thuộc sáu metric được
+  Family54 khai báo (`ASSETS`, `LIABILITIES`, `FIXED_ASSETS`, `REVENUE`,
+  `EXPENSE`, `PROFIT_BEFORE_TAX`). Các dòng thu nhập/chi phí lãi, dự phòng,
+  thuế, lợi nhuận sau thuế, tiền mặt, nợ nội bộ... có thể có concept ở family
+  khác; ở đây chúng bị giữ source-only vì không phải metric của matrix báo cáo
+  bộ phận, không được kết luận chung là “schema toàn hệ thống không có”.
+- `SOURCE_BLANK_NON_MAPPING`: ô nhìn thấy là blank thật; không đổi thành 0.
+- `INVALID_MONEY_SOURCE_NON_TARGET`: text tiền nguồn malformed nhưng thuộc
+  metric ngoài scope, được giữ nguyên để sửa nguồn; không được dùng cho mapping
+  mục tiêu.
+
+Các nhãn axis dưới đây là nhãn nguồn normalized; label exact, cell ref, raw
+text, period, unit và state của từng ô được niêm phong tại
+`sweep.audit.json -> axes.source_only_cells`.
+
+| Ord | Bank/năm/PDF | Trang vật lý | Axis chưa map vào Family54 | Metric ngoài topology (source-row instance) | Ô source-only | Ghi chú |
+| ---: | --- | --- | --- | ---: | ---: | --- |
+| 7 | ACB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 95–99 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | `AXIS_SCHEMA_GAP`; `AXIS_AGGREGATION_NOT_AUTHENTICATED`; 10 blank |
+| 8 | ACB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 91–95 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | cùng quyết định axis; 8 blank |
+| 17 | ACB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 90–94 | Cho thuê tài chính; Chứng khoán; Quản lý quỹ | 38 | 280 | cùng quyết định axis; 43 blank |
+| 25 | BID/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 37 | Cho thuê tài chính; Chứng khoán; Khác | 20 | 149 | `AXIS_SCHEMA_GAP`; 19 blank |
+| 40 | CTG/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 82–84 | Dịch vụ tài chính phi ngân hàng; Khác | 44 | 244 | `AXIS_SCHEMA_GAP`; 20 blank |
+| 41 | CTG/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 76–78 | Dịch vụ tài chính phi ngân hàng; Khác | 40 | 224 | `AXIS_SCHEMA_GAP`; 6 blank |
+| 50 | CTG/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 49–50 | Dịch vụ tài chính phi ngân hàng; Khác | 20 | 112 | `AXIS_SCHEMA_GAP` |
+| 59 | HDB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 61 | Nước ngoài | 8 | 50 | `AXIS_SCHEMA_GAP`; 11 blank |
+| 60 | HDB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 55 | Nước ngoài | 8 | 50 | `AXIS_SCHEMA_GAP` |
+| 75 | MBB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 83–90 | Nước ngoài | 52 | 324 | `AXIS_SCHEMA_GAP` |
+| 76 | MBB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 80–87 | Nước ngoài | 54 | 336 | `AXIS_SCHEMA_GAP` |
+| 84 | MBB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 83–90 | Nước ngoài | 53 | 330 | `AXIS_SCHEMA_GAP`; 2 blank |
+| 93 | VCB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 71–72 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 94 | VCB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 51–52 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 95 | VCB/2025/`BCTC Hợp nhất quý 1 năm 2025.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 96 | VCB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 97 | VCB/2025/`BCTC Hợp nhất quý 3 năm 2025.pdf` | 41–42 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP`; 1 blank |
+| 98 | VCB/2025/`BCTC Hợp nhất quý 4 năm 2025.pdf` | 58–59 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP` |
+| 102 | VCB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 55–56 | Miền Trung và Tây Nguyên; Nước ngoài; Dịch vụ tài chính phi ngân hàng; Chứng khoán; Khác | 42 | 257 | `AXIS_SCHEMA_GAP` |
+| 103 | VCB/2026/`BCTC Hợp nhất quý 1 năm 2026.pdf` | 40–41 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 38 | 233 | `AXIS_SCHEMA_GAP` |
+| 104 | VCB/2026/`BCTC Hợp nhất quý 2 năm 2026.pdf` | 42–43 | Miền Trung Tây Nguyên; Nước ngoài; Tài chính phi ngân hàng; Chứng khoán; Khác | 40 | 245 | `AXIS_SCHEMA_GAP`; 1 blank |
+| 111 | VIB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 61–62 | Không có axis source-only | 26 | 104 | chỉ `METRIC_OUTSIDE_FAMILY54_TOPOLOGY` |
+| 112 | VIB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 60–61 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 113 | VIB/2025/`BCTC Hợp nhất Soát xét 9 tháng đầu năm 2025.pdf` | 59–60 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 114 | VIB/2025/`BCTC Hợp nhất Soát xét quý 1 năm 2025.pdf` | 61–62 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 115 | VIB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 56–57 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 116 | VIB/2025/`BCTC Hợp nhất quý 4 năm 2025.pdf` | 57–58 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 120 | VIB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 58–59 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 121 | VIB/2026/`BCTC Hợp nhất Soát xét quý 1 năm 2026.pdf` | 58–59 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 122 | VIB/2026/`BCTC Hợp nhất quý 2 năm 2026.pdf` | 55–56 | Không có axis source-only | 26 | 104 | chỉ metric ngoài topology |
+| 123 | VPB/2025/`1-bctc-hop-nhat.pdf` | 92 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 129 | VPB/2025/`BCTC Hợp nhất Kiểm toán năm 2025.pdf` | 96 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 130 | VPB/2025/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf` | 100 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP`; 16 blank |
+| 131 | VPB/2025/`BCTC Hợp nhất quý 1 năm 2025.pdf` | 92 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | 2 ô `-"` = `INVALID_MONEY_SOURCE_NON_TARGET` |
+| 132 | VPB/2025/`BCTC Hợp nhất quý 2 năm 2025.pdf` | 90 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 133 | VPB/2025/`Bctc-hop-nhat-1901.pdf` | 90 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 135 | VPB/2026/`1.-BCTC-hop-nhat.pdf` | 86 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 137 | VPB/2026/`3-bctc-hop-nhat-ban-tra-cuu.pdf` | 88 | Hoạt động chứng khoán; Hoạt động công ty tài chính | 14 | 108 | `AXIS_SCHEMA_GAP` |
+| 140 | VPB/2026/`BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf` | 102–105 | Hoạt động kinh doanh chứng khoán; Hoạt động kinh doanh khác | 26 | 172 | `AXIS_SCHEMA_GAP` |
+
+Tất cả 39 dòng trên đồng thời có
+`METRIC_OUTSIDE_FAMILY54_TOPOLOGY`; cột “Metric ngoài topology” là số row
+instance theo page/table/row, không phải số concept schema duy nhất. Có 76 nhãn
+normalized (125 cách viết exact), chủ yếu thuộc các nhóm: thu nhập/chi phí lãi;
+thu nhập/chi phí dịch vụ và hoạt động khác; dự phòng rủi ro; thuế; lợi nhuận
+sau thuế; các subtotal kết quả trước dự phòng; tiền mặt/tài sản khác/nợ nội bộ;
+và doanh thu/chi phí nội bộ. Muốn promote một nhóm phải mở rộng topology và
+schema binding bằng RNID/metric semantics riêng rồi replay receipt; không được
+map theo tên gần nhất.
 
 ## Append policy
 
