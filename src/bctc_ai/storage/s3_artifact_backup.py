@@ -78,9 +78,7 @@ def _resolve_selected_path(project_root: Path, value: str | Path) -> Path:
     path = (project_root / raw).resolve() if not raw.is_absolute() else raw.resolve()
     output_root = (project_root / "output").resolve()
     if path != output_root and not path.is_relative_to(output_root):
-        raise S3ArtifactBackupError(
-            f"bounded artifact backup accepts output/ paths only: {value}"
-        )
+        raise S3ArtifactBackupError(f"bounded artifact backup accepts output/ paths only: {value}")
     if not path.exists():
         raise S3ArtifactBackupError(f"selected artifact path is absent: {value}")
     return path
@@ -112,9 +110,7 @@ def collect_artifacts(
     records: list[ArtifactFile] = []
     for logical_path, path in sorted(candidates.items()):
         size_bytes, digest = _stable_file(path)
-        object_key = (
-            f"{settings.prefix}/{settings.content_prefix}/{digest[:2]}/{digest}"
-        )
+        object_key = f"{settings.prefix}/{settings.content_prefix}/{digest[:2]}/{digest}"
         records.append(
             ArtifactFile(
                 logical_path=logical_path,
@@ -160,9 +156,7 @@ def _verify_parent(
     )
     manifest = _load_downloaded_object(parent_manifest_path, label="parent manifest")
     run = _load_downloaded_object(parent_run_path, label="parent run record")
-    if manifest.get("format_version") != 1 or manifest.get("snapshot_id") != run.get(
-        "snapshot_id"
-    ):
+    if manifest.get("format_version") != 1 or manifest.get("snapshot_id") != run.get("snapshot_id"):
         raise S3ArtifactBackupError("parent snapshot identity drifted")
     if run.get("manifest") != {"key": manifest_key, "sha256": manifest_sha256}:
         raise S3ArtifactBackupError("parent run record does not bind the supplied manifest")
@@ -182,9 +176,7 @@ def _verify_parent(
         "run_record": {"key": run_record_key, "sha256": run_record_sha256},
         "production_status": run["production_status"],
         "restore_status": run["restore_status"],
-        "full_content_stream_verified": run.get("restore", {}).get(
-            "full_content_stream_verified"
-        ),
+        "full_content_stream_verified": run.get("restore", {}).get("full_content_stream_verified"),
     }
 
 
@@ -235,25 +227,40 @@ def _restore_all(
         digest=manifest_sha256,
     )
     manifest = _load_downloaded_object(restored_manifest, label="artifact manifest")
-    restored_by_digest: dict[str, Path] = {}
+    records_by_digest: dict[str, dict[str, Any]] = {}
     for record in manifest.get("files", []):
         if not isinstance(record, dict):
             raise S3ArtifactBackupError("artifact manifest file record is invalid")
         digest = str(record["sha256"])
-        restored = restored_by_digest.get(digest)
-        if restored is None:
-            restored = temporary_root / "objects" / digest[:2] / digest
-            restored.parent.mkdir(parents=True, exist_ok=True)
-            client.download_content(
-                key=str(record["object_key"]),
-                destination=restored,
-                digest=digest,
+        prior = records_by_digest.setdefault(digest, record)
+        if str(prior["object_key"]) != str(record["object_key"]) or int(prior["size_bytes"]) != int(
+            record["size_bytes"]
+        ):
+            raise S3ArtifactBackupError(
+                f"artifact digest metadata conflicts: {record['logical_path']}"
             )
-            restored_by_digest[digest] = restored
+
+    def restore_one(record: dict[str, Any]) -> tuple[str, Path]:
+        digest = str(record["sha256"])
+        restored = temporary_root / "objects" / digest[:2] / digest
+        restored.parent.mkdir(parents=True, exist_ok=True)
+        client.download_content(
+            key=str(record["object_key"]),
+            destination=restored,
+            digest=digest,
+        )
         if restored.stat().st_size != int(record["size_bytes"]):
             raise S3ArtifactBackupError(
                 f"restored artifact size mismatch: {record['logical_path']}"
             )
+        return digest, restored
+
+    restored_by_digest: dict[str, Path] = {}
+    with ThreadPoolExecutor(max_workers=client.settings.workers) as executor:
+        futures = [executor.submit(restore_one, record) for record in records_by_digest.values()]
+        for future in as_completed(futures):
+            digest, restored = future.result()
+            restored_by_digest[digest] = restored
     expected = {str(record["sha256"]) for record in manifest["files"]}
     if set(restored_by_digest) != expected:
         raise S3ArtifactBackupError("restored artifact digest inventory mismatch")
@@ -320,7 +327,9 @@ def backup_artifacts_to_s3(
                 "logical_file_count": len(files),
                 "unique_object_count": len(uploads),
                 "logical_bytes": sum(item.size_bytes for item in files),
-                "unique_bytes": sum(item.size_bytes for item in {x.sha256: x for x in files}.values()),
+                "unique_bytes": sum(
+                    item.size_bytes for item in {x.sha256: x for x in files}.values()
+                ),
                 "selection": [str(path) for path in selected_paths],
             },
             "files": [item.manifest_record() for item in files],

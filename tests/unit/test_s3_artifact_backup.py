@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,6 +26,9 @@ class FakeArtifactClient:
     def __init__(self, settings, objects: dict[str, bytes]) -> None:
         self.settings = settings
         self.objects = dict(objects)
+        self._restore_lock = threading.Lock()
+        self._restore_active = 0
+        self.max_parallel_restores = 0
 
     def preflight(self):
         return {
@@ -51,11 +56,23 @@ class FakeArtifactClient:
         return UploadResult(key, digest, len(payload), disposition, "version-test")
 
     def download_content(self, *, key, destination, digest):
-        destination = Path(destination)
-        assert not destination.exists()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(self.objects[key])
-        assert sha256_file(destination) == digest
+        is_artifact = "/objects/sha256/" in key
+        if is_artifact:
+            with self._restore_lock:
+                self._restore_active += 1
+                self.max_parallel_restores = max(self.max_parallel_restores, self._restore_active)
+        try:
+            if is_artifact:
+                time.sleep(0.02)
+            destination = Path(destination)
+            assert not destination.exists()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(self.objects[key])
+            assert sha256_file(destination) == digest
+        finally:
+            if is_artifact:
+                with self._restore_lock:
+                    self._restore_active -= 1
 
 
 def _git(project: Path, *arguments: str) -> None:
@@ -124,6 +141,7 @@ def test_bounded_artifact_backup_links_passing_parent_and_restores_every_file(tm
     assert result.file_count == 2
     assert result.uploaded_object_count == 2
     assert result.restore_verified
+    assert client.max_parallel_restores == 2
     manifest = json.loads(client.objects[result.manifest_key])
     assert manifest["parent_full_snapshot"]["snapshot_id"] == "parent"
     assert {item["logical_path"] for item in manifest["files"]} == {

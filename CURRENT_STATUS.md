@@ -51,6 +51,11 @@ older queue priorities where they conflict.
   ở phần nội dung chính; reason gốc chỉ còn trong `<details>` truy vết. Phân loại
   nguyên nhân vẫn được tính từ receipt gốc để các từ mô tả như “đầu kỳ/cuối kỳ”
   trong câu dịch không làm đổi category.
+- Restore gate của bounded S3 artifact backup tải các content object độc lập
+  song song theo `settings.workers`; mỗi object vẫn bắt buộc khớp SHA và kích
+  thước, còn hai manifest record dùng cùng digest nhưng khác object key/kích
+  thước bị từ chối. Thay đổi này chỉ rút ngắn restore checkpoint tương lai,
+  không nới gate và không tác động checkpoint đang chạy bằng process cũ.
 
 ## 2026-09-01 human review/schema checkpoint
 
