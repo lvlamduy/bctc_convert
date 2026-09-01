@@ -26,12 +26,24 @@ older queue priorities where they conflict.
 - Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Paid run đã
   bắt đầu sau khi cost/disk/S3 staging gate đạt yêu cầu; runner resume theo
   từng page và không gửi lại page đã có extraction hợp lệ.
+- Initial pass dùng 20 page worker cho thấy 224 HTTP 429 trong 1.462 extraction
+  đầu tiên. Runner đã được dừng sạch tại ranh giới PDF EIB riêng lẻ Q4/2025:
+  task đó được ghi terminal receipt, ledger không còn task `RUNNING`, và không
+  request đang bay nào bị hủy. Cùng ledger/store/artifact frontier sau đó được
+  resume ở **8 worker**; các page đã cache không bị gửi lại. Cửa sổ đầu sau
+  restart tăng từ 1.470 lên 1.486 extraction trong khoảng 90 giây và chỉ có hai
+  lỗi tạm lúc đầu, không phát sinh thêm HTTP 429 trong phần cuối cửa sổ.
+- Wrapper 27-bank có lệnh `repair-one` để chạy lại đúng `failed_pages` theo
+  prompt variant đã được receipt hóa, luôn khóa `google-standard-mode=disabled`,
+  kiểm byte PDF trước provider call và chỉ seal `FAILED → SUCCEEDED` sau khi
+  current whole-document manifest xác thực đủ mọi page. Bộ regression liên quan
+  đạt **74/74**; implementation đã push tại commit `db72b9c`.
 - Theo chi phí OpenRouter Vertex Flex đã đo trên chính corpus cũ, paid frontier
   15.968 trang có ước tính cơ sở khoảng **28,8 USD**; ngân sách vận hành an toàn
-  là **32–36 USD** để bao gồm retry có receipt. Với 20 worker và độ trễ lịch sử,
-  thời gian provider dự kiến khoảng **6–10 giờ**; nên dành một ngày làm việc cho
-  cả render, ingest, kiểm tra và checkpoint S3. Tám ngân hàng cũ không nằm trong
-  phép tính này.
+  là **32–36 USD** để bao gồm retry có receipt. Ước tính ban đầu 6–10 giờ ở 20
+  worker không còn dùng làm lịch vận hành vì rate limit thực tế cao; run hiện
+  dùng 8 worker và sẽ lấy throughput đã đo sau một cửa sổ dài hơn làm authority.
+  Tám ngân hàng cũ không nằm trong phép tính chi phí này.
 - Git checkpoint đã được push trên nhánh `codex/27-bank-2025-current`. Bốn file
   universe/plan/matrix đã được backup và restore-test thành công tại S3 child
   checkpoint `20260901T151341Z-27-bank-2025-current-vertex-flex-frontier-fe3f3867f955`;
