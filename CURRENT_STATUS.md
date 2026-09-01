@@ -27,6 +27,10 @@ older queue priorities where they conflict.
   `family_id`, `family_run_id`, results DB, page DB và PDF root; số liệu được
   cộng, PDF được khử trùng theo source identity, còn manifest sai run hoặc làm
   trùng cùng PDF trong một family bị từ chối. Chế độ một DB cũ vẫn tương thích.
+- Builder manifest review-only đã được thêm để ghép selection cũ, run Family 30
+  bổ sung và all-family receipt mới. Trước khi ghi file write-once, builder xác
+  minh exact run/family, trial count, source SHA trong page store và sự tồn tại
+  của từng PDF; các SQLite nguồn luôn được mở read-only.
 
 ## 2026-09-01 human review/schema checkpoint
 

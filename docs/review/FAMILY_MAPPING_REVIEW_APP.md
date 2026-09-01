@@ -79,6 +79,24 @@ liệu và hợp nhất danh sách PDF theo `source_sha256`, nhưng vẫn đọc
 27 ngân hàng không thay đổi selection lịch sử. Cấu hình bị trùng PDF trong cùng
 family hoặc trỏ sai `family_run_id` sẽ bị từ chối trước khi server nhận traffic.
 
+Không cần viết manifest bằng tay. Sau khi all-family receipt của 19 ngân hàng
+mới hoàn tất, tạo manifest từ selection cũ, receipt mới và Family 30 bổ sung:
+
+```bash
+uv run python scripts/review/build_family_review_run_manifest.py \
+  --current-source OLD_RESULTS.sqlite3 OLD_PAGES.sqlite3 /workspace/bctc-ai/vietstock_bctc \
+  --explicit-source NET_INTEREST_INCOME OLD_FAMILY30_RUN OLD_FAMILY30.sqlite3 \
+    OLD_PAGES.sqlite3 /workspace/bctc-ai/vietstock_bctc \
+  --receipt-source NEW_19_RUN_RECEIPT.json NEW_19_RESULTS.sqlite3 \
+    NEW_19_PAGES.sqlite3 /workspace/bctc-ai/vietstock_bctc \
+  --output /data/review/27-bank-family-runs.json
+```
+
+Builder mở các SQLite ở chế độ chỉ đọc, xác minh run thuộc đúng family, số PDF
+khớp trial frontier, mọi source SHA có trong page store và đúng file PDF còn tồn
+tại. Nó cũng chặn hai run của cùng family chứa trùng PDF. Output là write-once:
+nếu file đã tồn tại với nội dung khác, lệnh dừng thay vì ghi đè.
+
 Nếu page store và results store có sẵn nhưng thiếu `BCTC_PDF_ROOT`, người dùng
 vẫn xem được dữ liệu Gemini và mapping. Cột ảnh sẽ báo rõ chưa có file PDF thay
 vì âm thầm hiển thị sai trang.
