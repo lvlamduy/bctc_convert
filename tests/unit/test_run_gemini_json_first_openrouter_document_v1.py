@@ -389,6 +389,42 @@ def test_provider_circuit_breaker_requires_one_worker(tmp_path) -> None:
         )
 
 
+def test_single_worker_provider_requests_are_paced_between_successful_pages(
+    monkeypatch, tmp_path
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    _pdf(pdf, 3)
+    calls = 0
+
+    def provider(**_kwargs):
+        nonlocal calls
+        calls += 1
+        return _result()
+
+    sleeps = []
+    monkeypatch.setattr(target.time, "sleep", sleeps.append)
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=tmp_path / "store.sqlite3",
+        artifact_dir=tmp_path / "artifacts",
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+        provider_request_delay_seconds=7,
+        stop_provider_frontier_on_transient_error=True,
+    )
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == 3
+    assert sleeps == [7, 7]
+
+
+def test_cli_pacing_defaults_only_inside_single_worker_circuit_mode() -> None:
+    assert target._effective_provider_request_delay_seconds_v1(None, stop_on_transient=True) == 60.0
+    assert target._effective_provider_request_delay_seconds_v1(None, stop_on_transient=False) == 0.0
+    assert target._effective_provider_request_delay_seconds_v1(17.5, stop_on_transient=True) == 17.5
+
+
 def test_unresolved_page_is_cached_but_never_seals_a_document_manifest(tmp_path) -> None:
     pdf = tmp_path / "document.pdf"
     database = tmp_path / "store.sqlite3"

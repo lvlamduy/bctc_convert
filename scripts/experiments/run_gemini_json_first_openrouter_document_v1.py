@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -135,6 +136,14 @@ def _provider_error_opens_circuit_v1(error: GeminiJsonFirstProviderV1Error) -> b
     )
 
 
+def _effective_provider_request_delay_seconds_v1(
+    configured: float | None, *, stop_on_transient: bool
+) -> float:
+    if configured is None:
+        return 60.0 if stop_on_transient else 0.0
+    return configured
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
@@ -188,6 +197,14 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "With one worker, stop further provider calls after a transient/zero-usage "
             "provider failure; remaining pages are checked only through cache/offline replay."
+        ),
+    )
+    parser.add_argument(
+        "--provider-request-delay-seconds",
+        type=float,
+        help=(
+            "Pause after each successful single-worker provider request. When omitted, "
+            "the transient circuit-breaker mode uses 60 seconds and other modes use zero."
         ),
     )
     parser.add_argument(
@@ -753,6 +770,7 @@ def run_openrouter_document_v1(
     google_credential_slots: list[str] | None = None,
     google_standard_mode: str = "disabled",
     stop_provider_frontier_on_transient_error: bool = False,
+    provider_request_delay_seconds: float = 0.0,
 ) -> dict[str, Any]:
     """Run or resume a whole document or one explicit bounded page frontier."""
 
@@ -769,6 +787,17 @@ def run_openrouter_document_v1(
     if stop_provider_frontier_on_transient_error and workers != 1:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "provider circuit breaker requires exactly one worker"
+        )
+    if (
+        type(provider_request_delay_seconds) not in {int, float}
+        or not 0 <= provider_request_delay_seconds <= 3_600
+    ):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "provider request delay lies outside 0..3600 seconds"
+        )
+    if provider_request_delay_seconds > 0 and not stop_provider_frontier_on_transient_error:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "provider request delay requires the single-worker circuit breaker"
         )
     if (google_standard_mode == "disabled") != (google_api_keys is None):
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
@@ -886,7 +915,7 @@ def run_openrouter_document_v1(
 
     if stop_provider_frontier_on_transient_error:
         provider_circuit_open = False
-        for physical_page in selected_pages:
+        for page_index, physical_page in enumerate(selected_pages):
             page_outcome = extract(physical_page, force_offline=provider_circuit_open)
             outcome = persist(page_outcome)
             outcomes[outcome.physical_page] = outcome
@@ -897,6 +926,12 @@ def run_openrouter_document_v1(
             ):
                 provider_circuit_open = True
                 circuit_breaker_trigger_page = physical_page
+            elif (
+                outcome.provider_request_made
+                and provider_request_delay_seconds > 0
+                and page_index + 1 < len(selected_pages)
+            ):
+                time.sleep(provider_request_delay_seconds)
     else:
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gemini-page") as executor:
             futures = {
@@ -1060,6 +1095,10 @@ def main() -> int:
         google_credential_slots=google_slots,
         google_standard_mode=args.google_standard_mode,
         stop_provider_frontier_on_transient_error=(args.stop_provider_frontier_on_transient_error),
+        provider_request_delay_seconds=_effective_provider_request_delay_seconds_v1(
+            args.provider_request_delay_seconds,
+            stop_on_transient=args.stop_provider_frontier_on_transient_error,
+        ),
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["disposition"] == "SUCCEEDED" else 2
