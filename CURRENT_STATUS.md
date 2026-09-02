@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 16:18 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 16:26 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -17,10 +17,10 @@ older queue priorities where they conflict.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint **16:18 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
+- Tại checkpoint **16:26 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
   luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
   (44,0%)**. Store đã có JSON hợp lệ cho **6.269/15.335 trang (40,88%)**, thuộc
-  129 PDF. Trạng thái task là **25 SUCCEEDED, 48 NEEDS_RETRY, 56 FAILED đang
+  129 PDF. Trạng thái task là **25 SUCCEEDED, 47 NEEDS_RETRY, 57 FAILED đang
   chờ sửa đúng trang, 149 PENDING và 1 RUNNING**. `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
   còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
@@ -30,9 +30,11 @@ older queue priorities where they conflict.
   2024.
 - Provider route vẫn chỉ là OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`; direct Google và fallback đều tắt. Thử nghiệm
-  20, 8 rồi 2 page worker gặp tỷ lệ HTTP 429/zero-usage cao; dispatcher đã được
-  resume an toàn ở **1 worker** từ 14:30 UTC. Retry chỉ nhắm đúng page trong
-  receipt, không gửi lại toàn PDF.
+  20, 8 rồi 2 page worker gặp tỷ lệ HTTP 429/zero-usage cao; dispatcher đang chạy
+  an toàn ở **1 worker**. Sau các lần provider báo quá tải liên tiếp, thời gian
+  chờ tăng theo nấc **5 → 10 → 20 → 40 → tối đa 60 phút** và được đặt
+  lại sau một task không chạm circuit. Retry chỉ nhắm đúng page trong receipt,
+  không gửi lại toàn PDF.
 - Retry semantic trước hết replay cục bộ raw response đã trả tiền và chỉ gửi
   các trang vẫn không đạt; bộ kiểm thử liên quan hiện đạt 256/256. Vì vậy một
   trang đã có response hợp lệ không bị gửi lại chỉ vì task PDF đang retry.
