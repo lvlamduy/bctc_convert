@@ -1452,6 +1452,8 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
             assert argv[argv.index("--semantic-replay-source-dir") + 1].endswith(
                 "/artifacts/tasks/task-1"
             )
+        else:
+            assert "--stop-provider-frontier-on-transient-error" in argv
         return 0, {
             "cached_pages": [],
             "disposition": "SUCCEEDED",
@@ -1501,7 +1503,7 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
             google_key_file=tmp_path / "unused-google-key",
             ledger=tmp_path / "ledger.sqlite3",
             openrouter_key_file=tmp_path / "openrouter-key",
-            openrouter_workers=20,
+            openrouter_workers=1,
             plan=tmp_path / "plan.json",
             provider_timeout_seconds=900,
             repair_attempt=1,

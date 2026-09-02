@@ -4435,6 +4435,8 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             "--timeout-seconds",
             str(args.provider_timeout_seconds),
         ]
+        if args.openrouter_workers == 1:
+            command.append("--stop-provider-frontier-on-transient-error")
         for page in pages:
             command.extend(("--physical-page", str(page)))
         _code, result = _command(command, expected={0, 2})
