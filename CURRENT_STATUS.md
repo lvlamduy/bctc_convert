@@ -69,12 +69,22 @@ older queue priorities where they conflict.
 - Paid run đã được dừng an toàn trước khi OCB đi vào phần tiếng Anh. Rà trực
   quan toàn bộ 9 PDF trên 100 trang và toàn bộ 16 PDF OCB xác định 10 file OCB
   có bản tiếng Anh nối sau bản tiếng Việt và một trang giới thiệu tiếng Anh của
-  EY ở cuối file TCB hợp nhất kiểm toán 2025. Frontier được phép mới là 279
+  EY ở cuối file TCB hợp nhất kiểm toán 2025. Frontier chính thức hiện là 279
   PDF/**15.335 trang tiếng Việt**; 633 trang không thuộc phần tiếng Việt bị
   loại. File OCB công ty mẹ kiểm toán 2025 chỉ được gửi trang 1–102; trang 103
-  bắt đầu tiếng Anh. Plan cũ 15.968 trang đang bị khóa, không được resume cho
-  tới khi plan/ledger mới bind exact bảng cutoff trong tài liệu yêu cầu người
-  dùng. JSON tiếng Việt đã hoàn tất vẫn phải tái sử dụng, không gửi lại.
+  bắt đầu tiếng Anh.
+- Ledger đã được chuyển sang plan tiếng Việt bằng phép migration fail-closed:
+  **22 task SUCCEEDED** và **107 task FAILED** byte-identical được giữ nguyên;
+  21 task có ranh giới ngôn ngữ thay đổi không được kế thừa trạng thái cũ và
+  được tạo lại trong frontier mới. Ledger đang hoạt động có **150 PENDING / 22
+  SUCCEEDED / 107 FAILED = 279 task**, tổng 15.335 trang; ledger và plan cũ
+  15.968 trang được lưu riêng làm bằng chứng, không bị ghi đè hay resume.
+- Vertex Flex đã resume ở **8 page worker**. Lệnh provider của OCB công ty mẹ
+  kiểm toán 2025 mang danh sách tường minh đúng trang 1–102, không thể tự đi tới
+  trang 103. Store tại thời điểm chuyển plan chỉ có 24 trang OCB đã hoàn tất,
+  trang lớn nhất là 58, nên chưa có trang tiếng Anh nào được gửi hoặc ingest.
+  JSON tiếng Việt đã hoàn tất vẫn được tái sử dụng; tám ngân hàng cũ tiếp tục
+  bị loại khỏi paid frontier.
 
 ## 2026-09-01 human review/schema checkpoint
 
