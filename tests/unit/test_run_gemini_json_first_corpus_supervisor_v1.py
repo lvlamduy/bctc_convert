@@ -1527,6 +1527,42 @@ def test_adaptive_retry_artifact_dir_is_bound_to_exact_page_frontier(tmp_path) -
         )
 
 
+def test_running_same_attempt_recovery_retains_exact_retry_frontiers() -> None:
+    recovered = {
+        "state": "RUNNING",
+        "first_physical_page": 1,
+        "last_physical_page": 5,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "collision_evidence": [],
+                "failed_pages": [1, 2, 4],
+                "format_version": (
+                    "GEMINI_JSON_FIRST_OPENROUTER_LOCAL_ARTIFACT_COLLISION_RECOVERY_V1"
+                ),
+                "prior_failed_receipt_sha256": "1" * 64,
+                "recitation_failed_pages": [1],
+                "recovery_same_attempt": True,
+                "retry_frontier_receipt_sha256": "2" * 64,
+                "semantic_failed_pages": [4],
+                "unresolved_pages": [],
+            }
+        ),
+    }
+
+    assert target._retry_prompt_frontiers_v1(recovered) == {
+        "default": [2],
+        "items": [4],
+        "scope": [1],
+    }
+    assert target._protected_retry_pages_v1(recovered) == [4]
+    ordinary_running = {
+        **recovered,
+        "last_receipt_json": canonical_json_bytes_v1({"document_run_started": True}),
+    }
+    assert target._retry_prompt_frontiers_v1(ordinary_running) is None
+    assert target._protected_retry_pages_v1(ordinary_running) == []
+
+
 def test_openrouter_recitation_retry_uses_scope_and_may_resolve_to_no_relevant(
     monkeypatch, tmp_path
 ) -> None:
