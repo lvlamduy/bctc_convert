@@ -24,23 +24,31 @@
 Phần còn lại của tài liệu là execution contract và definition of done cho goal
 statement trên.
 
-### Phạm vi corpus đang mở rộng (checkpoint 2026-09-01)
+## Phạm vi corpus đang thực hiện — checkpoint 2026-09-02
 
-- Phạm vi thời gian: **Quý 1/2025 đến hiện tại**.
-- Ma trận theo dõi gồm đủ 27 ngân hàng, nhưng paid provider frontier chỉ gồm 19
-  ngân hàng mới: ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB,
-  SHB, SSB, STB, TCB, TPB, VAB và VBB.
-- ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có Gemini JSON hiện hành. Tất cả
-  dữ liệu của tám ngân hàng này phải lấy từ manifest/store/cache đã xác thực;
-  không gửi lại OpenRouter. PDF mới ngoài manifest của tám ngân hàng này chỉ
-  được ghi vào inventory và chờ quyền riêng của người dùng.
-- Mọi request mới đi duy nhất qua OpenRouter, model
-  `google/gemini-3.7-flash`, provider `google-vertex/global/flex`, service tier
-  `flex`; direct Google và mọi fallback provider/model đều bị vô hiệu hóa.
-- Denominator đã xác thực ở checkpoint: corpus cũ **140 PDF / 8.947 trang** chỉ
-  tái sử dụng; paid frontier mới **279 PDF / 15.968 trang**. Runner phải chứng
-  minh paid frontier không chứa ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB trước request
-  đầu tiên.
+- Khảo sát toàn bộ báo cáo của **27 mã ngân hàng đã đăng ký, từ năm 2024 đến
+  thời điểm hiện tại**: ABB, ACB, BAB, BID, BVB, CTG, EIB, HDB, KLB, LPB, MBB,
+  MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB, VCB, VIB
+  và VPB.
+- Corpus Gemini tám ngân hàng 2025-current đã hoàn tất và frontier mười chín
+  ngân hàng 2025-current đang chạy là hai nguồn được bảo vệ. Mọi PDF/page/image
+  đã có hoặc đang có task trong hai nguồn này phải tái sử dụng từ
+  manifest/store/cache; **không được gửi lại**.
+- Quyền mới của người dùng cho phép xử lý các báo cáo **năm 2024 còn thiếu**
+  của cả 27 ngân hàng, kể cả tám ngân hàng cũ. Quyền này chỉ áp dụng cho source
+  identity/page chưa có Gemini JSON, không mở lại các kỳ 2025–2026 đã xử lý.
+- Snapshot S3 bất biến có 408 PDF năm 2024; 149 file đã có đúng byte trên local
+  và 259 file còn thiếu được hydrate theo content hash. Sau content dedupe và
+  lọc đúng ứng viên BCTC tiếng Việt, source inventory có 308 PDF năm 2024 cần
+  lập plan. Số trang trả phí chỉ được công bố sau khi xác thực PDF và rà ranh
+  giới ngôn ngữ.
+- Request mới chỉ được dùng OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`, tier `flex`; direct Google và fallback bị cấm.
+  Resume/retry theo đúng page còn thiếu và receipt có kiểu; không gửi lại toàn
+  PDF chỉ vì một vài page lỗi.
+- Mọi PDF trên 100 trang và mọi PDF OCB phải được rà phần tiếng Việt trước khi
+  vào paid ledger. Plan 2024 chưa có bảng cutoff đầy đủ phải fail closed.
+- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
 
 ## 1. Mục tiêu duy nhất
 
