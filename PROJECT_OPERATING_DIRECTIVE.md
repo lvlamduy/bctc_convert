@@ -8,6 +8,16 @@
 > mapping at Family 1. Git/S3/Codex, fail-closed and generalization policies
 > remain in force.
 
+> **2026-09-02 corpus/no-resubmit authority:** the active expansion is the
+> 27-bank panel from Q1/2025 through the current reporting period. ACB, BID,
+> CTG, HDB, MBB, VCB, VIB and VPB already have Gemini JSON and are immutable
+> reuse-only inputs: no PDF or page from those eight banks may be submitted
+> again. New paid requests are limited to ABB, BAB, BVB, EIB, KLB, LPB, MSB,
+> NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB and VBB, and only for
+> receipt-bound missing pages through OpenRouter → `google/gemini-3.7-flash`
+> → `google-vertex/global/flex`. Every run, resume and repair must reject an
+> old-bank intersection before its first provider request.
+
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
 > owns normalization, graph construction, period/unit resolution, equations and
