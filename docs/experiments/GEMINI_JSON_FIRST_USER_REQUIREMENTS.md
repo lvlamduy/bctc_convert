@@ -54,6 +54,22 @@ Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
 lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
 ledger hiện hành.
 
+#### Tiến độ paid frontier — 17:16 UTC ngày 2026-09-02
+
+- **Phạm vi dùng để tính:** 279 PDF / 15.335 trang tiếng Việt của 19 ngân hàng
+  mới, chỉ gồm **212 PDF kỳ 2025 và 67 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
+- **Đã bắt đầu xử lý:** 130/279 PDF (**46,6%**), tương ứng 6.744/15.335 trang
+  thuộc các PDF đã vào luồng (**44,0%**).
+- **Đã có Gemini JSON hợp lệ trong store:** 6.285/15.335 trang (**40,98%**),
+  thuộc 129 PDF.
+- **Đã hoàn tất trọn PDF:** 37/279 PDF (**13,3%**). Phần còn lại gồm 33 PDF chỉ
+  cần retry một số trang, 60 PDF đã hết lượt thường và đang chờ sửa đúng trang,
+  cùng 149 PDF chưa bắt đầu.
+- Các con số tiến độ trước đó dùng mẫu số **279 PDF / 15.335 trang** cũng không
+  bao gồm PDF năm 2024. Ngày `31/12/2024` xuất hiện trong JSON chỉ là kỳ so sánh
+  của báo cáo 2025/2026, không phải một PDF năm 2024 và không được tính vào
+  paid frontier.
+
 ### Cổng chỉ gửi phần tiếng Việt của PDF
 
 Xác nhận của người dùng ngày 2026-09-02: OCB có những PDF ghép bản tiếng Việt
