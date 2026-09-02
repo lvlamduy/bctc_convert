@@ -412,6 +412,158 @@ def requeue_failed_openrouter_corpus_task_v1(
     return dict(updated)
 
 
+def _checked_failed_page_frontier_v1(
+    receipt: Any,
+    *,
+    row: sqlite3.Row,
+    context: str,
+) -> dict[str, Any]:
+    if type(receipt) is not dict:
+        raise _error(f"{context} receipt is invalid")
+    failed = receipt.get("failed_pages")
+    semantic = receipt.get("semantic_failed_pages", [])
+    unresolved = receipt.get("unresolved_pages", [])
+    recitation = receipt.get("recitation_failed_pages", [])
+    if (
+        type(failed) is not list
+        or not failed
+        or failed != sorted(set(failed))
+        or type(semantic) is not list
+        or semantic != sorted(set(semantic))
+        or type(unresolved) is not list
+        or unresolved != sorted(set(unresolved))
+        or type(recitation) is not list
+        or recitation != sorted(set(recitation))
+        or not (set(semantic) | set(unresolved) | set(recitation)).issubset(failed)
+        or set(recitation) & (set(semantic) | set(unresolved))
+        or any(
+            type(page) is not int
+            or page < row["first_physical_page"]
+            or page > row["last_physical_page"]
+            for page in failed
+        )
+    ):
+        raise _error(f"{context} failed-page frontier is invalid")
+    return canonical_clone_v1(receipt)
+
+
+def _openrouter_failed_task_repair_frontier_v1(
+    connection: sqlite3.Connection,
+    *,
+    row: sqlite3.Row,
+) -> dict[str, Any]:
+    """Resolve an exhausted task's frontier from its authenticated event chain."""
+
+    identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
+    if (
+        row["state"] != "FAILED"
+        or row["route"] != OPENROUTER_ROUTE
+        or type(row["last_receipt_json"]) is not bytes
+    ):
+        raise _error("OpenRouter repair frontier requires one failed task")
+    try:
+        current = json.loads(row["last_receipt_json"])
+    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise _error("OpenRouter repair frontier receipt is invalid") from exc
+    if type(current) is dict and "failed_pages" in current:
+        return _checked_failed_page_frontier_v1(
+            current,
+            row=row,
+            context="OpenRouter repair",
+        )
+    if row["attempt_count"] != identity["max_task_attempts"]:
+        raise _error("OpenRouter subprocess repair frontier requires one exhausted task")
+
+    failure_fields = {
+        "disposition",
+        "provider_returncode",
+        "provider_stderr_bytes",
+        "provider_stderr_sha256",
+        "provider_stdout_bytes",
+        "provider_stdout_sha256",
+        "retry_allowed",
+    }
+    if (
+        type(current) is not dict
+        or set(current) != failure_fields
+        or current["disposition"] != "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
+        or type(current["provider_returncode"]) is not int
+        or current["provider_returncode"] != 1
+        or type(current["provider_stderr_bytes"]) is not int
+        or current["provider_stderr_bytes"] <= 0
+        or type(current["provider_stdout_bytes"]) is not int
+        or current["provider_stdout_bytes"] != 0
+        or current["provider_stdout_sha256"] != sha256(b"").hexdigest()
+        or current["retry_allowed"] is not False
+        or any(
+            type(current[field]) is not str
+            or len(current[field]) != 64
+            or any(character not in "0123456789abcdef" for character in current[field])
+            for field in ("provider_stderr_sha256", "provider_stdout_sha256")
+        )
+    ):
+        raise _error("OpenRouter repair subprocess failure is invalid")
+
+    events = list(
+        connection.execute(
+            "SELECT * FROM task_event WHERE task_id=? ORDER BY event_ordinal DESC LIMIT 4",
+            (row["task_id"],),
+        )
+    )
+    if (
+        len(events) != 4
+        or (events[0]["prior_state"], events[0]["next_state"]) != ("RUNNING", "FAILED")
+        or (events[1]["prior_state"], events[1]["next_state"]) != ("NEEDS_RETRY", "RUNNING")
+        or (events[2]["prior_state"], events[2]["next_state"]) != ("FAILED", "NEEDS_RETRY")
+        or (events[3]["prior_state"], events[3]["next_state"]) != ("RUNNING", "FAILED")
+        or events[0]["receipt_json"] != row["last_receipt_json"]
+    ):
+        raise _error("OpenRouter repair subprocess event chain is invalid")
+    try:
+        start = json.loads(events[1]["receipt_json"])
+        requeue = json.loads(events[2]["receipt_json"])
+    except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise _error("OpenRouter repair event receipt is invalid") from exc
+    if start != {"document_run_started": True}:
+        raise _error("OpenRouter repair retry-start receipt is invalid")
+    retry_fields = {
+        "failed_pages",
+        "format_version",
+        "prior_failed_receipt_sha256",
+        "recitation_failed_pages",
+        "requeue_authorized",
+        "semantic_failed_pages",
+        "unresolved_pages",
+    }
+    if (
+        type(requeue) is not dict
+        or set(requeue) != retry_fields
+        or requeue["format_version"] != "GEMINI_JSON_FIRST_OPENROUTER_FAILED_REQUEUE_V1"
+        or requeue["requeue_authorized"] is not True
+        or requeue["prior_failed_receipt_sha256"] != sha256(events[3]["receipt_json"]).hexdigest()
+    ):
+        raise _error("OpenRouter repair requeue authority is invalid")
+    return _checked_failed_page_frontier_v1(
+        requeue,
+        row=row,
+        context="OpenRouter repair requeue",
+    )
+
+
+def openrouter_failed_task_repair_frontier_v1(
+    path: Path,
+    *,
+    task_id: str,
+) -> dict[str, Any]:
+    """Return the exact terminal-repair frontier without mutating the ledger."""
+
+    with _connect(path, readonly=True) as connection:
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if row is None:
+            raise _error("OpenRouter repair task is absent")
+        return _openrouter_failed_task_repair_frontier_v1(connection, row=row)
+
+
 def recover_failed_openrouter_artifact_collision_v1(
     path: Path,
     *,
@@ -1018,17 +1170,10 @@ def seal_openrouter_exhausted_page_repair_corpus_task_v1(
         if row is None or row["state"] != "FAILED" or row["route"] != OPENROUTER_ROUTE:
             raise _error("OpenRouter exhausted-page repair requires one failed Flex task")
         expected_pages = list(range(row["first_physical_page"], row["last_physical_page"] + 1))
-        try:
-            prior_receipt = json.loads(row["last_receipt_json"])
-        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise _error("OpenRouter exhausted-page prior failed receipt is invalid") from exc
-        prior_failed_pages = (
-            prior_receipt.get("failed_pages") if type(prior_receipt) is dict else None
-        )
+        repair_frontier = _openrouter_failed_task_repair_frontier_v1(connection, row=row)
+        prior_failed_pages = repair_frontier["failed_pages"]
         if (
             revalidated_pages != expected_pages
-            or type(prior_failed_pages) is not list
-            or prior_failed_pages != sorted(set(prior_failed_pages))
             or attempted_pages != set(prior_failed_pages)
             or completed_pages != set(prior_failed_pages)
             or not attempted_pages.issubset(expected_pages)

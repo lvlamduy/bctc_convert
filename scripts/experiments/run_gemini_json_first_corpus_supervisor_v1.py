@@ -33,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    openrouter_failed_task_repair_frontier_v1,
     recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
@@ -4315,12 +4316,10 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "OpenRouter exhausted-page repair attempt order drifted"
             )
-        try:
-            frontier_receipt = json.loads(task["last_receipt_json"])
-        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                "failed OpenRouter task receipt is invalid"
-            ) from exc
+        frontier_receipt = _terminal_repair_frontier_receipt_v1(
+            task=task,
+            ledger=args.ledger,
+        )
     else:
         prior_path = receipts_root / "attempt-01.json"
         frontier_receipt = _canonical_repair_receipt_v1(prior_path)
@@ -4660,8 +4659,35 @@ def _exhausted_page_repair_receipt_has_circuit_v1(
     )
 
 
+def _terminal_repair_frontier_receipt_v1(
+    *,
+    task: dict[str, Any],
+    ledger: Path,
+) -> dict[str, Any]:
+    """Read a direct frontier, or recover it from the ledger event chain."""
+
+    raw = task.get("last_receipt_json")
+    try:
+        receipt = json.loads(raw) if type(raw) is bytes else None
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task receipt is invalid"
+        ) from exc
+    if type(receipt) is dict and "failed_pages" in receipt:
+        return receipt
+    try:
+        return openrouter_failed_task_repair_frontier_v1(
+            ledger,
+            task_id=task["task_id"],
+        )
+    except GeminiJsonFirstCorpusLedgerV1Error as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task has no authenticated repair frontier"
+        ) from exc
+
+
 def _exhausted_page_repair_remaining_page_count_v1(
-    *, task: dict[str, Any], artifact_root: Path, repair_attempt: int
+    *, task: dict[str, Any], ledger: Path, artifact_root: Path, repair_attempt: int
 ) -> int:
     """Count only the exact pages still named by the next immutable receipt."""
 
@@ -4674,13 +4700,10 @@ def _exhausted_page_repair_remaining_page_count_v1(
         if current.get("disposition") == "SUCCEEDED":
             return 0
     if repair_attempt == 1:
-        raw = task.get("last_receipt_json")
-        try:
-            frontier_receipt = json.loads(raw) if type(raw) is bytes else None
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
-                "failed OpenRouter task receipt is invalid"
-            ) from exc
+        frontier_receipt = _terminal_repair_frontier_receipt_v1(
+            task=task,
+            ledger=ledger,
+        )
     else:
         frontier_receipt = _canonical_repair_receipt_v1(receipts_root / "attempt-01.json")
     frontiers = _retry_prompt_frontiers_from_receipt_v1(
@@ -4739,6 +4762,7 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
                     (
                         _exhausted_page_repair_remaining_page_count_v1(
                             task=task,
+                            ledger=args.ledger,
                             artifact_root=args.artifact_root,
                             repair_attempt=attempt,
                         ),

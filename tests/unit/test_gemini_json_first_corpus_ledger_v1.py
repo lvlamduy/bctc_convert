@@ -12,6 +12,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    openrouter_failed_task_repair_frontier_v1,
     recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
@@ -466,6 +467,165 @@ def test_exhausted_local_retry_contract_collision_recovers_same_attempt(tmp_path
             ledger,
             task_id=task["task_id"],
             artifact_root=artifact_root,
+        )
+
+
+def test_subprocess_failure_retains_exact_terminal_repair_frontier(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/EIB/2025/report.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(
+        ledger,
+        plan=plan,
+        max_task_attempts=3,
+    )
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="NEEDS_RETRY",
+        receipt={"failed_pages": [1, 3], "semantic_failed_pages": []},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 3],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [3],
+            "unresolved_pages": [],
+        },
+    )
+    requeue_failed_openrouter_corpus_task_v1(ledger, task_id=task["task_id"])
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": len(b"local failure"),
+            "provider_stderr_sha256": sha256(b"local failure").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    frontier = openrouter_failed_task_repair_frontier_v1(
+        ledger,
+        task_id=task["task_id"],
+    )
+    assert frontier["failed_pages"] == [1, 3]
+    assert frontier["semantic_failed_pages"] == [3]
+
+    result = {
+        "cached_pages": [],
+        "disposition": "SUCCEEDED",
+        "failed_pages": [],
+        "ingested_pages": [1, 3],
+        "offline_missing_pages": [],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    repaired = seal_openrouter_exhausted_page_repair_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        receipt={
+            "disposition": "SUCCEEDED",
+            "document_manifest_id": "gfdmv1:manifest:" + "4" * 64,
+            "failed_pages": [],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "offline_replay_results": [],
+            "offline_missing_pages": [],
+            "prior_failed_receipt_sha256": sha256(failed["last_receipt_json"]).hexdigest(),
+            "provider_results": [
+                {
+                    "accepted_pages": [1, 3],
+                    "physical_pages": [1, 3],
+                    "prompt_variant": "simple",
+                    "repair_attempt": 1,
+                    "result": result,
+                }
+            ],
+            "recitation_failed_pages": [],
+            "repair_attempt": 1,
+            "repair_gateway": "OPENROUTER",
+            "requested_service_tier": "flex",
+            "revalidated_pages": [1, 2, 3],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    assert repaired["state"] == "SUCCEEDED"
+
+    other_ledger = tmp_path / "other.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(
+        other_ledger,
+        plan=plan,
+        max_task_attempts=1,
+    )
+    other = list_corpus_tasks_v1(other_ledger)[0]
+    transition_corpus_task_v1(
+        other_ledger,
+        task_id=other["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        other_ledger,
+        task_id=other["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": 1,
+            "provider_stderr_sha256": sha256(b"x").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="event chain"):
+        openrouter_failed_task_repair_frontier_v1(
+            other_ledger,
+            task_id=other["task_id"],
         )
 
 

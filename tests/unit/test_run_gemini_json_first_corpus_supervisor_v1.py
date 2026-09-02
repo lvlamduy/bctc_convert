@@ -1521,6 +1521,65 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
     assert [item["accepted_pages"] for item in receipt["offline_replay_results"]] == [[3]]
 
 
+def test_exhausted_page_repair_recovers_frontier_after_local_subprocess_failure(
+    monkeypatch, tmp_path
+) -> None:
+    task = {
+        "artifact_relative_path": "tasks/task-1",
+        "attempt_count": 3,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+                "provider_returncode": 1,
+                "provider_stderr_bytes": 1,
+                "provider_stderr_sha256": "a" * 64,
+                "provider_stdout_bytes": 0,
+                "provider_stdout_sha256": hashlib.sha256(b"").hexdigest(),
+                "retry_allowed": False,
+            }
+        ),
+        "relative_path": "EIB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": "b" * 64,
+        "source_size_bytes": 3,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    frontier = {
+        "failed_pages": [1, 3],
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_FAILED_REQUEUE_V1",
+        "prior_failed_receipt_sha256": "c" * 64,
+        "recitation_failed_pages": [],
+        "requeue_authorized": True,
+        "semantic_failed_pages": [3],
+        "unresolved_pages": [],
+    }
+    monkeypatch.setattr(
+        target,
+        "openrouter_failed_task_repair_frontier_v1",
+        lambda _ledger, *, task_id: frontier if task_id == "task-1" else None,
+    )
+    assert (
+        target._terminal_repair_frontier_receipt_v1(
+            task=task,
+            ledger=tmp_path / "ledger.sqlite3",
+        )
+        == frontier
+    )
+    assert (
+        target._exhausted_page_repair_remaining_page_count_v1(
+            task=task,
+            ledger=tmp_path / "ledger.sqlite3",
+            artifact_root=tmp_path / "artifacts",
+            repair_attempt=1,
+        )
+        == 2
+    )
+
+
 def test_exhausted_page_repair_defers_later_prompt_frontiers_after_circuit(
     monkeypatch, tmp_path
 ) -> None:
