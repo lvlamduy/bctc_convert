@@ -599,6 +599,108 @@ def test_hierarchy_path_is_a_soft_model_proposal() -> None:
     assert validate_financial_page_json_v1(page) == page
 
 
+def test_empty_internal_hierarchy_level_binds_to_exact_active_group() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["rows"] = [
+        {
+            "label_exact": "Được phân loại là các khoản cho vay và phải thu",
+            "hierarchy_path_exact": ["Được phân loại là các khoản cho vay và phải thu"],
+            "row_kind": "GROUP",
+            "values_exact": [None, None],
+        },
+        {
+            "label_exact": "- Tiền mặt",
+            "hierarchy_path_exact": [
+                "Được phân loại là các khoản cho vay và phải thu带有",
+                None,
+                "- Tiền mặt",
+            ],
+            "row_kind": "ITEM",
+            "values_exact": ["487.573", "315.917"],
+        },
+    ]
+
+    checked = validate_financial_page_json_v1(page)
+    assert checked["sections"][0]["tables"][0]["rows"][1]["hierarchy_path_exact"] == [
+        "Được phân loại là các khoản cho vay và phải thu",
+        "- Tiền mặt",
+    ]
+
+
+def test_anonymous_leading_label_proxy_is_removed_before_value_kind_checks() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thuyết minh"], "value_kind": "TEXT"},
+        {"header_path_exact": ["30/6/2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31/12/2024"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Tiền gửi của khách hàng",
+            "hierarchy_path_exact": ["Tiền gửi của khách hàng"],
+            "row_kind": "ITEM",
+            "values_exact": ["17", "123.086.588", "90.729.587"],
+        }
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked_table["columns"] == table["columns"][1:]
+    assert checked_table["rows"][0]["values_exact"] == [
+        "17",
+        "123.086.588",
+        "90.729.587",
+    ]
+
+
+def test_merged_row_group_proxy_is_removed_after_exact_dash_pack_expansion() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Trái phiếu chuyển đổi"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Cuối kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Đầu kỳ"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "- Tổng giá trị",
+            "hierarchy_path_exact": ["Trái phiếu chuyển đổi\n- Tổng giá trị"],
+            "row_kind": "TOTAL",
+            "values_exact": ["-\n-"],
+        }
+    ]
+
+    checked_table = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked_table["columns"]] == [
+        ["Cuối kỳ"],
+        ["Đầu kỳ"],
+    ]
+    assert checked_table["rows"][0]["values_exact"] == ["-", "-"]
+
+
+def test_nonstructural_text_column_cannot_be_removed_as_a_label_proxy() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["Đối tác"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Cuối kỳ"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Đầu kỳ"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "- Tổng giá trị",
+            "hierarchy_path_exact": ["Trái phiếu chuyển đổi", "- Tổng giá trị"],
+            "row_kind": "TOTAL",
+            "values_exact": ["-\n-"],
+        }
+    ]
+
+    with pytest.raises(GeminiFinancialPageJsonV1Error, match="do not align"):
+        validate_financial_page_json_v1(page)
+
+
 def test_exact_model_cell_pack_expands_only_when_declared_width_closes() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]
