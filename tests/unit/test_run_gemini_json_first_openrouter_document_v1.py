@@ -621,6 +621,40 @@ def test_prior_semantic_response_replays_without_another_paid_provider_call(tmp_
     offline_contract = json.loads((offline_artifacts / "document-contract.json").read_bytes())
     assert offline_contract["execution_mode"] == "OFFLINE_REPLAY_ONLY"
 
+    recursive_source = tmp_path / "recursive-semantic-source"
+    recursive_source.mkdir()
+    source_contract_bytes = (artifacts / "document-contract.json").read_bytes()
+    (recursive_source / "document-contract.json").write_bytes(source_contract_bytes)
+    nested_artifact = recursive_source / "adaptive-retry" / "simple" / "pages-test"
+    nested_attempt = nested_artifact / "page-00001" / "attempt-0001"
+    nested_attempt.mkdir(parents=True)
+    (nested_artifact / "document-contract.json").write_bytes(source_contract_bytes)
+    (nested_attempt / "raw-response.json").write_bytes(raw)
+    (nested_attempt / "semantic-validation-failure.json").write_bytes(
+        (attempt / "semantic-validation-failure.json").read_bytes()
+    )
+    recursive_result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=tmp_path / "recursive-store.sqlite3",
+        artifact_dir=tmp_path / "recursive-output",
+        api_key="",
+        workers=1,
+        physical_pages=[1],
+        offline_replay_only=True,
+        semantic_replay_source_dir=recursive_source,
+        provider_call=provider,
+    )
+    assert recursive_result["disposition"] == "SUCCEEDED"
+    assert recursive_result["provider_request_pages"] == []
+    assert recursive_result["semantic_replay_sources"] == [
+        {
+            "physical_page": 1,
+            "source_relative_path": (
+                "adaptive-retry/simple/pages-test/page-00001/attempt-0001/raw-response.json"
+            ),
+        }
+    ]
+
     drifted_source = tmp_path / "drifted-semantic-source"
     drifted_source.mkdir()
     source_contract = json.loads((artifacts / "document-contract.json").read_bytes())
