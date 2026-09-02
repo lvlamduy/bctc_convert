@@ -423,6 +423,9 @@ def test_cli_pacing_defaults_only_inside_single_worker_circuit_mode() -> None:
     assert target._effective_provider_request_delay_seconds_v1(None, stop_on_transient=True) == 60.0
     assert target._effective_provider_request_delay_seconds_v1(None, stop_on_transient=False) == 0.0
     assert target._effective_provider_request_delay_seconds_v1(17.5, stop_on_transient=True) == 17.5
+    assert target._effective_provider_attempts_v1(None, stop_on_transient=True) == 1
+    assert target._effective_provider_attempts_v1(None, stop_on_transient=False) == 2
+    assert target._effective_provider_attempts_v1(3, stop_on_transient=True) == 3
 
 
 def test_unresolved_page_is_cached_but_never_seals_a_document_manifest(tmp_path) -> None:

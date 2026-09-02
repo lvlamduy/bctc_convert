@@ -144,6 +144,12 @@ def _effective_provider_request_delay_seconds_v1(
     return configured
 
 
+def _effective_provider_attempts_v1(configured: int | None, *, stop_on_transient: bool) -> int:
+    if configured is None:
+        return 1 if stop_on_transient else 2
+    return configured
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
@@ -189,7 +195,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Use direct Google standard only after Flex fails, or for every cache miss.",
     )
     parser.add_argument("--timeout-seconds", type=int, default=900)
-    parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--retries", type=int)
     parser.add_argument("--retry-delay-seconds", type=float, default=5.0)
     parser.add_argument(
         "--stop-provider-frontier-on-transient-error",
@@ -1086,7 +1092,10 @@ def main() -> int:
         prompt_variant=args.prompt_variant,
         output_contract_mode=args.output_contract_mode.replace("-", "_").upper(),
         timeout_seconds=args.timeout_seconds,
-        retries=args.retries,
+        retries=_effective_provider_attempts_v1(
+            args.retries,
+            stop_on_transient=args.stop_provider_frontier_on_transient_error,
+        ),
         retry_delay_seconds=args.retry_delay_seconds,
         physical_pages=args.physical_page,
         offline_replay_only=args.offline_replay_only,
