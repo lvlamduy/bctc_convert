@@ -155,6 +155,69 @@ def test_single_openrouter_task_runner_is_resumable_and_forces_no_google(
     assert calls[0]["task"]["task_id"] == task_id
 
 
+def test_openrouter_subprocess_failure_is_typed_and_never_strands_running(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "vietstock_bctc/ABB/2025/report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/report.pdf",
+                "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+                "source_size_bytes": 3,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    target.initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=3)
+
+    def command(_argv, *, expected):
+        assert expected == {0, 2}
+        raise target._ProviderSubprocessError(
+            returncode=-9,
+            stdout="partial stdout",
+            stderr="child traceback",
+        )
+
+    monkeypatch.setattr(target, "_command", command)
+    task = target.list_corpus_tasks_v1(ledger)[0]
+    states = []
+    for _attempt in range(3):
+        result = target._run_openrouter(
+            task=task,
+            plan=plan,
+            ledger=ledger,
+            source_root=source_root,
+            database=tmp_path / "store.sqlite3",
+            artifact_root=tmp_path / "artifacts",
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=2,
+            google_key_file=tmp_path / "unused-google-key",
+            google_key_slot=1,
+            provider_timeout_seconds=60,
+            max_attempts=3,
+            openrouter_only=True,
+        )
+        states.append(result["state"])
+        receipt = json.loads(result["last_receipt_json"])
+        assert receipt["disposition"] == "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
+        assert receipt["provider_returncode"] == -9
+        assert receipt["provider_stdout_bytes"] == len(b"partial stdout")
+        assert receipt["provider_stderr_bytes"] == len(b"child traceback")
+        assert len(receipt["provider_stdout_sha256"]) == 64
+        assert len(receipt["provider_stderr_sha256"]) == 64
+        task = result
+
+    assert states == ["NEEDS_RETRY", "NEEDS_RETRY", "FAILED"]
+    assert receipt["retry_allowed"] is False
+    assert target.list_corpus_tasks_v1(ledger)[0]["attempt_count"] == 3
+
+
 def test_source_binding_and_subprocess_json_receipt_are_fail_closed(tmp_path) -> None:
     root = tmp_path / "root"
     source = root / "MBB" / "a.pdf"

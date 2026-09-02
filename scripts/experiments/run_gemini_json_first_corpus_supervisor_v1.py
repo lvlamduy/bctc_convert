@@ -330,7 +330,53 @@ def _command(command: list[str], *, expected: set[int]) -> tuple[int, dict[str, 
             stdout=completed.stdout,
             stderr=completed.stderr,
         )
-    return completed.returncode, _last_json(completed.stdout)
+    try:
+        receipt = _last_json(completed.stdout)
+    except RunGeminiJsonFirstCorpusSupervisorV1Error as exc:
+        raise _ProviderSubprocessError(
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr + f"\n{type(exc).__name__}: {exc}\n",
+        ) from exc
+    return completed.returncode, receipt
+
+
+def _record_openrouter_subprocess_failure_v1(
+    *,
+    error: _ProviderSubprocessError,
+    task: dict[str, Any],
+    ledger: Path,
+    max_attempts: int,
+) -> dict[str, Any]:
+    """Make an unexpected child exit resumable instead of stranding RUNNING."""
+
+    if task.get("state") != "RUNNING":
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter subprocess failure is not bound to one running task"
+        )
+    attempt_count = task.get("attempt_count")
+    if type(attempt_count) is not int or not 1 <= attempt_count <= max_attempts:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter subprocess failure attempt count is invalid"
+        )
+    next_state = "FAILED" if attempt_count >= max_attempts else "NEEDS_RETRY"
+    stdout = error.stdout.encode("utf-8", errors="surrogatepass")
+    stderr = error.stderr.encode("utf-8", errors="surrogatepass")
+    return transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state=next_state,
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": error.returncode,
+            "provider_stderr_bytes": len(stderr),
+            "provider_stderr_sha256": sha256(stderr).hexdigest(),
+            "provider_stdout_bytes": len(stdout),
+            "provider_stdout_sha256": sha256(stdout).hexdigest(),
+            "retry_allowed": next_state == "NEEDS_RETRY",
+        },
+    )
 
 
 def _retryable_google_upload_start_failure_v1(error: _ProviderSubprocessError) -> bool:
@@ -885,6 +931,36 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter retry receipt is invalid"
         ) from exc
+    subprocess_fields = {
+        "disposition",
+        "provider_returncode",
+        "provider_stderr_bytes",
+        "provider_stderr_sha256",
+        "provider_stdout_bytes",
+        "provider_stdout_sha256",
+        "retry_allowed",
+    }
+    if type(prior) is dict and set(prior) == subprocess_fields:
+        digests = (prior["provider_stderr_sha256"], prior["provider_stdout_sha256"])
+        if (
+            prior["disposition"] == "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
+            and type(prior["provider_returncode"]) is int
+            and type(prior["provider_stderr_bytes"]) is int
+            and prior["provider_stderr_bytes"] >= 0
+            and type(prior["provider_stdout_bytes"]) is int
+            and prior["provider_stdout_bytes"] >= 0
+            and all(
+                type(digest) is str
+                and len(digest) == 64
+                and all(character in "0123456789abcdef" for character in digest)
+                for digest in digests
+            )
+            and prior["retry_allowed"] is True
+        ):
+            # The child did not return a page frontier. Re-enter the whole
+            # document command; its image/prompt cache ensures only missing
+            # pages reach the provider.
+            return None
     return _retry_prompt_frontiers_from_receipt_v1(
         prior,
         first_physical_page=task["first_physical_page"],
@@ -2894,10 +2970,18 @@ def _run_openrouter(
         return _command(command, expected={0, 2})
 
     if retry_frontiers is None:
-        return_code, receipt = run_frontier(
-            pages=language_prefix_pages,
-            prompt_variant=default_prompt_variant,
-        )
+        try:
+            return_code, receipt = run_frontier(
+                pages=language_prefix_pages,
+                prompt_variant=default_prompt_variant,
+            )
+        except _ProviderSubprocessError as error:
+            return _record_openrouter_subprocess_failure_v1(
+                error=error,
+                task=task,
+                ledger=ledger,
+                max_attempts=max_attempts,
+            )
         semantic_failed_pages = receipt.get("semantic_failed_pages")
         recitation_failed_pages = receipt.get("recitation_failed_pages", [])
         if type(semantic_failed_pages) is not list or type(recitation_failed_pages) is not list:
@@ -2935,11 +3019,19 @@ def _run_openrouter(
         for prompt_variant, pages in prompt_frontiers:
             if not pages:
                 continue
-            code, result = run_frontier(
-                pages=pages,
-                prompt_variant=prompt_variant,
-                retry_artifact=True,
-            )
+            try:
+                code, result = run_frontier(
+                    pages=pages,
+                    prompt_variant=prompt_variant,
+                    retry_artifact=True,
+                )
+            except _ProviderSubprocessError as error:
+                return _record_openrouter_subprocess_failure_v1(
+                    error=error,
+                    task=task,
+                    ledger=ledger,
+                    max_attempts=max_attempts,
+                )
             result_images = _summary_page_image_sha256s_v1(
                 result.get("page_image_sha256s"),
                 allowed_pages=pages,

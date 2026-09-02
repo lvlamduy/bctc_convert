@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import threading
 from hashlib import sha256
 from pathlib import Path
 
 import fitz
+import pytest
 
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     GeminiJsonFirstProviderV1Error,
@@ -124,6 +126,40 @@ def _unresolved_result() -> ProviderResultV1:
         usage=original.usage,
         response_id_sha256="3" * 64,
     )
+
+
+def test_write_new_publishes_only_after_the_staged_payload_is_durable(
+    monkeypatch, tmp_path
+) -> None:
+    destination = tmp_path / "receipt.json"
+    payload = b'{"ok":true}\n'
+    original_link = os.link
+    observed = []
+
+    def link(source, target_path):
+        source_path = Path(source)
+        observed.append((source_path, Path(target_path), source_path.read_bytes()))
+        assert source_path != destination
+        assert not destination.exists()
+        return original_link(source, target_path)
+
+    monkeypatch.setattr(target.os, "link", link)
+    target._write_new(destination, payload)
+
+    assert destination.read_bytes() == payload
+    assert observed[0][1:] == (destination, payload)
+    assert list(tmp_path.glob(".receipt.json.stage-*")) == []
+
+
+def test_write_new_does_not_replace_an_existing_immutable_artifact(tmp_path) -> None:
+    destination = tmp_path / "receipt.json"
+    destination.write_bytes(b"existing")
+
+    with pytest.raises(FileExistsError):
+        target._write_new(destination, b"replacement")
+
+    assert destination.read_bytes() == b"existing"
+    assert list(tmp_path.glob(".receipt.json.stage-*")) == []
 
 
 def test_parallel_document_run_persists_in_parent_and_resumes_from_cache(tmp_path) -> None:
