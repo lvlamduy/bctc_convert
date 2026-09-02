@@ -49,6 +49,11 @@ older queue priorities where they conflict.
   có trang nằm ngoài frontier đã đăng ký. Sau cooldown, scheduler ưu tiên
   `NEEDS_RETRY` có semantic frontier trước; task kế tiếp là MSB công ty mẹ Quý
   1/2025, đúng các trang 8, 9 và 14.
+- Đối chiếu độc lập 37 PDF `SUCCEEDED` với page store xác nhận đủ đúng
+  **1.933/1.933 trang**, không thiếu và không thừa trang. SQLite
+  `integrity_check` đạt, foreign-key check rỗng, không có orphan và không có
+  page nào mang nhiều hơn một JSON version. Vì vậy số 37 PDF hoàn tất là dữ
+  liệu thực trong store, không chỉ là trạng thái trên ledger.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng

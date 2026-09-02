@@ -84,3 +84,7 @@ PDF nào trong nhóm này đã đủ toàn bộ trang mà còn bị giữ sai tr
 Nhóm `PENDING` gồm đúng 147 PDF / 8.504 trang: 110 PDF năm 2025 và 37 PDF năm
 2026. Nhóm này có 0 PDF năm 2024, không giao với tám ngân hàng cũ và không chứa
 trang ngoài frontier tiếng Việt đã đăng ký.
+
+Đối chiếu 37 PDF `SUCCEEDED` với store xác nhận đủ đúng 1.933/1.933 trang,
+không thiếu/thừa trang, không orphan và không có nhiều JSON version cho cùng
+một page. SQLite integrity và foreign-key check đều sạch.
