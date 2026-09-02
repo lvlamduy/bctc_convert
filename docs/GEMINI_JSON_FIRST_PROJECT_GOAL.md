@@ -26,29 +26,22 @@ statement trên.
 
 ## Phạm vi corpus đang thực hiện — checkpoint 2026-09-02
 
-- Khảo sát toàn bộ báo cáo của **27 mã ngân hàng đã đăng ký, từ năm 2024 đến
-  thời điểm hiện tại**: ABB, ACB, BAB, BID, BVB, CTG, EIB, HDB, KLB, LPB, MBB,
-  MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB, VCB, VIB
-  và VPB.
-- Corpus Gemini tám ngân hàng 2025-current đã hoàn tất và frontier mười chín
-  ngân hàng 2025-current đang chạy là hai nguồn được bảo vệ. Mọi PDF/page/image
-  đã có hoặc đang có task trong hai nguồn này phải tái sử dụng từ
+- Phạm vi thời gian chính thức là **từ Quý 1/2025 đến thời điểm hiện tại**.
+  Năm 2024 không thuộc hàng đợi Gemini của đợt này.
+- Ma trận theo dõi gồm đủ 27 ngân hàng. Tám ngân hàng ACB, BID, CTG, HDB, MBB,
+  VCB, VIB và VPB đã có Gemini JSON và chỉ được tái sử dụng từ
   manifest/store/cache; **không được gửi lại**.
-- Quyền mới của người dùng cho phép xử lý các báo cáo **năm 2024 còn thiếu**
-  của cả 27 ngân hàng, kể cả tám ngân hàng cũ. Quyền này chỉ áp dụng cho source
-  identity/page chưa có Gemini JSON, không mở lại các kỳ 2025–2026 đã xử lý.
-- Snapshot S3 bất biến có 408 PDF năm 2024; 149 file đã có đúng byte trên local
-  và 259 file còn thiếu được hydrate theo content hash. Sau content dedupe và
-  lọc đúng ứng viên BCTC tiếng Việt, source inventory có 308 PDF năm 2024 cần
-  lập plan. Số trang trả phí chỉ được công bố sau khi xác thực PDF và rà ranh
-  giới ngôn ngữ.
+- Paid provider frontier chỉ gồm 19 ngân hàng mới: ABB, BAB, BVB, EIB, KLB,
+  LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB.
+- Frontier đã xác thực gồm **279 PDF / 15.335 trang tiếng Việt**. Các trang
+  tiếng Anh ghép cuối PDF OCB và TCB đã bị loại trước provider request.
 - Request mới chỉ được dùng OpenRouter → `google/gemini-3.7-flash` →
-  `google-vertex/global/flex`, tier `flex`; direct Google và fallback bị cấm.
-  Resume/retry theo đúng page còn thiếu và receipt có kiểu; không gửi lại toàn
-  PDF chỉ vì một vài page lỗi.
-- Mọi PDF trên 100 trang và mọi PDF OCB phải được rà phần tiếng Việt trước khi
-  vào paid ledger. Plan 2024 chưa có bảng cutoff đầy đủ phải fail closed.
-- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
+  `google-vertex/global/flex`, tier `flex`; direct Google và mọi fallback bị
+  cấm. Resume/retry chỉ nhắm đúng page còn thiếu hoặc lỗi, không gửi lại toàn
+  PDF.
+- Mọi PDF trên 100 trang và mọi PDF OCB phải có ranh giới tiếng Việt được xác
+  nhận trước khi chạy. Chính sách Git, snapshot/restore S3 và backup Codex giữ
+  nguyên.
 
 ## 1. Mục tiêu duy nhất
 

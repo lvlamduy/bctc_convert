@@ -8,20 +8,16 @@
 > mapping at Family 1. Git/S3/Codex, fail-closed and generalization policies
 > remain in force.
 
-> **2026-09-02 corpus/no-resubmit authority, expanded by the user:** the active
-> source universe is now all 27 registered bank stock codes from **2024 through
-> the current reporting period**. The earlier 8-bank Gemini corpus and the
-> running 19-bank 2025-current frontier remain protected reuse-only inputs:
-> their exact PDF/page/image identities must never be submitted again. The new
-> user authority explicitly adds missing 2024 filings for all 27 banks,
-> including 2024 filings of ACB, BID, CTG, HDB, MBB, VCB, VIB and VPB; it does
-> not authorize a repeat of their existing 2025-current JSON. New paid requests
-> are content-level missing pages only, through OpenRouter →
+> **2026-09-02 corpus/no-resubmit authority, corrected by the user:** the active
+> source universe is all 27 registered bank stock codes from **Quý 1/2025
+> through the current reporting period**. Năm 2024 is outside this ingestion
+> run and must not enter its Gemini queue. The earlier 8-bank Gemini corpus and
+> the running 19-bank 2025-current frontier remain protected reuse-only inputs:
+> their exact PDF/page/image identities must never be submitted again. New paid
+> requests are content-level missing pages of the 19 new banks only, through OpenRouter →
 > `google/gemini-3.7-flash` → `google-vertex/global/flex`. Every run, resume
 > and repair must reject an overlap with either protected corpus before its
-> first provider request; bank code alone is no longer a sufficient
-> no-resubmit key because one bank may have protected 2025 pages and genuinely
-> new 2024 pages.
+> first provider request.
 
 > **2026-09-02 Vietnamese-only page authority:** before any paid request, every
 > PDF longer than 100 physical pages must pass a recorded language-boundary
@@ -32,16 +28,6 @@
 > source PDF look page-complete. The exact per-file cutoffs are maintained in
 > `docs/experiments/GEMINI_JSON_FIRST_USER_REQUIREMENTS.md`. A file without a
 > verified cutoff is blocked before the first provider request.
-
-> **2026-09-02 2024 restoration checkpoint:** the immutable S3 source snapshot
-> contains 408 registered 2024 PDFs across all 27 bank codes. Exactly 149 were
-> already present locally with matching bytes and 259 missing files are being
-> hydrated by content hash; no mismatched local file was found. The registered
-> source inventory yields 308 content-unique Vietnamese full-BCTC candidates
-> for 2024. This count is a source frontier, not permission to call the model:
-> the 2024 paid plan stays blocked until every PDF over 100 pages and every OCB
-> PDF has a recorded language cutoff and the plan proves zero overlap with all
-> existing/active Gemini page identities.
 
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
