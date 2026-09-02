@@ -217,11 +217,20 @@ def _write_or_verify(path: Path, payload: bytes) -> None:
     _write_new(path, payload)
 
 
-def _validate_external_semantic_replay_contract_v1(
-    source_dir: Path,
-    *,
-    expected_contract: dict[str, Any],
-) -> None:
+_SEMANTIC_REPLAY_CONTRACT_FIELDS = {
+    "document",
+    "dpi",
+    "output_contract_mode",
+    "prompt_sha256",
+    "prompt_variant",
+    "requested_model",
+    "requested_service_tier",
+    "response_schema_sha256",
+    "selected_provider",
+}
+
+
+def _canonical_semantic_replay_contract_v1(source_dir: Path) -> dict[str, Any]:
     contract_path = source_dir / "document-contract.json"
     if contract_path.is_symlink() or not contract_path.is_file():
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
@@ -238,18 +247,19 @@ def _validate_external_semantic_replay_contract_v1(
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "semantic replay source document contract is not canonical"
         )
-    exact_fields = {
-        "document",
-        "dpi",
-        "output_contract_mode",
-        "prompt_sha256",
-        "prompt_variant",
-        "requested_model",
-        "requested_service_tier",
-        "response_schema_sha256",
-        "selected_provider",
-    }
-    if any(contract.get(field) != expected_contract[field] for field in exact_fields):
+    return contract
+
+
+def _validate_external_semantic_replay_contract_v1(
+    source_dir: Path,
+    *,
+    expected_contract: dict[str, Any],
+) -> None:
+    contract = _canonical_semantic_replay_contract_v1(source_dir)
+    if any(
+        contract.get(field) != expected_contract[field]
+        for field in _SEMANTIC_REPLAY_CONTRACT_FIELDS
+    ):
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "semantic replay source document contract drifted"
         )
@@ -315,11 +325,13 @@ def _replay_prior_semantic_result_v1(
     artifact_dir: Path,
     physical_page: int,
     expected_page: dict[str, Any],
+    expected_contract: dict[str, Any],
 ) -> tuple[ProviderResultV1 | None, str | None, bool]:
     """Try every immutable semantic failure before authorizing another paid call."""
 
-    page_root = artifact_dir / f"page-{physical_page:05d}"
-    failures = sorted(page_root.glob("attempt-*/semantic-validation-failure.json"))
+    failures = sorted(
+        artifact_dir.rglob(f"page-{physical_page:05d}/attempt-*/semantic-validation-failure.json")
+    )
     if not failures:
         return None, None, False
     matching_failure = False
@@ -328,6 +340,13 @@ def _replay_prior_semantic_result_v1(
             raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
                 "semantic replay failure receipt is not one regular file"
             )
+        source_artifact_dir = failure_path.parents[2]
+        source_contract = _canonical_semantic_replay_contract_v1(source_artifact_dir)
+        if any(
+            source_contract.get(field) != expected_contract[field]
+            for field in _SEMANTIC_REPLAY_CONTRACT_FIELDS
+        ):
+            continue
         failure = json.loads(failure_path.read_bytes())
         prior_page = failure.get("page") if type(failure) is dict else None
         if type(prior_page) is not dict or any(
@@ -399,6 +418,7 @@ def _extract_page(
     provider_call: Callable[..., ProviderResultV1],
     artifact_dir: Path,
     semantic_replay_source_dir: Path | None,
+    semantic_replay_expected_contract: dict[str, Any],
     offline_replay_only: bool,
 ) -> _PageOutcome:
     rendered = _render_page(pdf, physical_page, dpi, source_sha256)
@@ -445,6 +465,7 @@ def _extract_page(
         artifact_dir=semantic_replay_source_dir or artifact_dir,
         physical_page=physical_page,
         expected_page=rendered.page,
+        expected_contract=semantic_replay_expected_contract,
     )
     if replayed is not None:
         return _PageOutcome(
@@ -813,6 +834,7 @@ def run_openrouter_document_v1(
                 provider_call=provider_call,
                 artifact_dir=artifact_dir,
                 semantic_replay_source_dir=semantic_replay_source_dir,
+                semantic_replay_expected_contract=contract,
                 offline_replay_only=offline_replay_only,
             ): physical_page
             for physical_page in selected_pages
