@@ -25,6 +25,12 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
 from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (  # noqa: E402
     OPENROUTER_ROUTE,
 )
+from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_2024_v1 import (  # noqa: E402
+    FORMAT_VERSION as EXPANSION_2024_FORMAT_VERSION,
+)
+from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_2024_v1 import (  # noqa: E402
+    validate_gemini_json_first_vertex_flex_expansion_2024_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (  # noqa: E402
     validate_gemini_json_first_vertex_flex_expansion_v1,
 )
@@ -41,12 +47,39 @@ class RunGeminiJsonFirst27BankVertexFlexV1Error(RuntimeError):
     pass
 
 
-def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
+def _load_bundle_and_plan(
+    bundle_path: Path,
+    plan_path: Path,
+    *,
+    universe_path: Path | None = None,
+    protected_expansion_path: Path | None = None,
+) -> dict[str, Any]:
     if any(path.is_symlink() or not path.is_file() for path in (bundle_path, plan_path)):
         raise RunGeminiJsonFirst27BankVertexFlexV1Error("bundle and plan must be regular files")
-    bundle = validate_gemini_json_first_vertex_flex_expansion_v1(
-        json.loads(bundle_path.read_bytes())
-    )
+    raw_bundle = json.loads(bundle_path.read_bytes())
+    if raw_bundle.get("format_version") == EXPANSION_2024_FORMAT_VERSION:
+        if (
+            universe_path is None
+            or protected_expansion_path is None
+            or universe_path.is_symlink()
+            or protected_expansion_path.is_symlink()
+            or not universe_path.is_file()
+            or not protected_expansion_path.is_file()
+        ):
+            raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                "2024 bundle requires regular universe and protected expansion authorities"
+            )
+        bundle = validate_gemini_json_first_vertex_flex_expansion_2024_v1(
+            raw_bundle,
+            authenticated_universe=json.loads(universe_path.read_bytes()),
+            protected_2025_current_expansion=json.loads(protected_expansion_path.read_bytes()),
+        )
+    else:
+        if universe_path is not None or protected_expansion_path is not None:
+            raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                "2025-current bundle cannot use 2024 authority flags"
+            )
+        bundle = validate_gemini_json_first_vertex_flex_expansion_v1(raw_bundle)
     if plan_path.read_bytes() not in {
         canonical_json_bytes_v1(bundle["corpus_plan"]),
         canonical_json_bytes_v1(bundle["corpus_plan"]) + b"\n",
@@ -57,6 +90,55 @@ def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
     return bundle
 
 
+def _load_args_bundle(args: argparse.Namespace) -> dict[str, Any]:
+    universe_path = getattr(args, "universe", None)
+    protected_path = getattr(args, "protected_2025_current_expansion", None)
+    if universe_path is None and protected_path is None:
+        return _load_bundle_and_plan(args.bundle, args.plan)
+    return _load_bundle_and_plan(
+        args.bundle,
+        args.plan,
+        universe_path=universe_path,
+        protected_expansion_path=protected_path,
+    )
+
+
+def _require_protected_2025_current_completion(
+    args: argparse.Namespace, *, bundle: dict[str, Any]
+) -> None:
+    """Block every 2024 mutation until its protected paid predecessor is complete."""
+
+    if bundle.get("format_version") != EXPANSION_2024_FORMAT_VERSION:
+        return
+    ledger = getattr(args, "protected_2025_current_ledger", None)
+    if ledger is None or ledger.is_symlink() or not ledger.is_file():
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "2024 execution requires one regular protected 2025-current ledger"
+        )
+    summary = corpus_ledger_summary_v1(ledger)
+    binding = bundle["protected_2025_current_binding"]
+    paid_document_count = binding["paid_document_count"]
+    paid_page_count = binding["paid_page_count"]
+    succeeded = [
+        row
+        for row in summary["progress"]
+        if row["route"] == OPENROUTER_ROUTE and row["state"] == "SUCCEEDED"
+    ]
+    if (
+        summary["corpus_plan_id"] != binding["paid_corpus_plan_id"]
+        or summary["documents"] != paid_document_count
+        or summary["total_tasks"] != paid_document_count
+        or summary["total_pages"] != paid_page_count
+        or len(succeeded) != 1
+        or succeeded[0]["tasks"] != paid_document_count
+        or succeeded[0]["pages"] != paid_page_count
+        or any(row["state"] != "SUCCEEDED" for row in summary["progress"])
+    ):
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "protected 2025-current ledger is not completely successful"
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -65,6 +147,9 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--bundle", type=Path, required=True)
         command.add_argument("--plan", type=Path, required=True)
         command.add_argument("--ledger", type=Path, required=True)
+        command.add_argument("--universe", type=Path)
+        command.add_argument("--protected-2025-current-expansion", type=Path)
+        command.add_argument("--protected-2025-current-ledger", type=Path)
         if name == "init":
             command.add_argument(
                 "--prompt-variant",
@@ -91,7 +176,11 @@ def _parser() -> argparse.ArgumentParser:
 def _migrate_ledger(args: argparse.Namespace) -> dict[str, Any]:
     """Create a new-plan ledger while preserving only byte-identical task histories."""
 
-    bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    bundle = _load_args_bundle(args)
+    if bundle.get("format_version") == EXPANSION_2024_FORMAT_VERSION:
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "2024 frontier starts with a fresh ledger and cannot migrate a prior plan"
+        )
     excluded_scope_by_path = {
         item["relative_path"]: item
         for item in bundle["vietnamese_page_scope"]["documents"]
@@ -220,7 +309,9 @@ def _supervisor_command(args: argparse.Namespace) -> list[str]:
         raise RunGeminiJsonFirst27BankVertexFlexV1Error(
             "repair-one uses the bounded page repair path"
         )
-    _load_bundle_and_plan(args.bundle, args.plan)
+    bundle = _load_args_bundle(args)
+    if args.command != "status":
+        _require_protected_2025_current_completion(args, bundle=bundle)
     supervisor_command = "run-openrouter-task" if args.command == "run-one" else args.command
     command = [sys.executable, str(SUPERVISOR), supervisor_command]
     if args.command == "status":
@@ -349,7 +440,8 @@ def _json_subprocess(
 def _repair_one(args: argparse.Namespace, *, environment: dict[str, str]) -> dict[str, Any]:
     """Retry only the terminal missing pages, then seal the complete document."""
 
-    bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    bundle = _load_args_bundle(args)
+    _require_protected_2025_current_completion(args, bundle=bundle)
     if not 1 <= args.openrouter_workers <= 30:
         raise RunGeminiJsonFirst27BankVertexFlexV1Error("repair worker bound lies outside 1..30")
     summary = corpus_ledger_summary_v1(args.ledger)

@@ -1,99 +1,141 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-01 (UTC family-ledger checkpoint; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-09-02 (old-bank Gemini no-resubmit confirmation; older formal
+artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
+## Checkpoint mở rộng từ năm 2024 — 2026-09-02
+
+- Người dùng đã mở rộng mục tiêu thành toàn bộ 27 mã ngân hàng đã đăng ký, từ
+  **năm 2024 đến thời điểm hiện tại**. Corpus tám ngân hàng đã hoàn tất và
+  ledger mười chín ngân hàng 2025-current đang chạy vẫn là reuse-only theo
+  exact source/page/image identity; quyền mới không cho phép gửi trùng các kỳ
+  đã có JSON.
+- Snapshot S3 bất biến chứa **408 PDF năm 2024** trên đủ 27 mã. Kiểm tra local
+  ban đầu có 149 file khớp byte và thiếu 259 file; toàn bộ 259 object đã được
+  hydrate theo SHA. Hiện cả 408 file local khớp byte/kích thước với snapshot.
+- Inventory nguồn chọn **308 PDF BCTC tiếng Việt content-unique năm 2024**;
+  100 PDF còn lại giữ disposition nguồn rõ ràng, không tự động thành request.
+  Đã rà toàn bộ 7 PDF trên 100 trang và toàn bộ 12 PDF OCB (17 tài liệu khác
+  nhau sau khử trùng): loại 228 trang tiếng Anh, còn đúng **17.553 trang tiếng
+  Việt** trong plan 2024.
+- Mọi request 2024 sẽ chỉ dùng OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`, không direct Google và không fallback. Ledger
+  2024 chưa được khởi tạo/chạy. Cổng ngôn ngữ đã hoàn tất; runner vẫn chặn cho
+  đến khi ledger 2025-current hoàn tất và overlap gate chứng minh không giao
+  với corpus/ledger đã có.
+
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 
-- Phạm vi được người dùng chốt là **từ Quý 1/2025 đến hiện tại**, tổng cộng 27
-  ngân hàng. Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có
-  Gemini JSON nên chỉ tái sử dụng corpus hiện hành; không được gửi lại
-  Gemini/OpenRouter và không được tính lại vào chi phí paid frontier.
-- Đã khôi phục/đối chiếu đúng **588/588** đường dẫn PDF năm 2025–2026 từ S3:
-  296 file được khôi phục, 292 file đã có đúng nội dung nên được dùng lại.
-  Thao tác này chỉ kiểm tra nguồn PDF, chưa thực hiện request Gemini.
-- Inventory mới nhận diện 279 PDF của 19 ngân hàng mới, tổng **15.968 trang**
-  được phép vào paid frontier. Plan thực thi đã được kiểm tra độc lập: chỉ có
-  ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB,
-  TCB, TPB, VAB và VBB; **không có ngân hàng nào trong tám ngân hàng cũ**.
-- Route duy nhất được phép là OpenRouter → `google/gemini-3.7-flash` →
-  `google-vertex/global/flex`, service tier `flex`; direct Google và mọi
-  provider/model fallback đều bị khóa. Runner dừng trước request đầu tiên nếu
-  paid frontier chứa một ngân hàng cũ hoặc route/provider/tier bị thay đổi.
-- Kiểm tra lại trực tiếp ledger paid-run đang chạy cho thấy đúng **279/279
-  đường dẫn duy nhất** thuộc 19 mã `ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB,
-  NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB`; giao với tập tám mã
-  cũ `ACB, BID, CTG, HDB, MBB, VCB, VIB, VPB` bằng rỗng. Đây là chốt runtime:
-  tám ngân hàng cũ chỉ được đọc từ manifest JSON hiện hành, không được tạo task
-  paid mới dù PDF nguồn vẫn còn trên local/S3.
-- Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên. Paid run đã
-  bắt đầu sau khi cost/disk/S3 staging gate đạt yêu cầu; runner resume theo
-  từng page và không gửi lại page đã có extraction hợp lệ.
-- Initial pass dùng 20 page worker cho thấy 224 HTTP 429 trong 1.462 extraction
-  đầu tiên. Runner đã được dừng sạch tại ranh giới PDF EIB riêng lẻ Q4/2025:
-  task đó được ghi terminal receipt, ledger không còn task `RUNNING`, và không
-  request đang bay nào bị hủy. Cùng ledger/store/artifact frontier sau đó được
-  resume ở **8 worker**; các page đã cache không bị gửi lại. Cửa sổ đầu sau
-  restart tăng từ 1.470 lên 1.486 extraction trong khoảng 90 giây và chỉ có hai
-  lỗi tạm lúc đầu, không phát sinh thêm HTTP 429 trong phần cuối cửa sổ.
-- Wrapper 27-bank có lệnh `repair-one` để chạy lại đúng `failed_pages` theo
-  prompt variant đã được receipt hóa, luôn khóa `google-standard-mode=disabled`,
-  kiểm byte PDF trước provider call và chỉ seal `FAILED → SUCCEEDED` sau khi
-  current whole-document manifest xác thực đủ mọi page. Bộ regression liên quan
-  đạt **74/74**; implementation đã push tại commit `db72b9c`.
-- Theo chi phí OpenRouter Vertex Flex đã đo trên chính corpus cũ, paid frontier
-  15.968 trang có ước tính cơ sở khoảng **28,8 USD**; ngân sách vận hành an toàn
-  là **32–36 USD** để bao gồm retry có receipt. Ước tính ban đầu 6–10 giờ ở 20
-  worker không còn dùng làm lịch vận hành vì rate limit thực tế cao; run hiện
-  dùng 8 worker và sẽ lấy throughput đã đo sau một cửa sổ dài hơn làm authority.
-  Tám ngân hàng cũ không nằm trong phép tính chi phí này.
-- Git checkpoint đã được push trên nhánh `codex/27-bank-2025-current`. Bốn file
-  universe/plan/matrix đã được backup và restore-test thành công tại S3 child
-  checkpoint `20260901T151341Z-27-bank-2025-current-vertex-flex-frontier-fe3f3867f955`;
-  nguồn cha vẫn là snapshot dự án hiện hành, không thay đổi chính sách backup.
-- Paid-run checkpoint đầu tiên đã được snapshot bằng SQLite backup nhất quán và
-  restore-test S3 thành công. Snapshot
-  `20260901T160618Z-27-bank-2025-current-vertex-flex-paid-checkpoint-001-29efcdf778c7`
-  chứa 1.401 file / 14.470.152 byte; manifest
-  `4e38fa14a5f4e06811ca7fd80d51387589445234bba037980d389911ed7dc9ba`
-  và run record
-  `f45e0910a55a0d42177876cbbb3074d52354f871a472ffbeca787c53dd1fbc12`
-  đều đã tải ngược và kiểm byte/hash. Snapshot ghi nhận 253 page extraction hợp
-  lệ, chi phí 0,914059875 USD, 5 PDF terminal `FAILED` có frontier page lỗi
-  riêng, 1 PDF đang `RUNNING` và 273 PDF chưa bắt đầu; đây là checkpoint giữa
-  run, không phải kết quả corpus cuối.
-- Paid-run checkpoint thứ hai cũng đã backup và restore-test thành công, với
-  **6.870 file / 64.266.371 byte**. Snapshot là
-  `20260901T182308Z-27-bank-2025-current-vertex-flex-paid-checkpoint-002-29efcdf778c7`;
-  manifest `f27878e5052fb9ddd98281b67b005c7a8485755f3f2a38cadef1cbb624bca5d7`
-  và run record `549ccb604c4181e05ef67fd073091f924e0416365fff02180bbeaaf74030dc53`
-  đều đã được tải ngược và kiểm đúng byte. Có 4.871 object mới được tải lên và
-  1.270 object trùng nội dung được dùng lại; đây vẫn là checkpoint giữa run,
-  không phải corpus cuối hay quyền gửi lại tám ngân hàng cũ.
+- Người dùng xác nhận lại ngày 2026-09-02: tám ngân hàng cũ đã được gửi Gemini
+  và đã có JSON; tuyệt đối không gửi lại PDF/page của tám ngân hàng này. Mọi
+  `run`, `resume` và `repair` phải kiểm tra mã ngân hàng trước request đầu tiên;
+  khác kỳ, loại báo cáo hoặc tên file không phải là quyền gửi lại.
+- Phạm vi chính thức là **Quý 1/2025 đến hiện tại**.
+- ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có Gemini JSON và chỉ được tái sử
+  dụng từ manifest/store/cache; không gửi lại Gemini/OpenRouter và không tính
+  vào chi phí paid frontier.
+- Paid frontier chỉ gồm ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB,
+  SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB. Route duy nhất là OpenRouter →
+  `google/gemini-3.7-flash` → `google-vertex/global/flex`, tier `flex`.
+- Inventory đã xác thực có 140 PDF/8.947 trang của tám ngân hàng cũ để tái sử
+  dụng và 279 PDF/15.968 trang của mười chín ngân hàng mới được phép gửi. Ledger
+  paid frontier có giao tập rỗng với tám mã cũ.
+- Resume/retry diễn ra theo từng page có receipt; page đã hoàn tất không bị gửi
+  lại. Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
+- Review app đã có chế độ manifest nhiều exact run để ghép kết quả tám ngân
+  hàng cũ và mười chín ngân hàng mới theo từng family mà không sửa
+  `family_current_selection` trong bất kỳ DB nguồn nào. Mỗi source khóa rõ
+  `family_id`, `family_run_id`, results DB, page DB và PDF root; số liệu được
+  cộng, PDF được khử trùng theo source identity, còn manifest sai run hoặc làm
+  trùng cùng PDF trong một family bị từ chối. Chế độ một DB cũ vẫn tương thích.
+- Builder manifest review-only đã được thêm để ghép selection cũ, run Family 30
+  bổ sung và all-family receipt mới. Trước khi ghi file write-once, builder xác
+  minh exact run/family, trial count, source SHA trong page store và sự tồn tại
+  của từng PDF; các SQLite nguồn luôn được mở read-only.
+- Renderer ledger 27 ngân hàng đã được chuẩn bị: nó kiểm tra lại tổng
+  READY/NOT_OBSERVED/UNRESOLVED theo từng family, thống kê riêng dòng chưa map
+  và SOURCE_ONLY trong PDF READY, rồi ghi từng record với ngân hàng, kỳ, loại
+  báo cáo, file, trang, nhãn nguồn, cha, ID gần nhất và lý do. Record được khử
+  trùng; renderer không tự tuyên bố thiếu schema khi chưa có bằng chứng rà toàn
+  schema.
+- Dry-run bất biến trên đúng 140 PDF cũ đã kiểm tra đủ **55 family × 140 PDF =
+  7.700 lượt family–PDF**: **5.279 READY + 2.406 NOT_OBSERVED + 15
+  UNRESOLVED = 7.700**. Ledger chi tiết có 27.929 record đã khử trùng, tách
+  riêng 15 trường hợp UNRESOLVED, 522 khoản mục có trên PDF nhưng chưa map và
+  SOURCE_ONLY trong PDF READY. Đây là kiểm tra offline trên JSON cũ; không phát
+  sinh request Gemini nào.
+- Thứ tự hiển thị đã khóa đủ 55 family theo schema; family số 30 là **Thu nhập
+  từ lãi thuần**, family số 31 là **Thu nhập, chi phí và lãi thuần dịch vụ**, và
+  family số 55 là **Báo cáo bộ phận hợp nhất**. Federated review cache danh mục
+  family ngay khi xác thực manifest để không quét lại 55 SQLite run cho mỗi PDF.
+- Ledger dễ đọc dịch các reason kỹ thuật hiện hành thành giải thích tiếng Việt
+  ở phần nội dung chính; reason gốc chỉ còn trong `<details>` truy vết. Phân loại
+  nguyên nhân vẫn được tính từ receipt gốc để các từ mô tả như “đầu kỳ/cuối kỳ”
+  trong câu dịch không làm đổi category.
+- Restore gate của bounded S3 artifact backup tải các content object độc lập
+  song song theo `settings.workers`; mỗi object vẫn bắt buộc khớp SHA và kích
+  thước, còn hai manifest record dùng cùng digest nhưng khác object key/kích
+  thước bị từ chối. Thay đổi này chỉ rút ngắn restore checkpoint tương lai,
+  không nới gate và không tác động checkpoint đang chạy bằng process cũ.
+- Paid-run checkpoint thứ ba đã backup và restore-test thành công ngày
+  2026-09-02: **14.628 file / 144.770.658 byte**. Snapshot dễ nhận biết là
+  `27-bank-2025-current-vertex-flex-paid-checkpoint-003`; có 7.051 object mới
+  được tải lên và 6.139 object trùng nội dung được dùng lại. Đây là mốc an toàn
+  giữa lượt gửi, không phải corpus cuối và không cấp quyền gửi lại bất kỳ
+  PDF/page nào của tám ngân hàng cũ.
+- Paid run đã được dừng an toàn trước khi OCB đi vào phần tiếng Anh. Rà trực
+  quan toàn bộ 9 PDF trên 100 trang và toàn bộ 16 PDF OCB xác định 10 file OCB
+  có bản tiếng Anh nối sau bản tiếng Việt và một trang giới thiệu tiếng Anh của
+  EY ở cuối file TCB hợp nhất kiểm toán 2025. Frontier chính thức hiện là 279
+  PDF/**15.335 trang tiếng Việt**; 633 trang không thuộc phần tiếng Việt bị
+  loại. File OCB công ty mẹ kiểm toán 2025 chỉ được gửi trang 1–102; trang 103
+  bắt đầu tiếng Anh.
+- Ledger đã được chuyển sang plan tiếng Việt bằng phép migration fail-closed:
+  **22 task SUCCEEDED** và **107 task FAILED** byte-identical được giữ nguyên;
+  21 task có ranh giới ngôn ngữ thay đổi không được kế thừa trạng thái cũ và
+  được tạo lại trong frontier mới. Ledger đang hoạt động có **150 PENDING / 22
+  SUCCEEDED / 107 FAILED = 279 task**, tổng 15.335 trang; ledger và plan cũ
+  15.968 trang được lưu riêng làm bằng chứng, không bị ghi đè hay resume.
+- Vertex Flex đã resume ở **8 page worker**. Lệnh provider của OCB công ty mẹ
+  kiểm toán 2025 mang danh sách tường minh đúng trang 1–102, không thể tự đi tới
+  trang 103. Store tại thời điểm chuyển plan chỉ có 24 trang OCB đã hoàn tất,
+  trang lớn nhất là 58, nên chưa có trang tiếng Anh nào được gửi hoặc ingest.
+  JSON tiếng Việt đã hoàn tất vẫn được tái sử dụng; tám ngân hàng cũ tiếp tục
+  bị loại khỏi paid frontier.
 
-## Checkpoint tổng hợp family dễ đọc — 2026-09-01
+## 2026-09-01 human review/schema checkpoint
 
-- Đã chuẩn hóa bảng trạng thái của **toàn bộ 55 family** tại
-  [`COMPLETED_TM_FAMILIES.md`](docs/experiments/COMPLETED_TM_FAMILIES.md#bang-trang-thai-hien-hanh).
-  Trong đó 54 family có current census 140 PDF: **7.560 lượt family–PDF =
-  5.139 READY + 2.406 NOT_OBSERVED + 15 UNRESOLVED**. Family `Thu nhập từ
-  lãi thuần` chưa có lượt 140 PDF độc lập và giữ checkpoint annual-2025:
-  **8 khảo sát / 8 READY / 0 NOT_OBSERVED / 0 UNRESOLVED**.
-- Chỉ bốn family còn terminal U: **Vốn và các quỹ 3 PDF; Thu nhập nhân viên
-  6 PDF; Thu nhập lãi 4 PDF; Chi phí hoạt động 2 PDF**. Từng PDF, kỳ, loại báo
-  cáo, assurance, trang, khoản mục, schema gần nhất và nguyên nhân đã nằm tại
-  [`UNRESOLVED_MAPPING_LEDGER.md`](docs/experiments/UNRESOLVED_MAPPING_LEDGER.md#unresolved-hien-hanh).
-- `NOT_OBSERVED`, terminal `UNRESOLVED` và `SOURCE_ONLY` đã được tách rõ.
-  Queue 205 dòng cũ được giữ làm lịch sử quyết định schema/source, không còn
-  được mô tả như 205 PDF terminal U. Family54 có 39 PDF READY với source-only
-  và các family khác có source-only đều được thống kê riêng, không làm tăng U.
-- Cross-check máy: 55/55 dòng dashboard khớp nguồn được chọn; mọi family 140-PDF
-  đều thỏa `READY + NOT_OBSERVED + UNRESOLVED = 140`; 15 khóa U không trùng.
-  Checkpoint này chỉ thay cách tổng hợp/trình bày, không sửa disposition hay
-  mapping kỹ thuật đã có.
+- The Flask review application is live on port 8000 and now follows exact
+  mapping source receipts across pages/tables/rows. Aggregate mappings, fixed-
+  asset total-column mappings and corroborating presentations are no longer
+  mislabeled as visible-but-unmapped. Missing display headers are recovered
+  from the exact Gemini source columns.
+- The full 140-PDF × eight-bank review confirms existing technical mappings for
+  provision movements, savings/escrow deposits, tangible/intangible fixed
+  assets, investment property and issued valuable papers. Readable details are
+  in `docs/experiments/COMPLETED_TM_FAMILIES_READABLE.md`.
+- Tracked schema policy now binds trading-security price-decrease provision to
+  RNID 612 and recognizes the exact loan-enterprise aliases directed by the
+  user: combined company row 775, cooperative 776, individual 780 and other
+  subjects 782. The review UI exposes the persisted-run delta explicitly:
+  29 provision rows, 20 listing-status rows in seven PDFs, 14 issuer rows in
+  three PDFs, and 31 enterprise-subject rows in thirteen PDFs require a new
+  authenticated family replay. These rows are shown as current-policy mappings,
+  not as missing schema. One VPB parent-company Q2/2025 government-security row
+  remains visible-but-unmapped because its comparative source token is two
+  stacked dashes and cannot be interpreted safely.
+- Roll-forward mapping headers now bind the actual source lane and endpoint:
+  general, specific and margin/advance provisions no longer all display the
+  first column, and an opening balance uses 31.12.2024 rather than the 2025
+  report date. The 140-PDF review of every user-named family has zero remaining
+  visible-unmapped rows except the single VPB source/OCR case above.
+- No historical READY/NOT_OBSERVED/UNRESOLVED count was overwritten without a
+  replay. Current-vs-persisted distinctions and the reason for each are recorded
+  in `docs/experiments/UNRESOLVED_MAPPING_LEDGER_READABLE.md`.
 
 ## Current family-first expansion checkpoint
 
@@ -134,21 +176,15 @@ older queue priorities where they conflict.
   double count and rejects narrative-date contamination unless one unique local
   period subset matches both document periods and column geometry.
 - `INTERBANK_DEPOSITS_AND_LOANS`, the third schema-order family, is now formally
-  complete across all 140 available filings. Formal evidence sweep
-  `ffaesv1:sweep:a49421a235c1503f8bacaa790ef41716f800439c59c6e62011ca04325f824d7d`
-  and mapping
-  `ffasmv1:mapping:1d006fcfb4c67cb15bcbc43c2234a942a7ba6817a32abdf9cfcc4d39cbf828`
-  yield **126 verified documents / 763 mappings / 14 not observed / 0
-  unresolved**. Presence by bank is ACB 18, MBB 18, VPB 18, HDB 16, VCB 18,
-  CTG 16, BID 4 and VIB 18; the 14 bounded absences are CTG 2 plus BID 12.
-  Shared source-bound occurrence, direct-frontier, one-edit, subtotal/grand-total,
-  render-retry and same-population detail-selection primitives require exact
-  period/unit/lane/source replay, forbid parent+descendant mixed levels and
-  consume every additive role once. Accounting only corroborates or vetoes
-  source-observed values. The canonical single-LF artifacts were built and
-  replay-verified at clean engine Git `827d5a736e4816c1f1fea014f9a746c444212355`;
-  compact seal E-0178 binds both read-only files. Historical 84/701/14/42 and
-  annual E-0109 receipts remain immutable subsets, not the current queue.
+  complete across all 140 available filings. One authenticated evidence+mapping
+  traversal produced mapping
+  `ffasmv1:mapping:a0281df098238a711f394c2425f1f4afc4766fc959c18568b510a703c2445528`:
+  **84 verified documents / 701 mappings / 14 not observed / 42 unresolved**.
+  Shared reset, child-subtotal and period-header fixes promoted 18 additional
+  filings versus the preceding 66/60 checkpoint without weakening closure
+  vetoes. The immutable OCR SQLite base remains 140 documents / 8,947 pages /
+  667,224 lines; refreshing the 140-trial family sidecar took 0.477 seconds and
+  the final reason query 0.009 seconds.
 - `TRADING_SECURITIES`, the fourth schema-order family, has now been swept over
   all 140 available filings through the authenticated document store. Evidence
   sweep `ffaesv1:sweep:956dad7d687c5bf999460b6074f1f26df3ac71088fbd35cebfaf11618e242be5`
@@ -2525,7 +2561,7 @@ Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
 Completed through: preserved source-complete MBB development baseline; universal schema 1,955 at @6076 and TM partition 1,721 with symmetric fixed-asset movement parents, dedicated Government/NHNN liability leaves 6070–6072, combined annual-family leaves 6073–6074 and annual interest-income leaves 6075–6076 registered; append-only compatibility proves the 1,717 legacy TM identities retain exactly `890 MAPPED + 804 NOT_OBSERVED + 23 NOT_APPLICABLE`, while an older owner leaves new 6073–6076 as four explicit `UNRESOLVED` identities rather than changing a prior mapping; preserved VPB main-statement and bounded native-TM source/mapping/Excel evidence; exact registered inventory of 27 banks / 2,567 PDF paths; locked 27-document Wave 1; reproducible route and pre-OCR feature accounting for all 1,449 pages; independent Role-A Level-1 boundary references for 27/27 documents and 139 statement blocks; sealed exact 1,449-page Role-B read plan; authenticated 24-page/14-document OCR sentinel; preserved and restore-tested full-reader V1/V2 incidents; committed/frozen V3 producer; finalized 1,449-request V3 denominator with 1,390 complete + 59 terminal dispositions; deep verify/finalize; zero-new-native/deep/render resume with no output mutation; one content-addressed full-restore-tested S3 checkpoint of finalized V3 plus sealed plan; byte-frozen source-first Role-B inventory for all 27 documents / 1,449 pages / 1,454,160 neutral atoms with geometry/topology diagnostics; sealed blind Role-B statement-family/disposition inventory for all 1,449 pages with 24 ranked block alternatives across 13 documents and 14 explicitly unresolved documents; separately sealed machine-reference agreement diagnostics over all 27 documents without Role-A feedback into discovery; byte-frozen all-page prestructural graph inventory with 1,449 graph identities and exact candidate table/row/cell/axis/unresolved accounting across all 27 documents; committed threshold-free adjacent-page table/axis geometry contract with exact Cartesian and terminal/no-counterpart accounting; combined-evidence exhaustive adjacent-page candidate measurement over all 1,422 pairs with 899 fragment and 122,573 axis-distance relations, exact retention accounting and a retained no-write PASS summary; committed blind source-only geometry seed gate with fused six-input authority, complete candidate/disposition accounting, no accepted continuation claim and no same-Wave-1 generalization claim; committed compact one-pass gate-inventory producer/validator/publisher with exact chain/no-drop authority and structural-only standalone validation
-Currently working on: Family3 `INTERBANK_DEPOSITS_AND_LOANS` is formally closed by E-0178 at 126 verified + 14 bounded not-observed, 763 mappings and zero unresolved on the fixed 140-filing corpus. Family12 `LOAN_ENTERPRISE_CLASSIFICATION` is next in schema order; its read-only preflight is complete but no formal 140 result is claimed yet. E-0174 S3 registration remains `NOT_RUN_SECURITY_HOLD` pending owner-confirmed rotation/revocation of both exposed Gemini API keys; no new checkpoint was written. Annual-2025 TM traversal remains complete within its approved scope, and related-party transactions root 5750 remains `SKIPPED_BY_USER`. No canonicalization or Excel promotion is active
+Currently working on: Family10 `LOAN_CURRENCY_CLASSIFICATION` is sealed by E-0173 at 10 verified-present + 130 verified bounded absences, 20 mappings/40 money cells/36 equations and zero unresolved. E-0174 S3 registration is deliberately `NOT_RUN_SECURITY_HOLD` pending owner-confirmed rotation/revocation of both exposed Gemini API keys; no new checkpoint was written. Family11 loan geography has started read-only cache-first SQL inventory only; no mapping, code change or Gemma request has started. Annual-2025 TM traversal remains complete within its approved scope, and related-party transactions root 5750 remains `SKIPPED_BY_USER`. No canonicalization or Excel promotion is active
 Paused regression work: exhaustive VPB TM identity-by-identity completion; the 30 unresolved contexts and partial canonical coverage remain preserved for later corpus-driven replay
 Not yet completed: any independently mapped row in E-0047/E-0049 (numeric cells are independently verified, mappings are not); accepted broad Wave-1 statement/table/logical-row/cell/value-position/axis/hierarchy coverage; cross-bank generic graph seams for inherited context/unit and multi-lane variants; broad bank/period/scope holdout verification; scalable unseen-filing canonicalization
 Production approved: fresh full-document VietOCR semantic proposal evidence YES/frozen; exact SHB p24 plus bounded fixed-8-bank maturity, loan-quality (including bounded-context 1944 separation), loan-type, loan-industry, loan-enterprise, loan-geography, purchased-debt, provision-movement, customer-deposit, trading-securities balance, trading-securities activity, investment-securities activity, combined-securities-net, capital-contribution/dividend-income, operating-expense, credit-risk-provision-expense, investment-securities balance, other-long-term-investments, tangible-fixed-assets, other-assets, government/NHNN-liabilities, liability-side interbank funding, entrusted/investment-risk-capital, issued-valuable-papers, other-payables/liabilities, interest-income, interest-expense, net-interest-income, service-activity income/expense/net, FX/gold-activity income/expense/net, employee-income, State-budget-obligation, customer-collateral, bank-owned pledged/discounted assets, contingent liabilities/commitments, financial-instrument carrying/fair-value, currency-risk, interest-rate-risk, liquidity-risk, end-period exchange-rate, consolidated-segment-report, cash/precious-metals, central-bank-deposit/asset-side interbank-deposit-loan and derivative source-row verification YES but noncanonical/nonexport; Family10 loan-currency 140-filing result YES for exactly 10 verified-present filings and 130 verified bounded absences, not a broad-corpus absence claim; related-party-transactions mapping NO/SKIPPED_BY_USER; project-owner-confirmed MBB foreign-central-bank aggregation to 574 and VIB 804→805 hierarchy YES; broad Wave-1 family structure/mapping NO; end-to-end unseen-filing digitization NO

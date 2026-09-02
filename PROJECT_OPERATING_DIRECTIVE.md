@@ -1,73 +1,63 @@
 # Project operating directive
 
+> **2026-08-26 supersession:** the active ingestion/mapping architecture is
+> [`docs/GEMINI_JSON_FIRST_PROJECT_GOAL.md`](docs/GEMINI_JSON_FIRST_PROJECT_GOAL.md).
+> Sections below remain historical operating context only where they require
+> PP-OCR/VietOCR/geometry or a frozen V3 reader. The current pipeline uses
+> Gemini page→hierarchical JSON without those dependencies, then restarts
+> mapping at Family 1. Git/S3/Codex, fail-closed and generalization policies
+> remain in force.
+
+> **2026-09-02 corpus/no-resubmit authority, expanded by the user:** the active
+> source universe is now all 27 registered bank stock codes from **2024 through
+> the current reporting period**. The earlier 8-bank Gemini corpus and the
+> running 19-bank 2025-current frontier remain protected reuse-only inputs:
+> their exact PDF/page/image identities must never be submitted again. The new
+> user authority explicitly adds missing 2024 filings for all 27 banks,
+> including 2024 filings of ACB, BID, CTG, HDB, MBB, VCB, VIB and VPB; it does
+> not authorize a repeat of their existing 2025-current JSON. New paid requests
+> are content-level missing pages only, through OpenRouter →
+> `google/gemini-3.7-flash` → `google-vertex/global/flex`. Every run, resume
+> and repair must reject an overlap with either protected corpus before its
+> first provider request; bank code alone is no longer a sufficient
+> no-resubmit key because one bank may have protected 2025 pages and genuinely
+> new 2024 pages.
+
+> **2026-09-02 Vietnamese-only page authority:** before any paid request, every
+> PDF longer than 100 physical pages must pass a recorded language-boundary
+> review. OCB filings require the same review regardless of length because a
+> number of its PDFs append a complete English copy after the Vietnamese
+> report. Only the Vietnamese physical-page prefix may enter `run`, `resume`
+> or `repair`; excluded English pages must never be submitted merely to make a
+> source PDF look page-complete. The exact per-file cutoffs are maintained in
+> `docs/experiments/GEMINI_JSON_FIRST_USER_REQUIREMENTS.md`. A file without a
+> verified cutoff is blocked before the first provider request.
+
+> **2026-09-02 2024 restoration checkpoint:** the immutable S3 source snapshot
+> contains 408 registered 2024 PDFs across all 27 bank codes. All 259 initially
+> missing files were hydrated by content hash; all 408 local files now match
+> the snapshot. The registered source inventory yields 308 content-unique
+> Vietnamese full-BCTC candidates. Language-boundary review is complete for all
+> seven 2024 PDFs over 100 physical pages and all twelve OCB PDFs: 228 appended
+> English pages are excluded, leaving exactly 17,553 payable Vietnamese pages.
+> The 2024 plan remains blocked from provider execution until the protected
+> 2025-current ledger is completely successful and exact replay proves zero
+> overlap with every existing/active Gemini page identity.
+
+> **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
+> structurally focused. Gemini supplies visible observations; deterministic code
+> owns normalization, graph construction, period/unit resolution, equations and
+> mapping. Do not require the model to echo untouched data or satisfy family
+> logic. Escalation is automatic and limited to a small predeclared prompt set
+> for typed missing-row, column-width or missing-context failures; never tune a
+> prompt interactively per bank/file/page. A validator must preserve usable
+> mappings and canonicalize harmless representation drift instead of rejecting
+> correct evidence to force one preferred serialization.
+
 > Authority: user-supplied high-level objective and current operating tactics.
 > This file is the standing prioritization reference for every execution turn.
 > Read it together with `PROJECT_GOAL.md`; where older queues conflict, this
 > directive controls current execution.
-
-## 0. Current binding amendment: Gemini JSON-first, database-first
-
-This section supersedes any legacy instruction below that requires PPOCR,
-VietOCR, word-box geometry, or geometry-derived table reconstruction in the
-production mapping path. Those older sections remain historical design context,
-not current implementation authority.
-
-Phạm vi paid ingestion hiện hành được người dùng chốt là **từ Quý 1/2025 đến
-thời điểm hiện tại**. Năm 2024 không thuộc hàng đợi Gemini của đợt này. Tám ngân
-hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON đã có; paid
-frontier chỉ gồm mười chín ngân hàng mới và chỉ được gọi qua OpenRouter Google
-Vertex Flex.
-
-The binding production flow is:
-
-```text
-source PDF pages
-→ Gemini hierarchical JSON extraction
-→ immutable raw + canonical evidence versions in the database
-→ indexed page/region/section/table/row/cell retrieval
-→ shared variant graph + accounting/equation engines
-→ family configuration and schema mapping
-→ database-backed dispositions, mappings, exports, and provenance
-```
-
-Operational requirements:
-
-1. Graph, accounting-relation, arithmetic, schema, and export stages query the
-   selected Gemini JSON from the database. They must not depend on loose JSON
-   files or re-run OCR during ordinary family evaluation.
-2. Optimize indexes, covering queries, cache keys, materialized summaries, and
-   evidence partitioning so each operation reads only the necessary page,
-   region, row, or cell. Record query count, rows/bytes read, cache hit rate, and
-   per-stage latency in the run manifest.
-3. A bad OCR result, coordinate, row, cell, or local hierarchy triggers a bounded
-   region retry only. Store the result as a new immutable evidence version,
-   atomically select it after validation, invalidate only its dependency closure,
-   and reject stale/cross-version graph or mapping receipts. Do not rerun an
-   entire file when a bounded repair is sufficient.
-4. The generic graph engine must enumerate declared variants for reordered or
-   partially renamed labels, optional/extra/missing rows, headers, parent/child,
-   child/child, sibling, neighbor, continuation, and nested subtotal structures.
-   It must preserve exact period/unit/value columns and exhaustive use-once
-   accounting equations.
-5. Prefer structure, context, hierarchy, adjacency, continuation, and typed
-   accounting relations over literal label equality. Names and no-diacritic
-   aliases are indexed retrieval aids, not final mapping authority; retain the
-   original Vietnamese text as canonical evidence.
-6. Families with the same mechanism share one primitive/engine and differ through
-   declarative roles, aliases, graph alternatives, and equations. No bank/page/
-   document/value routing and no independent parser per family unless a new
-   cross-family primitive is justified and tested.
-7. The production target is unattended automatic mapping from Family 1 through
-   the final family across every bank. A family is not productionized if it still
-   needs a source-code edit for each new filing or manual repair by the agent.
-8. Continuously profile the current bottleneck. Improve shared query, index,
-   cache, scheduling, invalidation, and graph architecture before scaling a slow
-   path. The system must add banks, periods, report types, and families without
-   recomputing unaffected evidence from scratch.
-
-The source PDF remains ultimate authority. Gemini output becomes usable evidence
-only after canonical parsing, completeness/column/hierarchy validation, and
-accounting checks; uncertainty remains fail-closed and traceable.
 
 ## 1. Mục tiêu cuối cùng của project
 
