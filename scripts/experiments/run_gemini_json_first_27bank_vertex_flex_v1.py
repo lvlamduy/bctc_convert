@@ -58,7 +58,7 @@ def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "status", "run", "run-one", "repair-one"):
+    for name in ("init", "status", "run", "run-one", "repair-one", "repair-all"):
         command = commands.add_parser(name)
         command.add_argument("--bundle", type=Path, required=True)
         command.add_argument("--plan", type=Path, required=True)
@@ -70,7 +70,7 @@ def _parser() -> argparse.ArgumentParser:
                 default="simple",
             )
             command.add_argument("--max-task-attempts", type=int, default=3)
-        if name in {"run", "run-one", "repair-one"}:
+        if name in {"run", "run-one", "repair-one", "repair-all"}:
             command.add_argument("--source-root", type=Path, required=True)
             command.add_argument("--database", type=Path, required=True)
             command.add_argument("--artifact-root", type=Path, required=True)
@@ -79,6 +79,12 @@ def _parser() -> argparse.ArgumentParser:
             command.add_argument("--provider-timeout-seconds", type=int, default=900)
         if name in {"run-one", "repair-one"}:
             command.add_argument("--task-id", required=True)
+        if name == "repair-all":
+            command.add_argument(
+                "--max-tasks",
+                type=int,
+                help="Bound one sequential repair pass; omit to visit every failed task once.",
+            )
         if name == "run":
             command.add_argument("--max-fallback-attempts", type=int, default=2)
     return parser
@@ -357,12 +363,61 @@ def _repair_one(args: argparse.Namespace, *, environment: dict[str, str]) -> dic
     }
 
 
+def _repair_all(args: argparse.Namespace, *, environment: dict[str, str]) -> dict[str, Any]:
+    """Visit each terminal failed document once, strictly sequentially."""
+
+    bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    if args.max_tasks is not None and (type(args.max_tasks) is not int or args.max_tasks <= 0):
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "repair-all task bound must be one positive integer"
+        )
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != bundle["corpus_plan"]["corpus_plan_id"]:
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "repair-all ledger and provider-pinned plan disagree"
+        )
+    tasks = list_corpus_tasks_v1(args.ledger)
+    nonterminal = [task for task in tasks if task["state"] not in {"FAILED", "SUCCEEDED"}]
+    if nonterminal:
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "repair-all requires the main corpus pass to be fully terminal"
+        )
+    failed = sorted(
+        (task for task in tasks if task["state"] == "FAILED"),
+        key=lambda task: (task["relative_path"], task["task_id"]),
+    )
+    if args.max_tasks is not None:
+        failed = failed[: args.max_tasks]
+    results = []
+    for task in failed:
+        repair_args = argparse.Namespace(**{**vars(args), "task_id": task["task_id"]})
+        result = _repair_one(repair_args, environment=environment)
+        results.append(
+            {
+                "disposition": result["disposition"],
+                "remaining_pages": result.get("remaining_pages", []),
+                "task_id": task["task_id"],
+            }
+        )
+    remaining = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    return {
+        "attempted_task_count": len(results),
+        "disposition": "SUCCEEDED" if not remaining else "NEEDS_RETRY",
+        "remaining_failed_task_count": len(remaining),
+        "results": results,
+    }
+
+
 def main() -> int:
     args = _parser().parse_args()
     environment = dict(os.environ)
     environment["PYTHONPATH"] = str(ROOT / "src")
-    if args.command == "repair-one":
-        result = _repair_one(args, environment=environment)
+    if args.command in {"repair-one", "repair-all"}:
+        result = (
+            _repair_one(args, environment=environment)
+            if args.command == "repair-one"
+            else _repair_all(args, environment=environment)
+        )
         print(json.dumps(result, sort_keys=True))
         return 0 if result["disposition"] == "SUCCEEDED" else 2
     command = _supervisor_command(args)

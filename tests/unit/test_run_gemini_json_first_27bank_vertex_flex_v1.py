@@ -278,3 +278,119 @@ def test_repair_one_calls_only_failed_pages_and_seals_mixed_prompt_manifest(
     )
     manifest_command = commands[-1]
     assert manifest_command[manifest_command.index("--page-prompt-variant") + 1] == "3=items"
+
+
+def test_repair_all_waits_for_a_fully_terminal_main_pass(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {"corpus_plan": {"corpus_plan_id": "plan-1"}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger, **_kwargs: [
+            {
+                "relative_path": "vietstock_bctc/N01/2025/report.pdf",
+                "state": "RUNNING",
+                "task_id": "task-1",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        target,
+        "_repair_one",
+        lambda *_args, **_kwargs: pytest.fail("repair must not overlap the main pass"),
+    )
+    args = Namespace(
+        bundle=tmp_path / "bundle.json",
+        ledger=tmp_path / "ledger.sqlite3",
+        max_tasks=None,
+        plan=tmp_path / "plan.json",
+    )
+
+    with pytest.raises(
+        target.RunGeminiJsonFirst27BankVertexFlexV1Error,
+        match="fully terminal",
+    ):
+        target._repair_all(args, environment={"PYTHONPATH": "src"})
+
+
+def test_repair_all_is_sorted_sequential_and_resumable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    tasks = [
+        {
+            "relative_path": "vietstock_bctc/N02/2025/b.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-b",
+        },
+        {
+            "relative_path": "vietstock_bctc/N01/2025/a.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-a",
+        },
+        {
+            "relative_path": "vietstock_bctc/N03/2025/c.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "SUCCEEDED",
+            "task_id": "task-c",
+        },
+    ]
+    monkeypatch.setattr(
+        target,
+        "_load_bundle_and_plan",
+        lambda _bundle, _plan: {"corpus_plan": {"corpus_plan_id": "plan-1"}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+
+    def listed(_ledger: Path, *, states=None, route=None):
+        result = tasks
+        if states is not None:
+            result = [task for task in result if task["state"] in states]
+        if route is not None:
+            result = [task for task in result if task["route"] == route]
+        return result
+
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", listed)
+    repaired = []
+
+    def repair_one(args: Namespace, *, environment: dict[str, str]):
+        assert environment == {"PYTHONPATH": "src"}
+        repaired.append(args.task_id)
+        next(task for task in tasks if task["task_id"] == args.task_id)["state"] = "SUCCEEDED"
+        return {"disposition": "SUCCEEDED", "task_id": args.task_id}
+
+    monkeypatch.setattr(target, "_repair_one", repair_one)
+    args = Namespace(
+        bundle=tmp_path / "bundle.json",
+        ledger=tmp_path / "ledger.sqlite3",
+        max_tasks=1,
+        plan=tmp_path / "plan.json",
+    )
+
+    first = target._repair_all(args, environment={"PYTHONPATH": "src"})
+
+    assert repaired == ["task-a"]
+    assert first["disposition"] == "NEEDS_RETRY"
+    assert first["remaining_failed_task_count"] == 1
+
+    args.max_tasks = None
+    second = target._repair_all(args, environment={"PYTHONPATH": "src"})
+
+    assert repaired == ["task-a", "task-b"]
+    assert second["disposition"] == "SUCCEEDED"
+    assert second["remaining_failed_task_count"] == 0
