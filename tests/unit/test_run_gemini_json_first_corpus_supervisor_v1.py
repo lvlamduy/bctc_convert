@@ -546,6 +546,19 @@ def test_openrouter_schedule_prioritizes_paid_semantic_replay_before_provider_wo
     assert ordered[2] is provider_retry
 
 
+def test_openrouter_circuit_cooldown_grows_exponentially_and_caps_at_one_hour() -> None:
+    assert [
+        target._openrouter_circuit_cooldown_v1(base_seconds=300, consecutive_trips=count)
+        for count in range(1, 6)
+    ] == [300.0, 600.0, 1200.0, 2400.0, 3600.0]
+    assert target._openrouter_circuit_cooldown_v1(base_seconds=300, consecutive_trips=100) == 3600.0
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="cooldown inputs are invalid",
+    ):
+        target._openrouter_circuit_cooldown_v1(base_seconds=300, consecutive_trips=0)
+
+
 def test_scheduler_waits_after_openrouter_circuit_trip(monkeypatch, tmp_path) -> None:
     ledger = tmp_path / "ledger.sqlite3"
     ledger.touch()

@@ -3543,6 +3543,21 @@ def _openrouter_schedule_key_v1(task: dict[str, Any]) -> tuple[int, str]:
     return priority, task_id
 
 
+def _openrouter_circuit_cooldown_v1(*, base_seconds: float, consecutive_trips: int) -> float:
+    """Exponentially cool one persistently throttled Flex route, capped at one hour."""
+
+    if (
+        type(base_seconds) not in {int, float}
+        or not 0 <= base_seconds <= 3_600
+        or type(consecutive_trips) is not int
+        or consecutive_trips <= 0
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter circuit cooldown inputs are invalid"
+        )
+    return min(3_600.0, float(base_seconds) * (2 ** min(consecutive_trips - 1, 20)))
+
+
 def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     plan = _plan(args.plan)
     if not args.ledger.exists():
@@ -3578,6 +3593,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     )
     openrouter_future: Future[dict[str, Any]] | None = None
     openrouter_not_before = 0.0
+    openrouter_consecutive_circuit_trips = 0
     google_submit_executor = ThreadPoolExecutor(
         max_workers=GOOGLE_SUBMIT_WORKERS,
         thread_name_prefix="google-batch-submit",
@@ -3595,10 +3611,17 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 google_submit_executor.shutdown(wait=True, cancel_futures=True)
                 raise
             if _openrouter_task_result_has_circuit_trip_v1(openrouter_result):
+                openrouter_consecutive_circuit_trips += 1
                 openrouter_not_before = max(
                     openrouter_not_before,
-                    time.monotonic() + openrouter_circuit_cooldown_seconds,
+                    time.monotonic()
+                    + _openrouter_circuit_cooldown_v1(
+                        base_seconds=openrouter_circuit_cooldown_seconds,
+                        consecutive_trips=openrouter_consecutive_circuit_trips,
+                    ),
                 )
+            else:
+                openrouter_consecutive_circuit_trips = 0
             openrouter_future = None
         for future in [future for future in google_submit_futures if future.done()]:
             try:
