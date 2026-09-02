@@ -3520,6 +3520,29 @@ def _openrouter_task_result_has_circuit_trip_v1(task: dict[str, Any]) -> bool:
     return visit(receipt)
 
 
+def _openrouter_schedule_key_v1(task: dict[str, Any]) -> tuple[int, str]:
+    """Prefer crash recovery, then paid semantic replay, before new provider work."""
+
+    state = task.get("state")
+    if state == "RUNNING":
+        priority = 0
+    elif state == "NEEDS_RETRY":
+        frontiers = _retry_prompt_frontiers_v1(task)
+        priority = 1 if frontiers is not None and frontiers["items"] else 2
+    elif state == "PENDING":
+        priority = 3
+    else:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter scheduler received a non-runnable task"
+        )
+    task_id = task.get("task_id")
+    if type(task_id) is not str:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter scheduler task identity is invalid"
+        )
+    return priority, task_id
+
+
 def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     plan = _plan(args.plan)
     if not args.ledger.exists():
@@ -3615,12 +3638,15 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         accelerated_google = [
             task for task in unfinished if _is_openrouter_acceleration_task_v1(task)
         ]
-        openrouter = [
-            task
-            for task in unfinished
-            if task["route"] == OPENROUTER_ROUTE
-            and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
-        ]
+        openrouter = sorted(
+            (
+                task
+                for task in unfinished
+                if task["route"] == OPENROUTER_ROUTE
+                and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
+            ),
+            key=_openrouter_schedule_key_v1,
+        )
         if openrouter_future is None and openrouter and time.monotonic() >= openrouter_not_before:
             openrouter_future = openrouter_executor.submit(
                 _run_openrouter,

@@ -507,6 +507,45 @@ def test_openrouter_circuit_trip_is_read_from_nested_child_receipt() -> None:
         )
 
 
+def test_openrouter_schedule_prioritizes_paid_semantic_replay_before_provider_work() -> None:
+    base = {
+        "first_physical_page": 1,
+        "last_physical_page": 1,
+        "relative_path": "bank/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "task_id": "task-1",
+    }
+    pending = {**base, "state": "PENDING"}
+    provider_retry = {
+        **base,
+        "state": "NEEDS_RETRY",
+        "last_receipt_json": target.canonical_json_bytes_v1(
+            {"failed_pages": [1], "semantic_failed_pages": []}
+        ),
+    }
+    semantic_retry = {
+        **base,
+        "state": "NEEDS_RETRY",
+        "last_receipt_json": target.canonical_json_bytes_v1(
+            {"failed_pages": [1], "semantic_failed_pages": [1]}
+        ),
+    }
+    running = {**base, "state": "RUNNING"}
+
+    ordered = sorted(
+        [pending, provider_retry, semantic_retry, running],
+        key=target._openrouter_schedule_key_v1,
+    )
+    assert [task["state"] for task in ordered] == [
+        "RUNNING",
+        "NEEDS_RETRY",
+        "NEEDS_RETRY",
+        "PENDING",
+    ]
+    assert ordered[1] is semantic_retry
+    assert ordered[2] is provider_retry
+
+
 def test_scheduler_waits_after_openrouter_circuit_trip(monkeypatch, tmp_path) -> None:
     ledger = tmp_path / "ledger.sqlite3"
     ledger.touch()
