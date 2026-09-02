@@ -88,3 +88,13 @@ trang ngoài frontier tiếng Việt đã đăng ký.
 Đối chiếu 37 PDF `SUCCEEDED` với store xác nhận đủ đúng 1.933/1.933 trang,
 không thiếu/thừa trang, không orphan và không có nhiều JSON version cho cùng
 một page. SQLite integrity và foreign-key check đều sạch.
+
+Phân rã toàn bộ 14.947 trang theo trạng thái ledger cũng khớp tuyệt đối:
+
+| Trạng thái PDF | Tổng trang | Đã có JSON | Còn thiếu |
+| --- | ---: | ---: | ---: |
+| `SUCCEEDED` | 1.933 | 1.933 | 0 |
+| `NEEDS_RETRY` | 1.312 | 1.224 | 88 |
+| `FAILED` chờ terminal repair | 3.198 | 2.851 | 347 |
+| `PENDING` | 8.504 | 0 | 8.504 |
+| **Tổng** | **14.947** | **6.008** | **8.939** |

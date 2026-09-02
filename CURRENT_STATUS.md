@@ -54,6 +54,11 @@ older queue priorities where they conflict.
   `integrity_check` đạt, foreign-key check rỗng, không có orphan và không có
   page nào mang nhiều hơn một JSON version. Vì vậy số 37 PDF hoàn tất là dữ
   liệu thực trong store, không chỉ là trạng thái trên ledger.
+- Phép đối chiếu toàn ledger khép kín đủ 14.947 trang: `SUCCEEDED`
+  1.933/1.933 trang; `NEEDS_RETRY` 1.224/1.312, còn thiếu 88; `FAILED`
+  2.851/3.198, còn thiếu 347; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
+  hợp lệ và 8.939 trang còn thiếu, không có chênh lệch ngoài các frontier đã
+  ghi nhận.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
