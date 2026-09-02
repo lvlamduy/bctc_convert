@@ -1521,6 +1521,128 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
     assert [item["accepted_pages"] for item in receipt["offline_replay_results"]] == [[3]]
 
 
+def test_exhausted_page_repair_defers_later_prompt_frontiers_after_circuit(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "ABB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    prior = {
+        "failed_pages": [1, 3],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [3],
+    }
+    task = {
+        "artifact_relative_path": "tasks/task-1",
+        "attempt_count": 3,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(prior),
+        "relative_path": "ABB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    calls = []
+    monkeypatch.setattr(
+        target,
+        "_plan",
+        lambda _path: {"corpus_plan_id": "plan-1", "policy": {"dpi": 300}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: [task])
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        variant = argv[argv.index("--prompt-variant") + 1]
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        offline = "--offline-replay-only" in argv
+        calls.append((variant, pages, offline))
+        assert "--stop-provider-frontier-on-transient-error" in argv
+        if pages == [1]:
+            assert not offline
+            return_code = 2
+            circuit_page = 1
+            offline_missing_pages = []
+            provider_request_pages = [1]
+            unresolved_pages = []
+            execution_mode = "PROVIDER_OR_CACHE"
+        else:
+            assert pages == [3]
+            assert offline
+            return_code = 2
+            circuit_page = None
+            offline_missing_pages = [3]
+            provider_request_pages = []
+            unresolved_pages = [3]
+            execution_mode = "OFFLINE_REPLAY_ONLY"
+        return return_code, {
+            "cached_pages": [],
+            "disposition": "NEEDS_RETRY",
+            "execution_mode": execution_mode,
+            "failed_pages": pages,
+            "ingested_pages": [],
+            "offline_missing_pages": offline_missing_pages,
+            "page_image_sha256s": [
+                {"image_sha256": str(page) * 64, "physical_page": page} for page in pages
+            ],
+            "provider_circuit_breaker_trigger_page": circuit_page,
+            "provider_request_pages": provider_request_pages,
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "semantic_replay_sources": [],
+            "unresolved_pages": unresolved_pages,
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    result = target.repair_openrouter_flex_pages_task(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "unused-google-key",
+            ledger=tmp_path / "ledger.sqlite3",
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=900,
+            repair_attempt=1,
+            source_root=source_root,
+            task_id="task-1",
+        )
+    )
+    assert result == {
+        "disposition": "NEEDS_REPAIR",
+        "failed_pages": [1, 3],
+        "repair_attempt": 1,
+        "task_id": "task-1",
+    }
+    assert calls == [("simple", [1], False), ("items", [3], True)]
+    receipt = json.loads(
+        (
+            tmp_path
+            / "artifacts/tasks/task-1/openrouter-exhausted-page-repair/receipts/attempt-01.json"
+        ).read_text()
+    )
+    assert [item["physical_pages"] for item in receipt["provider_results"]] == [[1]]
+    assert [item["physical_pages"] for item in receipt["offline_replay_results"]] == [[3]]
+
+
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"

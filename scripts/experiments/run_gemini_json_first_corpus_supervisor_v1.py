@@ -4396,6 +4396,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
     current_prompt_variants: dict[int, str] = {
         page: summary["prompt_variant"] for page in offline_accepted
     }
+    provider_circuit_open = False
     for prompt_variant, pages in (
         (summary["prompt_variant"], provider_frontiers["default"]),
         ("scope", provider_frontiers["scope"]),
@@ -4403,6 +4404,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
     ):
         if not pages:
             continue
+        offline_due_to_circuit = provider_circuit_open
         frontier_sha256 = canonical_json_sha256_v1(pages)
         selected_artifact_dir = attempt_root / prompt_variant / f"pages-{frontier_sha256}"
         command = [
@@ -4437,6 +4439,8 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         ]
         if args.openrouter_workers == 1:
             command.append("--stop-provider-frontier-on-transient-error")
+        if offline_due_to_circuit:
+            command.append("--offline-replay-only")
         for page in pages:
             command.extend(("--physical-page", str(page)))
         _code, result = _command(command, expected={0, 2})
@@ -4460,15 +4464,24 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "Flex page repair result frontier is invalid"
             )
-        provider_results.append(
-            {
-                "accepted_pages": completed,
-                "physical_pages": pages,
-                "prompt_variant": prompt_variant,
-                "repair_attempt": args.repair_attempt,
-                "result": result,
-            }
-        )
+        result_item = {
+            "accepted_pages": completed,
+            "physical_pages": pages,
+            "prompt_variant": prompt_variant,
+            "repair_attempt": args.repair_attempt,
+            "result": result,
+        }
+        if offline_due_to_circuit:
+            if (
+                result.get("execution_mode") != "OFFLINE_REPLAY_ONLY"
+                or result.get("provider_request_pages") != []
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "Flex page repair crossed an open provider circuit"
+                )
+            offline_replay_results.append({**result_item, "execution_mode": "OFFLINE_REPLAY_ONLY"})
+        else:
+            provider_results.append(result_item)
         current_prompt_variants.update({page: prompt_variant for page in completed})
         for field in aggregate:
             values = result.get(field, [])
@@ -4477,6 +4490,17 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
                     "Flex page repair typed failure frontier is invalid"
                 )
             aggregate[field].extend(values)
+        circuit_trigger_page = result.get("provider_circuit_breaker_trigger_page")
+        if circuit_trigger_page is not None and (
+            offline_due_to_circuit
+            or type(circuit_trigger_page) is not int
+            or circuit_trigger_page not in pages
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "Flex page repair provider circuit trigger page is invalid"
+            )
+        if type(circuit_trigger_page) is int:
+            provider_circuit_open = True
 
     failed_pages = sorted(set(aggregate["failed_pages"]))
     disposition = "NEEDS_REPAIR" if failed_pages else "SUCCEEDED"
