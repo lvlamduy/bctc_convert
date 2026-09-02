@@ -1058,7 +1058,7 @@ def seal_current_document_revalidated_corpus_tasks_v1(
     task_id: str,
     receipt: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    """Atomically seal failed chunks after one current whole-page manifest replays.
+    """Atomically seal retryable/failed chunks after a current manifest replays.
 
     This is route agnostic: the authority is the validated document manifest,
     its complete image/prompt frontiers, and the already authenticated ledger
@@ -1155,7 +1155,7 @@ def seal_current_document_revalidated_corpus_tasks_v1(
             row["relative_path"] != selected["relative_path"]
             or row["source_sha256"] != selected["source_sha256"]
             or row["document_page_count"] != selected["document_page_count"]
-            or row["state"] not in {"FAILED", "SUCCEEDED"}
+            or row["state"] not in {"FAILED", "NEEDS_RETRY", "SUCCEEDED"}
             for row in rows
         ):
             raise _error("current document revalidation ledger frontier is not terminal")
@@ -1164,20 +1164,26 @@ def seal_current_document_revalidated_corpus_tasks_v1(
             for row in rows
             for page in range(row["first_physical_page"], row["last_physical_page"] + 1)
         ]
-        failed_rows = [row for row in rows if row["state"] == "FAILED"]
+        repairable_rows = [row for row in rows if row["state"] in {"FAILED", "NEEDS_RETRY"}]
         if (
             expected_pages != revalidated_pages
             or len(revalidated_pages) != selected["document_page_count"]
-            or [row["task_id"] for row in failed_rows] != repaired_task_ids
+            or [row["task_id"] for row in repairable_rows] != repaired_task_ids
         ):
             raise _error("current document revalidation does not cover the ledger document")
-        for row in failed_rows:
+        for row in repairable_rows:
             event_ordinal = connection.execute(
                 "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (row["task_id"],)
             ).fetchone()[0]
             connection.execute(
                 "INSERT INTO task_event VALUES (?,?,?,?,?)",
-                (row["task_id"], event_ordinal, "FAILED", "SUCCEEDED", receipt_bytes),
+                (
+                    row["task_id"],
+                    event_ordinal,
+                    row["state"],
+                    "SUCCEEDED",
+                    receipt_bytes,
+                ),
             )
             connection.execute(
                 "UPDATE task SET state='SUCCEEDED', last_receipt_json=? WHERE task_id=?",
@@ -1190,7 +1196,7 @@ def seal_current_document_revalidated_corpus_tasks_v1(
                     "SELECT * FROM task WHERE task_id=?", (row["task_id"],)
                 ).fetchone()
             )
-            for row in failed_rows
+            for row in repairable_rows
         ]
     return updated
 

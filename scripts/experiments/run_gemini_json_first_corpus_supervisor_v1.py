@@ -1814,7 +1814,7 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
     ]
 
     def admissible(task: dict[str, Any]) -> bool:
-        return task["state"] in {"FAILED", "SUCCEEDED"} or (
+        return task["state"] in {"FAILED", "NEEDS_RETRY", "SUCCEEDED"} or (
             task["state"] == "RUNNING"
             and task["route"] == GOOGLE_ROUTE
             and type(task.get("provider_job_ref")) is str
@@ -1913,9 +1913,11 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
         page_images=page_images,
         variants=variants,
     )
-    failed_task_ids = sorted(task["task_id"] for task in tasks if task["state"] == "FAILED")
+    repairable_task_ids = sorted(
+        task["task_id"] for task in tasks if task["state"] in {"FAILED", "NEEDS_RETRY"}
+    )
     repaired_tasks = []
-    if failed_task_ids:
+    if repairable_task_ids:
         repaired_tasks = seal_current_document_revalidated_corpus_tasks_v1(
             args.ledger,
             task_id=args.task_id,
@@ -1930,7 +1932,7 @@ def build_current_document_manifest(args: argparse.Namespace) -> dict[str, Any]:
                     {"physical_page": page, "prompt_variant": variants[page]}
                     for page in expected_pages
                 ],
-                "repaired_task_ids": failed_task_ids,
+                "repaired_task_ids": repairable_task_ids,
                 "revalidated_pages": expected_pages,
                 "status_counts": manifest["status_counts"],
             },

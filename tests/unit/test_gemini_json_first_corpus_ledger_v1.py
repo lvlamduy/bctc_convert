@@ -696,6 +696,47 @@ def test_failed_chunks_can_be_sealed_by_complete_current_document_revalidation(t
         )
 
 
+def test_retryable_task_can_be_sealed_without_another_provider_attempt(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan())
+    retryable = list_corpus_tasks_v1(ledger)[0]
+    running = transition_corpus_task_v1(
+        ledger,
+        task_id=retryable["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"provider_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=retryable["task_id"],
+        expected_state="RUNNING",
+        next_state="NEEDS_RETRY",
+        receipt={"failed_pages": [1]},
+    )
+    pages = list(range(1, retryable["document_page_count"] + 1))
+    receipt = {
+        "current_document_revalidated": True,
+        "document_manifest_id": "gfdmv1:manifest:" + "6" * 64,
+        "page_image_sha256s": [
+            {"image_sha256": f"{page:064x}", "physical_page": page} for page in pages
+        ],
+        "page_prompt_variants": [
+            {"physical_page": page, "prompt_variant": "simple"} for page in pages
+        ],
+        "repaired_task_ids": [retryable["task_id"]],
+        "revalidated_pages": pages,
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": len(pages)},
+    }
+
+    repaired = seal_current_document_revalidated_corpus_tasks_v1(
+        ledger, task_id=retryable["task_id"], receipt=receipt
+    )
+
+    assert repaired[0]["state"] == "SUCCEEDED"
+    assert repaired[0]["attempt_count"] == running["attempt_count"]
+
+
 def test_google_document_acceleration_claim_is_atomic_resumable_and_bounded(tmp_path) -> None:
     ledger = tmp_path / "ledger.sqlite3"
     initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan(), max_task_attempts=2)

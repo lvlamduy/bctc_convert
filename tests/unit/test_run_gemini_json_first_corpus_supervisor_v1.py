@@ -2679,6 +2679,69 @@ def test_current_document_manifest_atomically_seals_failed_chunks(monkeypatch, t
     }
 
 
+def test_current_document_manifest_accepts_a_retryable_complete_store(
+    monkeypatch, tmp_path
+) -> None:
+    task = {
+        "artifact_relative_path": "task-1",
+        "document_page_count": 1,
+        "first_physical_page": 1,
+        "last_physical_page": 1,
+        "relative_path": "ACB/report.pdf",
+        "source_sha256": "a" * 64,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    planned = {
+        "document": {"page_count": 1},
+        "document_plan_id": "gjfpdocv1:" + "b" * 64,
+        "route": target.OPENROUTER_ROUTE,
+        "tasks": [{"task_id": "task-1"}],
+    }
+    monkeypatch.setattr(
+        target, "_plan", lambda _path: {"documents": [planned], "policy": {"dpi": 300}}
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda _ledger: [task])
+    monkeypatch.setattr(
+        target, "corpus_ledger_summary_v1", lambda _ledger: {"prompt_variant": "simple"}
+    )
+    monkeypatch.setattr(target, "_current_page_image_sha256s_v1", lambda **_kwargs: {1: "1" * 64})
+    monkeypatch.setattr(
+        target,
+        "build_financial_document_manifest_v1",
+        lambda *_args, **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "c" * 64,
+            "page_count": 1,
+            "pages": [{"physical_page": 1, "status": "FINANCIAL_NOTE_CONTENT"}],
+            "status_counts": {"FINANCIAL_NOTE_CONTENT": 1},
+            "totals": {"cost_usd": "0.010000000000"},
+        },
+    )
+    captured = []
+
+    def seal(_ledger, *, task_id, receipt):
+        captured.append((task_id, receipt))
+        return [{"task_id": task_id}]
+
+    monkeypatch.setattr(target, "seal_current_document_revalidated_corpus_tasks_v1", seal)
+
+    result = target.build_current_document_manifest(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            ledger=tmp_path / "ledger.sqlite3",
+            page_prompt_variant=[],
+            plan=tmp_path / "plan.json",
+            source_root=tmp_path / "source",
+            task_id="task-1",
+        )
+    )
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["repaired_task_ids"] == ["task-1"]
+    assert captured[0][1]["repaired_task_ids"] == ["task-1"]
+
+
 def test_page_prompt_variant_overrides_fail_closed() -> None:
     for overrides in (["1=scope", "1=items"], ["4=scope"], ["1=unknown"], ["bad"]):
         with pytest.raises(
