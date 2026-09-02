@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 18:18 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 18:51 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -19,13 +19,13 @@ older queue priorities where they conflict.
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
   kiểm tra trực quan mới loại toàn bộ 7 PDF tiếng Anh (360 trang) và 1 PDF ABB
   trùng nội dung (28 trang).
-- Tại checkpoint **18:18 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
+- Tại checkpoint **18:51 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
   luồng Gemini, tương ứng **6.443/14.947 trang thuộc các PDF đã bắt đầu
   (43,1%)**. Store đã có JSON hợp lệ cho **6.008/14.947 trang (40,20%)**, thuộc
-  123 PDF. Trạng thái task là **37 SUCCEEDED, 25 NEEDS_RETRY, 62 FAILED đang
-  chờ sửa đúng trang và 147 PENDING**. Supervisor cũ đã được dừng an toàn để
-  chuyển sang ledger đã loại tài liệu tiếng Anh/bản trùng; không có request
-  provider đang chạy tại thời điểm checkpoint. `SUCCEEDED` ở cấp PDF thấp
+  123 PDF. Trạng thái task là **37 SUCCEEDED, 1 RUNNING, 22 NEEDS_RETRY,
+  64 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
+  với một worker và cơ chế chờ tăng dần khi Vertex Flex báo quá tải;
+  `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
   còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
 - Bảng theo từng mã ngân hàng được lưu tại
