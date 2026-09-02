@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 17:35 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 17:58 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -17,10 +17,10 @@ older queue priorities where they conflict.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint **17:35 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
+- Tại checkpoint **17:58 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
   luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
-  (44,0%)**. Store đã có JSON hợp lệ cho **6.286/15.335 trang (40,99%)**, thuộc
-  129 PDF. Trạng thái task là **37 SUCCEEDED, 32 NEEDS_RETRY, 61 FAILED đang
+  (44,0%)**. Store đã có JSON hợp lệ cho **6.288/15.335 trang (41,01%)**, thuộc
+  129 PDF. Trạng thái task là **37 SUCCEEDED, 28 NEEDS_RETRY, 65 FAILED đang
   chờ sửa đúng trang và 149 PENDING**; supervisor đang ở nấc chờ sau
   circuit và không có child request tại thời điểm checkpoint. `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
