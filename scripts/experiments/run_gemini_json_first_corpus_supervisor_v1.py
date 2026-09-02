@@ -33,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
@@ -116,6 +117,12 @@ def _parser() -> argparse.ArgumentParser:
     requeue.add_argument("--plan", type=Path, required=True)
     requeue.add_argument("--ledger", type=Path, required=True)
     requeue.add_argument("--task-id", required=True)
+
+    recover_collision = commands.add_parser("recover-openrouter-artifact-collision")
+    recover_collision.add_argument("--plan", type=Path, required=True)
+    recover_collision.add_argument("--ledger", type=Path, required=True)
+    recover_collision.add_argument("--task-id", required=True)
+    recover_collision.add_argument("--artifact-root", type=Path, required=True)
 
     repair = commands.add_parser("repair-openrouter")
     repair.add_argument("--plan", type=Path, required=True)
@@ -952,7 +959,7 @@ def _run_google_fallback(
 def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | None:
     """Classify one exact failed-page frontier without inspecting page content."""
 
-    if task["state"] != "NEEDS_RETRY":
+    if task["state"] not in {"NEEDS_RETRY", "RUNNING"}:
         return None
     try:
         prior = json.loads(task["last_receipt_json"])
@@ -960,6 +967,13 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter retry receipt is invalid"
         ) from exc
+    if task["state"] == "RUNNING" and not (
+        type(prior) is dict
+        and prior.get("format_version")
+        == "GEMINI_JSON_FIRST_OPENROUTER_LOCAL_ARTIFACT_COLLISION_RECOVERY_V1"
+        and prior.get("recovery_same_attempt") is True
+    ):
+        return None
     subprocess_fields = {
         "disposition",
         "provider_returncode",
@@ -1142,8 +1156,6 @@ def _provider_retry_pages_v1(task: dict[str, Any]) -> list[int] | None:
 def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
     """Return pages known to contain financial content before an item retry."""
 
-    if task["state"] != "NEEDS_RETRY":
-        return []
     frontiers = _retry_prompt_frontiers_v1(task)
     if frontiers is None:
         return []
@@ -3610,6 +3622,36 @@ def requeue_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def recover_openrouter_artifact_collision(args: argparse.Namespace) -> dict[str, Any]:
+    """Resume an exhausted Flex attempt proven to have made no provider call."""
+
+    plan = _plan(args.plan)
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
+    task = recover_failed_openrouter_artifact_collision_v1(
+        args.ledger,
+        task_id=args.task_id,
+        artifact_root=args.artifact_root,
+    )
+    receipt_bytes = task.get("last_receipt_json")
+    if type(receipt_bytes) is not bytes:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "recovered OpenRouter task lacks its exact receipt bytes"
+        )
+    return {
+        "corpus_run_id": summary["corpus_run_id"],
+        "disposition": "RUNNING",
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "task": {
+            "attempt_count": task["attempt_count"],
+            "last_receipt_sha256": sha256(receipt_bytes).hexdigest(),
+            "state": task["state"],
+            "task_id": task["task_id"],
+        },
+    }
+
+
 def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     """Replay immutable semantic responses and seal one formerly failed document."""
 
@@ -3905,6 +3947,8 @@ def main() -> int:
         result = corpus_ledger_summary_v1(args.ledger)
     elif args.command == "requeue-openrouter":
         result = requeue_openrouter_task(args)
+    elif args.command == "recover-openrouter-artifact-collision":
+        result = recover_openrouter_artifact_collision(args)
     elif args.command == "repair-openrouter":
         result = repair_openrouter_task(args)
     elif args.command == "repair-openrouter-items":

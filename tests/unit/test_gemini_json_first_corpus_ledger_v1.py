@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+from hashlib import sha256
 
 import pytest
 
@@ -11,6 +12,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
@@ -22,6 +24,10 @@ from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (
     GOOGLE_ROUTE,
     OPENROUTER_ROUTE,
     build_gemini_json_first_corpus_plan_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
 )
 
 
@@ -320,6 +326,146 @@ def test_failed_openrouter_task_can_be_requeued_once_with_exact_failed_pages(tmp
     )
     with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="bound is exhausted"):
         requeue_failed_openrouter_corpus_task_v1(ledger, task_id=task["task_id"])
+
+
+def test_exhausted_local_retry_contract_collision_recovers_same_attempt(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(
+        ledger,
+        plan=_plan(),
+        max_task_attempts=3,
+    )
+    task = list_corpus_tasks_v1(
+        ledger,
+        states=["PENDING"],
+        route=OPENROUTER_ROUTE,
+        limit=1,
+    )[0]
+    pages = list(range(task["first_physical_page"], task["first_physical_page"] + 5))
+    legacy_frontiers = {
+        "items": [pages[0], pages[2], pages[4]],
+        "simple": [pages[1], pages[3], pages[4]],
+    }
+    running = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="NEEDS_RETRY",
+        receipt={
+            "failed_pages": pages,
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [pages[2], pages[4]],
+            "unresolved_pages": [],
+        },
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "alternate_prompt_variants": [
+                {
+                    "physical_pages": legacy_frontiers["simple"],
+                    "prompt_variant": "simple",
+                },
+                {
+                    "physical_pages": legacy_frontiers["items"],
+                    "prompt_variant": "items",
+                },
+            ],
+            "failed_pages": pages[:3],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [pages[2]],
+            "unresolved_pages": [],
+        },
+    )
+    requeue_failed_openrouter_corpus_task_v1(ledger, task_id=task["task_id"])
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    exhausted = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": len(b"local contract conflict"),
+            "provider_stderr_sha256": sha256(b"local contract conflict").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    assert running["attempt_count"] == 1
+    assert exhausted["attempt_count"] == 3
+
+    artifact_root = tmp_path / "artifacts"
+    task_root = artifact_root / task["artifact_relative_path"]
+    for variant, selected_pages in legacy_frontiers.items():
+        material = {
+            "document": {
+                "source_logical_name": task["relative_path"],
+                "source_sha256": task["source_sha256"],
+                "source_size_bytes": task["source_size_bytes"],
+            },
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1",
+            "page_count": task["document_page_count"],
+            "prompt_variant": variant,
+            "selected_physical_pages": selected_pages,
+        }
+        contract = {
+            **material,
+            "document_run_id": "gjfporv1:document:" + canonical_json_sha256_v1(material),
+        }
+        destination = task_root / "adaptive-retry" / variant / "document-contract.json"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(canonical_json_bytes_v1(contract))
+
+    recovered = recover_failed_openrouter_artifact_collision_v1(
+        ledger,
+        task_id=task["task_id"],
+        artifact_root=artifact_root,
+    )
+    assert recovered["state"] == "RUNNING"
+    assert recovered["attempt_count"] == 3
+    receipt = json.loads(recovered["last_receipt_json"])
+    assert receipt["recovery_same_attempt"] is True
+    assert receipt["failed_pages"] == pages[:3]
+    assert [item["prompt_variant"] for item in receipt["collision_evidence"]] == [
+        "items",
+        "simple",
+    ]
+    assert receipt["collision_evidence"][0]["legacy_physical_pages"] == legacy_frontiers["items"]
+    assert receipt["collision_evidence"][0]["retry_physical_pages"] == [pages[2]]
+    assert receipt["collision_evidence"][1]["legacy_physical_pages"] == legacy_frontiers["simple"]
+    assert receipt["collision_evidence"][1]["retry_physical_pages"] == pages[:2]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="exhausted task"):
+        recover_failed_openrouter_artifact_collision_v1(
+            ledger,
+            task_id=task["task_id"],
+            artifact_root=artifact_root,
+        )
 
 
 def test_failed_openrouter_task_can_be_sealed_by_complete_google_page_fallback(tmp_path) -> None:

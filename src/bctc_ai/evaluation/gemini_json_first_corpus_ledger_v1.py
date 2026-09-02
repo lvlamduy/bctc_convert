@@ -412,6 +412,265 @@ def requeue_failed_openrouter_corpus_task_v1(
     return dict(updated)
 
 
+def recover_failed_openrouter_artifact_collision_v1(
+    path: Path,
+    *,
+    task_id: str,
+    artifact_root: Path,
+) -> dict[str, Any]:
+    """Resume one exhausted attempt proven to have failed before provider work.
+
+    Older supervisors reused one immutable adaptive-retry directory for every
+    frontier of the same prompt.  When a later attempt changed the frontier,
+    the child rejected the pre-existing document contract before submitting a
+    request.  This recovery is deliberately specific: it validates the exact
+    event sequence and the conflicting immutable contracts, then returns the
+    task to RUNNING without consuming another provider attempt.
+    """
+
+    if artifact_root.is_symlink() or not artifact_root.is_dir():
+        raise _error("OpenRouter artifact-collision recovery root is invalid")
+    resolved_artifact_root = artifact_root.resolve()
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if (
+            row is None
+            or row["state"] != "FAILED"
+            or row["route"] != OPENROUTER_ROUTE
+            or row["attempt_count"] != identity["max_task_attempts"]
+        ):
+            raise _error("OpenRouter artifact-collision recovery requires one exhausted task")
+        events = list(
+            connection.execute(
+                "SELECT * FROM task_event WHERE task_id=? ORDER BY event_ordinal DESC LIMIT 4",
+                (task_id,),
+            )
+        )
+        if (
+            len(events) != 4
+            or (events[0]["prior_state"], events[0]["next_state"]) != ("RUNNING", "FAILED")
+            or (events[1]["prior_state"], events[1]["next_state"]) != ("NEEDS_RETRY", "RUNNING")
+            or (events[2]["prior_state"], events[2]["next_state"]) != ("FAILED", "NEEDS_RETRY")
+            or (events[3]["prior_state"], events[3]["next_state"]) != ("RUNNING", "FAILED")
+            or events[0]["receipt_json"] != row["last_receipt_json"]
+        ):
+            raise _error("OpenRouter artifact-collision recovery event chain is invalid")
+        try:
+            failure = json.loads(row["last_receipt_json"])
+            retry = json.loads(events[2]["receipt_json"])
+            prior_attempt = json.loads(events[3]["receipt_json"])
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise _error("OpenRouter artifact-collision recovery receipt is invalid") from exc
+        failure_fields = {
+            "disposition",
+            "provider_returncode",
+            "provider_stderr_bytes",
+            "provider_stderr_sha256",
+            "provider_stdout_bytes",
+            "provider_stdout_sha256",
+            "retry_allowed",
+        }
+        if (
+            type(failure) is not dict
+            or set(failure) != failure_fields
+            or failure["disposition"] != "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
+            or type(failure["provider_returncode"]) is not int
+            or failure["provider_returncode"] != 1
+            or type(failure["provider_stderr_bytes"]) is not int
+            or failure["provider_stderr_bytes"] <= 0
+            or type(failure["provider_stdout_bytes"]) is not int
+            or failure["provider_stdout_bytes"] != 0
+            or failure["provider_stdout_sha256"] != sha256(b"").hexdigest()
+            or failure["retry_allowed"] is not False
+            or any(
+                type(failure[field]) is not str
+                or len(failure[field]) != 64
+                or any(character not in "0123456789abcdef" for character in failure[field])
+                for field in ("provider_stderr_sha256", "provider_stdout_sha256")
+            )
+        ):
+            raise _error("OpenRouter artifact-collision recovery child failure is invalid")
+        retry_fields = {
+            "failed_pages",
+            "format_version",
+            "prior_failed_receipt_sha256",
+            "recitation_failed_pages",
+            "requeue_authorized",
+            "semantic_failed_pages",
+            "unresolved_pages",
+        }
+        failed = retry.get("failed_pages") if type(retry) is dict else None
+        semantic = retry.get("semantic_failed_pages") if type(retry) is dict else None
+        unresolved = retry.get("unresolved_pages") if type(retry) is dict else None
+        recitation = retry.get("recitation_failed_pages") if type(retry) is dict else None
+        if (
+            type(retry) is not dict
+            or set(retry) != retry_fields
+            or retry["format_version"] != "GEMINI_JSON_FIRST_OPENROUTER_FAILED_REQUEUE_V1"
+            or retry["requeue_authorized"] is not True
+            or retry["prior_failed_receipt_sha256"] != sha256(events[3]["receipt_json"]).hexdigest()
+            or type(failed) is not list
+            or not failed
+            or failed != sorted(set(failed))
+            or type(semantic) is not list
+            or semantic != sorted(set(semantic))
+            or type(unresolved) is not list
+            or unresolved != sorted(set(unresolved))
+            or type(recitation) is not list
+            or recitation != sorted(set(recitation))
+            or not (set(semantic) | set(unresolved) | set(recitation)).issubset(failed)
+            or set(recitation) & (set(semantic) | set(unresolved))
+            or any(
+                type(page) is not int
+                or page < row["first_physical_page"]
+                or page > row["last_physical_page"]
+                for page in failed
+            )
+        ):
+            raise _error("OpenRouter artifact-collision recovery retry frontier is invalid")
+
+        protected = set(semantic) | set(unresolved)
+        prompt_pages: dict[str, list[int]] = {}
+        for variant, pages in (
+            (
+                identity["prompt_variant"],
+                sorted(set(failed) - protected - set(recitation)),
+            ),
+            ("scope", recitation),
+            ("items", sorted(protected)),
+        ):
+            prompt_pages.setdefault(variant, []).extend(pages)
+        expected_frontiers = {
+            variant: sorted(set(pages)) for variant, pages in prompt_pages.items() if pages
+        }
+        if not expected_frontiers:
+            raise _error("OpenRouter artifact-collision recovery has no retry frontier")
+
+        prior_frontier_items = (
+            prior_attempt.get("alternate_prompt_variants") if type(prior_attempt) is dict else None
+        )
+        if type(prior_frontier_items) is not list or not prior_frontier_items:
+            raise _error("OpenRouter prior adaptive-retry frontier is absent")
+        legacy_frontiers: dict[str, list[int]] = {}
+        for item in prior_frontier_items:
+            variant = item.get("prompt_variant") if type(item) is dict else None
+            pages = item.get("physical_pages") if type(item) is dict else None
+            if (
+                type(variant) is not str
+                or variant in legacy_frontiers
+                or type(pages) is not list
+                or not pages
+                or pages != sorted(set(pages))
+                or any(
+                    type(page) is not int
+                    or page < row["first_physical_page"]
+                    or page > row["last_physical_page"]
+                    for page in pages
+                )
+            ):
+                raise _error("OpenRouter prior adaptive-retry frontier is invalid")
+            legacy_frontiers[variant] = pages
+        if any(variant not in legacy_frontiers for variant in expected_frontiers):
+            raise _error("OpenRouter prior adaptive-retry frontier omits a current prompt")
+
+        task_root = resolved_artifact_root / row["artifact_relative_path"]
+        try:
+            resolved_task_root = task_root.resolve(strict=True)
+        except OSError as exc:
+            raise _error("OpenRouter artifact-collision recovery task root is absent") from exc
+        if (
+            task_root.is_symlink()
+            or not task_root.is_dir()
+            or not resolved_task_root.is_relative_to(resolved_artifact_root)
+        ):
+            raise _error("OpenRouter artifact-collision recovery task root is invalid")
+
+        collisions = []
+        for variant, retry_pages in sorted(expected_frontiers.items()):
+            legacy_relative = Path("adaptive-retry") / variant / "document-contract.json"
+            legacy_contract_path = resolved_task_root / legacy_relative
+            if legacy_contract_path.is_symlink() or not legacy_contract_path.is_file():
+                raise _error("OpenRouter legacy adaptive-retry contract is absent")
+            legacy_bytes = legacy_contract_path.read_bytes()
+            try:
+                legacy = json.loads(legacy_bytes)
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                raise _error("OpenRouter legacy adaptive-retry contract is invalid") from exc
+            legacy_pages = legacy.get("selected_physical_pages") if type(legacy) is dict else None
+            legacy_document = legacy.get("document") if type(legacy) is dict else None
+            legacy_material = (
+                {key: value for key, value in legacy.items() if key != "document_run_id"}
+                if type(legacy) is dict
+                else None
+            )
+            if (
+                type(legacy) is not dict
+                or legacy.get("format_version") != "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
+                or legacy.get("prompt_variant") != variant
+                or type(legacy_document) is not dict
+                or legacy_document.get("source_logical_name") != row["relative_path"]
+                or legacy_document.get("source_sha256") != row["source_sha256"]
+                or legacy_document.get("source_size_bytes") != row["source_size_bytes"]
+                or legacy.get("page_count") != row["document_page_count"]
+                or type(legacy_pages) is not list
+                or legacy_pages != sorted(set(legacy_pages))
+                or legacy_pages != legacy_frontiers[variant]
+                or retry_pages == legacy_pages
+                or legacy.get("document_run_id")
+                != "gjfporv1:document:" + canonical_json_sha256_v1(legacy_material)
+            ):
+                raise _error("OpenRouter legacy adaptive-retry contract does not prove a collision")
+            frontier_sha256 = sha256(canonical_json_bytes_v1(retry_pages)).hexdigest()
+            replacement_relative = (
+                Path("adaptive-retry")
+                / variant
+                / f"pages-{frontier_sha256}"
+                / "document-contract.json"
+            )
+            if (resolved_task_root / replacement_relative).exists():
+                raise _error("OpenRouter replacement adaptive-retry contract already exists")
+            collisions.append(
+                {
+                    "legacy_contract_relative_path": legacy_relative.as_posix(),
+                    "legacy_contract_sha256": sha256(legacy_bytes).hexdigest(),
+                    "legacy_physical_pages": legacy_pages,
+                    "prompt_variant": variant,
+                    "replacement_contract_relative_path": replacement_relative.as_posix(),
+                    "retry_physical_pages": retry_pages,
+                }
+            )
+
+        recovery = {
+            "collision_evidence": collisions,
+            "failed_pages": failed,
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_LOCAL_ARTIFACT_COLLISION_RECOVERY_V1",
+            "prior_failed_receipt_sha256": sha256(row["last_receipt_json"]).hexdigest(),
+            "recitation_failed_pages": recitation,
+            "recovery_same_attempt": True,
+            "retry_frontier_receipt_sha256": sha256(events[2]["receipt_json"]).hexdigest(),
+            "semantic_failed_pages": semantic,
+            "unresolved_pages": unresolved,
+        }
+        recovery_bytes = canonical_json_bytes_v1(recovery)
+        event_ordinal = connection.execute(
+            "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (task_id,)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO task_event VALUES (?,?,?,?,?)",
+            (task_id, event_ordinal, "FAILED", "RUNNING", recovery_bytes),
+        )
+        connection.execute(
+            "UPDATE task SET state='RUNNING',provider_job_ref=NULL,last_receipt_json=? "
+            "WHERE task_id=?",
+            (recovery_bytes, task_id),
+        )
+        connection.commit()
+        updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+    return dict(updated)
+
+
 def seal_offline_revalidated_corpus_task_v1(
     path: Path,
     *,
