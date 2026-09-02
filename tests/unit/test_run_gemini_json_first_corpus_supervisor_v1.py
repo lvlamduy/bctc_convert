@@ -1276,18 +1276,36 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
         pages = [
             int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
         ]
-        calls.append((variant, pages))
+        offline = "--offline-replay-only" in argv
+        calls.append(("OFFLINE" if offline else variant, pages))
+        if offline:
+            assert pages == [3]
+            assert argv[argv.index("--semantic-replay-source-dir") + 1].endswith(
+                "/artifacts/tasks/task-1"
+            )
         return 0, {
             "cached_pages": [],
             "disposition": "SUCCEEDED",
+            "execution_mode": "OFFLINE_REPLAY_ONLY" if offline else "PROVIDER_OR_CACHE",
             "failed_pages": [],
             "ingested_pages": pages,
             "offline_missing_pages": [],
             "page_image_sha256s": [
                 {"image_sha256": str(page) * 64, "physical_page": page} for page in pages
             ],
+            "provider_request_pages": [] if offline else pages,
             "recitation_failed_pages": [],
             "semantic_failed_pages": [],
+            "semantic_replay_sources": (
+                [
+                    {
+                        "physical_page": 3,
+                        "source_relative_path": ("page-00003/attempt-0001/raw-response.json"),
+                    }
+                ]
+                if offline
+                else []
+            ),
             "unresolved_pages": [],
         }
 
@@ -1323,12 +1341,13 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
         )
     )
     assert result["disposition"] == "SUCCEEDED"
-    assert calls == [("simple", [1]), ("items", [3])]
+    assert calls == [("OFFLINE", [3]), ("simple", [1])]
     receipt = sealed[0]["receipt"]
     assert receipt["repair_gateway"] == "OPENROUTER"
     assert receipt["requested_service_tier"] == "flex"
     assert receipt["revalidated_pages"] == [1, 2, 3]
-    assert [item["accepted_pages"] for item in receipt["provider_results"]] == [[1], [3]]
+    assert [item["accepted_pages"] for item in receipt["provider_results"]] == [[1]]
+    assert [item["accepted_pages"] for item in receipt["offline_replay_results"]] == [[3]]
 
 
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:

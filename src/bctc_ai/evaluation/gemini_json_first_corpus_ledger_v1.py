@@ -840,10 +840,17 @@ def seal_openrouter_exhausted_page_repair_corpus_task_v1(
         "semantic_failed_pages",
         "unresolved_pages",
     }
+    format_version = checked.get("format_version")
+    if format_version == "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2":
+        required.add("offline_replay_results")
     if set(checked) != required:
         raise _error("OpenRouter exhausted-page repair receipt fields drifted")
     if (
-        checked["format_version"] != "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1"
+        format_version
+        not in {
+            "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+            "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+        }
         or checked["disposition"] != "SUCCEEDED"
         or checked["repair_gateway"] != "OPENROUTER"
         or checked["requested_service_tier"] != "flex"
@@ -868,13 +875,19 @@ def seal_openrouter_exhausted_page_repair_corpus_task_v1(
         raise _error("OpenRouter exhausted-page repair authority is invalid")
     revalidated_pages = checked["revalidated_pages"]
     provider_results = checked["provider_results"]
+    offline_replay_results = checked.get("offline_replay_results", [])
     if (
         type(revalidated_pages) is not list
         or not revalidated_pages
         or revalidated_pages != sorted(set(revalidated_pages))
         or any(type(page) is not int or page <= 0 for page in revalidated_pages)
         or type(provider_results) is not list
-        or not provider_results
+        or type(offline_replay_results) is not list
+        or not (provider_results or offline_replay_results)
+        or (
+            format_version == "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1"
+            and offline_replay_results
+        )
     ):
         raise _error("OpenRouter exhausted-page repair frontier is invalid")
     completed_pages: set[int] = set()
@@ -930,6 +943,72 @@ def seal_openrouter_exhausted_page_repair_corpus_task_v1(
         ):
             raise _error("OpenRouter exhausted-page provider result is invalid")
         prior_item_attempt = item_attempt
+        attempted_pages.update(pages)
+        completed_pages.update(accepted)
+    for item in offline_replay_results:
+        if type(item) is not dict or set(item) != {
+            "accepted_pages",
+            "execution_mode",
+            "physical_pages",
+            "prompt_variant",
+            "repair_attempt",
+            "result",
+        }:
+            raise _error("offline semantic replay result fields drifted")
+        pages = item["physical_pages"]
+        result = item["result"]
+        accepted = item["accepted_pages"]
+        item_attempt = item["repair_attempt"]
+        failed = result.get("failed_pages") if type(result) is dict else None
+        cached = result.get("cached_pages") if type(result) is dict else None
+        ingested = result.get("ingested_pages") if type(result) is dict else None
+        replay_sources = result.get("semantic_replay_sources") if type(result) is dict else None
+        if (
+            item["execution_mode"] != "OFFLINE_REPLAY_ONLY"
+            or type(pages) is not list
+            or not pages
+            or pages != sorted(set(pages))
+            or type(accepted) is not list
+            or accepted != sorted(set(accepted))
+            or completed_pages.intersection(accepted)
+            or type(item_attempt) is not int
+            or not 1 <= item_attempt <= checked["repair_attempt"]
+            or item["prompt_variant"] not in {"balanced", "compact", "items", "scope", "simple"}
+            or type(result) is not dict
+            or result.get("execution_mode") != "OFFLINE_REPLAY_ONLY"
+            or result.get("disposition") not in {"NEEDS_RETRY", "SUCCEEDED"}
+            or type(failed) is not list
+            or failed != sorted(set(failed))
+            or type(cached) is not list
+            or cached != sorted(set(cached))
+            or type(ingested) is not list
+            or ingested != sorted(set(ingested))
+            or set(cached) & set(ingested)
+            or set(failed) & (set(cached) | set(ingested))
+            or sorted(set(failed) | set(cached) | set(ingested)) != pages
+            or not set(accepted).issubset(set(cached) | set(ingested))
+            or result.get("provider_request_pages") != []
+            or result.get("recitation_failed_pages", []) != []
+            or any(
+                type(values) is not list or not set(values).issubset(failed)
+                for values in (
+                    result.get("offline_missing_pages", []),
+                    result.get("semantic_failed_pages", []),
+                    result.get("unresolved_pages", []),
+                )
+            )
+            or type(replay_sources) is not list
+            or any(
+                type(source) is not dict
+                or set(source) != {"physical_page", "source_relative_path"}
+                or source["physical_page"] not in ingested
+                or type(source["source_relative_path"]) is not str
+                or not source["source_relative_path"]
+                for source in replay_sources
+            )
+            or len({source["physical_page"] for source in replay_sources}) != len(replay_sources)
+        ):
+            raise _error("offline semantic replay result is invalid")
         attempted_pages.update(pages)
         completed_pages.update(accepted)
     receipt_bytes = canonical_json_bytes_v1(checked)

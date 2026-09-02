@@ -92,6 +92,8 @@ class _PersistedPageOutcome:
     physical_page: int
     page: dict[str, Any]
     disposition: str
+    semantic_replay_source: str | None = None
+    provider_request_made: bool = False
 
 
 def _provider_error_is_recitation_v1(error: GeminiJsonFirstProviderV1Error) -> bool:
@@ -172,6 +174,14 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use cached pages and immutable semantic raw responses; never call a provider.",
     )
+    parser.add_argument(
+        "--semantic-replay-source-dir",
+        type=Path,
+        help=(
+            "Read immutable semantic-failure responses from this artifact directory while "
+            "writing the new replay receipt under --artifact-dir."
+        ),
+    )
     return parser
 
 
@@ -205,6 +215,44 @@ def _write_or_verify(path: Path, payload: bytes) -> None:
             )
         return
     _write_new(path, payload)
+
+
+def _validate_external_semantic_replay_contract_v1(
+    source_dir: Path,
+    *,
+    expected_contract: dict[str, Any],
+) -> None:
+    contract_path = source_dir / "document-contract.json"
+    if contract_path.is_symlink() or not contract_path.is_file():
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "semantic replay source lacks one immutable document contract"
+        )
+    raw = contract_path.read_bytes()
+    try:
+        contract = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "semantic replay source document contract is invalid"
+        ) from exc
+    if type(contract) is not dict or raw != canonical_json_bytes_v1(contract):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "semantic replay source document contract is not canonical"
+        )
+    exact_fields = {
+        "document",
+        "dpi",
+        "output_contract_mode",
+        "prompt_sha256",
+        "prompt_variant",
+        "requested_model",
+        "requested_service_tier",
+        "response_schema_sha256",
+        "selected_provider",
+    }
+    if any(contract.get(field) != expected_contract[field] for field in exact_fields):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "semantic replay source document contract drifted"
+        )
 
 
 def _next_attempt_dir(root: Path, physical_page: int) -> Path:
@@ -350,6 +398,7 @@ def _extract_page(
     retry_delay_seconds: float,
     provider_call: Callable[..., ProviderResultV1],
     artifact_dir: Path,
+    semantic_replay_source_dir: Path | None,
     offline_replay_only: bool,
 ) -> _PageOutcome:
     rendered = _render_page(pdf, physical_page, dpi, source_sha256)
@@ -393,7 +442,7 @@ def _extract_page(
                 cached_json=cached,
             )
     replayed, replay_source, semantic_failure_present = _replay_prior_semantic_result_v1(
-        artifact_dir=artifact_dir,
+        artifact_dir=semantic_replay_source_dir or artifact_dir,
         physical_page=physical_page,
         expected_page=rendered.page,
     )
@@ -545,6 +594,7 @@ def _persist_page_outcome_v1(
             physical_page,
             outcome.page,
             "PROVIDER_RECITATION_FAILED" if recitation else "PROVIDER_FAILED",
+            provider_request_made=True,
         )
     result = outcome.provider_result
     if result is None:
@@ -578,7 +628,13 @@ def _persist_page_outcome_v1(
                 }
             ),
         )
-        return _PersistedPageOutcome(physical_page, outcome.page, "SEMANTIC_FAILED")
+        return _PersistedPageOutcome(
+            physical_page,
+            outcome.page,
+            "SEMANTIC_FAILED",
+            semantic_replay_source=outcome.semantic_replay_source,
+            provider_request_made=outcome.semantic_replay_source is None,
+        )
     if result.provider_name not in {OPENROUTER_SELECTED_PROVIDER, "GOOGLE_GEMINI_API"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
     requested_service_tier = (
@@ -620,7 +676,13 @@ def _persist_page_outcome_v1(
         ),
     )
     disposition = "INGESTED_UNRESOLVED" if page_json["status"] == "UNRESOLVED_PAGE" else "INGESTED"
-    return _PersistedPageOutcome(physical_page, outcome.page, disposition)
+    return _PersistedPageOutcome(
+        physical_page,
+        outcome.page,
+        disposition,
+        outcome.semantic_replay_source,
+        outcome.semantic_replay_source is None,
+    )
 
 
 def run_openrouter_document_v1(
@@ -640,6 +702,7 @@ def run_openrouter_document_v1(
     provider_call: Callable[..., ProviderResultV1] = call_gemini_json_first_v1,
     physical_pages: Sequence[int] | None = None,
     offline_replay_only: bool = False,
+    semantic_replay_source_dir: Path | None = None,
     google_api_keys: list[str] | None = None,
     google_credential_slots: list[str] | None = None,
     google_standard_mode: str = "disabled",
@@ -663,6 +726,12 @@ def run_openrouter_document_v1(
     ):
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "Google fallback credential slots are invalid"
+        )
+    if semantic_replay_source_dir is not None and (
+        semantic_replay_source_dir.is_symlink() or not semantic_replay_source_dir.is_dir()
+    ):
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "semantic replay source must be one existing regular directory"
         )
     document, page_count = _document(pdf, source_logical_name)
     selected_pages = (
@@ -691,6 +760,7 @@ def run_openrouter_document_v1(
     contract = {
         "document": document,
         "dpi": dpi,
+        "execution_mode": "OFFLINE_REPLAY_ONLY" if offline_replay_only else "PROVIDER_OR_CACHE",
         "format_version": "GEMINI_JSON_FIRST_OPENROUTER_DOCUMENT_V1",
         "output_contract_mode": output_contract_mode,
         "page_count": page_count,
@@ -707,6 +777,11 @@ def run_openrouter_document_v1(
         contract["format_version"] = "GEMINI_JSON_FIRST_OPENROUTER_PAGE_FRONTIER_V1"
         contract["selected_physical_pages"] = selected_pages
     contract["document_run_id"] = "gjfporv1:document:" + canonical_json_sha256_v1(contract)
+    if semantic_replay_source_dir is not None:
+        _validate_external_semantic_replay_contract_v1(
+            semantic_replay_source_dir,
+            expected_contract=contract,
+        )
     _write_or_verify(artifact_dir / "document-contract.json", canonical_json_bytes_v1(contract))
     if not database.exists():
         initialize_gemini_financial_page_store_v1(database)
@@ -737,6 +812,7 @@ def run_openrouter_document_v1(
                 retry_delay_seconds=retry_delay_seconds,
                 provider_call=provider_call,
                 artifact_dir=artifact_dir,
+                semantic_replay_source_dir=semantic_replay_source_dir,
                 offline_replay_only=offline_replay_only,
             ): physical_page
             for physical_page in selected_pages
@@ -830,6 +906,7 @@ def run_openrouter_document_v1(
         "cached_pages": cached_pages,
         "disposition": "SUCCEEDED" if not failed_pages else "NEEDS_RETRY",
         "document_run_id": contract["document_run_id"],
+        "execution_mode": contract["execution_mode"],
         "failed_pages": failed_pages,
         "ingested_pages": ingested_pages,
         "manifest_id": manifest["document_manifest_id"] if manifest is not None else None,
@@ -842,8 +919,19 @@ def run_openrouter_document_v1(
             }
             for page in selected_pages
         ],
+        "provider_request_pages": [
+            page for page in selected_pages if outcomes[page].provider_request_made
+        ],
         "recitation_failed_pages": recitation_failed_pages,
         "semantic_failed_pages": semantic_failed_pages,
+        "semantic_replay_sources": [
+            {
+                "physical_page": page,
+                "source_relative_path": outcomes[page].semantic_replay_source,
+            }
+            for page in selected_pages
+            if outcomes[page].semantic_replay_source is not None
+        ],
         "unresolved_pages": unresolved_pages,
         "usage": usage_summary_v1(database),
     }
@@ -889,6 +977,7 @@ def main() -> int:
         retry_delay_seconds=args.retry_delay_seconds,
         physical_pages=args.physical_page,
         offline_replay_only=args.offline_replay_only,
+        semantic_replay_source_dir=args.semantic_replay_source_dir,
         google_api_keys=google_keys,
         google_credential_slots=google_slots,
         google_standard_mode=args.google_standard_mode,
