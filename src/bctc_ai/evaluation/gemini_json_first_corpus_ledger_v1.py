@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import tempfile
@@ -334,6 +335,77 @@ def transition_corpus_task_v1(
             "UPDATE task SET state=?, attempt_count=?, provider_job_ref=COALESCE(?,provider_job_ref), "
             "last_receipt_json=? WHERE task_id=?",
             (next_state, attempt_count, provider_job_ref, receipt_bytes, task_id),
+        )
+        connection.commit()
+        updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+    return dict(updated)
+
+
+def requeue_failed_openrouter_corpus_task_v1(
+    path: Path,
+    *,
+    task_id: str,
+) -> dict[str, Any]:
+    """Authorize one final bounded Flex retry from an exact failed receipt."""
+
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if row is None or row["state"] != "FAILED" or row["route"] != OPENROUTER_ROUTE:
+            raise _error("OpenRouter requeue requires one failed Flex task")
+        if row["attempt_count"] >= identity["max_task_attempts"]:
+            raise _error("OpenRouter requeue retry bound is exhausted")
+        prior_bytes = row["last_receipt_json"]
+        try:
+            prior = json.loads(prior_bytes)
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise _error("OpenRouter requeue receipt is invalid") from exc
+        failed = prior.get("failed_pages") if type(prior) is dict else None
+        semantic = prior.get("semantic_failed_pages", []) if type(prior) is dict else None
+        unresolved = prior.get("unresolved_pages", []) if type(prior) is dict else None
+        recitation = prior.get("recitation_failed_pages", []) if type(prior) is dict else None
+        if (
+            type(failed) is not list
+            or not failed
+            or failed != sorted(set(failed))
+            or type(semantic) is not list
+            or semantic != sorted(set(semantic))
+            or type(unresolved) is not list
+            or unresolved != sorted(set(unresolved))
+            or type(recitation) is not list
+            or recitation != sorted(set(recitation))
+            or not (set(semantic) | set(unresolved) | set(recitation)).issubset(failed)
+            or set(recitation) & (set(semantic) | set(unresolved))
+            or any(
+                type(page) is not int
+                or page < row["first_physical_page"]
+                or page > row["last_physical_page"]
+                for page in failed
+            )
+        ):
+            raise _error("OpenRouter requeue failed-page frontier is invalid")
+        receipt = {
+            "failed_pages": failed,
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_FAILED_REQUEUE_V1",
+            "prior_failed_receipt_sha256": sha256(prior_bytes).hexdigest(),
+            "recitation_failed_pages": recitation,
+            "requeue_authorized": True,
+            "semantic_failed_pages": semantic,
+            "unresolved_pages": unresolved,
+        }
+        receipt_bytes = canonical_json_bytes_v1(receipt)
+        event_ordinal = connection.execute(
+            "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (task_id,)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO task_event VALUES (?,?,?,?,?)",
+            (task_id, event_ordinal, "FAILED", "NEEDS_RETRY", receipt_bytes),
+        )
+        connection.execute(
+            "UPDATE task SET state='NEEDS_RETRY',provider_job_ref=NULL,last_receipt_json=? "
+            "WHERE task_id=?",
+            (receipt_bytes, task_id),
         )
         connection.commit()
         updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()

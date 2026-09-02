@@ -218,6 +218,52 @@ def test_openrouter_subprocess_failure_is_typed_and_never_strands_running(
     assert target.list_corpus_tasks_v1(ledger)[0]["attempt_count"] == 3
 
 
+def test_requeue_command_requires_matching_plan_and_preserves_attempt_count(
+    tmp_path,
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/report.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical_json_bytes_v1(plan))
+    ledger = tmp_path / "ledger.sqlite3"
+    target.initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=3)
+    task = target.list_corpus_tasks_v1(ledger)[0]
+    running = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"started": True},
+    )
+    target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    result = target.requeue_openrouter_task(
+        Namespace(ledger=ledger, plan=plan_path, task_id=task["task_id"])
+    )
+    assert result["disposition"] == "NEEDS_RETRY"
+    assert result["task"]["attempt_count"] == running["attempt_count"]
+    assert result["task"]["state"] == "NEEDS_RETRY"
+
+
 def test_source_binding_and_subprocess_json_receipt_are_fail_closed(tmp_path) -> None:
     root = tmp_path / "root"
     source = root / "MBB" / "a.pdf"
