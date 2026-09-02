@@ -815,6 +815,164 @@ def seal_google_fallback_corpus_task_v1(
     return dict(updated)
 
 
+def seal_openrouter_exhausted_page_repair_corpus_task_v1(
+    path: Path,
+    *,
+    task_id: str,
+    receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal FAILED→SUCCEEDED after an explicit bounded Flex page repair."""
+
+    checked = canonical_clone_v1(dict(receipt))
+    required = {
+        "disposition",
+        "document_manifest_id",
+        "failed_pages",
+        "format_version",
+        "offline_missing_pages",
+        "prior_failed_receipt_sha256",
+        "provider_results",
+        "recitation_failed_pages",
+        "repair_attempt",
+        "repair_gateway",
+        "requested_service_tier",
+        "revalidated_pages",
+        "semantic_failed_pages",
+        "unresolved_pages",
+    }
+    if set(checked) != required:
+        raise _error("OpenRouter exhausted-page repair receipt fields drifted")
+    if (
+        checked["format_version"] != "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1"
+        or checked["disposition"] != "SUCCEEDED"
+        or checked["repair_gateway"] != "OPENROUTER"
+        or checked["requested_service_tier"] != "flex"
+        or type(checked["repair_attempt"]) is not int
+        or not 1 <= checked["repair_attempt"] <= 2
+        or checked["failed_pages"] != []
+        or checked["offline_missing_pages"] != []
+        or checked["recitation_failed_pages"] != []
+        or checked["semantic_failed_pages"] != []
+        or checked["unresolved_pages"] != []
+    ):
+        raise _error("OpenRouter exhausted-page repair is not terminally successful")
+    manifest_id = checked["document_manifest_id"]
+    prior_sha = checked["prior_failed_receipt_sha256"]
+    if (
+        type(manifest_id) is not str
+        or not manifest_id.startswith("gfdmv1:manifest:")
+        or type(prior_sha) is not str
+        or len(prior_sha) != 64
+        or any(character not in "0123456789abcdef" for character in prior_sha)
+    ):
+        raise _error("OpenRouter exhausted-page repair authority is invalid")
+    revalidated_pages = checked["revalidated_pages"]
+    provider_results = checked["provider_results"]
+    if (
+        type(revalidated_pages) is not list
+        or not revalidated_pages
+        or revalidated_pages != sorted(set(revalidated_pages))
+        or any(type(page) is not int or page <= 0 for page in revalidated_pages)
+        or type(provider_results) is not list
+        or not provider_results
+    ):
+        raise _error("OpenRouter exhausted-page repair frontier is invalid")
+    completed_pages: set[int] = set()
+    attempted_pages: set[int] = set()
+    prior_item_attempt = 0
+    for item in provider_results:
+        if type(item) is not dict or set(item) != {
+            "accepted_pages",
+            "physical_pages",
+            "prompt_variant",
+            "repair_attempt",
+            "result",
+        }:
+            raise _error("OpenRouter exhausted-page provider result fields drifted")
+        pages = item["physical_pages"]
+        result = item["result"]
+        accepted = item["accepted_pages"]
+        item_attempt = item["repair_attempt"]
+        failed = result.get("failed_pages") if type(result) is dict else None
+        cached = result.get("cached_pages") if type(result) is dict else None
+        ingested = result.get("ingested_pages") if type(result) is dict else None
+        if (
+            type(pages) is not list
+            or not pages
+            or pages != sorted(set(pages))
+            or completed_pages.intersection(pages)
+            or type(accepted) is not list
+            or accepted != sorted(set(accepted))
+            or type(item_attempt) is not int
+            or not max(1, prior_item_attempt) <= item_attempt <= checked["repair_attempt"]
+            or item["prompt_variant"] not in {"balanced", "compact", "items", "scope", "simple"}
+            or type(result) is not dict
+            or result.get("disposition") not in {"NEEDS_RETRY", "SUCCEEDED"}
+            or type(failed) is not list
+            or failed != sorted(set(failed))
+            or type(cached) is not list
+            or cached != sorted(set(cached))
+            or type(ingested) is not list
+            or ingested != sorted(set(ingested))
+            or set(cached) & set(ingested)
+            or set(failed) & (set(cached) | set(ingested))
+            or sorted(set(failed) | set(cached) | set(ingested)) != pages
+            or not set(accepted).issubset(set(cached) | set(ingested))
+            or result.get("offline_missing_pages", []) != []
+            or any(
+                type(values) is not list or not set(values).issubset(failed)
+                for values in (
+                    result.get("recitation_failed_pages", []),
+                    result.get("semantic_failed_pages", []),
+                    result.get("unresolved_pages", []),
+                )
+            )
+        ):
+            raise _error("OpenRouter exhausted-page provider result is invalid")
+        prior_item_attempt = item_attempt
+        attempted_pages.update(pages)
+        completed_pages.update(accepted)
+    receipt_bytes = canonical_json_bytes_v1(checked)
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+        if row is None or row["state"] != "FAILED" or row["route"] != OPENROUTER_ROUTE:
+            raise _error("OpenRouter exhausted-page repair requires one failed Flex task")
+        expected_pages = list(range(row["first_physical_page"], row["last_physical_page"] + 1))
+        try:
+            prior_receipt = json.loads(row["last_receipt_json"])
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise _error("OpenRouter exhausted-page prior failed receipt is invalid") from exc
+        prior_failed_pages = (
+            prior_receipt.get("failed_pages") if type(prior_receipt) is dict else None
+        )
+        if (
+            revalidated_pages != expected_pages
+            or type(prior_failed_pages) is not list
+            or prior_failed_pages != sorted(set(prior_failed_pages))
+            or attempted_pages != set(prior_failed_pages)
+            or completed_pages != set(prior_failed_pages)
+            or not attempted_pages.issubset(expected_pages)
+        ):
+            raise _error("OpenRouter exhausted-page repair lies outside the task frontier")
+        if sha256(row["last_receipt_json"]).hexdigest() != prior_sha:
+            raise _error("OpenRouter exhausted-page prior failed receipt drifted")
+        event_ordinal = connection.execute(
+            "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (task_id,)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO task_event VALUES (?,?,?,?,?)",
+            (task_id, event_ordinal, "FAILED", "SUCCEEDED", receipt_bytes),
+        )
+        connection.execute(
+            "UPDATE task SET state='SUCCEEDED',last_receipt_json=? WHERE task_id=?",
+            (receipt_bytes, task_id),
+        )
+        connection.commit()
+        updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+    return dict(updated)
+
+
 def seal_current_document_revalidated_corpus_tasks_v1(
     path: Path,
     *,

@@ -17,6 +17,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
+    seal_openrouter_exhausted_page_repair_corpus_task_v1,
     transition_corpus_task_v1,
     validate_gemini_json_first_corpus_plan_v1,
 )
@@ -502,6 +503,108 @@ def test_failed_openrouter_task_can_be_sealed_by_complete_google_page_fallback(t
             "fallback_pages": [1],
             "result": result,
         },
+    )
+    assert repaired["state"] == "SUCCEEDED"
+    assert repaired["attempt_count"] == running["attempt_count"]
+
+
+def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/report.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan)
+    task = list_corpus_tasks_v1(ledger)[0]
+    running = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 3],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [3],
+            "unresolved_pages": [],
+        },
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    first_result = {
+        "cached_pages": [],
+        "disposition": "NEEDS_RETRY",
+        "failed_pages": [3],
+        "ingested_pages": [1],
+        "offline_missing_pages": [],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [3],
+        "unresolved_pages": [],
+    }
+    second_result = {
+        "cached_pages": [],
+        "disposition": "SUCCEEDED",
+        "failed_pages": [],
+        "ingested_pages": [3],
+        "offline_missing_pages": [],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    receipt = {
+        "disposition": "SUCCEEDED",
+        "document_manifest_id": "gfdmv1:manifest:" + "4" * 64,
+        "failed_pages": [],
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+        "offline_missing_pages": [],
+        "prior_failed_receipt_sha256": prior_sha,
+        "provider_results": [
+            {
+                "accepted_pages": [1],
+                "physical_pages": [1, 3],
+                "prompt_variant": "simple",
+                "repair_attempt": 1,
+                "result": first_result,
+            },
+            {
+                "accepted_pages": [3],
+                "physical_pages": [3],
+                "prompt_variant": "items",
+                "repair_attempt": 2,
+                "result": second_result,
+            },
+        ],
+        "recitation_failed_pages": [],
+        "repair_attempt": 2,
+        "repair_gateway": "OPENROUTER",
+        "requested_service_tier": "flex",
+        "revalidated_pages": [1, 2, 3],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    drifted = copy.deepcopy(receipt)
+    drifted["provider_results"][1]["accepted_pages"] = []
+    with pytest.raises(
+        GeminiJsonFirstCorpusLedgerV1Error,
+        match="lies outside",
+    ):
+        seal_openrouter_exhausted_page_repair_corpus_task_v1(
+            ledger, task_id=task["task_id"], receipt=drifted
+        )
+    repaired = seal_openrouter_exhausted_page_repair_corpus_task_v1(
+        ledger, task_id=task["task_id"], receipt=receipt
     )
     assert repaired["state"] == "SUCCEEDED"
     assert repaired["attempt_count"] == running["attempt_count"]

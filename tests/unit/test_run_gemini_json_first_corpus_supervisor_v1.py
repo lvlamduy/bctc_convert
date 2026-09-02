@@ -1218,6 +1218,119 @@ def test_google_repair_excludes_semantic_pages_replayed_into_cache(monkeypatch, 
         target.repair_openrouter_google_task(args)
 
 
+def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "ABB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    prior = {
+        "failed_pages": [1, 3],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [3],
+        "unresolved_pages": [],
+    }
+    task = {
+        "artifact_relative_path": "tasks/task-1",
+        "attempt_count": 3,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(prior),
+        "relative_path": "ABB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    calls = []
+    sealed = []
+    monkeypatch.setattr(
+        target,
+        "_plan",
+        lambda _path: {"corpus_plan_id": "plan-1", "policy": {"dpi": 300}},
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: [task])
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
+    monkeypatch.setattr(
+        target,
+        "_successful_historical_prompt_context_v1",
+        lambda **_kwargs: ({}, []),
+    )
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        assert argv[argv.index("--google-standard-mode") + 1] == "disabled"
+        variant = argv[argv.index("--prompt-variant") + 1]
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        calls.append((variant, pages))
+        return 0, {
+            "cached_pages": [],
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "ingested_pages": pages,
+            "offline_missing_pages": [],
+            "page_image_sha256s": [
+                {"image_sha256": str(page) * 64, "physical_page": page} for page in pages
+            ],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "_page_variant_manifest_v1",
+        lambda **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "a" * 64,
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "seal_openrouter_exhausted_page_repair_corpus_task_v1",
+        lambda _ledger, **kwargs: sealed.append(kwargs) or {**task, "state": "SUCCEEDED"},
+    )
+    result = target.repair_openrouter_flex_pages_task(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "unused-google-key",
+            ledger=tmp_path / "ledger.sqlite3",
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=20,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=900,
+            repair_attempt=1,
+            source_root=source_root,
+            task_id="task-1",
+        )
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls == [("simple", [1]), ("items", [3])]
+    receipt = sealed[0]["receipt"]
+    assert receipt["repair_gateway"] == "OPENROUTER"
+    assert receipt["requested_service_tier"] == "flex"
+    assert receipt["revalidated_pages"] == [1, 2, 3]
+    assert [item["accepted_pages"] for item in receipt["provider_results"]] == [[1], [3]]
+
+
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"
@@ -1561,6 +1674,174 @@ def test_running_same_attempt_recovery_retains_exact_retry_frontiers() -> None:
     }
     assert target._retry_prompt_frontiers_v1(ordinary_running) is None
     assert target._protected_retry_pages_v1(ordinary_running) == []
+
+
+def test_historical_successful_prompt_variants_survive_a_later_retry(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/report.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    target.initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=3)
+    task = target.list_corpus_tasks_v1(ledger)[0]
+    task = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    task = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="NEEDS_RETRY",
+        receipt={
+            "failed_pages": [1, 2, 3],
+            "recitation_failed_pages": [2],
+            "semantic_failed_pages": [1],
+            "unresolved_pages": [],
+        },
+    )
+    task = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    task = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "alternate_prompt_variants": [
+                {"physical_pages": [3], "prompt_variant": "simple"},
+                {"physical_pages": [2], "prompt_variant": "scope"},
+                {"physical_pages": [1], "prompt_variant": "items"},
+            ],
+            "failed_pages": [3],
+            "protected_retry_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+
+    assert target._successful_historical_prompt_context_v1(ledger=ledger, task=task) == (
+        {1: "items", 2: "scope"},
+        [1],
+    )
+
+
+def test_third_attempt_manifest_keeps_prior_successful_prompt_variants(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "ABB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 2,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [3],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [],
+                "unresolved_pages": [],
+            }
+        ),
+        "relative_path": "ABB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+    manifests = []
+    monkeypatch.setattr(
+        target,
+        "_successful_historical_prompt_context_v1",
+        lambda **_kwargs: ({1: "items", 2: "scope"}, [1]),
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "transition_corpus_task_v1",
+        lambda _ledger, **kwargs: (
+            transitions.append(kwargs)
+            or {**task, "attempt_count": 3, "state": kwargs["next_state"]}
+        ),
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {page: str(page) * 64 for page in (1, 2, 3)},
+    )
+    monkeypatch.setattr(
+        target,
+        "_command",
+        lambda _argv, *, expected: (
+            0,
+            {
+                "cached_pages": [],
+                "disposition": "SUCCEEDED",
+                "failed_pages": [],
+                "ingested_pages": [3],
+                "offline_missing_pages": [],
+                "page_image_sha256s": [{"image_sha256": "3" * 64, "physical_page": 3}],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [],
+                "unresolved_pages": [],
+            },
+        ),
+    )
+
+    def manifest(_database, **kwargs):
+        manifests.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "a" * 64,
+            "pages": [
+                {"physical_page": page, "status": "FINANCIAL_NOTE_CONTENT"} for page in (1, 2, 3)
+            ],
+        }
+
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", manifest)
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=20,
+        google_key_file=tmp_path / "unused-google",
+        google_key_slot=1,
+        provider_timeout_seconds=900,
+        max_attempts=3,
+        openrouter_only=True,
+    )
+    assert result["state"] == "SUCCEEDED"
+    assert len(set(manifests[0]["prompt_sha256"].values())) == 3
+    assert transitions[-1]["receipt"]["protected_retry_pages"] == [1]
 
 
 def test_openrouter_recitation_retry_uses_scope_and_may_resolve_to_no_relevant(
