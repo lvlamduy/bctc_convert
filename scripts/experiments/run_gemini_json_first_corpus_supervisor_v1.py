@@ -178,6 +178,25 @@ def _parser() -> argparse.ArgumentParser:
     repair_flex.add_argument("--openrouter-workers", type=int, default=20)
     repair_flex.add_argument("--provider-timeout-seconds", type=int, default=900)
 
+    repair_failed_flex = commands.add_parser("repair-openrouter-flex-failed")
+    repair_failed_flex.add_argument("--plan", type=Path, required=True)
+    repair_failed_flex.add_argument("--ledger", type=Path, required=True)
+    repair_failed_flex.add_argument("--source-root", type=Path, required=True)
+    repair_failed_flex.add_argument("--database", type=Path, required=True)
+    repair_failed_flex.add_argument("--artifact-root", type=Path, required=True)
+    repair_failed_flex.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    repair_failed_flex.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    repair_failed_flex.add_argument("--openrouter-workers", type=int, default=1)
+    repair_failed_flex.add_argument("--provider-timeout-seconds", type=int, default=900)
+    repair_failed_flex.add_argument("--max-repair-actions", type=int, default=558)
+    repair_failed_flex.add_argument(
+        "--openrouter-circuit-cooldown-seconds", type=float, default=300.0
+    )
+
     current_manifest = commands.add_parser("document-manifest-current")
     current_manifest.add_argument("--plan", type=Path, required=True)
     current_manifest.add_argument("--ledger", type=Path, required=True)
@@ -4581,6 +4600,177 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
     }
 
 
+def _next_exhausted_page_repair_attempt_v1(
+    *, task: dict[str, Any], artifact_root: Path
+) -> int | None:
+    """Return the next bounded repair attempt, replaying any crash receipt first."""
+
+    raw = task.get("last_receipt_json")
+    if type(raw) is not bytes:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task lacks its exact receipt bytes"
+        )
+    prior_sha256 = sha256(raw).hexdigest()
+    receipts_root = (
+        _task_root(task, artifact_root) / "openrouter-exhausted-page-repair" / "receipts"
+    )
+    for attempt in (1, 2):
+        path = receipts_root / f"attempt-{attempt:02d}.json"
+        if not path.exists():
+            if attempt == 2 and not (receipts_root / "attempt-01.json").exists():
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "OpenRouter exhausted-page repair attempt order drifted"
+                )
+            return attempt
+        receipt = _canonical_repair_receipt_v1(path)
+        if (
+            receipt.get("format_version")
+            not in {
+                "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+                "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            }
+            or receipt.get("repair_attempt") != attempt
+            or receipt.get("prior_failed_receipt_sha256") != prior_sha256
+            or receipt.get("disposition") not in {"NEEDS_REPAIR", "SUCCEEDED"}
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter exhausted-page repair history is invalid"
+            )
+        if receipt["disposition"] == "SUCCEEDED":
+            if attempt == 1 and (receipts_root / "attempt-02.json").exists():
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "OpenRouter exhausted-page repair continued after success"
+                )
+            return attempt
+    return None
+
+
+def _exhausted_page_repair_receipt_has_circuit_v1(
+    *, task: dict[str, Any], artifact_root: Path, repair_attempt: int
+) -> bool:
+    path = (
+        _task_root(task, artifact_root)
+        / "openrouter-exhausted-page-repair"
+        / "receipts"
+        / f"attempt-{repair_attempt:02d}.json"
+    )
+    receipt = _canonical_repair_receipt_v1(path)
+    return _openrouter_task_result_has_circuit_trip_v1(
+        {"last_receipt_json": canonical_json_bytes_v1(receipt)}
+    )
+
+
+def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, Any]:
+    """Repair terminal Flex tasks only after the ordinary corpus frontier ends."""
+
+    if not 1 <= args.max_repair_actions <= 558:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "terminal Flex repair action bound lies outside 1..558"
+        )
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter worker bound lies outside 1..30"
+        )
+    if (
+        type(args.openrouter_circuit_cooldown_seconds) not in {int, float}
+        or not 0 <= args.openrouter_circuit_cooldown_seconds <= 3_600
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter circuit cooldown lies outside 0..3600 seconds"
+        )
+    plan = _plan(args.plan)
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
+    initial_tasks = list_corpus_tasks_v1(args.ledger)
+    unfinished = [task for task in initial_tasks if task["state"] not in {"SUCCEEDED", "FAILED"}]
+    if unfinished:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "terminal Flex repair requires the ordinary corpus frontier to be exhausted"
+        )
+
+    actions: list[dict[str, Any]] = []
+    completed_task_ids: list[str] = []
+    consecutive_circuit_trips = 0
+    while len(actions) < args.max_repair_actions:
+        failed = sorted(
+            list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE),
+            key=lambda task: (
+                task["last_physical_page"] - task["first_physical_page"],
+                task["relative_path"],
+            ),
+        )
+        selected: tuple[dict[str, Any], int] | None = None
+        for task in failed:
+            attempt = _next_exhausted_page_repair_attempt_v1(
+                task=task, artifact_root=args.artifact_root
+            )
+            if attempt is not None:
+                selected = (task, attempt)
+                break
+        if selected is None:
+            break
+        task, repair_attempt = selected
+        result = repair_openrouter_flex_pages_task(
+            argparse.Namespace(**vars(args), task_id=task["task_id"], repair_attempt=repair_attempt)
+        )
+        circuit_tripped = _exhausted_page_repair_receipt_has_circuit_v1(
+            task=task,
+            artifact_root=args.artifact_root,
+            repair_attempt=repair_attempt,
+        )
+        action = {
+            "circuit_tripped": circuit_tripped,
+            "disposition": result["disposition"],
+            "failed_pages": result.get("failed_pages", []),
+            "relative_path": task["relative_path"],
+            "repair_attempt": repair_attempt,
+            "task_id": task["task_id"],
+        }
+        actions.append(action)
+        if result["disposition"] == "SUCCEEDED":
+            completed_task_ids.append(task["task_id"])
+        if circuit_tripped:
+            consecutive_circuit_trips += 1
+        else:
+            consecutive_circuit_trips = 0
+        if circuit_tripped and len(actions) < args.max_repair_actions:
+            remaining = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+            if any(
+                _next_exhausted_page_repair_attempt_v1(task=item, artifact_root=args.artifact_root)
+                is not None
+                for item in remaining
+            ):
+                time.sleep(
+                    _openrouter_circuit_cooldown_v1(
+                        base_seconds=args.openrouter_circuit_cooldown_seconds,
+                        consecutive_trips=consecutive_circuit_trips,
+                    )
+                )
+
+    remaining_failed = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    repairable_task_ids = sorted(
+        task["task_id"]
+        for task in remaining_failed
+        if _next_exhausted_page_repair_attempt_v1(task=task, artifact_root=args.artifact_root)
+        is not None
+    )
+    exhausted_task_ids = sorted(
+        set(task["task_id"] for task in remaining_failed) - set(repairable_task_ids)
+    )
+    disposition = (
+        "SUCCEEDED" if not remaining_failed else "NEEDS_REPAIR" if repairable_task_ids else "FAILED"
+    )
+    return {
+        "actions": actions,
+        "completed_task_ids": sorted(completed_task_ids),
+        "disposition": disposition,
+        "exhausted_task_ids": exhausted_task_ids,
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "repairable_task_ids": repairable_task_ids,
+    }
+
+
 def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
     """Complete provider-failed OpenRouter pages through direct Google standard."""
 
@@ -4722,6 +4912,8 @@ def main() -> int:
         result = repair_openrouter_google_task(args)
     elif args.command == "repair-openrouter-flex-pages":
         result = repair_openrouter_flex_pages_task(args)
+    elif args.command == "repair-openrouter-flex-failed":
+        result = repair_failed_openrouter_flex_tasks(args)
     elif args.command == "document-manifest-current":
         result = build_current_document_manifest(args)
     elif args.command == "corpus-manifest-current":

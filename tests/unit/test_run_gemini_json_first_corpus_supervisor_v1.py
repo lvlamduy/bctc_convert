@@ -1643,6 +1643,146 @@ def test_exhausted_page_repair_defers_later_prompt_frontiers_after_circuit(
     assert [item["physical_pages"] for item in receipt["offline_replay_results"]] == [[3]]
 
 
+def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
+    monkeypatch, tmp_path
+) -> None:
+    prior = canonical_json_bytes_v1(
+        {
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+    )
+    tasks = [
+        {
+            "artifact_relative_path": f"tasks/task-{ordinal}",
+            "first_physical_page": 1,
+            "last_physical_page": ordinal,
+            "last_receipt_json": prior,
+            "relative_path": f"ABB/report-{ordinal}.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": f"task-{ordinal}",
+        }
+        for ordinal in (1, 2)
+    ]
+
+    def listed(_ledger, *, states=None, route=None):
+        return [
+            dict(task)
+            for task in tasks
+            if (states is None or task["state"] in states)
+            and (route is None or task["route"] == route)
+        ]
+
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", listed)
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    repair_calls = []
+
+    def repair(args):
+        repair_calls.append((args.task_id, args.repair_attempt))
+        task = next(item for item in tasks if item["task_id"] == args.task_id)
+        succeeded = args.task_id == "task-2" or args.repair_attempt == 2
+        if succeeded:
+            task["state"] = "SUCCEEDED"
+        receipt = {
+            "disposition": "SUCCEEDED" if succeeded else "NEEDS_REPAIR",
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": hashlib.sha256(prior).hexdigest(),
+            "provider_results": [
+                {
+                    "result": {
+                        "provider_circuit_breaker_trigger_page": (
+                            1 if args.task_id == "task-1" and args.repair_attempt == 1 else None
+                        )
+                    }
+                }
+            ],
+            "repair_attempt": args.repair_attempt,
+        }
+        receipt_path = (
+            args.artifact_root
+            / task["artifact_relative_path"]
+            / "openrouter-exhausted-page-repair"
+            / "receipts"
+            / f"attempt-{args.repair_attempt:02d}.json"
+        )
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.write_bytes(canonical_json_bytes_v1(receipt))
+        return {
+            "disposition": "SUCCEEDED" if succeeded else "NEEDS_REPAIR",
+            "failed_pages": [] if succeeded else [1],
+            "repair_attempt": args.repair_attempt,
+            "task_id": args.task_id,
+        }
+
+    monkeypatch.setattr(target, "repair_openrouter_flex_pages_task", repair)
+    sleeps = []
+    monkeypatch.setattr(target.time, "sleep", sleeps.append)
+    result = target.repair_failed_openrouter_flex_tasks(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "unused-google-key",
+            ledger=tmp_path / "ledger.sqlite3",
+            max_repair_actions=4,
+            openrouter_circuit_cooldown_seconds=5,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=900,
+            source_root=tmp_path / "source",
+        )
+    )
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["completed_task_ids"] == ["task-1", "task-2"]
+    assert result["repairable_task_ids"] == []
+    assert result["exhausted_task_ids"] == []
+    assert repair_calls == [("task-1", 1), ("task-1", 2), ("task-2", 1)]
+    assert sleeps == [5.0]
+
+
+def test_terminal_flex_repair_rejects_an_unfinished_ordinary_frontier(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda *_args, **_kwargs: [{"state": "PENDING"}],
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="ordinary corpus frontier",
+    ):
+        target.repair_failed_openrouter_flex_tasks(
+            Namespace(
+                artifact_root=tmp_path / "artifacts",
+                database=tmp_path / "store.sqlite3",
+                google_key_file=tmp_path / "unused-google-key",
+                ledger=tmp_path / "ledger.sqlite3",
+                max_repair_actions=1,
+                openrouter_circuit_cooldown_seconds=5,
+                openrouter_key_file=tmp_path / "openrouter-key",
+                openrouter_workers=1,
+                plan=tmp_path / "plan.json",
+                provider_timeout_seconds=900,
+                source_root=tmp_path / "source",
+            )
+        )
+
+
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"
