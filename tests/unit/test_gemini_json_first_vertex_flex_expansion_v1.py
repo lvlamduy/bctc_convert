@@ -8,6 +8,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import OPENROUTER_ROUTE
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     GeminiJsonFirstVertexFlexExpansionV1Error,
     build_gemini_json_first_vertex_flex_expansion_v1,
+    build_gemini_json_first_vietnamese_page_scope_v1,
     validate_gemini_json_first_vertex_flex_expansion_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
@@ -83,10 +84,15 @@ def _already_processed_manifest() -> dict[str, object]:
     }
 
 
+def _language_scope() -> dict[str, object]:
+    return build_gemini_json_first_vietnamese_page_scope_v1([])
+
+
 def test_expansion_plan_routes_every_document_only_to_openrouter_vertex_flex() -> None:
     result = build_gemini_json_first_vertex_flex_expansion_v1(
         _universe(),
         already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=_language_scope(),
     )
 
     assert result["execution_contract"] == {
@@ -115,6 +121,7 @@ def test_provider_or_bundle_identity_tamper_is_rejected() -> None:
     result = build_gemini_json_first_vertex_flex_expansion_v1(
         _universe(),
         already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=_language_scope(),
     )
     forged = copy.deepcopy(result)
     forged["execution_contract"]["allow_provider_fallbacks"] = True
@@ -138,6 +145,7 @@ def test_already_processed_bank_cannot_enter_paid_frontier() -> None:
         build_gemini_json_first_vertex_flex_expansion_v1(
             universe,
             already_processed_corpus_manifest_index=_already_processed_manifest(),
+            vietnamese_page_scope=_language_scope(),
         )
 
 
@@ -145,6 +153,7 @@ def test_validator_rejects_completed_bank_even_after_coherent_rehash() -> None:
     result = build_gemini_json_first_vertex_flex_expansion_v1(
         _universe(),
         already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=_language_scope(),
     )
     forged = copy.deepcopy(result)
     document = forged["corpus_plan"]["documents"][0]["document"]
@@ -179,4 +188,48 @@ def test_paid_frontier_cannot_repeat_prior_corpus_bytes_under_a_new_bank() -> No
         build_gemini_json_first_vertex_flex_expansion_v1(
             universe,
             already_processed_corpus_manifest_index=_already_processed_manifest(),
+            vietnamese_page_scope=_language_scope(),
+        )
+
+
+def test_long_pdf_is_trimmed_only_by_an_exact_human_reviewed_vietnamese_scope() -> None:
+    universe = _universe()
+    filing = next(item for item in universe["filings"] if item["bank"] == "N01")
+    filing["page_count"] = 120
+    scope = build_gemini_json_first_vietnamese_page_scope_v1(
+        [
+            {
+                "included_last_physical_page": 60,
+                "relative_path": filing["content_ref"]["path"],
+                "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+                "source_page_count": 120,
+            }
+        ]
+    )
+
+    result = build_gemini_json_first_vertex_flex_expansion_v1(
+        universe,
+        already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=scope,
+    )
+
+    planned = next(
+        item
+        for item in result["corpus_plan"]["documents"]
+        if item["document"]["relative_path"] == filing["content_ref"]["path"]
+    )
+    assert planned["document"]["page_count"] == 60
+    assert planned["document"]["source_page_count"] == 120
+    assert planned["tasks"][0]["last_physical_page"] == 60
+    assert result["corpus_plan"]["summary"]["page_count"] == 78
+    assert validate_gemini_json_first_vertex_flex_expansion_v1(result) == result
+
+    with pytest.raises(
+        GeminiJsonFirstVertexFlexExpansionV1Error,
+        match="not exhaustive",
+    ):
+        build_gemini_json_first_vertex_flex_expansion_v1(
+            universe,
+            already_processed_corpus_manifest_index=_already_processed_manifest(),
+            vietnamese_page_scope=_language_scope(),
         )

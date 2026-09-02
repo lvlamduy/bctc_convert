@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from hashlib import sha256
@@ -18,6 +19,7 @@ if str(ROOT / "src") not in sys.path:
 
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
     corpus_ledger_summary_v1,
+    initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (  # noqa: E402
@@ -58,7 +60,7 @@ def _load_bundle_and_plan(bundle_path: Path, plan_path: Path) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "status", "run", "run-one", "repair-one"):
+    for name in ("init", "status", "run", "run-one", "repair-one", "migrate-ledger"):
         command = commands.add_parser(name)
         command.add_argument("--bundle", type=Path, required=True)
         command.add_argument("--plan", type=Path, required=True)
@@ -70,6 +72,8 @@ def _parser() -> argparse.ArgumentParser:
                 default="simple",
             )
             command.add_argument("--max-task-attempts", type=int, default=3)
+        if name == "migrate-ledger":
+            command.add_argument("--old-ledger", type=Path, required=True)
         if name in {"run", "run-one", "repair-one"}:
             command.add_argument("--source-root", type=Path, required=True)
             command.add_argument("--database", type=Path, required=True)
@@ -82,6 +86,120 @@ def _parser() -> argparse.ArgumentParser:
         if name == "run":
             command.add_argument("--max-fallback-attempts", type=int, default=2)
     return parser
+
+
+def _migrate_ledger(args: argparse.Namespace) -> dict[str, Any]:
+    """Create a new-plan ledger while preserving only byte-identical task histories."""
+
+    bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    old_ledger = args.old_ledger.resolve()
+    new_ledger = args.ledger.resolve()
+    if (
+        old_ledger == new_ledger
+        or old_ledger.is_symlink()
+        or not old_ledger.is_file()
+        or new_ledger.exists()
+    ):
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error("ledger migration paths are unsafe")
+    old_tasks = list_corpus_tasks_v1(old_ledger)
+    old_by_id = {task["task_id"]: task for task in old_tasks}
+    if len(old_by_id) != len(old_tasks):
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error("old ledger task frontier is duplicate")
+    initialize_gemini_json_first_corpus_ledger_v1(
+        new_ledger,
+        plan=bundle["corpus_plan"],
+        prompt_variant=corpus_ledger_summary_v1(old_ledger)["prompt_variant"],
+        max_task_attempts=corpus_ledger_summary_v1(old_ledger)["max_task_attempts"],
+    )
+    immutable_columns = (
+        "task_id",
+        "document_plan_id",
+        "relative_path",
+        "source_sha256",
+        "source_size_bytes",
+        "document_page_count",
+        "route",
+        "task_kind",
+        "first_physical_page",
+        "last_physical_page",
+        "artifact_relative_path",
+    )
+    copied_states: dict[str, int] = {}
+    superseded = []
+    try:
+        with sqlite3.connect(new_ledger) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("ATTACH DATABASE ? AS old", (str(old_ledger),))
+            new_rows = connection.execute("SELECT * FROM main.task ORDER BY task_id").fetchall()
+            new_by_id = {row["task_id"]: row for row in new_rows}
+            if len(new_by_id) != len(new_rows):
+                raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                    "new ledger task frontier is duplicate"
+                )
+            connection.execute("BEGIN IMMEDIATE")
+            for task_id in sorted(set(old_by_id) & set(new_by_id)):
+                old = old_by_id[task_id]
+                new = new_by_id[task_id]
+                if any(old[column] != new[column] for column in immutable_columns):
+                    raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                        "same task identity changed immutable ledger fields"
+                    )
+                if old["state"] == "RUNNING":
+                    raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                        "unchanged task is still running and cannot be migrated"
+                    )
+                connection.execute(
+                    "UPDATE main.task SET state=?,attempt_count=?,provider_job_ref=?,"
+                    "last_receipt_json=? WHERE task_id=?",
+                    (
+                        old["state"],
+                        old["attempt_count"],
+                        old["provider_job_ref"],
+                        old["last_receipt_json"],
+                        task_id,
+                    ),
+                )
+                connection.execute(
+                    "INSERT INTO main.task_event "
+                    "SELECT * FROM old.task_event WHERE task_id=? ORDER BY event_ordinal",
+                    (task_id,),
+                )
+                copied_states[old["state"]] = copied_states.get(old["state"], 0) + 1
+            for old in old_tasks:
+                if old["task_id"] in new_by_id:
+                    continue
+                if old["state"] in {"SUCCEEDED", "FAILED"}:
+                    raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                        "language frontier would discard a terminal task"
+                    )
+                superseded.append(
+                    {
+                        "prior_state": old["state"],
+                        "relative_path": old["relative_path"],
+                        "task_id": old["task_id"],
+                    }
+                )
+            connection.commit()
+    except Exception:
+        new_ledger.unlink(missing_ok=True)
+        raise
+    new_summary = corpus_ledger_summary_v1(new_ledger)
+    if (
+        new_summary["corpus_plan_id"] != bundle["corpus_plan"]["corpus_plan_id"]
+        or new_summary["total_pages"] != bundle["corpus_plan"]["summary"]["page_count"]
+        or new_summary["total_tasks"] != bundle["corpus_plan"]["summary"]["task_count"]
+    ):
+        new_ledger.unlink(missing_ok=True)
+        raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+            "migrated Vietnamese-only ledger denominator drifted"
+        )
+    return {
+        "copied_task_states": copied_states,
+        "disposition": "MIGRATED_TO_VIETNAMESE_ONLY_FRONTIER",
+        "ledger": new_summary,
+        "superseded_nonterminal_tasks": superseded,
+    }
 
 
 def _supervisor_command(args: argparse.Namespace) -> list[str]:
@@ -361,6 +479,9 @@ def main() -> int:
     args = _parser().parse_args()
     environment = dict(os.environ)
     environment["PYTHONPATH"] = str(ROOT / "src")
+    if args.command == "migrate-ledger":
+        print(json.dumps(_migrate_ledger(args), sort_keys=True))
+        return 0
     if args.command == "repair-one":
         result = _repair_one(args, environment=environment)
         print(json.dumps(result, sort_keys=True))

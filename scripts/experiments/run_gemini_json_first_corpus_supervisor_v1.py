@@ -1315,7 +1315,7 @@ def _current_page_image_sha256s_v1(
     expected_pages = list(range(1, task["document_page_count"] + 1))
     result: dict[int, str] = {}
     with fitz.open(source) as document:
-        if document.page_count != task["document_page_count"]:
+        if document.page_count < task["document_page_count"]:
             raise RunGeminiJsonFirstCorpusSupervisorV1Error("planned source PDF page count drifted")
         for physical_page in expected_pages:
             rendered = render_full_pdf_page_v1(
@@ -2378,9 +2378,14 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
     default_variant = corpus_ledger_summary_v1(args.ledger)["prompt_variant"]
     prior_provider_failures = _prior_acceleration_provider_failures_v1(receipt_root)
 
-    def run_frontier(*, pages: list[int] | None, prompt_variant: str):
+    def run_frontier(
+        *,
+        pages: list[int] | None,
+        prompt_variant: str,
+        retry_artifact: bool = False,
+    ):
         artifact_dir = attempt_root / "base"
-        if pages is not None:
+        if retry_artifact:
             artifact_dir = attempt_root / "adaptive-retry" / prompt_variant
         command = [
             sys.executable,
@@ -2436,7 +2441,11 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
     provider_results = []
     if initial_pages:
         return_code, initial = run_frontier(
-            pages=(None if initial_pages == expected_pages else initial_pages),
+            pages=(
+                None
+                if initial_pages == expected_pages and "page_selection" not in planned["document"]
+                else initial_pages
+            ),
             prompt_variant=default_variant,
         )
         if _summary_page_image_sha256s_v1(
@@ -2481,7 +2490,11 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
         ):
             if not pages:
                 continue
-            code, result = run_frontier(pages=pages, prompt_variant=prompt_variant)
+            code, result = run_frontier(
+                pages=pages,
+                prompt_variant=prompt_variant,
+                retry_artifact=True,
+            )
             if _summary_page_image_sha256s_v1(
                 result.get("page_image_sha256s"), allowed_pages=pages
             ) != {page: current_images[page] for page in pages}:
@@ -2513,7 +2526,11 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
                     balanced_pages.update(retry_frontiers["items"])
         if balanced_pages:
             pages = sorted(balanced_pages)
-            code, result = run_frontier(pages=pages, prompt_variant="balanced")
+            code, result = run_frontier(
+                pages=pages,
+                prompt_variant="balanced",
+                retry_artifact=True,
+            )
             if _summary_page_image_sha256s_v1(
                 result.get("page_image_sha256s"), allowed_pages=pages
             ) != {page: current_images[page] for page in pages}:
@@ -2800,6 +2817,20 @@ def _run_openrouter(
     max_attempts: int,
     openrouter_only: bool = False,
 ) -> dict[str, Any]:
+    language_prefix_pages = None
+    if "documents" in plan:
+        selected_plan = _task_index(plan).get(task["task_id"])
+        if selected_plan is None:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter task is absent from the corpus plan"
+            )
+        planned_document = selected_plan["planned_document"]["document"]
+        if planned_document["page_count"] != task["document_page_count"]:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter task page count differs from the corpus plan"
+            )
+        if "page_selection" in planned_document:
+            language_prefix_pages = list(range(1, task["document_page_count"] + 1))
     retry_frontiers = _retry_prompt_frontiers_v1(task)
     retry_pages = (
         None
@@ -2818,9 +2849,14 @@ def _run_openrouter(
     source = _source(task, source_root)
     default_prompt_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
 
-    def run_frontier(*, pages: list[int] | None, prompt_variant: str) -> tuple[int, dict[str, Any]]:
+    def run_frontier(
+        *,
+        pages: list[int] | None,
+        prompt_variant: str,
+        retry_artifact: bool = False,
+    ) -> tuple[int, dict[str, Any]]:
         selected_artifact_dir = _task_root(task, artifact_root)
-        if pages is not None:
+        if retry_artifact:
             selected_artifact_dir = selected_artifact_dir / "adaptive-retry" / prompt_variant
         command = [
             sys.executable,
@@ -2859,7 +2895,7 @@ def _run_openrouter(
 
     if retry_frontiers is None:
         return_code, receipt = run_frontier(
-            pages=None,
+            pages=language_prefix_pages,
             prompt_variant=default_prompt_variant,
         )
         semantic_failed_pages = receipt.get("semantic_failed_pages")
@@ -2899,7 +2935,11 @@ def _run_openrouter(
         for prompt_variant, pages in prompt_frontiers:
             if not pages:
                 continue
-            code, result = run_frontier(pages=pages, prompt_variant=prompt_variant)
+            code, result = run_frontier(
+                pages=pages,
+                prompt_variant=prompt_variant,
+                retry_artifact=True,
+            )
             result_images = _summary_page_image_sha256s_v1(
                 result.get("page_image_sha256s"),
                 allowed_pages=pages,
@@ -3455,6 +3495,8 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
                 google_standard_mode,
             )
         )
+    for physical_page in range(task["first_physical_page"], task["last_physical_page"] + 1):
+        command.extend(("--physical-page", str(physical_page)))
     return_code, result = _command(command, expected={0, 2})
     if return_code != 0 or result.get("disposition") != "SUCCEEDED":
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(

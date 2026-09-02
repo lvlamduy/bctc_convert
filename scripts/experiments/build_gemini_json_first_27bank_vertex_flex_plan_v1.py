@@ -44,6 +44,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--universe", type=Path, required=True)
     parser.add_argument("--already-processed-corpus-manifest-index", type=Path, required=True)
+    parser.add_argument("--vietnamese-page-scope", type=Path, required=True)
     parser.add_argument("--bundle-output", type=Path, required=True)
     parser.add_argument("--corpus-plan-output", type=Path, required=True)
     parser.add_argument("--dpi", type=int, choices=(200, 300), default=300)
@@ -54,9 +55,11 @@ def main() -> int:
     already_processed_corpus_manifest_index = json.loads(
         args.already_processed_corpus_manifest_index.read_bytes()
     )
+    vietnamese_page_scope = json.loads(args.vietnamese_page_scope.read_bytes())
     bundle = build_gemini_json_first_vertex_flex_expansion_v1(
         universe,
         already_processed_corpus_manifest_index=already_processed_corpus_manifest_index,
+        vietnamese_page_scope=vietnamese_page_scope,
         dpi=args.dpi,
         workers=args.workers,
     )

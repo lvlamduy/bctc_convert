@@ -2223,6 +2223,94 @@ def test_google_document_acceleration_seals_full_manifest_without_duplicate_subm
     assert len(list((args.artifact_root / "documents").rglob("run-receipts/*.json"))) == 1
 
 
+def test_openrouter_language_scope_submits_only_the_vietnamese_page_prefix(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "OCB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "page_count": 2,
+                "page_selection": {
+                    "included_first_physical_page": 1,
+                    "included_last_physical_page": 2,
+                    "review_basis": "HUMAN_VISUAL_LANGUAGE_BOUNDARY",
+                    "selection_kind": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+                },
+                "relative_path": "OCB/report.pdf",
+                "source_page_count": 4,
+                "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+                "source_size_bytes": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    planned = plan["documents"][0]
+    planned_task = planned["tasks"][0]
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 0,
+        "document_page_count": 2,
+        "first_physical_page": 1,
+        "last_physical_page": 2,
+        "last_receipt_json": None,
+        "relative_path": "OCB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "PENDING",
+        "task_id": planned_task["task_id"],
+    }
+    commands = []
+
+    def command(argv, *, expected):
+        commands.append(argv)
+        assert expected == {0, 2}
+        pages = [
+            int(argv[index + 1]) for index, value in enumerate(argv) if value == "--physical-page"
+        ]
+        assert pages == [1, 2]
+        assert "adaptive-retry" not in argv[argv.index("--artifact-dir") + 1]
+        return 2, {
+            "disposition": "NEEDS_RETRY",
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [1],
+        }
+
+    def transition(_ledger, **kwargs):
+        return {**task, "attempt_count": 1, "state": kwargs["next_state"]}
+
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+
+    result = target._run_openrouter(
+        task=task,
+        plan=plan,
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=2,
+        google_key_file=tmp_path / "google",
+        google_key_slot=1,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+        openrouter_only=True,
+    )
+
+    assert result["state"] == "NEEDS_RETRY"
+    assert len(commands) == 1
+
+
 def test_google_document_acceleration_preserves_semantic_page_when_items_drops_it(
     monkeypatch, tmp_path
 ) -> None:

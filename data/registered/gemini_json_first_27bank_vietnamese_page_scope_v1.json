@@ -1,0 +1,147 @@
+{
+  "documents": [
+    {
+      "included_last_physical_page": 102,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 202
+    },
+    {
+      "included_last_physical_page": 101,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 200
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 78
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 79
+    },
+    {
+      "included_last_physical_page": 41,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 41
+    },
+    {
+      "included_last_physical_page": 42,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 42
+    },
+    {
+      "included_last_physical_page": 104,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 206
+    },
+    {
+      "included_last_physical_page": 102,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 202
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 79
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 79
+    },
+    {
+      "included_last_physical_page": 41,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 41
+    },
+    {
+      "included_last_physical_page": 43,
+      "relative_path": "vietstock_bctc/OCB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 43
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 78
+    },
+    {
+      "included_last_physical_page": 41,
+      "relative_path": "vietstock_bctc/OCB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 41
+    },
+    {
+      "included_last_physical_page": 40,
+      "relative_path": "vietstock_bctc/OCB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 78
+    },
+    {
+      "included_last_physical_page": 42,
+      "relative_path": "vietstock_bctc/OCB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 42
+    },
+    {
+      "included_last_physical_page": 101,
+      "relative_path": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 101
+    },
+    {
+      "included_last_physical_page": 108,
+      "relative_path": "vietstock_bctc/STB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 108
+    },
+    {
+      "included_last_physical_page": 104,
+      "relative_path": "vietstock_bctc/STB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 104
+    },
+    {
+      "included_last_physical_page": 103,
+      "relative_path": "vietstock_bctc/TCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "review_conclusion": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+      "source_page_count": 104
+    },
+    {
+      "included_last_physical_page": 108,
+      "relative_path": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "review_conclusion": "FULL_DOCUMENT_VIETNAMESE",
+      "source_page_count": 108
+    }
+  ],
+  "format_version": "GEMINI_JSON_FIRST_VIETNAMESE_PAGE_SCOPE_V1",
+  "policy": {
+    "always_review_bank_codes": [
+      "OCB"
+    ],
+    "included_language": "VIETNAMESE",
+    "page_selection": "PHYSICAL_PAGE_PREFIX",
+    "review_pdf_over_pages": 100
+  },
+  "scope_id": "gjfvietnamesev1:f0b29d5f88c7665f3cceaede86b98f9d43f65c78e89865f0ba753fe4f56d0cd1",
+  "summary": {
+    "excluded_document_count": 11,
+    "excluded_page_count": 633,
+    "included_page_count": 1423,
+    "reviewed_document_count": 21,
+    "source_page_count": 2056
+  }
+}

@@ -103,3 +103,48 @@ def test_duplicate_source_bytes_are_distinct_filings_but_duplicate_path_rejects(
     duplicated.append(same_path)
     with pytest.raises(GeminiJsonFirstCorpusPlanV1Error, match="unique"):
         build_gemini_json_first_corpus_plan_v1(duplicated)
+
+
+def test_plan_binds_a_human_reviewed_vietnamese_page_prefix() -> None:
+    documents = _documents()
+    documents[0] = {
+        **documents[0],
+        "page_count": 31,
+        "source_page_count": 61,
+        "page_selection": {
+            "included_first_physical_page": 1,
+            "included_last_physical_page": 31,
+            "review_basis": "HUMAN_VISUAL_LANGUAGE_BOUNDARY",
+            "selection_kind": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+        },
+    }
+
+    plan = build_gemini_json_first_corpus_plan_v1(
+        documents,
+        openrouter_page_fraction="1.0",
+    )
+
+    selected = next(
+        item for item in plan["documents"] if item["document"]["relative_path"] == "MBB/2025/a.pdf"
+    )
+    assert selected["document"]["source_page_count"] == 61
+    assert selected["tasks"][0]["last_physical_page"] == 31
+    assert plan["summary"]["page_count"] == 90
+
+
+def test_language_prefix_requires_a_consistent_human_review_receipt() -> None:
+    document = copy.deepcopy(_documents()[0])
+    document.update(
+        {
+            "page_count": 31,
+            "source_page_count": 61,
+            "page_selection": {
+                "included_first_physical_page": 1,
+                "included_last_physical_page": 32,
+                "review_basis": "HUMAN_VISUAL_LANGUAGE_BOUNDARY",
+                "selection_kind": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+            },
+        }
+    )
+    with pytest.raises(GeminiJsonFirstCorpusPlanV1Error, match="language page selection"):
+        build_gemini_json_first_corpus_plan_v1([document])

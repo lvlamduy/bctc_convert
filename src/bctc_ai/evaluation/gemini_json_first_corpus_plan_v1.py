@@ -25,7 +25,11 @@ def _error(message: str) -> GeminiJsonFirstCorpusPlanV1Error:
 
 def _document(value: Mapping[str, Any]) -> dict[str, Any]:
     required = {"relative_path", "source_sha256", "source_size_bytes", "page_count"}
-    if type(value) is not dict or set(value) != required:
+    language_scope_fields = {"source_page_count", "page_selection"}
+    if type(value) is not dict or set(value) not in {
+        frozenset(required),
+        frozenset(required | language_scope_fields),
+    }:
         raise _error("corpus document fields drifted")
     relative_path = value["relative_path"]
     digest = value["source_sha256"]
@@ -47,6 +51,35 @@ def _document(value: Mapping[str, Any]) -> dict[str, Any]:
         raise _error("corpus document SHA-256 is invalid")
     if type(size) is not int or size <= 0 or type(pages) is not int or pages <= 0:
         raise _error("corpus document size or page count is invalid")
+    if set(value) == required | language_scope_fields:
+        source_pages = value["source_page_count"]
+        selection = value["page_selection"]
+        if (
+            type(source_pages) is not int
+            or source_pages < pages
+            or type(selection) is not dict
+            or set(selection)
+            != {
+                "included_first_physical_page",
+                "included_last_physical_page",
+                "review_basis",
+                "selection_kind",
+            }
+            or selection["included_first_physical_page"] != 1
+            or selection["included_last_physical_page"] != pages
+            or selection["review_basis"] != "HUMAN_VISUAL_LANGUAGE_BOUNDARY"
+            or selection["selection_kind"]
+            not in {
+                "FULL_DOCUMENT_VIETNAMESE",
+                "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+            }
+            or (selection["selection_kind"] == "FULL_DOCUMENT_VIETNAMESE" and pages != source_pages)
+            or (
+                selection["selection_kind"] == "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX"
+                and pages >= source_pages
+            )
+        ):
+            raise _error("corpus document language page selection is invalid")
     return canonical_clone_v1(dict(value))
 
 

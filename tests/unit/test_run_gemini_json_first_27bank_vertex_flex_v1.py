@@ -9,8 +9,14 @@ from pathlib import Path
 
 import pytest
 
+from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
+    initialize_gemini_json_first_corpus_ledger_v1,
+    list_corpus_tasks_v1,
+    transition_corpus_task_v1,
+)
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     build_gemini_json_first_vertex_flex_expansion_v1,
+    build_gemini_json_first_vietnamese_page_scope_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 
@@ -87,6 +93,7 @@ def _files(tmp_path: Path) -> tuple[Path, Path]:
     bundle = build_gemini_json_first_vertex_flex_expansion_v1(
         universe,
         already_processed_corpus_manifest_index=manifest,
+        vietnamese_page_scope=build_gemini_json_first_vietnamese_page_scope_v1([]),
     )
     bundle_path = tmp_path / "bundle.json"
     plan_path = tmp_path / "plan.json"
@@ -144,6 +151,77 @@ def test_run_one_targets_one_task_and_remains_openrouter_only(tmp_path: Path) ->
     assert command[command.index("--task-id") + 1] == task_id
     assert command[-1] == "--openrouter-only"
     assert "--google-key-file" not in command
+
+
+def test_ledger_migration_preserves_identical_tasks_and_resets_changed_prefix(
+    tmp_path: Path,
+) -> None:
+    old_plan = json.loads(
+        (
+            ROOT / "data/registered/gemini_json_first_27bank_vertex_flex_corpus_plan_v1.json"
+        ).read_bytes()
+    )
+    new_bundle = ROOT / (
+        "data/registered/gemini_json_first_27bank_vertex_flex_vietnamese_only_expansion_v1.json"
+    )
+    new_plan = ROOT / (
+        "data/registered/gemini_json_first_27bank_vertex_flex_vietnamese_only_corpus_plan_v1.json"
+    )
+    old_ledger = tmp_path / "old-ledger.sqlite3"
+    migrated_ledger = tmp_path / "migrated-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(old_ledger, plan=old_plan)
+    old_tasks = list_corpus_tasks_v1(old_ledger)
+    new_task_ids = {
+        task["task_id"]
+        for document in json.loads(new_plan.read_bytes())["documents"]
+        for task in document["tasks"]
+    }
+    identical = next(task for task in old_tasks if task["task_id"] in new_task_ids)
+    changed = next(
+        task
+        for task in old_tasks
+        if task["relative_path"] == "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf"
+    )
+    transition_corpus_task_v1(
+        old_ledger,
+        task_id=identical["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"test_started": True},
+    )
+    transition_corpus_task_v1(
+        old_ledger,
+        task_id=identical["task_id"],
+        expected_state="RUNNING",
+        next_state="SUCCEEDED",
+        receipt={"test_completed": True},
+    )
+    transition_corpus_task_v1(
+        old_ledger,
+        task_id=changed["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"interrupted_before_language_boundary": True},
+    )
+
+    result = target._migrate_ledger(
+        Namespace(
+            bundle=new_bundle,
+            ledger=migrated_ledger,
+            old_ledger=old_ledger,
+            plan=new_plan,
+        )
+    )
+
+    migrated = {task["task_id"]: task for task in list_corpus_tasks_v1(migrated_ledger)}
+    assert migrated[identical["task_id"]]["state"] == "SUCCEEDED"
+    assert changed["task_id"] not in migrated
+    assert result["ledger"]["total_pages"] == 15335
+    assert result["ledger"]["total_tasks"] == 279
+    assert result["copied_task_states"]["SUCCEEDED"] == 1
+    assert {item["relative_path"] for item in result["superseded_nonterminal_tasks"]} >= {
+        changed["relative_path"]
+    }
 
 
 def test_terminal_retry_recovers_exact_failed_page_variants() -> None:
