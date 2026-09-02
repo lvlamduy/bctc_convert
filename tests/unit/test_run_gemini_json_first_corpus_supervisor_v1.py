@@ -1493,6 +1493,40 @@ def test_provider_page_image_frontier_rejects_missing_duplicate_and_bad_hash() -
             target._summary_page_image_sha256s_v1(attack, allowed_pages=[1, 2])
 
 
+def test_adaptive_retry_artifact_dir_is_bound_to_exact_page_frontier(tmp_path) -> None:
+    first = target._adaptive_retry_artifact_dir_v1(
+        task_root=tmp_path / "task",
+        prompt_variant="scope",
+        pages=[2, 4],
+    )
+    same = target._adaptive_retry_artifact_dir_v1(
+        task_root=tmp_path / "task",
+        prompt_variant="scope",
+        pages=[2, 4],
+    )
+    narrowed = target._adaptive_retry_artifact_dir_v1(
+        task_root=tmp_path / "task",
+        prompt_variant="scope",
+        pages=[4],
+    )
+
+    assert first == same
+    assert first != narrowed
+    assert first.parent.parent.name == "adaptive-retry"
+    assert first.parent.name == "scope"
+    assert first.name.startswith("pages-")
+    assert len(first.name.removeprefix("pages-")) == 64
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="artifact frontier",
+    ):
+        target._adaptive_retry_artifact_dir_v1(
+            task_root=tmp_path / "task",
+            prompt_variant="scope",
+            pages=[4, 2],
+        )
+
+
 def test_openrouter_recitation_retry_uses_scope_and_may_resolve_to_no_relevant(
     monkeypatch, tmp_path
 ) -> None:
