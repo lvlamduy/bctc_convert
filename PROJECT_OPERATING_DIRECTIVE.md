@@ -12,6 +12,12 @@ VietOCR, word-box geometry, or geometry-derived table reconstruction in the
 production mapping path. Those older sections remain historical design context,
 not current implementation authority.
 
+Phạm vi paid ingestion hiện hành được người dùng chốt là **từ Quý 1/2025 đến
+thời điểm hiện tại**. Năm 2024 không thuộc hàng đợi Gemini của đợt này. Tám ngân
+hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON đã có; paid
+frontier chỉ gồm mười chín ngân hàng mới và chỉ được gọi qua OpenRouter Google
+Vertex Flex.
+
 The binding production flow is:
 
 ```text
