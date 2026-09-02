@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 22:49 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 23:51 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -23,11 +23,11 @@ older queue priorities where they conflict.
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
   kiểm tra trực quan mới loại toàn bộ 7 PDF tiếng Anh (360 trang) và 1 PDF ABB
   trùng nội dung (28 trang).
-- Tại checkpoint **22:47 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
+- Tại checkpoint **23:51 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
   luồng Gemini, tương ứng **6.443/14.947 trang thuộc các PDF đã bắt đầu
-  (43,1%)**. Store đã có JSON hợp lệ cho **6.008/14.947 trang (40,20%)**, thuộc
-  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 18 NEEDS_RETRY,
-  69 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
+  (43,1%)**. Store đã có JSON hợp lệ cho **6.011/14.947 trang (40,22%)**, thuộc
+  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 17 NEEDS_RETRY,
+  70 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
   với một worker và cơ chế chờ tăng dần khi Vertex Flex báo quá tải;
   `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
@@ -37,15 +37,15 @@ older queue priorities where they conflict.
   trở lại `FAILED`; không có trang hợp lệ nào bị gửi lại. Supervisor đang giữ
   cooldown thay vì chuyển sang PDF khác để tránh tạo thêm request trong lúc
   provider quá tải.
-- Audit đọc toàn bộ 69 PDF `FAILED` xác nhận receipt/frontier của cả 69 đều hợp
-  lệ. **68 PDF còn quyền terminal repair, tổng cộng đúng 364 trang**; trong đó
+- Audit đọc toàn bộ 70 PDF `FAILED` xác nhận receipt/frontier của cả 70 đều hợp
+  lệ. **69 PDF còn quyền terminal repair, tổng cộng đúng 369 page-ref**; trong đó
   23 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
   terminal repair và còn thiếu duy nhất trang 3; cả hai lượt đều kết thúc bằng
   HTTP 504, không có response/usage. Trường hợp này được giữ là lỗi provider,
   không được diễn giải thành lỗi schema hoặc tự ý mở thêm lượt gửi.
-- Audit đọc toàn bộ 18 PDF `NEEDS_RETRY` xác nhận **18/18 receipt hợp lệ** và
+- Audit đọc toàn bộ 17 PDF `NEEDS_RETRY` xác nhận **17/17 receipt hợp lệ** và
   không có PDF nào đã đủ trang nhưng còn bị giữ sai trạng thái. Frontier retry
-  có 83 page-ref: 80 trang thực sự chưa có JSON và 3 trang đã có JSON cơ sở
+  có 74 page-ref: 72 trang thực sự chưa có JSON và 2 trang đã có JSON cơ sở
   nhưng cần replay/biến thể prompt vì lỗi cấu trúc ngữ nghĩa. Các trang này vẫn
   được xử lý theo receipt riêng, không làm phát sinh gửi lại toàn PDF.
 - Audit 147 PDF `PENDING` xác nhận đúng **8.504 trang**, gồm 110 PDF năm 2025
@@ -63,14 +63,16 @@ older queue priorities where they conflict.
   page nào mang nhiều hơn một JSON version. Vì vậy số 37 PDF hoàn tất là dữ
   liệu thực trong store, không chỉ là trạng thái trên ledger.
 - Phép đối chiếu toàn ledger khép kín đủ 14.947 trang: `SUCCEEDED`
-  1.933/1.933 trang; `NEEDS_RETRY` 934/1.014, còn thiếu 80; `FAILED`
-  3.141/3.496, còn thiếu 355; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
-  hợp lệ và 8.939 trang còn thiếu, không có chênh lệch ngoài các frontier đã
+  1.933/1.933 trang; `NEEDS_RETRY` 893/965, còn thiếu 72; `FAILED`
+  3.185/3.545, còn thiếu 360; và `PENDING` 0/8.504. Tổng cộng đúng 6.011 JSON
+  hợp lệ và 8.936 trang còn thiếu, không có chênh lệch ngoài các frontier đã
   ghi nhận.
-- Cost replay từ 6.288 extraction receipt khớp tuyệt đối: 6.008 trang thuộc
-  frontier 271 PDF hiện hành có cost **21,676438125 USD**; 280 trang của tài
+- Cost replay từ 6.291 extraction receipt khớp tuyệt đối: 6.011 trang thuộc
+  frontier 271 PDF hiện hành có cost **21,687696000 USD**; 280 trang của tài
   liệu tiếng Anh/bản trùng đã loại có cost riêng **0,944172750 USD**. Toàn
-  store là **22,620610875 USD** và không có extraction run mồ côi. Các lượt
+  store là **22,631868750 USD** và không có extraction run mồ côi. Response
+  trang 3 NVB Q2/2026 bị validator loại có receipt billed riêng
+  **0,005352000 USD** và không nằm trong tổng extraction đã ingest; các lượt
   HTTP 429/504 gần nhất không có usage nên không cộng thêm chi phí.
 - Attempt cuối của MSB công ty mẹ Quý 1/2025 replay offline thành công trang
   8–9 và chỉ gửi trang 14. Vertex Flex trả HTTP 200 nhưng
@@ -92,6 +94,12 @@ older queue priorities where they conflict.
   trang 38 được gửi. Vertex Flex tiếp tục trả lỗi 429 upstream với usage/cost
   bằng 0, không có JSON mới. Task chuyển `NEEDS_RETRY → FAILED` và chỉ
   trang 38 được giữ cho terminal repair.
+- Sau cooldown kế tiếp, NVB riêng lẻ Quý 2/2026 được claim đúng chín page-ref
+  còn lỗi. Trang 8 replay offline thành công; provider chỉ đi tới trang 3, 6,
+  20, 30 và 35. Trang 6, 20 và 30 được ingest; trang 3 bị validator loại vì số
+  giá trị không khớp số cột; trang 35 mở circuit với zero usage. Trang 39, 40
+  và 46 chưa được gửi. Task chuyển `NEEDS_RETRY → FAILED`, giữ đúng năm trang
+  3, 35, 39, 40 và 46 cho terminal repair.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng

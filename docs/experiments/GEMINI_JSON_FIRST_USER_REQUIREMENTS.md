@@ -60,19 +60,23 @@ Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
 lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
 ledger hiện hành.
 
-#### Tiến độ paid frontier — kiểm tra live 22:49 UTC ngày 2026-09-02
+#### Tiến độ paid frontier — kiểm tra live 23:51 UTC ngày 2026-09-02
 
 - **Phạm vi dùng để tính:** 271 PDF / 14.947 trang tiếng Việt của 19 ngân hàng
   mới, chỉ gồm **205 PDF kỳ 2025 và 66 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
 - **Đã bắt đầu xử lý:** 124/271 PDF (**45,8%**), tương ứng 6.443/14.947 trang
   thuộc các PDF đã vào luồng (**43,1%**).
-- **Đã có Gemini JSON hợp lệ trong store:** 6.008/14.947 trang (**40,20%**),
+- **Đã có Gemini JSON hợp lệ trong store:** 6.011/14.947 trang (**40,22%**),
   thuộc 123 PDF.
-- **Đã hoàn tất trọn PDF:** 37/271 PDF (**13,7%**). Phần còn lại gồm 18 PDF
-  cần retry một số trang, 69 PDF đã hết lượt thường và đang chờ sửa đúng trang,
+- **Đã hoàn tất trọn PDF:** 37/271 PDF (**13,7%**). Phần còn lại gồm 17 PDF
+  cần retry một số trang, 70 PDF đã hết lượt thường và đang chờ sửa đúng trang,
   cùng 147 PDF chưa bắt đầu. Lượt gần nhất replay offline trang 64 của LPB kiểm
   toán năm 2025 rồi chỉ gửi trang 38; Vertex Flex trả lỗi 429 upstream với
   usage/cost bằng 0 nên không có JSON mới.
+- Lượt mới nhất sau đó là NVB riêng lẻ Quý 2/2026: trang 8 được chấp nhận
+  offline; chỉ các trang 3, 6, 20, 30 và 35 được gọi qua OpenRouter. Trang 6,
+  20 và 30 được ingest; trang 3 bị loại do cấu trúc hàng/cột không khớp và
+  trang 35 mở circuit với usage bằng 0. Trang 39, 40 và 46 không được gửi.
 - Các con số tiến độ trước đó dùng mẫu số 279 PDF / 15.335 trang cũng **không
   bao gồm PDF năm 2024**. Chênh lệch với mẫu số hiện tại là do đợt kiểm tra trực
   quan sau đó loại 7 PDF hoàn toàn bằng tiếng Anh và 1 bản ABB trùng nội dung.

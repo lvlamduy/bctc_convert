@@ -1,6 +1,6 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **22:49 UTC ngày 02/09/2026**.
+Checkpoint: **23:51 UTC ngày 02/09/2026**.
 
 ## Phạm vi được tính
 
@@ -26,7 +26,7 @@ Checkpoint: **22:49 UTC ngày 02/09/2026**.
 | LPB | 7 | 607 | 598 | 98,52% | 7 | 2 | 0 | 2 | 3 | 0 |
 | MSB | 16 | 998 | 981 | 98,30% | 16 | 8 | 0 | 1 | 7 | 0 |
 | NAB | 16 | 853 | 819 | 96,01% | 16 | 8 | 0 | 4 | 4 | 0 |
-| NVB | 16 | 864 | 787 | 91,09% | 16 | 5 | 0 | 8 | 3 | 0 |
+| NVB | 16 | 864 | 790 | 91,44% | 16 | 5 | 0 | 7 | 4 | 0 |
 | OCB | 16 | 899 | 74 | 8,23% | 1 | 0 | 0 | 0 | 1 | 15 |
 | PGB | 7 | 357 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 7 |
 | SGB | 14 | 703 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 14 |
@@ -37,7 +37,7 @@ Checkpoint: **22:49 UTC ngày 02/09/2026**.
 | TPB | 16 | 1.080 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
 | VAB | 15 | 737 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 15 |
 | VBB | 16 | 773 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
-| **Tổng** | **271** | **14.947** | **6.008** | **40,20%** | **124** | **37** | **0** | **18** | **69** | **147** |
+| **Tổng** | **271** | **14.947** | **6.011** | **40,22%** | **124** | **37** | **0** | **17** | **70** | **147** |
 
 So với checkpoint trước, mẫu số giảm 8 PDF / 388 trang sau kiểm tra trực quan:
 7 PDF hoàn toàn bằng tiếng Anh được loại khỏi paid frontier và 1 PDF ABB là
@@ -72,14 +72,14 @@ Tỷ lệ chính để theo dõi chi phí và khối lượng là **trang JSON h
 trang tiếng Việt**. Tỷ lệ PDF hoàn tất thấp hơn vì nhiều PDF chỉ còn thiếu một
 hoặc vài trang nhưng chưa được phép coi là hoàn tất.
 
-Audit terminal-repair tại checkpoint này xác nhận 68 PDF còn quyền sửa đúng
-364 trang đã ghi trong receipt; 23 PDF trong số đó chỉ thiếu một trang. Một PDF
+Audit terminal-repair tại checkpoint này xác nhận 69 PDF còn quyền sửa đúng
+369 page-ref đã ghi trong receipt; 23 PDF trong số đó chỉ thiếu một trang. Một PDF
 BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt và vẫn thiếu trang 3 do hai lần
 HTTP 504 không có response, nên được giữ riêng là lỗi provider chứ không phải
 lỗi nội dung hoặc schema.
 
-Audit hàng đợi thông thường cũng xác nhận 18/18 PDF `NEEDS_RETRY` có receipt
-hợp lệ. Frontier gồm 83 page-ref: 80 trang chưa có JSON và 3 trang đã có JSON
+Audit hàng đợi thông thường cũng xác nhận 17/17 PDF `NEEDS_RETRY` có receipt
+hợp lệ. Frontier gồm 74 page-ref: 72 trang chưa có JSON và 2 trang đã có JSON
 cơ sở nhưng cần replay/biến thể prompt để sửa lỗi cấu trúc ngữ nghĩa. Không có
 PDF nào trong nhóm này đã đủ toàn bộ trang mà còn bị giữ sai trạng thái.
 
@@ -108,6 +108,13 @@ Sau cooldown tiếp theo, LPB kiểm toán năm 2025 được claim với fronti
 không có JSON mới. PDF chuyển sang `FAILED` và chỉ trang 38 được giữ cho
 terminal repair.
 
+Sau cooldown kế tiếp, NVB riêng lẻ Quý 2/2026 chạy attempt 3 trên đúng chín
+page-ref còn lỗi. Trang 8 được chấp nhận lại hoàn toàn offline và không gọi
+provider. Provider chỉ đi tới trang 3, 6, 20, 30 và 35; trang 6, 20 và 30 được
+ingest, trang 3 bị loại vì số giá trị không khớp số cột, còn trang 35 mở circuit
+với `ZERO_USAGE_PROVIDER_ERROR`. Trang 39, 40 và 46 chưa được gửi. PDF chuyển
+sang `FAILED` với đúng năm trang 3, 35, 39, 40 và 46 cho terminal repair.
+
 Nhóm `PENDING` gồm đúng 147 PDF / 8.504 trang: 110 PDF năm 2025 và 37 PDF năm
 2026. Nhóm này có 0 PDF năm 2024, không giao với tám ngân hàng cũ và không chứa
 trang ngoài frontier tiếng Việt đã đăng ký.
@@ -123,16 +130,19 @@ Phân rã toàn bộ 14.947 trang theo trạng thái ledger cũng khớp tuyệt
 | Trạng thái PDF | Tổng trang | Đã có JSON | Còn thiếu |
 | --- | ---: | ---: | ---: |
 | `SUCCEEDED` | 1.933 | 1.933 | 0 |
-| `NEEDS_RETRY` | 1.014 | 934 | 80 |
-| `FAILED` chờ terminal repair | 3.496 | 3.141 | 355 |
+| `NEEDS_RETRY` | 965 | 893 | 72 |
+| `FAILED` chờ terminal repair | 3.545 | 3.185 | 360 |
 | `PENDING` | 8.504 | 0 | 8.504 |
-| **Tổng** | **14.947** | **6.008** | **8.939** |
+| **Tổng** | **14.947** | **6.011** | **8.936** |
 
 ## Chi phí đã phát sinh
 
-- 6.008 trang thuộc frontier 271 PDF hiện hành: **21,676438125 USD**.
+- 6.011 trang thuộc frontier 271 PDF hiện hành: **21,687696000 USD**.
 - 280 trang của tài liệu tiếng Anh/bản trùng đã loại: **0,944172750 USD**;
   khoản này được giữ làm lịch sử nhưng không trộn vào tiến độ hiện hành.
-- Toàn store: **22,620610875 USD** cho 6.288 extraction hoàn tất. Không có
+- Toàn store: **22,631868750 USD** cho 6.291 extraction hoàn tất. Không có
   extraction run không được page JSON tham chiếu và các lượt HTTP 429/504 vừa
   qua không có usage/cost.
+- Riêng response trang 3 của NVB Q2/2026 bị validator loại vẫn có receipt billed
+  **0,005352000 USD**; khoản này không nằm trong tổng extraction đã ingest ở
+  trên. Trang 35 có usage/cost bằng 0.
