@@ -1997,14 +1997,18 @@ def test_openrouter_adaptive_retry_partitions_mixed_failure_kinds(monkeypatch, t
         assert expected == {0, 2}
         variant = argv[argv.index("--prompt-variant") + 1]
         page = int(argv[argv.index("--physical-page") + 1])
-        calls.append((variant, page))
+        offline = "--offline-replay-only" in argv
+        calls.append(("OFFLINE" if offline else variant, page))
         return 0, {
             "cached_pages": [],
+            "execution_mode": "OFFLINE_REPLAY_ONLY" if offline else "PROVIDER_OR_CACHE",
             "failed_pages": [],
             "ingested_pages": [page],
             "page_image_sha256s": [{"image_sha256": str(page) * 64, "physical_page": page}],
+            "provider_request_pages": [] if offline else [page],
             "recitation_failed_pages": [],
             "semantic_failed_pages": [],
+            "unresolved_pages": [],
         }
 
     def manifest(_database, **kwargs):
@@ -2050,16 +2054,110 @@ def test_openrouter_adaptive_retry_partitions_mixed_failure_kinds(monkeypatch, t
         max_attempts=2,
     )
     assert result["state"] == "SUCCEEDED"
-    assert calls == [("simple", 4), ("scope", 2), ("items", 3)]
+    assert calls == [("OFFLINE", 3), ("simple", 4), ("scope", 2)]
     prompt_hashes = manifests[0]["prompt_sha256"]
-    assert len({prompt_hashes[2], prompt_hashes[3], prompt_hashes[4]}) == 3
+    assert prompt_hashes[3] == prompt_hashes[1]
+    assert len({prompt_hashes[2], prompt_hashes[4]}) == 2
     receipt = transitions[-1]["receipt"]
     assert receipt["protected_retry_pages"] == [3]
+    assert [item["accepted_pages"] for item in receipt["offline_replay_results"]] == [[3]]
     assert receipt["alternate_prompt_variants"] == [
-        {"physical_pages": [4], "prompt_variant": "simple"},
+        {"physical_pages": [3, 4], "prompt_variant": "simple"},
         {"physical_pages": [2], "prompt_variant": "scope"},
-        {"physical_pages": [3], "prompt_variant": "items"},
     ]
+
+
+def test_openrouter_semantic_retry_can_finish_without_provider_request(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "MBB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 1,
+        "first_physical_page": 1,
+        "last_physical_page": 1,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {"failed_pages": [1], "semantic_failed_pages": [1]}
+        ),
+        "relative_path": "MBB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+    calls = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 2, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        assert "--offline-replay-only" in argv
+        calls.append(argv)
+        return 0, {
+            "cached_pages": [],
+            "execution_mode": "OFFLINE_REPLAY_ONLY",
+            "failed_pages": [],
+            "ingested_pages": [1],
+            "page_image_sha256s": [{"image_sha256": "1" * 64, "physical_page": 1}],
+            "provider_request_pages": [],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: "1" * 64},
+    )
+    monkeypatch.setattr(
+        target,
+        "_page_variant_manifest_v1",
+        lambda **_kwargs: {
+            "document_manifest_id": "gfdmv1:manifest:" + "f" * 64,
+            "pages": [{"physical_page": 1, "status": "FINANCIAL_NOTE_CONTENT"}],
+        },
+    )
+
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=20,
+        google_key_file=tmp_path / "google",
+        google_key_slot=1,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+        openrouter_only=True,
+    )
+
+    assert result["state"] == "SUCCEEDED"
+    assert len(calls) == 1
+    receipt = transitions[-1]["receipt"]
+    assert receipt["adaptive_retry_results"] == []
+    assert receipt["alternate_prompt_variants"] == [
+        {"physical_pages": [1], "prompt_variant": "simple"}
+    ]
+    assert receipt["offline_replay_results"][0]["accepted_pages"] == [1]
 
 
 def test_current_document_manifest_binds_image_and_prompt_frontiers(monkeypatch, tmp_path) -> None:
@@ -2416,6 +2514,11 @@ def test_openrouter_semantic_item_retry_never_drops_known_financial_content(
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
     monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "_offline_semantic_replay_result_v1",
+        lambda **_kwargs: None,
+    )
     monkeypatch.setattr(
         target,
         "corpus_ledger_summary_v1",
