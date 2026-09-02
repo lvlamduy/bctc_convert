@@ -4719,6 +4719,10 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "terminal Flex repair requires the ordinary corpus frontier to be exhausted"
         )
+    if any(task.get("route") != OPENROUTER_ROUTE for task in initial_tasks):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "terminal Flex repair requires an OpenRouter-only corpus ledger"
+        )
 
     actions: list[dict[str, Any]] = []
     completed_task_ids: list[str] = []

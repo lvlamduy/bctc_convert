@@ -1787,6 +1787,39 @@ def test_terminal_flex_repair_rejects_an_unfinished_ordinary_frontier(
         )
 
 
+def test_terminal_flex_repair_rejects_a_foreign_provider_route(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda *_args, **_kwargs: [{"route": "GOOGLE_GEMINI_BATCH_API", "state": "FAILED"}],
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="OpenRouter-only",
+    ):
+        target.repair_failed_openrouter_flex_tasks(
+            Namespace(
+                artifact_root=tmp_path / "artifacts",
+                database=tmp_path / "store.sqlite3",
+                google_key_file=tmp_path / "unused-google-key",
+                ledger=tmp_path / "ledger.sqlite3",
+                max_repair_actions=1,
+                openrouter_circuit_cooldown_seconds=5,
+                openrouter_key_file=tmp_path / "openrouter-key",
+                openrouter_workers=1,
+                plan=tmp_path / "plan.json",
+                provider_timeout_seconds=900,
+                source_root=tmp_path / "source",
+            )
+        )
+
+
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"
