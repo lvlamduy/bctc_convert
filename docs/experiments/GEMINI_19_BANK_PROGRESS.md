@@ -1,11 +1,11 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **17:58 UTC ngày 02/09/2026**.
+Checkpoint: **18:18 UTC ngày 02/09/2026**.
 
 ## Phạm vi được tính
 
 - Chỉ tính báo cáo từ **Quý 1/2025 đến thời điểm hiện tại**.
-- Gồm **212 PDF kỳ 2025 và 67 PDF kỳ 2026**, tổng cộng **279 PDF / 15.335
+- Gồm **205 PDF kỳ 2025 và 66 PDF kỳ 2026**, tổng cộng **271 PDF / 14.947
   trang tiếng Việt**.
 - Số PDF kỳ 2024 trong hàng đợi này là **0**. Ngày `31/12/2024` nếu xuất hiện
   chỉ là cột so sánh trong báo cáo 2025/2026.
@@ -16,13 +16,13 @@ Checkpoint: **17:58 UTC ngày 02/09/2026**.
 
 | Mã ngân hàng | PDF | Trang tiếng Việt | Trang JSON hợp lệ | Hoàn thành theo trang | PDF đã bắt đầu | PDF hoàn tất | PDF cần retry | PDF chờ sửa trang lỗi | PDF chưa bắt đầu |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| ABB | 13 | 481 | 434 | 90,23% | 13 | 1 | 0 | 12 | 0 |
-| BAB | 12 | 542 | 511 | 94,28% | 12 | 2 | 0 | 10 | 0 |
+| ABB | 12 | 453 | 414 | 91,39% | 12 | 1 | 0 | 11 | 0 |
+| BAB | 10 | 441 | 420 | 95,24% | 10 | 2 | 0 | 8 | 0 |
 | BVB | 14 | 742 | 571 | 76,95% | 14 | 1 | 0 | 13 | 0 |
 | EIB | 16 | 703 | 687 | 97,72% | 16 | 7 | 0 | 9 | 0 |
-| KLB | 18 | 757 | 732 | 96,70% | 18 | 3 | 4 | 11 | 0 |
-| LPB | 8 | 702 | 692 | 98,58% | 8 | 2 | 5 | 1 | 0 |
-| MSB | 16 | 998 | 981 | 98,30% | 16 | 8 | 5 | 3 | 0 |
+| KLB | 16 | 680 | 657 | 96,62% | 16 | 3 | 3 | 10 | 0 |
+| LPB | 7 | 607 | 598 | 98,52% | 7 | 2 | 4 | 1 | 0 |
+| MSB | 16 | 998 | 981 | 98,30% | 16 | 8 | 4 | 4 | 0 |
 | NAB | 16 | 853 | 819 | 96,01% | 16 | 8 | 5 | 3 | 0 |
 | NVB | 16 | 864 | 787 | 91,09% | 16 | 5 | 9 | 2 | 0 |
 | OCB | 16 | 899 | 74 | 8,23% | 1 | 0 | 0 | 1 | 15 |
@@ -33,15 +33,22 @@ Checkpoint: **17:58 UTC ngày 02/09/2026**.
 | STB | 16 | 972 | 0 | 0,00% | 0 | 0 | 0 | 0 | 16 |
 | TCB | 16 | 1.293 | 0 | 0,00% | 0 | 0 | 0 | 0 | 16 |
 | TPB | 16 | 1.080 | 0 | 0,00% | 0 | 0 | 0 | 0 | 16 |
-| VAB | 16 | 784 | 0 | 0,00% | 0 | 0 | 0 | 0 | 16 |
-| VBB | 17 | 813 | 0 | 0,00% | 0 | 0 | 0 | 0 | 17 |
-| **Tổng** | **279** | **15.335** | **6.288** | **41,01%** | **130** | **37** | **28** | **65** | **149** |
+| VAB | 15 | 737 | 0 | 0,00% | 0 | 0 | 0 | 0 | 15 |
+| VBB | 16 | 773 | 0 | 0,00% | 0 | 0 | 0 | 0 | 16 |
+| **Tổng** | **271** | **14.947** | **6.008** | **40,20%** | **124** | **37** | **25** | **62** | **147** |
+
+So với checkpoint trước, mẫu số giảm 8 PDF / 388 trang sau kiểm tra trực quan:
+7 PDF hoàn toàn bằng tiếng Anh được loại khỏi paid frontier và 1 PDF ABB là
+bản trùng nội dung với một PDF đã giữ lại. JSON đã nhận của các tài liệu bị
+loại vẫn được giữ làm bằng chứng kỹ thuật, nhưng không được tính vào tiến độ và
+không được dùng để map dữ liệu.
 
 ## Xác nhận về năm 2024
 
-- Tiến độ trong bảng này, và mốc tiến độ trước đó dùng cùng mẫu số **279 PDF /
-  15.335 trang**, đều **không bao gồm PDF năm 2024**.
-- Hàng đợi có **212 PDF kỳ 2025, 67 PDF kỳ 2026 và 0 PDF kỳ 2024**.
+- Tiến độ trong bảng này và tất cả mốc tiến độ đã báo cho đợt mở rộng 19 ngân
+  hàng đều **không bao gồm PDF năm 2024**. Mẫu số cũ 279 PDF / 15.335 trang chỉ
+  bị điều chỉnh vì tài liệu tiếng Anh và bản trùng, không phải vì loại năm 2024.
+- Hàng đợi hiện có **205 PDF kỳ 2025, 66 PDF kỳ 2026 và 0 PDF kỳ 2024**.
 - Dữ liệu mang ngày `31/12/2024` vẫn có thể xuất hiện trong JSON vì đó là cột
   so sánh của một PDF kỳ 2025 hoặc 2026. Nó không làm PDF đó trở thành PDF năm
   2024 và không mở rộng phạm vi xử lý.

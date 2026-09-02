@@ -37,7 +37,7 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 | Nhóm | Phạm vi | Quyền gọi Gemini mới |
 | --- | --- | --- |
 | Đã có/đang xử lý, chỉ tái sử dụng | Corpus tám ngân hàng và ledger mười chín ngân hàng 2025-current | **CẤM GỬI LẠI** exact PDF/page/image; chỉ đọc manifest/store/cache/ledger |
-| Paid frontier hiện hành | 279 PDF của mười chín ngân hàng mới, Quý 1/2025–hiện tại | Chỉ gửi page tiếng Việt chưa có JSON qua OpenRouter Vertex Flex |
+| Paid frontier hiện hành | 271 PDF của mười chín ngân hàng mới, Quý 1/2025–hiện tại | Chỉ gửi page tiếng Việt chưa có JSON qua OpenRouter Vertex Flex |
 | Năm 2024 | Ngoài phạm vi đợt này | **KHÔNG GỬI GEMINI** |
 
 Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
@@ -48,27 +48,28 @@ lại process hoặc chạy repair không tự tạo quyền gửi lại. Page �
 phải được lấy lại theo source/image hash và manifest; repair chỉ được phép nhắm
 đúng page thất bại có receipt.
 
-Kiểm tra vận hành ngày 2026-09-02: paid ledger có **279 PDF / 15.335 trang tiếng
+Kiểm tra vận hành ngày 2026-09-02: paid ledger có **271 PDF / 14.947 trang tiếng
 Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
 `ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB` là **rỗng**. Điều kiện này phải được kiểm tra
 lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
 ledger hiện hành.
 
-#### Tiến độ paid frontier — 17:58 UTC ngày 2026-09-02
+#### Tiến độ paid frontier — 18:18 UTC ngày 2026-09-02
 
-- **Phạm vi dùng để tính:** 279 PDF / 15.335 trang tiếng Việt của 19 ngân hàng
-  mới, chỉ gồm **212 PDF kỳ 2025 và 67 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
-- **Đã bắt đầu xử lý:** 130/279 PDF (**46,6%**), tương ứng 6.744/15.335 trang
-  thuộc các PDF đã vào luồng (**44,0%**).
-- **Đã có Gemini JSON hợp lệ trong store:** 6.288/15.335 trang (**41,01%**),
-  thuộc 129 PDF.
-- **Đã hoàn tất trọn PDF:** 37/279 PDF (**13,3%**). Phần còn lại gồm 28 PDF chỉ
-  cần retry một số trang, 65 PDF đã hết lượt thường và đang chờ sửa đúng trang,
-  cùng 149 PDF chưa bắt đầu.
-- Các con số tiến độ trước đó dùng mẫu số **279 PDF / 15.335 trang** cũng không
-  bao gồm PDF năm 2024. Ngày `31/12/2024` xuất hiện trong JSON chỉ là kỳ so sánh
-  của báo cáo 2025/2026, không phải một PDF năm 2024 và không được tính vào
-  paid frontier.
+- **Phạm vi dùng để tính:** 271 PDF / 14.947 trang tiếng Việt của 19 ngân hàng
+  mới, chỉ gồm **205 PDF kỳ 2025 và 66 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
+- **Đã bắt đầu xử lý:** 124/271 PDF (**45,8%**), tương ứng 6.443/14.947 trang
+  thuộc các PDF đã vào luồng (**43,1%**).
+- **Đã có Gemini JSON hợp lệ trong store:** 6.008/14.947 trang (**40,20%**),
+  thuộc 123 PDF.
+- **Đã hoàn tất trọn PDF:** 37/271 PDF (**13,7%**). Phần còn lại gồm 25 PDF chỉ
+  cần retry một số trang, 62 PDF đã hết lượt thường và đang chờ sửa đúng trang,
+  cùng 147 PDF chưa bắt đầu.
+- Các con số tiến độ trước đó dùng mẫu số 279 PDF / 15.335 trang cũng **không
+  bao gồm PDF năm 2024**. Chênh lệch với mẫu số hiện tại là do đợt kiểm tra trực
+  quan sau đó loại 7 PDF hoàn toàn bằng tiếng Anh và 1 bản ABB trùng nội dung.
+  Ngày `31/12/2024` xuất hiện trong JSON chỉ là kỳ so sánh của báo cáo
+  2025/2026, không phải một PDF năm 2024 và không được tính vào paid frontier.
 - Bảng chi tiết theo từng mã được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](GEMINI_19_BANK_PROGRESS.md).
 
@@ -119,12 +120,33 @@ Từ checkpoint này:
 | BCTC Công ty mẹ quý 2 năm 2026.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
 | BCTC Hợp nhất quý 2 năm 2026.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
 
-Sau khi áp dụng bảng trên, paid frontier 19 ngân hàng vẫn có 279 PDF nhưng giảm
-từ 15.968 xuống **15.335 trang được phép gửi**; **633 trang tiếng Anh bị loại**.
+Sau khi chỉ áp dụng bảng cắt phần tiếng Anh nối cuối ở trên, frontier trung gian
+vẫn có 279 PDF nhưng giảm từ 15.968 xuống **15.335 trang được phép gửi**;
+**633 trang tiếng Anh bị loại**.
+Đợt rà trực quan toàn bộ tên file và các cặp đáng ngờ sau đó loại thêm **7 PDF
+hoàn toàn bằng tiếng Anh (360 trang)** và **1 PDF ABB trùng nội dung (28
+trang)**. Paid frontier cuối cùng vì vậy là **271 PDF / 14.947 trang**. JSON đã
+nhận của tài liệu bị loại chỉ được giữ làm bằng chứng kỹ thuật, không được tính
+tiến độ, map dữ liệu hoặc cấp quyền gửi tiếp.
+
 Đây là denominator bảo vệ của giai đoạn 2025-current: 8.947 trang JSON cũ được
-tái sử dụng và 15.335 trang paid frontier tiếng Việt, tương ứng **24.282
+tái sử dụng và 14.947 trang paid frontier tiếng Việt, tương ứng **23.894
 trang**. Năm 2024 nằm ngoài phạm vi và không được cộng vào denominator này.
-Plan cũ 15.968 trang chưa cắt phần tiếng Anh không được resume.
+Mọi plan cũ 15.968 hoặc 15.335 trang không được resume.
+
+#### Tài liệu đã loại toàn bộ sau kiểm tra trực quan
+
+- BAB: `BCTC Consolidated 2025_Audited.pdf` và
+  `BCTC Separate 2025_Audited.pdf` — bản tiếng Anh, đã có bản tiếng Việt tương
+  ứng.
+- KLB: `bao-cao-tai-chinh-giua-nien-do-q4.2025-hop-nhat-_ta.pdf` và
+  `bao-cao-tai-chinh-giua-nien-do-q4.2025-rieng_ta.pdf` — bản tiếng Anh.
+- LPB: `BCTC 31.12.2025 E color.pdf` — bản tiếng Anh.
+- VAB: `BCTC HOP NHAT QUY 2.2025 TANH_0001-da nen.pdf` — bản tiếng Anh.
+- VBB: `28-BCTC-Q1_2026-hopnhat-E.pdf` — bản tiếng Anh.
+- ABB: `BCTC Hợp nhất quý 4 năm 2025__d2af87de__phpaedoan-...pdf` — bản trùng
+  nội dung với file ABB Q4/2025 được giữ lại; khác biệt chỉ là lớp chữ ký số ở
+  trang đầu.
 
 ## 1. Provider và credential
 

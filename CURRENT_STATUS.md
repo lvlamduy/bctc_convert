@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 17:58 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 18:18 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -10,19 +10,22 @@ older queue priorities where they conflict.
 ## Checkpoint phạm vi và paid ingestion — 2026-09-02
 
 - Người dùng chốt phạm vi cuối cùng là **Quý 1/2025 đến thời điểm hiện tại**.
-  Paid plan hiện có **212 PDF kỳ 2025 + 67 PDF kỳ 2026 = 279 PDF** và **không
+  Paid plan hiện có **205 PDF kỳ 2025 + 66 PDF kỳ 2026 = 271 PDF** và **không
   có PDF kỳ 2024**. Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
   báo cáo kỳ 2025/2026, không phải PDF báo cáo năm 2024 và không được tính thành
   một tài liệu năm 2024.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
-  hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
-  tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint **17:58 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
-  luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
-  (44,0%)**. Store đã có JSON hợp lệ cho **6.288/15.335 trang (41,01%)**, thuộc
-  129 PDF. Trạng thái task là **37 SUCCEEDED, 28 NEEDS_RETRY, 65 FAILED đang
-  chờ sửa đúng trang và 149 PENDING**; supervisor đang ở nấc chờ sau
-  circuit và không có child request tại thời điểm checkpoint. `SUCCEEDED` ở cấp PDF thấp
+  hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **271 PDF / 14.947 trang
+  tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
+  kiểm tra trực quan mới loại toàn bộ 7 PDF tiếng Anh (360 trang) và 1 PDF ABB
+  trùng nội dung (28 trang).
+- Tại checkpoint **18:18 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
+  luồng Gemini, tương ứng **6.443/14.947 trang thuộc các PDF đã bắt đầu
+  (43,1%)**. Store đã có JSON hợp lệ cho **6.008/14.947 trang (40,20%)**, thuộc
+  123 PDF. Trạng thái task là **37 SUCCEEDED, 25 NEEDS_RETRY, 62 FAILED đang
+  chờ sửa đúng trang và 147 PENDING**. Supervisor cũ đã được dừng an toàn để
+  chuyển sang ledger đã loại tài liệu tiếng Anh/bản trùng; không có request
+  provider đang chạy tại thời điểm checkpoint. `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
   còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
 - Bảng theo từng mã ngân hàng được lưu tại
@@ -31,8 +34,9 @@ older queue priorities where they conflict.
   mới, không trộn tám ngân hàng đã có JSON.
 - Các số tiến độ vừa nêu **chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý
   1/2025 đến hiện tại; không bao gồm năm 2024**. Con số tiến độ đã báo trước đó
-  với mẫu số 279 PDF / 15.335 trang cũng dùng đúng phạm vi này, không lẫn PDF
-  2024.
+  với mẫu số 279 PDF / 15.335 trang cũng không lẫn PDF 2024; mẫu số được điều
+  chỉnh vì loại tài liệu tiếng Anh và bản ABB trùng, không phải vì thay đổi năm
+  bắt đầu.
 - Provider route vẫn chỉ là OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`; direct Google và fallback đều tắt. Thử nghiệm
   20, 8 rồi 2 page worker gặp tỷ lệ HTTP 429/zero-usage cao; dispatcher đang chạy

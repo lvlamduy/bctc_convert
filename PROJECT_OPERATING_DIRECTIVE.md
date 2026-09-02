@@ -29,6 +29,15 @@
 > `docs/experiments/GEMINI_JSON_FIRST_USER_REQUIREMENTS.md`. A file without a
 > verified cutoff is blocked before the first provider request.
 
+> **2026-09-02 whole-document/duplicate authority:** the verified paid
+> frontier is 271 PDFs / 14,947 Vietnamese pages, comprising 205 reports from
+> 2025 and 66 from 2026, with zero reports from 2024. Seven standalone English
+> PDFs and one visually duplicate ABB PDF are excluded in full. Any responses
+> already received for excluded documents remain immutable audit evidence, but
+> they do not count toward progress, cannot enter mapping, and confer no right
+> to resume those documents. The readable exclusions and current counts are in
+> `docs/experiments/GEMINI_JSON_FIRST_USER_REQUIREMENTS.md`.
+
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
 > owns normalization, graph construction, period/unit resolution, equations and

@@ -33,8 +33,11 @@ statement trên.
   manifest/store/cache; **không được gửi lại**.
 - Paid provider frontier chỉ gồm 19 ngân hàng mới: ABB, BAB, BVB, EIB, KLB,
   LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB.
-- Frontier đã xác thực gồm **279 PDF / 15.335 trang tiếng Việt**. Các trang
-  tiếng Anh ghép cuối PDF OCB và TCB đã bị loại trước provider request.
+- Frontier cuối cùng đã xác thực gồm **271 PDF / 14.947 trang tiếng Việt**:
+  205 PDF kỳ 2025, 66 PDF kỳ 2026 và 0 PDF kỳ 2024. Ngoài các trang tiếng Anh
+  ghép cuối PDF OCB/TCB, 7 PDF hoàn toàn bằng tiếng Anh và 1 bản ABB trùng nội
+  dung cũng bị loại. Kết quả đã nhận của tài liệu bị loại chỉ giữ làm bằng
+  chứng, không tính tiến độ, không map và không được tiếp tục gửi.
 - Request mới chỉ được dùng OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`, tier `flex`; direct Google và mọi fallback bị
   cấm. Resume/retry chỉ nhắm đúng page còn thiếu hoặc lỗi, không gửi lại toàn
