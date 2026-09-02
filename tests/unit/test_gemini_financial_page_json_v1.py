@@ -246,6 +246,69 @@ def test_primary_statement_label_column_is_removed_without_dropping_stt_or_note(
     ]
 
 
+@pytest.mark.parametrize(
+    "row_label_header",
+    [
+        "ITEMS",
+        "Tên công ty",
+        "Loại tài sản",
+        "Công ty phát hành",
+        "CÁC CHỈ TIÊU NGOÀI BẢNG CÂN ĐỐI KẾ TOÁN",
+    ],
+)
+def test_common_row_label_headers_are_removed_from_value_columns(
+    row_label_header: str,
+) -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": [row_label_header], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thông tin"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Tỷ lệ"], "value_kind": "PERCENT"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Công ty A",
+            "hierarchy_path_exact": ["Công ty A"],
+            "row_kind": "ITEM",
+            "values_exact": ["Giấy phép 01", "49,5%"],
+        }
+    ]
+
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert checked["columns"] == table["columns"][1:]
+    assert checked["rows"] == table["rows"]
+
+
+def test_printed_header_cell_ordinal_does_not_hide_the_row_label_column() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"] = [
+        {"header_path_exact": ["STT (1)"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Chỉ tiêu (2)"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Thuyết minh (3)"], "value_kind": "TEXT"},
+        {"header_path_exact": ["Năm 2025 (4)"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Năm 2024 (5)"], "value_kind": "MONEY"},
+    ]
+    table["rows"] = [
+        {
+            "label_exact": "Tiền mặt",
+            "hierarchy_path_exact": ["Tiền mặt"],
+            "row_kind": "ITEM",
+            "values_exact": ["1", "4", "100", "90"],
+        }
+    ]
+
+    checked = validate_financial_page_json_v1(page)["sections"][0]["tables"][0]
+    assert [column["header_path_exact"] for column in checked["columns"]] == [
+        ["STT (1)"],
+        ["Thuyết minh (3)"],
+        ["Năm 2025 (4)"],
+        ["Năm 2024 (5)"],
+    ]
+    assert checked["rows"][0]["values_exact"] == ["1", "4", "100", "90"]
+
+
 def test_uniform_omitted_stt_and_label_prefix_preserves_note_and_money_cells() -> None:
     page = _page()
     table = page["sections"][0]["tables"][0]

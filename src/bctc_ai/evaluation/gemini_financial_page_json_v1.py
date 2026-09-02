@@ -67,10 +67,15 @@ _EXPLICIT_CALENDAR_DATE = re.compile(
 _ROW_LABEL_HEADER_ANCHORS = frozenset(
     {
         "ben lien quan",
+        "cac chi tieu ngoai bang can doi ke toan",
         "chi tieu",
+        "cong ty phat hanh",
         "dien giai",
+        "items",
         "khoan muc",
+        "loai tai san",
         "noi dung",
+        "ten cong ty",
     }
 )
 _STRUCTURAL_ROW_KEY_HEADER_ANCHORS = _ROW_LABEL_HEADER_ANCHORS | frozenset(
@@ -79,6 +84,7 @@ _STRUCTURAL_ROW_KEY_HEADER_ANCHORS = _ROW_LABEL_HEADER_ANCHORS | frozenset(
         "so thu tu",
     }
 )
+_HEADER_CELL_ORDINAL = re.compile(r"\s*\(\d+\)\s*\Z")
 
 
 class GeminiFinancialPageJsonV1Error(ValueError):
@@ -688,6 +694,12 @@ def _cell_matches_value_kind_v1(value: Any, value_kind: str) -> bool:
     return False
 
 
+def _is_row_label_header_v1(header: str) -> bool:
+    """Recognize one exact row-label header with an optional printed cell ordinal."""
+
+    return _HEADER_CELL_ORDINAL.sub("", header).strip() in _ROW_LABEL_HEADER_ANCHORS
+
+
 def _unique_null_padding_by_value_kind_v1(
     values: list[Any], columns: list[dict[str, Any]]
 ) -> list[Any] | None:
@@ -850,7 +862,7 @@ def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
     first_header = _search_fold_v1(
         " ".join(str(item or "") for item in columns[0]["header_path_exact"])
     )
-    if first_header not in _ROW_LABEL_HEADER_ANCHORS:
+    if not _is_row_label_header_v1(first_header):
         return False
     if any(
         not row["hierarchy_path_exact"] or row["hierarchy_path_exact"][-1] != row["label_exact"]
@@ -951,7 +963,7 @@ def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
     candidates = []
     for index, column in enumerate(columns):
         header = _search_fold_v1(" ".join(str(item or "") for item in column["header_path_exact"]))
-        if header in _ROW_LABEL_HEADER_ANCHORS:
+        if _is_row_label_header_v1(header):
             candidates.append(index)
             continue
         if (
@@ -1246,9 +1258,9 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     active_group_label = row["label_exact"]
                 prior_row = row
             if (
-                _normalize_explicit_row_label_column_v1(table)
+                _normalize_omitted_leading_structural_columns_v1(table)
+                or _normalize_explicit_row_label_column_v1(table)
                 or _normalize_leading_row_label_proxy_v1(table)
-                or _normalize_omitted_leading_structural_columns_v1(table)
                 or _normalize_leading_text_header_proxies_v1(table)
                 or _normalize_four_column_movement_table_v1(table)
                 or _normalize_dual_period_preferred_share_blanks_v1(table)

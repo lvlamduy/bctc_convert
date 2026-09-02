@@ -3201,35 +3201,44 @@ def _run_openrouter(
             "semantic_failed_pages": [],
             "unresolved_pages": [],
         }
-        offline_item = _offline_semantic_replay_result_v1(
-            args=argparse.Namespace(
-                database=database,
-                openrouter_workers=openrouter_workers,
-                repair_attempt=task["attempt_count"],
-            ),
-            attempt_root=(
-                _task_root(task, artifact_root)
-                / "adaptive-retry"
-                / f"offline-attempt-{task['attempt_count']:02d}"
-            ),
-            current_images=current_page_images,
-            prompt_variant=default_prompt_variant,
-            semantic_pages=semantic_retry_pages,
-            source=source,
-            task=task,
-            task_root=_task_root(task, artifact_root),
-            dpi=plan["policy"]["dpi"],
-        )
         offline_accepted: list[int] = []
-        if offline_item is not None:
+        remaining_semantic_pages = list(semantic_retry_pages)
+        for offline_variant in dict.fromkeys((default_prompt_variant, "items")):
+            offline_item = _offline_semantic_replay_result_v1(
+                args=argparse.Namespace(
+                    database=database,
+                    openrouter_workers=openrouter_workers,
+                    repair_attempt=task["attempt_count"],
+                ),
+                attempt_root=(
+                    _task_root(task, artifact_root)
+                    / "adaptive-retry"
+                    / f"offline-attempt-{task['attempt_count']:02d}"
+                ),
+                current_images=current_page_images,
+                prompt_variant=offline_variant,
+                semantic_pages=remaining_semantic_pages,
+                source=source,
+                task=task,
+                task_root=_task_root(task, artifact_root),
+                dpi=plan["policy"]["dpi"],
+            )
+            if offline_item is None:
+                continue
             offline_replay_results.append(offline_item)
-            offline_accepted = offline_item["accepted_pages"]
+            accepted_for_variant = offline_item["accepted_pages"]
+            offline_accepted.extend(accepted_for_variant)
             offline_result = offline_item["result"]
             for field in ("cached_pages", "ingested_pages"):
                 aggregate[field].extend(
-                    page for page in offline_result.get(field, []) if page in offline_accepted
+                    page for page in offline_result.get(field, []) if page in accepted_for_variant
                 )
-            retry_variants.update({page: default_prompt_variant for page in offline_accepted})
+            retry_variants.update({page: offline_variant for page in accepted_for_variant})
+            remaining_semantic_pages = sorted(
+                set(remaining_semantic_pages) - set(accepted_for_variant)
+            )
+            if not remaining_semantic_pages:
+                break
         prompt_pages: dict[str, list[int]] = {}
         for prompt_variant, pages in (
             (default_prompt_variant, retry_frontiers["default"]),
@@ -4111,7 +4120,9 @@ def _offline_semantic_replay_result_v1(
     if not semantic_pages:
         return None
     frontier_sha256 = canonical_json_sha256_v1(semantic_pages)
-    selected_artifact_dir = attempt_root / "offline-semantic-replay" / f"pages-{frontier_sha256}"
+    selected_artifact_dir = (
+        attempt_root / "offline-semantic-replay" / prompt_variant / f"pages-{frontier_sha256}"
+    )
     command = [
         sys.executable,
         str(OPENROUTER_RUNNER),
