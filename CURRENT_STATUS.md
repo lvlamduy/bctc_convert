@@ -1,7 +1,7 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 (old-bank Gemini no-resubmit confirmation; older formal
-artifact receipts below remain historical evidence)
+Updated: 2026-09-02 14:30 UTC (scope and paid-ledger progress checkpoint;
+older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -10,20 +10,29 @@ older queue priorities where they conflict.
 ## Checkpoint phạm vi và paid ingestion — 2026-09-02
 
 - Người dùng chốt phạm vi cuối cùng là **Quý 1/2025 đến thời điểm hiện tại**.
-  Năm 2024 nằm ngoài đợt này; không có PDF hoặc trang năm 2024 nào đã được gửi
-  Gemini.
+  Paid plan hiện có **212 PDF kỳ 2025 + 67 PDF kỳ 2026 = 279 PDF** và **không
+  có PDF kỳ 2024**. Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
+  báo cáo kỳ 2025/2026, không phải PDF báo cáo năm 2024 và không được tính thành
+  một tài liệu năm 2024.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint 12:55 UTC ngày 2026-09-02, **6.744 / 15.335 trang (44,0%)**
-  nằm trong các PDF đã vào luồng Gemini; store đã có JSON hợp lệ cho **6.144
-  trang (40,1%)**. Có 130/279 PDF đã bắt đầu, gồm 22 SUCCEEDED, 22 FAILED chờ
-  sửa đúng trang, 85 NEEDS_RETRY và 1 RUNNING; 149 PDF chưa bắt đầu. Các số
-  này chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý 1/2025 đến hiện tại.
-- Process đang chạy 20 page worker qua OpenRouter →
-  `google/gemini-3.7-flash` → `google-vertex/global/flex`, direct Google và
-  fallback đều tắt. Retry chỉ nhắm đúng page trong receipt, không gửi lại toàn
-  PDF.
+- Tại checkpoint **14:28 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
+  luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
+  (44,0%)**. Store đã có JSON hợp lệ cho **6.195/15.335 trang (40,4%)**, thuộc
+  129 PDF. Trạng thái task là **23 SUCCEEDED, 67 NEEDS_RETRY, 39 FAILED đang
+  chờ sửa đúng trang, 1 RUNNING và 149
+  PENDING**. `SUCCEEDED` ở cấp PDF thấp hơn tỷ lệ trang vì đa số PDF retry chỉ
+  còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
+- Các số tiến độ vừa nêu **chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý
+  1/2025 đến hiện tại; không bao gồm năm 2024**. Con số tiến độ đã báo trước đó
+  với mẫu số 279 PDF / 15.335 trang cũng dùng đúng phạm vi này, không lẫn PDF
+  2024.
+- Provider route vẫn chỉ là OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`; direct Google và fallback đều tắt. Thử nghiệm
+  20, 8 rồi 2 page worker gặp tỷ lệ HTTP 429/zero-usage cao; dispatcher đã được
+  resume an toàn ở **1 worker** từ 14:30 UTC. Retry chỉ nhắm đúng page trong
+  receipt, không gửi lại toàn PDF.
 - Retry semantic trước hết replay cục bộ raw response đã trả tiền và chỉ gửi
   các trang vẫn không đạt; bộ kiểm thử liên quan hiện đạt 256/256. Vì vậy một
   trang đã có response hợp lệ không bị gửi lại chỉ vì task PDF đang retry.
