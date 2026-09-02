@@ -60,6 +60,12 @@ older queue priorities where they conflict.
   thước, còn hai manifest record dùng cùng digest nhưng khác object key/kích
   thước bị từ chối. Thay đổi này chỉ rút ngắn restore checkpoint tương lai,
   không nới gate và không tác động checkpoint đang chạy bằng process cũ.
+- Paid-run checkpoint thứ ba đã backup và restore-test thành công ngày
+  2026-09-02: **14.628 file / 144.770.658 byte**. Snapshot dễ nhận biết là
+  `27-bank-2025-current-vertex-flex-paid-checkpoint-003`; có 7.051 object mới
+  được tải lên và 6.139 object trùng nội dung được dùng lại. Đây là mốc an toàn
+  giữa lượt gửi, không phải corpus cuối và không cấp quyền gửi lại bất kỳ
+  PDF/page nào của tám ngân hàng cũ.
 
 ## 2026-09-01 human review/schema checkpoint
 
