@@ -4,55 +4,60 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
-> **Xác nhận của người dùng ngày 2026-09-02:** tám ngân hàng ACB, BID, CTG,
-> HDB, MBB, VCB, VIB và VPB đã được gửi Gemini và đã có JSON. Không gửi lại bất
-> kỳ PDF hoặc trang nào của tám ngân hàng này. Chỉ tái sử dụng JSON hiện có.
-> Trước mọi lệnh `run`, `resume` hoặc `repair`, chương trình phải kiểm tra danh
-> sách mã ngân hàng và dừng trước khi gọi provider nếu phát hiện một trong tám
-> mã cũ. Việc khác kỳ báo cáo, loại báo cáo hoặc tên file không tạo quyền gửi
-> lại. Đây là cổng bắt buộc để tránh gửi trùng và phát sinh chi phí trùng.
+> **Xác nhận của người dùng ngày 2026-09-02, cập nhật phạm vi 2024:** toàn bộ
+> JSON đã có của tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB và mọi
+> task trong frontier mười chín ngân hàng 2025-current phải được tái sử dụng,
+> không gửi trùng. Người dùng đồng thời cấp quyền xử lý các PDF từ **năm 2024
+> đến hiện tại** của toàn bộ 27 mã ngân hàng. Vì vậy cổng chống trùng phải so
+> exact source/page/image identity với cả corpus đã hoàn tất và ledger đang
+> chạy; không được cấm một PDF 2024 mới chỉ vì cùng mã ngân hàng, nhưng cũng
+> không được dùng quyền 2024 để gửi lại một PDF/page 2025–2026 đã có JSON.
 
-## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-01
+## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-02
 
-- Khoảng thời gian của đợt mở rộng là **từ Quý 1/2025 đến thời điểm hiện tại**;
-  không đưa năm 2024 vào hàng đợi Gemini của đợt này.
+- Khoảng thời gian chính thức là **từ năm 2024 đến thời điểm hiện tại**.
 - Tám ngân hàng **ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB** đã hoàn tất bước
   Gemini trả JSON. Mọi PDF/page đã có trong manifest hiện hành của tám ngân hàng
   này phải dùng lại từ store/cache bất biến; **tuyệt đối không gửi lại Gemini
   hoặc OpenRouter**.
-- Nếu phát hiện PDF mới của một trong tám ngân hàng trên nhưng PDF đó chưa có
-  trong manifest cũ, chỉ ghi vào inventory và chờ người dùng cấp quyền riêng;
-  không tự động xem đó là dữ liệu cần gửi Gemini.
-- Paid frontier mới chỉ gồm mười chín ngân hàng **ABB, BAB, BVB, EIB, KLB, LPB,
-  MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB**.
+- PDF/page 2025-current đã có trong corpus tám ngân hàng hoặc ledger mười chín
+  ngân hàng là reuse-only. PDF 2024 chưa có JSON của cả 27 mã được phép trở
+  thành paid candidate sau khi qua cổng source hash, chống trùng và ngôn ngữ.
+- Source snapshot có 408 PDF năm 2024; 149 file local khớp byte, 259 file cần
+  hydrate, không có file local drift. Inventory hiện chọn 308 ứng viên BCTC
+  tiếng Việt content-unique; 100 file còn lại phải có disposition nguồn rõ
+  ràng và không tự động thành request.
 - Mọi request mới chỉ được đi qua **OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`**, service tier `flex`. Direct Google, Google
   Standard, Google Batch và mọi fallback provider/model đều bị cấm.
-- Runner phải dừng trước request đầu tiên nếu paid frontier chứa một trong tám
-  ngân hàng cũ. Khi resume, chỉ page chưa có kết quả hợp lệ mới được retry; không
-  gửi lại cả PDF hoặc page đã có cache chỉ vì process khởi động lại.
+- Runner phải dừng trước request đầu tiên nếu paid frontier giao với bất kỳ
+  source/page/image identity nào trong corpus đã hoàn tất hoặc ledger đang
+  chạy. Khi resume, chỉ page chưa có kết quả hợp lệ mới được retry; không gửi
+  lại cả PDF hoặc page đã có cache chỉ vì process khởi động lại.
 - Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên.
 
-### Cổng chống gửi trùng tám ngân hàng cũ
+### Cổng chống gửi trùng dữ liệu đã có
 
 Đây là điều kiện bắt buộc, không phải khuyến nghị:
 
-| Nhóm | Mã ngân hàng | Quyền gọi Gemini mới |
+| Nhóm | Phạm vi | Quyền gọi Gemini mới |
 | --- | --- | --- |
-| Đã có JSON, chỉ tái sử dụng | ACB, BID, CTG, HDB, MBB, VCB, VIB, VPB | **CẤM GỬI LẠI**; chỉ đọc manifest/store/cache bất biến |
-| Paid frontier hiện hành | ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB | Được gửi riêng các page chưa có kết quả hợp lệ, qua Vertex Flex |
+| Đã có/đang xử lý, chỉ tái sử dụng | Corpus tám ngân hàng và ledger mười chín ngân hàng 2025-current | **CẤM GỬI LẠI** exact PDF/page/image; chỉ đọc manifest/store/cache/ledger |
+| Frontier 2024 mới | 308 ứng viên content-unique của cả 27 mã, sau language review | Chỉ được gửi page chưa có JSON và không giao với hai nguồn bảo vệ, qua Vertex Flex |
 
 Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
-`relative_path`/mã ngân hàng trong paid ledger với danh sách tám mã cũ. Nếu giao
-khác rỗng thì phải dừng **trước request đầu tiên**. Việc đổi kỳ, đổi loại báo cáo,
-khởi động lại process hoặc chạy repair không tự tạo quyền gửi lại. Page đã có
-JSON hợp lệ phải được lấy lại theo source hash và manifest; repair chỉ được phép
-nhắm đúng page thất bại có receipt.
+source SHA, page-image SHA, đường dẫn và ranh giới trang với corpus manifest đã
+hoàn tất và mọi ledger đang hoạt động. Nếu có overlap chưa được đánh dấu reuse
+thì phải dừng **trước request đầu tiên**. Việc đổi tên file, đổi plan, khởi động
+lại process hoặc chạy repair không tự tạo quyền gửi lại. Page đã có JSON hợp lệ
+phải được lấy lại theo source/image hash và manifest; repair chỉ được phép nhắm
+đúng page thất bại có receipt.
 
 Kiểm tra vận hành ngày 2026-09-01: paid ledger có **279 PDF**, chỉ thuộc đúng 19
 ngân hàng mới nêu trên; giao với `ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB` là **rỗng**.
 Điều kiện này phải được kiểm tra lại ở mỗi checkpoint, không được suy ra từ lần
-kiểm tra cũ.
+kiểm tra cũ. Ledger 279 PDF hiện hành vẫn tiếp tục đúng phạm vi 2025-current và
+không được gộp tùy tiện với ledger 2024 khi đang chạy.
 
 ### Cổng chỉ gửi phần tiếng Việt của PDF
 
@@ -103,10 +108,16 @@ Từ checkpoint này:
 
 Sau khi áp dụng bảng trên, paid frontier 19 ngân hàng vẫn có 279 PDF nhưng giảm
 từ 15.968 xuống **15.335 trang được phép gửi**; **633 trang tiếng Anh bị loại**.
-Tổng phạm vi 27 ngân hàng gồm 8.947 trang JSON cũ được tái sử dụng và 15.335
-trang paid frontier tiếng Việt, tương ứng **24.282 trang**. Các số này chỉ được
-dùng sau khi plan/ledger mới exact-replay đúng từng cutoff; plan cũ 15.968 trang
-không được resume.
+Đây là denominator bảo vệ của giai đoạn 2025-current: 8.947 trang JSON cũ được
+tái sử dụng và 15.335 trang paid frontier tiếng Việt, tương ứng **24.282
+trang**. Các số này không bao gồm năm 2024 và không được dùng làm tổng corpus
+sau khi mở rộng. Plan cũ 15.968 trang không được resume.
+
+Đối với năm 2024, không được sao chép cutoff từ file cùng ngân hàng/kỳ khác.
+Phải lập một page-scope mới bind đúng từng source SHA: rà mọi PDF trên 100 trang
+và mọi PDF OCB, ghi tổng số trang nguồn, trang tiếng Việt cuối cùng và lý do giữ
+hoặc loại phần sau. Chỉ sau khi 308 ứng viên đều có disposition đầy đủ và plan
+exact-replay bảng cutoff này mới được khởi tạo paid ledger 2024.
 
 ## 1. Provider và credential
 
