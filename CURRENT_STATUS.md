@@ -49,6 +49,10 @@ older queue priorities where they conflict.
   có trang nằm ngoài frontier đã đăng ký. Sau cooldown, scheduler ưu tiên
   `NEEDS_RETRY` có semantic frontier trước; task kế tiếp là MSB công ty mẹ Quý
   1/2025, đúng các trang 8, 9 và 14.
+- Inventory artifact V2 của cả 147 PDF `PENDING` tìm thấy **0 raw response** và
+  0 raw-before-validation. Vì vậy không có response trả phí cũ bị bỏ quên để
+  replay; đây thực sự là các PDF chưa chạy và chỉ phát sinh request lần đầu khi
+  scheduler đến đúng frontier của chúng.
 - Đối chiếu độc lập 37 PDF `SUCCEEDED` với page store xác nhận đủ đúng
   **1.933/1.933 trang**, không thiếu và không thừa trang. SQLite
   `integrity_check` đạt, foreign-key check rỗng, không có orphan và không có
