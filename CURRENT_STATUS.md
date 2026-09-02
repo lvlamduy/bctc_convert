@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 16:43 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 17:03 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -17,12 +17,11 @@ older queue priorities where they conflict.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint **16:43 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
+- Tại checkpoint **17:03 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
   luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
-  (44,0%)**. Store đã có JSON hợp lệ cho **6.277/15.335 trang (40,93%)**, thuộc
-  129 PDF. Trạng thái task là **27 SUCCEEDED, 47 NEEDS_RETRY, 56 FAILED đang
-  chờ sửa đúng trang và 149 PENDING**; supervisor vẫn hoạt động nhưng đang
-  trong nấc chờ sau khi provider chạm circuit. `SUCCEEDED` ở cấp PDF thấp
+  (44,0%)**. Store đã có JSON hợp lệ cho **6.284/15.335 trang (40,98%)**, thuộc
+  129 PDF. Trạng thái task là **37 SUCCEEDED, 34 NEEDS_RETRY, 58 FAILED đang
+  chờ sửa đúng trang, 149 PENDING và 1 RUNNING**. `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
   còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
 - Các số tiến độ vừa nêu **chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý
@@ -40,6 +39,10 @@ older queue priorities where they conflict.
   được revalidate offline toàn bộ image/prompt frontier và đóng `SUCCEEDED`:
   BAB hợp nhất Quý 4/2025 (43/43 trang) và BVB hợp nhất Quý 2/2026
   (50/50 trang). Thao tác này không gọi provider.
+- Cơ chế current-store revalidation nay cũng đóng trực tiếp task
+  `NEEDS_RETRY` khi tất cả trang đã có JSON hợp lệ. Tại checkpoint này,
+  thêm **8 PDF** LPB/MSB/NVB đã chuyển sang `SUCCEEDED` từ document
+  manifest xác thực đủ image/prompt frontier, không có provider request.
 - Retry semantic trước hết replay cục bộ raw response đã trả tiền và chỉ gửi
   các trang vẫn không đạt; bộ kiểm thử liên quan hiện đạt 256/256. Vì vậy một
   trang đã có response hợp lệ không bị gửi lại chỉ vì task PDF đang retry.
