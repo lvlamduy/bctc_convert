@@ -249,6 +249,10 @@ _SEMANTIC_REPLAY_CONTRACT_FIELDS = {
     "response_schema_sha256",
     "selected_provider",
 }
+_SEMANTIC_REPLAY_SOURCE_ROOT_FIELDS = _SEMANTIC_REPLAY_CONTRACT_FIELDS - {
+    "prompt_sha256",
+    "prompt_variant",
+}
 
 
 def _canonical_semantic_replay_contract_v1(source_dir: Path) -> dict[str, Any]:
@@ -279,7 +283,7 @@ def _validate_external_semantic_replay_contract_v1(
     contract = _canonical_semantic_replay_contract_v1(source_dir)
     if any(
         contract.get(field) != expected_contract[field]
-        for field in _SEMANTIC_REPLAY_CONTRACT_FIELDS
+        for field in _SEMANTIC_REPLAY_SOURCE_ROOT_FIELDS
     ):
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "semantic replay source document contract drifted"

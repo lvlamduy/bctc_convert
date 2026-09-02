@@ -719,10 +719,51 @@ def test_prior_semantic_response_replays_without_another_paid_provider_call(tmp_
         }
     ]
 
+    multi_variant_source = tmp_path / "multi-variant-semantic-source"
+    multi_variant_source.mkdir()
+    (multi_variant_source / "document-contract.json").write_bytes(source_contract_bytes)
+    items_contract = json.loads(source_contract_bytes)
+    items_contract["prompt_variant"] = "items"
+    items_contract["prompt_sha256"] = sha256(
+        target.build_financial_page_json_prompt_v1(variant="items").encode()
+    ).hexdigest()
+    items_artifact = multi_variant_source / "adaptive-retry" / "items" / "pages-test"
+    items_attempt = items_artifact / "page-00001" / "attempt-0001"
+    items_attempt.mkdir(parents=True)
+    (items_artifact / "document-contract.json").write_bytes(
+        target.canonical_json_bytes_v1(items_contract)
+    )
+    (items_attempt / "raw-response.json").write_bytes(raw)
+    (items_attempt / "semantic-validation-failure.json").write_bytes(
+        (attempt / "semantic-validation-failure.json").read_bytes()
+    )
+    multi_variant_result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=tmp_path / "multi-variant-store.sqlite3",
+        artifact_dir=tmp_path / "multi-variant-output",
+        api_key="",
+        workers=1,
+        physical_pages=[1],
+        prompt_variant="items",
+        offline_replay_only=True,
+        semantic_replay_source_dir=multi_variant_source,
+        provider_call=provider,
+    )
+    assert multi_variant_result["disposition"] == "SUCCEEDED"
+    assert multi_variant_result["provider_request_pages"] == []
+    assert multi_variant_result["semantic_replay_sources"] == [
+        {
+            "physical_page": 1,
+            "source_relative_path": (
+                "adaptive-retry/items/pages-test/page-00001/attempt-0001/raw-response.json"
+            ),
+        }
+    ]
+
     drifted_source = tmp_path / "drifted-semantic-source"
     drifted_source.mkdir()
     source_contract = json.loads((artifacts / "document-contract.json").read_bytes())
-    source_contract["prompt_variant"] = "items"
+    source_contract["dpi"] = 200
     (drifted_source / "document-contract.json").write_bytes(
         target.canonical_json_bytes_v1(source_contract)
     )
