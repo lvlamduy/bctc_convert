@@ -521,6 +521,29 @@ def _task_root(task: dict[str, Any], artifact_root: Path) -> Path:
     return artifact_root / task["artifact_relative_path"]
 
 
+def _adaptive_retry_artifact_dir_v1(
+    *,
+    task_root: Path,
+    prompt_variant: str,
+    pages: list[int],
+) -> Path:
+    """Bind immutable retry artifacts to one exact prompt/page frontier."""
+
+    if (
+        type(prompt_variant) is not str
+        or not prompt_variant
+        or type(pages) is not list
+        or not pages
+        or pages != sorted(set(pages))
+        or any(type(page) is not int or page <= 0 for page in pages)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "adaptive retry artifact frontier is invalid"
+        )
+    frontier_sha256 = sha256(canonical_json_bytes_v1(pages)).hexdigest()
+    return task_root / "adaptive-retry" / prompt_variant / f"pages-{frontier_sha256}"
+
+
 def _google_attempt_root(task: dict[str, Any], artifact_root: Path) -> Path:
     return _task_root(task, artifact_root) / f"google-attempt-{task['attempt_count'] + 1:04d}"
 
@@ -2468,7 +2491,15 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
     ):
         artifact_dir = attempt_root / "base"
         if retry_artifact:
-            artifact_dir = attempt_root / "adaptive-retry" / prompt_variant
+            if pages is None:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "adaptive retry artifact lacks its page frontier"
+                )
+            artifact_dir = _adaptive_retry_artifact_dir_v1(
+                task_root=attempt_root,
+                prompt_variant=prompt_variant,
+                pages=pages,
+            )
         command = [
             sys.executable,
             str(OPENROUTER_RUNNER),
@@ -2939,7 +2970,15 @@ def _run_openrouter(
     ) -> tuple[int, dict[str, Any]]:
         selected_artifact_dir = _task_root(task, artifact_root)
         if retry_artifact:
-            selected_artifact_dir = selected_artifact_dir / "adaptive-retry" / prompt_variant
+            if pages is None:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "adaptive retry artifact lacks its page frontier"
+                )
+            selected_artifact_dir = _adaptive_retry_artifact_dir_v1(
+                task_root=selected_artifact_dir,
+                prompt_variant=prompt_variant,
+                pages=pages,
+            )
         command = [
             sys.executable,
             str(OPENROUTER_RUNNER),
