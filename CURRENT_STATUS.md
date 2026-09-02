@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-01 (human review and schema-alias checkpoint; older formal
+Updated: 2026-09-02 (old-bank Gemini no-resubmit confirmation; older formal
 artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -9,6 +9,10 @@ older queue priorities where they conflict.
 
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 
+- Người dùng xác nhận lại ngày 2026-09-02: tám ngân hàng cũ đã được gửi Gemini
+  và đã có JSON; tuyệt đối không gửi lại PDF/page của tám ngân hàng này. Mọi
+  `run`, `resume` và `repair` phải kiểm tra mã ngân hàng trước request đầu tiên;
+  khác kỳ, loại báo cáo hoặc tên file không phải là quyền gửi lại.
 - Phạm vi chính thức là **Quý 1/2025 đến hiện tại**.
 - ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB đã có Gemini JSON và chỉ được tái sử
   dụng từ manifest/store/cache; không gửi lại Gemini/OpenRouter và không tính

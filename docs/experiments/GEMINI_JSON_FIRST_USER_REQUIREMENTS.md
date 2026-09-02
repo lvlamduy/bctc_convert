@@ -4,6 +4,14 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
+> **Xác nhận của người dùng ngày 2026-09-02:** tám ngân hàng ACB, BID, CTG,
+> HDB, MBB, VCB, VIB và VPB đã được gửi Gemini và đã có JSON. Không gửi lại bất
+> kỳ PDF hoặc trang nào của tám ngân hàng này. Chỉ tái sử dụng JSON hiện có.
+> Trước mọi lệnh `run`, `resume` hoặc `repair`, chương trình phải kiểm tra danh
+> sách mã ngân hàng và dừng trước khi gọi provider nếu phát hiện một trong tám
+> mã cũ. Việc khác kỳ báo cáo, loại báo cáo hoặc tên file không tạo quyền gửi
+> lại. Đây là cổng bắt buộc để tránh gửi trùng và phát sinh chi phí trùng.
+
 ## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-01
 
 - Khoảng thời gian của đợt mở rộng là **từ Quý 1/2025 đến thời điểm hiện tại**;
