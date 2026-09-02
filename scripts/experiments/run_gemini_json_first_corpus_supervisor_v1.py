@@ -3108,6 +3108,7 @@ def _run_openrouter(
         pages: list[int] | None,
         prompt_variant: str,
         retry_artifact: bool = False,
+        offline_replay_only: bool = False,
     ) -> tuple[int, dict[str, Any]]:
         selected_artifact_dir = _task_root(task, artifact_root)
         if retry_artifact:
@@ -3155,6 +3156,8 @@ def _run_openrouter(
                 command.extend(("--physical-page", str(page)))
         if openrouter_workers == 1:
             command.append("--stop-provider-frontier-on-transient-error")
+        if offline_replay_only:
+            command.append("--offline-replay-only")
         return _command(command, expected={0, 2})
 
     if retry_frontiers is None:
@@ -3186,6 +3189,8 @@ def _run_openrouter(
         retry_results = []
         offline_replay_results = []
         retry_variants: dict[int, str] = {}
+        provider_circuit_open = False
+        provider_circuit_deferred_pages: list[int] = []
         return_code = 0
         aggregate: dict[str, list[int]] = {
             "cached_pages": [],
@@ -3240,11 +3245,13 @@ def _run_openrouter(
         for prompt_variant, pages in prompt_frontiers:
             if not pages:
                 continue
+            offline_due_to_circuit = provider_circuit_open
             try:
                 code, result = run_frontier(
                     pages=pages,
                     prompt_variant=prompt_variant,
                     retry_artifact=True,
+                    offline_replay_only=offline_due_to_circuit,
                 )
             except _ProviderSubprocessError as error:
                 return _record_openrouter_subprocess_failure_v1(
@@ -3280,6 +3287,17 @@ def _run_openrouter(
                 }
             )
             retry_variants.update({page: prompt_variant for page in pages})
+            if offline_due_to_circuit:
+                provider_circuit_deferred_pages.extend(pages)
+            circuit_trigger_page = result.get("provider_circuit_breaker_trigger_page")
+            if circuit_trigger_page is not None and (
+                type(circuit_trigger_page) is not int or circuit_trigger_page not in pages
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "adaptive retry provider circuit trigger page is invalid"
+                )
+            if type(circuit_trigger_page) is int:
+                provider_circuit_open = True
             if code != 0:
                 return_code = 2
         complete_retry_variants = {**historical_variants, **retry_variants}
@@ -3302,6 +3320,7 @@ def _run_openrouter(
             "offline_replay_results": offline_replay_results,
             "alternate_prompt_pages": retry_pages,
             "alternate_prompt_variants": receipt_prompt_frontiers,
+            "provider_circuit_deferred_pages": sorted(provider_circuit_deferred_pages),
             "protected_retry_pages": complete_protected_pages,
         }
         if return_code == 0:

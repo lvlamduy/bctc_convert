@@ -2184,6 +2184,102 @@ def test_openrouter_adaptive_retry_partitions_mixed_failure_kinds(monkeypatch, t
     ]
 
 
+def test_openrouter_adaptive_retry_defers_later_prompt_frontiers_after_circuit_trip(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "KLB" / "report.pdf"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"pdf")
+    task = {
+        "artifact_relative_path": "task-1",
+        "attempt_count": 1,
+        "document_page_count": 2,
+        "first_physical_page": 1,
+        "last_physical_page": 2,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {"failed_pages": [1, 2], "semantic_failed_pages": [2]}
+        ),
+        "relative_path": "KLB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": hashlib.sha256(b"pdf").hexdigest(),
+        "source_size_bytes": 3,
+        "state": "NEEDS_RETRY",
+        "task_id": "task-1",
+    }
+    transitions = []
+    calls = []
+
+    def transition(_ledger, **kwargs):
+        transitions.append(kwargs)
+        return {**task, "attempt_count": 2, "state": kwargs["next_state"]}
+
+    def command(argv, *, expected):
+        assert expected == {0, 2}
+        variant = argv[argv.index("--prompt-variant") + 1]
+        page = int(argv[argv.index("--physical-page") + 1])
+        offline = "--offline-replay-only" in argv
+        calls.append((variant, page, offline))
+        return 2, {
+            "cached_pages": [],
+            "execution_mode": "OFFLINE_REPLAY_ONLY" if offline else "PROVIDER_OR_CACHE",
+            "failed_pages": [page],
+            "ingested_pages": [],
+            "offline_missing_pages": [page] if offline else [],
+            "page_image_sha256s": [{"image_sha256": str(page) * 64, "physical_page": page}],
+            "provider_circuit_breaker_trigger_page": None if offline else page,
+            "provider_request_pages": [] if offline else [page],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+
+    monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
+    monkeypatch.setattr(target, "_command", command)
+    monkeypatch.setattr(
+        target,
+        "_offline_semantic_replay_result_v1",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: "1" * 64, 2: "2" * 64},
+    )
+
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=source_root,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=1,
+        google_key_file=tmp_path / "google",
+        google_key_slot=1,
+        provider_timeout_seconds=60,
+        max_attempts=2,
+        openrouter_only=True,
+    )
+
+    assert result["state"] == "FAILED"
+    assert calls == [("simple", 1, False), ("items", 2, True)]
+    receipt = transitions[-1]["receipt"]
+    assert receipt["failed_pages"] == [1, 2]
+    assert receipt["offline_missing_pages"] == [2]
+    assert receipt["provider_circuit_deferred_pages"] == [2]
+    assert (
+        receipt["adaptive_retry_results"][0]["result"]["provider_circuit_breaker_trigger_page"] == 1
+    )
+    assert receipt["adaptive_retry_results"][1]["result"]["provider_request_pages"] == []
+
+
 def test_openrouter_semantic_retry_can_finish_without_provider_request(
     monkeypatch, tmp_path
 ) -> None:
