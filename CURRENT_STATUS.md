@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 21:46 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 22:47 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -20,11 +20,11 @@ older queue priorities where they conflict.
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
   kiểm tra trực quan mới loại toàn bộ 7 PDF tiếng Anh (360 trang) và 1 PDF ABB
   trùng nội dung (28 trang).
-- Tại checkpoint **21:46 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
+- Tại checkpoint **22:47 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
   luồng Gemini, tương ứng **6.443/14.947 trang thuộc các PDF đã bắt đầu
   (43,1%)**. Store đã có JSON hợp lệ cho **6.008/14.947 trang (40,20%)**, thuộc
-  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 19 NEEDS_RETRY,
-  68 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
+  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 18 NEEDS_RETRY,
+  69 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
   với một worker và cơ chế chờ tăng dần khi Vertex Flex báo quá tải;
   `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
@@ -34,15 +34,15 @@ older queue priorities where they conflict.
   trở lại `FAILED`; không có trang hợp lệ nào bị gửi lại. Supervisor đang giữ
   cooldown thay vì chuyển sang PDF khác để tránh tạo thêm request trong lúc
   provider quá tải.
-- Audit đọc toàn bộ 68 PDF `FAILED` xác nhận receipt/frontier của cả 68 đều hợp
-  lệ. **67 PDF còn quyền terminal repair, tổng cộng đúng 363 trang**; trong đó
-  22 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
+- Audit đọc toàn bộ 69 PDF `FAILED` xác nhận receipt/frontier của cả 69 đều hợp
+  lệ. **68 PDF còn quyền terminal repair, tổng cộng đúng 364 trang**; trong đó
+  23 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
   terminal repair và còn thiếu duy nhất trang 3; cả hai lượt đều kết thúc bằng
   HTTP 504, không có response/usage. Trường hợp này được giữ là lỗi provider,
   không được diễn giải thành lỗi schema hoặc tự ý mở thêm lượt gửi.
-- Audit đọc toàn bộ 19 PDF `NEEDS_RETRY` xác nhận **19/19 receipt hợp lệ** và
+- Audit đọc toàn bộ 18 PDF `NEEDS_RETRY` xác nhận **18/18 receipt hợp lệ** và
   không có PDF nào đã đủ trang nhưng còn bị giữ sai trạng thái. Frontier retry
-  có 85 page-ref: 81 trang thực sự chưa có JSON và 4 trang đã có JSON cơ sở
+  có 83 page-ref: 80 trang thực sự chưa có JSON và 3 trang đã có JSON cơ sở
   nhưng cần replay/biến thể prompt vì lỗi cấu trúc ngữ nghĩa. Các trang này vẫn
   được xử lý theo receipt riêng, không làm phát sinh gửi lại toàn PDF.
 - Audit 147 PDF `PENDING` xác nhận đúng **8.504 trang**, gồm 110 PDF năm 2025
@@ -60,8 +60,8 @@ older queue priorities where they conflict.
   page nào mang nhiều hơn một JSON version. Vì vậy số 37 PDF hoàn tất là dữ
   liệu thực trong store, không chỉ là trạng thái trên ledger.
 - Phép đối chiếu toàn ledger khép kín đủ 14.947 trang: `SUCCEEDED`
-  1.933/1.933 trang; `NEEDS_RETRY` 1.028/1.109, còn thiếu 81; `FAILED`
-  3.047/3.401, còn thiếu 354; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
+  1.933/1.933 trang; `NEEDS_RETRY` 934/1.014, còn thiếu 80; `FAILED`
+  3.141/3.496, còn thiếu 355; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
   hợp lệ và 8.939 trang còn thiếu, không có chênh lệch ngoài các frontier đã
   ghi nhận.
 - Cost replay từ 6.288 extraction receipt khớp tuyệt đối: 6.008 trang thuộc
@@ -84,6 +84,11 @@ older queue priorities where they conflict.
   Vertex Flex trả HTTP 200 nhưng choice mang lỗi 429 upstream,
   `finish_reason=error`, token và cost đều bằng 0. Không có JSON mới; task
   chuyển `NEEDS_RETRY → FAILED`, giữ duy nhất trang 60 cho terminal repair.
+- Sau cooldown kế tiếp, LPB kiểm toán năm 2025 được claim với frontier trang
+  38 và 64. Trang 64 replay thành công từ JSON nền mà không gọi provider; chỉ
+  trang 38 được gửi. Vertex Flex tiếp tục trả lỗi 429 upstream với usage/cost
+  bằng 0, không có JSON mới. Task chuyển `NEEDS_RETRY → FAILED` và chỉ
+  trang 38 được giữ cho terminal repair.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
