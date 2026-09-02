@@ -3147,6 +3147,8 @@ def _run_openrouter(
         if pages is not None:
             for page in pages:
                 command.extend(("--physical-page", str(page)))
+        if openrouter_workers == 1:
+            command.append("--stop-provider-frontier-on-transient-error")
         return _command(command, expected={0, 2})
 
     if retry_frontiers is None:

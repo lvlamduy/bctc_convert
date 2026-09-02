@@ -122,6 +122,19 @@ def _provider_error_is_recitation_v1(error: GeminiJsonFirstProviderV1Error) -> b
     )
 
 
+def _provider_error_opens_circuit_v1(error: GeminiJsonFirstProviderV1Error) -> bool:
+    """Recognize provider-wide failures for which another immediate page is unsafe."""
+
+    return any(
+        type(attempt) is dict
+        and (
+            attempt.get("outcome") in {"TRANSIENT_HTTP_ERROR", "ZERO_USAGE_PROVIDER_ERROR"}
+            or attempt.get("http_status") in {429, 500, 502, 503, 504}
+        )
+        for attempt in error.attempts
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, required=True)
@@ -169,6 +182,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--retry-delay-seconds", type=float, default=5.0)
+    parser.add_argument(
+        "--stop-provider-frontier-on-transient-error",
+        action="store_true",
+        help=(
+            "With one worker, stop further provider calls after a transient/zero-usage "
+            "provider failure; remaining pages are checked only through cache/offline replay."
+        ),
+    )
     parser.add_argument(
         "--offline-replay-only",
         action="store_true",
@@ -727,6 +748,7 @@ def run_openrouter_document_v1(
     google_api_keys: list[str] | None = None,
     google_credential_slots: list[str] | None = None,
     google_standard_mode: str = "disabled",
+    stop_provider_frontier_on_transient_error: bool = False,
 ) -> dict[str, Any]:
     """Run or resume a whole document or one explicit bounded page frontier."""
 
@@ -736,6 +758,14 @@ def run_openrouter_document_v1(
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
     if google_standard_mode not in {"disabled", "on-provider-error", "for-missing"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("Google fallback mode is invalid")
+    if type(stop_provider_frontier_on_transient_error) is not bool:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "provider circuit-breaker policy is invalid"
+        )
+    if stop_provider_frontier_on_transient_error and workers != 1:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "provider circuit breaker requires exactly one worker"
+        )
     if (google_standard_mode == "disabled") != (google_api_keys is None):
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "Google fallback credentials and mode disagree"
@@ -808,49 +838,70 @@ def run_openrouter_document_v1(
         initialize_gemini_financial_page_store_v1(database)
 
     outcomes: dict[int, _PersistedPageOutcome] = {}
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gemini-page") as executor:
-        futures = {
-            executor.submit(
-                _extract_page,
-                pdf=pdf,
-                physical_page=physical_page,
-                dpi=dpi,
-                database=database,
-                source_sha256=document["source_sha256"],
-                source_logical_name=document["source_logical_name"],
-                prompt=prompt,
-                prompt_variant=prompt_variant,
-                prompt_sha256=prompt_sha,
-                schema=schema,
-                response_schema_sha256=schema_sha,
-                output_contract_mode=output_contract_mode,
-                api_key=api_key,
-                google_api_keys=google_api_keys,
-                google_credential_slots=google_credential_slots,
-                google_standard_mode=google_standard_mode,
-                timeout_seconds=timeout_seconds,
-                retries=retries,
-                retry_delay_seconds=retry_delay_seconds,
-                provider_call=provider_call,
-                artifact_dir=artifact_dir,
-                semantic_replay_source_dir=semantic_replay_source_dir,
-                semantic_replay_expected_contract=contract,
-                offline_replay_only=offline_replay_only,
-            ): physical_page
-            for physical_page in selected_pages
-        }
-        for future in as_completed(futures):
-            outcome = _persist_page_outcome_v1(
-                outcome=future.result(),
-                artifact_dir=artifact_dir,
-                database=database,
-                document=document,
-                prompt_variant=prompt_variant,
-                output_contract_mode=output_contract_mode,
-                prompt_sha256=prompt_sha,
-                response_schema_sha256=schema_sha,
-            )
+    circuit_breaker_trigger_page = None
+
+    def extract(physical_page: int, *, force_offline: bool = False) -> _PageOutcome:
+        return _extract_page(
+            pdf=pdf,
+            physical_page=physical_page,
+            dpi=dpi,
+            database=database,
+            source_sha256=document["source_sha256"],
+            source_logical_name=document["source_logical_name"],
+            prompt=prompt,
+            prompt_variant=prompt_variant,
+            prompt_sha256=prompt_sha,
+            schema=schema,
+            response_schema_sha256=schema_sha,
+            output_contract_mode=output_contract_mode,
+            api_key=api_key,
+            google_api_keys=google_api_keys,
+            google_credential_slots=google_credential_slots,
+            google_standard_mode=google_standard_mode,
+            timeout_seconds=timeout_seconds,
+            retries=retries,
+            retry_delay_seconds=retry_delay_seconds,
+            provider_call=provider_call,
+            artifact_dir=artifact_dir,
+            semantic_replay_source_dir=semantic_replay_source_dir,
+            semantic_replay_expected_contract=contract,
+            offline_replay_only=offline_replay_only or force_offline,
+        )
+
+    def persist(outcome: _PageOutcome) -> _PersistedPageOutcome:
+        return _persist_page_outcome_v1(
+            outcome=outcome,
+            artifact_dir=artifact_dir,
+            database=database,
+            document=document,
+            prompt_variant=prompt_variant,
+            output_contract_mode=output_contract_mode,
+            prompt_sha256=prompt_sha,
+            response_schema_sha256=schema_sha,
+        )
+
+    if stop_provider_frontier_on_transient_error:
+        provider_circuit_open = False
+        for physical_page in selected_pages:
+            page_outcome = extract(physical_page, force_offline=provider_circuit_open)
+            outcome = persist(page_outcome)
             outcomes[outcome.physical_page] = outcome
+            if (
+                not provider_circuit_open
+                and page_outcome.provider_error is not None
+                and _provider_error_opens_circuit_v1(page_outcome.provider_error)
+            ):
+                provider_circuit_open = True
+                circuit_breaker_trigger_page = physical_page
+    else:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gemini-page") as executor:
+            futures = {
+                executor.submit(extract, physical_page): physical_page
+                for physical_page in selected_pages
+            }
+            for future in as_completed(futures):
+                outcome = persist(future.result())
+                outcomes[outcome.physical_page] = outcome
 
     failed_pages: list[int] = []
     semantic_failed_pages: list[int] = []
@@ -944,6 +995,7 @@ def run_openrouter_document_v1(
         "provider_request_pages": [
             page for page in selected_pages if outcomes[page].provider_request_made
         ],
+        "provider_circuit_breaker_trigger_page": circuit_breaker_trigger_page,
         "recitation_failed_pages": recitation_failed_pages,
         "semantic_failed_pages": semantic_failed_pages,
         "semantic_replay_sources": [
@@ -1003,6 +1055,7 @@ def main() -> int:
         google_api_keys=google_keys,
         google_credential_slots=google_slots,
         google_standard_mode=args.google_standard_mode,
+        stop_provider_frontier_on_transient_error=(args.stop_provider_frontier_on_transient_error),
     )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["disposition"] == "SUCCEEDED" else 2

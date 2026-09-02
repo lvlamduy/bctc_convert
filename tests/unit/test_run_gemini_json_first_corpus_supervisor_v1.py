@@ -832,6 +832,7 @@ def test_openrouter_task_can_forbid_direct_google_fallback(monkeypatch, tmp_path
     assert all(
         command[command.index("--google-standard-mode") + 1] == "disabled" for command in commands
     )
+    assert all("--stop-provider-frontier-on-transient-error" in command for command in commands)
 
 
 def test_interrupted_google_file_uploads_are_preserved_before_clean_resubmission(

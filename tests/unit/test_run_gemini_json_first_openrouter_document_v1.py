@@ -325,6 +325,70 @@ def test_one_failed_page_does_not_abort_siblings_and_only_failure_retries(tmp_pa
     assert (artifacts / "document-manifest.json").is_file()
 
 
+def test_single_worker_circuit_breaker_stops_provider_frontier_after_transient_failure(
+    tmp_path,
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 3)
+    calls = 0
+
+    def provider(**_kwargs):
+        nonlocal calls
+        calls += 1
+        error = GeminiJsonFirstProviderV1Error("provider is throttled")
+        error.attempts = (
+            {
+                "attempt_ordinal": 1,
+                "credential_slot": "OPENROUTER_SLOT_1",
+                "elapsed_seconds": "0.010",
+                "http_status": 429,
+                "outcome": "TRANSIENT_HTTP_ERROR",
+                "provider": "OPENROUTER",
+                "usage": None,
+            },
+        )
+        raise error
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+        stop_provider_frontier_on_transient_error=True,
+    )
+
+    assert calls == 1
+    assert result["disposition"] == "NEEDS_RETRY"
+    assert result["failed_pages"] == [1, 2, 3]
+    assert result["offline_missing_pages"] == [2, 3]
+    assert result["provider_request_pages"] == [1]
+    assert result["provider_circuit_breaker_trigger_page"] == 1
+    assert not (artifacts / "page-00002" / "attempt-0001").exists()
+    assert not (artifacts / "page-00003" / "attempt-0001").exists()
+
+
+def test_provider_circuit_breaker_requires_one_worker(tmp_path) -> None:
+    pdf = tmp_path / "document.pdf"
+    _pdf(pdf, 1)
+
+    with pytest.raises(
+        target.RunGeminiJsonFirstOpenRouterDocumentV1Error,
+        match="requires exactly one worker",
+    ):
+        target.run_openrouter_document_v1(
+            pdf=pdf,
+            database=tmp_path / "store.sqlite3",
+            artifact_dir=tmp_path / "artifacts",
+            api_key="x" * 32,
+            workers=2,
+            stop_provider_frontier_on_transient_error=True,
+        )
+
+
 def test_unresolved_page_is_cached_but_never_seals_a_document_manifest(tmp_path) -> None:
     pdf = tmp_path / "document.pdf"
     database = tmp_path / "store.sqlite3"
