@@ -37,17 +37,18 @@ statement trên.
 - Quyền mới của người dùng cho phép xử lý các báo cáo **năm 2024 còn thiếu**
   của cả 27 ngân hàng, kể cả tám ngân hàng cũ. Quyền này chỉ áp dụng cho source
   identity/page chưa có Gemini JSON, không mở lại các kỳ 2025–2026 đã xử lý.
-- Snapshot S3 bất biến có 408 PDF năm 2024; 149 file đã có đúng byte trên local
-  và 259 file còn thiếu được hydrate theo content hash. Sau content dedupe và
-  lọc đúng ứng viên BCTC tiếng Việt, source inventory có 308 PDF năm 2024 cần
-  lập plan. Số trang trả phí chỉ được công bố sau khi xác thực PDF và rà ranh
-  giới ngôn ngữ.
+- Snapshot S3 bất biến có 408 PDF năm 2024 và toàn bộ đã được hydrate, xác thực
+  đúng byte trên local. Sau content dedupe và lọc đúng ứng viên BCTC tiếng Việt,
+  source inventory có 308 PDF năm 2024. Đã rà đủ 7 PDF trên 100 trang và toàn
+  bộ 12 PDF OCB; loại 228 trang tiếng Anh, còn đúng 17.553 trang tiếng Việt
+  trong paid plan năm 2024.
 - Request mới chỉ được dùng OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`, tier `flex`; direct Google và fallback bị cấm.
   Resume/retry theo đúng page còn thiếu và receipt có kiểu; không gửi lại toàn
   PDF chỉ vì một vài page lỗi.
 - Mọi PDF trên 100 trang và mọi PDF OCB phải được rà phần tiếng Việt trước khi
-  vào paid ledger. Plan 2024 chưa có bảng cutoff đầy đủ phải fail closed.
+  vào paid ledger. Bảng cutoff 2024 đã hoàn tất; runner vẫn phải exact-replay
+  bảng này và chặn 2024 cho đến khi ledger 2025-current hoàn tất.
 - Chính sách Git, snapshot/restore S3 và backup Codex giữ nguyên.
 
 ## 1. Mục tiêu duy nhất

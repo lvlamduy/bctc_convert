@@ -89,6 +89,18 @@ Từ checkpoint này:
 | TCB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 104 | 1–103 | Trang 103 kết thúc báo cáo tiếng Việt; trang 104 là trang giới thiệu tiếng Anh của EY |
 | TPB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 108 | 1–108 | Tiếng Việt đến trang cuối, giữ toàn bộ |
 
+#### PDF năm 2024 trên 100 trang đã kiểm tra
+
+| Ngân hàng | Tên file PDF | Tổng trang | Trang được gửi | Kết luận dễ đọc |
+| --- | --- | ---: | ---: | --- |
+| ACB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 102 | 1–102 | Báo cáo tiếng Việt; trang 102 để trống nhưng vẫn nằm trong phạm vi file đã kiểm tra |
+| MBB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 102 | 1–102 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| OCB | BCTC Công ty mẹ Kiểm toán năm 2024.pdf | 153 | 1–78 | Trang 78 là trang tiếng Việt cuối; trang 79 bắt đầu bản tiếng Anh |
+| OCB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 155 | 1–79 | Trang 79 là trang tiếng Việt cuối; trang 80 bắt đầu bản tiếng Anh |
+| STB | BCTC Công ty mẹ Kiểm toán năm 2024.pdf | 104 | 1–104 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 110 | 1–110 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Soát xét 6 tháng đầu năm 2024.pdf | 102 | 1–102 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+
 #### Các PDF OCB dưới 100 trang đã kiểm tra
 
 | Tên file PDF | Tổng trang | Trang được gửi | Kết luận |
@@ -106,6 +118,21 @@ Từ checkpoint này:
 | BCTC Công ty mẹ quý 2 năm 2026.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
 | BCTC Hợp nhất quý 2 năm 2026.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
 
+#### Các PDF OCB năm 2024 dưới 100 trang đã kiểm tra
+
+| Tên file PDF | Tổng trang | Trang được gửi | Kết luận |
+| --- | ---: | ---: | --- |
+| 20241028-ocb-bctc-rieng-le-quy-3-2024.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
+| 20241028-ocb-bctc-hop-nhat-quy-3-2024.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2024.pdf | 78 | 1–78 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 1 năm 2024.pdf | 43 | 1–43 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 2 năm 2024.pdf | 40 | 1–40 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 4 năm 2024.pdf | 79 | 1–41 | Trang 42 bắt đầu bản tiếng Anh |
+| BCTC Hợp nhất Soát xét 6 tháng đầu năm 2024.pdf | 77 | 1–77 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 1 năm 2024.pdf | 43 | 1–43 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 2 năm 2024.pdf | 39 | 1–39 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 4 năm 2024.pdf | 79 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+
 Sau khi áp dụng bảng trên, paid frontier 19 ngân hàng vẫn có 279 PDF nhưng giảm
 từ 15.968 xuống **15.335 trang được phép gửi**; **633 trang tiếng Anh bị loại**.
 Đây là denominator bảo vệ của giai đoạn 2025-current: 8.947 trang JSON cũ được
@@ -113,11 +140,14 @@ tái sử dụng và 15.335 trang paid frontier tiếng Việt, tương ứng **
 trang**. Các số này không bao gồm năm 2024 và không được dùng làm tổng corpus
 sau khi mở rộng. Plan cũ 15.968 trang không được resume.
 
-Đối với năm 2024, không được sao chép cutoff từ file cùng ngân hàng/kỳ khác.
-Phải lập một page-scope mới bind đúng từng source SHA: rà mọi PDF trên 100 trang
-và mọi PDF OCB, ghi tổng số trang nguồn, trang tiếng Việt cuối cùng và lý do giữ
-hoặc loại phần sau. Chỉ sau khi 308 ứng viên đều có disposition đầy đủ và plan
-exact-replay bảng cutoff này mới được khởi tạo paid ledger 2024.
+Đối với năm 2024, cutoff không được sao chép từ file cùng ngân hàng/kỳ khác.
+Đợt rà đã hoàn tất trên đúng từng file: 7 PDF trên 100 trang và toàn bộ 12 PDF
+OCB, tương ứng 17 tài liệu khác nhau sau khi khử trùng phần giao nhau. Có 228
+trang tiếng Anh bị loại khỏi bốn file OCB; 308 PDF ứng viên còn đúng **17.553
+trang tiếng Việt được phép gửi**. Page-scope năm 2024 phải bind đúng từng source
+và được exact-replay trước khi tạo paid ledger. Cổng còn lại là ledger
+2025-current phải hoàn tất; không được khởi tạo gửi năm 2024 song song rồi làm
+mất khả năng chứng minh không gửi trùng.
 
 ## 1. Provider và credential
 

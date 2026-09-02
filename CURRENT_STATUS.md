@@ -15,18 +15,18 @@ older queue priorities where they conflict.
   exact source/page/image identity; quyền mới không cho phép gửi trùng các kỳ
   đã có JSON.
 - Snapshot S3 bất biến chứa **408 PDF năm 2024** trên đủ 27 mã. Kiểm tra local
-  ban đầu có 149 file khớp byte, thiếu 259 file (khoảng 1,95 GB), không có file
-  drift và không có đường dẫn local ngoài manifest. Hydrate đang tải đúng 259
-  object thiếu theo SHA, không ghi đè 149 file sẵn có.
+  ban đầu có 149 file khớp byte và thiếu 259 file; toàn bộ 259 object đã được
+  hydrate theo SHA. Hiện cả 408 file local khớp byte/kích thước với snapshot.
 - Inventory nguồn chọn **308 PDF BCTC tiếng Việt content-unique năm 2024**;
-  100 PDF còn lại phải giữ disposition nguồn rõ ràng, không tự động thành
-  request. Paid page count 2024 chưa được công bố vì còn phải xác thực toàn bộ
-  PDF và rà ranh giới ngôn ngữ.
+  100 PDF còn lại giữ disposition nguồn rõ ràng, không tự động thành request.
+  Đã rà toàn bộ 7 PDF trên 100 trang và toàn bộ 12 PDF OCB (17 tài liệu khác
+  nhau sau khử trùng): loại 228 trang tiếng Anh, còn đúng **17.553 trang tiếng
+  Việt** trong plan 2024.
 - Mọi request 2024 sẽ chỉ dùng OpenRouter → `google/gemini-3.7-flash` →
   `google-vertex/global/flex`, không direct Google và không fallback. Ledger
-  2024 chưa được khởi tạo/chạy; nó bị chặn cho đến khi mọi PDF trên 100 trang
-  và mọi PDF OCB có cutoff tiếng Việt, đồng thời overlap gate chứng minh không
-  giao với corpus/ledger đã có.
+  2024 chưa được khởi tạo/chạy. Cổng ngôn ngữ đã hoàn tất; runner vẫn chặn cho
+  đến khi ledger 2025-current hoàn tất và overlap gate chứng minh không giao
+  với corpus/ledger đã có.
 
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 

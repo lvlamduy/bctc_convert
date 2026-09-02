@@ -34,14 +34,15 @@
 > verified cutoff is blocked before the first provider request.
 
 > **2026-09-02 2024 restoration checkpoint:** the immutable S3 source snapshot
-> contains 408 registered 2024 PDFs across all 27 bank codes. Exactly 149 were
-> already present locally with matching bytes and 259 missing files are being
-> hydrated by content hash; no mismatched local file was found. The registered
-> source inventory yields 308 content-unique Vietnamese full-BCTC candidates
-> for 2024. This count is a source frontier, not permission to call the model:
-> the 2024 paid plan stays blocked until every PDF over 100 pages and every OCB
-> PDF has a recorded language cutoff and the plan proves zero overlap with all
-> existing/active Gemini page identities.
+> contains 408 registered 2024 PDFs across all 27 bank codes. All 259 initially
+> missing files were hydrated by content hash; all 408 local files now match
+> the snapshot. The registered source inventory yields 308 content-unique
+> Vietnamese full-BCTC candidates. Language-boundary review is complete for all
+> seven 2024 PDFs over 100 physical pages and all twelve OCB PDFs: 228 appended
+> English pages are excluded, leaving exactly 17,553 payable Vietnamese pages.
+> The 2024 plan remains blocked from provider execution until the protected
+> 2025-current ledger is completely successful and exact replay proves zero
+> overlap with every existing/active Gemini page identity.
 
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
