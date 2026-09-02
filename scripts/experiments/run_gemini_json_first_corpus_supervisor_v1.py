@@ -4660,6 +4660,37 @@ def _exhausted_page_repair_receipt_has_circuit_v1(
     )
 
 
+def _exhausted_page_repair_remaining_page_count_v1(
+    *, task: dict[str, Any], artifact_root: Path, repair_attempt: int
+) -> int:
+    """Count only the exact pages still named by the next immutable receipt."""
+
+    receipts_root = (
+        _task_root(task, artifact_root) / "openrouter-exhausted-page-repair" / "receipts"
+    )
+    current_path = receipts_root / f"attempt-{repair_attempt:02d}.json"
+    if current_path.exists():
+        current = _canonical_repair_receipt_v1(current_path)
+        if current.get("disposition") == "SUCCEEDED":
+            return 0
+    if repair_attempt == 1:
+        raw = task.get("last_receipt_json")
+        try:
+            frontier_receipt = json.loads(raw) if type(raw) is bytes else None
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "failed OpenRouter task receipt is invalid"
+            ) from exc
+    else:
+        frontier_receipt = _canonical_repair_receipt_v1(receipts_root / "attempt-01.json")
+    frontiers = _retry_prompt_frontiers_from_receipt_v1(
+        frontier_receipt,
+        first_physical_page=task["first_physical_page"],
+        last_physical_page=task["last_physical_page"],
+    )
+    return sum(len(pages) for pages in frontiers.values())
+
+
 def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, Any]:
     """Repair terminal Flex tasks only after the ordinary corpus frontier ends."""
 
@@ -4693,24 +4724,30 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
     completed_task_ids: list[str] = []
     consecutive_circuit_trips = 0
     while len(actions) < args.max_repair_actions:
-        failed = sorted(
-            list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE),
-            key=lambda task: (
-                task["last_physical_page"] - task["first_physical_page"],
-                task["relative_path"],
-            ),
-        )
-        selected: tuple[dict[str, Any], int] | None = None
+        failed = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+        candidates: list[tuple[int, str, dict[str, Any], int]] = []
         for task in failed:
             attempt = _next_exhausted_page_repair_attempt_v1(
                 task=task, artifact_root=args.artifact_root
             )
             if attempt is not None:
-                selected = (task, attempt)
-                break
-        if selected is None:
+                candidates.append(
+                    (
+                        _exhausted_page_repair_remaining_page_count_v1(
+                            task=task,
+                            artifact_root=args.artifact_root,
+                            repair_attempt=attempt,
+                        ),
+                        task["relative_path"],
+                        task,
+                        attempt,
+                    )
+                )
+        if not candidates:
             break
-        task, repair_attempt = selected
+        _page_count, _relative_path, task, repair_attempt = min(
+            candidates, key=lambda item: (item[0], item[1])
+        )
         result = repair_openrouter_flex_pages_task(
             argparse.Namespace(**vars(args), task_id=task["task_id"], repair_attempt=repair_attempt)
         )

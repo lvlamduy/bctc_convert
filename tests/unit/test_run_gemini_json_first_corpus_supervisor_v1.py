@@ -1646,20 +1646,19 @@ def test_exhausted_page_repair_defers_later_prompt_frontiers_after_circuit(
 def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
     monkeypatch, tmp_path
 ) -> None:
-    prior = canonical_json_bytes_v1(
-        {
-            "failed_pages": [1],
-            "recitation_failed_pages": [],
-            "semantic_failed_pages": [],
-            "unresolved_pages": [],
-        }
-    )
     tasks = [
         {
             "artifact_relative_path": f"tasks/task-{ordinal}",
             "first_physical_page": 1,
-            "last_physical_page": ordinal,
-            "last_receipt_json": prior,
+            "last_physical_page": ordinal + 2,
+            "last_receipt_json": canonical_json_bytes_v1(
+                {
+                    "failed_pages": [1, 2] if ordinal == 1 else [1],
+                    "recitation_failed_pages": [],
+                    "semantic_failed_pages": [],
+                    "unresolved_pages": [],
+                }
+            ),
             "relative_path": f"ABB/report-{ordinal}.pdf",
             "route": target.OPENROUTER_ROUTE,
             "state": "FAILED",
@@ -1688,23 +1687,28 @@ def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
     def repair(args):
         repair_calls.append((args.task_id, args.repair_attempt))
         task = next(item for item in tasks if item["task_id"] == args.task_id)
-        succeeded = args.task_id == "task-2" or args.repair_attempt == 2
+        succeeded = args.task_id == "task-1" or args.repair_attempt == 2
         if succeeded:
             task["state"] = "SUCCEEDED"
         receipt = {
             "disposition": "SUCCEEDED" if succeeded else "NEEDS_REPAIR",
+            "failed_pages": [] if succeeded else [1],
             "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
-            "prior_failed_receipt_sha256": hashlib.sha256(prior).hexdigest(),
+            "offline_missing_pages": [],
+            "prior_failed_receipt_sha256": hashlib.sha256(task["last_receipt_json"]).hexdigest(),
             "provider_results": [
                 {
                     "result": {
                         "provider_circuit_breaker_trigger_page": (
-                            1 if args.task_id == "task-1" and args.repair_attempt == 1 else None
+                            1 if args.task_id == "task-2" and args.repair_attempt == 1 else None
                         )
                     }
                 }
             ],
+            "recitation_failed_pages": [],
             "repair_attempt": args.repair_attempt,
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
         }
         receipt_path = (
             args.artifact_root
@@ -1744,7 +1748,7 @@ def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
     assert result["completed_task_ids"] == ["task-1", "task-2"]
     assert result["repairable_task_ids"] == []
     assert result["exhausted_task_ids"] == []
-    assert repair_calls == [("task-1", 1), ("task-1", 2), ("task-2", 1)]
+    assert repair_calls == [("task-2", 1), ("task-2", 2), ("task-1", 1)]
     assert sleeps == [5.0]
 
 
