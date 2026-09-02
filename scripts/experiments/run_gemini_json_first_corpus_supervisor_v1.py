@@ -3937,11 +3937,11 @@ def _canonical_repair_receipt_v1(path: Path) -> dict[str, Any]:
 
 
 def _repair_successful_prompt_context_v1(
-    provider_results: list[dict[str, Any]],
+    repair_results: list[dict[str, Any]],
 ) -> tuple[dict[int, str], list[int]]:
     variants: dict[int, str] = {}
     protected: set[int] = set()
-    for item in provider_results:
+    for item in repair_results:
         pages = item.get("physical_pages") if type(item) is dict else None
         accepted = item.get("accepted_pages") if type(item) is dict else None
         variant = item.get("prompt_variant") if type(item) is dict else None
@@ -3959,6 +3959,88 @@ def _repair_successful_prompt_context_v1(
         if variant == "items":
             protected.update(accepted)
     return variants, sorted(protected)
+
+
+def _offline_semantic_replay_result_v1(
+    *,
+    args: argparse.Namespace,
+    attempt_root: Path,
+    current_images: dict[int, str],
+    prompt_variant: str,
+    semantic_pages: list[int],
+    source: Path,
+    task: dict[str, Any],
+    task_root: Path,
+    dpi: int,
+) -> dict[str, Any] | None:
+    """Revalidate paid semantic responses without authorizing another provider call."""
+
+    if not semantic_pages:
+        return None
+    frontier_sha256 = canonical_json_sha256_v1(semantic_pages)
+    selected_artifact_dir = attempt_root / "offline-semantic-replay" / f"pages-{frontier_sha256}"
+    command = [
+        sys.executable,
+        str(OPENROUTER_RUNNER),
+        "--pdf",
+        str(source),
+        "--source-logical-name",
+        task["relative_path"],
+        "--database",
+        str(args.database),
+        "--artifact-dir",
+        str(selected_artifact_dir),
+        "--semantic-replay-source-dir",
+        str(task_root),
+        "--dpi",
+        str(dpi),
+        "--workers",
+        str(args.openrouter_workers),
+        "--prompt-variant",
+        prompt_variant,
+        "--output-contract-mode",
+        "json-schema",
+        "--offline-replay-only",
+        "--google-standard-mode",
+        "disabled",
+    ]
+    for page in semantic_pages:
+        command.extend(("--physical-page", str(page)))
+    _code, result = _command(command, expected={0, 2})
+    result_images = _summary_page_image_sha256s_v1(
+        result.get("page_image_sha256s"), allowed_pages=semantic_pages
+    )
+    completed = sorted(set(result.get("cached_pages", [])) | set(result.get("ingested_pages", [])))
+    failed = result.get("failed_pages")
+    if (
+        result.get("execution_mode") != "OFFLINE_REPLAY_ONLY"
+        or result_images != {page: current_images[page] for page in semantic_pages}
+        or type(failed) is not list
+        or failed != sorted(set(failed))
+        or set(completed) & set(failed)
+        or sorted(set(completed) | set(failed)) != semantic_pages
+        or result.get("provider_request_pages") != []
+        or result.get("recitation_failed_pages", []) != []
+        or any(
+            type(values) is not list or not set(values).issubset(failed)
+            for values in (
+                result.get("semantic_failed_pages", []),
+                result.get("unresolved_pages", []),
+                result.get("offline_missing_pages", []),
+            )
+        )
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "offline semantic replay result frontier is invalid"
+        )
+    return {
+        "accepted_pages": completed,
+        "execution_mode": "OFFLINE_REPLAY_ONLY",
+        "physical_pages": semantic_pages,
+        "prompt_variant": prompt_variant,
+        "repair_attempt": args.repair_attempt,
+        "result": result,
+    }
 
 
 def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any]:
@@ -4013,6 +4095,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         }
 
     prior_provider_results: list[dict[str, Any]] = []
+    prior_offline_replay_results: list[dict[str, Any]] = []
     if args.repair_attempt == 1:
         if receipts_root.exists() and any(receipts_root.glob("attempt-*.json")):
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
@@ -4029,7 +4112,10 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         frontier_receipt = _canonical_repair_receipt_v1(prior_path)
         if (
             frontier_receipt.get("format_version")
-            != "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1"
+            not in {
+                "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+                "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            }
             or frontier_receipt.get("disposition") != "NEEDS_REPAIR"
             or frontier_receipt.get("repair_attempt") != 1
             or frontier_receipt.get("prior_failed_receipt_sha256") != ledger_failed_sha256
@@ -4039,6 +4125,12 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
                 "prior OpenRouter exhausted-page repair receipt is invalid"
             )
         prior_provider_results = frontier_receipt["provider_results"]
+        if frontier_receipt["format_version"].endswith("_V2"):
+            prior_offline_replay_results = frontier_receipt.get("offline_replay_results")
+            if type(prior_offline_replay_results) is not list:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "prior offline semantic replay history is invalid"
+                )
     frontiers = _retry_prompt_frontiers_from_receipt_v1(
         frontier_receipt,
         first_physical_page=task["first_physical_page"],
@@ -4049,18 +4141,43 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         task=task, source_root=args.source_root, dpi=plan["policy"]["dpi"]
     )
     attempt_root = repair_root / f"attempt-{args.repair_attempt:02d}"
+    offline_replay_results = list(prior_offline_replay_results)
+    semantic_pages = frontier_receipt.get("semantic_failed_pages", [])
+    if type(semantic_pages) is not list or not set(semantic_pages).issubset(repair_pages):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter semantic replay frontier is invalid"
+        )
+    offline_item = _offline_semantic_replay_result_v1(
+        args=args,
+        attempt_root=attempt_root,
+        current_images=current_images,
+        prompt_variant=summary["prompt_variant"],
+        semantic_pages=semantic_pages,
+        source=source,
+        task=task,
+        task_root=task_root,
+        dpi=plan["policy"]["dpi"],
+    )
+    offline_accepted: list[int] = []
+    if offline_item is not None:
+        offline_replay_results.append(offline_item)
+        offline_accepted = offline_item["accepted_pages"]
+    provider_frontiers = {
+        name: sorted(set(pages) - set(offline_accepted)) for name, pages in frontiers.items()
+    }
     contract = {
         "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_CONTRACT_V1",
         "page_image_sha256s": [
             {"image_sha256": current_images[page], "physical_page": page} for page in repair_pages
         ],
         "prior_failed_receipt_sha256": ledger_failed_sha256,
+        "offline_semantic_replay_frontier": semantic_pages,
         "prompt_frontiers": [
             {"physical_pages": pages, "prompt_variant": variant}
             for variant, pages in (
-                (summary["prompt_variant"], frontiers["default"]),
-                ("scope", frontiers["scope"]),
-                ("items", frontiers["items"]),
+                (summary["prompt_variant"], provider_frontiers["default"]),
+                ("scope", provider_frontiers["scope"]),
+                ("items", provider_frontiers["items"]),
             )
             if pages
         ],
@@ -4081,11 +4198,13 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         "semantic_failed_pages": [],
         "unresolved_pages": [],
     }
-    current_prompt_variants: dict[int, str] = {}
+    current_prompt_variants: dict[int, str] = {
+        page: summary["prompt_variant"] for page in offline_accepted
+    }
     for prompt_variant, pages in (
-        (summary["prompt_variant"], frontiers["default"]),
-        ("scope", frontiers["scope"]),
-        ("items", frontiers["items"]),
+        (summary["prompt_variant"], provider_frontiers["default"]),
+        ("scope", provider_frontiers["scope"]),
+        ("items", provider_frontiers["items"]),
     ):
         if not pages:
             continue
@@ -4171,7 +4290,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             ledger=args.ledger, task=task
         )
         repaired_variants, repaired_protected = _repair_successful_prompt_context_v1(
-            provider_results
+            [*provider_results, *offline_replay_results]
         )
         complete_variants = {
             **historical_variants,
@@ -4195,6 +4314,8 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             disposition = "NEEDS_REPAIR"
             for item in provider_results:
                 item["accepted_pages"] = sorted(set(item["accepted_pages"]) - set(dropped))
+            for item in offline_replay_results:
+                item["accepted_pages"] = sorted(set(item["accepted_pages"]) - set(dropped))
         else:
             document_manifest_id = manifest["document_manifest_id"]
             revalidated_pages = list(
@@ -4207,7 +4328,8 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         "disposition": disposition,
         "document_manifest_id": document_manifest_id,
         "failed_pages": failed_pages,
-        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+        "offline_replay_results": offline_replay_results,
         "offline_missing_pages": sorted(set(aggregate["offline_missing_pages"])),
         "prior_failed_receipt_sha256": ledger_failed_sha256,
         "provider_results": provider_results,

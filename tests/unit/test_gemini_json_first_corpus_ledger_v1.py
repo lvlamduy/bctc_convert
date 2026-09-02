@@ -549,6 +549,7 @@ def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_pa
         "failed_pages": [3],
         "ingested_pages": [1],
         "offline_missing_pages": [],
+        "provider_request_pages": [],
         "recitation_failed_pages": [],
         "semantic_failed_pages": [3],
         "unresolved_pages": [],
@@ -556,18 +557,36 @@ def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_pa
     second_result = {
         "cached_pages": [],
         "disposition": "SUCCEEDED",
+        "execution_mode": "OFFLINE_REPLAY_ONLY",
         "failed_pages": [],
         "ingested_pages": [3],
         "offline_missing_pages": [],
+        "provider_request_pages": [],
         "recitation_failed_pages": [],
         "semantic_failed_pages": [],
+        "semantic_replay_sources": [
+            {
+                "physical_page": 3,
+                "source_relative_path": "page-00003/attempt-0001/raw-response.json",
+            }
+        ],
         "unresolved_pages": [],
     }
     receipt = {
         "disposition": "SUCCEEDED",
         "document_manifest_id": "gfdmv1:manifest:" + "4" * 64,
         "failed_pages": [],
-        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+        "offline_replay_results": [
+            {
+                "accepted_pages": [3],
+                "execution_mode": "OFFLINE_REPLAY_ONLY",
+                "physical_pages": [3],
+                "prompt_variant": "simple",
+                "repair_attempt": 2,
+                "result": second_result,
+            }
+        ],
         "offline_missing_pages": [],
         "prior_failed_receipt_sha256": prior_sha,
         "provider_results": [
@@ -577,13 +596,6 @@ def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_pa
                 "prompt_variant": "simple",
                 "repair_attempt": 1,
                 "result": first_result,
-            },
-            {
-                "accepted_pages": [3],
-                "physical_pages": [3],
-                "prompt_variant": "items",
-                "repair_attempt": 2,
-                "result": second_result,
             },
         ],
         "recitation_failed_pages": [],
@@ -595,13 +607,22 @@ def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_pa
         "unresolved_pages": [],
     }
     drifted = copy.deepcopy(receipt)
-    drifted["provider_results"][1]["accepted_pages"] = []
+    drifted["offline_replay_results"][0]["accepted_pages"] = []
     with pytest.raises(
         GeminiJsonFirstCorpusLedgerV1Error,
         match="lies outside",
     ):
         seal_openrouter_exhausted_page_repair_corpus_task_v1(
             ledger, task_id=task["task_id"], receipt=drifted
+        )
+    forged_mode = copy.deepcopy(receipt)
+    forged_mode["offline_replay_results"][0]["result"]["execution_mode"] = "PROVIDER_OR_CACHE"
+    with pytest.raises(
+        GeminiJsonFirstCorpusLedgerV1Error,
+        match="offline semantic replay result is invalid",
+    ):
+        seal_openrouter_exhausted_page_repair_corpus_task_v1(
+            ledger, task_id=task["task_id"], receipt=forged_mode
         )
     repaired = seal_openrouter_exhausted_page_repair_corpus_task_v1(
         ledger, task_id=task["task_id"], receipt=receipt

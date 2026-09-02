@@ -584,6 +584,62 @@ def test_prior_semantic_response_replays_without_another_paid_provider_call(tmp_
         provider_call=provider,
     )
     assert result["disposition"] == "SUCCEEDED"
+    assert result["execution_mode"] == "PROVIDER_OR_CACHE"
     assert result["ingested_pages"] == [1]
+    assert result["provider_request_pages"] == []
     assert result["semantic_failed_pages"] == []
+    assert result["semantic_replay_sources"] == [
+        {
+            "physical_page": 1,
+            "source_relative_path": "page-00001/attempt-0001/raw-response.json",
+        }
+    ]
     assert (artifacts / "page-00001" / "attempt-0002" / "semantic-replay.json").is_file()
+
+    offline_artifacts = tmp_path / "offline-artifacts"
+    offline_result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=tmp_path / "offline-store.sqlite3",
+        artifact_dir=offline_artifacts,
+        api_key="",
+        workers=1,
+        physical_pages=[1],
+        offline_replay_only=True,
+        semantic_replay_source_dir=artifacts,
+        provider_call=provider,
+    )
+    assert offline_result["disposition"] == "SUCCEEDED"
+    assert offline_result["execution_mode"] == "OFFLINE_REPLAY_ONLY"
+    assert offline_result["ingested_pages"] == [1]
+    assert offline_result["provider_request_pages"] == []
+    assert offline_result["semantic_replay_sources"] == [
+        {
+            "physical_page": 1,
+            "source_relative_path": "page-00001/attempt-0001/raw-response.json",
+        }
+    ]
+    offline_contract = json.loads((offline_artifacts / "document-contract.json").read_bytes())
+    assert offline_contract["execution_mode"] == "OFFLINE_REPLAY_ONLY"
+
+    drifted_source = tmp_path / "drifted-semantic-source"
+    drifted_source.mkdir()
+    source_contract = json.loads((artifacts / "document-contract.json").read_bytes())
+    source_contract["prompt_variant"] = "items"
+    (drifted_source / "document-contract.json").write_bytes(
+        target.canonical_json_bytes_v1(source_contract)
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstOpenRouterDocumentV1Error,
+        match="document contract drifted",
+    ):
+        target.run_openrouter_document_v1(
+            pdf=pdf,
+            database=tmp_path / "drifted-store.sqlite3",
+            artifact_dir=tmp_path / "drifted-output",
+            api_key="",
+            workers=1,
+            physical_pages=[1],
+            offline_replay_only=True,
+            semantic_replay_source_dir=drifted_source,
+            provider_call=provider,
+        )
