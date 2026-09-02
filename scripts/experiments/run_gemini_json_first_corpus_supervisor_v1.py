@@ -38,6 +38,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
+    seal_openrouter_exhausted_page_repair_corpus_task_v1,
     transition_corpus_task_v1,
     validate_gemini_json_first_corpus_plan_v1,
 )
@@ -159,6 +160,23 @@ def _parser() -> argparse.ArgumentParser:
     repair_google.add_argument("--google-key-slot", type=int, default=2)
     repair_google.add_argument("--openrouter-workers", type=int, default=20)
     repair_google.add_argument("--provider-timeout-seconds", type=int, default=900)
+
+    repair_flex = commands.add_parser("repair-openrouter-flex-pages")
+    repair_flex.add_argument("--plan", type=Path, required=True)
+    repair_flex.add_argument("--ledger", type=Path, required=True)
+    repair_flex.add_argument("--task-id", required=True)
+    repair_flex.add_argument("--source-root", type=Path, required=True)
+    repair_flex.add_argument("--database", type=Path, required=True)
+    repair_flex.add_argument("--artifact-root", type=Path, required=True)
+    repair_flex.add_argument(
+        "--openrouter-key-file", type=Path, default=ROOT / "docs/experiments/openrouter"
+    )
+    repair_flex.add_argument(
+        "--google-key-file", type=Path, default=ROOT / "docs/experiments/gemma.txt"
+    )
+    repair_flex.add_argument("--repair-attempt", type=int, choices=(1, 2), required=True)
+    repair_flex.add_argument("--openrouter-workers", type=int, default=20)
+    repair_flex.add_argument("--provider-timeout-seconds", type=int, default=900)
 
     current_manifest = commands.add_parser("document-manifest-current")
     current_manifest.add_argument("--plan", type=Path, required=True)
@@ -1160,6 +1178,89 @@ def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
     if frontiers is None:
         return []
     return frontiers["items"]
+
+
+def _successful_historical_prompt_context_v1(
+    *,
+    ledger: Path,
+    task: dict[str, Any],
+) -> tuple[dict[int, str], list[int]]:
+    """Replay successful adaptive page variants from earlier task attempts.
+
+    A later provider-only retry must not forget an ``items`` or ``scope`` page
+    that succeeded in an earlier attempt.  The complete document manifest is a
+    page-by-page prompt frontier, so defaulting such a page back to the corpus
+    prompt would either select no version or silently select the wrong one.
+    """
+
+    expected_pages = set(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    uri = f"file:{ledger.resolve()}?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        rows = connection.execute(
+            "SELECT receipt_json FROM task_event WHERE task_id=? ORDER BY event_ordinal",
+            (task["task_id"],),
+        ).fetchall()
+    finally:
+        connection.close()
+    successful_variants: dict[int, str] = {}
+    protected_pages: set[int] = set()
+    for (receipt_bytes,) in rows:
+        try:
+            receipt = json.loads(receipt_bytes)
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "historical OpenRouter retry receipt is invalid"
+            ) from exc
+        variants = receipt.get("alternate_prompt_variants") if type(receipt) is dict else None
+        if variants is None:
+            continue
+        failed = receipt.get("failed_pages")
+        protected = receipt.get("protected_retry_pages", [])
+        if (
+            type(variants) is not list
+            or not variants
+            or type(failed) is not list
+            or failed != sorted(set(failed))
+            or type(protected) is not list
+            or protected != sorted(set(protected))
+            or any(type(page) is not int or page not in expected_pages for page in failed)
+            or any(type(page) is not int or page not in expected_pages for page in protected)
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "historical OpenRouter prompt frontier is invalid"
+            )
+        attempted: set[int] = set()
+        page_variants: dict[int, str] = {}
+        for item in variants:
+            if type(item) is not dict or set(item) != {"physical_pages", "prompt_variant"}:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "historical OpenRouter prompt variant is invalid"
+                )
+            pages = item["physical_pages"]
+            variant = item["prompt_variant"]
+            if (
+                type(pages) is not list
+                or not pages
+                or pages != sorted(set(pages))
+                or variant not in allowed_variants
+                or any(type(page) is not int or page not in expected_pages for page in pages)
+                or attempted.intersection(pages)
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "historical OpenRouter prompt variant frontier is invalid"
+                )
+            attempted.update(pages)
+            page_variants.update({page: variant for page in pages})
+        if not set(failed).issubset(attempted):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "historical OpenRouter failure lies outside its prompt frontier"
+            )
+        for page in attempted - set(failed):
+            successful_variants[page] = page_variants[page]
+        protected_pages.update(protected)
+    return successful_variants, sorted(protected_pages)
 
 
 def _page_variant_manifest_v1(
@@ -2963,6 +3064,11 @@ def _run_openrouter(
         else sorted(page for pages in retry_frontiers.values() for page in pages)
     )
     protected_retry_pages = _protected_retry_pages_v1(task)
+    historical_prompt_context = (
+        ({}, [])
+        if retry_frontiers is None or task["attempt_count"] <= 1
+        else _successful_historical_prompt_context_v1(ledger=ledger, task=task)
+    )
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
         task = transition_corpus_task_v1(
             ledger,
@@ -3051,6 +3157,7 @@ def _run_openrouter(
             source_root=source_root,
             dpi=plan["policy"]["dpi"],
         )
+        historical_variants, historical_protected_pages = historical_prompt_context
         retry_results = []
         retry_variants: dict[int, str] = {}
         return_code = 0
@@ -3118,6 +3225,10 @@ def _run_openrouter(
             retry_variants.update({page: prompt_variant for page in pages})
             if code != 0:
                 return_code = 2
+        complete_retry_variants = {**historical_variants, **retry_variants}
+        complete_protected_pages = sorted(
+            set(historical_protected_pages) | set(protected_retry_pages)
+        )
         receipt = {
             **{field: sorted(values) for field, values in aggregate.items()},
             "adaptive_retry_results": retry_results,
@@ -3127,7 +3238,7 @@ def _run_openrouter(
                 for variant, pages in prompt_frontiers
                 if pages
             ],
-            "protected_retry_pages": protected_retry_pages,
+            "protected_retry_pages": complete_protected_pages,
         }
         if return_code == 0:
             manifest = _page_variant_manifest_v1(
@@ -3136,11 +3247,11 @@ def _run_openrouter(
                 database=database,
                 artifact_root=artifact_root,
                 page_image_sha256s=current_page_images,
-                page_prompt_variants=retry_variants,
+                page_prompt_variants=complete_retry_variants,
                 write=False,
             )
             dropped_semantic_pages = _semantic_retry_no_relevant_pages_v1(
-                manifest, protected_pages=protected_retry_pages
+                manifest, protected_pages=complete_protected_pages
             )
             if dropped_semantic_pages:
                 receipt["semantic_item_no_relevant_pages"] = dropped_semantic_pages
@@ -3148,7 +3259,7 @@ def _run_openrouter(
             else:
                 manifest_name = (
                     "mixed-prompt-document-manifest.json"
-                    if set(retry_variants.values()) == {"items"}
+                    if set(complete_retry_variants.values()) == {"items"}
                     else "adaptive-prompt-document-manifest.json"
                 )
                 _write_or_verify(
@@ -3816,6 +3927,317 @@ def repair_openrouter_items_task(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _canonical_repair_receipt_v1(path: Path) -> dict[str, Any]:
+    receipt = _json_file(path)
+    if path.read_bytes() != canonical_json_bytes_v1(receipt):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter exhausted-page repair receipt is not canonical"
+        )
+    return receipt
+
+
+def _repair_successful_prompt_context_v1(
+    provider_results: list[dict[str, Any]],
+) -> tuple[dict[int, str], list[int]]:
+    variants: dict[int, str] = {}
+    protected: set[int] = set()
+    for item in provider_results:
+        pages = item.get("physical_pages") if type(item) is dict else None
+        accepted = item.get("accepted_pages") if type(item) is dict else None
+        variant = item.get("prompt_variant") if type(item) is dict else None
+        if (
+            type(pages) is not list
+            or type(accepted) is not list
+            or not set(accepted).issubset(pages)
+            or type(variant) is not str
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter exhausted-page prompt history is invalid"
+            )
+        for page in accepted:
+            variants[page] = variant
+        if variant == "items":
+            protected.update(accepted)
+    return variants, sorted(protected)
+
+
+def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Repair only an exhausted task's exact failed pages through Vertex Flex."""
+
+    plan = _plan(args.plan)
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
+    if not 1 <= args.openrouter_workers <= 30:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter worker bound lies outside 1..30"
+        )
+    tasks = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
+    selected = [task for task in tasks if task["task_id"] == args.task_id]
+    if len(selected) != 1:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "Flex page repair requires one exact exhausted OpenRouter task"
+        )
+    task = selected[0]
+    source = _source(task, args.source_root)
+    task_root = _task_root(task, args.artifact_root)
+    repair_root = task_root / "openrouter-exhausted-page-repair"
+    receipts_root = repair_root / "receipts"
+    receipt_path = receipts_root / f"attempt-{args.repair_attempt:02d}.json"
+    ledger_failed_sha256 = sha256(task["last_receipt_json"]).hexdigest()
+    if receipt_path.exists():
+        receipt = _canonical_repair_receipt_v1(receipt_path)
+        if (
+            receipt.get("repair_attempt") != args.repair_attempt
+            or receipt.get("prior_failed_receipt_sha256") != ledger_failed_sha256
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter exhausted-page repair receipt binding drifted"
+            )
+        if receipt.get("disposition") == "SUCCEEDED":
+            sealed = seal_openrouter_exhausted_page_repair_corpus_task_v1(
+                args.ledger, task_id=task["task_id"], receipt=receipt
+            )
+            return {
+                "disposition": "SUCCEEDED",
+                "repair_attempt": args.repair_attempt,
+                "resumed_from_receipt": True,
+                "task_id": sealed["task_id"],
+            }
+        return {
+            "disposition": receipt.get("disposition"),
+            "failed_pages": receipt.get("failed_pages"),
+            "repair_attempt": args.repair_attempt,
+            "resumed_from_receipt": True,
+            "task_id": task["task_id"],
+        }
+
+    prior_provider_results: list[dict[str, Any]] = []
+    if args.repair_attempt == 1:
+        if receipts_root.exists() and any(receipts_root.glob("attempt-*.json")):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter exhausted-page repair attempt order drifted"
+            )
+        try:
+            frontier_receipt = json.loads(task["last_receipt_json"])
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "failed OpenRouter task receipt is invalid"
+            ) from exc
+    else:
+        prior_path = receipts_root / "attempt-01.json"
+        frontier_receipt = _canonical_repair_receipt_v1(prior_path)
+        if (
+            frontier_receipt.get("format_version")
+            != "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1"
+            or frontier_receipt.get("disposition") != "NEEDS_REPAIR"
+            or frontier_receipt.get("repair_attempt") != 1
+            or frontier_receipt.get("prior_failed_receipt_sha256") != ledger_failed_sha256
+            or type(frontier_receipt.get("provider_results")) is not list
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "prior OpenRouter exhausted-page repair receipt is invalid"
+            )
+        prior_provider_results = frontier_receipt["provider_results"]
+    frontiers = _retry_prompt_frontiers_from_receipt_v1(
+        frontier_receipt,
+        first_physical_page=task["first_physical_page"],
+        last_physical_page=task["last_physical_page"],
+    )
+    repair_pages = sorted(page for pages in frontiers.values() for page in pages)
+    current_images = _current_page_image_sha256s_v1(
+        task=task, source_root=args.source_root, dpi=plan["policy"]["dpi"]
+    )
+    attempt_root = repair_root / f"attempt-{args.repair_attempt:02d}"
+    contract = {
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_CONTRACT_V1",
+        "page_image_sha256s": [
+            {"image_sha256": current_images[page], "physical_page": page} for page in repair_pages
+        ],
+        "prior_failed_receipt_sha256": ledger_failed_sha256,
+        "prompt_frontiers": [
+            {"physical_pages": pages, "prompt_variant": variant}
+            for variant, pages in (
+                (summary["prompt_variant"], frontiers["default"]),
+                ("scope", frontiers["scope"]),
+                ("items", frontiers["items"]),
+            )
+            if pages
+        ],
+        "repair_attempt": args.repair_attempt,
+        "requested_gateway": "OPENROUTER",
+        "requested_model": GOOGLE_MODEL,
+        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        "source_sha256": task["source_sha256"],
+        "task_id": task["task_id"],
+    }
+    _write_or_verify(attempt_root / "repair-contract.json", canonical_json_bytes_v1(contract))
+
+    provider_results = list(prior_provider_results)
+    aggregate: dict[str, list[int]] = {
+        "failed_pages": [],
+        "offline_missing_pages": [],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    current_prompt_variants: dict[int, str] = {}
+    for prompt_variant, pages in (
+        (summary["prompt_variant"], frontiers["default"]),
+        ("scope", frontiers["scope"]),
+        ("items", frontiers["items"]),
+    ):
+        if not pages:
+            continue
+        frontier_sha256 = canonical_json_sha256_v1(pages)
+        selected_artifact_dir = attempt_root / prompt_variant / f"pages-{frontier_sha256}"
+        command = [
+            sys.executable,
+            str(OPENROUTER_RUNNER),
+            "--pdf",
+            str(source),
+            "--source-logical-name",
+            task["relative_path"],
+            "--database",
+            str(args.database),
+            "--artifact-dir",
+            str(selected_artifact_dir),
+            "--dpi",
+            str(plan["policy"]["dpi"]),
+            "--workers",
+            str(args.openrouter_workers),
+            "--prompt-variant",
+            prompt_variant,
+            "--output-contract-mode",
+            "json-schema",
+            "--openrouter-key-file",
+            str(args.openrouter_key_file),
+            "--google-key-file",
+            str(args.google_key_file),
+            "--google-key-slot",
+            "1",
+            "--google-standard-mode",
+            "disabled",
+            "--timeout-seconds",
+            str(args.provider_timeout_seconds),
+        ]
+        for page in pages:
+            command.extend(("--physical-page", str(page)))
+        _code, result = _command(command, expected={0, 2})
+        result_images = _summary_page_image_sha256s_v1(
+            result.get("page_image_sha256s"), allowed_pages=pages
+        )
+        if result_images != {page: current_images[page] for page in pages}:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "Flex page repair image frontier drifted"
+            )
+        completed = sorted(
+            set(result.get("cached_pages", [])) | set(result.get("ingested_pages", []))
+        )
+        failed = result.get("failed_pages")
+        if (
+            type(failed) is not list
+            or failed != sorted(set(failed))
+            or set(completed) & set(failed)
+            or sorted(set(completed) | set(failed)) != pages
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "Flex page repair result frontier is invalid"
+            )
+        provider_results.append(
+            {
+                "accepted_pages": completed,
+                "physical_pages": pages,
+                "prompt_variant": prompt_variant,
+                "repair_attempt": args.repair_attempt,
+                "result": result,
+            }
+        )
+        current_prompt_variants.update({page: prompt_variant for page in completed})
+        for field in aggregate:
+            values = result.get(field, [])
+            if type(values) is not list or not set(values).issubset(pages):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "Flex page repair typed failure frontier is invalid"
+                )
+            aggregate[field].extend(values)
+
+    failed_pages = sorted(set(aggregate["failed_pages"]))
+    disposition = "NEEDS_REPAIR" if failed_pages else "SUCCEEDED"
+    document_manifest_id = None
+    revalidated_pages: list[int] = []
+    if not failed_pages:
+        historical_variants, historical_protected = _successful_historical_prompt_context_v1(
+            ledger=args.ledger, task=task
+        )
+        repaired_variants, repaired_protected = _repair_successful_prompt_context_v1(
+            provider_results
+        )
+        complete_variants = {
+            **historical_variants,
+            **repaired_variants,
+            **current_prompt_variants,
+        }
+        manifest = _page_variant_manifest_v1(
+            task=task,
+            ledger=args.ledger,
+            database=args.database,
+            artifact_root=args.artifact_root,
+            page_image_sha256s=current_images,
+            page_prompt_variants=complete_variants,
+            write=False,
+        )
+        protected = sorted(set(historical_protected) | set(repaired_protected))
+        dropped = _semantic_retry_no_relevant_pages_v1(manifest, protected_pages=protected)
+        if dropped:
+            failed_pages = dropped
+            aggregate["semantic_failed_pages"] = dropped
+            disposition = "NEEDS_REPAIR"
+            for item in provider_results:
+                item["accepted_pages"] = sorted(set(item["accepted_pages"]) - set(dropped))
+        else:
+            document_manifest_id = manifest["document_manifest_id"]
+            revalidated_pages = list(
+                range(task["first_physical_page"], task["last_physical_page"] + 1)
+            )
+            _write_or_verify(
+                attempt_root / "document-manifest.json", canonical_json_bytes_v1(manifest)
+            )
+    receipt = {
+        "disposition": disposition,
+        "document_manifest_id": document_manifest_id,
+        "failed_pages": failed_pages,
+        "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V1",
+        "offline_missing_pages": sorted(set(aggregate["offline_missing_pages"])),
+        "prior_failed_receipt_sha256": ledger_failed_sha256,
+        "provider_results": provider_results,
+        "recitation_failed_pages": sorted(set(aggregate["recitation_failed_pages"])),
+        "repair_attempt": args.repair_attempt,
+        "repair_gateway": "OPENROUTER",
+        "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        "revalidated_pages": revalidated_pages,
+        "semantic_failed_pages": sorted(set(aggregate["semantic_failed_pages"])),
+        "unresolved_pages": sorted(set(aggregate["unresolved_pages"])),
+    }
+    _write_or_verify(receipt_path, canonical_json_bytes_v1(receipt))
+    if disposition != "SUCCEEDED":
+        return {
+            "disposition": disposition,
+            "failed_pages": failed_pages,
+            "repair_attempt": args.repair_attempt,
+            "task_id": task["task_id"],
+        }
+    sealed = seal_openrouter_exhausted_page_repair_corpus_task_v1(
+        args.ledger, task_id=task["task_id"], receipt=receipt
+    )
+    return {
+        "disposition": "SUCCEEDED",
+        "document_manifest_id": document_manifest_id,
+        "repair_attempt": args.repair_attempt,
+        "task_id": sealed["task_id"],
+    }
+
+
 def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
     """Complete provider-failed OpenRouter pages through direct Google standard."""
 
@@ -3955,6 +4377,8 @@ def main() -> int:
         result = repair_openrouter_items_task(args)
     elif args.command == "repair-openrouter-google":
         result = repair_openrouter_google_task(args)
+    elif args.command == "repair-openrouter-flex-pages":
+        result = repair_openrouter_flex_pages_task(args)
     elif args.command == "document-manifest-current":
         result = build_current_document_manifest(args)
     elif args.command == "corpus-manifest-current":
@@ -3968,7 +4392,7 @@ def main() -> int:
     else:
         result = run_corpus(args)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    return 0 if result.get("disposition") not in {"FAILED", "NEEDS_RETRY"} else 2
+    return 0 if result.get("disposition") not in {"FAILED", "NEEDS_REPAIR", "NEEDS_RETRY"} else 2
 
 
 if __name__ == "__main__":
