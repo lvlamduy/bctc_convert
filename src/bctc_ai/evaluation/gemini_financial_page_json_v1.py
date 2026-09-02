@@ -414,6 +414,39 @@ def _fill_merged_hierarchy_path_v1(row: dict[str, Any], prior_row: dict[str, Any
         row["hierarchy_path_exact"] = rebuilt
 
 
+def _bind_empty_internal_hierarchy_to_active_group_v1(
+    row: dict[str, Any], active_group_label: str | None
+) -> None:
+    """Bind ``[group, null, leaf]`` to the exact preceding visible group.
+
+    A provider response can insert one empty hierarchy level and a short CJK
+    connective after the already-transcribed group label.  Normalize only this
+    bounded convention: the active source-visible GROUP must be known, the path
+    must contain exactly one parent/null/leaf triple, and any suffix after the
+    exact group label must consist solely of one to eight CJK characters.  This
+    rejects unrelated or stale parents while avoiding another paid page call.
+    Raw provider bytes remain retained separately by the caller.
+    """
+
+    path = row.get("hierarchy_path_exact")
+    label = row.get("label_exact")
+    if (
+        type(path) is not list
+        or len(path) != 3
+        or type(active_group_label) is not str
+        or type(label) is not str
+        or path[-1] != label
+        or path[1] is not None
+        or type(path[0]) is not str
+        or not path[0].startswith(active_group_label)
+    ):
+        return
+    suffix = path[0][len(active_group_label) :]
+    if suffix and re.fullmatch(r"[\u3400-\u9fff]{1,8}", suffix) is None:
+        return
+    row["hierarchy_path_exact"] = [active_group_label, label]
+
+
 def _path(
     value: Any,
     label: str,
@@ -849,6 +882,60 @@ def _normalize_leading_text_header_proxies_v1(table: dict[str, Any]) -> bool:
     return True
 
 
+def _normalize_leading_row_label_proxy_v1(table: dict[str, Any]) -> bool:
+    """Drop one leading label proxy and close exact packed value rows.
+
+    Some constrained responses keep the visible row-label column in
+    ``columns`` even though its text is already represented by ``label_exact``
+    and ``hierarchy_path_exact``.  Admit the convention only when the first
+    column is textual, every row binds its exact label as the hierarchy leaf,
+    and every row either already has the suffix width or expands to that width
+    using the existing exact model-cell-pack grammar.  A nonblank proxy header
+    must also be visible in every row hierarchy, as in a merged group label.
+    No provided value is discarded or synthesized.
+    """
+
+    columns = table["columns"]
+    rows = table["rows"]
+    if len(columns) < 2 or columns[0]["value_kind"] != "TEXT":
+        return False
+    if not all(_row_label_matches_hierarchy_leaf_v1(row) for row in rows):
+        return False
+
+    header_members = [
+        item for item in columns[0]["header_path_exact"] if type(item) is str and item.strip()
+    ]
+    header_folded = _search_fold_v1(" ".join(header_members)).strip()
+    if header_folded:
+        for row in rows:
+            hierarchy_folded = _search_fold_v1(
+                " ".join(
+                    item
+                    for item in row["hierarchy_path_exact"]
+                    if type(item) is str and item.strip()
+                )
+            )
+            if header_folded not in hierarchy_folded:
+                return False
+
+    value_width = len(columns) - 1
+    normalized_rows: list[list[Any]] = []
+    for row in rows:
+        values = list(row["values_exact"])
+        if len(values) == value_width:
+            normalized_rows.append(values)
+            continue
+        expanded = _expand_exact_model_cell_pack_v1(values, width=value_width)
+        if expanded is None:
+            return False
+        normalized_rows.append(expanded)
+
+    table["columns"] = columns[1:]
+    for row, normalized in zip(rows, normalized_rows, strict=True):
+        row["values_exact"] = normalized
+    return True
+
+
 def _normalize_explicit_row_label_column_v1(table: dict[str, Any]) -> bool:
     """Remove one explicit label column already represented by ``label_exact``.
 
@@ -1131,6 +1218,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
             width = len(table["columns"])
             row_widths: list[int] = []
             prior_row: dict[str, Any] | None = None
+            active_group_label: str | None = None
             for row in table["rows"]:
                 _exact_dict(
                     row,
@@ -1144,6 +1232,7 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                 )
                 _raw(row["label_exact"], "row label", nullable=True)
                 _fill_merged_hierarchy_path_v1(row, prior_row)
+                _bind_empty_internal_hierarchy_to_active_group_v1(row, active_group_label)
                 _path(row["hierarchy_path_exact"], "row hierarchy path")
                 if row["row_kind"] not in _ROW_KINDS:
                     raise _error("row_kind drifted")
@@ -1153,9 +1242,12 @@ def validate_financial_page_json_v1(value: Any) -> dict[str, Any]:
                     None if value == "" else value for value in row["values_exact"]
                 ]
                 row_widths.append(len(row["values_exact"]))
+                if row["row_kind"] == "GROUP" and type(row["label_exact"]) is str:
+                    active_group_label = row["label_exact"]
                 prior_row = row
             if (
                 _normalize_explicit_row_label_column_v1(table)
+                or _normalize_leading_row_label_proxy_v1(table)
                 or _normalize_omitted_leading_structural_columns_v1(table)
                 or _normalize_leading_text_header_proxies_v1(table)
                 or _normalize_four_column_movement_table_v1(table)
