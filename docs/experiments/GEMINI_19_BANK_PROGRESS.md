@@ -80,3 +80,7 @@ Audit hàng đợi thông thường cũng xác nhận 22/22 PDF `NEEDS_RETRY` c�
 hợp lệ. Frontier gồm 95 page-ref: 88 trang chưa có JSON và 7 trang đã có JSON
 cơ sở nhưng cần replay/biến thể prompt để sửa lỗi cấu trúc ngữ nghĩa. Không có
 PDF nào trong nhóm này đã đủ toàn bộ trang mà còn bị giữ sai trạng thái.
+
+Nhóm `PENDING` gồm đúng 147 PDF / 8.504 trang: 110 PDF năm 2025 và 37 PDF năm
+2026. Nhóm này có 0 PDF năm 2024, không giao với tám ngân hàng cũ và không chứa
+trang ngoài frontier tiếng Việt đã đăng ký.

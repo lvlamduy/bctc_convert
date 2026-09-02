@@ -44,6 +44,11 @@ older queue priorities where they conflict.
   có 95 page-ref: 88 trang thực sự chưa có JSON và 7 trang đã có JSON cơ sở
   nhưng cần replay/biến thể prompt vì lỗi cấu trúc ngữ nghĩa. Các trang này vẫn
   được xử lý theo receipt riêng, không làm phát sinh gửi lại toàn PDF.
+- Audit 147 PDF `PENDING` xác nhận đúng **8.504 trang**, gồm 110 PDF năm 2025
+  và 37 PDF năm 2026; không có PDF năm 2024, không có tám ngân hàng cũ và không
+  có trang nằm ngoài frontier đã đăng ký. Sau cooldown, scheduler ưu tiên
+  `NEEDS_RETRY` có semantic frontier trước; task kế tiếp là MSB công ty mẹ Quý
+  1/2025, đúng các trang 8, 9 và 14.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
