@@ -100,3 +100,12 @@ Phân rã toàn bộ 14.947 trang theo trạng thái ledger cũng khớp tuyệt
 | `FAILED` chờ terminal repair | 3.198 | 2.851 | 347 |
 | `PENDING` | 8.504 | 0 | 8.504 |
 | **Tổng** | **14.947** | **6.008** | **8.939** |
+
+## Chi phí đã phát sinh
+
+- 6.008 trang thuộc frontier 271 PDF hiện hành: **21,676438125 USD**.
+- 280 trang của tài liệu tiếng Anh/bản trùng đã loại: **0,944172750 USD**;
+  khoản này được giữ làm lịch sử nhưng không trộn vào tiến độ hiện hành.
+- Toàn store: **22,620610875 USD** cho 6.288 extraction hoàn tất. Không có
+  extraction run không được page JSON tham chiếu và các lượt HTTP 429/504 vừa
+  qua không có usage/cost.

@@ -63,6 +63,11 @@ older queue priorities where they conflict.
   2.851/3.198, còn thiếu 347; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
   hợp lệ và 8.939 trang còn thiếu, không có chênh lệch ngoài các frontier đã
   ghi nhận.
+- Cost replay từ 6.288 extraction receipt khớp tuyệt đối: 6.008 trang thuộc
+  frontier 271 PDF hiện hành có cost **21,676438125 USD**; 280 trang của tài
+  liệu tiếng Anh/bản trùng đã loại có cost riêng **0,944172750 USD**. Toàn
+  store là **22,620610875 USD** và không có extraction run mồ côi. Các lượt
+  HTTP 429/504 gần nhất không có usage nên không cộng thêm chi phí.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
