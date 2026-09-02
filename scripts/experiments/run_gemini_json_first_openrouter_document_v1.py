@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -175,16 +176,25 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _write_new(path: Path, payload: bytes) -> None:
+    """Publish one immutable artifact without exposing a partial final file."""
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o444)
+    descriptor, stage_name = tempfile.mkstemp(prefix=f".{path.name}.stage-", dir=path.parent)
+    stage = Path(stage_name)
     try:
         with os.fdopen(descriptor, "wb") as stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-    except Exception:
-        path.unlink(missing_ok=True)
-        raise
+        os.chmod(stage, 0o444)
+        os.link(stage, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        stage.unlink(missing_ok=True)
 
 
 def _write_or_verify(path: Path, payload: bytes) -> None:
