@@ -1,6 +1,6 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **22:47 UTC ngày 02/09/2026**.
+Checkpoint: **22:49 UTC ngày 02/09/2026**.
 
 ## Phạm vi được tính
 
@@ -9,6 +9,8 @@ Checkpoint: **22:47 UTC ngày 02/09/2026**.
   kỳ 2026**, tổng cộng **271 PDF / 14.947 trang tiếng Việt**.
 - Số PDF kỳ 2024 trong hàng đợi này là **0**. Ngày `31/12/2024` nếu xuất hiện
   chỉ là cột so sánh trong báo cáo 2025/2026.
+- Đây là khóa vận hành: không tạo task, không gửi Gemini và không cộng vào mẫu
+  số tiến độ bất kỳ PDF kỳ 2024 nào.
 - Không tính ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB vì tám ngân hàng này đã
   có Gemini JSON và chỉ được tái sử dụng, không gửi lại.
 

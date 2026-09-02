@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 22:47 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 22:49 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -15,6 +15,9 @@ older queue priorities where they conflict.
   Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
   báo cáo kỳ 2025/2026, không phải PDF báo cáo năm 2024 và không được tính thành
   một tài liệu năm 2024.
+- Kiểm tra live lúc **22:49 UTC ngày 2026-09-02** xác nhận ledger không đổi và
+  vẫn có đúng **0 PDF kỳ 2024**. Đây là khóa vận hành cho inventory, mẫu số tiến
+  độ và mọi provider request; không được tự mở lại phạm vi năm 2024.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **271 PDF / 14.947 trang
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,

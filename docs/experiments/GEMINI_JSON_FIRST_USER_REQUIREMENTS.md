@@ -9,6 +9,12 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 > Gemini của đợt này. Toàn bộ JSON đã có của tám ngân hàng ACB, BID, CTG, HDB,
 > MBB, VCB, VIB và VPB và mọi task của mười chín ngân hàng mới phải được tái sử
 > dụng theo exact source/page/image identity, không gửi trùng.
+>
+> **Khóa vận hành xác nhận lại lúc 22:49 UTC ngày 2026-09-02:** mọi inventory,
+> mẫu số tiến độ và request mới đều phải lọc theo kỳ báo cáo từ Quý 1/2025 trở
+> đi. Số PDF kỳ 2024 trong paid frontier phải luôn bằng 0. Cột so sánh mang ngày
+> 31/12/2024 trong PDF kỳ 2025/2026 vẫn được giữ như dữ liệu của chính PDF đó,
+> nhưng không được hiểu hoặc đếm thành một PDF kỳ 2024.
 
 ## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-02
 
@@ -54,7 +60,7 @@ Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
 lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
 ledger hiện hành.
 
-#### Tiến độ paid frontier — 22:47 UTC ngày 2026-09-02
+#### Tiến độ paid frontier — kiểm tra live 22:49 UTC ngày 2026-09-02
 
 - **Phạm vi dùng để tính:** 271 PDF / 14.947 trang tiếng Việt của 19 ngân hàng
   mới, chỉ gồm **205 PDF kỳ 2025 và 66 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
