@@ -1,6 +1,6 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **20:46 UTC ngày 02/09/2026**.
+Checkpoint: **21:46 UTC ngày 02/09/2026**.
 
 ## Phạm vi được tính
 
@@ -21,7 +21,7 @@ Checkpoint: **20:46 UTC ngày 02/09/2026**.
 | BVB | 14 | 742 | 571 | 76,95% | 14 | 1 | 0 | 0 | 13 | 0 |
 | EIB | 16 | 703 | 687 | 97,72% | 16 | 7 | 0 | 0 | 9 | 0 |
 | KLB | 16 | 680 | 657 | 96,62% | 16 | 3 | 0 | 3 | 10 | 0 |
-| LPB | 7 | 607 | 598 | 98,52% | 7 | 2 | 0 | 4 | 1 | 0 |
+| LPB | 7 | 607 | 598 | 98,52% | 7 | 2 | 0 | 3 | 2 | 0 |
 | MSB | 16 | 998 | 981 | 98,30% | 16 | 8 | 0 | 1 | 7 | 0 |
 | NAB | 16 | 853 | 819 | 96,01% | 16 | 8 | 0 | 4 | 4 | 0 |
 | NVB | 16 | 864 | 787 | 91,09% | 16 | 5 | 0 | 8 | 3 | 0 |
@@ -35,7 +35,7 @@ Checkpoint: **20:46 UTC ngày 02/09/2026**.
 | TPB | 16 | 1.080 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
 | VAB | 15 | 737 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 15 |
 | VBB | 16 | 773 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
-| **Tổng** | **271** | **14.947** | **6.008** | **40,20%** | **124** | **37** | **0** | **20** | **67** | **147** |
+| **Tổng** | **271** | **14.947** | **6.008** | **40,20%** | **124** | **37** | **0** | **19** | **68** | **147** |
 
 So với checkpoint trước, mẫu số giảm 8 PDF / 388 trang sau kiểm tra trực quan:
 7 PDF hoàn toàn bằng tiếng Anh được loại khỏi paid frontier và 1 PDF ABB là
@@ -70,14 +70,14 @@ Tỷ lệ chính để theo dõi chi phí và khối lượng là **trang JSON h
 trang tiếng Việt**. Tỷ lệ PDF hoàn tất thấp hơn vì nhiều PDF chỉ còn thiếu một
 hoặc vài trang nhưng chưa được phép coi là hoàn tất.
 
-Audit terminal-repair tại checkpoint này xác nhận 66 PDF còn quyền sửa đúng
-362 trang đã ghi trong receipt; 21 PDF trong số đó chỉ thiếu một trang. Một PDF
+Audit terminal-repair tại checkpoint này xác nhận 67 PDF còn quyền sửa đúng
+363 trang đã ghi trong receipt; 22 PDF trong số đó chỉ thiếu một trang. Một PDF
 BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt và vẫn thiếu trang 3 do hai lần
 HTTP 504 không có response, nên được giữ riêng là lỗi provider chứ không phải
 lỗi nội dung hoặc schema.
 
-Audit hàng đợi thông thường cũng xác nhận 20/20 PDF `NEEDS_RETRY` có receipt
-hợp lệ. Frontier gồm 86 page-ref: 82 trang chưa có JSON và 4 trang đã có JSON
+Audit hàng đợi thông thường cũng xác nhận 19/19 PDF `NEEDS_RETRY` có receipt
+hợp lệ. Frontier gồm 85 page-ref: 81 trang chưa có JSON và 4 trang đã có JSON
 cơ sở nhưng cần replay/biến thể prompt để sửa lỗi cấu trúc ngữ nghĩa. Không có
 PDF nào trong nhóm này đã đủ toàn bộ trang mà còn bị giữ sai trạng thái.
 
@@ -92,6 +92,13 @@ Gemini Vertex Flex kết thúc bằng lỗi 429 upstream và usage bằng 0; raw
 response có nội dung dở dang nên không được ingest. PDF chuyển sang `FAILED`
 với đúng năm trang cần terminal repair: 8, 10, 14, 39 và 40; không có
 cost hay JSON mới.
+
+Sau cooldown kế tiếp, scheduler claim đúng LPB Quý 1/2025 và chỉ xử lý trang
+60 theo semantic frontier. Offline replay không sửa được trang này; request
+Vertex Flex trả HTTP 200 nhưng choice kết thúc bằng lỗi 429 upstream,
+`finish_reason=error`, toàn bộ token và cost đều bằng 0. Không có JSON được
+ingest; PDF chuyển từ `NEEDS_RETRY` sang `FAILED` và trang 60 được giữ nguyên
+cho terminal repair.
 
 Nhóm `PENDING` gồm đúng 147 PDF / 8.504 trang: 110 PDF năm 2025 và 37 PDF năm
 2026. Nhóm này có 0 PDF năm 2024, không giao với tám ngân hàng cũ và không chứa
@@ -108,8 +115,8 @@ Phân rã toàn bộ 14.947 trang theo trạng thái ledger cũng khớp tuyệt
 | Trạng thái PDF | Tổng trang | Đã có JSON | Còn thiếu |
 | --- | ---: | ---: | ---: |
 | `SUCCEEDED` | 1.933 | 1.933 | 0 |
-| `NEEDS_RETRY` | 1.200 | 1.118 | 82 |
-| `FAILED` chờ terminal repair | 3.310 | 2.957 | 353 |
+| `NEEDS_RETRY` | 1.109 | 1.028 | 81 |
+| `FAILED` chờ terminal repair | 3.401 | 3.047 | 354 |
 | `PENDING` | 8.504 | 0 | 8.504 |
 | **Tổng** | **14.947** | **6.008** | **8.939** |
 
