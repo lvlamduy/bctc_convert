@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 19:03 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 19:47 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -10,8 +10,9 @@ older queue priorities where they conflict.
 ## Checkpoint phạm vi và paid ingestion — 2026-09-02
 
 - Người dùng chốt phạm vi cuối cùng là **Quý 1/2025 đến thời điểm hiện tại**.
-  Paid plan hiện có **205 PDF kỳ 2025 + 66 PDF kỳ 2026 = 271 PDF** và **không
-  có PDF kỳ 2024**. Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
+  Paid plan hiện có **205 PDF / 11.636 trang kỳ 2025 + 66 PDF / 3.311
+  trang kỳ 2026 = 271 PDF / 14.947 trang** và **không có PDF kỳ 2024**.
+  Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
   báo cáo kỳ 2025/2026, không phải PDF báo cáo năm 2024 và không được tính thành
   một tài liệu năm 2024.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
@@ -19,11 +20,11 @@ older queue priorities where they conflict.
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
   kiểm tra trực quan mới loại toàn bộ 7 PDF tiếng Anh (360 trang) và 1 PDF ABB
   trùng nội dung (28 trang).
-- Tại checkpoint **19:03 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
+- Tại checkpoint **19:47 UTC ngày 2026-09-02**, **124/271 PDF (45,8%)** đã vào
   luồng Gemini, tương ứng **6.443/14.947 trang thuộc các PDF đã bắt đầu
   (43,1%)**. Store đã có JSON hợp lệ cho **6.008/14.947 trang (40,20%)**, thuộc
-  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 22 NEEDS_RETRY,
-  65 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
+  123 PDF. Trạng thái task là **37 SUCCEEDED, 0 RUNNING, 21 NEEDS_RETRY,
+  66 FAILED đang chờ sửa đúng trang và 147 PENDING**. Supervisor đang chạy
   với một worker và cơ chế chờ tăng dần khi Vertex Flex báo quá tải;
   `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
@@ -33,22 +34,22 @@ older queue priorities where they conflict.
   trở lại `FAILED`; không có trang hợp lệ nào bị gửi lại. Supervisor đang giữ
   cooldown thay vì chuyển sang PDF khác để tránh tạo thêm request trong lúc
   provider quá tải.
-- Audit đọc toàn bộ 65 PDF `FAILED` xác nhận receipt/frontier của cả 65 đều hợp
-  lệ. **64 PDF còn quyền terminal repair, tổng cộng đúng 356 trang**; trong đó
-  20 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
+- Audit đọc toàn bộ 66 PDF `FAILED` xác nhận receipt/frontier của cả 66 đều hợp
+  lệ. **65 PDF còn quyền terminal repair, tổng cộng đúng 357 trang**; trong đó
+  21 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
   terminal repair và còn thiếu duy nhất trang 3; cả hai lượt đều kết thúc bằng
   HTTP 504, không có response/usage. Trường hợp này được giữ là lỗi provider,
   không được diễn giải thành lỗi schema hoặc tự ý mở thêm lượt gửi.
-- Audit đọc toàn bộ 22 PDF `NEEDS_RETRY` xác nhận **22/22 receipt hợp lệ** và
+- Audit đọc toàn bộ 21 PDF `NEEDS_RETRY` xác nhận **21/21 receipt hợp lệ** và
   không có PDF nào đã đủ trang nhưng còn bị giữ sai trạng thái. Frontier retry
-  có 95 page-ref: 88 trang thực sự chưa có JSON và 7 trang đã có JSON cơ sở
+  có 92 page-ref: 87 trang thực sự chưa có JSON và 5 trang đã có JSON cơ sở
   nhưng cần replay/biến thể prompt vì lỗi cấu trúc ngữ nghĩa. Các trang này vẫn
   được xử lý theo receipt riêng, không làm phát sinh gửi lại toàn PDF.
 - Audit 147 PDF `PENDING` xác nhận đúng **8.504 trang**, gồm 110 PDF năm 2025
   và 37 PDF năm 2026; không có PDF năm 2024, không có tám ngân hàng cũ và không
-  có trang nằm ngoài frontier đã đăng ký. Sau cooldown, scheduler ưu tiên
-  `NEEDS_RETRY` có semantic frontier trước; task kế tiếp là MSB công ty mẹ Quý
-  1/2025, đúng các trang 8, 9 và 14.
+  có trang nằm ngoài frontier đã đăng ký. Sau cooldown, scheduler tiếp tục
+  ưu tiên `NEEDS_RETRY` có semantic frontier; MSB công ty mẹ Quý 1/2025 đã
+  rời nhóm này sau attempt cuối và hiện nằm trong `FAILED` chờ terminal repair.
 - Inventory artifact V2 của cả 147 PDF `PENDING` tìm thấy **0 raw response** và
   0 raw-before-validation. Vì vậy không có response trả phí cũ bị bỏ quên để
   replay; đây thực sự là các PDF chưa chạy và chỉ phát sinh request lần đầu khi
@@ -59,8 +60,8 @@ older queue priorities where they conflict.
   page nào mang nhiều hơn một JSON version. Vì vậy số 37 PDF hoàn tất là dữ
   liệu thực trong store, không chỉ là trạng thái trên ledger.
 - Phép đối chiếu toàn ledger khép kín đủ 14.947 trang: `SUCCEEDED`
-  1.933/1.933 trang; `NEEDS_RETRY` 1.224/1.312, còn thiếu 88; `FAILED`
-  2.851/3.198, còn thiếu 347; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
+  1.933/1.933 trang; `NEEDS_RETRY` 1.167/1.254, còn thiếu 87; `FAILED`
+  2.908/3.256, còn thiếu 348; và `PENDING` 0/8.504. Tổng cộng đúng 6.008 JSON
   hợp lệ và 8.939 trang còn thiếu, không có chênh lệch ngoài các frontier đã
   ghi nhận.
 - Cost replay từ 6.288 extraction receipt khớp tuyệt đối: 6.008 trang thuộc
@@ -68,6 +69,11 @@ older queue priorities where they conflict.
   liệu tiếng Anh/bản trùng đã loại có cost riêng **0,944172750 USD**. Toàn
   store là **22,620610875 USD** và không có extraction run mồ côi. Các lượt
   HTTP 429/504 gần nhất không có usage nên không cộng thêm chi phí.
+- Attempt cuối của MSB công ty mẹ Quý 1/2025 replay offline thành công trang
+  8–9 và chỉ gửi trang 14. Vertex Flex trả HTTP 200 nhưng
+  `ZERO_USAGE_PROVIDER_ERROR`; không có JSON/usage/cost mới, task chuyển
+  `NEEDS_RETRY → FAILED`. Đây là circuit trip liên tiếp tiếp theo nên supervisor
+  giữ cooldown ở mức trần 60 phút trước request mới.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
