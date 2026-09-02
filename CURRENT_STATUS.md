@@ -39,6 +39,11 @@ older queue priorities where they conflict.
   terminal repair và còn thiếu duy nhất trang 3; cả hai lượt đều kết thúc bằng
   HTTP 504, không có response/usage. Trường hợp này được giữ là lỗi provider,
   không được diễn giải thành lỗi schema hoặc tự ý mở thêm lượt gửi.
+- Audit đọc toàn bộ 22 PDF `NEEDS_RETRY` xác nhận **22/22 receipt hợp lệ** và
+  không có PDF nào đã đủ trang nhưng còn bị giữ sai trạng thái. Frontier retry
+  có 95 page-ref: 88 trang thực sự chưa có JSON và 7 trang đã có JSON cơ sở
+  nhưng cần replay/biến thể prompt vì lỗi cấu trúc ngữ nghĩa. Các trang này vẫn
+  được xử lý theo receipt riêng, không làm phát sinh gửi lại toàn PDF.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng

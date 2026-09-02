@@ -75,3 +75,8 @@ Audit terminal-repair tại checkpoint này xác nhận 64 PDF còn quyền sử
 BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt và vẫn thiếu trang 3 do hai lần
 HTTP 504 không có response, nên được giữ riêng là lỗi provider chứ không phải
 lỗi nội dung hoặc schema.
+
+Audit hàng đợi thông thường cũng xác nhận 22/22 PDF `NEEDS_RETRY` có receipt
+hợp lệ. Frontier gồm 95 page-ref: 88 trang chưa có JSON và 7 trang đã có JSON
+cơ sở nhưng cần replay/biến thể prompt để sửa lỗi cấu trúc ngữ nghĩa. Không có
+PDF nào trong nhóm này đã đủ toàn bộ trang mà còn bị giữ sai trạng thái.
