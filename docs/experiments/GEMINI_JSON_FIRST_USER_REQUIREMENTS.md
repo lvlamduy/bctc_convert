@@ -54,6 +54,60 @@ ngân hàng mới nêu trên; giao với `ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB` là *
 Điều kiện này phải được kiểm tra lại ở mỗi checkpoint, không được suy ra từ lần
 kiểm tra cũ.
 
+### Cổng chỉ gửi phần tiếng Việt của PDF
+
+Xác nhận của người dùng ngày 2026-09-02: OCB có những PDF ghép bản tiếng Việt
+và bản tiếng Anh trong cùng một file; **không gửi phần tiếng Anh cho Gemini**.
+Từ checkpoint này:
+
+- mọi PDF trên 100 trang phải được kiểm tra ranh giới ngôn ngữ trước khi đưa
+  vào paid ledger;
+- mọi PDF OCB phải được kiểm tra, kể cả file không quá 100 trang;
+- số trang dưới đây là **trang vật lý của file PDF**, không phải số trang in ở
+  chân trang;
+- `run`, `resume` và `repair` chỉ được phép nhắm các trang trong cột “Trang được
+  gửi”; file chưa có kết luận ngôn ngữ phải fail closed trước provider request;
+- page tiếng Việt đã có JSON hợp lệ tiếp tục dùng cache; việc thay frontier
+  không cho phép gửi lại page đã hoàn tất.
+
+#### PDF trên 100 trang đã kiểm tra
+
+| Ngân hàng | Tên file PDF | Tổng trang | Trang được gửi | Kết luận dễ đọc |
+| --- | --- | ---: | ---: | --- |
+| OCB | BCTC Công ty mẹ Kiểm toán năm 2025.pdf | 202 | 1–102 | Trang 102 là trang tiếng Việt cuối; trang 103 bắt đầu bản tiếng Anh |
+| OCB | BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf | 200 | 1–101 | Trang 101 là trang tiếng Việt cuối; trang 102 bắt đầu bản tiếng Anh |
+| OCB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 206 | 1–104 | Trang 104 là trang tiếng Việt cuối; trang 105 bắt đầu bản tiếng Anh |
+| OCB | BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf | 202 | 1–102 | Trang 102 là trang tiếng Việt cuối; trang 103 bắt đầu bản tiếng Anh |
+| STB | BCTC Công ty mẹ Kiểm toán năm 2025.pdf | 101 | 1–101 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 108 | 1–108 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf | 104 | 1–104 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| TCB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 104 | 1–103 | Trang 103 kết thúc báo cáo tiếng Việt; trang 104 là trang giới thiệu tiếng Anh của EY |
+| TPB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 108 | 1–108 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+
+#### Các PDF OCB dưới 100 trang đã kiểm tra
+
+| Tên file PDF | Tổng trang | Trang được gửi | Kết luận |
+| --- | ---: | ---: | --- |
+| BCTC Công ty mẹ quý 1 năm 2025.pdf | 78 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Công ty mẹ quý 2 năm 2025.pdf | 79 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Hợp nhất quý 1 năm 2025.pdf | 79 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Hợp nhất quý 2 năm 2025.pdf | 79 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Công ty mẹ quý 1 năm 2026.pdf | 78 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Hợp nhất quý 1 năm 2026.pdf | 78 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+| BCTC Công ty mẹ quý 3 năm 2025.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 4 năm 2025.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 3 năm 2025.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 4 năm 2025.pdf | 43 | 1–43 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 2 năm 2026.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 2 năm 2026.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
+
+Sau khi áp dụng bảng trên, paid frontier 19 ngân hàng vẫn có 279 PDF nhưng giảm
+từ 15.968 xuống **15.335 trang được phép gửi**; **633 trang tiếng Anh bị loại**.
+Tổng phạm vi 27 ngân hàng gồm 8.947 trang JSON cũ được tái sử dụng và 15.335
+trang paid frontier tiếng Việt, tương ứng **24.282 trang**. Các số này chỉ được
+dùng sau khi plan/ledger mới exact-replay đúng từng cutoff; plan cũ 15.968 trang
+không được resume.
+
 ## 1. Provider và credential
 
 - **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.

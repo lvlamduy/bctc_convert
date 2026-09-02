@@ -66,6 +66,15 @@ older queue priorities where they conflict.
   được tải lên và 6.139 object trùng nội dung được dùng lại. Đây là mốc an toàn
   giữa lượt gửi, không phải corpus cuối và không cấp quyền gửi lại bất kỳ
   PDF/page nào của tám ngân hàng cũ.
+- Paid run đã được dừng an toàn trước khi OCB đi vào phần tiếng Anh. Rà trực
+  quan toàn bộ 9 PDF trên 100 trang và toàn bộ 16 PDF OCB xác định 10 file OCB
+  có bản tiếng Anh nối sau bản tiếng Việt và một trang giới thiệu tiếng Anh của
+  EY ở cuối file TCB hợp nhất kiểm toán 2025. Frontier được phép mới là 279
+  PDF/**15.335 trang tiếng Việt**; 633 trang không thuộc phần tiếng Việt bị
+  loại. File OCB công ty mẹ kiểm toán 2025 chỉ được gửi trang 1–102; trang 103
+  bắt đầu tiếng Anh. Plan cũ 15.968 trang đang bị khóa, không được resume cho
+  tới khi plan/ledger mới bind exact bảng cutoff trong tài liệu yêu cầu người
+  dùng. JSON tiếng Việt đã hoàn tất vẫn phải tái sử dụng, không gửi lại.
 
 ## 2026-09-01 human review/schema checkpoint
 

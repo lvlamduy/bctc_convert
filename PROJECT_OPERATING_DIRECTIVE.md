@@ -18,6 +18,16 @@
 > → `google-vertex/global/flex`. Every run, resume and repair must reject an
 > old-bank intersection before its first provider request.
 
+> **2026-09-02 Vietnamese-only page authority:** before any paid request, every
+> PDF longer than 100 physical pages must pass a recorded language-boundary
+> review. OCB filings require the same review regardless of length because a
+> number of its PDFs append a complete English copy after the Vietnamese
+> report. Only the Vietnamese physical-page prefix may enter `run`, `resume`
+> or `repair`; excluded English pages must never be submitted merely to make a
+> source PDF look page-complete. The exact per-file cutoffs are maintained in
+> `docs/experiments/GEMINI_JSON_FIRST_USER_REQUIREMENTS.md`. A file without a
+> verified cutoff is blocked before the first provider request.
+
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
 > owns normalization, graph construction, period/unit resolution, equations and
