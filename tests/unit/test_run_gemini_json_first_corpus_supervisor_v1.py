@@ -7,6 +7,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import threading
 from argparse import Namespace
 from pathlib import Path
 
@@ -468,6 +469,121 @@ def test_scheduler_progresses_google_and_openrouter_concurrently(
     )
     assert result["disposition"] == "SUCCEEDED"
     assert sorted(calls) == ["poll-google", "run-openrouter"]
+
+
+def test_openrouter_circuit_trip_is_read_from_nested_child_receipt() -> None:
+    assert target._openrouter_task_result_has_circuit_trip_v1(
+        {
+            "last_receipt_json": target.canonical_json_bytes_v1(
+                {
+                    "adaptive_retry_results": [
+                        {
+                            "result": {
+                                "provider_circuit_breaker_trigger_page": 17,
+                            }
+                        }
+                    ]
+                }
+            )
+        }
+    )
+    assert not target._openrouter_task_result_has_circuit_trip_v1(
+        {
+            "last_receipt_json": target.canonical_json_bytes_v1(
+                {"provider_circuit_breaker_trigger_page": None}
+            )
+        }
+    )
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="trigger page is invalid",
+    ):
+        target._openrouter_task_result_has_circuit_trip_v1(
+            {
+                "last_receipt_json": target.canonical_json_bytes_v1(
+                    {"provider_circuit_breaker_trigger_page": "17"}
+                )
+            }
+        )
+
+
+def test_scheduler_waits_after_openrouter_circuit_trip(monkeypatch, tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.touch()
+    clock = [0.0]
+    phase = [0]
+    calls = []
+    first = {
+        "route": target.OPENROUTER_ROUTE,
+        "state": "PENDING",
+        "task_id": "gjfptaskv1:" + "5" * 64,
+    }
+    second = {
+        "route": target.OPENROUTER_ROUTE,
+        "state": "PENDING",
+        "task_id": "gjfptaskv1:" + "6" * 64,
+    }
+
+    def tasks(_ledger):
+        return [
+            {**first, "state": "SUCCEEDED" if phase[0] >= 1 else "PENDING"},
+            {**second, "state": "SUCCEEDED" if phase[0] >= 2 else "PENDING"},
+        ]
+
+    def run_openrouter(**kwargs):
+        calls.append((kwargs["task"]["task_id"], clock[0]))
+        if kwargs["task"]["task_id"] == first["task_id"]:
+            phase[0] = 1
+            receipt = {"provider_circuit_breaker_trigger_page": 1}
+        else:
+            phase[0] = 2
+            receipt = {"provider_circuit_breaker_trigger_page": None}
+        return {
+            **kwargs["task"],
+            "last_receipt_json": target.canonical_json_bytes_v1(receipt),
+            "state": "SUCCEEDED",
+        }
+
+    def sleep(seconds):
+        clock[0] += seconds
+        threading.Event().wait(0.001)
+
+    monkeypatch.setattr(target.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(target.time, "sleep", sleep)
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1", "policy": {}})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1", "max_task_attempts": 3},
+    )
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", tasks)
+    monkeypatch.setattr(target, "_run_openrouter", run_openrouter)
+    monkeypatch.setattr(target, "_finalize_google_manifests", lambda **_kwargs: [])
+    monkeypatch.setattr(target, "usage_summary_v1", lambda _database: {})
+
+    result = target.run_corpus(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+            google_key_file=tmp_path / "google-keys",
+            google_key_slot=1,
+            google_poll_interval_seconds=0,
+            google_watch_max_seconds=60,
+            ledger=ledger,
+            max_active_google=1,
+            max_fallback_attempts=2,
+            openrouter_circuit_cooldown_seconds=10,
+            openrouter_key_file=tmp_path / "openrouter-key",
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+            provider_timeout_seconds=60,
+            source_root=tmp_path / "source",
+        )
+    )
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert calls[0] == (first["task_id"], 0.0)
+    assert calls[1] == (second["task_id"], 10.0)
 
 
 def test_scheduler_throttles_google_polling_while_batch_remains_active(

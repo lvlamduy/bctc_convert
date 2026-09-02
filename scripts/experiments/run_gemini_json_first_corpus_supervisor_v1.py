@@ -267,6 +267,12 @@ def _parser() -> argparse.ArgumentParser:
         default=20,
         help="Bounded concurrent page requests for one OpenRouter document (1..30).",
     )
+    run.add_argument(
+        "--openrouter-circuit-cooldown-seconds",
+        type=float,
+        default=300.0,
+        help="Delay the next OpenRouter document after a single-worker transient circuit trip.",
+    )
     run.add_argument("--max-active-google", type=int, default=4)
     run.add_argument("--google-poll-interval-seconds", type=float, default=30.0)
     run.add_argument("--google-watch-max-seconds", type=float, default=172_800.0)
@@ -3455,6 +3461,37 @@ def _finalize_google_manifests(
     return outputs
 
 
+def _openrouter_task_result_has_circuit_trip_v1(task: dict[str, Any]) -> bool:
+    """Read the typed child receipt and detect one provider circuit trip."""
+
+    raw = task.get("last_receipt_json") if type(task) is dict else None
+    if type(raw) is not bytes:
+        return False
+    try:
+        receipt = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter circuit receipt is invalid"
+        ) from exc
+
+    def visit(value: Any) -> bool:
+        if type(value) is dict:
+            if "provider_circuit_breaker_trigger_page" in value:
+                page = value["provider_circuit_breaker_trigger_page"]
+                if page is not None and (type(page) is not int or page <= 0):
+                    raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                        "OpenRouter circuit trigger page is invalid"
+                    )
+                if type(page) is int:
+                    return True
+            return any(visit(item) for item in value.values())
+        if type(value) is list:
+            return any(visit(item) for item in value)
+        return False
+
+    return visit(receipt)
+
+
 def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     plan = _plan(args.plan)
     if not args.ledger.exists():
@@ -3468,6 +3505,16 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "OpenRouter worker bound lies outside 1..30"
         )
+    openrouter_circuit_cooldown_seconds = getattr(
+        args, "openrouter_circuit_cooldown_seconds", 300.0
+    )
+    if (
+        type(openrouter_circuit_cooldown_seconds) not in {int, float}
+        or not 0 <= openrouter_circuit_cooldown_seconds <= 3_600
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter circuit cooldown lies outside 0..3600 seconds"
+        )
     if not 1 <= args.max_fallback_attempts <= 10:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("fallback attempt bound lies outside 1..10")
     google_slots = _google_slots_v1(args)
@@ -3479,6 +3526,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
         thread_name_prefix="openrouter-document",
     )
     openrouter_future: Future[dict[str, Any]] | None = None
+    openrouter_not_before = 0.0
     google_submit_executor = ThreadPoolExecutor(
         max_workers=GOOGLE_SUBMIT_WORKERS,
         thread_name_prefix="google-batch-submit",
@@ -3490,11 +3538,16 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
     while True:
         if openrouter_future is not None and openrouter_future.done():
             try:
-                openrouter_future.result()
+                openrouter_result = openrouter_future.result()
             except Exception:
                 openrouter_executor.shutdown(wait=True, cancel_futures=True)
                 google_submit_executor.shutdown(wait=True, cancel_futures=True)
                 raise
+            if _openrouter_task_result_has_circuit_trip_v1(openrouter_result):
+                openrouter_not_before = max(
+                    openrouter_not_before,
+                    time.monotonic() + openrouter_circuit_cooldown_seconds,
+                )
             openrouter_future = None
         for future in [future for future in google_submit_futures if future.done()]:
             try:
@@ -3540,7 +3593,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             if task["route"] == OPENROUTER_ROUTE
             and task["state"] in {"PENDING", "RUNNING", "NEEDS_RETRY"}
         ]
-        if openrouter_future is None and openrouter:
+        if openrouter_future is None and openrouter and time.monotonic() >= openrouter_not_before:
             openrouter_future = openrouter_executor.submit(
                 _run_openrouter,
                 task=openrouter[0],
@@ -3653,6 +3706,9 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
             cooling_google.append(google_submit_global_not_before)
         if cooling_google:
             time.sleep(min(max(0.0, min(cooling_google) - time.monotonic()), 1.0))
+            continue
+        if openrouter and openrouter_not_before > time.monotonic():
+            time.sleep(min(openrouter_not_before - time.monotonic(), 1.0))
             continue
         if accelerated_google:
             # A separate accelerator owns this document under a sealed ledger
