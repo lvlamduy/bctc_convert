@@ -15,10 +15,11 @@ older queue priorities where they conflict.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint này, **6.744 / 15.335 trang (44,0%)** nằm trong các PDF đã vào
-  luồng Gemini; store đã có JSON hợp lệ cho **6.110 trang (39,8%)**. Có 130/279
-  PDF đã bắt đầu, gồm 22 SUCCEEDED, 14 FAILED chờ sửa đúng trang, 93
-  NEEDS_RETRY và 1 RUNNING; 149 PDF chưa bắt đầu.
+- Tại checkpoint 11:43 UTC ngày 2026-09-02, **6.744 / 15.335 trang (44,0%)**
+  nằm trong các PDF đã vào luồng Gemini; store đã có JSON hợp lệ cho **6.112
+  trang (39,9%)**. Có 130/279 PDF đã bắt đầu, gồm 22 SUCCEEDED, 16 FAILED chờ
+  sửa đúng trang, 91 NEEDS_RETRY và 1 RUNNING; 149 PDF chưa bắt đầu. Các số
+  này chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý 1/2025 đến hiện tại.
 - Process đang chạy 20 page worker qua OpenRouter →
   `google/gemini-3.7-flash` → `google-vertex/global/flex`, direct Google và
   fallback đều tắt. Retry chỉ nhắm đúng page trong receipt, không gửi lại toàn
