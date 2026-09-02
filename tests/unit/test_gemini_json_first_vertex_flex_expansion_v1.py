@@ -191,6 +191,24 @@ def test_validator_rejects_a_2024_plan_path_even_before_identity_check() -> None
         validate_gemini_json_first_vertex_flex_expansion_v1(forged)
 
 
+def test_period_scope_cannot_be_extended_by_a_coherent_rehash() -> None:
+    result = build_gemini_json_first_vertex_flex_expansion_v1(
+        _universe(),
+        already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=_language_scope(),
+    )
+    forged = copy.deepcopy(result)
+    forged["period_scope"]["include_prior_comparatives"] = True
+    material = {key: value for key, value in forged.items() if key != "expansion_plan_id"}
+    forged["expansion_plan_id"] = "gjfvertexflexv1:" + canonical_json_sha256_v1(material)
+
+    with pytest.raises(
+        GeminiJsonFirstVertexFlexExpansionV1Error,
+        match="period scope is invalid",
+    ):
+        validate_gemini_json_first_vertex_flex_expansion_v1(forged)
+
+
 def test_validator_rejects_completed_bank_even_after_coherent_rehash() -> None:
     result = build_gemini_json_first_vertex_flex_expansion_v1(
         _universe(),

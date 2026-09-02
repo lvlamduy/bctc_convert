@@ -33,6 +33,8 @@ def _error(message: str) -> GeminiJsonFirstVertexFlexExpansionV1Error:
 
 
 def _authenticated_period_scope_v1(value: dict[str, Any]) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != {"as_of_date", "from_year"}:
+        raise _error("authenticated 2025-current period scope is invalid")
     from_year = value.get("from_year")
     as_of_date = value.get("as_of_date")
     try:
@@ -242,7 +244,12 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
         }
     ):
         raise _error("authenticated 2025-current filing universe is required")
-    period_scope = _authenticated_period_scope_v1(authenticated_universe)
+    period_scope = _authenticated_period_scope_v1(
+        {
+            "as_of_date": authenticated_universe.get("as_of_date"),
+            "from_year": authenticated_universe.get("from_year"),
+        }
+    )
     summary = authenticated_universe.get("summary")
     filings = authenticated_universe.get("filings")
     processed_corpus_ref = authenticated_universe.get("already_processed_corpus_ref")
