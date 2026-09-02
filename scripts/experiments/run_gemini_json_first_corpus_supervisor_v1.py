@@ -3063,6 +3063,23 @@ def _run_openrouter(
         if retry_frontiers is None
         else sorted(page for pages in retry_frontiers.values() for page in pages)
     )
+    semantic_retry_pages: list[int] = []
+    if retry_frontiers is not None:
+        try:
+            prior_retry_receipt = json.loads(task["last_receipt_json"])
+        except (TypeError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter semantic retry receipt is invalid"
+            ) from exc
+        semantic_retry_pages = prior_retry_receipt.get("semantic_failed_pages", [])
+        if (
+            type(semantic_retry_pages) is not list
+            or semantic_retry_pages != sorted(set(semantic_retry_pages))
+            or not set(semantic_retry_pages).issubset(retry_frontiers["items"])
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "OpenRouter semantic retry frontier is invalid"
+            )
     protected_retry_pages = _protected_retry_pages_v1(task)
     historical_prompt_context = (
         ({}, [])
@@ -3159,6 +3176,7 @@ def _run_openrouter(
         )
         historical_variants, historical_protected_pages = historical_prompt_context
         retry_results = []
+        offline_replay_results = []
         retry_variants: dict[int, str] = {}
         return_code = 0
         aggregate: dict[str, list[int]] = {
@@ -3170,13 +3188,44 @@ def _run_openrouter(
             "semantic_failed_pages": [],
             "unresolved_pages": [],
         }
+        offline_item = _offline_semantic_replay_result_v1(
+            args=argparse.Namespace(
+                database=database,
+                openrouter_workers=openrouter_workers,
+                repair_attempt=task["attempt_count"],
+            ),
+            attempt_root=(
+                _task_root(task, artifact_root)
+                / "adaptive-retry"
+                / f"offline-attempt-{task['attempt_count']:02d}"
+            ),
+            current_images=current_page_images,
+            prompt_variant=default_prompt_variant,
+            semantic_pages=semantic_retry_pages,
+            source=source,
+            task=task,
+            task_root=_task_root(task, artifact_root),
+            dpi=plan["policy"]["dpi"],
+        )
+        offline_accepted: list[int] = []
+        if offline_item is not None:
+            offline_replay_results.append(offline_item)
+            offline_accepted = offline_item["accepted_pages"]
+            offline_result = offline_item["result"]
+            for field in ("cached_pages", "ingested_pages"):
+                aggregate[field].extend(
+                    page for page in offline_result.get(field, []) if page in offline_accepted
+                )
+            retry_variants.update({page: default_prompt_variant for page in offline_accepted})
         prompt_pages: dict[str, list[int]] = {}
         for prompt_variant, pages in (
             (default_prompt_variant, retry_frontiers["default"]),
             ("scope", retry_frontiers["scope"]),
             ("items", retry_frontiers["items"]),
         ):
-            prompt_pages.setdefault(prompt_variant, []).extend(pages)
+            prompt_pages.setdefault(prompt_variant, []).extend(
+                page for page in pages if page not in offline_accepted
+            )
         prompt_frontiers = tuple(
             (variant, sorted(set(pages))) for variant, pages in prompt_pages.items()
         )
@@ -3229,15 +3278,22 @@ def _run_openrouter(
         complete_protected_pages = sorted(
             set(historical_protected_pages) | set(protected_retry_pages)
         )
+        receipt_prompt_frontiers = [
+            {
+                "physical_pages": sorted(
+                    page for page, page_variant in retry_variants.items() if page_variant == variant
+                ),
+                "prompt_variant": variant,
+            }
+            for variant in (default_prompt_variant, "scope", "items")
+            if any(page_variant == variant for page_variant in retry_variants.values())
+        ]
         receipt = {
             **{field: sorted(values) for field, values in aggregate.items()},
             "adaptive_retry_results": retry_results,
+            "offline_replay_results": offline_replay_results,
             "alternate_prompt_pages": retry_pages,
-            "alternate_prompt_variants": [
-                {"physical_pages": pages, "prompt_variant": variant}
-                for variant, pages in prompt_frontiers
-                if pages
-            ],
+            "alternate_prompt_variants": receipt_prompt_frontiers,
             "protected_retry_pages": complete_protected_pages,
         }
         if return_code == 0:
