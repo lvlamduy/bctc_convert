@@ -47,8 +47,10 @@ def _universe() -> dict[str, object]:
             "page_count": 8,
         },
         "authenticated_universe_id": "bankfilingauthv1:" + "a" * 64,
+        "as_of_date": "2026-09-01",
         "filings": filings,
         "format_version": "BANK_FILING_UNIVERSE_27BANK_2025_CURRENT_V1",
+        "from_year": 2025,
         "local_source_authentication": {
             "all_content_sha256_verified": True,
             "all_pdf_signatures_verified": True,
@@ -147,6 +149,46 @@ def test_already_processed_bank_cannot_enter_paid_frontier() -> None:
             already_processed_corpus_manifest_index=_already_processed_manifest(),
             vietnamese_page_scope=_language_scope(),
         )
+
+
+@pytest.mark.parametrize("year", [2024, 2027])
+def test_filing_outside_2025_current_period_scope_is_rejected(year: int) -> None:
+    universe = _universe()
+    filing = next(
+        item
+        for item in universe["filings"]
+        if item["provider_disposition"] == "NEW_VERTEX_FLEX_FRONTIER"
+    )
+    filing["year"] = year
+    filing["content_ref"]["path"] = filing["content_ref"]["path"].replace("/2025/", f"/{year}/")
+
+    with pytest.raises(
+        GeminiJsonFirstVertexFlexExpansionV1Error,
+        match="outside the authenticated 2025-current period scope",
+    ):
+        build_gemini_json_first_vertex_flex_expansion_v1(
+            universe,
+            already_processed_corpus_manifest_index=_already_processed_manifest(),
+            vietnamese_page_scope=_language_scope(),
+        )
+
+
+def test_validator_rejects_a_2024_plan_path_even_before_identity_check() -> None:
+    result = build_gemini_json_first_vertex_flex_expansion_v1(
+        _universe(),
+        already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=_language_scope(),
+    )
+    forged = copy.deepcopy(result)
+    forged["corpus_plan"]["documents"][0]["document"]["relative_path"] = forged["corpus_plan"][
+        "documents"
+    ][0]["document"]["relative_path"].replace("/2025/", "/2024/")
+
+    with pytest.raises(
+        GeminiJsonFirstVertexFlexExpansionV1Error,
+        match="corpus plan source path is invalid",
+    ):
+        validate_gemini_json_first_vertex_flex_expansion_v1(forged)
 
 
 def test_validator_rejects_completed_bank_even_after_coherent_rehash() -> None:

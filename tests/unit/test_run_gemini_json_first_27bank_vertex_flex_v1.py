@@ -59,8 +59,10 @@ def _files(tmp_path: Path) -> tuple[Path, Path]:
             "page_count": 8,
         },
         "authenticated_universe_id": "bankfilingauthv1:" + "a" * 64,
+        "as_of_date": "2026-09-01",
         "filings": filings,
         "format_version": "BANK_FILING_UNIVERSE_27BANK_2025_CURRENT_V1",
+        "from_year": 2025,
         "local_source_authentication": {
             "all_content_sha256_verified": True,
             "all_pdf_signatures_verified": True,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_first_corpus_plan_v1 import (
@@ -29,6 +30,18 @@ class GeminiJsonFirstVertexFlexExpansionV1Error(ValueError):
 
 def _error(message: str) -> GeminiJsonFirstVertexFlexExpansionV1Error:
     return GeminiJsonFirstVertexFlexExpansionV1Error(message)
+
+
+def _authenticated_period_scope_v1(value: dict[str, Any]) -> dict[str, Any]:
+    from_year = value.get("from_year")
+    as_of_date = value.get("as_of_date")
+    try:
+        parsed_as_of_date = date.fromisoformat(as_of_date) if type(as_of_date) is str else None
+    except ValueError as error:
+        raise _error("authenticated 2025-current period scope is invalid") from error
+    if from_year != 2025 or parsed_as_of_date is None or parsed_as_of_date < date(from_year, 1, 1):
+        raise _error("authenticated 2025-current period scope is invalid")
+    return {"as_of_date": as_of_date, "from_year": from_year}
 
 
 def _already_processed_corpus_binding_v1(
@@ -229,6 +242,7 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
         }
     ):
         raise _error("authenticated 2025-current filing universe is required")
+    period_scope = _authenticated_period_scope_v1(authenticated_universe)
     summary = authenticated_universe.get("summary")
     filings = authenticated_universe.get("filings")
     processed_corpus_ref = authenticated_universe.get("already_processed_corpus_ref")
@@ -262,8 +276,23 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
     for filing in filings:
         if type(filing) is not dict or type(filing.get("content_ref")) is not dict:
             raise _error("filing universe record is malformed")
-        disposition = filing.get("provider_disposition")
+        content = filing["content_ref"]
+        path = content.get("path")
+        path_parts = path.split("/") if type(path) is str else []
+        filing_year = filing.get("year")
         bank = filing.get("bank")
+        if (
+            type(filing_year) is not int
+            or not period_scope["from_year"]
+            <= filing_year
+            <= date.fromisoformat(period_scope["as_of_date"]).year
+            or len(path_parts) < 4
+            or path_parts[0] != "vietstock_bctc"
+            or path_parts[1] != bank
+            or path_parts[2] != str(filing_year)
+        ):
+            raise _error("filing is outside the authenticated 2025-current period scope")
+        disposition = filing.get("provider_disposition")
         if bank in ALREADY_PROCESSED_BANKS and disposition != "REUSE_EXISTING_GEMINI_JSON":
             raise _error("already-processed bank entered the paid provider frontier")
         if bank not in ALREADY_PROCESSED_BANKS and disposition != "NEW_VERTEX_FLEX_FRONTIER":
@@ -272,8 +301,6 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
             continue
         if disposition != "NEW_VERTEX_FLEX_FRONTIER":
             raise _error("filing provider disposition is invalid")
-        content = filing["content_ref"]
-        path = content["path"]
         source_pages = filing["page_count"]
         if (
             bank == "OCB"
@@ -348,6 +375,7 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
             "supervisor_required_flag": "--openrouter-only",
         },
         "format_version": FORMAT_VERSION,
+        "period_scope": period_scope,
         "vietnamese_page_scope": checked_language_scope,
     }
     return {
@@ -374,6 +402,11 @@ def validate_gemini_json_first_vertex_flex_expansion_v1(
         "supervisor_required_flag": "--openrouter-only",
     }
     plan = value["corpus_plan"]
+    period_scope = value.get("period_scope")
+    if type(period_scope) is not dict:
+        raise _error("authenticated 2025-current period scope is invalid")
+    checked_period_scope = _authenticated_period_scope_v1(period_scope)
+    as_of_year = date.fromisoformat(checked_period_scope["as_of_date"]).year
     processed_binding = value.get("already_processed_corpus_binding")
     checked_language_scope = validate_gemini_json_first_vietnamese_page_scope_v1(
         value.get("vietnamese_page_scope")
@@ -429,7 +462,12 @@ def validate_gemini_json_first_vertex_flex_expansion_v1(
         if type(path) is not str or type(digest) is not str:
             raise _error("Vertex Flex corpus plan document is invalid")
         path_parts = path.split("/")
-        if len(path_parts) < 4 or path_parts[0] != "vietstock_bctc":
+        if (
+            len(path_parts) < 4
+            or path_parts[0] != "vietstock_bctc"
+            or not path_parts[2].isdigit()
+            or not checked_period_scope["from_year"] <= int(path_parts[2]) <= as_of_year
+        ):
             raise _error("Vertex Flex corpus plan source path is invalid")
         planned_bank_codes.append(path_parts[1])
         planned_relative_paths.append(path)
