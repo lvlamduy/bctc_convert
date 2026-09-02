@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 15:41 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-02 16:18 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -17,13 +17,11 @@ older queue priorities where they conflict.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **279 PDF / 15.335 trang
   tiếng Việt**; 633 trang tiếng Anh nối cuối file đã bị loại.
-- Tại checkpoint **15:41 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
+- Tại checkpoint **16:18 UTC ngày 2026-09-02**, **130/279 PDF (46,6%)** đã vào
   luồng Gemini, tương ứng **6.744/15.335 trang thuộc các PDF đã bắt đầu
-  (44,0%)**. Store đã có JSON hợp lệ cho **6.204/15.335 trang (40,46%)**, thuộc
-  129 PDF. Trạng thái task là **25 SUCCEEDED, 54 NEEDS_RETRY, 51 FAILED đang
-  chờ sửa đúng trang, 149 PENDING và 0 RUNNING**. Supervisor vẫn hoạt động nhưng
-  đang ở khoảng nghỉ 5 phút sau lỗi tạm thời của nhà cung cấp, nên tại đúng thời
-  điểm chụp checkpoint không có child task RUNNING. `SUCCEEDED` ở cấp PDF thấp
+  (44,0%)**. Store đã có JSON hợp lệ cho **6.269/15.335 trang (40,88%)**, thuộc
+  129 PDF. Trạng thái task là **25 SUCCEEDED, 48 NEEDS_RETRY, 56 FAILED đang
+  chờ sửa đúng trang, 149 PENDING và 1 RUNNING**. `SUCCEEDED` ở cấp PDF thấp
   hơn tỷ lệ trang vì đa số PDF retry chỉ
   còn một vài trang lỗi, còn các trang hợp lệ đã được giữ lại trong store.
 - Các số tiến độ vừa nêu **chỉ tính 19 ngân hàng mới và chỉ tính báo cáo từ Quý
@@ -38,6 +36,13 @@ older queue priorities where they conflict.
 - Retry semantic trước hết replay cục bộ raw response đã trả tiền và chỉ gửi
   các trang vẫn không đạt; bộ kiểm thử liên quan hiện đạt 256/256. Vì vậy một
   trang đã có response hợp lệ không bị gửi lại chỉ vì task PDF đang retry.
+- Checkpoint offline replay lúc 16:17 UTC đã rà 73 trang lỗi ngữ nghĩa bằng raw
+  response đã trả tiền, chấp nhận 65 kết quả và bổ sung **64 trang mới** vào
+  store; một kết quả còn lại đã có trong cache. Cả 61 receipt con đều ở chế độ
+  `OFFLINE_REPLAY_ONLY`, `provider_request_pages` đều rỗng và SQLite
+  `integrity_check` trả về `ok`. Tám trang có cấu trúc hàng/cột thực sự không
+  nhất quán tiếp tục fail-closed, không được tự sửa đoán. Bộ test trực tiếp cho
+  validator, store, OpenRouter document runner và supervisor đạt **175/175**.
 
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 
