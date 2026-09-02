@@ -69,3 +69,9 @@ không được dùng để map dữ liệu.
 Tỷ lệ chính để theo dõi chi phí và khối lượng là **trang JSON hợp lệ / tổng
 trang tiếng Việt**. Tỷ lệ PDF hoàn tất thấp hơn vì nhiều PDF chỉ còn thiếu một
 hoặc vài trang nhưng chưa được phép coi là hoàn tất.
+
+Audit terminal-repair tại checkpoint này xác nhận 64 PDF còn quyền sửa đúng
+356 trang đã ghi trong receipt; 20 PDF trong số đó chỉ thiếu một trang. Một PDF
+BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt và vẫn thiếu trang 3 do hai lần
+HTTP 504 không có response, nên được giữ riêng là lỗi provider chứ không phải
+lỗi nội dung hoặc schema.

@@ -33,6 +33,12 @@ older queue priorities where they conflict.
   trở lại `FAILED`; không có trang hợp lệ nào bị gửi lại. Supervisor đang giữ
   cooldown thay vì chuyển sang PDF khác để tránh tạo thêm request trong lúc
   provider quá tải.
+- Audit đọc toàn bộ 65 PDF `FAILED` xác nhận receipt/frontier của cả 65 đều hợp
+  lệ. **64 PDF còn quyền terminal repair, tổng cộng đúng 356 trang**; trong đó
+  20 PDF chỉ thiếu một trang. BAB công ty mẹ Quý 2/2026 đã dùng đủ hai lượt
+  terminal repair và còn thiếu duy nhất trang 3; cả hai lượt đều kết thúc bằng
+  HTTP 504, không có response/usage. Trường hợp này được giữ là lỗi provider,
+  không được diễn giải thành lỗi schema hoặc tự ý mở thêm lượt gửi.
 - Bảng theo từng mã ngân hàng được lưu tại
   [`GEMINI_19_BANK_PROGRESS.md`](docs/experiments/GEMINI_19_BANK_PROGRESS.md).
   Bảng tách riêng số PDF, số trang và trạng thái của từng mã trong 19 ngân hàng
