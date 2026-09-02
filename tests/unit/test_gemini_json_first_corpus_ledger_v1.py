@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 
 import pytest
 
@@ -10,6 +11,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
@@ -242,6 +244,82 @@ def test_failed_openrouter_task_can_only_be_sealed_by_complete_offline_revalidat
                 "result": tampered,
             },
         )
+
+
+def test_failed_openrouter_task_can_be_requeued_once_with_exact_failed_pages(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(
+        ledger,
+        plan=_plan(),
+        max_task_attempts=3,
+    )
+    task = list_corpus_tasks_v1(ledger, states=["PENDING"], route=OPENROUTER_ROUTE, limit=1)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    retry = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="NEEDS_RETRY",
+        receipt={"failed_pages": [1], "semantic_failed_pages": []},
+    )
+    assert retry["attempt_count"] == 1
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"document_retry_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 2],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [2],
+            "unresolved_pages": [2],
+        },
+    )
+    assert failed["attempt_count"] == 2
+
+    requeued = requeue_failed_openrouter_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+    )
+    assert requeued["state"] == "NEEDS_RETRY"
+    assert requeued["attempt_count"] == 2
+    receipt = json.loads(requeued["last_receipt_json"])
+    assert receipt["format_version"] == "GEMINI_JSON_FIRST_OPENROUTER_FAILED_REQUEUE_V1"
+    assert receipt["failed_pages"] == [1, 2]
+    assert receipt["semantic_failed_pages"] == [2]
+    assert receipt["unresolved_pages"] == [2]
+    assert len(receipt["prior_failed_receipt_sha256"]) == 64
+
+    final_running = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="NEEDS_RETRY",
+        next_state="RUNNING",
+        receipt={"final_retry_started": True},
+    )
+    assert final_running["attempt_count"] == 3
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={"failed_pages": [1]},
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="bound is exhausted"):
+        requeue_failed_openrouter_corpus_task_v1(ledger, task_id=task["task_id"])
 
 
 def test_failed_openrouter_task_can_be_sealed_by_complete_google_page_fallback(tmp_path) -> None:

@@ -33,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E40
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
+    requeue_failed_openrouter_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
@@ -110,6 +111,11 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status")
     status.add_argument("--ledger", type=Path, required=True)
+
+    requeue = commands.add_parser("requeue-openrouter")
+    requeue.add_argument("--plan", type=Path, required=True)
+    requeue.add_argument("--ledger", type=Path, required=True)
+    requeue.add_argument("--task-id", required=True)
 
     repair = commands.add_parser("repair-openrouter")
     repair.add_argument("--plan", type=Path, required=True)
@@ -3116,7 +3122,7 @@ def _run_openrouter(
         "SUCCEEDED"
         if return_code == 0
         else "FAILED"
-        if retry_pages is not None or task["attempt_count"] >= max_attempts
+        if task["attempt_count"] >= max_attempts
         else "NEEDS_RETRY"
     )
     return transition_corpus_task_v1(
@@ -3536,6 +3542,35 @@ def run_one_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def requeue_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
+    """Reopen one exact failed Flex task only when its retry bound permits."""
+
+    plan = _plan(args.plan)
+    summary = corpus_ledger_summary_v1(args.ledger)
+    if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
+    task = requeue_failed_openrouter_corpus_task_v1(
+        args.ledger,
+        task_id=args.task_id,
+    )
+    receipt_bytes = task.get("last_receipt_json")
+    if type(receipt_bytes) is not bytes:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "requeued OpenRouter task lacks its exact receipt bytes"
+        )
+    return {
+        "corpus_run_id": summary["corpus_run_id"],
+        "disposition": "NEEDS_RETRY",
+        "ledger": corpus_ledger_summary_v1(args.ledger),
+        "task": {
+            "attempt_count": task["attempt_count"],
+            "last_receipt_sha256": sha256(receipt_bytes).hexdigest(),
+            "state": task["state"],
+            "task_id": task["task_id"],
+        },
+    }
+
+
 def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     """Replay immutable semantic responses and seal one formerly failed document."""
 
@@ -3829,6 +3864,8 @@ def main() -> int:
         )
     elif args.command == "status":
         result = corpus_ledger_summary_v1(args.ledger)
+    elif args.command == "requeue-openrouter":
+        result = requeue_openrouter_task(args)
     elif args.command == "repair-openrouter":
         result = repair_openrouter_task(args)
     elif args.command == "repair-openrouter-items":
