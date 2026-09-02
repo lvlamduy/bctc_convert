@@ -17,6 +17,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     build_gemini_json_first_vertex_flex_expansion_v1,
     build_gemini_json_first_vietnamese_page_scope_v1,
+    build_gemini_json_first_vietnamese_page_scope_v2,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 
@@ -29,7 +30,8 @@ sys.modules[SPEC.name] = target
 SPEC.loader.exec_module(target)
 
 
-def _files(tmp_path: Path) -> tuple[Path, Path]:
+def _files(tmp_path: Path, *, excluded_bank: str | None = None) -> tuple[Path, Path]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     processed = ["ACB", "BID", "CTG", "HDB", "MBB", "VCB", "VIB", "VPB"]
     new = [f"N{ordinal:02d}" for ordinal in range(1, 20)]
     filings = [
@@ -92,10 +94,24 @@ def _files(tmp_path: Path) -> tuple[Path, Path]:
         "format_version": "GEMINI_CURRENT_CORPUS_MANIFEST_INDEX_V1",
         "summary": {"document_count": 8, "page_count": 8},
     }
+    language_scope = build_gemini_json_first_vietnamese_page_scope_v1([])
+    if excluded_bank is not None:
+        excluded = next(item for item in filings if item["bank"] == excluded_bank)
+        language_scope = build_gemini_json_first_vietnamese_page_scope_v2(
+            [
+                {
+                    "included_last_physical_page": 0,
+                    "relative_path": excluded["content_ref"]["path"],
+                    "review_conclusion": "EXCLUDE_NON_VIETNAMESE_DOCUMENT",
+                    "source_page_count": excluded["page_count"],
+                    "source_sha256": excluded["content_ref"]["sha256"],
+                }
+            ]
+        )
     bundle = build_gemini_json_first_vertex_flex_expansion_v1(
         universe,
         already_processed_corpus_manifest_index=manifest,
-        vietnamese_page_scope=build_gemini_json_first_vietnamese_page_scope_v1([]),
+        vietnamese_page_scope=language_scope,
     )
     bundle_path = tmp_path / "bundle.json"
     plan_path = tmp_path / "plan.json"
@@ -224,6 +240,58 @@ def test_ledger_migration_preserves_identical_tasks_and_resets_changed_prefix(
     assert {item["relative_path"] for item in result["superseded_nonterminal_tasks"]} >= {
         changed["relative_path"]
     }
+
+
+def test_ledger_migration_preserves_terminal_history_for_explicit_document_exclusion(
+    tmp_path: Path,
+) -> None:
+    _old_bundle, old_plan_path = _files(tmp_path / "old")
+    new_bundle, new_plan_path = _files(tmp_path / "new", excluded_bank="N01")
+    old_plan = json.loads(old_plan_path.read_bytes())
+    old_ledger = tmp_path / "old.sqlite3"
+    migrated_ledger = tmp_path / "new.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(old_ledger, plan=old_plan)
+    excluded = next(
+        task
+        for task in list_corpus_tasks_v1(old_ledger)
+        if task["relative_path"] == "vietstock_bctc/N01/2025/report.pdf"
+    )
+    transition_corpus_task_v1(
+        old_ledger,
+        task_id=excluded["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"provider_started": True},
+    )
+    transition_corpus_task_v1(
+        old_ledger,
+        task_id=excluded["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={"provider_failed": True},
+    )
+
+    result = target._migrate_ledger(
+        Namespace(
+            bundle=new_bundle,
+            ledger=migrated_ledger,
+            old_ledger=old_ledger,
+            plan=new_plan_path,
+        )
+    )
+
+    assert excluded["task_id"] not in {
+        task["task_id"] for task in list_corpus_tasks_v1(migrated_ledger)
+    }
+    assert result["ledger"]["total_tasks"] == 18
+    assert result["superseded_nonterminal_tasks"] == [
+        {
+            "exclusion_conclusion": "EXCLUDE_NON_VIETNAMESE_DOCUMENT",
+            "prior_state": "FAILED",
+            "relative_path": excluded["relative_path"],
+            "task_id": excluded["task_id"],
+        }
+    ]
 
 
 def test_terminal_retry_recovers_exact_failed_page_variants() -> None:

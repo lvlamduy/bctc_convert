@@ -92,6 +92,11 @@ def _migrate_ledger(args: argparse.Namespace) -> dict[str, Any]:
     """Create a new-plan ledger while preserving only byte-identical task histories."""
 
     bundle = _load_bundle_and_plan(args.bundle, args.plan)
+    excluded_scope_by_path = {
+        item["relative_path"]: item
+        for item in bundle["vietnamese_page_scope"]["documents"]
+        if item["included_last_physical_page"] == 0
+    }
     old_ledger = args.old_ledger.resolve()
     new_ledger = args.ledger.resolve()
     if (
@@ -169,12 +174,20 @@ def _migrate_ledger(args: argparse.Namespace) -> dict[str, Any]:
             for old in old_tasks:
                 if old["task_id"] in new_by_id:
                     continue
-                if old["state"] in {"SUCCEEDED", "FAILED"}:
+                exclusion = excluded_scope_by_path.get(old["relative_path"])
+                if old["state"] == "RUNNING" and exclusion is not None:
+                    raise RunGeminiJsonFirst27BankVertexFlexV1Error(
+                        "running task cannot leave the paid frontier"
+                    )
+                if old["state"] in {"SUCCEEDED", "FAILED"} and exclusion is None:
                     raise RunGeminiJsonFirst27BankVertexFlexV1Error(
                         "language frontier would discard a terminal task"
                     )
                 superseded.append(
                     {
+                        "exclusion_conclusion": (
+                            None if exclusion is None else exclusion["review_conclusion"]
+                        ),
                         "prior_state": old["state"],
                         "relative_path": old["relative_path"],
                         "task_id": old["task_id"],

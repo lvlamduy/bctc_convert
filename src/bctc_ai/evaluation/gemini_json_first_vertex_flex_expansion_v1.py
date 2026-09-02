@@ -21,6 +21,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 FORMAT_VERSION = "GEMINI_JSON_FIRST_27BANK_VERTEX_FLEX_EXPANSION_V1"
 LANGUAGE_SCOPE_FORMAT_VERSION = "GEMINI_JSON_FIRST_VIETNAMESE_PAGE_SCOPE_V1"
+LANGUAGE_SCOPE_FORMAT_VERSION_V2 = "GEMINI_JSON_FIRST_VIETNAMESE_PAGE_SCOPE_V2"
 ALREADY_PROCESSED_BANKS = frozenset({"ACB", "BID", "CTG", "HDB", "MBB", "VCB", "VIB", "VPB"})
 
 
@@ -93,7 +94,7 @@ def _already_processed_corpus_binding_v1(
     }
 
 
-def validate_gemini_json_first_vietnamese_page_scope_v1(
+def _validate_gemini_json_first_vietnamese_page_scope_v1(
     value: dict[str, Any],
 ) -> dict[str, Any]:
     """Validate one human-reviewed Vietnamese physical-page frontier."""
@@ -179,6 +180,130 @@ def validate_gemini_json_first_vietnamese_page_scope_v1(
     return canonical_clone_v1(value)
 
 
+def _vietnamese_page_scope_v2_policy() -> dict[str, Any]:
+    return {
+        "always_review_bank_codes": ["OCB"],
+        "included_language": "VIETNAMESE",
+        "page_selection": "PHYSICAL_PAGE_PREFIX_OR_DOCUMENT_EXCLUSION",
+        "review_pdf_over_pages": 100,
+        "whole_document_exclusion_conclusions": [
+            "EXCLUDE_NON_VIETNAMESE_DOCUMENT",
+            "EXCLUDE_VISUAL_DUPLICATE_DOCUMENT",
+        ],
+    }
+
+
+def _vietnamese_page_scope_v2_summary(documents: list[dict[str, Any]]) -> dict[str, int]:
+    source_pages = sum(item["source_page_count"] for item in documents)
+    included_pages = sum(item["included_last_physical_page"] for item in documents)
+    return {
+        "duplicate_excluded_document_count": sum(
+            item["review_conclusion"] == "EXCLUDE_VISUAL_DUPLICATE_DOCUMENT" for item in documents
+        ),
+        "excluded_document_count": sum(
+            item["included_last_physical_page"] < item["source_page_count"] for item in documents
+        ),
+        "excluded_page_count": source_pages - included_pages,
+        "fully_excluded_document_count": sum(
+            item["included_last_physical_page"] == 0 for item in documents
+        ),
+        "included_page_count": included_pages,
+        "non_vietnamese_excluded_document_count": sum(
+            item["review_conclusion"] == "EXCLUDE_NON_VIETNAMESE_DOCUMENT" for item in documents
+        ),
+        "reviewed_document_count": len(documents),
+        "source_page_count": source_pages,
+    }
+
+
+def _validate_gemini_json_first_vietnamese_page_scope_v2(
+    value: dict[str, Any],
+) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != {
+        "documents",
+        "format_version",
+        "policy",
+        "scope_id",
+        "summary",
+    }:
+        raise _error("Vietnamese page scope fields drifted")
+    documents = value.get("documents")
+    if (
+        value.get("format_version") != LANGUAGE_SCOPE_FORMAT_VERSION_V2
+        or value.get("policy") != _vietnamese_page_scope_v2_policy()
+        or type(documents) is not list
+        or type(value.get("summary")) is not dict
+    ):
+        raise _error("Vietnamese page scope policy is invalid")
+    checked_documents: list[dict[str, Any]] = []
+    for item in documents:
+        if type(item) is not dict or set(item) != {
+            "included_last_physical_page",
+            "relative_path",
+            "review_conclusion",
+            "source_page_count",
+            "source_sha256",
+        }:
+            raise _error("Vietnamese page scope document fields drifted")
+        path = item["relative_path"]
+        total = item["source_page_count"]
+        included = item["included_last_physical_page"]
+        conclusion = item["review_conclusion"]
+        digest = item["source_sha256"]
+        parts = path.split("/") if type(path) is str else []
+        if (
+            len(parts) < 4
+            or parts[0] != "vietstock_bctc"
+            or type(total) is not int
+            or total <= 0
+            or type(included) is not int
+            or not 0 <= included <= total
+            or type(digest) is not str
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or conclusion
+            not in {
+                "EXCLUDE_NON_VIETNAMESE_DOCUMENT",
+                "EXCLUDE_VISUAL_DUPLICATE_DOCUMENT",
+                "FULL_DOCUMENT_VIETNAMESE",
+                "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+            }
+            or (conclusion == "FULL_DOCUMENT_VIETNAMESE" and included != total)
+            or (
+                conclusion == "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX"
+                and not 1 <= included < total
+            )
+            or (conclusion.startswith("EXCLUDE_") and included != 0)
+        ):
+            raise _error("Vietnamese page scope document is invalid")
+        checked_documents.append(canonical_clone_v1(item))
+    paths = [item["relative_path"] for item in checked_documents]
+    digests = [item["source_sha256"] for item in checked_documents]
+    material = {key: canonical_clone_v1(item) for key, item in value.items() if key != "scope_id"}
+    if (
+        paths != sorted(set(paths))
+        or len(set(digests)) != len(digests)
+        or value["summary"] != _vietnamese_page_scope_v2_summary(checked_documents)
+        or value.get("scope_id") != "gjfvietnamesev2:" + canonical_json_sha256_v1(material)
+    ):
+        raise _error("Vietnamese page scope identity or summary drifted")
+    return canonical_clone_v1(value)
+
+
+def validate_gemini_json_first_vietnamese_page_scope_v1(
+    value: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate either supported human-reviewed Vietnamese source frontier."""
+
+    if type(value) is not dict:
+        raise _error("Vietnamese page scope fields drifted")
+    if value.get("format_version") == LANGUAGE_SCOPE_FORMAT_VERSION:
+        return _validate_gemini_json_first_vietnamese_page_scope_v1(value)
+    if value.get("format_version") == LANGUAGE_SCOPE_FORMAT_VERSION_V2:
+        return _validate_gemini_json_first_vietnamese_page_scope_v2(value)
+    raise _error("Vietnamese page scope policy is invalid")
+
+
 def build_gemini_json_first_vietnamese_page_scope_v1(
     documents: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -215,6 +340,30 @@ def build_gemini_json_first_vietnamese_page_scope_v1(
     result = {
         **material,
         "scope_id": "gjfvietnamesev1:" + canonical_json_sha256_v1(material),
+    }
+    return validate_gemini_json_first_vietnamese_page_scope_v1(result)
+
+
+def build_gemini_json_first_vietnamese_page_scope_v2(
+    documents: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build a source-bound frontier that may exclude a whole reviewed document."""
+
+    if type(documents) is not list or any(type(item) is not dict for item in documents):
+        raise _error("Vietnamese page scope documents are invalid")
+    checked_documents = sorted(
+        (canonical_clone_v1(item) for item in documents),
+        key=lambda item: item.get("relative_path", "") if type(item) is dict else "",
+    )
+    material = {
+        "documents": checked_documents,
+        "format_version": LANGUAGE_SCOPE_FORMAT_VERSION_V2,
+        "policy": _vietnamese_page_scope_v2_policy(),
+        "summary": _vietnamese_page_scope_v2_summary(checked_documents),
+    }
+    result = {
+        **material,
+        "scope_id": "gjfvietnamesev2:" + canonical_json_sha256_v1(material),
     }
     return validate_gemini_json_first_vietnamese_page_scope_v1(result)
 
@@ -315,6 +464,14 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
         ):
             expected_review_paths.add(path)
         scope = scope_by_path.get(path)
+        if scope is not None:
+            expected_review_paths.add(path)
+            if scope["source_page_count"] != source_pages or (
+                "source_sha256" in scope and scope["source_sha256"] != content["sha256"]
+            ):
+                raise _error("Vietnamese page scope source identity drifted")
+            if scope["included_last_physical_page"] == 0:
+                continue
         selected_pages = source_pages
         document = {
             "page_count": selected_pages,
@@ -323,8 +480,6 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
             "source_size_bytes": content["size_bytes"],
         }
         if scope is not None:
-            if scope["source_page_count"] != source_pages:
-                raise _error("Vietnamese page scope source page count drifted")
             selected_pages = scope["included_last_physical_page"]
             document.update(
                 {
@@ -340,7 +495,7 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
             )
         documents.append(document)
     if set(scope_by_path) != expected_review_paths:
-        raise _error("Vietnamese page scope is not exhaustive for OCB and long PDFs")
+        raise _error("Vietnamese page scope is not exhaustive for reviewed, OCB, and long PDFs")
     plan = build_gemini_json_first_corpus_plan_v1(
         documents,
         dpi=dpi,
@@ -353,7 +508,9 @@ def build_gemini_json_first_vertex_flex_expansion_v1(
             "GOOGLE_GEMINI_BATCH_API": 0,
             OPENROUTER_ROUTE: sum(document["page_count"] for document in documents),
         }
-        or plan["summary"]["document_count"] != summary["provider_call_candidate_filing_count"]
+        or plan["summary"]["document_count"]
+        != summary["provider_call_candidate_filing_count"]
+        - checked_language_scope["summary"].get("fully_excluded_document_count", 0)
         or any(document["route"] != OPENROUTER_ROUTE for document in plan["documents"])
         or any(
             task["route"] != OPENROUTER_ROUTE
@@ -481,15 +638,25 @@ def validate_gemini_json_first_vertex_flex_expansion_v1(
         planned_source_sha256s.append(digest)
         planned_by_path[path] = document
     scope_by_path = {item["relative_path"]: item for item in checked_language_scope["documents"]}
+    active_scope_by_path = {
+        path: item
+        for path, item in scope_by_path.items()
+        if item["included_last_physical_page"] > 0
+    }
+    excluded_scope_by_path = {
+        path: item
+        for path, item in scope_by_path.items()
+        if item["included_last_physical_page"] == 0
+    }
     expected_review_paths = {
         path
         for path, document in planned_by_path.items()
         if path.split("/")[1] == "OCB"
         or document.get("source_page_count", document.get("page_count")) > 100
     }
-    if set(scope_by_path) != expected_review_paths:
+    if set(active_scope_by_path) != expected_review_paths:
         raise _error("Vietnamese page scope no longer covers OCB and long PDFs")
-    for path, scope in scope_by_path.items():
+    for path, scope in active_scope_by_path.items():
         document = planned_by_path[path]
         expected_document_scope = {
             "included_first_physical_page": 1,
@@ -503,6 +670,20 @@ def validate_gemini_json_first_vertex_flex_expansion_v1(
             or document.get("page_selection") != expected_document_scope
         ):
             raise _error("Vietnamese page scope and corpus plan drifted")
+    excluded_source_sha256s = []
+    for path, scope in excluded_scope_by_path.items():
+        path_parts = path.split("/")
+        if (
+            path in planned_by_path
+            or len(path_parts) < 4
+            or path_parts[0] != "vietstock_bctc"
+            or path_parts[1] in ALREADY_PROCESSED_BANKS
+            or not path_parts[2].isdigit()
+            or not checked_period_scope["from_year"] <= int(path_parts[2]) <= as_of_year
+            or "source_sha256" not in scope
+        ):
+            raise _error("excluded source re-entered or fell outside the paid frontier")
+        excluded_source_sha256s.append(scope["source_sha256"])
     if (
         value.get("format_version") != FORMAT_VERSION
         or contract != expected_contract
@@ -512,6 +693,8 @@ def validate_gemini_json_first_vertex_flex_expansion_v1(
         or ALREADY_PROCESSED_BANKS.intersection(planned_bank_codes)
         or set(planned_source_sha256s).intersection(processed_binding["source_sha256s"])
         or set(planned_relative_paths).intersection(processed_binding["relative_paths"])
+        or set(excluded_source_sha256s).intersection(processed_binding["source_sha256s"])
+        or set(excluded_scope_by_path).intersection(processed_binding["relative_paths"])
     ):
         raise _error("Vertex Flex exclusive execution contract drifted")
     material = {

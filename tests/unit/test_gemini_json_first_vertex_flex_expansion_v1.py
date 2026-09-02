@@ -9,6 +9,7 @@ from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     GeminiJsonFirstVertexFlexExpansionV1Error,
     build_gemini_json_first_vertex_flex_expansion_v1,
     build_gemini_json_first_vietnamese_page_scope_v1,
+    build_gemini_json_first_vietnamese_page_scope_v2,
     validate_gemini_json_first_vertex_flex_expansion_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
@@ -292,4 +293,67 @@ def test_long_pdf_is_trimmed_only_by_an_exact_human_reviewed_vietnamese_scope() 
             universe,
             already_processed_corpus_manifest_index=_already_processed_manifest(),
             vietnamese_page_scope=_language_scope(),
+        )
+
+
+@pytest.mark.parametrize(
+    "conclusion",
+    ["EXCLUDE_NON_VIETNAMESE_DOCUMENT", "EXCLUDE_VISUAL_DUPLICATE_DOCUMENT"],
+)
+def test_whole_reviewed_document_is_removed_from_paid_frontier(conclusion: str) -> None:
+    universe = _universe()
+    filing = next(item for item in universe["filings"] if item["bank"] == "N01")
+    scope = build_gemini_json_first_vietnamese_page_scope_v2(
+        [
+            {
+                "included_last_physical_page": 0,
+                "relative_path": filing["content_ref"]["path"],
+                "review_conclusion": conclusion,
+                "source_page_count": filing["page_count"],
+                "source_sha256": filing["content_ref"]["sha256"],
+            }
+        ]
+    )
+
+    result = build_gemini_json_first_vertex_flex_expansion_v1(
+        universe,
+        already_processed_corpus_manifest_index=_already_processed_manifest(),
+        vietnamese_page_scope=scope,
+    )
+
+    assert result["corpus_plan"]["summary"] == {
+        "document_count": 18,
+        "page_count": 18,
+        "route_pages": {"GOOGLE_GEMINI_BATCH_API": 0, OPENROUTER_ROUTE: 18},
+        "task_count": 18,
+    }
+    assert filing["content_ref"]["path"] not in {
+        item["document"]["relative_path"] for item in result["corpus_plan"]["documents"]
+    }
+    assert validate_gemini_json_first_vertex_flex_expansion_v1(result) == result
+
+
+def test_whole_document_exclusion_is_bound_to_exact_source_bytes() -> None:
+    universe = _universe()
+    filing = next(item for item in universe["filings"] if item["bank"] == "N01")
+    scope = build_gemini_json_first_vietnamese_page_scope_v2(
+        [
+            {
+                "included_last_physical_page": 0,
+                "relative_path": filing["content_ref"]["path"],
+                "review_conclusion": "EXCLUDE_NON_VIETNAMESE_DOCUMENT",
+                "source_page_count": filing["page_count"],
+                "source_sha256": "f" * 64,
+            }
+        ]
+    )
+
+    with pytest.raises(
+        GeminiJsonFirstVertexFlexExpansionV1Error,
+        match="source identity drifted",
+    ):
+        build_gemini_json_first_vertex_flex_expansion_v1(
+            universe,
+            already_processed_corpus_manifest_index=_already_processed_manifest(),
+            vietnamese_page_scope=scope,
         )
