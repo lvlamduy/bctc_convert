@@ -18,6 +18,11 @@ hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON đã
 frontier chỉ gồm mười chín ngân hàng mới và chỉ được gọi qua OpenRouter Google
 Vertex Flex.
 
+**Tái xác nhận phạm vi 2026-09-03:** người dùng tiếp tục khóa paid frontier ở
+**Quý 1/2025 đến hiện tại**. Việc agent có đọc inventory local của năm 2024 chỉ
+là kiểm kê không gọi provider, không phải quyền đưa năm 2024 vào corpus plan.
+Không tạo task, request, manifest mới hoặc chi phí Gemini cho năm 2024.
+
 **Bổ sung vận hành 2026-09-03 — Agy song song:** VPS được phép dùng Agy làm
 reader thứ hai cho đúng frontier còn thiếu. Agy phải nhận đúng ảnh render 300
 DPI, prompt và JSON Schema của tuyến API. Lần đầu luôn dùng
@@ -30,6 +35,14 @@ nhãn Vertex Flex. Nếu cả ba effort không giải quyết được, chỉ fr
 mới quay về retry OpenRouter Vertex Flex theo receipt. Gemini 3.8 Flash High chỉ
 được dùng như reviewer chiến lược read-only, không tạo JSON corpus và không có
 quyền sửa source/store.
+
+**Canary Gemini 3.8 Flash 2026-09-03:** model mới chỉ được chạy đối chứng ngoài
+production store trên một frontier lỗi nhỏ. Escalation bắt buộc giữ đúng thứ tự
+`low → medium → high`; không được bỏ qua Medium. Trên mẫu năm trang lỗi semantic
+của VAB/VBB/TPB, 3.8 Low đạt 1/5; Medium đạt 4/4 trang còn lỗi; High chỉ đạt 2/4
+và đắt/chậm hơn đáng kể. Vì vậy 3.8 chưa thay thế reader production; nếu tiếp tục
+canary thì Medium là mức thử kế tiếp sau Low, còn High chỉ dành cho một trang đã
+thất bại ở Medium và phải giữ artifact/chi phí riêng.
 
 The binding production flow is:
 

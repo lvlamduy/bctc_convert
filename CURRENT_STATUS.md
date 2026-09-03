@@ -1,34 +1,34 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 05:39 UTC (27-bank Gemini extraction checkpoint)
+Updated: 2026-09-03 06:36 UTC (27-bank Gemini extraction checkpoint)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
-## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 05:39 UTC
+## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 06:36 UTC
 
 - Paid frontier hiện hành chỉ gồm **271 PDF / 14.947 trang** của 19 ngân hàng
   mới, trong phạm vi từ Quý 1/2025 đến hiện tại. Tám ngân hàng ACB, BID, CTG,
   HDB, MBB, VCB, VIB và VPB vẫn là reuse-only và không được gửi lại provider.
-- Đã có JSON hợp lệ cho **8.814 / 14.947 trang (58,97%)**; còn **6.133 trang**.
-  Theo provider, OpenRouter đã tạo 8.398 trang duy nhất và Agy đã tạo 455 trang;
+- Đã có JSON hợp lệ cho **9.364 / 14.947 trang (62,65%)**; còn **5.583 trang**.
+  Theo provider, OpenRouter đã tạo 8.948 trang duy nhất và Agy đã tạo 455 trang;
   39 trang có cả hai version để đối chiếu nên tổng hợp theo page chỉ đếm một lần.
 - Agy đã chạm quota ngày và được dừng hoàn toàn từ 05:24 UTC. Không health-check
   hay gửi Agy trước **08:58 UTC ngày 2026-09-03** (15:58 giờ Việt Nam). Sau mốc
   này chỉ mở lại từ Gemini 3.7 Flash Low; Medium/High chỉ dùng khi Low thất bại
   đúng điều kiện escalation đã niêm phong.
 - OpenRouter tiếp tục chạy `google/gemini-3.7-flash` qua Google Vertex Flex.
-  Tại checkpoint, một task TPB 63 trang còn đúng trang 3 đang chờ provider; một
-  task VBB 25 trang vừa hoàn tất. Không mở thêm luồng thủ công khi task một trang
-  còn trong timeout để tránh vượt trần đồng thời lúc supervisor chuyển PDF.
-- Chi phí provider thực tế đã ghi trong store là **33,032319 USD**: 26,673833 USD
+  Tại checkpoint, báo cáo TPB hợp nhất kiểm toán năm 2025 có 108 trang đang
+  retry đúng hai trang 2 và 91. Không mở thêm dispatcher thủ công trong khi
+  supervisor hiện hành còn chạy để tránh hai process claim cùng một PDF.
+- Chi phí provider đã ghi trong production store là **35,084240 USD**: 28,725753 USD
   trên Vertex Flex, 6,358487 USD của các fallback standard đã phát sinh ở các
   checkpoint cũ, và 0 USD incremental cho Agy. Luồng mới hiện tại là Flex-only;
   số standard lịch sử được giữ để đối soát chi phí, không phải quyền fallback
   cho request kế tiếp.
-- Ledger tại checkpoint gồm 24 PDF `SUCCEEDED`, 48 PDF `FAILED` có receipt để
-  sửa đúng page, 198 PDF `PENDING` và một PDF `RUNNING`. Trạng thái task không
+- Ledger tại checkpoint gồm 30 PDF `SUCCEEDED`, 54 PDF `FAILED` có receipt để
+  sửa đúng page, 186 PDF `PENDING` và một PDF `RUNNING`. Trạng thái task không
   dùng thay cho tiến độ page: nhiều PDF `FAILED` đã có phần lớn page hợp lệ và
   được tái sử dụng, không gửi lại toàn bộ tài liệu.
 - Chín task từng bị ghi `FAILED` dù store đã đủ toàn bộ page đã được seal lại
@@ -39,6 +39,12 @@ older queue priorities where they conflict.
   đây là lỗi bản PDF đang dùng, không phải Gemini tự bỏ nội dung. Các trang PDF
   trên 100 trang và các tài liệu song ngữ như OCB tiếp tục áp dụng kiểm tra phạm
   vi tiếng Việt; không gửi phần tiếng Anh của OCB.
+- Canary Gemini 3.8 Flash được giữ ngoài production store trên đúng năm trang
+  lỗi semantic: Low đạt 1/5; Medium đạt 4/4 trang còn lỗi; High chỉ đạt 2/4.
+  Chi phí canary 3.8 thực tế là 0,323339 USD. Từ đây mọi canary phải theo thứ tự
+  Low → Medium → High, không được nhảy cấp; 3.8 chưa thay thế reader production.
+- Người dùng tái xác nhận phạm vi chỉ từ Quý 1/2025 đến hiện tại. Lượt kiểm kê
+  read-only năm 2024 không tạo task, không gọi provider và không thay đổi plan.
 
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 

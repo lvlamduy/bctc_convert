@@ -8,6 +8,9 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 
 - Khoảng thời gian chính thức của đợt mở rộng là **từ Quý 1/2025 đến thời
   điểm hiện tại**. Không đưa năm 2024 vào hàng đợi Gemini của đợt này.
+- **Tái xác nhận 2026-09-03:** thao tác đọc/kiểm kê file năm 2024 ở local không
+  phải quyền gửi Gemini. Không được đưa bất kỳ PDF/page năm 2024 nào vào plan,
+  task, retry hoặc request trả phí của đợt hiện hành.
 - Tổng universe gồm 27 ngân hàng. Tám ngân hàng đã hoàn tất JSON là **ACB,
   BID, CTG, HDB, MBB, VCB, VIB và VPB**. Các PDF/page đã có manifest hiện hành
   của tám ngân hàng này phải tái sử dụng từ store/cache bất biến; **không được
@@ -40,6 +43,13 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   này chỉ OpenRouter Vertex Flex tiếp tục frontier. Sau mốc trên, Agy được mở
   lại từ `gemini-3.7-flash-low`; không dùng Medium/High nếu Low chưa trả lỗi
   theo đúng điều kiện escalation ở trên.
+- **Thứ tự thử Gemini 3.8 Flash:** khi được người dùng yêu cầu canary trang lỗi,
+  phải thử `low → medium → high`; tuyệt đối không nhảy từ Low thẳng lên High.
+  Canary năm trang ngày 2026-09-03 được lưu ngoài production store: Low đạt
+  1/5; Medium đạt cả 4/4 trang Low còn lỗi; High chỉ đạt 2/4, với chi phí
+  0,212226 USD so với 0,082774 USD của Medium trên cùng bốn trang. Kết quả này
+  chỉ làm bằng chứng chọn escalation; chưa cấp quyền đổi reader toàn corpus từ
+  3.7 Low sang 3.8 hoặc ghi đè page JSON hiện hành.
 - Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên; không
   được vì mở rộng corpus mà bỏ qua checkpoint hoặc ghi đè artifact cũ.
 - Inventory byte/page đã xác thực tại checkpoint này gồm **140 PDF / 8.947

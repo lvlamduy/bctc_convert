@@ -27,6 +27,9 @@ statement trên.
 ### Phạm vi corpus đang mở rộng (checkpoint 2026-09-01)
 
 - Phạm vi thời gian: **Quý 1/2025 đến hiện tại**.
+- Người dùng tái xác nhận ngày 2026-09-03 rằng năm 2024 vẫn nằm ngoài đợt paid
+  ingestion. Kiểm kê file 2024 tại local không cấp quyền tạo task/request và
+  không được làm thay đổi corpus plan 2025–hiện tại.
 - Ma trận theo dõi gồm đủ 27 ngân hàng, nhưng paid provider frontier chỉ gồm 19
   ngân hàng mới: ABB, BAB, BVB, EIB, KLB, LPB, MSB, NAB, NVB, OCB, PGB, SGB,
   SHB, SSB, STB, TCB, TPB, VAB và VBB.
@@ -43,6 +46,11 @@ statement trên.
   output trước chưa dùng được. Mỗi PDF phải được claim khỏi hàng đợi Vertex Flex
   trước khi Agy chạy; provider/model/effort phải lưu đúng thực tế. Gemini 3.8
   Flash High chỉ review chiến lược, không làm reader cho corpus.
+- Canary riêng ngoài production store trên năm trang lỗi VAB/VBB/TPB cho thấy
+  3.8 Low đạt 1/5, 3.8 Medium đạt 4/4 trang Low còn lỗi, còn 3.8 High đạt 2/4.
+  Mọi thử nghiệm 3.8 tiếp theo phải đi `low → medium → high`, không bỏ qua
+  Medium; chưa được thay model production nếu chưa có quyết định mới và một
+  panel rộng hơn đã xác minh source accuracy.
 - Denominator đã xác thực ở checkpoint: corpus cũ **140 PDF / 8.947 trang** chỉ
   tái sử dụng; frontier mới **271 PDF / 14.947 trang**. Runner phải chứng
   minh paid frontier không chứa ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB trước request
