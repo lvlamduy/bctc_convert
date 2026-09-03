@@ -51,9 +51,12 @@
 > route. A typed Flex provider failure may fall through inside OpenRouter to
 > the pinned cheapest standard Gemini 3.7 Flash endpoint, currently Google AI
 > Studio standard. A completed/cached page is never submitted again during
-> fallback. Each page receipt must record the requested and selected tier,
-> provider, actual cost and the original Flex failure. Priority tier, another
-> model, arbitrary provider routing and direct Google calls remain forbidden.
+> fallback. The sealed request must record the exact provider allowlist/order;
+> each completed page records the provider and tier OpenRouter selected plus
+> actual cost. OpenRouter does not expose a separate internal Flex-error body
+> when it succeeds on the next allowed route, so no such receipt may be
+> invented. Priority tier, another model, arbitrary provider routing and direct
+> Google calls remain forbidden.
 
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
