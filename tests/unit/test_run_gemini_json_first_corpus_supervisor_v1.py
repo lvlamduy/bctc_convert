@@ -32,6 +32,39 @@ sys.modules[_SPEC.name] = target
 _SPEC.loader.exec_module(target)
 
 
+def test_paid_command_preflights_openrouter_credential_before_dispatch(
+    monkeypatch, tmp_path
+) -> None:
+    key_file = tmp_path / "openrouter"
+    args = Namespace(command="run", openrouter_key_file=key_file)
+
+    class Parser:
+        @staticmethod
+        def parse_args():
+            return args
+
+    calls = []
+    monkeypatch.setattr(target, "_parser", lambda: Parser())
+    monkeypatch.setattr(target, "run_corpus", lambda _args: calls.append(_args))
+
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="credential preflight failed before task execution",
+    ):
+        target.main()
+    assert calls == []
+
+    key_file.write_text("OPENROUTER_API_KEY=test-key-value-that-is-long-enough\n")
+    key_file.chmod(0o600)
+    monkeypatch.setattr(
+        target,
+        "run_corpus",
+        lambda _args: calls.append(_args) or {"disposition": "SUCCEEDED"},
+    )
+    assert target.main() == 0
+    assert calls == [args]
+
+
 def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
     monkeypatch, tmp_path
 ) -> None:

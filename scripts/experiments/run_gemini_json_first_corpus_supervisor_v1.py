@@ -56,6 +56,8 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_STANDARD_SERVICE_TIER,
     OPENROUTER_SERVICE_TIER,
     OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+    GeminiJsonFirstProviderV1Error,
+    load_openrouter_api_key_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
@@ -85,6 +87,17 @@ OPENROUTER_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_openrouter
 GOOGLE_SUBMIT_RETRY_DELAY_SECONDS = 30.0
 GOOGLE_SUBMIT_WORKERS = 1
 RETRYABLE_GOOGLE_UPLOAD_DISPOSITION = "RETRYABLE_GOOGLE_UPLOAD_START"
+OPENROUTER_CREDENTIAL_COMMANDS = frozenset(
+    {
+        "accelerate-google-document",
+        "accelerate-pending-google",
+        "repair-openrouter-flex-failed",
+        "repair-openrouter-flex-pages",
+        "repair-openrouter-google",
+        "run",
+        "run-openrouter-task",
+    }
+)
 
 
 class RunGeminiJsonFirstCorpusSupervisorV1Error(RuntimeError):
@@ -97,6 +110,17 @@ class _ProviderSubprocessError(RunGeminiJsonFirstCorpusSupervisorV1Error):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+
+
+def _preflight_openrouter_credential_v1(path: Path) -> None:
+    """Validate the paid gateway credential before any task state mutation."""
+
+    try:
+        load_openrouter_api_key_v1(path)
+    except GeminiJsonFirstProviderV1Error as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter credential preflight failed before task execution"
+        ) from exc
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -4983,6 +5007,8 @@ def repair_openrouter_google_task(args: argparse.Namespace) -> dict[str, Any]:
 
 def main() -> int:
     args = _parser().parse_args()
+    if args.command in OPENROUTER_CREDENTIAL_COMMANDS:
+        _preflight_openrouter_credential_v1(args.openrouter_key_file)
     if args.command == "init":
         result = initialize_gemini_json_first_corpus_ledger_v1(
             args.ledger,
