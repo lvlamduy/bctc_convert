@@ -1528,11 +1528,13 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
         offline = "--offline-replay-only" in argv
         calls.append(("OFFLINE" if offline else variant, pages))
         if offline:
+            assert "--openrouter-route-policy" not in argv
             assert pages == [3]
             assert argv[argv.index("--semantic-replay-source-dir") + 1].endswith(
                 "/artifacts/tasks/task-1"
             )
         else:
+            assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
             assert "--stop-provider-frontier-on-transient-error" in argv
         return 0, {
             "cached_pages": [],
