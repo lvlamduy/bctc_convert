@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 00:53 UTC (OpenRouter fallback and paid-ledger checkpoint;
+Updated: 2026-09-03 01:25 UTC (OpenRouter fallback and paid-ledger checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -8,6 +8,23 @@ The detailed historical receipts below remain evidence, but that directive super
 older queue priorities where they conflict.
 
 ## Checkpoint fallback OpenRouter — 2026-09-03
+
+- Lúc 01:25 UTC, vòng supervisor cũ được dừng ngay khi phát hiện child process
+  dùng sai đường dẫn credential trong worktree vận hành. Các lần lỗi này kết
+  thúc trước provider request; store không nhận response giả và không có trang
+  đã hoàn tất nào bị gửi lại. Supervisor đã được khởi động lại bằng ledger sạch,
+  cùng corpus plan và cùng store/cache bất biến, với đường dẫn credential đã
+  xác thực.
+- Canary sống trên OCB trang 1 xác nhận route thực tế hoạt động đúng: Vertex Flex
+  không nhận request thì OpenRouter chuyển sang `google-ai-studio` standard,
+  giữ nguyên `google/gemini-3.7-flash`, và JSON hợp lệ được ingest. Direct Google
+  vẫn tắt. Supervisor hiện chạy tối đa **20 request đồng thời**; cache/page
+  identity gate tiếp tục loại các trang đã có JSON trước khi gọi provider.
+- Tiến độ thực phải đọc từ store thay vì bộ đếm của ledger vừa khởi động lại:
+  **6.097/14.947 trang (40,79%)**, thuộc **125/271 PDF đã bắt đầu** và **39 PDF
+  đã đủ toàn bộ trang**. Một PDF NAB 44 trang đã được đóng lại hoàn toàn từ
+  cache/manifest, không phát sinh provider request. Phạm vi vẫn chỉ từ Quý
+  1/2025 đến hiện tại; số PDF năm 2024 trong paid frontier vẫn bằng 0.
 
 - Theo chỉ đạo mới nhất, model vẫn khóa đúng `google/gemini-3.7-flash` và toàn
   bộ request vẫn là OpenRouter-only. Route ưu tiên là
