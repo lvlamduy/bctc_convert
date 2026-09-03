@@ -60,7 +60,7 @@ Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
 lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
 ledger hiện hành.
 
-#### Tiến độ paid frontier — kiểm tra live 23:51 UTC ngày 2026-09-02
+#### Tiến độ paid frontier — kiểm tra live 00:03 UTC ngày 2026-09-03
 
 - **Phạm vi dùng để tính:** 271 PDF / 14.947 trang tiếng Việt của 19 ngân hàng
   mới, chỉ gồm **205 PDF kỳ 2025 và 66 PDF kỳ 2026**; số PDF kỳ 2024 là **0**.
@@ -328,6 +328,10 @@ Mọi plan cũ 15.968 hoặc 15.335 trang không được resume.
 - Lưu theo từng attempt: provider/model/tier ẩn danh credential slot, elapsed,
   HTTP/outcome, input/output/thought/cached/total token và chi phí USD thực tế
   hoặc nhãn ước tính rõ ràng.
+- Mỗi checkpoint chi phí phải tách `đã ingest vào store` và `provider đã billed
+  nhưng validator loại`. Tổng provider spend phải cộng cả hai nhóm, khử trùng
+  theo raw-response identity và không đếm lại response lỗi nếu về sau được
+  replay offline thành một extraction trong store.
 - Khi chạy nhiều request song song, mỗi future/page hoàn tất phải ghi ngay raw
   response, canonical JSON, telemetry và database; không giữ cả tài liệu trong
   RAM rồi mới ghi cuối cùng. Khởi động lại phải tiếp tục từ page/batch ledger và

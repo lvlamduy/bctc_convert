@@ -1,6 +1,6 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **23:51 UTC ngày 02/09/2026**.
+Checkpoint: **00:03 UTC ngày 03/09/2026**.
 
 ## Phạm vi được tính
 
@@ -137,12 +137,18 @@ Phân rã toàn bộ 14.947 trang theo trạng thái ledger cũng khớp tuyệt
 
 ## Chi phí đã phát sinh
 
-- 6.011 trang thuộc frontier 271 PDF hiện hành: **21,687696000 USD**.
-- 280 trang của tài liệu tiếng Anh/bản trùng đã loại: **0,944172750 USD**;
-  khoản này được giữ làm lịch sử nhưng không trộn vào tiến độ hiện hành.
-- Toàn store: **22,631868750 USD** cho 6.291 extraction hoàn tất. Không có
-  extraction run không được page JSON tham chiếu và các lượt HTTP 429/504 vừa
-  qua không có usage/cost.
-- Riêng response trang 3 của NVB Q2/2026 bị validator loại vẫn có receipt billed
-  **0,005352000 USD**; khoản này không nằm trong tổng extraction đã ingest ở
-  trên. Trang 35 có usage/cost bằng 0.
+- Extraction đã ingest của frontier hiện hành: **21,687696000 USD** cho 6.011
+  trang. Có thêm 295 raw response thuộc frontier bị validator loại nhưng vẫn
+  billed **1,309713000 USD**. Tổng provider spend của frontier hiện hành vì vậy
+  là **22,997409000 USD**.
+- Tài liệu tiếng Anh/bản trùng đã loại: **0,944172750 USD** nằm trong store và
+  **0,133471875 USD** của 32 response bị loại nhưng vẫn billed; tổng lịch sử bị
+  loại là **1,077644625 USD** và không được trộn vào tiến độ trang hiện hành.
+- Tổng provider spend đã xác thực là **24,075053625 USD**. Trong đó store giữ
+  6.291 extraction với tổng **22,631868750 USD**; phần còn lại
+  **1,443184875 USD** là response billed nhưng không được ingest.
+- Audit đọc đủ 2.503 failure receipt và 2.094 raw response trước validation. Có
+  408 response billed mang raw hash duy nhất, không có cost xung đột; 81
+  response lỗi sau này đã được replay vào store được loại khỏi phần cộng thêm
+  để không đếm đôi. Response trang 3 NVB Q2/2026 bị loại với cost
+  **0,005352000 USD** nằm trong nhóm này; trang 35 có usage/cost bằng 0.

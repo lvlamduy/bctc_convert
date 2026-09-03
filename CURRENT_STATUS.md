@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 23:51 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-03 00:03 UTC (scope and paid-ledger progress checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -67,13 +67,16 @@ older queue priorities where they conflict.
   3.185/3.545, còn thiếu 360; và `PENDING` 0/8.504. Tổng cộng đúng 6.011 JSON
   hợp lệ và 8.936 trang còn thiếu, không có chênh lệch ngoài các frontier đã
   ghi nhận.
-- Cost replay từ 6.291 extraction receipt khớp tuyệt đối: 6.011 trang thuộc
-  frontier 271 PDF hiện hành có cost **21,687696000 USD**; 280 trang của tài
-  liệu tiếng Anh/bản trùng đã loại có cost riêng **0,944172750 USD**. Toàn
-  store là **22,631868750 USD** và không có extraction run mồ côi. Response
-  trang 3 NVB Q2/2026 bị validator loại có receipt billed riêng
-  **0,005352000 USD** và không nằm trong tổng extraction đã ingest; các lượt
-  HTTP 429/504 gần nhất không có usage nên không cộng thêm chi phí.
+- Cost replay từ 6.291 extraction trong store khớp **22,631868750 USD**. Audit
+  bổ sung đọc đủ 2.503 failure receipt/2.094 raw-before-validation và khử trùng
+  theo raw-response hash: frontier hiện hành có **21,687696000 USD** đã ingest
+  cộng **1,309713000 USD** của 295 response billed nhưng bị validator loại,
+  thành **22,997409000 USD**; tài liệu tiếng Anh/trùng đã loại có tổng lịch sử
+  **1,077644625 USD**. Tổng provider spend đã xác thực là
+  **24,075053625 USD**. 81 response lỗi về sau đã replay vào store được loại
+  khỏi phần cộng thêm để không đếm đôi. Response trang 3 NVB Q2/2026 cost
+  **0,005352000 USD** nằm trong nhóm bị loại; các lỗi HTTP 429/504/zero-usage
+  gần nhất không cộng chi phí.
 - Attempt cuối của MSB công ty mẹ Quý 1/2025 replay offline thành công trang
   8–9 và chỉ gửi trang 14. Vertex Flex trả HTTP 200 nhưng
   `ZERO_USAGE_PROVIDER_ERROR`; không có JSON/usage/cost mới, task chuyển
