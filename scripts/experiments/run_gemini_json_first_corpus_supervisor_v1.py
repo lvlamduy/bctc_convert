@@ -1113,10 +1113,13 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
             # document command; its image/prompt cache ensures only missing
             # pages reach the provider.
             return None
-    return _retry_prompt_frontiers_from_receipt_v1(
-        prior,
-        first_physical_page=task["first_physical_page"],
-        last_physical_page=task["last_physical_page"],
+    return _promote_repeated_item_semantic_pages_v1(
+        _retry_prompt_frontiers_from_receipt_v1(
+            prior,
+            first_physical_page=task["first_physical_page"],
+            last_physical_page=task["last_physical_page"],
+        ),
+        prior=prior,
     )
 
 
@@ -1128,15 +1131,19 @@ def _checked_retry_prompt_frontiers_v1(
 ) -> dict[str, list[int]]:
     """Validate a preserved adaptive retry frontier after a child crash."""
 
-    keys = ("default", "items", "scope")
-    if type(value) is not dict or set(value) != set(keys):
+    required_keys = ("default", "items", "scope")
+    allowed_keys = (*required_keys, "balanced")
+    if type(value) is not dict or frozenset(value) not in {
+        frozenset(required_keys),
+        frozenset(allowed_keys),
+    }:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "preserved OpenRouter retry prompt frontier is invalid"
         )
     checked: dict[str, list[int]] = {}
     observed: set[int] = set()
-    for key in keys:
-        pages = value[key]
+    for key in allowed_keys:
+        pages = value.get(key, [])
         if (
             type(pages) is not list
             or pages != sorted(set(pages))
@@ -1156,6 +1163,74 @@ def _checked_retry_prompt_frontiers_v1(
             "preserved OpenRouter retry prompt frontier is empty"
         )
     return checked
+
+
+def _promote_repeated_item_semantic_pages_v1(
+    frontiers: dict[str, list[int]], *, prior: Any
+) -> dict[str, list[int]]:
+    """Use balanced once when an items prompt still fails semantic validation."""
+
+    if frozenset(frontiers) not in {
+        frozenset({"default", "items", "scope"}),
+        frozenset({"balanced", "default", "items", "scope"}),
+    }:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter retry prompt frontier fields drifted"
+        )
+    promoted = {
+        key: list(frontiers.get(key, []))
+        for key in (
+            "default",
+            "items",
+            "scope",
+            "balanced",
+        )
+    }
+    prior_item_failures: set[int] = set()
+    prior_balanced_failures: set[int] = set()
+    if type(prior) is dict:
+        for field in ("adaptive_retry_results", "provider_results"):
+            results = prior.get(field)
+            if results is None:
+                continue
+            if type(results) is not list:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "prior OpenRouter prompt result history is invalid"
+                )
+            for item in results:
+                if type(item) is not dict or item.get("prompt_variant") not in {
+                    "balanced",
+                    "items",
+                }:
+                    continue
+                pages = item.get("physical_pages")
+                result = item.get("result")
+                semantic = result.get("semantic_failed_pages") if type(result) is dict else None
+                if (
+                    type(pages) is not list
+                    or not pages
+                    or pages != sorted(set(pages))
+                    or any(type(page) is not int or page <= 0 for page in pages)
+                    or type(semantic) is not list
+                    or semantic != sorted(set(semantic))
+                    or not set(semantic).issubset(pages)
+                ):
+                    raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                        "prior items semantic failure frontier is invalid"
+                    )
+                if item["prompt_variant"] == "items":
+                    prior_item_failures.update(semantic)
+                else:
+                    prior_balanced_failures.update(semantic)
+    exhausted = sorted(set(promoted["items"]) & prior_balanced_failures)
+    if exhausted:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "OpenRouter balanced semantic retry is exhausted"
+        )
+    repeated = sorted(set(promoted["items"]) & prior_item_failures)
+    promoted["items"] = sorted(set(promoted["items"]) - set(repeated))
+    promoted["balanced"] = sorted(set(promoted["balanced"]) | set(repeated))
+    return promoted
 
 
 def _retry_prompt_frontiers_from_receipt_v1(
@@ -1306,7 +1381,7 @@ def _protected_retry_pages_v1(task: dict[str, Any]) -> list[int]:
     frontiers = _retry_prompt_frontiers_v1(task)
     if frontiers is None:
         return []
-    return frontiers["items"]
+    return sorted(set(frontiers["items"]) | set(frontiers.get("balanced", [])))
 
 
 def _successful_historical_prompt_context_v1(
@@ -3234,7 +3309,9 @@ def _run_openrouter(
         if (
             type(semantic_retry_pages) is not list
             or semantic_retry_pages != sorted(set(semantic_retry_pages))
-            or not set(semantic_retry_pages).issubset(retry_frontiers["items"])
+            or not set(semantic_retry_pages).issubset(
+                set(retry_frontiers["items"]) | set(retry_frontiers.get("balanced", []))
+            )
         ):
             raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                 "OpenRouter semantic retry frontier is invalid"
@@ -3376,7 +3453,7 @@ def _run_openrouter(
         }
         offline_accepted: list[int] = []
         remaining_semantic_pages = list(semantic_retry_pages)
-        for offline_variant in dict.fromkeys((default_prompt_variant, "items")):
+        for offline_variant in dict.fromkeys((default_prompt_variant, "items", "balanced")):
             offline_item = _offline_semantic_replay_result_v1(
                 args=argparse.Namespace(
                     database=database,
@@ -3417,6 +3494,7 @@ def _run_openrouter(
             (default_prompt_variant, retry_frontiers["default"]),
             ("scope", retry_frontiers["scope"]),
             ("items", retry_frontiers["items"]),
+            ("balanced", retry_frontiers.get("balanced", [])),
         ):
             prompt_pages.setdefault(prompt_variant, []).extend(
                 page for page in pages if page not in offline_accepted
@@ -3494,7 +3572,7 @@ def _run_openrouter(
                 ),
                 "prompt_variant": variant,
             }
-            for variant in (default_prompt_variant, "scope", "items")
+            for variant in (default_prompt_variant, "scope", "items", "balanced")
             if any(page_variant == variant for page_variant in retry_variants.values())
         ]
         receipt = {
@@ -3702,7 +3780,11 @@ def _openrouter_schedule_key_v1(task: dict[str, Any]) -> tuple[int, str]:
         priority = 0
     elif state == "NEEDS_RETRY":
         frontiers = _retry_prompt_frontiers_v1(task)
-        priority = 1 if frontiers is not None and frontiers["items"] else 2
+        priority = (
+            1
+            if frontiers is not None and (frontiers["items"] or frontiers.get("balanced", []))
+            else 2
+        )
     elif state == "PENDING":
         priority = 3
     else:
@@ -4616,10 +4698,13 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
                 raise RunGeminiJsonFirstCorpusSupervisorV1Error(
                     "prior offline semantic replay history is invalid"
                 )
-    frontiers = _retry_prompt_frontiers_from_receipt_v1(
-        frontier_receipt,
-        first_physical_page=task["first_physical_page"],
-        last_physical_page=task["last_physical_page"],
+    frontiers = _promote_repeated_item_semantic_pages_v1(
+        _retry_prompt_frontiers_from_receipt_v1(
+            frontier_receipt,
+            first_physical_page=task["first_physical_page"],
+            last_physical_page=task["last_physical_page"],
+        ),
+        prior=frontier_receipt,
     )
     repair_pages = sorted(page for pages in frontiers.values() for page in pages)
     current_images = _current_page_image_sha256s_v1(
@@ -4663,6 +4748,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
                 (summary["prompt_variant"], provider_frontiers["default"]),
                 ("scope", provider_frontiers["scope"]),
                 ("items", provider_frontiers["items"]),
+                ("balanced", provider_frontiers["balanced"]),
             )
             if pages
         ],
@@ -4691,6 +4777,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         (summary["prompt_variant"], provider_frontiers["default"]),
         ("scope", provider_frontiers["scope"]),
         ("items", provider_frontiers["items"]),
+        ("balanced", provider_frontiers["balanced"]),
     ):
         if not pages:
             continue

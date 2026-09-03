@@ -429,7 +429,7 @@ def test_openrouter_subprocess_failure_preserves_exact_adaptive_retry_frontier(
         next_state="RUNNING",
         receipt={"document_run_started": True},
     )
-    frontiers = {"default": [2], "items": [3], "scope": []}
+    frontiers = {"balanced": [], "default": [2], "items": [3], "scope": []}
     result = target._record_openrouter_subprocess_failure_v1(
         error=target._ProviderSubprocessError(
             returncode=-9,
@@ -446,6 +446,41 @@ def test_openrouter_subprocess_failure_preserves_exact_adaptive_retry_frontier(
     assert result["state"] == "NEEDS_RETRY"
     assert receipt["retry_prompt_frontiers"] == frontiers
     assert target._retry_prompt_frontiers_v1(result) == frontiers
+
+
+def test_repeated_item_semantic_failure_promotes_once_to_balanced() -> None:
+    frontiers = {"default": [], "items": [2], "scope": []}
+    prior = {
+        "adaptive_retry_results": [
+            {
+                "physical_pages": [2],
+                "prompt_variant": "items",
+                "result": {"semantic_failed_pages": [2]},
+            }
+        ]
+    }
+
+    assert target._promote_repeated_item_semantic_pages_v1(frontiers, prior=prior) == {
+        "balanced": [2],
+        "default": [],
+        "items": [],
+        "scope": [],
+    }
+
+    exhausted = {
+        "adaptive_retry_results": [
+            {
+                "physical_pages": [2],
+                "prompt_variant": "balanced",
+                "result": {"semantic_failed_pages": [2]},
+            }
+        ]
+    }
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="balanced semantic retry is exhausted",
+    ):
+        target._promote_repeated_item_semantic_pages_v1(frontiers, prior=exhausted)
 
 
 def test_requeue_command_requires_matching_plan_and_preserves_attempt_count(
@@ -2541,6 +2576,7 @@ def test_running_same_attempt_recovery_retains_exact_retry_frontiers() -> None:
     }
 
     assert target._retry_prompt_frontiers_v1(recovered) == {
+        "balanced": [],
         "default": [2],
         "items": [4],
         "scope": [1],
@@ -3544,6 +3580,7 @@ def test_openrouter_item_retry_accepts_semantic_subset_and_rejects_ambiguous_fro
         ),
     }
     assert target._retry_prompt_frontiers_v1(recitation) == {
+        "balanced": [],
         "default": [],
         "items": [],
         "scope": [2],
