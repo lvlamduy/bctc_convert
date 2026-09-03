@@ -4,29 +4,26 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
-> **Xác nhận của người dùng ngày 2026-09-02, phạm vi cuối cùng:** chỉ xử lý báo
-> cáo từ **Quý 1/2025 đến thời điểm hiện tại**. Năm 2024 không thuộc hàng đợi
-> Gemini của đợt này. Toàn bộ JSON đã có của tám ngân hàng ACB, BID, CTG, HDB,
-> MBB, VCB, VIB và VPB và mọi task của mười chín ngân hàng mới phải được tái sử
-> dụng theo exact source/page/image identity, không gửi trùng.
->
-> **Khóa vận hành xác nhận lại lúc 22:49 UTC ngày 2026-09-02:** mọi inventory,
-> mẫu số tiến độ và request mới đều phải lọc theo kỳ báo cáo từ Quý 1/2025 trở
-> đi. Số PDF kỳ 2024 trong paid frontier phải luôn bằng 0. Cột so sánh mang ngày
-> 31/12/2024 trong PDF kỳ 2025/2026 vẫn được giữ như dữ liệu của chính PDF đó,
-> nhưng không được hiểu hoặc đếm thành một PDF kỳ 2024.
+> **Xác nhận của người dùng ngày 2026-09-03, mở rộng phạm vi 2024:** toàn bộ
+> JSON đã có của tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB và mọi
+> task trong frontier mười chín ngân hàng 2025-current phải được tái sử dụng,
+> không gửi trùng. Người dùng đồng thời cấp quyền xử lý các PDF từ **năm 2024
+> đến hiện tại** của đủ 27 mã ngân hàng. Cổng chống trùng phải so exact
+> source/page/image identity với cả corpus đã hoàn tất và ledger đang chạy.
 
-## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-02
+## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-03
 
-- Khoảng thời gian chính thức là **từ Quý 1/2025 đến thời điểm hiện tại**.
-  Không lập hoặc chạy paid Gemini frontier cho năm 2024.
+- Khoảng thời gian chính thức là **từ năm 2024 đến thời điểm hiện tại**.
 - Tám ngân hàng **ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB** đã hoàn tất bước
   Gemini trả JSON. Mọi PDF/page đã có trong manifest hiện hành của tám ngân hàng
   này phải dùng lại từ store/cache bất biến; **tuyệt đối không gửi lại Gemini
   hoặc OpenRouter**.
-- PDF/page đã có trong corpus tám ngân hàng hoặc ledger mười chín ngân hàng là
-  reuse-only. Việc đổi tên file, đổi plan hoặc khởi động lại process không cấp
-  quyền gửi lại.
+- PDF/page 2025-current đã có trong corpus tám ngân hàng hoặc ledger mười chín
+  ngân hàng là reuse-only. PDF 2024 chưa có JSON của cả 27 mã được phép trở
+  thành paid candidate sau khi qua cổng source hash, chống trùng và ngôn ngữ.
+- Source snapshot có 408 PDF năm 2024; toàn bộ đã được hydrate và xác thực đúng
+  byte. Inventory chọn 308 ứng viên BCTC tiếng Việt content-unique; 100 file
+  còn lại giữ disposition nguồn và không tự động thành request.
 - Mọi request mới chỉ được đi qua **OpenRouter** với đúng model
   `google/gemini-3.7-flash`. Thứ tự route là
   `google-vertex/global/flex` trước; chỉ khi Flex lỗi mới được fallback sang
@@ -46,8 +43,8 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 | Nhóm | Phạm vi | Quyền gọi Gemini mới |
 | --- | --- | --- |
 | Đã có/đang xử lý, chỉ tái sử dụng | Corpus tám ngân hàng và ledger mười chín ngân hàng 2025-current | **CẤM GỬI LẠI** exact PDF/page/image; chỉ đọc manifest/store/cache/ledger |
-| Paid frontier hiện hành | 271 PDF của mười chín ngân hàng mới, Quý 1/2025–hiện tại | Chỉ gửi page tiếng Việt chưa có JSON qua OpenRouter Vertex Flex |
-| Năm 2024 | Ngoài phạm vi đợt này | **KHÔNG GỬI GEMINI** |
+| Frontier 2025–hiện tại đang chạy | 271 PDF của mười chín ngân hàng mới | Chỉ gửi page tiếng Việt chưa có JSON; mọi page đã hoàn tất là reuse-only |
+| Frontier 2024 mới | 308 PDF content-unique của đủ 27 mã | Chỉ khởi tạo sau khi frontier bảo vệ hoàn tất; Flex trước, tuyến chuẩn rẻ nhất qua OpenRouter khi Flex lỗi |
 
 Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
 source SHA, page-image SHA, đường dẫn và ranh giới trang với corpus manifest đã
@@ -57,11 +54,11 @@ lại process hoặc chạy repair không tự tạo quyền gửi lại. Page �
 phải được lấy lại theo source/image hash và manifest; repair chỉ được phép nhắm
 đúng page thất bại có receipt.
 
-Kiểm tra vận hành ngày 2026-09-02: paid ledger có **271 PDF / 14.947 trang tiếng
-Việt**, chỉ thuộc đúng 19 ngân hàng mới nêu trên; giao với
-`ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB` là **rỗng**. Điều kiện này phải được kiểm tra
-lại ở mỗi checkpoint. Không được gộp bất kỳ inventory hoặc plan năm 2024 vào
-ledger hiện hành.
+Kế hoạch bảo vệ 2025-current có **271 PDF / 14.947 trang tiếng Việt**, chỉ
+thuộc đúng 19 ngân hàng mới; giao với tám ngân hàng cũ là **rỗng**. Bundle 2024
+bind tổng cộng 411 PDF / 23.894 trang của hai nguồn bảo vệ và phải exact-replay
+chúng trước khi tạo ledger. Ledger 2024 không được khởi tạo song song với
+frontier 2025-current còn dở.
 
 #### Tiến độ paid frontier — kiểm tra live 00:03 UTC ngày 2026-09-03
 
@@ -118,6 +115,18 @@ Từ checkpoint này:
 | TCB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 104 | 1–103 | Trang 103 kết thúc báo cáo tiếng Việt; trang 104 là trang giới thiệu tiếng Anh của EY |
 | TPB | BCTC Hợp nhất Kiểm toán năm 2025.pdf | 108 | 1–108 | Tiếng Việt đến trang cuối, giữ toàn bộ |
 
+#### PDF năm 2024 trên 100 trang đã kiểm tra
+
+| Ngân hàng | Tên file PDF | Tổng trang | Trang được gửi | Kết luận dễ đọc |
+| --- | --- | ---: | ---: | --- |
+| ACB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 102 | 1–102 | Báo cáo tiếng Việt; trang 102 để trống nhưng vẫn nằm trong phạm vi file đã kiểm tra |
+| MBB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 102 | 1–102 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| OCB | BCTC Công ty mẹ Kiểm toán năm 2024.pdf | 153 | 1–78 | Trang 78 là trang tiếng Việt cuối; trang 79 bắt đầu bản tiếng Anh |
+| OCB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 155 | 1–79 | Trang 79 là trang tiếng Việt cuối; trang 80 bắt đầu bản tiếng Anh |
+| STB | BCTC Công ty mẹ Kiểm toán năm 2024.pdf | 104 | 1–104 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Kiểm toán năm 2024.pdf | 110 | 1–110 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+| STB | BCTC Hợp nhất Soát xét 6 tháng đầu năm 2024.pdf | 102 | 1–102 | Tiếng Việt đến trang cuối, giữ toàn bộ |
+
 #### Các PDF OCB dưới 100 trang đã kiểm tra
 
 | Tên file PDF | Tổng trang | Trang được gửi | Kết luận |
@@ -135,6 +144,21 @@ Từ checkpoint này:
 | BCTC Công ty mẹ quý 2 năm 2026.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
 | BCTC Hợp nhất quý 2 năm 2026.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
 
+#### Các PDF OCB năm 2024 dưới 100 trang đã kiểm tra
+
+| Tên file PDF | Tổng trang | Trang được gửi | Kết luận |
+| --- | ---: | ---: | --- |
+| 20241028-ocb-bctc-rieng-le-quy-3-2024.pdf | 42 | 1–42 | Tiếng Việt đến trang cuối |
+| 20241028-ocb-bctc-hop-nhat-quy-3-2024.pdf | 41 | 1–41 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2024.pdf | 78 | 1–78 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 1 năm 2024.pdf | 43 | 1–43 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 2 năm 2024.pdf | 40 | 1–40 | Tiếng Việt đến trang cuối |
+| BCTC Công ty mẹ quý 4 năm 2024.pdf | 79 | 1–41 | Trang 42 bắt đầu bản tiếng Anh |
+| BCTC Hợp nhất Soát xét 6 tháng đầu năm 2024.pdf | 77 | 1–77 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 1 năm 2024.pdf | 43 | 1–43 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 2 năm 2024.pdf | 39 | 1–39 | Tiếng Việt đến trang cuối |
+| BCTC Hợp nhất quý 4 năm 2024.pdf | 79 | 1–40 | Trang 41 bắt đầu bản tiếng Anh |
+
 Sau khi chỉ áp dụng bảng cắt phần tiếng Anh nối cuối ở trên, frontier trung gian
 vẫn có 279 PDF nhưng giảm từ 15.968 xuống **15.335 trang được phép gửi**;
 **633 trang tiếng Anh bị loại**.
@@ -146,8 +170,15 @@ tiến độ, map dữ liệu hoặc cấp quyền gửi tiếp.
 
 Đây là denominator bảo vệ của giai đoạn 2025-current: 8.947 trang JSON cũ được
 tái sử dụng và 14.947 trang paid frontier tiếng Việt, tương ứng **23.894
-trang**. Năm 2024 nằm ngoài phạm vi và không được cộng vào denominator này.
+trang**. Nó là đầu vào reuse-only của cổng 2024, không phải tổng phạm vi mới.
 Mọi plan cũ 15.968 hoặc 15.335 trang không được resume.
+
+Đối với năm 2024, cutoff được bind đúng từng source, không sao chép từ file
+cùng ngân hàng hoặc kỳ khác. Đợt rà đã hoàn tất trên 7 PDF trên 100 trang và
+toàn bộ 12 PDF OCB, tương ứng 17 tài liệu khác nhau sau khi khử trùng phần giao.
+Có 228 trang tiếng Anh bị loại khỏi bốn file OCB; 308 PDF ứng viên còn đúng
+**17.553 trang tiếng Việt được phép gửi**. Cổng còn lại là ledger 2025-current
+phải hoàn tất; không được khởi tạo gửi năm 2024 song song.
 
 #### Tài liệu đã loại toàn bộ sau kiểm tra trực quan
 

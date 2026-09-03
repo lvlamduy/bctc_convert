@@ -24,20 +24,22 @@
 Phần còn lại của tài liệu là execution contract và definition of done cho goal
 statement trên.
 
-## Phạm vi corpus đang thực hiện — checkpoint 2026-09-02
+## Phạm vi corpus đang thực hiện — checkpoint 2026-09-03
 
-- Phạm vi thời gian chính thức là **từ Quý 1/2025 đến thời điểm hiện tại**.
-  Năm 2024 không thuộc hàng đợi Gemini của đợt này.
-- Ma trận theo dõi gồm đủ 27 ngân hàng. Tám ngân hàng ACB, BID, CTG, HDB, MBB,
-  VCB, VIB và VPB đã có Gemini JSON và chỉ được tái sử dụng từ
+- Khảo sát đủ **27 mã ngân hàng đã đăng ký, từ năm 2024 đến thời điểm hiện
+  tại**: ABB, ACB, BAB, BID, BVB, CTG, EIB, HDB, KLB, LPB, MBB, MSB, NAB, NVB,
+  OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB, VCB, VIB và VPB.
+- Corpus Gemini tám ngân hàng 2025-current đã hoàn tất và frontier mười chín
+  ngân hàng 2025-current đang chạy là hai nguồn được bảo vệ. Mọi PDF/page/image
+  đã có hoặc đang có task trong hai nguồn này phải tái sử dụng từ
   manifest/store/cache; **không được gửi lại**.
-- Paid provider frontier chỉ gồm 19 ngân hàng mới: ABB, BAB, BVB, EIB, KLB,
-  LPB, MSB, NAB, NVB, OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB và VBB.
-- Frontier cuối cùng đã xác thực gồm **271 PDF / 14.947 trang tiếng Việt**:
-  205 PDF kỳ 2025, 66 PDF kỳ 2026 và 0 PDF kỳ 2024. Ngoài các trang tiếng Anh
-  ghép cuối PDF OCB/TCB, 7 PDF hoàn toàn bằng tiếng Anh và 1 bản ABB trùng nội
-  dung cũng bị loại. Kết quả đã nhận của tài liệu bị loại chỉ giữ làm bằng
-  chứng, không tính tiến độ, không map và không được tiếp tục gửi.
+- Quyền mới cho phép xử lý các báo cáo **năm 2024 còn thiếu** của cả 27 ngân
+  hàng. Quyền này chỉ áp dụng cho source identity/page chưa có Gemini JSON,
+  không mở lại các kỳ 2025–2026 đã xử lý.
+- Snapshot S3 bất biến có 408 PDF năm 2024 và toàn bộ đã được hydrate, xác thực
+  đúng byte trên local. Sau content dedupe và lọc đúng ứng viên BCTC tiếng Việt,
+  inventory có **308 PDF / 17.553 trang**; 228 trang tiếng Anh nối cuối PDF bị
+  loại.
 - Request mới chỉ được dùng OpenRouter với đúng model
   `google/gemini-3.7-flash`: ưu tiên `google-vertex/global/flex`; nếu Flex lỗi
   thì chỉ được chuyển sang `google-ai-studio`, tuyến thường tương thích rẻ nhất
@@ -45,8 +47,9 @@ statement trên.
   bị cấm. Resume/retry chỉ nhắm đúng page còn thiếu hoặc lỗi, không gửi lại
   toàn PDF.
 - Mọi PDF trên 100 trang và mọi PDF OCB phải có ranh giới tiếng Việt được xác
-  nhận trước khi chạy. Chính sách Git, snapshot/restore S3 và backup Codex giữ
-  nguyên.
+  nhận trước khi chạy. Runner 2024 vẫn phải chặn provider cho đến khi ledger
+  2025-current hoàn tất và exact overlap bằng rỗng. Chính sách Git,
+  snapshot/restore S3 và backup Codex giữ nguyên.
 
 ## 1. Mục tiêu duy nhất
 
@@ -57,8 +60,8 @@ chưa từng thấy, theo kiến trúc mới:
 PDF BCTC bất biến
 → render từng trang thành ảnh đủ nét
 → pilot: Gemini 3.7 Flash qua OpenRouter, khóa Google Vertex Flex
-→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter Google Vertex Flex,
-  OpenRouter-only; không gọi Google API
+→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter, Flex trước rồi tuyến
+  chuẩn rẻ nhất khi Flex lỗi; OpenRouter-only, không gọi trực tiếp Google API
 → JSON nhiều tầng, schema-blind, giữ nguyên chữ và giá trị nhìn thấy
 → JSON/database được version hóa và lập chỉ mục
 → truy hồi vùng ứng viên nhỏ theo từng accounting family
@@ -73,8 +76,9 @@ Gemini là reader duy nhất của đường xử lý mới. Model được khó
 Flex lỗi. Từ ngày
 2026-08-27, hai credential Google không còn ngân sách nên phần corpus còn lại
 chạy **OpenRouter-only**: không gọi Google standard, Google Batch hay Google
-fallback trực tiếp. Tham số đường dẫn key Google có thể còn xuất hiện trong CLI để tương
-thích ngược, nhưng child request bắt buộc mang `google-standard-mode=disabled`
+fallback trực tiếp. Tham số đường dẫn key Google có thể còn xuất hiện trong
+CLI để tương thích ngược, nhưng child request bắt buộc mang
+`google-standard-mode=disabled`
 và không được sử dụng key đó. Các page-version Google đã hoàn thành trước thời
 điểm chuyển route vẫn được giữ bất biến trong database; khi cùng một
 source/image/prompt/schema có cả Google và OpenRouter version thì manifest hiện

@@ -1,11 +1,28 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 01:25 UTC (OpenRouter fallback and paid-ledger checkpoint;
+Updated: 2026-09-03 01:30 UTC (2024-current expansion checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## Checkpoint mở rộng 2024–hiện tại — 2026-09-03
+
+- Goal hiện hành bao phủ đủ 27 mã ngân hàng đã đăng ký từ năm 2024 đến thời
+  điểm hiện tại. Corpus tám ngân hàng cũ và mọi page đã có/đang chạy trong
+  frontier 2025–hiện tại là reuse-only; quyền mở rộng không cho phép gửi lại
+  các source/page/image identity này.
+- Bundle 2024 V2 đã exact-replay từ inventory: **308 PDF / 17.553 trang tiếng
+  Việt**. Cổng bảo vệ bind **411 PDF / 23.894 trang** đã có hoặc đang xử lý,
+  gồm 140 PDF của tám ngân hàng cũ và 271 PDF của mười chín ngân hàng mới.
+- Plan 2024 đã đăng ký nhưng chưa khởi tạo paid ledger. Kiểm tra thực tế xác
+  nhận runner dừng trước khi tạo ledger vì frontier 2025-current chưa hoàn tất;
+  không có provider request 2024 nào được phát sinh.
+- Mọi request mới chỉ đi qua OpenRouter, giữ nguyên
+  `google/gemini-3.7-flash`: Vertex Flex trước, Google AI Studio standard chỉ
+  khi Flex lỗi. Direct Google, Priority, model khác và provider ngoài allowlist
+  đều bị cấm.
 
 ## Checkpoint fallback OpenRouter — 2026-09-03
 
@@ -23,8 +40,8 @@ older queue priorities where they conflict.
 - Tiến độ thực phải đọc từ store thay vì bộ đếm của ledger vừa khởi động lại:
   **6.097/14.947 trang (40,79%)**, thuộc **125/271 PDF đã bắt đầu** và **39 PDF
   đã đủ toàn bộ trang**. Một PDF NAB 44 trang đã được đóng lại hoàn toàn từ
-  cache/manifest, không phát sinh provider request. Phạm vi vẫn chỉ từ Quý
-  1/2025 đến hiện tại; số PDF năm 2024 trong paid frontier vẫn bằng 0.
+  cache/manifest, không phát sinh provider request. Đây là frontier bảo vệ giai
+  đoạn 2025-current; plan 2024 chỉ được mở sau khi frontier này hoàn tất.
 
 - Theo chỉ đạo mới nhất, model vẫn khóa đúng `google/gemini-3.7-flash` và toàn
   bộ request vẫn là OpenRouter-only. Route ưu tiên là
@@ -44,17 +61,19 @@ older queue priorities where they conflict.
   0,75/3,75 USD cho mỗi triệu token input/output. Vì tuyến thường chỉ chạy khi
   Flex lỗi, các request được Flex nhận vẫn giữ giá Flex.
 
-## Checkpoint phạm vi và paid ingestion — 2026-09-02
+## Checkpoint phase 2025-current — 2026-09-02 (lịch sử)
 
-- Người dùng chốt phạm vi cuối cùng là **Quý 1/2025 đến thời điểm hiện tại**.
+- Tại checkpoint này, phase đang chạy được khóa từ **Quý 1/2025 đến thời điểm
+  hiện tại**. Phạm vi goal đã được mở rộng thêm năm 2024 ở checkpoint
+  2026-09-03 phía trên; các số dưới đây chỉ mô tả ledger bảo vệ 2025-current.
   Paid plan hiện có **205 PDF / 11.636 trang kỳ 2025 + 66 PDF / 3.311
   trang kỳ 2026 = 271 PDF / 14.947 trang** và **không có PDF kỳ 2024**.
   Những mốc như `31/12/2024` chỉ là cột so sánh nằm trong
   báo cáo kỳ 2025/2026, không phải PDF báo cáo năm 2024 và không được tính thành
   một tài liệu năm 2024.
 - Kiểm tra live lúc **22:49 UTC ngày 2026-09-02** xác nhận ledger không đổi và
-  vẫn có đúng **0 PDF kỳ 2024**. Đây là khóa vận hành cho inventory, mẫu số tiến
-  độ và mọi provider request; không được tự mở lại phạm vi năm 2024.
+  vẫn có đúng **0 PDF kỳ 2024**. Đây là khóa riêng của ledger 2025-current;
+  PDF 2024 phải đi qua plan/ledger V2 tách biệt sau khi phase này hoàn tất.
 - Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON
   hiện có. Paid ledger chỉ có đúng 19 ngân hàng mới, **271 PDF / 14.947 trang
   tiếng Việt**. Ngoài 633 trang tiếng Anh nối cuối file đã bị loại trước đó,
