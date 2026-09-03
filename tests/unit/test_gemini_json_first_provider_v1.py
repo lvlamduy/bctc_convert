@@ -11,6 +11,7 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     extract_completed_provider_response_text_v1,
     load_google_api_key_slots_v1,
     replay_google_standard_provider_result_v1,
+    replay_openrouter_provider_result_v1,
 )
 
 
@@ -65,12 +66,13 @@ def _google_generate_content_response() -> bytes:
     ).encode()
 
 
-def _openrouter_response() -> bytes:
+def _openrouter_response(*, provider_name: str = "Google", service_tier: str = "flex") -> bytes:
     return json.dumps(
         {
             "id": "openrouter-response-id",
             "model": "google/gemini-3.7-flash",
-            "provider": "Google Vertex",
+            "provider": provider_name,
+            "service_tier": service_tier,
             "choices": [
                 {
                     "finish_reason": "stop",
@@ -282,12 +284,64 @@ def test_openrouter_pilot_skips_google_and_pins_google_vertex_flex() -> None:
         "allow_fallbacks": False,
         "data_collection": "deny",
         "only": ["google-vertex/global/flex"],
+        "order": ["google-vertex/global/flex"],
         "require_parameters": True,
     }
     assert calls[-1][2]["usage"] == {"include": True}
     assert calls[-1][2]["seed"] == 0
     assert calls[-1][2]["max_tokens"] == 65536
     assert calls[-1][2]["reasoning"] == {"effort": "low"}
+
+
+def test_openrouter_can_fall_back_from_vertex_flex_to_cheapest_standard_route() -> None:
+    calls = []
+
+    def transport(url, headers, body, timeout):
+        calls.append(body)
+        return _openrouter_response(provider_name="Google AI Studio", service_tier="standard")
+
+    result = call_gemini_json_first_v1(
+        google_api_keys=None,
+        openrouter_api_key="c" * 30,
+        image=b"png",
+        media_type="image/png",
+        prompt="prompt",
+        response_schema={"type": "object"},
+        openrouter_route_policy="FLEX_THEN_STANDARD",
+        transport=transport,
+        sleep=lambda _: None,
+    )
+
+    assert calls[0]["provider"] == {
+        "allow_fallbacks": True,
+        "data_collection": "deny",
+        "only": ["google-vertex/global/flex", "google-ai-studio"],
+        "order": ["google-vertex/global/flex", "google-ai-studio"],
+        "require_parameters": True,
+    }
+    assert result.provider_name == "Google AI Studio"
+    assert result.service_tier == "standard"
+    replayed = replay_openrouter_provider_result_v1(
+        result.raw_response_bytes, attempts=result.attempts
+    )
+    assert replayed.provider_name == "Google AI Studio"
+    assert replayed.service_tier == "standard"
+
+
+def test_flex_only_rejects_an_unrequested_standard_route() -> None:
+    with pytest.raises(GeminiJsonFirstProviderV1Error, match="outside the requested policy"):
+        call_gemini_json_first_v1(
+            google_api_keys=None,
+            openrouter_api_key="c" * 30,
+            image=b"png",
+            media_type="image/png",
+            prompt="prompt",
+            response_schema={"type": "object"},
+            transport=lambda *_args: _openrouter_response(
+                provider_name="Google AI Studio", service_tier="standard"
+            ),
+            sleep=lambda _: None,
+        )
 
 
 @pytest.mark.parametrize("thinking_level", ["medium", "high"])
@@ -438,7 +492,7 @@ def test_prompt_json_mode_omits_provider_schema_but_retains_local_contract() -> 
         sleep=lambda _: None,
     )
     assert "response_format" not in seen[0]
-    assert result.provider_name == "Google Vertex"
+    assert result.provider_name == "Google"
 
 
 def test_openrouter_pilot_rejects_direct_google_credentials() -> None:

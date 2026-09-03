@@ -39,7 +39,11 @@ from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
+    OPENROUTER_PROVIDER,
+    OPENROUTER_ROUTE_POLICIES,
     OPENROUTER_SERVICE_TIER,
+    OPENROUTER_STANDARD_FALLBACK_PROVIDER,
+    OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
     GeminiJsonFirstProviderV1Error,
     ProviderResultV1,
     call_gemini_json_first_v1,
@@ -62,6 +66,7 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
 )
 
 OPENROUTER_SELECTED_PROVIDER = "Google"
+OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER = "Google AI Studio"
 
 
 class RunGeminiJsonFirstOpenRouterDocumentV1Error(RuntimeError):
@@ -181,6 +186,15 @@ def _parser() -> argparse.ArgumentParser:
         "--openrouter-key-file",
         type=Path,
         default=ROOT / "docs/experiments/openrouter",
+    )
+    parser.add_argument(
+        "--openrouter-route-policy",
+        choices=("flex-only", "flex-then-standard"),
+        default="flex-only",
+        help=(
+            "Pin Vertex Flex, or try Vertex Flex first and then the cheapest "
+            "compatible OpenRouter standard endpoint (Google AI Studio)."
+        ),
     )
     parser.add_argument(
         "--google-key-file",
@@ -460,6 +474,7 @@ def _extract_page(
     google_api_keys: list[str] | None,
     google_credential_slots: list[str] | None,
     google_standard_mode: str,
+    openrouter_route_policy: str,
     timeout_seconds: int,
     retries: int,
     retry_delay_seconds: float,
@@ -489,8 +504,8 @@ def _extract_page(
     cached = lookup_cached_page_json_v1(database, cache_key)
     if cached is not None:
         return _PageOutcome(physical_page=physical_page, page=rendered.page, cached_json=cached)
-    if google_api_keys is not None:
-        google_cache_key = extraction_cache_key_v1(
+    if google_api_keys is not None or openrouter_route_policy == "FLEX_THEN_STANDARD":
+        standard_cache_key = extraction_cache_key_v1(
             source_sha256=source_sha256,
             source_logical_name=source_logical_name,
             image_sha256=rendered.page["image_sha256"],
@@ -502,7 +517,7 @@ def _extract_page(
             prompt_variant=prompt_variant,
             output_contract_mode=output_contract_mode,
         )
-        cached = lookup_cached_page_json_v1(database, google_cache_key)
+        cached = lookup_cached_page_json_v1(database, standard_cache_key)
         if cached is not None:
             return _PageOutcome(
                 physical_page=physical_page,
@@ -556,6 +571,7 @@ def _extract_page(
             timeout_seconds=timeout_seconds,
             openrouter_retries=retries,
             retry_delay_seconds=retry_delay_seconds,
+            openrouter_route_policy=openrouter_route_policy,
         )
     except GeminiJsonFirstProviderV1Error as exc:
         if google_standard_mode != "on-provider-error" or google_api_keys is None:
@@ -704,12 +720,16 @@ def _persist_page_outcome_v1(
             semantic_replay_source=outcome.semantic_replay_source,
             provider_request_made=outcome.semantic_replay_source is None,
         )
-    if result.provider_name not in {OPENROUTER_SELECTED_PROVIDER, "GOOGLE_GEMINI_API"}:
+    if result.provider_name not in {
+        OPENROUTER_SELECTED_PROVIDER,
+        OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER,
+        "GOOGLE_GEMINI_API",
+    }:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
     requested_service_tier = (
         GOOGLE_STANDARD_SERVICE_TIER
         if result.provider_name == "GOOGLE_GEMINI_API"
-        else OPENROUTER_SERVICE_TIER
+        else result.service_tier
     )
     identities = ingest_financial_page_extraction_v1(
         database,
@@ -777,6 +797,7 @@ def run_openrouter_document_v1(
     google_standard_mode: str = "disabled",
     stop_provider_frontier_on_transient_error: bool = False,
     provider_request_delay_seconds: float = 0.0,
+    openrouter_route_policy: str = "FLEX_ONLY",
 ) -> dict[str, Any]:
     """Run or resume a whole document or one explicit bounded page frontier."""
 
@@ -786,6 +807,8 @@ def run_openrouter_document_v1(
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("output contract mode is invalid")
     if google_standard_mode not in {"disabled", "on-provider-error", "for-missing"}:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("Google fallback mode is invalid")
+    if openrouter_route_policy not in OPENROUTER_ROUTE_POLICIES:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("OpenRouter route policy is invalid")
     if type(stop_provider_frontier_on_transient_error) is not bool:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
             "provider circuit-breaker policy is invalid"
@@ -873,6 +896,32 @@ def run_openrouter_document_v1(
             expected_contract=contract,
         )
     _write_or_verify(artifact_dir / "document-contract.json", canonical_json_bytes_v1(contract))
+    routing_policy = {
+        "format_version": "OPENROUTER_PROVIDER_ROUTING_POLICY_V1",
+        "route_policy": openrouter_route_policy,
+        "routes": [
+            {
+                "provider_slug": OPENROUTER_PROVIDER,
+                "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                "selected_provider": OPENROUTER_SELECTED_PROVIDER,
+            },
+            *(
+                [
+                    {
+                        "provider_slug": OPENROUTER_STANDARD_FALLBACK_PROVIDER,
+                        "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+                        "selected_provider": OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER,
+                    }
+                ]
+                if openrouter_route_policy == "FLEX_THEN_STANDARD"
+                else []
+            ),
+        ],
+    }
+    _write_or_verify(
+        artifact_dir / "provider-routing-policy.json",
+        canonical_json_bytes_v1(routing_policy),
+    )
     if not database.exists():
         initialize_gemini_financial_page_store_v1(database)
 
@@ -897,6 +946,7 @@ def run_openrouter_document_v1(
             google_api_keys=google_api_keys,
             google_credential_slots=google_credential_slots,
             google_standard_mode=google_standard_mode,
+            openrouter_route_policy=openrouter_route_policy,
             timeout_seconds=timeout_seconds,
             retries=retries,
             retry_delay_seconds=retry_delay_seconds,
@@ -984,25 +1034,37 @@ def run_openrouter_document_v1(
 
     manifest = None
     if not failed_pages and physical_pages is None:
-        manifest_kwargs = (
-            {
-                "allowed_gateway_service_tiers": [
-                    {
-                        "gateway": "GOOGLE_GEMINI_API",
-                        "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
-                    },
-                    {
-                        "gateway": "OPENROUTER",
-                        "requested_service_tier": OPENROUTER_SERVICE_TIER,
-                    },
-                ]
-            }
-            if google_standard_mode != "disabled"
-            else {
+        mixed_openrouter_routes = openrouter_route_policy == "FLEX_THEN_STANDARD"
+        if not mixed_openrouter_routes and google_standard_mode == "disabled":
+            manifest_kwargs = {
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
                 "selected_provider": OPENROUTER_SELECTED_PROVIDER,
             }
-        )
+        else:
+            allowed_routes = [
+                {
+                    "gateway": "OPENROUTER",
+                    "requested_service_tier": OPENROUTER_SERVICE_TIER,
+                }
+            ]
+            preferred_routes = list(allowed_routes)
+            if mixed_openrouter_routes:
+                standard_openrouter_route = {
+                    "gateway": "OPENROUTER",
+                    "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+                }
+                allowed_routes.append(standard_openrouter_route)
+                preferred_routes.append(standard_openrouter_route)
+            if google_standard_mode != "disabled":
+                google_standard_route = {
+                    "gateway": "GOOGLE_GEMINI_API",
+                    "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+                }
+                allowed_routes.append(google_standard_route)
+                preferred_routes.append(google_standard_route)
+            manifest_kwargs = {"allowed_gateway_service_tiers": allowed_routes}
+            if mixed_openrouter_routes:
+                manifest_kwargs["preferred_gateway_service_tiers"] = preferred_routes
         manifest = build_financial_document_manifest_v1(
             database,
             source_sha256=document["source_sha256"],
@@ -1103,6 +1165,7 @@ def main() -> int:
         google_api_keys=google_keys,
         google_credential_slots=google_slots,
         google_standard_mode=args.google_standard_mode,
+        openrouter_route_policy=args.openrouter_route_policy.replace("-", "_").upper(),
         stop_provider_frontier_on_transient_error=(args.stop_provider_frontier_on_transient_error),
         provider_request_delay_seconds=_effective_provider_request_delay_seconds_v1(
             args.provider_request_delay_seconds,

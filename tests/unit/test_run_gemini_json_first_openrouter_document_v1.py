@@ -106,6 +106,38 @@ def _google_result() -> ProviderResultV1:
     )
 
 
+def _openrouter_standard_result() -> ProviderResultV1:
+    original = _result()
+    raw = json.dumps(
+        {
+            "choices": [{"finish_reason": "stop", "message": {"content": original.output_text}}],
+            "id": "openrouter-standard-response",
+            "model": "google/gemini-3.7-flash-20260813",
+            "provider": "Google AI Studio",
+            "service_tier": "standard",
+            "usage": {
+                "completion_tokens": 5,
+                "cost": 0.0002,
+                "prompt_tokens": 10,
+                "total_tokens": 15,
+            },
+        }
+    ).encode()
+    return ProviderResultV1(
+        output_text=original.output_text,
+        raw_response_bytes=raw,
+        provider_name="Google AI Studio",
+        provider_model="google/gemini-3.7-flash-20260813",
+        service_tier="standard",
+        attempts=original.attempts,
+        usage={
+            **original.usage,
+            "actual_cost_usd": "0.000200000000",
+        },
+        response_id_sha256="4" * 64,
+    )
+
+
 def _unresolved_result() -> ProviderResultV1:
     original = _result()
     page = {
@@ -525,6 +557,59 @@ def test_provider_failure_falls_back_one_page_to_google_and_builds_mixed_manifes
     }
     fallback = artifacts / "page-00001" / "attempt-0001" / "provider-fallback.json"
     assert json.loads(fallback.read_bytes())["fallback_gateway"] == "GOOGLE_GEMINI_API"
+
+
+def test_openrouter_flex_then_standard_records_ai_studio_route_and_reuses_cache(
+    tmp_path,
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 1)
+    route_policies = []
+
+    def provider(**kwargs):
+        route_policies.append(kwargs["openrouter_route_policy"])
+        return _openrouter_standard_result()
+
+    result = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=provider,
+        openrouter_route_policy="FLEX_THEN_STANDARD",
+    )
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert route_policies == ["FLEX_THEN_STANDARD"]
+    routing = json.loads((artifacts / "provider-routing-policy.json").read_bytes())
+    assert routing["routes"][1] == {
+        "provider_slug": "google-ai-studio",
+        "requested_service_tier": "standard",
+        "selected_provider": "Google AI Studio",
+    }
+    manifest = json.loads((artifacts / "document-manifest.json").read_bytes())
+    assert manifest["pages"][0]["provider_route"] == {
+        "gateway": "OPENROUTER",
+        "requested_service_tier": "standard",
+        "selected_provider": "Google AI Studio",
+    }
+
+    replay_artifacts = tmp_path / "replay-artifacts"
+    replay = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=replay_artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("standard OpenRouter cache must prevent a duplicate paid call")
+        ),
+        openrouter_route_policy="FLEX_THEN_STANDARD",
+    )
+    assert replay["cached_pages"] == [1]
 
 
 def test_provider_recitation_is_a_typed_retry_frontier(tmp_path) -> None:

@@ -37,6 +37,9 @@ EXECUTION_POLICIES = frozenset(
 OPENROUTER_MODEL = "google/gemini-3.7-flash"
 OPENROUTER_PROVIDER = "google-vertex/global/flex"
 OPENROUTER_SERVICE_TIER = "flex"
+OPENROUTER_STANDARD_FALLBACK_PROVIDER = "google-ai-studio"
+OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER = "standard"
+OPENROUTER_ROUTE_POLICIES = frozenset({"FLEX_ONLY", "FLEX_THEN_STANDARD"})
 GOOGLE_FLEX_INPUT_USD_PER_MILLION = Decimal("0.375")
 GOOGLE_FLEX_OUTPUT_USD_PER_MILLION = Decimal("1.875")
 GOOGLE_STANDARD_INPUT_USD_PER_MILLION = Decimal("0.75")
@@ -98,15 +101,15 @@ def replay_openrouter_provider_result_v1(
     ):
         raise GeminiJsonFirstProviderV1Error("OpenRouter replay attempts are invalid")
     text, response_id, model, provider, usage = _openrouter_response_v1(raw_response_bytes)
-    envelope = _json_object(raw_response_bytes, "OpenRouter")
-    if envelope.get("service_tier") != OPENROUTER_SERVICE_TIER:
-        raise GeminiJsonFirstProviderV1Error("OpenRouter replay service tier drifted")
+    service_tier = _openrouter_selected_service_tier_v1(
+        raw_response_bytes, selected_provider=provider
+    )
     return ProviderResultV1(
         output_text=text,
         raw_response_bytes=raw_response_bytes,
         provider_name=provider,
         provider_model=model,
-        service_tier=OPENROUTER_SERVICE_TIER,
+        service_tier=service_tier,
         attempts=tuple(canonical_clone_v1(list(attempts))),
         usage=usage,
         response_id_sha256=sha256(response_id.encode("utf-8")).hexdigest(),
@@ -410,6 +413,24 @@ def _openrouter_response_v1(raw: bytes) -> tuple[str, str, str, str, dict[str, A
     return text, response_id, model, provider, accounting
 
 
+def _openrouter_selected_service_tier_v1(raw: bytes, *, selected_provider: str) -> str:
+    """Authenticate the exact OpenRouter endpoint selected for one response."""
+
+    envelope = _json_object(raw, "OpenRouter")
+    service_tier = envelope.get("service_tier")
+    selected_route = (selected_provider, service_tier)
+    if selected_route == ("Google", OPENROUTER_SERVICE_TIER):
+        return OPENROUTER_SERVICE_TIER
+    if selected_route == (
+        "Google AI Studio",
+        OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+    ):
+        return OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER
+    raise GeminiJsonFirstProviderV1Error(
+        "OpenRouter selected provider/service tier is outside the authenticated route"
+    )
+
+
 def extract_completed_provider_response_text_v1(raw: bytes) -> str:
     """Recover model text from one already-sealed successful provider envelope.
 
@@ -527,7 +548,13 @@ def _openrouter_body_v1(
     response_schema: dict[str, Any],
     output_contract_mode: str,
     thinking_level: str,
+    route_policy: str,
 ) -> dict[str, Any]:
+    if route_policy not in OPENROUTER_ROUTE_POLICIES:
+        raise GeminiJsonFirstProviderV1Error("OpenRouter route policy is invalid")
+    allowed_providers = [OPENROUTER_PROVIDER]
+    if route_policy == "FLEX_THEN_STANDARD":
+        allowed_providers.append(OPENROUTER_STANDARD_FALLBACK_PROVIDER)
     body: dict[str, Any] = {
         "max_tokens": 65536,
         "messages": [
@@ -549,9 +576,10 @@ def _openrouter_body_v1(
         ],
         "model": OPENROUTER_MODEL,
         "provider": {
-            "allow_fallbacks": False,
+            "allow_fallbacks": route_policy == "FLEX_THEN_STANDARD",
             "data_collection": "deny",
-            "only": [OPENROUTER_PROVIDER],
+            "only": allowed_providers,
+            "order": allowed_providers,
             "require_parameters": True,
         },
         "reasoning": {"effort": thinking_level},
@@ -607,6 +635,7 @@ def call_gemini_json_first_v1(
     openrouter_retries: int = 2,
     retry_delay_seconds: float = 5.0,
     thinking_level: str = "low",
+    openrouter_route_policy: str = "FLEX_ONLY",
     transport: Callable[[str, dict[str, str], dict[str, Any], int], bytes] = _post_json_v1,
     sleep: Callable[[float], None] = time.sleep,
     on_attempt: Callable[[dict[str, Any]], None] | None = None,
@@ -623,6 +652,8 @@ def call_gemini_json_first_v1(
         raise GeminiJsonFirstProviderV1Error("output contract mode is invalid")
     if thinking_level not in GOOGLE_THINKING_LEVELS:
         raise GeminiJsonFirstProviderV1Error("thinking level is invalid")
+    if openrouter_route_policy not in OPENROUTER_ROUTE_POLICIES:
+        raise GeminiJsonFirstProviderV1Error("OpenRouter route policy is invalid")
     if (
         timeout_seconds < 60
         or flex_retries_per_slot < 1
@@ -810,6 +841,7 @@ def call_gemini_json_first_v1(
         response_schema=response_schema,
         output_contract_mode=output_contract_mode,
         thinking_level=thinking_level,
+        route_policy=openrouter_route_policy,
     )
     for retry_index in range(openrouter_retries):
         started = time.perf_counter()
@@ -826,6 +858,16 @@ def call_gemini_json_first_v1(
                 timeout_seconds,
             )
             text, response_id, model, provider, usage = _openrouter_response_v1(raw)
+            selected_service_tier = _openrouter_selected_service_tier_v1(
+                raw, selected_provider=provider
+            )
+            if (
+                openrouter_route_policy == "FLEX_ONLY"
+                and selected_service_tier != OPENROUTER_SERVICE_TIER
+            ):
+                raise GeminiJsonFirstProviderV1Error(
+                    "OpenRouter selected a route outside the requested policy"
+                )
         except _ProviderConnectionError:
             record_attempt(
                 _attempt(
@@ -912,7 +954,7 @@ def call_gemini_json_first_v1(
             raw_response_bytes=raw,
             provider_name=provider,
             provider_model=model,
-            service_tier=OPENROUTER_SERVICE_TIER,
+            service_tier=selected_service_tier,
             attempts=tuple(attempts),
             usage=usage,
             response_id_sha256=sha256(response_id.encode("utf-8")).hexdigest(),

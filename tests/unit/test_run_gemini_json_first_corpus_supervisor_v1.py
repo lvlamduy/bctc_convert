@@ -891,6 +891,7 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         assert argv[argv.index("--google-key-file") + 1] == str(tmp_path / "google")
         assert argv[argv.index("--google-key-slot") + 1] == "2"
         assert argv[argv.index("--google-standard-mode") + 1] == "on-provider-error"
+        assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
         return 0, {"disposition": "SUCCEEDED"}
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
@@ -999,6 +1000,10 @@ def test_openrouter_task_can_forbid_direct_google_fallback(monkeypatch, tmp_path
     assert commands
     assert all(
         command[command.index("--google-standard-mode") + 1] == "disabled" for command in commands
+    )
+    assert all(
+        command[command.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+        for command in commands
     )
     assert all("--stop-provider-frontier-on-transient-error" in command for command in commands)
 
