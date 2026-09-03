@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 01:30 UTC (2024-current expansion checkpoint;
+Updated: 2026-09-03 01:53 UTC (2024-current expansion checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -25,6 +25,16 @@ older queue priorities where they conflict.
   đều bị cấm.
 
 ## Checkpoint fallback OpenRouter — 2026-09-03
+
+- Checkpoint đọc trực tiếp từ store lúc 01:53 UTC: riêng 19 ngân hàng mới đã có
+  JSON hợp lệ cho **6.560/14.947 trang (43,89%)**, thuộc **133/271 PDF đã bắt
+  đầu**; **39 PDF** đã đủ toàn bộ trang. Supervisor vẫn chạy một tài liệu tại
+  một thời điểm, tối đa **20 request trang đồng thời** trong tài liệu đó. Ledger
+  2024 vẫn chưa được tạo, vì vậy checkpoint này không chứa request PDF 2024.
+- Đường đóng manifest hiện chấp nhận nhất quán cả trang OpenRouter Flex và trang
+  OpenRouter standard fallback; credential được kiểm tra trước mọi thay đổi
+  trạng thái task. Hai thay đổi đã qua lần lượt **120** và **142** test liên
+  quan, được commit và push trên cả nhánh 2025-current lẫn 2024-current.
 
 - Lúc 01:25 UTC, vòng supervisor cũ được dừng ngay khi phát hiện child process
   dùng sai đường dẫn credential trong worktree vận hành. Các lần lỗi này kết
