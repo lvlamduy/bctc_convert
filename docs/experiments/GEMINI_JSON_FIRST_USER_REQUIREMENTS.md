@@ -27,11 +27,12 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   và xác thực lại đúng byte, không có file local drift. Inventory hiện chọn
   308 ứng viên BCTC tiếng Việt content-unique; 100 file còn lại phải có
   disposition nguồn rõ ràng và không tự động thành request.
-- Mọi request mới chỉ được đi qua **OpenRouter** và giữ nguyên model
-  `google/gemini-3.7-flash`. Ưu tiên `google-vertex/global/flex`; chỉ khi Flex
-  lỗi/không khả dụng mới dùng tuyến chuẩn rẻ nhất tương thích, hiện là
-  `google-ai-studio` tier `standard`. Direct Google, Google Batch, Priority,
-  model fallback và provider ngoài allowlist đều bị cấm.
+- Mọi request mới chỉ được đi qua **OpenRouter**, giữ nguyên model
+  `google/gemini-3.7-flash` và khóa duy nhất provider
+  `google-vertex/global/flex`. Chỉ đạo muộn hơn ngày 2026-09-03 đã tắt fallback
+  `google-ai-studio`; response standard đã có chỉ được tái sử dụng từ store.
+  Direct Google, Google Batch, Priority, model fallback và provider ngoài
+  allowlist đều bị cấm.
 - Runner phải dừng trước request đầu tiên nếu paid frontier giao với bất kỳ
   source/page/image identity nào trong corpus đã hoàn tất hoặc ledger đang
   chạy. Khi resume, chỉ page chưa có kết quả hợp lệ mới được retry; không gửi
@@ -45,7 +46,7 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 | Nhóm | Phạm vi | Quyền gọi Gemini mới |
 | --- | --- | --- |
 | Đã có/đang xử lý, chỉ tái sử dụng | Corpus tám ngân hàng và ledger mười chín ngân hàng 2025-current | **CẤM GỬI LẠI** exact PDF/page/image; chỉ đọc manifest/store/cache/ledger |
-| Frontier 2024 mới | 308 ứng viên content-unique của cả 27 mã, sau language review | Chỉ gửi page chưa có JSON: Vertex Flex trước, tuyến chuẩn rẻ nhất qua OpenRouter khi Flex lỗi |
+| Frontier 2024 mới | 308 ứng viên content-unique của cả 27 mã, sau language review | Chỉ gửi page chưa có JSON qua OpenRouter khóa duy nhất Google Vertex Flex |
 
 Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
 source SHA, page-image SHA, đường dẫn và ranh giới trang với corpus manifest đã
@@ -154,11 +155,11 @@ mất khả năng chứng minh không gửi trùng.
 
 ## 1. Provider và credential
 
-- **Operational override 2026-08-27, cập nhật 2026-09-03:** hai Google API key
-  đã hết ngân sách. Mọi request OCR mới đi duy nhất qua OpenRouter với model
-  `google/gemini-3.7-flash`. Route chính là `google-vertex/global/flex`; khi
-  Flex lỗi mới dùng `google-ai-studio` standard qua OpenRouter. Google direct,
-  Google Batch, Priority và model fallback đều bị vô hiệu hóa. CLI cũ có thể
+- **Operational override muộn nhất 2026-09-03:** hai Google API key đã hết ngân
+  sách. Mọi request OCR mới đi duy nhất qua OpenRouter với model
+  `google/gemini-3.7-flash` và provider duy nhất
+  `google-vertex/global/flex`; fallback `google-ai-studio` đã bị tắt. Google
+  direct, Google Batch, Priority và model fallback đều bị vô hiệu hóa. CLI cũ có thể
   vẫn nhận `--google-key-file` để tương thích ngược, nhưng `--openrouter-only`
   và child
   `--google-standard-mode disabled` là bắt buộc. Không được thử lại Google để
@@ -171,10 +172,10 @@ mất khả năng chứng minh không gửi trùng.
   không cấp quyền gọi Google.
 - Giai đoạn thử prompt/case khó dùng OpenRouter trước.
 - Model thử nghiệm chính là `google/gemini-3.7-flash`.
-- OpenRouter phải khóa đúng thứ tự allowlist: Google Vertex Flex
-  `google-vertex/global/flex` trước, rồi `google-ai-studio` standard chỉ sau lỗi
-  Flex; yêu cầu provider hỗ trợ đầy đủ tham số. Không được tự chuyển sang
-  Priority, provider ngoài allowlist, model lượng tử hóa hoặc model khác.
+- OpenRouter phải khóa duy nhất Google Vertex Flex
+  `google-vertex/global/flex`, tắt automatic fallback và yêu cầu provider hỗ
+  trợ đầy đủ tham số. Không được tự chuyển sang Google AI Studio, Priority,
+  provider ngoài allowlist, model lượng tử hóa hoặc model khác.
 - Hai key Google trong `docs/experiments/gemma.txt` chỉ còn là credential lịch
   sử, không được gọi trong lượt chạy hiện hành và không bao giờ được chuyển qua
   OpenAI/OpenRouter. Việc từng kiểm tra key đuôi `UrJOHw` bằng `generateContent`
@@ -183,8 +184,7 @@ mất khả năng chứng minh không gửi trùng.
   Google cạn và image Batch OpenRouter không cung cấp đường ảnh dùng được.
   OpenRouter đồng bộ, stateless và bounded-concurrency là gateway corpus duy
   nhất hiện tại. Semantic JSON sai chỉ được đổi prompt theo receipt; không đổi
-  model. Provider chỉ đổi Flex → tuyến chuẩn rẻ nhất theo failure receipt có
-  kiểu.
+  model hoặc provider.
 - Batch phải resumable theo batch/document/page: lưu batch ID, request ID,
   provider, credential slot ẩn danh, trạng thái poll, request thành công/thất
   bại, token và chi phí; không submit lại job khi process khởi động lại.

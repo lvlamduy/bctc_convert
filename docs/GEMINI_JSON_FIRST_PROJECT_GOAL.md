@@ -43,12 +43,12 @@ statement trên.
   bộ 12 PDF OCB; loại 228 trang tiếng Anh, còn đúng 17.553 trang tiếng Việt
   trong paid plan năm 2024.
 - Request mới chỉ dùng OpenRouter và giữ nguyên model
-  `google/gemini-3.7-flash`. Route chính là `google-vertex/global/flex`; nếu
-  Flex trả lỗi provider có kiểu hoặc không khả dụng thì mới chuyển sang tuyến
-  chuẩn rẻ nhất tương thích, hiện là `google-ai-studio` tier `standard`.
-  Direct Google, Priority, model fallback và provider ngoài allowlist bị cấm.
-  Resume/retry theo đúng page còn thiếu và receipt có kiểu; không gửi lại toàn
-  PDF chỉ vì một vài page lỗi.
+  `google/gemini-3.7-flash`, khóa duy nhất provider
+  `google-vertex/global/flex`. Theo chỉ đạo muộn hơn ngày 2026-09-03, không còn
+  fallback sang `google-ai-studio`; response standard đã trả tiền chỉ được tái
+  sử dụng từ store. Direct Google, Priority, model fallback và provider ngoài
+  allowlist bị cấm. Resume/retry theo đúng page còn thiếu và receipt có kiểu;
+  không gửi lại toàn PDF chỉ vì một vài page lỗi.
 - Mọi PDF trên 100 trang và mọi PDF OCB phải được rà phần tiếng Việt trước khi
   vào paid ledger. Bảng cutoff 2024 đã hoàn tất; runner vẫn phải exact-replay
   bảng này và chặn 2024 cho đến khi ledger 2025-current hoàn tất.
@@ -63,8 +63,8 @@ chưa từng thấy, theo kiến trúc mới:
 PDF BCTC bất biến
 → render từng trang thành ảnh đủ nét
 → pilot: Gemini 3.7 Flash qua OpenRouter, khóa Google Vertex Flex
-→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter, Flex trước rồi tuyến
-  chuẩn rẻ nhất khi Flex lỗi; OpenRouter-only, không gọi trực tiếp Google API
+→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter, chỉ Google Vertex Flex;
+  không fallback standard và không gọi trực tiếp Google API
 → JSON nhiều tầng, schema-blind, giữ nguyên chữ và giá trị nhìn thấy
 → JSON/database được version hóa và lập chỉ mục
 → truy hồi vùng ứng viên nhỏ theo từng accounting family
@@ -74,10 +74,10 @@ PDF BCTC bất biến
 ```
 
 Gemini là reader duy nhất của đường xử lý mới. Model được khóa đúng
-`google/gemini-3.7-flash`. OpenRouter thử provider
-`google-vertex/global/flex` trước; khi Flex lỗi mới được dùng
-`google-ai-studio` standard là tuyến chuẩn rẻ nhất tương thích tại checkpoint.
-Đây là fallback provider/tier có allowlist, không phải fallback model. Từ ngày
+`google/gemini-3.7-flash`. Mọi request mới qua OpenRouter chỉ được dùng
+`google-vertex/global/flex`; fallback `google-ai-studio` từng được bật nhưng đã
+bị chỉ đạo muộn hơn ngày 2026-09-03 vô hiệu hóa. Response standard đã có vẫn
+được tái sử dụng bất biến. Từ ngày
 2026-08-27, hai credential Google không còn ngân sách nên phần corpus còn lại
 chạy **OpenRouter-only**: không gọi Google standard trực tiếp, Google Batch hay
 Google API fallback. Tham số đường dẫn key Google có thể còn xuất hiện trong
@@ -429,9 +429,9 @@ Endpoint pilot mặc định:
 ```text
 model: google/gemini-3.7-flash
 primary_provider: google-vertex/global/flex
-fallback_provider: google-ai-studio
-fallback_service_tier: standard
-fallback_condition: typed Flex failure/unavailable only
+fallback_provider: disabled
+fallback_service_tier: disabled
+fallback_condition: none
 data_collection: deny
 structured JSON Schema: required
 ```
@@ -495,8 +495,8 @@ trong lúc corpus đang chạy nếu chưa có equivalence panel và version m�
 
 Goal hoàn thành khi:
 
-1. Một prompt/JSON contract Gemini 3.7 Flash qua OpenRouter với Flex-first và
-   fallback tuyến chuẩn rẻ nhất có kiểm soát đã freeze sau benchmark
+1. Một prompt/JSON contract Gemini 3.7 Flash qua OpenRouter, khóa duy nhất
+   Google Vertex Flex và không fallback provider, đã freeze sau benchmark
    đa dạng và không còn lỗi material trên certified hard panel.
 2. Mọi trang trong corpus có immutable page disposition và versioned JSON hoặc
    typed unresolved, không có silent drop.

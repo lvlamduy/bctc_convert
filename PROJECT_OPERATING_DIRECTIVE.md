@@ -58,6 +58,15 @@
 > invented. Priority tier, another model, arbitrary provider routing and direct
 > Google calls remain forbidden.
 
+> **2026-09-03 later Vertex-Flex-only supersession:** for every provider request
+> created after this instruction, OpenRouter must pin the sole provider
+> `google-vertex/global/flex` with model `google/gemini-3.7-flash`; automatic
+> fallback to `google-ai-studio` is disabled. Standard responses already paid
+> for remain immutable reuse-only evidence and may be selected by a manifest,
+> but they do not authorize another standard request. When Flex is unavailable,
+> the request must fail/cool down and retain its exact missing-page frontier.
+> Direct Google and every other provider/model remain forbidden.
+
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code
 > owns normalization, graph construction, period/unit resolution, equations and
