@@ -116,6 +116,7 @@ def test_document_manifest_command_merges_disjoint_batches_in_page_order(
     assert observed["allowed_gateway_service_tiers"] == [
         {"gateway": "GOOGLE_GEMINI_BATCH_API", "requested_service_tier": "batch"},
         {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
     ]
 
 

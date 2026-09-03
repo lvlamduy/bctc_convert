@@ -911,6 +911,7 @@ def _document_manifest(args: argparse.Namespace) -> int:
                 "requested_service_tier": "batch",
             },
             {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+            {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
         ]
     else:
         manifest_args["requested_service_tier"] = contract["requested_service_tier"]
