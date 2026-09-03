@@ -34,6 +34,12 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   lỗi quay về Vertex Flex. Không gửi lại page đã đạt, không gắn nhãn Agy thành
   Vertex Flex, và lưu rõ provider/model/effort/token thực tế. Gemini 3.8 Flash
   High chỉ làm reviewer read-only, không được tạo JSON đưa vào corpus.
+- **Tạm dừng Agy theo quota ngày:** lúc `2026-09-03 05:24 UTC`, người dùng xác
+  nhận Agy đã chạm giới hạn ngày và yêu cầu chờ **3 giờ 34 phút**. Không được
+  gọi Agy, kể cả health-check, trước `2026-09-03 08:58 UTC`. Trong thời gian
+  này chỉ OpenRouter Vertex Flex tiếp tục frontier. Sau mốc trên, Agy được mở
+  lại từ `gemini-3.7-flash-low`; không dùng Medium/High nếu Low chưa trả lỗi
+  theo đúng điều kiện escalation ở trên.
 - Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên; không
   được vì mở rộng corpus mà bỏ qua checkpoint hoặc ghi đè artifact cũ.
 - Inventory byte/page đã xác thực tại checkpoint này gồm **140 PDF / 8.947
