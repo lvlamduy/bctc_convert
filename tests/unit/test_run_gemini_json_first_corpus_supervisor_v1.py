@@ -1928,7 +1928,12 @@ def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -
         "offline_missing_pages": [],
         "semantic_failed_pages": [],
     }
-    monkeypatch.setattr(target, "_command", lambda *_args, **_kwargs: (0, provider_result))
+
+    def command(argv, **_kwargs):
+        assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+        return 0, provider_result
+
+    monkeypatch.setattr(target, "_command", command)
     monkeypatch.setattr(
         target,
         "seal_offline_revalidated_corpus_task_v1",

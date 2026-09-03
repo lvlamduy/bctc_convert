@@ -456,6 +456,84 @@ def _replay_prior_semantic_result_v1(
     return None, None, matching_failure
 
 
+def _replay_prior_provider_validation_result_v1(
+    *,
+    artifact_dir: Path,
+    physical_page: int,
+    expected_page: dict[str, Any],
+    expected_contract: dict[str, Any],
+    openrouter_route_policy: str,
+) -> tuple[ProviderResultV1 | None, str | None]:
+    """Recover a complete response rejected only by an older route validator.
+
+    Provider-validation failures predate the semantic receipt, so they do not
+    carry a raw-response hash.  Replay is nevertheless safe because the source
+    must be one immutable regular file bound to the same document contract and
+    rendered page, and both the current provider validator and the complete
+    financial-page decoder must accept its bytes.  The new attempt writes a
+    hash-bound semantic replay receipt before ingestion.
+    """
+
+    failures = sorted(artifact_dir.rglob(f"page-{physical_page:05d}/attempt-*/failure.json"))
+    for failure_path in failures:
+        if failure_path.is_symlink() or not failure_path.is_file():
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "provider replay failure receipt is not one regular file"
+            )
+        raw_path = failure_path.with_name("raw-response-before-validation.json")
+        if not raw_path.exists():
+            continue
+        if raw_path.is_symlink() or not raw_path.is_file():
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "provider replay source is not one regular file"
+            )
+        source_artifact_dir = failure_path.parents[2]
+        source_contract = _canonical_semantic_replay_contract_v1(source_artifact_dir)
+        if any(
+            source_contract.get(field) != expected_contract[field]
+            for field in _SEMANTIC_REPLAY_CONTRACT_FIELDS
+        ):
+            continue
+        try:
+            failure = json.loads(failure_path.read_bytes())
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "provider replay failure receipt is not JSON"
+            ) from exc
+        prior_page = failure.get("page") if type(failure) is dict else None
+        if type(prior_page) is not dict or any(
+            prior_page.get(field) != expected_page[field]
+            for field in ("media_type", "physical_page", "render_dpi")
+        ):
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "provider replay page binding drifted"
+            )
+        if prior_page != expected_page:
+            continue
+        attempts = failure.get("attempts")
+        if (
+            type(attempts) is not list
+            or not attempts
+            or any(type(attempt) is not dict for attempt in attempts)
+        ):
+            raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+                "provider replay attempts are invalid"
+            )
+        raw = raw_path.read_bytes()
+        try:
+            result = replay_openrouter_provider_result_v1(raw, attempts=tuple(attempts))
+            decode_financial_page_json_text_v1(result.output_text)
+        except Exception:
+            continue
+        if (
+            result.provider_name == OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER
+            and openrouter_route_policy != "FLEX_THEN_STANDARD"
+        ):
+            continue
+        return result, str(raw_path.relative_to(artifact_dir))
+    return None, None
+
+
 def _extract_page(
     *,
     pdf: Path,
@@ -543,6 +621,20 @@ def _extract_page(
             physical_page=physical_page,
             page=rendered.page,
             semantic_failure_present=True,
+        )
+    replayed, replay_source = _replay_prior_provider_validation_result_v1(
+        artifact_dir=semantic_replay_source_dir or artifact_dir,
+        physical_page=physical_page,
+        expected_page=rendered.page,
+        expected_contract=semantic_replay_expected_contract,
+        openrouter_route_policy=openrouter_route_policy,
+    )
+    if replayed is not None:
+        return _PageOutcome(
+            physical_page=physical_page,
+            page=rendered.page,
+            provider_result=replayed,
+            semantic_replay_source=replay_source,
         )
     if offline_replay_only:
         return _PageOutcome(
@@ -726,11 +818,12 @@ def _persist_page_outcome_v1(
         "GOOGLE_GEMINI_API",
     }:
         raise RunGeminiJsonFirstOpenRouterDocumentV1Error("selected provider identity drifted")
-    requested_service_tier = (
-        GOOGLE_STANDARD_SERVICE_TIER
-        if result.provider_name == "GOOGLE_GEMINI_API"
-        else result.service_tier
-    )
+    if result.provider_name == "GOOGLE_GEMINI_API":
+        requested_service_tier = GOOGLE_STANDARD_SERVICE_TIER
+    elif result.provider_name == OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER:
+        requested_service_tier = OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER
+    else:
+        requested_service_tier = result.service_tier
     identities = ingest_financial_page_extraction_v1(
         database,
         document=document,

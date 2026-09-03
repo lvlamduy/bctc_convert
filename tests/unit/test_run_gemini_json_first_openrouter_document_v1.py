@@ -114,7 +114,7 @@ def _openrouter_standard_result() -> ProviderResultV1:
             "id": "openrouter-standard-response",
             "model": "google/gemini-3.7-flash-20260813",
             "provider": "Google AI Studio",
-            "service_tier": "standard",
+            "service_tier": "default",
             "usage": {
                 "completion_tokens": 5,
                 "cost": 0.0002,
@@ -128,7 +128,7 @@ def _openrouter_standard_result() -> ProviderResultV1:
         raw_response_bytes=raw,
         provider_name="Google AI Studio",
         provider_model="google/gemini-3.7-flash-20260813",
-        service_tier="standard",
+        service_tier="default",
         attempts=original.attempts,
         usage={
             **original.usage,
@@ -610,6 +610,66 @@ def test_openrouter_flex_then_standard_records_ai_studio_route_and_reuses_cache(
         openrouter_route_policy="FLEX_THEN_STANDARD",
     )
     assert replay["cached_pages"] == [1]
+
+
+def test_prior_standard_response_rejected_by_old_route_validator_replays_without_resend(
+    tmp_path,
+) -> None:
+    pdf = tmp_path / "document.pdf"
+    database = tmp_path / "store.sqlite3"
+    artifacts = tmp_path / "artifacts"
+    _pdf(pdf, 1)
+    billed_result = _openrouter_standard_result()
+
+    def old_validator_failure(**_kwargs):
+        error = GeminiJsonFirstProviderV1Error("old route validator rejected default tier")
+        error.attempts = billed_result.attempts
+        error.raw_response_bytes = billed_result.raw_response_bytes
+        raise error
+
+    first = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=old_validator_failure,
+        openrouter_route_policy="FLEX_THEN_STANDARD",
+    )
+    assert first["disposition"] == "NEEDS_RETRY"
+    assert first["failed_pages"] == [1]
+
+    replay = target.run_openrouter_document_v1(
+        pdf=pdf,
+        database=database,
+        artifact_dir=artifacts,
+        api_key="x" * 32,
+        workers=1,
+        provider_call=lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("the already billed standard response must be replayed")
+        ),
+        openrouter_route_policy="FLEX_THEN_STANDARD",
+    )
+
+    assert replay["disposition"] == "SUCCEEDED"
+    assert replay["ingested_pages"] == [1]
+    assert replay["semantic_replay_sources"] == [
+        {
+            "physical_page": 1,
+            "source_relative_path": ("page-00001/attempt-0001/raw-response-before-validation.json"),
+        }
+    ]
+    observation = json.loads(
+        (artifacts / "page-00001" / "attempt-0002" / "observation.json").read_bytes()
+    )
+    assert observation["provider_name"] == "Google AI Studio"
+    assert observation["service_tier"] == "default"
+    manifest = json.loads((artifacts / "document-manifest.json").read_bytes())
+    assert manifest["pages"][0]["provider_route"] == {
+        "gateway": "OPENROUTER",
+        "requested_service_tier": "standard",
+        "selected_provider": "Google AI Studio",
+    }
 
 
 def test_provider_recitation_is_a_typed_retry_frontier(tmp_path) -> None:

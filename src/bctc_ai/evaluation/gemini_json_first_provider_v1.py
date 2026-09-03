@@ -39,6 +39,7 @@ OPENROUTER_PROVIDER = "google-vertex/global/flex"
 OPENROUTER_SERVICE_TIER = "flex"
 OPENROUTER_STANDARD_FALLBACK_PROVIDER = "google-ai-studio"
 OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER = "standard"
+OPENROUTER_STANDARD_FALLBACK_RESPONSE_TIER = "default"
 OPENROUTER_ROUTE_POLICIES = frozenset({"FLEX_ONLY", "FLEX_THEN_STANDARD"})
 GOOGLE_FLEX_INPUT_USD_PER_MILLION = Decimal("0.375")
 GOOGLE_FLEX_OUTPUT_USD_PER_MILLION = Decimal("1.875")
@@ -423,9 +424,9 @@ def _openrouter_selected_service_tier_v1(raw: bytes, *, selected_provider: str) 
         return OPENROUTER_SERVICE_TIER
     if selected_route == (
         "Google AI Studio",
-        OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+        OPENROUTER_STANDARD_FALLBACK_RESPONSE_TIER,
     ):
-        return OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER
+        return OPENROUTER_STANDARD_FALLBACK_RESPONSE_TIER
     raise GeminiJsonFirstProviderV1Error(
         "OpenRouter selected provider/service tier is outside the authenticated route"
     )

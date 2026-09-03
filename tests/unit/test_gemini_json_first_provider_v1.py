@@ -298,7 +298,7 @@ def test_openrouter_can_fall_back_from_vertex_flex_to_cheapest_standard_route() 
 
     def transport(url, headers, body, timeout):
         calls.append(body)
-        return _openrouter_response(provider_name="Google AI Studio", service_tier="standard")
+        return _openrouter_response(provider_name="Google AI Studio", service_tier="default")
 
     result = call_gemini_json_first_v1(
         google_api_keys=None,
@@ -320,12 +320,12 @@ def test_openrouter_can_fall_back_from_vertex_flex_to_cheapest_standard_route() 
         "require_parameters": True,
     }
     assert result.provider_name == "Google AI Studio"
-    assert result.service_tier == "standard"
+    assert result.service_tier == "default"
     replayed = replay_openrouter_provider_result_v1(
         result.raw_response_bytes, attempts=result.attempts
     )
     assert replayed.provider_name == "Google AI Studio"
-    assert replayed.service_tier == "standard"
+    assert replayed.service_tier == "default"
 
 
 def test_flex_only_rejects_an_unrequested_standard_route() -> None:
@@ -338,7 +338,7 @@ def test_flex_only_rejects_an_unrequested_standard_route() -> None:
             prompt="prompt",
             response_schema={"type": "object"},
             transport=lambda *_args: _openrouter_response(
-                provider_name="Google AI Studio", service_tier="standard"
+                provider_name="Google AI Studio", service_tier="default"
             ),
             sleep=lambda _: None,
         )

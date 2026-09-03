@@ -4018,6 +4018,8 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         corpus_ledger_summary_v1(args.ledger)["prompt_variant"],
         "--output-contract-mode",
         "json-schema",
+        "--openrouter-route-policy",
+        "flex-then-standard",
         "--offline-replay-only",
     ]
     if google_standard_mode != "disabled":
