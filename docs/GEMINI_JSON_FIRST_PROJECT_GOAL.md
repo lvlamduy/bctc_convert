@@ -34,11 +34,17 @@ statement trên.
   dữ liệu của tám ngân hàng này phải lấy từ manifest/store/cache đã xác thực;
   không gửi lại OpenRouter. PDF mới ngoài manifest của tám ngân hàng này chỉ
   được ghi vào inventory và chờ quyền riêng của người dùng.
-- Mọi request mới đi duy nhất qua OpenRouter, model
+- Mọi request API mới đi duy nhất qua OpenRouter, model
   `google/gemini-3.7-flash`, provider `google-vertex/global/flex`, service tier
   `flex`; direct Google và mọi fallback provider/model đều bị vô hiệu hóa.
+- Theo bổ sung ngày 2026-09-03, Agy trên VPS được chạy song song như một
+  execution route riêng cho page chưa có JSON: dùng cùng ảnh/prompt/schema và
+  validator, bắt đầu bằng `gemini-3.7-flash-low`, chỉ tăng Medium rồi High khi
+  output trước chưa dùng được. Mỗi PDF phải được claim khỏi hàng đợi Vertex Flex
+  trước khi Agy chạy; provider/model/effort phải lưu đúng thực tế. Gemini 3.8
+  Flash High chỉ review chiến lược, không làm reader cho corpus.
 - Denominator đã xác thực ở checkpoint: corpus cũ **140 PDF / 8.947 trang** chỉ
-  tái sử dụng; paid frontier mới **279 PDF / 15.968 trang**. Runner phải chứng
+  tái sử dụng; frontier mới **271 PDF / 14.947 trang**. Runner phải chứng
   minh paid frontier không chứa ACB/BID/CTG/HDB/MBB/VCB/VIB/VPB trước request
   đầu tiên.
 
@@ -51,8 +57,8 @@ chưa từng thấy, theo kiến trúc mới:
 PDF BCTC bất biến
 → render từng trang thành ảnh đủ nét
 → pilot: Gemini 3.7 Flash qua OpenRouter, khóa Google Vertex Flex
-→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter Google Vertex Flex,
-  OpenRouter-only; không gọi Google API
+→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter Google Vertex Flex và worker
+  Agy disjoint; không gọi Google API, không gửi trùng page
 → JSON nhiều tầng, schema-blind, giữ nguyên chữ và giá trị nhìn thấy
 → JSON/database được version hóa và lập chỉ mục
 → truy hồi vùng ứng viên nhỏ theo từng accounting family
@@ -61,17 +67,21 @@ PDF BCTC bất biến
 → structured data / Excel / provenance / unresolved
 ```
 
-Gemini là reader duy nhất của đường xử lý mới. Model được khóa đúng
+Gemini là reader duy nhất của đường xử lý mới. Tuyến API được khóa đúng
 `google/gemini-3.7-flash` và OpenRouter provider
-`google-vertex/global/flex`, tắt mọi provider/model fallback. Từ ngày
+`google-vertex/global/flex`, tắt mọi provider/model fallback. Worker Agy được
+phép cung cấp cùng Gemini 3.7 Flash trên một frontier đã claim riêng, với effort
+`low → medium → high` chỉ theo thất bại semantic/schema; đây không phải fallback
+provider ẩn và phải lưu provenance Agy riêng. Từ ngày
 2026-08-27, hai credential Google không còn ngân sách nên phần corpus còn lại
 chạy **OpenRouter-only**: không gọi Google standard, Google Batch hay Google
 fallback. Tham số đường dẫn key Google có thể còn xuất hiện trong CLI để tương
 thích ngược, nhưng child request bắt buộc mang `google-standard-mode=disabled`
 và không được sử dụng key đó. Các page-version Google đã hoàn thành trước thời
 điểm chuyển route vẫn được giữ bất biến trong database; khi cùng một
-source/image/prompt/schema có cả Google và OpenRouter version thì manifest hiện
-hành ưu tiên `OPENROUTER/flex`, không xóa version lịch sử. Mọi request phải
+source/image/prompt/schema có cả Google, OpenRouter hoặc Agy version thì manifest
+hiện hành ưu tiên `OPENROUTER/flex`, sau đó Agy Low/Medium/High rồi mới đến các
+version lịch sử; không xóa version nào. Mọi request phải
 resume theo document/page, không submit trùng, và chỉ retry từ failure receipt
 có kiểu rõ ràng. Không được cố ý gửi request vô ích chỉ để đốt quota.
 

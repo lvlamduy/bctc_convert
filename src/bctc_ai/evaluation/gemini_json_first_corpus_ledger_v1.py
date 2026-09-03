@@ -36,6 +36,7 @@ TASK_STATES = frozenset(
     }
 )
 TERMINAL_TASK_STATES = frozenset({"SUCCEEDED", "FAILED"})
+AGY_PROVIDER_JOB_PREFIX = "agyjobv1:"
 
 _TRANSITIONS = {
     "PENDING": frozenset({"SUBMITTED", "RUNNING", "FAILED"}),
@@ -339,6 +340,140 @@ def transition_corpus_task_v1(
         connection.commit()
         updated = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
     return dict(updated)
+
+
+def claim_pending_openrouter_corpus_task_for_agy_v1(
+    path: Path,
+    *,
+    task_id: str | None = None,
+) -> dict[str, Any]:
+    """Atomically reserve one pending OpenRouter-planned document for Agy.
+
+    ``SUBMITTED`` is deliberately used as the external-worker lease state.  The
+    ordinary OpenRouter scheduler only executes ``PENDING``, ``RUNNING`` and
+    ``NEEDS_RETRY`` tasks, so it cannot send the same document after this
+    transaction commits.  With no explicit task ID we take the greatest task
+    ID, while the ordinary scheduler takes the least; this also prevents a
+    stale pre-claim scheduler snapshot from selecting the same document.
+    """
+
+    if task_id is not None and (type(task_id) is not str or not task_id.startswith("gjfptaskv1:")):
+        raise _error("Agy corpus task identity is invalid")
+    with _connect(path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        identity = connection.execute("SELECT * FROM run_identity WHERE singleton=1").fetchone()
+        if task_id is None:
+            row = connection.execute(
+                "SELECT * FROM task WHERE route=? AND state='PENDING' "
+                "ORDER BY task_id DESC LIMIT 1",
+                (OPENROUTER_ROUTE,),
+            ).fetchone()
+        else:
+            row = connection.execute(
+                "SELECT * FROM task WHERE task_id=? AND route=? AND state='PENDING'",
+                (task_id, OPENROUTER_ROUTE),
+            ).fetchone()
+        if row is None:
+            raise _error("no pending OpenRouter corpus task is available for Agy")
+        attempt_count = row["attempt_count"] + 1
+        if attempt_count > identity["max_task_attempts"]:
+            raise _error("Agy corpus task retry bound is exhausted")
+        claim_material = {
+            "corpus_run_id": identity["corpus_run_id"],
+            "format_version": "GEMINI_JSON_FIRST_AGY_TASK_CLAIM_V1",
+            "source_sha256": row["source_sha256"],
+            "task_id": row["task_id"],
+        }
+        provider_job_ref = AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(claim_material)
+        receipt = {
+            **claim_material,
+            "execution_provider": "AGY_CLI",
+            "initial_effort": "low",
+            "provider_job_ref": provider_job_ref,
+        }
+        receipt_bytes = canonical_json_bytes_v1(receipt)
+        event_ordinal = connection.execute(
+            "SELECT COUNT(*)+1 FROM task_event WHERE task_id=?", (row["task_id"],)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO task_event VALUES (?,?,?,?,?)",
+            (row["task_id"], event_ordinal, "PENDING", "SUBMITTED", receipt_bytes),
+        )
+        connection.execute(
+            "UPDATE task SET state='SUBMITTED',attempt_count=?,provider_job_ref=?,"
+            "last_receipt_json=? WHERE task_id=?",
+            (attempt_count, provider_job_ref, receipt_bytes, row["task_id"]),
+        )
+        connection.commit()
+        updated = connection.execute(
+            "SELECT * FROM task WHERE task_id=?", (row["task_id"],)
+        ).fetchone()
+    return dict(updated)
+
+
+def seal_agy_corpus_task_v1(
+    path: Path,
+    *,
+    task_id: str,
+    provider_job_ref: str,
+    document_manifest: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal one Agy-reserved task only after a complete usable manifest exists."""
+
+    if (
+        type(task_id) is not str
+        or not task_id.startswith("gjfptaskv1:")
+        or type(provider_job_ref) is not str
+        or not provider_job_ref.startswith(AGY_PROVIDER_JOB_PREFIX)
+        or type(document_manifest) is not dict
+    ):
+        raise _error("Agy corpus task seal input is invalid")
+    document = document_manifest.get("document")
+    pages = document_manifest.get("pages")
+    manifest_id = document_manifest.get("document_manifest_id")
+    status_counts = document_manifest.get("status_counts")
+    if (
+        type(document) is not dict
+        or type(pages) is not list
+        or not pages
+        or type(manifest_id) is not str
+        or not manifest_id.startswith("gfdmv1:manifest:")
+        or type(status_counts) is not dict
+        or status_counts.get("UNRESOLVED_PAGE", 0) != 0
+        or any(type(page) is not dict for page in pages)
+    ):
+        raise _error("Agy corpus task manifest is incomplete or unresolved")
+    receipt = {
+        "document_manifest_id": manifest_id,
+        "execution_provider": "AGY_CLI",
+        "format_version": "GEMINI_JSON_FIRST_AGY_TASK_SUCCESS_V1",
+        "page_count": len(pages),
+        "provider_job_ref": provider_job_ref,
+    }
+    with _connect(path, readonly=True) as connection:
+        row = connection.execute("SELECT * FROM task WHERE task_id=?", (task_id,)).fetchone()
+    expected_pages = (
+        list(range(row["first_physical_page"], row["last_physical_page"] + 1))
+        if row is not None
+        else []
+    )
+    if (
+        row is None
+        or row["state"] != "SUBMITTED"
+        or row["provider_job_ref"] != provider_job_ref
+        or document.get("source_sha256") != row["source_sha256"]
+        or document.get("source_logical_name") != row["relative_path"]
+        or [page.get("physical_page") for page in pages] != expected_pages
+    ):
+        raise _error("Agy corpus task manifest differs from its reserved task")
+    return transition_corpus_task_v1(
+        path,
+        task_id=task_id,
+        expected_state="SUBMITTED",
+        next_state="SUCCEEDED",
+        receipt=receipt,
+        provider_job_ref=provider_job_ref,
+    )
 
 
 def requeue_failed_openrouter_corpus_task_v1(

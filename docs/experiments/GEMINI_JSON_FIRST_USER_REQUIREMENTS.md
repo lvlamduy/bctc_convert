@@ -22,22 +22,30 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 - Nếu phát hiện PDF mới của một trong tám ngân hàng chưa có trong manifest cũ,
   không được tự gọi Gemini. Trường hợp đó phải ghi riêng vào inventory và chờ
   người dùng cấp quyền mở rộng frontier.
-- Mọi request mới chỉ được đi qua **OpenRouter → Google Vertex Flex**, model
+- Mọi request API mới chỉ được đi qua **OpenRouter → Google Vertex Flex**, model
   `google/gemini-3.7-flash`, provider `google-vertex/global/flex`, service tier
   `flex`. Direct Google, Google Standard, Google Batch và mọi provider/model
   fallback đều bị cấm.
+- **Bổ sung Agy 2026-09-03:** được dùng Agy trên VPS song song cho đúng PDF/page
+  chưa có JSON, nhưng phải claim task khỏi supervisor Vertex Flex trước khi gửi.
+  Agy dùng cùng ảnh 300 DPI, prompt, JSON Schema và validator; effort đầu tiên
+  bắt buộc là `gemini-3.7-flash-low`. Chỉ output lỗi schema/completeness hoặc
+  `UNRESOLVED_PAGE` mới được thử Medium rồi High. Cả ba không đạt thì chỉ page
+  lỗi quay về Vertex Flex. Không gửi lại page đã đạt, không gắn nhãn Agy thành
+  Vertex Flex, và lưu rõ provider/model/effort/token thực tế. Gemini 3.8 Flash
+  High chỉ làm reviewer read-only, không được tạo JSON đưa vào corpus.
 - Chính sách Git, snapshot/restore S3 và backup Codex tiếp tục giữ nguyên; không
   được vì mở rộng corpus mà bỏ qua checkpoint hoặc ghi đè artifact cũ.
 - Inventory byte/page đã xác thực tại checkpoint này gồm **140 PDF / 8.947
-  trang** của tám ngân hàng cũ chỉ để tái sử dụng, và **279 PDF / 15.968 trang**
-  của mười chín ngân hàng mới được phép vào Vertex Flex frontier. Tổng này phải
+  trang** của tám ngân hàng cũ chỉ để tái sử dụng, và **271 PDF / 14.947 trang**
+  của mười chín ngân hàng mới trong frontier disjoint. Tổng này phải
   được kiểm tra lại nếu nguồn thay đổi; tuyệt đối không biến 140 PDF cũ thành
   request mới chỉ vì chạy lại inventory hoặc đổi manifest trình bày.
 
 ## 1. Provider và credential
 
 - **Operational override 2026-08-27:** hai Google API key đã hết ngân sách.
-  Từ checkpoint này, mọi request OCR mới phải đi duy nhất qua OpenRouter với
+  Từ checkpoint này, mọi request API mới phải đi duy nhất qua OpenRouter với
   model `google/gemini-3.7-flash`, provider
   `google-vertex/global/flex`; Google standard, Google Batch và mọi Google
   fallback đều bị vô hiệu hóa. CLI cũ có thể vẫn nhận `--google-key-file` để
@@ -62,9 +70,10 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   không còn là quyền gọi lại sau override.
 - Kế hoạch cũ chạy song song Google Batch/OpenRouter Batch đã kết thúc khi quota
   Google cạn và image Batch OpenRouter không cung cấp đường ảnh dùng được.
-  OpenRouter Google Vertex Flex đồng bộ, stateless và bounded-concurrency là
-  route corpus duy nhất hiện tại. Semantic JSON sai chỉ được đổi prompt theo
-  receipt; không đổi provider/model.
+  OpenRouter Google Vertex Flex đồng bộ và worker Agy có task lease tách biệt là
+  hai execution route hiện hành. Semantic JSON sai ở Agy được tăng effort đúng
+  `Low → Medium → High`; sau đó mới trả riêng page lỗi về retry Vertex Flex theo
+  receipt. Hai route không bao giờ được sở hữu cùng một PDF/page đồng thời.
 - Batch phải resumable theo batch/document/page: lưu batch ID, request ID,
   provider, credential slot ẩn danh, trạng thái poll, request thành công/thất
   bại, token và chi phí; không submit lại job khi process khởi động lại.

@@ -18,6 +18,19 @@ hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ tái sử dụng JSON đã
 frontier chỉ gồm mười chín ngân hàng mới và chỉ được gọi qua OpenRouter Google
 Vertex Flex.
 
+**Bổ sung vận hành 2026-09-03 — Agy song song:** VPS được phép dùng Agy làm
+reader thứ hai cho đúng frontier còn thiếu. Agy phải nhận đúng ảnh render 300
+DPI, prompt và JSON Schema của tuyến API. Lần đầu luôn dùng
+`gemini-3.7-flash-low`; chỉ khi output không qua schema/completeness hoặc trả
+`UNRESOLVED_PAGE` mới tăng lần lượt lên Medium rồi High. Trang đã có JSON hợp lệ
+ở bất kỳ tuyến nào phải tái sử dụng, không gửi lại. Ledger phải claim nguyên tử
+mỗi PDF trước khi gọi Agy để supervisor Vertex Flex không thể xử lý trùng; mọi
+record phải ghi đúng provider `AGY_CLI`, model/effort thực tế và không được giả
+nhãn Vertex Flex. Nếu cả ba effort không giải quyết được, chỉ frontier lỗi đó
+mới quay về retry OpenRouter Vertex Flex theo receipt. Gemini 3.8 Flash High chỉ
+được dùng như reviewer chiến lược read-only, không tạo JSON corpus và không có
+quyền sửa source/store.
+
 The binding production flow is:
 
 ```text

@@ -65,6 +65,56 @@ def test_paid_command_preflights_openrouter_credential_before_dispatch(
     assert calls == [args]
 
 
+def test_openrouter_stale_snapshot_skips_task_already_claimed_by_agy(monkeypatch, tmp_path) -> None:
+    task = {
+        "attempt_count": 0,
+        "first_physical_page": 1,
+        "last_physical_page": 1,
+        "provider_job_ref": None,
+        "state": "PENDING",
+        "task_id": "gjfptaskv1:" + "a" * 64,
+    }
+    monkeypatch.setattr(target, "_retry_prompt_frontiers_v1", lambda _task: None)
+    monkeypatch.setattr(target, "_protected_retry_pages_v1", lambda _task: [])
+    monkeypatch.setattr(
+        target,
+        "transition_corpus_task_v1",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            target.GeminiJsonFirstCorpusLedgerV1Error("state raced")
+        ),
+    )
+    monkeypatch.setattr(
+        target,
+        "list_corpus_tasks_v1",
+        lambda _ledger: [
+            {
+                **task,
+                "provider_job_ref": "agyjobv1:" + "b" * 64,
+                "state": "SUBMITTED",
+            }
+        ],
+    )
+    result = target._run_openrouter(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=tmp_path,
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        openrouter_key_file=tmp_path / "openrouter",
+        openrouter_workers=20,
+        google_key_file=tmp_path / "google",
+        google_key_slot=1,
+        provider_timeout_seconds=900,
+        max_attempts=3,
+        openrouter_only=True,
+    )
+    assert result == {
+        "disposition": "SKIPPED_AFTER_AGY_CLAIM_RACE",
+        "task_id": task["task_id"],
+    }
+
+
 def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
     monkeypatch, tmp_path
 ) -> None:
@@ -99,6 +149,9 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
 
     assert manifest["document_manifest_id"].startswith("gfdmv1:manifest:")
     assert captured["allowed_gateway_service_tiers"] == [
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": "standard",
@@ -108,6 +161,9 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
     ]
     assert captured["preferred_gateway_service_tiers"] == [
         {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
         {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
         {
             "gateway": "GOOGLE_GEMINI_API",
@@ -115,6 +171,9 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
         },
     ]
     assert target._allowed_gateway_service_tiers_v1() == [
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": "standard",
@@ -128,6 +187,9 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
     ]
     assert target._preferred_gateway_service_tiers_v1() == [
         {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
+        {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
         {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
         {
             "gateway": "GOOGLE_GEMINI_BATCH_API",

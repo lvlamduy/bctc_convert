@@ -9,12 +9,14 @@ import pytest
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     GeminiJsonFirstCorpusLedgerV1Error,
     claim_google_document_for_openrouter_acceleration_v1,
+    claim_pending_openrouter_corpus_task_for_agy_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
     openrouter_failed_task_repair_frontier_v1,
     recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
+    seal_agy_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
@@ -982,3 +984,51 @@ def test_google_document_acceleration_claim_is_atomic_resumable_and_bounded(tmp_
         claim_google_document_for_openrouter_acceleration_v1(
             other_ledger, task_id=other_document_tasks[-1]["task_id"]
         )
+
+
+def test_agy_claim_is_disjoint_and_seals_only_exact_complete_manifest(tmp_path) -> None:
+    ledger = tmp_path / "agy-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan())
+    pending_openrouter = list_corpus_tasks_v1(ledger, states=["PENDING"], route=OPENROUTER_ROUTE)
+    claimed = claim_pending_openrouter_corpus_task_for_agy_v1(ledger)
+    assert claimed["task_id"] == max(task["task_id"] for task in pending_openrouter)
+    assert claimed["state"] == "SUBMITTED"
+    assert claimed["provider_job_ref"].startswith("agyjobv1:")
+    assert claimed["task_id"] not in {
+        task["task_id"]
+        for task in list_corpus_tasks_v1(
+            ledger,
+            states=["PENDING", "RUNNING", "NEEDS_RETRY"],
+            route=OPENROUTER_ROUTE,
+        )
+    }
+
+    pages = [
+        {"physical_page": page}
+        for page in range(claimed["first_physical_page"], claimed["last_physical_page"] + 1)
+    ]
+    manifest = {
+        "document_manifest_id": "gfdmv1:manifest:" + "a" * 64,
+        "document": {
+            "source_logical_name": claimed["relative_path"],
+            "source_sha256": claimed["source_sha256"],
+        },
+        "pages": pages,
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": len(pages)},
+    }
+    unresolved = copy.deepcopy(manifest)
+    unresolved["status_counts"]["UNRESOLVED_PAGE"] = 1
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="unresolved"):
+        seal_agy_corpus_task_v1(
+            ledger,
+            task_id=claimed["task_id"],
+            provider_job_ref=claimed["provider_job_ref"],
+            document_manifest=unresolved,
+        )
+    succeeded = seal_agy_corpus_task_v1(
+        ledger,
+        task_id=claimed["task_id"],
+        provider_job_ref=claimed["provider_job_ref"],
+        document_manifest=manifest,
+    )
+    assert succeeded["state"] == "SUCCEEDED"

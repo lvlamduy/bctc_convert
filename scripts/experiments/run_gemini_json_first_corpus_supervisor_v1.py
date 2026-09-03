@@ -28,6 +28,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
     financial_page_json_response_schema_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
+    AGY_PROVIDER_JOB_PREFIX,
     GeminiJsonFirstCorpusLedgerV1Error,
     claim_google_document_for_openrouter_acceleration_v1,
     corpus_ledger_summary_v1,
@@ -88,6 +89,8 @@ GOOGLE_SUBMIT_RETRY_DELAY_SECONDS = 30.0
 GOOGLE_SUBMIT_WORKERS = 1
 RETRYABLE_GOOGLE_UPLOAD_DISPOSITION = "RETRYABLE_GOOGLE_UPLOAD_START"
 OPENROUTER_PAID_ROUTE_POLICY = "flex-only"
+AGY_GATEWAY = "AGY_CLI"
+AGY_SERVICE_TIERS = ("agy-low", "agy-medium", "agy-high")
 OPENROUTER_CREDENTIAL_COMMANDS = frozenset(
     {
         "accelerate-google-document",
@@ -1361,6 +1364,10 @@ def _page_variant_manifest_v1(
         response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
         requested_model=GOOGLE_MODEL,
         allowed_gateway_service_tiers=[
+            *(
+                {"gateway": AGY_GATEWAY, "requested_service_tier": tier}
+                for tier in AGY_SERVICE_TIERS
+            ),
             {
                 "gateway": "GOOGLE_GEMINI_API",
                 "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
@@ -1379,6 +1386,10 @@ def _page_variant_manifest_v1(
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
             },
+            *(
+                {"gateway": AGY_GATEWAY, "requested_service_tier": tier}
+                for tier in AGY_SERVICE_TIERS
+            ),
             {
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
@@ -1661,6 +1672,7 @@ def _page_prompt_variants_v1(
 
 def _allowed_gateway_service_tiers_v1() -> list[dict[str, str]]:
     return [
+        *({"gateway": AGY_GATEWAY, "requested_service_tier": tier} for tier in AGY_SERVICE_TIERS),
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
@@ -1688,6 +1700,7 @@ def _preferred_gateway_service_tiers_v1() -> list[dict[str, str]]:
             "gateway": "OPENROUTER",
             "requested_service_tier": OPENROUTER_SERVICE_TIER,
         },
+        *({"gateway": AGY_GATEWAY, "requested_service_tier": tier} for tier in AGY_SERVICE_TIERS),
         {
             "gateway": "OPENROUTER",
             "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
@@ -3161,13 +3174,31 @@ def _run_openrouter(
         else _successful_historical_prompt_context_v1(ledger=ledger, task=task)
     )
     if task["state"] in {"PENDING", "NEEDS_RETRY"}:
-        task = transition_corpus_task_v1(
-            ledger,
-            task_id=task["task_id"],
-            expected_state=task["state"],
-            next_state="RUNNING",
-            receipt={"document_run_started": True},
-        )
+        try:
+            task = transition_corpus_task_v1(
+                ledger,
+                task_id=task["task_id"],
+                expected_state=task["state"],
+                next_state="RUNNING",
+                receipt={"document_run_started": True},
+            )
+        except GeminiJsonFirstCorpusLedgerV1Error:
+            current = [
+                item for item in list_corpus_tasks_v1(ledger) if item["task_id"] == task["task_id"]
+            ]
+            if len(current) == 1 and (
+                current[0]["state"] == "SUCCEEDED"
+                or (
+                    current[0]["state"] == "SUBMITTED"
+                    and type(current[0]["provider_job_ref"]) is str
+                    and current[0]["provider_job_ref"].startswith(AGY_PROVIDER_JOB_PREFIX)
+                )
+            ):
+                return {
+                    "disposition": "SKIPPED_AFTER_AGY_CLAIM_RACE",
+                    "task_id": task["task_id"],
+                }
+            raise
     source = _source(task, source_root)
     default_prompt_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
 
