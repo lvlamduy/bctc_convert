@@ -2103,6 +2103,11 @@ def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -
 
     def command(argv, **_kwargs):
         assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+        assert argv[argv.index("--artifact-dir") + 1] == str(
+            task_root / "offline-full-document-revalidation-v1"
+        )
+        assert "--offline-replay-only" in argv
+        assert "--physical-page" not in argv
         return 0, provider_result
 
     monkeypatch.setattr(target, "_command", command)

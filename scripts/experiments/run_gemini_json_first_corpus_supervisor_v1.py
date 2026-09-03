@@ -4074,6 +4074,7 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "offline repair document fallback mode is invalid"
         )
+    repair_root = task_root / "offline-full-document-revalidation-v1"
     command = [
         sys.executable,
         str(OPENROUTER_RUNNER),
@@ -4084,7 +4085,7 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         "--database",
         str(args.database),
         "--artifact-dir",
-        str(task_root),
+        str(repair_root),
         "--dpi",
         str(plan["policy"]["dpi"]),
         "--workers",
@@ -4108,8 +4109,6 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
                 google_standard_mode,
             )
         )
-    for physical_page in range(task["first_physical_page"], task["last_physical_page"] + 1):
-        command.extend(("--physical-page", str(physical_page)))
     return_code, result = _command(command, expected={0, 2})
     if return_code != 0 or result.get("disposition") != "SUCCEEDED":
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
