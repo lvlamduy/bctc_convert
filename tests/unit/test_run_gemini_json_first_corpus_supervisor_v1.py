@@ -32,6 +32,57 @@ sys.modules[_SPEC.name] = target
 _SPEC.loader.exec_module(target)
 
 
+def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
+    monkeypatch, tmp_path
+) -> None:
+    captured = {}
+
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple"},
+    )
+
+    def build_manifest(_database, **kwargs):
+        captured.update(kwargs)
+        return {"document_manifest_id": "gfdmv1:manifest:" + "a" * 64}
+
+    monkeypatch.setattr(target, "build_financial_document_manifest_v1", build_manifest)
+    manifest = target._page_variant_manifest_v1(
+        task={
+            "document_page_count": 2,
+            "first_physical_page": 1,
+            "last_physical_page": 2,
+            "relative_path": "MBB/2025/report.pdf",
+            "source_sha256": "b" * 64,
+        },
+        ledger=tmp_path / "ledger.sqlite3",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=tmp_path / "artifacts",
+        page_image_sha256s={1: "1" * 64, 2: "2" * 64},
+        page_prompt_variants={1: "simple", 2: "items"},
+        write=False,
+    )
+
+    assert manifest["document_manifest_id"].startswith("gfdmv1:manifest:")
+    assert captured["allowed_gateway_service_tiers"] == [
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": "standard",
+        },
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
+    ]
+    assert captured["preferred_gateway_service_tiers"] == [
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": "standard",
+        },
+    ]
+
+
 def _plan():
     return build_gemini_json_first_corpus_plan_v1(
         [
