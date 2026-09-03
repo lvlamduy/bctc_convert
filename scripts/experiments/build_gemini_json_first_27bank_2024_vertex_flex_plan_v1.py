@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the protected OpenRouter Vertex Flex plan for all 27 banks in 2024."""
+"""Build the protected Flex-first OpenRouter plan for all 27 banks in 2024."""
 
 from __future__ import annotations
 
@@ -89,6 +89,8 @@ def main() -> int:
                 "document_count": bundle["corpus_plan"]["summary"]["document_count"],
                 "expansion_plan_id": bundle["expansion_plan_id"],
                 "page_count": bundle["corpus_plan"]["summary"]["page_count"],
+                "fallback_policy": bundle["execution_contract"]["fallback_policy"],
+                "fallback_provider": bundle["execution_contract"]["fallback_provider"],
                 "protected_document_count": bundle["protected_2025_current_binding"][
                     "document_count"
                 ],

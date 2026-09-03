@@ -78,9 +78,11 @@ def _protected_expansion() -> dict[str, object]:
             "manifest_index_id": "gjfccmiv1:index:" + "c" * 64,
             "page_count": len(OLD_BANKS),
         },
+        "as_of_date": "2026-09-01",
         "authenticated_universe_id": "bankfilingauthv1:" + "a" * 64,
         "filings": filings,
         "format_version": "BANK_FILING_UNIVERSE_27BANK_2025_CURRENT_V1",
+        "from_year": 2025,
         "local_source_authentication": {
             "all_content_sha256_verified": True,
             "all_pdf_signatures_verified": True,
@@ -200,11 +202,16 @@ def test_all_27_banks_including_old_eight_enter_only_the_new_2024_frontier() -> 
     result, universe, protected = _build()
 
     assert result["execution_contract"] == {
-        "allow_provider_fallbacks": False,
+        "allow_provider_fallbacks": True,
         "direct_google_api_allowed": False,
+        "fallback_condition": "VERTEX_FLEX_UNAVAILABLE",
+        "fallback_policy": "CHEAPEST_COMPATIBLE_STANDARD_ENDPOINT",
+        "fallback_provider": "google-ai-studio",
+        "fallback_service_tier": "standard",
         "gateway": "OPENROUTER",
         "model": "google/gemini-3.7-flash",
         "provider": "google-vertex/global/flex",
+        "route_policy": "FLEX_THEN_STANDARD",
         "service_tier": "flex",
         "supervisor_required_flag": "--openrouter-only",
     }

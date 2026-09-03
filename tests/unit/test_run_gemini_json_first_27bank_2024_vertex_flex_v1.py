@@ -15,11 +15,11 @@ target = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = target
 SPEC.loader.exec_module(target)
 
-BUNDLE = ROOT / "data/registered/gemini_json_first_27bank_2024_vertex_flex_expansion_v1.json"
-PLAN = ROOT / "data/registered/gemini_json_first_27bank_2024_vertex_flex_corpus_plan_v1.json"
+BUNDLE = ROOT / "data/registered/gemini_json_first_27bank_2024_vertex_flex_expansion_v2.json"
+PLAN = ROOT / "data/registered/gemini_json_first_27bank_2024_vertex_flex_corpus_plan_v2.json"
 UNIVERSE = ROOT / "data/registered/bank_filing_universe_27bank_2024_v1.json"
 PROTECTED = ROOT / (
-    "data/registered/gemini_json_first_27bank_vertex_flex_vietnamese_only_expansion_v1.json"
+    "data/registered/gemini_json_first_27bank_vertex_flex_vietnamese_only_expansion_v2.json"
 )
 
 
@@ -44,18 +44,18 @@ def _args(tmp_path: Path, *, command: str = "run") -> Namespace:
 
 def _complete_protected_summary() -> dict[str, object]:
     return {
-        "corpus_plan_id": "gjfpcorpusv1:186886f3792cb8e2402aeb3815c4469e1668dd6e2f4842f033b9d400f50acf41",
-        "documents": 279,
+        "corpus_plan_id": "gjfpcorpusv1:5f7221dc23d07f42e817ecf8129135051de597b4fa2b661a84ec2ee105be7745",
+        "documents": 271,
         "progress": [
             {
-                "pages": 15335,
+                "pages": 14947,
                 "route": "OPENROUTER_VERTEX_FLEX",
                 "state": "SUCCEEDED",
-                "tasks": 279,
+                "tasks": 271,
             }
         ],
-        "total_pages": 15335,
-        "total_tasks": 279,
+        "total_pages": 14947,
+        "total_tasks": 271,
     }
 
 
@@ -93,10 +93,10 @@ def test_2024_run_fails_before_provider_when_protected_run_is_incomplete(
             "tasks": 22,
         },
         {
-            "pages": 14241,
+            "pages": 13853,
             "route": "OPENROUTER_VERTEX_FLEX",
             "state": "PENDING",
-            "tasks": 257,
+            "tasks": 249,
         },
     ]
     monkeypatch.setattr(target, "corpus_ledger_summary_v1", lambda _ledger: incomplete)

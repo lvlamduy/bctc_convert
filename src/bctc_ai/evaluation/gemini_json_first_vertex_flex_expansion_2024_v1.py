@@ -13,6 +13,8 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (
     OPENROUTER_MODEL,
     OPENROUTER_PROVIDER,
     OPENROUTER_SERVICE_TIER,
+    OPENROUTER_STANDARD_FALLBACK_PROVIDER,
+    OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
 )
 from bctc_ai.evaluation.gemini_json_first_vertex_flex_expansion_v1 import (
     validate_gemini_json_first_vertex_flex_expansion_v1,
@@ -155,11 +157,16 @@ def _protected_2025_current_binding_v1(value: Any) -> dict[str, Any]:
 
 def _execution_contract_v1() -> dict[str, Any]:
     return {
-        "allow_provider_fallbacks": False,
+        "allow_provider_fallbacks": True,
         "direct_google_api_allowed": False,
+        "fallback_condition": "VERTEX_FLEX_UNAVAILABLE",
+        "fallback_policy": "CHEAPEST_COMPATIBLE_STANDARD_ENDPOINT",
+        "fallback_provider": OPENROUTER_STANDARD_FALLBACK_PROVIDER,
+        "fallback_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
         "gateway": "OPENROUTER",
         "model": OPENROUTER_MODEL,
         "provider": OPENROUTER_PROVIDER,
+        "route_policy": "FLEX_THEN_STANDARD",
         "service_tier": OPENROUTER_SERVICE_TIER,
         "supervisor_required_flag": "--openrouter-only",
     }

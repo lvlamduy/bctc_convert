@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the 27-bank expansion only through OpenRouter Google Vertex Flex."""
+"""Run the 27-bank expansion through Flex, then the cheapest standard route."""
 
 from __future__ import annotations
 
