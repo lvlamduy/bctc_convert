@@ -4111,6 +4111,113 @@ def recover_openrouter_artifact_collision(args: argparse.Namespace) -> dict[str,
     }
 
 
+def _seal_failed_task_from_current_store_v1(
+    *,
+    task: dict[str, Any],
+    plan: dict[str, Any],
+    ledger: Path,
+    source_root: Path,
+    database: Path,
+    artifact_root: Path,
+) -> dict[str, Any] | None:
+    """Seal a failed task when its current mixed-route page frontier is complete."""
+
+    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    current_images = _current_page_image_sha256s_v1(
+        task=task,
+        source_root=source_root,
+        dpi=plan["policy"]["dpi"],
+    )
+    historical_variants, protected_pages = _successful_historical_prompt_context_v1(
+        ledger=ledger,
+        task=task,
+    )
+    default_variant = corpus_ledger_summary_v1(ledger)["prompt_variant"]
+    try:
+        stored_frontier = document_page_extraction_frontier_v1(
+            database,
+            source_sha256=task["source_sha256"],
+            source_logical_name=task["relative_path"],
+            expected_physical_pages=expected_pages,
+            render_dpi=plan["policy"]["dpi"],
+        )
+    except GeminiFinancialPageStoreV1Error:
+        stored_frontier = {}
+    if stored_frontier and any(
+        stored_frontier[page]["image_sha256"] != current_images[page] for page in expected_pages
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "current-store repair image frontier differs from the source PDF"
+        )
+    page_variants = {
+        page: historical_variants.get(
+            page,
+            stored_frontier.get(page, {}).get("prompt_variant", default_variant),
+        )
+        for page in expected_pages
+    }
+    try:
+        manifest = _page_variant_manifest_v1(
+            task=task,
+            ledger=ledger,
+            database=database,
+            artifact_root=artifact_root,
+            page_image_sha256s=current_images,
+            page_prompt_variants=page_variants,
+            write=False,
+        )
+    except GeminiFinancialPageStoreV1Error as exc:
+        if str(exc) != "document manifest page frontier is incomplete":
+            raise
+        return None
+    if _semantic_retry_no_relevant_pages_v1(
+        manifest,
+        protected_pages=protected_pages,
+    ):
+        return None
+    repair_root = _task_root(task, artifact_root) / "offline-current-store-revalidation-v1"
+    _write_or_verify(
+        repair_root / "document-manifest.json",
+        canonical_json_bytes_v1(manifest),
+    )
+    result = {
+        "cached_pages": expected_pages,
+        "disposition": "SUCCEEDED",
+        "execution_mode": "OFFLINE_CURRENT_STORE_REVALIDATION",
+        "failed_pages": [],
+        "ingested_pages": [],
+        "manifest_id": manifest["document_manifest_id"],
+        "offline_missing_pages": [],
+        "page_image_sha256s": [
+            {"image_sha256": current_images[page], "physical_page": page} for page in expected_pages
+        ],
+        "provider_request_pages": [],
+        "semantic_failed_pages": [],
+    }
+    _write_or_verify(repair_root / "result.json", canonical_json_bytes_v1(result))
+    sealed = seal_offline_revalidated_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        receipt={
+            "document_manifest_id": manifest["document_manifest_id"],
+            "offline_revalidated": True,
+            "replayed_pages": [],
+            "revalidated_pages": expected_pages,
+            "result": result,
+        },
+    )
+    return {
+        "disposition": "SUCCEEDED",
+        "ledger": corpus_ledger_summary_v1(ledger),
+        "repaired_task": {
+            "attempt_count": sealed["attempt_count"],
+            "state": sealed["state"],
+            "task_id": sealed["task_id"],
+        },
+        "result": result,
+    }
+
+
 def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     """Replay immutable semantic responses and seal one formerly failed document."""
 
@@ -4130,6 +4237,16 @@ def repair_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "offline repair document fallback mode is invalid"
         )
+    current_store_result = _seal_failed_task_from_current_store_v1(
+        task=task,
+        plan=plan,
+        ledger=args.ledger,
+        source_root=args.source_root,
+        database=args.database,
+        artifact_root=args.artifact_root,
+    )
+    if current_store_result is not None:
+        return current_store_result
     repair_root = task_root / "offline-full-document-revalidation-v1"
     command = [
         sys.executable,

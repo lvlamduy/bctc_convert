@@ -2099,6 +2099,85 @@ def test_terminal_flex_repair_rejects_a_foreign_provider_route(monkeypatch, tmp_
         )
 
 
+def test_failed_task_seals_from_complete_current_mixed_prompt_store(monkeypatch, tmp_path) -> None:
+    artifact_root = tmp_path / "artifacts"
+    task = {
+        "artifact_relative_path": "tasks/task-1",
+        "attempt_count": 3,
+        "document_page_count": 3,
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "relative_path": "BAB/report.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": "1" * 64,
+        "source_size_bytes": 100,
+        "state": "FAILED",
+        "task_id": "task-1",
+    }
+    captured = []
+    sealed = []
+    monkeypatch.setattr(
+        target,
+        "_current_page_image_sha256s_v1",
+        lambda **_kwargs: {1: "a" * 64, 2: "b" * 64, 3: "c" * 64},
+    )
+    monkeypatch.setattr(
+        target,
+        "_successful_historical_prompt_context_v1",
+        lambda **_kwargs: ({}, [2]),
+    )
+    monkeypatch.setattr(
+        target,
+        "document_page_extraction_frontier_v1",
+        lambda *_args, **_kwargs: {
+            1: {"image_sha256": "a" * 64, "prompt_variant": "simple"},
+            2: {"image_sha256": "b" * 64, "prompt_variant": "items"},
+            3: {"image_sha256": "c" * 64, "prompt_variant": "simple"},
+        },
+    )
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"prompt_variant": "simple", "documents": 1},
+    )
+
+    def manifest(**kwargs):
+        captured.append(kwargs)
+        return {
+            "document_manifest_id": "gfdmv1:manifest:" + "d" * 64,
+            "pages": [
+                {"physical_page": 1, "status": "FINANCIAL_NOTE_CONTENT"},
+                {"physical_page": 2, "status": "FINANCIAL_NOTE_CONTENT"},
+                {"physical_page": 3, "status": "FINANCIAL_NOTE_CONTENT"},
+            ],
+        }
+
+    monkeypatch.setattr(target, "_page_variant_manifest_v1", manifest)
+    monkeypatch.setattr(
+        target,
+        "seal_offline_revalidated_corpus_task_v1",
+        lambda _ledger, **kwargs: sealed.append(kwargs) or {**task, "state": "SUCCEEDED"},
+    )
+
+    result = target._seal_failed_task_from_current_store_v1(
+        task=task,
+        plan={"policy": {"dpi": 300}},
+        ledger=tmp_path / "ledger.sqlite3",
+        source_root=tmp_path / "source",
+        database=tmp_path / "store.sqlite3",
+        artifact_root=artifact_root,
+    )
+
+    assert result["disposition"] == "SUCCEEDED"
+    assert result["result"]["provider_request_pages"] == []
+    assert captured[0]["page_prompt_variants"] == {1: "simple", 2: "items", 3: "simple"}
+    assert sealed[0]["receipt"]["replayed_pages"] == []
+    assert sealed[0]["receipt"]["revalidated_pages"] == [1, 2, 3]
+    assert (
+        artifact_root / "tasks/task-1/offline-current-store-revalidation-v1/document-manifest.json"
+    ).is_file()
+
+
 def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -> None:
     source_root = tmp_path / "source"
     source = source_root / "BID" / "report.pdf"
@@ -2133,6 +2212,11 @@ def test_offline_repair_seals_one_fully_cached_document(monkeypatch, tmp_path) -
         target,
         "corpus_ledger_summary_v1",
         lambda _ledger: {"prompt_variant": "simple"},
+    )
+    monkeypatch.setattr(
+        target,
+        "_seal_failed_task_from_current_store_v1",
+        lambda **_kwargs: None,
     )
     provider_result = {
         "cached_pages": [1, 2, 3],
