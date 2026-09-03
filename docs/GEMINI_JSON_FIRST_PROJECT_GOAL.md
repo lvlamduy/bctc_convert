@@ -26,30 +26,23 @@ statement trên.
 
 ## Phạm vi corpus đang thực hiện — checkpoint 2026-09-03
 
-- Khảo sát đủ **27 mã ngân hàng đã đăng ký, từ năm 2024 đến thời điểm hiện
+- Khảo sát đủ **27 mã ngân hàng đã đăng ký, từ năm 2025 đến thời điểm hiện
   tại**: ABB, ACB, BAB, BID, BVB, CTG, EIB, HDB, KLB, LPB, MBB, MSB, NAB, NVB,
   OCB, PGB, SGB, SHB, SSB, STB, TCB, TPB, VAB, VBB, VCB, VIB và VPB.
 - Corpus Gemini tám ngân hàng 2025-current đã hoàn tất và frontier mười chín
   ngân hàng 2025-current đang chạy là hai nguồn được bảo vệ. Mọi PDF/page/image
   đã có hoặc đang có task trong hai nguồn này phải tái sử dụng từ
   manifest/store/cache; **không được gửi lại**.
-- Quyền mới cho phép xử lý các báo cáo **năm 2024 còn thiếu** của cả 27 ngân
-  hàng. Quyền này chỉ áp dụng cho source identity/page chưa có Gemini JSON,
-  không mở lại các kỳ 2025–2026 đã xử lý.
-- Snapshot S3 bất biến có 408 PDF năm 2024 và toàn bộ đã được hydrate, xác thực
-  đúng byte trên local. Sau content dedupe và lọc đúng ứng viên BCTC tiếng Việt,
-  inventory có **308 PDF / 17.553 trang**; 228 trang tiếng Anh nối cuối PDF bị
-  loại.
-- Request mới chỉ được dùng OpenRouter với đúng model
-  `google/gemini-3.7-flash` và khóa duy nhất provider
-  `google-vertex/global/flex`. Theo chỉ đạo muộn hơn ngày 2026-09-03, không còn
-  fallback sang `google-ai-studio`; các response standard đã trả tiền chỉ được
-  tái sử dụng từ store. Direct Google, model khác và provider thứ ba vẫn bị
-  cấm. Resume/retry chỉ nhắm đúng page còn thiếu hoặc lỗi, không gửi lại toàn
-  PDF.
+- Báo cáo năm 2024 nằm ngoài phạm vi. Không mở gate, ledger hoặc provider run
+  cho 2024 sau khi frontier hiện tại hoàn tất; inventory 2024 cũ chỉ là hồ sơ
+  lịch sử, không được tính vào tiến độ.
+- OpenRouter tiếp tục dùng đúng model `google/gemini-3.7-flash` và khóa duy nhất
+  provider `google-vertex/global/flex`. Agy CLI được phép chạy song song trên
+  các document 2025-current được claim riêng, bắt đầu bằng
+  `gemini-3.7-flash-low` và chỉ tăng medium/high khi kết quả trước chưa dùng
+  được. Cả hai đường phải dùng chung ledger/store để không gửi trùng.
 - Mọi PDF trên 100 trang và mọi PDF OCB phải có ranh giới tiếng Việt được xác
-  nhận trước khi chạy. Runner 2024 vẫn phải chặn provider cho đến khi ledger
-  2025-current hoàn tất và exact overlap bằng rỗng. Chính sách Git,
+  nhận trước khi chạy. Không có runner/gate 2024. Chính sách Git,
   snapshot/restore S3 và backup Codex giữ nguyên.
 
 ## 1. Mục tiêu duy nhất
@@ -60,9 +53,9 @@ chưa từng thấy, theo kiến trúc mới:
 ```text
 PDF BCTC bất biến
 → render từng trang thành ảnh đủ nét
-→ pilot: Gemini 3.7 Flash qua OpenRouter, khóa Google Vertex Flex
-→ corpus hiện hành: Gemini 3.7 Flash qua OpenRouter, chỉ Google Vertex Flex;
-  không fallback standard và không gọi trực tiếp Google API
+→ OpenRouter: Gemini 3.7 Flash, khóa Google Vertex Flex
+→ Agy song song trên document được claim riêng: Gemini 3.7 Flash Low trước
+→ không fallback standard và không gọi trực tiếp Google API
 → JSON nhiều tầng, schema-blind, giữ nguyên chữ và giá trị nhìn thấy
 → JSON/database được version hóa và lập chỉ mục
 → truy hồi vùng ứng viên nhỏ theo từng accounting family
@@ -71,22 +64,18 @@ PDF BCTC bất biến
 → structured data / Excel / provenance / unresolved
 ```
 
-Gemini là reader duy nhất của đường xử lý mới. Model được khóa đúng
-`google/gemini-3.7-flash`; mọi request mới qua OpenRouter chỉ được dùng
-`google-vertex/global/flex`. Fallback `google-ai-studio` từng được bật trong
-một checkpoint trước nhưng đã bị chỉ đạo muộn hơn ngày 2026-09-03 vô hiệu hóa;
-response standard đã có vẫn được tái sử dụng bất biến. Từ ngày
-2026-08-27, hai credential Google không còn ngân sách nên phần corpus còn lại
-chạy **OpenRouter-only**: không gọi Google standard, Google Batch hay Google
-fallback trực tiếp. Tham số đường dẫn key Google có thể còn xuất hiện trong
-CLI để tương thích ngược, nhưng child request bắt buộc mang
-`google-standard-mode=disabled`
-và không được sử dụng key đó. Các page-version Google đã hoàn thành trước thời
-điểm chuyển route vẫn được giữ bất biến trong database; khi cùng một
-source/image/prompt/schema có cả Google và OpenRouter version thì manifest hiện
-hành ưu tiên `OPENROUTER/flex`, không xóa version lịch sử. Mọi request phải
-resume theo document/page, không submit trùng, và chỉ retry từ failure receipt
-có kiểu rõ ràng. Không được cố ý gửi request vô ích chỉ để đốt quota.
+Gemini là reader duy nhất của đường xử lý mới. OpenRouter khóa đúng model
+`google/gemini-3.7-flash` và provider `google-vertex/global/flex`; Agy CLI được
+phép chạy song song bằng `gemini-3.7-flash-low`, rồi medium/high chỉ khi output
+trước chưa dùng được. Fallback `google-ai-studio` từng được bật trong một
+checkpoint trước nhưng đã bị vô hiệu hóa; response standard đã có vẫn được tái
+sử dụng bất biến. Hai credential Google không còn ngân sách và không được gọi
+trực tiếp; child OpenRouter bắt buộc mang `google-standard-mode=disabled`.
+OpenRouter và Agy phải claim các document khác nhau bằng cùng ledger, dùng cùng
+cache/store và bỏ qua mọi page-version hợp lệ đã có. Các page-version lịch sử
+vẫn được giữ bất biến trong database. Mọi request phải resume theo
+document/page, không submit trùng, và chỉ retry từ failure receipt có kiểu rõ
+ràng. Không được cố ý gửi request vô ích chỉ để đốt quota.
 
 Không sử dụng PP-OCR 6,
 VietOCR, OCR fusion, word/line bounding box hoặc thuật toán phụ thuộc geometry

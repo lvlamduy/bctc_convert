@@ -4,31 +4,29 @@ Tài liệu này là checklist bắt buộc cho nhánh làm lại dữ liệu b�
 bằng Gemini. Khi nội dung hội thoại, code hoặc tài liệu cũ mâu thuẫn với các yêu
 cầu dưới đây, phải dừng và cập nhật thiết kế trước khi tiếp tục chạy tốn phí.
 
-> **Xác nhận của người dùng ngày 2026-09-03, mở rộng phạm vi 2024:** toàn bộ
+> **Xác nhận mới nhất của người dùng ngày 2026-09-03:** toàn bộ
 > JSON đã có của tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB và mọi
 > task trong frontier mười chín ngân hàng 2025-current phải được tái sử dụng,
-> không gửi trùng. Người dùng đồng thời cấp quyền xử lý các PDF từ **năm 2024
-> đến hiện tại** của đủ 27 mã ngân hàng. Cổng chống trùng phải so exact
-> source/page/image identity với cả corpus đã hoàn tất và ledger đang chạy.
+> không gửi trùng. Phạm vi chính thức của đủ 27 mã ngân hàng là **từ năm 2025
+> đến hiện tại**. Không mở gate hay gửi bất kỳ PDF năm 2024 nào. Cổng chống
+> trùng phải so exact source/page/image identity với cả corpus đã hoàn tất và
+> ledger đang chạy.
 
 ## 0. Phạm vi mở rộng 27 ngân hàng — checkpoint 2026-09-03
 
-- Khoảng thời gian chính thức là **từ năm 2024 đến thời điểm hiện tại**.
+- Khoảng thời gian chính thức là **từ năm 2025 đến thời điểm hiện tại**.
 - Tám ngân hàng **ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB** đã hoàn tất bước
   Gemini trả JSON. Mọi PDF/page đã có trong manifest hiện hành của tám ngân hàng
   này phải dùng lại từ store/cache bất biến; **tuyệt đối không gửi lại Gemini
   hoặc OpenRouter**.
 - PDF/page 2025-current đã có trong corpus tám ngân hàng hoặc ledger mười chín
-  ngân hàng là reuse-only. PDF 2024 chưa có JSON của cả 27 mã được phép trở
-  thành paid candidate sau khi qua cổng source hash, chống trùng và ngôn ngữ.
-- Source snapshot có 408 PDF năm 2024; toàn bộ đã được hydrate và xác thực đúng
-  byte. Inventory chọn 308 ứng viên BCTC tiếng Việt content-unique; 100 file
-  còn lại giữ disposition nguồn và không tự động thành request.
-- Mọi request mới chỉ được đi qua **OpenRouter** với đúng model
-  `google/gemini-3.7-flash` và duy nhất provider
-  `google-vertex/global/flex`. Chỉ đạo muộn hơn ngày 2026-09-03 đã tắt fallback
-  `google-ai-studio`; response standard đã có chỉ được tái sử dụng từ store.
-  Direct Google, Google Batch, model khác và provider thứ ba đều bị cấm.
+  ngân hàng là reuse-only. Toàn bộ inventory 2024 chỉ được giữ làm hồ sơ lịch
+  sử và không được trở thành paid candidate.
+- OpenRouter dùng đúng model `google/gemini-3.7-flash` và duy nhất provider
+  `google-vertex/global/flex`. Agy CLI được phép xử lý song song các document
+  2025-current đã claim riêng, bắt đầu bằng `gemini-3.7-flash-low`, chỉ tăng
+  medium/high khi output trước không dùng được. Direct Google và Google Batch
+  vẫn bị cấm.
 - Runner phải dừng trước request đầu tiên nếu paid frontier giao với bất kỳ
   source/page/image identity nào trong corpus đã hoàn tất hoặc ledger đang
   chạy. Khi resume, chỉ page chưa có kết quả hợp lệ mới được retry; không gửi
@@ -43,7 +41,7 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
 | --- | --- | --- |
 | Đã có/đang xử lý, chỉ tái sử dụng | Corpus tám ngân hàng và ledger mười chín ngân hàng 2025-current | **CẤM GỬI LẠI** exact PDF/page/image; chỉ đọc manifest/store/cache/ledger |
 | Frontier 2025–hiện tại đang chạy | 271 PDF của mười chín ngân hàng mới | Chỉ gửi page tiếng Việt chưa có JSON; mọi page đã hoàn tất là reuse-only |
-| Frontier 2024 mới | 308 PDF content-unique của đủ 27 mã | Chỉ khởi tạo sau khi frontier bảo vệ hoàn tất; OpenRouter khóa duy nhất Google Vertex Flex |
+| Inventory 2024 lưu trữ lịch sử | Không thuộc phạm vi hiện hành | **CẤM KHỞI TẠO GATE/LEDGER/REQUEST**, kể cả sau khi frontier 2025-current hoàn tất |
 
 Trước mỗi lần `run`, `resume` hoặc `repair`, runner phải đối chiếu toàn bộ
 source SHA, page-image SHA, đường dẫn và ranh giới trang với corpus manifest đã
@@ -54,10 +52,9 @@ phải được lấy lại theo source/image hash và manifest; repair chỉ đ
 đúng page thất bại có receipt.
 
 Kế hoạch bảo vệ 2025-current có **271 PDF / 14.947 trang tiếng Việt**, chỉ
-thuộc đúng 19 ngân hàng mới; giao với tám ngân hàng cũ là **rỗng**. Bundle 2024
-bind tổng cộng 411 PDF / 23.894 trang của hai nguồn bảo vệ và phải exact-replay
-chúng trước khi tạo ledger. Ledger 2024 không được khởi tạo song song với
-frontier 2025-current còn dở.
+thuộc đúng 19 ngân hàng mới; giao với tám ngân hàng cũ là **rỗng**. Đây là
+frontier paid duy nhất đang được phép chạy. Không tạo ledger 2024 ở hiện tại
+hoặc sau khi frontier này hoàn tất.
 
 #### Tiến độ paid frontier — kiểm tra live 00:03 UTC ngày 2026-09-03
 
@@ -169,15 +166,13 @@ tiến độ, map dữ liệu hoặc cấp quyền gửi tiếp.
 
 Đây là denominator bảo vệ của giai đoạn 2025-current: 8.947 trang JSON cũ được
 tái sử dụng và 14.947 trang paid frontier tiếng Việt, tương ứng **23.894
-trang**. Nó là đầu vào reuse-only của cổng 2024, không phải tổng phạm vi mới.
-Mọi plan cũ 15.968 hoặc 15.335 trang không được resume.
+trang**. Không cộng inventory 2024 vào denominator này. Mọi plan cũ 15.968 hoặc
+15.335 trang không được resume.
 
-Đối với năm 2024, cutoff được bind đúng từng source, không sao chép từ file
-cùng ngân hàng hoặc kỳ khác. Đợt rà đã hoàn tất trên 7 PDF trên 100 trang và
-toàn bộ 12 PDF OCB, tương ứng 17 tài liệu khác nhau sau khi khử trùng phần giao.
-Có 228 trang tiếng Anh bị loại khỏi bốn file OCB; 308 PDF ứng viên còn đúng
-**17.553 trang tiếng Việt được phép gửi**. Cổng còn lại là ledger 2025-current
-phải hoàn tất; không được khởi tạo gửi năm 2024 song song.
+Các bảng kiểm tra cutoff năm 2024 phía trên chỉ là hồ sơ nghiên cứu lịch sử.
+Theo chỉ thị mới nhất, toàn bộ PDF năm 2024 nằm ngoài phạm vi: không tạo gate,
+ledger, manifest hay provider request từ các bảng đó, kể cả sau khi hoàn tất
+2025-current.
 
 #### Tài liệu đã loại toàn bộ sau kiểm tra trực quan
 
@@ -196,14 +191,13 @@ phải hoàn tất; không được khởi tạo gửi năm 2024 song song.
 ## 1. Provider và credential
 
 - **Operational override muộn nhất 2026-09-03:** hai Google API key vẫn không
-  được dùng. Mọi request OCR mới phải đi duy nhất qua OpenRouter với model
-  `google/gemini-3.7-flash` và provider duy nhất
-  `google-vertex/global/flex`; fallback `google-ai-studio` đã bị tắt. Google
-  Batch, direct Google, model khác và provider thứ ba vẫn bị vô hiệu hóa. CLI cũ có
-  thể vẫn nhận `--google-key-file` để
-  tương thích ngược, nhưng `--openrouter-only` và child
-  `--google-standard-mode disabled` là bắt buộc. Không được thử lại Google để
-  dò quota.
+  được dùng. OpenRouter tiếp tục khóa model `google/gemini-3.7-flash` và
+  provider `google-vertex/global/flex`; fallback `google-ai-studio` bị tắt.
+  Agy CLI được phép chạy song song trên document 2025-current được claim riêng,
+  dùng `gemini-3.7-flash-low` trước và chỉ tăng medium/high khi output trước
+  không dùng được. Google Batch và direct Google vẫn bị vô hiệu hóa. Child
+  OpenRouter phải mang `--google-standard-mode disabled`; không thử lại Google
+  để dò quota.
 - Page-version Google đã hoàn thành trước override vẫn được giữ làm dữ liệu
   bất biến, không OCR lại chỉ vì đổi route. Khi có nhiều version hợp lệ cùng
   source/image/prompt/schema, manifest chọn theo thứ tự đã niêm phong

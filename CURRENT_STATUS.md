@@ -1,15 +1,33 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 02:48 UTC (2024-current expansion checkpoint;
+Updated: 2026-09-03 09:09 UTC (2025-current scope and Agy-parallel checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
-## Checkpoint mở rộng 2024–hiện tại — 2026-09-03
+## Checkpoint phạm vi 2025–hiện tại và Agy song song — 2026-09-03
 
-- Goal hiện hành bao phủ đủ 27 mã ngân hàng đã đăng ký từ năm 2024 đến thời
+- Phạm vi vận hành chính thức là đủ 27 mã ngân hàng từ **năm 2025 đến hiện
+  tại**. Năm 2024 nằm ngoài phạm vi; không mở gate, ledger, manifest hoặc
+  provider run cho 2024 sau khi frontier hiện tại hoàn tất.
+- Corpus tám ngân hàng cũ và mọi page đã có hoặc đang được claim trong frontier
+  19 ngân hàng là reuse-only. Frontier paid hiện hành giữ nguyên **271 PDF /
+  14.947 trang tiếng Việt**, gồm 205 PDF kỳ 2025 và 66 PDF kỳ 2026.
+- OpenRouter tiếp tục chạy `google/gemini-3.7-flash` trên duy nhất
+  `google-vertex/global/flex`. Agy CLI được phép claim document khác trong cùng
+  ledger và chạy song song bằng `gemini-3.7-flash-low`; chỉ tăng medium/high
+  khi output trước chưa dùng được.
+- Canary production BVB Hợp nhất Quý 1/2025 tái sử dụng 44/48 trang và chỉ gửi
+  đúng bốn trang còn thiếu qua Agy Low; cả bốn được ingest và document được
+  niêm phong `SUCCEEDED`. Luồng duy trì 10 Agy worker song song với 20
+  OpenRouter worker, dùng claim transaction để không gửi trùng.
+
+## Checkpoint mở rộng 2024–hiện tại — ĐÃ BỊ THAY THẾ ngày 2026-09-03
+
+- Nội dung dưới đây là checkpoint lịch sử, không còn là phạm vi thực thi. Goal
+  tại thời điểm đó từng bao phủ 27 mã ngân hàng từ năm 2024 đến thời
   điểm hiện tại. Corpus tám ngân hàng cũ và mọi page đã có/đang chạy trong
   frontier 2025–hiện tại là reuse-only; quyền mở rộng không cho phép gửi lại
   các source/page/image identity này.

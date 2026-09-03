@@ -8,16 +8,15 @@
 > mapping at Family 1. Git/S3/Codex, fail-closed and generalization policies
 > remain in force.
 
-> **2026-09-03 corpus/no-resubmit authority, expanded by the user:** the active
-> source universe is all 27 registered bank stock codes from **2024 through the
-> current reporting period**. The earlier 8-bank Gemini corpus and the running
-> 19-bank 2025-current frontier remain protected reuse-only inputs: their exact
-> PDF/page/image identities must never be submitted again. The added paid scope
-> is missing 2024 filings for all 27 banks, including the eight old banks; it
-> does not authorize a repeat of their existing 2025-current JSON. New paid
-> requests are content-level missing pages only, through OpenRouter with the
-> fixed model `google/gemini-3.7-flash`. Every run, resume and repair must reject
-> an overlap with either protected corpus before its first provider request.
+> **2026-09-03 latest corpus/no-resubmit authority:** the active source universe
+> is all 27 registered bank stock codes from **2025 through the current reporting
+> period only**. Reports from 2024 are outside the project scope and no 2024 gate,
+> ledger or provider run may be opened. The completed 8-bank Gemini corpus and
+> the running 19-bank 2025-current frontier remain protected reuse-only inputs:
+> their exact PDF/page/image identities must never be submitted again. New
+> requests are content-level missing pages in the existing 2025-current frontier
+> only. Every run, resume and repair must reject an overlap with completed or
+> actively claimed evidence before its first provider request.
 
 > **2026-09-03 OpenRouter fallback authority:** keep the exact model
 > `google/gemini-3.7-flash` and OpenRouter-only execution. Each missing-page
@@ -37,15 +36,20 @@
 > the request must fail/cool down and retain its exact missing-page frontier.
 > Direct Google and every other provider/model remain forbidden.
 
-> **2026-09-03 2024 restoration checkpoint:** the immutable S3 source snapshot
-> contains 408 registered 2024 PDFs across all 27 bank codes. All source files
-> are hydrated and verified by content hash. The registered inventory yields
-> 308 content-unique Vietnamese full-BCTC candidates. Language-boundary review
-> is complete for every 2024 PDF over 100 pages and every OCB PDF: 228 appended
-> English pages are excluded, leaving exactly 17,553 payable Vietnamese pages.
-> The 2024 plan remains blocked from provider execution until the protected
-> 2025-current ledger is completely successful and exact replay proves zero
-> overlap with every existing or active Gemini page identity.
+> **2026-09-03 latest parallel-provider supersession:** Agy CLI is explicitly
+> allowed to process disjoint tasks from the same 2025-current frontier in
+> parallel with OpenRouter Vertex Flex. Agy must start with
+> `gemini-3.7-flash-low` and may escalate to medium/high only after an unusable
+> result. It must atomically claim a whole pending document in the shared ledger,
+> reuse every authenticated page already in the store, and never race or resend
+> a document/page owned by OpenRouter. OpenRouter requests remain pinned to
+> `google-vertex/global/flex` and `google/gemini-3.7-flash`.
+
+> **2026-09-03 2024 exclusion supersession:** prior 2024 inventory and
+> language-boundary work are retained only as historical research evidence.
+> They are not an executable frontier and must not be used to create a ledger,
+> manifest, provider request or progress denominator. Completion of the
+> 2025-current frontier does not open or authorize 2024 processing.
 
 > **2026-09-02 Vietnamese-only page authority:** before any paid request, every
 > PDF longer than 100 physical pages must pass a recorded language-boundary
