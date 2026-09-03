@@ -87,6 +87,7 @@ OPENROUTER_RUNNER = ROOT / "scripts/experiments/run_gemini_json_first_openrouter
 GOOGLE_SUBMIT_RETRY_DELAY_SECONDS = 30.0
 GOOGLE_SUBMIT_WORKERS = 1
 RETRYABLE_GOOGLE_UPLOAD_DISPOSITION = "RETRYABLE_GOOGLE_UPLOAD_START"
+OPENROUTER_PAID_ROUTE_POLICY = "flex-only"
 OPENROUTER_CREDENTIAL_COMMANDS = frozenset(
     {
         "accelerate-google-document",
@@ -984,7 +985,7 @@ def _run_google_fallback(
             "--openrouter-key-file",
             str(openrouter_key_file),
             "--openrouter-route-policy",
-            "flex-then-standard",
+            OPENROUTER_PAID_ROUTE_POLICY,
             "--google-key-file",
             str(google_key_file),
             "--google-key-slot",
@@ -2710,7 +2711,7 @@ def accelerate_google_document(args: argparse.Namespace) -> dict[str, Any]:
             "--openrouter-key-file",
             str(args.openrouter_key_file),
             "--openrouter-route-policy",
-            "flex-then-standard",
+            OPENROUTER_PAID_ROUTE_POLICY,
             "--google-key-file",
             str(args.google_key_file),
             "--google-key-slot",
@@ -3210,7 +3211,7 @@ def _run_openrouter(
             "--openrouter-key-file",
             str(openrouter_key_file),
             "--openrouter-route-policy",
-            "flex-then-standard",
+            OPENROUTER_PAID_ROUTE_POLICY,
             "--google-key-file",
             str(google_key_file),
             "--google-key-slot",
@@ -4496,7 +4497,7 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
             "--openrouter-key-file",
             str(args.openrouter_key_file),
             "--openrouter-route-policy",
-            "flex-then-standard",
+            OPENROUTER_PAID_ROUTE_POLICY,
             "--google-key-file",
             str(args.google_key_file),
             "--google-key-slot",

@@ -999,7 +999,7 @@ def test_google_fallback_calls_openrouter_only_for_failed_pages(monkeypatch, tmp
         assert argv[argv.index("--google-key-file") + 1] == str(tmp_path / "google")
         assert argv[argv.index("--google-key-slot") + 1] == "2"
         assert argv[argv.index("--google-standard-mode") + 1] == "on-provider-error"
-        assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+        assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-only"
         return 0, {"disposition": "SUCCEEDED"}
 
     monkeypatch.setattr(target, "transition_corpus_task_v1", transition)
@@ -1110,7 +1110,7 @@ def test_openrouter_task_can_forbid_direct_google_fallback(monkeypatch, tmp_path
         command[command.index("--google-standard-mode") + 1] == "disabled" for command in commands
     )
     assert all(
-        command[command.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+        command[command.index("--openrouter-route-policy") + 1] == "flex-only"
         for command in commands
     )
     assert all("--stop-provider-frontier-on-transient-error" in command for command in commands)
@@ -1567,7 +1567,7 @@ def test_exhausted_page_repair_uses_only_openrouter_and_exact_failed_pages(
                 "/artifacts/tasks/task-1"
             )
         else:
-            assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-then-standard"
+            assert argv[argv.index("--openrouter-route-policy") + 1] == "flex-only"
             assert "--stop-provider-frontier-on-transient-error" in argv
         return 0, {
             "cached_pages": [],
