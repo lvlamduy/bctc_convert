@@ -108,6 +108,30 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   được coi là stale và không được tái sử dụng.
 - Trước khi chạy toàn corpus phải thử trọn một PDF có nhiều loại trang: báo cáo
   chính, thuyết minh/bảng, continuation và trang không liên quan.
+- **Kiểm tra nguồn SSB ngày 2026-09-03:** hai file Vietstock dưới đây có tổng
+  cộng 22 trang bị mất nội dung ở hai mép ngay trong các ảnh JPEG nhúng:
+  - `SSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf`: trang vật lý
+    39, 40, 46, 53, 58, 59, 60, 61, 63 và 64;
+  - `SSB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf`: trang vật lý
+    41, 42, 48, 56, 61, 62, 63, 64, 66, 67, 69 và 70.
+  `CropBox` trùng `MediaBox`; mỗi trang lỗi chứa ba dải JPEG 1.190 pixel bề
+  ngang nhưng chỉ còn tổng 1.203 pixel chiều dọc, so với 1.695 pixel ở trang
+  bình thường cùng loại. Nội dung chữ đã cụt ngay trong JPEG gốc, vì vậy mở
+  rộng canvas hoặc đổi DPI không thể khôi phục phần đã mất. Không gửi lại các
+  ảnh này qua Agy/OpenRouter chỉ để thử vận may. Quét cấu trúc ảnh nhúng của
+  toàn bộ 271 PDF trong corpus 2025-hiện tại không tìm thấy PDF nào khác có
+  cùng mẫu hỏng này; bốn cảnh báo TCB là trang mục lục/bố cục ảnh khác và không
+  bị cắt nội dung.
+- Nguồn chính thức của SeABank cho hai báo cáo trên lần lượt là
+  `https://cloud-cdn.seabank.com.vn/seabank-web/FS%20Separate%20SeABank_VN.pdf`
+  và
+  `https://cloud-cdn.seabank.com.vn/seabank-web/FS%20Conso%20SeABank_VN.pdf`.
+  Bản riêng lẻ có 64 trang đầy đủ (54 dọc, 10 ngang); bản hợp nhất có 70 trang
+  đầy đủ (58 dọc, 12 ngang). Tất cả đều là ảnh nguyên trang. Phải đăng ký mỗi
+  bản như một source revision mới và giữ nguyên bản Vietstock lỗi để truy vết;
+  tuyệt đối không ghi đè bytes hoặc gắn JSON đọc từ source mới vào page identity
+  của source cũ. Các báo cáo quý 2 năm 2025 chỉ được dùng làm đối chiếu bổ sung,
+  không tự động thay thế báo cáo soát xét.
 
 ## 3. Prompt và JSON
 
