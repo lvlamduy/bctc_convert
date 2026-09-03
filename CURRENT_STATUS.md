@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 01:53 UTC (2024-current expansion checkpoint;
+Updated: 2026-09-03 02:48 UTC (2024-current expansion checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
@@ -20,9 +20,22 @@ older queue priorities where they conflict.
   nhận runner dừng trước khi tạo ledger vì frontier 2025-current chưa hoàn tất;
   không có provider request 2024 nào được phát sinh.
 - Mọi request mới chỉ đi qua OpenRouter, giữ nguyên
-  `google/gemini-3.7-flash`: Vertex Flex trước, Google AI Studio standard chỉ
-  khi Flex lỗi. Direct Google, Priority, model khác và provider ngoài allowlist
-  đều bị cấm.
+  `google/gemini-3.7-flash` và khóa duy nhất Google Vertex Flex. Theo chỉ đạo
+  muộn hơn ngày 2026-09-03, Google AI Studio standard không còn là fallback;
+  response standard đã trả tiền chỉ được tái sử dụng. Direct Google, Priority,
+  model khác và provider ngoài allowlist đều bị cấm.
+
+## Checkpoint chuyển lại Vertex Flex — 2026-09-03
+
+- Supervisor cha được tạm dừng trước khi có thể mở tài liệu mới; nhóm request
+  OCB đã bay trước chỉ được phép kết thúc để không tạo request mồ côi. Mọi lệnh
+  OpenRouter có khả năng phát sinh request tiếp theo đã được khóa
+  `flex-only`; manifest vẫn đọc được response standard lịch sử nhưng không thể
+  dùng việc đó làm quyền gửi standard mới.
+- Tại thời điểm đổi policy, store có **7.038/14.947 trang (47,09%)** của 19
+  ngân hàng mới. Chi phí thực tế ghi trong store là **28,0462 USD**, gồm
+  **21,6877 USD** Vertex Flex và **6,3585 USD** Google AI Studio standard đã
+  phát sinh trước chỉ đạo mới. Ledger 2024 vẫn chưa được tạo.
 
 ## Checkpoint fallback OpenRouter — 2026-09-03
 

@@ -28,6 +28,15 @@
 > response replay must run before a paid request, so enabling this route does
 > not authorize resubmitting any completed page.
 
+> **2026-09-03 later Vertex-Flex-only supersession:** for every provider request
+> created after this instruction, OpenRouter must pin the sole provider
+> `google-vertex/global/flex` with model `google/gemini-3.7-flash`; automatic
+> fallback to `google-ai-studio` is disabled. Standard responses already paid
+> for remain immutable reuse-only evidence and may be selected by a manifest,
+> but they do not authorize another standard request. When Flex is unavailable,
+> the request must fail/cool down and retain its exact missing-page frontier.
+> Direct Google and every other provider/model remain forbidden.
+
 > **2026-09-03 2024 restoration checkpoint:** the immutable S3 source snapshot
 > contains 408 registered 2024 PDFs across all 27 bank codes. All source files
 > are hydrated and verified by content hash. The registered inventory yields
