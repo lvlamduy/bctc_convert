@@ -65,6 +65,22 @@ def test_paid_command_preflights_openrouter_credential_before_dispatch(
     assert calls == [args]
 
 
+def test_provider_dispatcher_lock_is_exclusive_per_ledger(tmp_path) -> None:
+    ledger = tmp_path / "ledger.sqlite3"
+    first = target._acquire_corpus_execution_lock_v1(ledger)
+    try:
+        with pytest.raises(
+            target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+            match="another corpus provider dispatcher already owns this ledger",
+        ):
+            target._acquire_corpus_execution_lock_v1(ledger)
+    finally:
+        first.close()
+
+    resumed = target._acquire_corpus_execution_lock_v1(ledger)
+    resumed.close()
+
+
 def test_openrouter_stale_snapshot_skips_task_already_claimed_by_agy(monkeypatch, tmp_path) -> None:
     task = {
         "attempt_count": 0,

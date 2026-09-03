@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import sqlite3
@@ -106,6 +107,22 @@ OPENROUTER_CREDENTIAL_COMMANDS = frozenset(
 
 class RunGeminiJsonFirstCorpusSupervisorV1Error(RuntimeError):
     pass
+
+
+def _acquire_corpus_execution_lock_v1(ledger: Path) -> Any:
+    """Hold one process-wide provider dispatcher lease for this exact ledger."""
+
+    lock_path = ledger.with_name(ledger.name + ".execution.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+b")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        handle.close()
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "another corpus provider dispatcher already owns this ledger"
+        ) from exc
+    return handle
 
 
 class _ProviderSubprocessError(RunGeminiJsonFirstCorpusSupervisorV1Error):
@@ -3716,6 +3733,7 @@ def _openrouter_circuit_cooldown_v1(*, base_seconds: float, consecutive_trips: i
 
 
 def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
+    _execution_lock = _acquire_corpus_execution_lock_v1(args.ledger)
     plan = _plan(args.plan)
     if not args.ledger.exists():
         initialize_gemini_json_first_corpus_ledger_v1(args.ledger, plan=plan)
@@ -3980,6 +3998,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
 def run_one_openrouter_task(args: argparse.Namespace) -> dict[str, Any]:
     """Run one exact pending Flex document and leave the corpus ledger resumable."""
 
+    _execution_lock = _acquire_corpus_execution_lock_v1(args.ledger)
     if args.openrouter_only is not True:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "single-task execution requires --openrouter-only"
