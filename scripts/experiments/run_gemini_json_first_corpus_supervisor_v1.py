@@ -1648,6 +1648,10 @@ def _allowed_gateway_service_tiers_v1() -> list[dict[str, str]]:
             "gateway": "OPENROUTER",
             "requested_service_tier": OPENROUTER_SERVICE_TIER,
         },
+        {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+        },
     ]
 
 
@@ -1658,6 +1662,10 @@ def _preferred_gateway_service_tiers_v1() -> list[dict[str, str]]:
         {
             "gateway": "OPENROUTER",
             "requested_service_tier": OPENROUTER_SERVICE_TIER,
+        },
+        {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
         },
         {
             "gateway": "GOOGLE_GEMINI_BATCH_API",

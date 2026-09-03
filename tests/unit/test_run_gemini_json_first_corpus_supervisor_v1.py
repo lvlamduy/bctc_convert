@@ -81,6 +81,30 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
             "requested_service_tier": "standard",
         },
     ]
+    assert target._allowed_gateway_service_tiers_v1() == [
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": "standard",
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_BATCH_API",
+            "requested_service_tier": "batch",
+        },
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
+    ]
+    assert target._preferred_gateway_service_tiers_v1() == [
+        {"gateway": "OPENROUTER", "requested_service_tier": "flex"},
+        {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
+        {
+            "gateway": "GOOGLE_GEMINI_BATCH_API",
+            "requested_service_tier": "batch",
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": "standard",
+        },
+    ]
 
 
 def _plan():
