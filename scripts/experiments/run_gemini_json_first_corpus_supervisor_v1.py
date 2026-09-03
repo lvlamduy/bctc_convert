@@ -55,6 +55,7 @@ from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
     OPENROUTER_SERVICE_TIER,
+    OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
 )
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
@@ -1343,11 +1344,19 @@ def _page_variant_manifest_v1(
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
             },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+            },
         ],
         preferred_gateway_service_tiers=[
             {
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_SERVICE_TIER,
+            },
+            {
+                "gateway": "OPENROUTER",
+                "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
             },
             {
                 "gateway": "GOOGLE_GEMINI_API",
