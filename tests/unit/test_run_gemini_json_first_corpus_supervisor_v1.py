@@ -389,6 +389,49 @@ def test_openrouter_subprocess_failure_is_typed_and_never_strands_running(
     assert target.list_corpus_tasks_v1(ledger)[0]["attempt_count"] == 3
 
 
+def test_openrouter_subprocess_failure_preserves_exact_adaptive_retry_frontier(
+    tmp_path,
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/SGB/2025/report.pdf",
+                "source_sha256": "2" * 64,
+                "source_size_bytes": 100,
+                "page_count": 4,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    target.initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=3)
+    task = target.list_corpus_tasks_v1(ledger)[0]
+    task = target.transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    frontiers = {"default": [2], "items": [3], "scope": []}
+    result = target._record_openrouter_subprocess_failure_v1(
+        error=target._ProviderSubprocessError(
+            returncode=-9,
+            stdout="partial stdout",
+            stderr="child traceback",
+        ),
+        task=task,
+        ledger=ledger,
+        max_attempts=3,
+        retry_prompt_frontiers=frontiers,
+    )
+
+    receipt = json.loads(result["last_receipt_json"])
+    assert result["state"] == "NEEDS_RETRY"
+    assert receipt["retry_prompt_frontiers"] == frontiers
+    assert target._retry_prompt_frontiers_v1(result) == frontiers
+
+
 def test_requeue_command_requires_matching_plan_and_preserves_attempt_count(
     tmp_path,
 ) -> None:

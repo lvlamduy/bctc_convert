@@ -433,6 +433,7 @@ def _record_openrouter_subprocess_failure_v1(
     task: dict[str, Any],
     ledger: Path,
     max_attempts: int,
+    retry_prompt_frontiers: dict[str, list[int]] | None = None,
 ) -> dict[str, Any]:
     """Make an unexpected child exit resumable instead of stranding RUNNING."""
 
@@ -448,20 +449,27 @@ def _record_openrouter_subprocess_failure_v1(
     next_state = "FAILED" if attempt_count >= max_attempts else "NEEDS_RETRY"
     stdout = error.stdout.encode("utf-8", errors="surrogatepass")
     stderr = error.stderr.encode("utf-8", errors="surrogatepass")
+    receipt = {
+        "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+        "provider_returncode": error.returncode,
+        "provider_stderr_bytes": len(stderr),
+        "provider_stderr_sha256": sha256(stderr).hexdigest(),
+        "provider_stdout_bytes": len(stdout),
+        "provider_stdout_sha256": sha256(stdout).hexdigest(),
+        "retry_allowed": next_state == "NEEDS_RETRY",
+    }
+    if retry_prompt_frontiers is not None:
+        receipt["retry_prompt_frontiers"] = _checked_retry_prompt_frontiers_v1(
+            retry_prompt_frontiers,
+            first_physical_page=task["first_physical_page"],
+            last_physical_page=task["last_physical_page"],
+        )
     return transition_corpus_task_v1(
         ledger,
         task_id=task["task_id"],
         expected_state="RUNNING",
         next_state=next_state,
-        receipt={
-            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
-            "provider_returncode": error.returncode,
-            "provider_stderr_bytes": len(stderr),
-            "provider_stderr_sha256": sha256(stderr).hexdigest(),
-            "provider_stdout_bytes": len(stdout),
-            "provider_stdout_sha256": sha256(stdout).hexdigest(),
-            "retry_allowed": next_state == "NEEDS_RETRY",
-        },
+        receipt=receipt,
     )
 
 
@@ -1058,7 +1066,10 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         "provider_stdout_sha256",
         "retry_allowed",
     }
-    if type(prior) is dict and set(prior) == subprocess_fields:
+    if type(prior) is dict and frozenset(prior) in {
+        frozenset(subprocess_fields),
+        frozenset(subprocess_fields | {"retry_prompt_frontiers"}),
+    }:
         digests = (prior["provider_stderr_sha256"], prior["provider_stdout_sha256"])
         if (
             prior["disposition"] == "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
@@ -1075,6 +1086,12 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
             )
             and prior["retry_allowed"] is True
         ):
+            if "retry_prompt_frontiers" in prior:
+                return _checked_retry_prompt_frontiers_v1(
+                    prior["retry_prompt_frontiers"],
+                    first_physical_page=task["first_physical_page"],
+                    last_physical_page=task["last_physical_page"],
+                )
             # The child did not return a page frontier. Re-enter the whole
             # document command; its image/prompt cache ensures only missing
             # pages reach the provider.
@@ -1084,6 +1101,44 @@ def _retry_prompt_frontiers_v1(task: dict[str, Any]) -> dict[str, list[int]] | N
         first_physical_page=task["first_physical_page"],
         last_physical_page=task["last_physical_page"],
     )
+
+
+def _checked_retry_prompt_frontiers_v1(
+    value: Any,
+    *,
+    first_physical_page: int,
+    last_physical_page: int,
+) -> dict[str, list[int]]:
+    """Validate a preserved adaptive retry frontier after a child crash."""
+
+    keys = ("default", "items", "scope")
+    if type(value) is not dict or set(value) != set(keys):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "preserved OpenRouter retry prompt frontier is invalid"
+        )
+    checked: dict[str, list[int]] = {}
+    observed: set[int] = set()
+    for key in keys:
+        pages = value[key]
+        if (
+            type(pages) is not list
+            or pages != sorted(set(pages))
+            or any(
+                type(page) is not int or page < first_physical_page or page > last_physical_page
+                for page in pages
+            )
+            or observed.intersection(pages)
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "preserved OpenRouter retry prompt frontier is invalid"
+            )
+        checked[key] = pages
+        observed.update(pages)
+    if not observed:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "preserved OpenRouter retry prompt frontier is empty"
+        )
+    return checked
 
 
 def _retry_prompt_frontiers_from_receipt_v1(
@@ -3369,6 +3424,7 @@ def _run_openrouter(
                     task=task,
                     ledger=ledger,
                     max_attempts=max_attempts,
+                    retry_prompt_frontiers=retry_frontiers,
                 )
             result_images = _summary_page_image_sha256s_v1(
                 result.get("page_image_sha256s"),
