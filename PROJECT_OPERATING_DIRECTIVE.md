@@ -16,9 +16,12 @@
 > user authority explicitly adds missing 2024 filings for all 27 banks,
 > including 2024 filings of ACB, BID, CTG, HDB, MBB, VCB, VIB and VPB; it does
 > not authorize a repeat of their existing 2025-current JSON. New paid requests
-> are content-level missing pages only, through OpenRouter →
-> `google/gemini-3.7-flash` → `google-vertex/global/flex`. Every run, resume
-> and repair must reject an overlap with either protected corpus before its
+> are content-level missing pages only, through OpenRouter with the fixed model
+> `google/gemini-3.7-flash`. Try `google-vertex/global/flex` first; when that
+> exact Flex route is unavailable, use the cheapest compatible standard route
+> (`google-ai-studio`, tier `standard` at this checkpoint). No model fallback
+> or direct-Google API is allowed. Every run, resume and repair must reject an
+> overlap with either protected corpus before its
 > first provider request; bank code alone is no longer a sufficient
 > no-resubmit key because one bank may have protected 2025 pages and genuinely
 > new 2024 pages.
@@ -43,6 +46,14 @@
 > The 2024 plan remains blocked from provider execution until the protected
 > 2025-current ledger is completely successful and exact replay proves zero
 > overlap with every existing/active Gemini page identity.
+
+> **2026-09-03 controlled-cost fallback:** Vertex Flex remains the primary
+> route. A typed Flex provider failure may fall through inside OpenRouter to
+> the pinned cheapest standard Gemini 3.7 Flash endpoint, currently Google AI
+> Studio standard. A completed/cached page is never submitted again during
+> fallback. Each page receipt must record the requested and selected tier,
+> provider, actual cost and the original Flex failure. Priority tier, another
+> model, arbitrary provider routing and direct Google calls remain forbidden.
 
 > **2026-08-27 prompt/algorithm directive:** keep Gemini prompts short, fixed and
 > structurally focused. Gemini supplies visible observations; deterministic code

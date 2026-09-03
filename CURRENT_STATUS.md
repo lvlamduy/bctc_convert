@@ -1,11 +1,34 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-02 (old-bank Gemini no-resubmit confirmation; older formal
+Updated: 2026-09-03 01:30 UTC (2024-current expansion checkpoint; older formal
 artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## Checkpoint phạm vi 2024–hiện tại và OpenRouter — 2026-09-03
+
+- Goal hiện hành bao phủ đủ 27 mã ngân hàng đã đăng ký từ năm 2024 đến thời
+  điểm hiện tại. Corpus tám ngân hàng cũ và mọi page đã có/đang chạy trong
+  frontier 2025–hiện tại là đầu vào reuse-only; quyền mở rộng không cho phép
+  gửi lại các source/page/image identity này.
+- Bundle 2024 V2 đã exact-replay từ inventory và các authority hiện hành:
+  **308 PDF / 17.553 trang tiếng Việt**. Cổng bảo vệ phía trước bind tổng cộng
+  **411 PDF / 23.894 trang** đã có hoặc đang xử lý, gồm 140 PDF của tám ngân
+  hàng cũ và 271 PDF của mười chín ngân hàng mới trong giai đoạn 2025–hiện tại.
+- Request mới chỉ đi qua OpenRouter với model
+  `google/gemini-3.7-flash`: thử `google-vertex/global/flex` trước, rồi chỉ
+  chuyển sang `google-ai-studio` standard khi Flex lỗi. Direct Google,
+  Priority, model khác và provider ngoài allowlist đều bị cấm.
+- Plan 2024 đã đăng ký nhưng **chưa khởi tạo paid ledger**. Runner bắt buộc xác
+  minh ledger 2025–hiện tại đã hoàn tất và exact overlap bằng rỗng trước
+  provider request đầu tiên; vì vậy 2024 không chạy song song với frontier bảo
+  vệ còn dở.
+- Frontier 2025–hiện tại tiếp tục chạy bằng tối đa 20 request đồng thời và tái
+  sử dụng cache theo page. Tại checkpoint này, store có **6.145/14.947 trang
+  (41,11%)**, thuộc 127/271 PDF đã bắt đầu và 39 PDF đã đủ trang. Việc restart
+  ledger không làm mất page JSON và không cấp quyền gửi lại.
 
 ## Checkpoint mở rộng từ năm 2024 — 2026-09-02
 
@@ -22,11 +45,12 @@ older queue priorities where they conflict.
   Đã rà toàn bộ 7 PDF trên 100 trang và toàn bộ 12 PDF OCB (17 tài liệu khác
   nhau sau khử trùng): loại 228 trang tiếng Anh, còn đúng **17.553 trang tiếng
   Việt** trong plan 2024.
-- Mọi request 2024 sẽ chỉ dùng OpenRouter → `google/gemini-3.7-flash` →
-  `google-vertex/global/flex`, không direct Google và không fallback. Ledger
-  2024 chưa được khởi tạo/chạy. Cổng ngôn ngữ đã hoàn tất; runner vẫn chặn cho
-  đến khi ledger 2025-current hoàn tất và overlap gate chứng minh không giao
-  với corpus/ledger đã có.
+- Mọi request 2024 sẽ chỉ dùng OpenRouter và giữ nguyên
+  `google/gemini-3.7-flash`: Vertex Flex trước, Google AI Studio standard chỉ
+  khi Flex lỗi; không direct Google hoặc model fallback. Ledger 2024 chưa được
+  khởi tạo/chạy. Cổng ngôn ngữ đã hoàn tất; runner vẫn chặn cho đến khi ledger
+  2025-current hoàn tất và overlap gate chứng minh không giao với corpus/ledger
+  đã có.
 
 ## Checkpoint mở rộng 27 ngân hàng — 2026-09-01
 
