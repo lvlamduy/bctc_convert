@@ -19,6 +19,15 @@
 > and repair must reject an overlap with either protected corpus before its
 > first provider request.
 
+> **2026-09-03 OpenRouter fallback authority:** keep the exact model
+> `google/gemini-3.7-flash` and OpenRouter-only execution. Each missing-page
+> request prefers `google-vertex/global/flex`; when that endpoint is unavailable,
+> OpenRouter may fall back only to `google-ai-studio`, the cheapest compatible
+> normal endpoint at the decision checkpoint. Direct Google API, a different
+> model and every third provider remain forbidden. Cache and immutable raw
+> response replay must run before a paid request, so enabling this route does
+> not authorize resubmitting any completed page.
+
 > **2026-09-02 Vietnamese-only page authority:** before any paid request, every
 > PDF longer than 100 physical pages must pass a recorded language-boundary
 > review. OCB filings require the same review regardless of length because a

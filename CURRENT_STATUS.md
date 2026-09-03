@@ -1,11 +1,31 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 00:03 UTC (scope and paid-ledger progress checkpoint;
+Updated: 2026-09-03 00:53 UTC (OpenRouter fallback and paid-ledger checkpoint;
 older formal artifact receipts below remain historical evidence)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## Checkpoint fallback OpenRouter — 2026-09-03
+
+- Theo chỉ đạo mới nhất, model vẫn khóa đúng `google/gemini-3.7-flash` và toàn
+  bộ request vẫn là OpenRouter-only. Route ưu tiên là
+  `google-vertex/global/flex`; nếu Flex lỗi, OpenRouter chỉ được chuyển sang
+  `google-ai-studio`, tuyến thường tương thích rẻ nhất. Direct Google, model
+  khác và provider thứ ba vẫn bị cấm.
+- Canary KLB trang 28 đã chứng minh fallback trả JSON hoàn chỉnh. OpenRouter
+  gọi tuyến này là `service_tier=default`; store ghi tách rõ yêu cầu
+  `standard` và nhãn phản hồi `default`. Response đã tính phí được replay và
+  ingest offline, không gửi trùng. Request sống tiếp theo của NAB trang 9 cũng
+  hoàn tất qua Google AI Studio.
+- Code route/replay đã qua 112 test và được push trên nhánh vận hành. Supervisor
+  tiếp tục với một worker. Tại 00:53 UTC, store có **6.013/14.947 trang
+  (40,23%)**; task gồm **37 SUCCEEDED, 1 RUNNING, 14 NEEDS_RETRY, 72 FAILED và
+  147 PENDING**.
+- Giá niêm yết dùng để quyết định: Flex 0,375/1,875 USD và tuyến thường
+  0,75/3,75 USD cho mỗi triệu token input/output. Vì tuyến thường chỉ chạy khi
+  Flex lỗi, các request được Flex nhận vẫn giữ giá Flex.
 
 ## Checkpoint phạm vi và paid ingestion — 2026-09-02
 
@@ -112,8 +132,9 @@ older queue priorities where they conflict.
   với mẫu số 279 PDF / 15.335 trang cũng không lẫn PDF 2024; mẫu số được điều
   chỉnh vì loại tài liệu tiếng Anh và bản ABB trùng, không phải vì thay đổi năm
   bắt đầu.
-- Provider route vẫn chỉ là OpenRouter → `google/gemini-3.7-flash` →
-  `google-vertex/global/flex`; direct Google và fallback đều tắt. Thử nghiệm
+- Provider route cũ chỉ dùng OpenRouter → `google/gemini-3.7-flash` →
+  `google-vertex/global/flex`; từ checkpoint 2026-09-03, fallback duy nhất sang
+  `google-ai-studio` đã được bật khi Flex lỗi. Direct Google vẫn tắt. Thử nghiệm
   20, 8 rồi 2 page worker gặp tỷ lệ HTTP 429/zero-usage cao; dispatcher đang chạy
   an toàn ở **1 worker**. Sau các lần provider báo quá tải liên tiếp, thời gian
   chờ tăng theo nấc **5 → 10 → 20 → 40 → tối đa 60 phút** và được đặt

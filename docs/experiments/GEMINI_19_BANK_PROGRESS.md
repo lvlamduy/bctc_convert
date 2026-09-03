@@ -1,6 +1,6 @@
 # Tiến độ Gemini của 19 ngân hàng mới
 
-Checkpoint: **00:03 UTC ngày 03/09/2026**.
+Checkpoint: **00:53 UTC ngày 03/09/2026**.
 
 ## Phạm vi được tính
 
@@ -14,6 +14,20 @@ Checkpoint: **00:03 UTC ngày 03/09/2026**.
 - Không tính ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB vì tám ngân hàng này đã
   có Gemini JSON và chỉ được tái sử dụng, không gửi lại.
 
+## Tuyến xử lý hiện hành
+
+- Vẫn dùng đúng model `google/gemini-3.7-flash` qua OpenRouter.
+- Mỗi trang mới ưu tiên Vertex Flex. Nếu Flex lỗi, OpenRouter chỉ được fallback
+  sang Google AI Studio, tuyến thường tương thích rẻ nhất; không dùng direct
+  Google, model khác hoặc provider thứ ba.
+- Giá niêm yết tại thời điểm quyết định là 0,375/1,875 USD mỗi triệu token
+  input/output cho Flex và 0,75/3,75 USD cho tuyến thường. Tuyến thường chỉ là
+  fallback nên không làm tăng giá các request mà Flex vẫn nhận.
+- Trước mọi request, hệ thống kiểm tra cache và raw response bất biến. Canary
+  KLB trang 28 đã được tái nhập offline từ response đã tính phí, không gửi lần
+  hai. Request sống kế tiếp của NAB trang 9 cũng hoàn tất qua Google AI Studio,
+  xác nhận fallback hoạt động thực tế.
+
 ## Tiến độ theo ngân hàng
 
 | Mã ngân hàng | PDF | Trang tiếng Việt | Trang JSON hợp lệ | Hoàn thành theo trang | PDF đã bắt đầu | PDF hoàn tất | PDF đang chạy | PDF cần retry | PDF chờ sửa trang lỗi | PDF chưa bắt đầu |
@@ -22,11 +36,11 @@ Checkpoint: **00:03 UTC ngày 03/09/2026**.
 | BAB | 10 | 441 | 420 | 95,24% | 10 | 2 | 0 | 0 | 8 | 0 |
 | BVB | 14 | 742 | 571 | 76,95% | 14 | 1 | 0 | 0 | 13 | 0 |
 | EIB | 16 | 703 | 687 | 97,72% | 16 | 7 | 0 | 0 | 9 | 0 |
-| KLB | 16 | 680 | 657 | 96,62% | 16 | 3 | 0 | 3 | 10 | 0 |
+| KLB | 16 | 680 | 658 | 96,76% | 16 | 3 | 0 | 2 | 11 | 0 |
 | LPB | 7 | 607 | 598 | 98,52% | 7 | 2 | 0 | 2 | 3 | 0 |
 | MSB | 16 | 998 | 981 | 98,30% | 16 | 8 | 0 | 1 | 7 | 0 |
-| NAB | 16 | 853 | 819 | 96,01% | 16 | 8 | 0 | 4 | 4 | 0 |
-| NVB | 16 | 864 | 790 | 91,44% | 16 | 5 | 0 | 7 | 4 | 0 |
+| NAB | 16 | 853 | 820 | 96,13% | 16 | 8 | 1 | 3 | 4 | 0 |
+| NVB | 16 | 864 | 790 | 91,44% | 16 | 5 | 0 | 6 | 5 | 0 |
 | OCB | 16 | 899 | 74 | 8,23% | 1 | 0 | 0 | 0 | 1 | 15 |
 | PGB | 7 | 357 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 7 |
 | SGB | 14 | 703 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 14 |
@@ -37,7 +51,7 @@ Checkpoint: **00:03 UTC ngày 03/09/2026**.
 | TPB | 16 | 1.080 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
 | VAB | 15 | 737 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 15 |
 | VBB | 16 | 773 | 0 | 0,00% | 0 | 0 | 0 | 0 | 0 | 16 |
-| **Tổng** | **271** | **14.947** | **6.011** | **40,22%** | **124** | **37** | **0** | **17** | **70** | **147** |
+| **Tổng** | **271** | **14.947** | **6.013** | **40,23%** | **124** | **37** | **1** | **14** | **72** | **147** |
 
 So với checkpoint trước, mẫu số giảm 8 PDF / 388 trang sau kiểm tra trực quan:
 7 PDF hoàn toàn bằng tiếng Anh được loại khỏi paid frontier và 1 PDF ABB là
