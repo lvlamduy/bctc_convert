@@ -1,8 +1,13 @@
 # Ma trận BCTC 27 ngân hàng từ Quý 1/2025 đến hiện tại
 
-Cập nhật theo nguồn đã đăng ký đến ngày **2026-09-01**.
+Cập nhật theo manifest đang chạy đến ngày **2026-09-03**.
 
 Đây là ma trận **file đầu vào cho Gemini**, chưa phải kết luận mapping. Tên file chỉ dùng để sắp xếp; phạm vi, kỳ và tình trạng kiểm toán sẽ được xác thực lại từ nội dung nhìn thấy trong PDF.
+
+Phạm vi được khóa ở **các kỳ báo cáo từ Quý 1/2025 đến hiện tại**. Không có
+PDF kỳ năm 2024 trong manifest. Các ngày như `31/12/2024` chỉ được đọc khi đó
+là cột so sánh nằm ngay trong một PDF kỳ 2025 hoặc 2026; chúng không làm phát
+sinh thêm một PDF hay một yêu cầu Gemini cho kỳ 2024.
 
 ## Tổng quan
 
@@ -13,46 +18,68 @@ Cập nhật theo nguồn đã đăng ký đến ngày **2026-09-01**.
 | Ngân hàng mới trong Vertex Flex frontier | 19 |
 | PDF corpus 8 ngân hàng đã có JSON, chỉ tái sử dụng | 140 |
 | Trang corpus 8 ngân hàng đã có JSON, không gửi lại | 8,947 |
-| PDF ứng viên của 19 ngân hàng mới | 279 |
-| Trang ứng viên được phép gọi Vertex Flex | 15,968 |
-| Tổng PDF được theo dõi sau khi mở rộng | 419 |
-| Tổng trang được theo dõi sau khi mở rộng | 24,915 |
-| PDF mới cần Gemini xác thực ít nhất một thuộc tính kỳ/phạm vi/kiểm toán | 235 |
-| Đường dẫn trùng nội dung đã loại | 0 |
+| PDF chính thức của 19 ngân hàng mới trong manifest | 271 |
+| Trong đó: PDF kỳ 2025 | 205 |
+| Trong đó: PDF kỳ 2026 đến hiện tại | 66 |
+| PDF kỳ 2024 trong manifest | **0** |
+| Trang chính thức được phép gọi Vertex Flex | 14,947 |
+| Tổng PDF được theo dõi sau khi mở rộng | 411 |
+| Tổng trang được theo dõi sau khi mở rộng | 23,894 |
 
 ## Tiến độ theo ngân hàng
 
-| STT | Mã | Xử lý Gemini | PDF mới 2025 | PDF mới 2026 | Tổng PDF mới | Trang mới | Cần xác thực nội dung |
-|---:|---|---|---:|---:|---:|---:|---:|
-| 1 | ABB | Vertex Flex mới | 11 | 2 | 13 | 481 | 13 |
-| 2 | ACB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 3 | BAB | Vertex Flex mới | 10 | 2 | 12 | 542 | 10 |
-| 4 | BID | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 5 | BVB | Vertex Flex mới | 10 | 4 | 14 | 742 | 14 |
-| 6 | CTG | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 7 | EIB | Vertex Flex mới | 12 | 4 | 16 | 703 | 12 |
-| 8 | HDB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 9 | KLB | Vertex Flex mới | 14 | 4 | 18 | 757 | 16 |
-| 10 | LPB | Vertex Flex mới | 7 | 1 | 8 | 702 | 8 |
-| 11 | MBB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 12 | MSB | Vertex Flex mới | 12 | 4 | 16 | 998 | 12 |
-| 13 | NAB | Vertex Flex mới | 12 | 4 | 16 | 853 | 12 |
-| 14 | NVB | Vertex Flex mới | 12 | 4 | 16 | 864 | 14 |
-| 15 | OCB | Vertex Flex mới | 12 | 4 | 16 | 1,531 | 12 |
-| 16 | PGB | Vertex Flex mới | 5 | 2 | 7 | 357 | 7 |
-| 17 | SGB | Vertex Flex mới | 10 | 4 | 14 | 703 | 14 |
-| 18 | SHB | Vertex Flex mới | 12 | 4 | 16 | 729 | 12 |
-| 19 | SSB | Vertex Flex mới | 12 | 4 | 16 | 1,063 | 12 |
-| 20 | STB | Vertex Flex mới | 12 | 4 | 16 | 972 | 12 |
-| 21 | TCB | Vertex Flex mới | 12 | 4 | 16 | 1,294 | 12 |
-| 22 | TPB | Vertex Flex mới | 12 | 4 | 16 | 1,080 | 12 |
-| 23 | VAB | Vertex Flex mới | 13 | 3 | 16 | 784 | 14 |
-| 24 | VBB | Vertex Flex mới | 12 | 5 | 17 | 813 | 17 |
-| 25 | VCB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 26 | VIB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
-| 27 | VPB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — | — |
+| STT | Mã | Xử lý Gemini | PDF 2025 | PDF 2026 | Tổng PDF | Trang trong manifest |
+|---:|---|---|---:|---:|---:|---:|
+| 1 | ABB | Vertex Flex mới | 10 | 2 | 12 | 453 |
+| 2 | ACB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 3 | BAB | Vertex Flex mới | 8 | 2 | 10 | 441 |
+| 4 | BID | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 5 | BVB | Vertex Flex mới | 10 | 4 | 14 | 742 |
+| 6 | CTG | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 7 | EIB | Vertex Flex mới | 12 | 4 | 16 | 703 |
+| 8 | HDB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 9 | KLB | Vertex Flex mới | 12 | 4 | 16 | 680 |
+| 10 | LPB | Vertex Flex mới | 6 | 1 | 7 | 607 |
+| 11 | MBB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 12 | MSB | Vertex Flex mới | 12 | 4 | 16 | 998 |
+| 13 | NAB | Vertex Flex mới | 12 | 4 | 16 | 853 |
+| 14 | NVB | Vertex Flex mới | 12 | 4 | 16 | 864 |
+| 15 | OCB | Vertex Flex mới; chỉ lấy phần tiếng Việt | 12 | 4 | 16 | 899 |
+| 16 | PGB | Vertex Flex mới | 5 | 2 | 7 | 357 |
+| 17 | SGB | Vertex Flex mới | 10 | 4 | 14 | 703 |
+| 18 | SHB | Vertex Flex mới | 12 | 4 | 16 | 729 |
+| 19 | SSB | Vertex Flex mới | 12 | 4 | 16 | 1,063 |
+| 20 | STB | Vertex Flex mới | 12 | 4 | 16 | 972 |
+| 21 | TCB | Vertex Flex mới; loại trang quảng cáo tiếng Anh cuối file | 12 | 4 | 16 | 1,293 |
+| 22 | TPB | Vertex Flex mới | 12 | 4 | 16 | 1,080 |
+| 23 | VAB | Vertex Flex mới | 12 | 3 | 15 | 737 |
+| 24 | VBB | Vertex Flex mới | 12 | 4 | 16 | 773 |
+| 25 | VCB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 26 | VIB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
+| 27 | VPB | Tái sử dụng JSON đã có; không gọi API | — | — | — | — |
 
-## Danh sách PDF để kiểm tra
+## Kiểm tra riêng các PDF trên 100 trang
+
+Có 9 PDF trong manifest dài trên 100 trang. Kiểm tra trực quan nguồn đã xác
+nhận:
+
+- Bốn file OCB chỉ lấy đến trang tiếng Việt cuối cùng; phần tiếng Anh bắt đầu
+  ngay sau mốc đã chọn và không được gửi Gemini.
+- File hợp nhất kiểm toán TCB chọn 103/104 trang; trang vật lý 104 là quảng cáo
+  EY bằng tiếng Anh nên được loại đúng.
+- Ba file STB và một file TPB có số trang manifest bằng đúng số trang vật lý;
+  trang cuối vẫn là thuyết minh/chữ ký tiếng Việt, không bị cắt.
+
+Việc cắt phạm vi trên là cắt theo ranh giới ngôn ngữ hoặc trang quảng cáo,
+không phải cắt bớt nội dung BCTC tiếng Việt.
+
+## Danh sách PDF nguồn để kiểm tra
+
+Phần chi tiết dưới đây là danh sách **nguồn ứng viên ban đầu** trước bước chọn
+manifest. Vì vậy một vài biến thể trùng, trang tiếng Anh hoặc trang quảng cáo có
+thể còn xuất hiện để con người đối chiếu. Bảng tổng quan và bảng tiến độ phía
+trên mới là phạm vi gửi Gemini chính thức: 271 PDF/14.947 trang, không có PDF kỳ
+2024.
 
 Các nhãn “cần xác thực” không phải lỗi và không phải `UNRESOLVED`; chúng chỉ cho biết tên file chưa đủ mạnh để kết luận trước khi đọc PDF.
 

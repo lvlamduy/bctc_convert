@@ -1,19 +1,23 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 06:36 UTC (27-bank Gemini extraction checkpoint)
+Updated: 2026-09-03 06:45 UTC (27-bank Gemini extraction checkpoint)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
-## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 06:36 UTC
+## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 06:45 UTC
 
 - Paid frontier hiện hành chỉ gồm **271 PDF / 14.947 trang** của 19 ngân hàng
   mới, trong phạm vi từ Quý 1/2025 đến hiện tại. Tám ngân hàng ACB, BID, CTG,
   HDB, MBB, VCB, VIB và VPB vẫn là reuse-only và không được gửi lại provider.
-- Đã có JSON hợp lệ cho **9.364 / 14.947 trang (62,65%)**; còn **5.583 trang**.
-  Theo provider, OpenRouter đã tạo 8.948 trang duy nhất và Agy đã tạo 455 trang;
-  39 trang có cả hai version để đối chiếu nên tổng hợp theo page chỉ đếm một lần.
+- Đã có JSON hợp lệ cho đúng **9.087 / 14.947 trang thuộc manifest (60,79%)**;
+  còn **5.860 trang**. OpenRouter đã tạo 8.671 trang duy nhất thuộc manifest
+  (7.644 Flex và 1.027 standard lịch sử); Agy đã tạo 455 trang. Có 39 trang có
+  cả version Agy và OpenRouter nên tổng hợp theo page chỉ đếm một lần.
+- Con số 9.364 từng báo trước đó là số page toàn store, đã lẫn các page/version
+  ngoài manifest chính thức và không được dùng làm tiến độ. Từ checkpoint này,
+  mẫu số và tử số tiến độ đều được join trực tiếp vào 271 PDF của manifest.
 - Agy đã chạm quota ngày và được dừng hoàn toàn từ 05:24 UTC. Không health-check
   hay gửi Agy trước **08:58 UTC ngày 2026-09-03** (15:58 giờ Việt Nam). Sau mốc
   này chỉ mở lại từ Gemini 3.7 Flash Low; Medium/High chỉ dùng khi Low thất bại
@@ -22,11 +26,13 @@ older queue priorities where they conflict.
   Tại checkpoint, báo cáo TPB hợp nhất kiểm toán năm 2025 có 108 trang đang
   retry đúng hai trang 2 và 91. Không mở thêm dispatcher thủ công trong khi
   supervisor hiện hành còn chạy để tránh hai process claim cùng một PDF.
-- Chi phí provider đã ghi trong production store là **35,084240 USD**: 28,725753 USD
-  trên Vertex Flex, 6,358487 USD của các fallback standard đã phát sinh ở các
-  checkpoint cũ, và 0 USD incremental cho Agy. Luồng mới hiện tại là Flex-only;
-  số standard lịch sử được giữ để đối soát chi phí, không phải quyền fallback
-  cho request kế tiếp.
+- Chi phí provider gắn trực tiếp với các page thuộc manifest là **34,151715 USD**:
+  27,793229 USD trên Vertex Flex, 6,358487 USD của các fallback standard lịch
+  sử, và 0 USD incremental cho Agy. Toàn production store ở cùng thời điểm có
+  35,095888 USD vì còn chứa các extraction ngoài frontier hiện hành; phần đó
+  được giữ để truy vết nhưng không tính vào tiến độ/chi phí 271 PDF. Luồng mới
+  hiện tại là Flex-only; số standard lịch sử không phải quyền fallback cho
+  request kế tiếp.
 - Ledger tại checkpoint gồm 30 PDF `SUCCEEDED`, 54 PDF `FAILED` có receipt để
   sửa đúng page, 186 PDF `PENDING` và một PDF `RUNNING`. Trạng thái task không
   dùng thay cho tiến độ page: nhiều PDF `FAILED` đã có phần lớn page hợp lệ và
