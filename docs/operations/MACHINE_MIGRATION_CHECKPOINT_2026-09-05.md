@@ -517,6 +517,7 @@ AES-256. Không đưa AWS credentials vào Git, manifest hoặc tài liệu này
 | Inventory 341 database/sidecar | `.../inventory/database-inventory.json` | `8797c10fe2ef79438888547da34adb18079f42aaf6afedaf8127279e71e6e915` | 25.834.647.552 source byte được inventory | tải-ngược hash exact; VersionId `Hkddu0Bv99MVgSANycJbN5xhZNoiav4J` |
 | Integrity receipt bốn DB authority | `.../inventory/critical-database-integrity.json` | `7a4eb99382f660aa43bc11f7350cfd14e8043186d83c816b211d96d3d2df0bc7` | 4 DB | mọi `quick_check=ok`, FK=0; VersionId `qaJr8MTW0rDKZ2bM020nqifIPz3hrHk_` |
 | Current Codex session encrypted | `.../codex/codex-current-session.jsonl.gz.gpg` | `2ea0d53cbcd33fc19b83b90b0f1808cc040c08151305778528c9e6a64d281e8b` | `1982152606` | decrypt lại đúng 5.135.334.922 byte/plain SHA; VersionId `vQLMGDHbkoprARhaiztzpBWkhOWZ4gqy` |
+| Tail của current Codex session | `.../codex/codex-current-session-tail-5135334922-5136683449.jsonl.gz.gpg` | `302e2d7f68f4a0344d37074b39fea1cd580886590feb2c27b19891bca732f12f` | `474490` | decrypt đúng 1.348.527 byte, nối ngay sau base; VersionId `FOfUnGu22UJfm8l522fmVFjBT.vNrXR3` |
 | Các Codex session/config/state an toàn khác | `.../codex/codex-other-sessions-support.tar.gz.gpg` | `762b6a7d61c0e1bd7a837fb6cd9e00f7b5a7b59afc9181763a3f0db3d253f112` | `4626317224` | decrypt/list 1.041 member; không auth/current; VersionId `FL9_mzbmDhx4oAfggq7bahTvDY3MIcYX` |
 | Receipt purge OCR/model cũ | `.../inventory/s3-obsolete-purge-receipts.tar.gz` | `b36efc6629df68257c3049f719260d6cec03c6db51689edd63655df86794a032` | `9216991` | 38.244 exact versions deleted; VersionId `sY01GIrsdjxWNelSVvQeAvJZDsych.hB` |
 | Migration manifest tổng | `.../manifest/migration-manifest-final.json` | xem companion `.sha256` cùng prefix | xem manifest | download-verify bắt buộc |
@@ -587,6 +588,14 @@ hoặc tài liệu này. Receipt:
   `bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/codex/codex-current-session.jsonl.gz.gpg`;
 - ciphertext SHA-256:
   `2ea0d53cbcd33fc19b83b90b0f1808cc040c08151305778528c9e6a64d281e8b`;
+- tail ciphertext key:
+  `bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/codex/codex-current-session-tail-5135334922-5136683449.jsonl.gz.gpg`;
+- tail ciphertext SHA-256:
+  `302e2d7f68f4a0344d37074b39fea1cd580886590feb2c27b19891bca732f12f`;
+- tail plaintext bắt đầu tại offset `5135334922`, dài `1348527` byte, SHA-256
+  `c69cbff7a4b21735167be58f78bc057bde80e5ec15392c8a9aabb9a0dd41617a`;
+- sau khi nối base và tail, prefix phiên có đúng `5136683449` byte và SHA-256
+  `be05b4c116020df4b02a920d5b297410ef1a6d4d65fe3e0291eb5f1b27161f03`;
 - cipher/compression: `gzip -1` rồi GPG symmetric `AES256`, sau đó S3 SSE
   `AES256`;
 - passphrase location ngoài băng:
@@ -597,8 +606,12 @@ Trên máy mới:
 
 1. Cài Codex CLI và đăng nhập mới bằng `codex login`; không backup/restore
    `~/.codex/auth.json`.
-2. Tải ciphertext, kiểm SHA-256, giải mã và giải nén vào một file tạm.
-3. Kiểm plaintext byte count/SHA, đặt file vào đúng relative path
+2. Tải cả base ciphertext và tail ciphertext, kiểm riêng SHA-256 của từng
+   object. Giải mã/giải nén base, sau đó giải mã/giải nén tail và nối đúng một
+   lần vào cuối base. Không đảo thứ tự và không chèn newline.
+3. Kiểm file sau nối có đúng `5136683449` byte và SHA-256
+   `be05b4c116020df4b02a920d5b297410ef1a6d4d65fe3e0291eb5f1b27161f03`,
+   rồi đặt file vào đúng relative path
    `~/.codex/sessions/2026/08/07/rollout-2026-08-07T03-43-18-019fda51-7114-7573-918c-849ce79d78e1.jsonl`
    với quyền chỉ user đọc/ghi.
 4. Mở terminal tại checkout Git đã xác minh và chạy:
@@ -624,14 +637,15 @@ không dùng chúng làm bản phục hồi được chấp nhận.
 - [ ] `git diff --check` đạt; JSON mới/sửa parse được.
 - [ ] `git add -A`, commit và push branch thành công.
 - [ ] Clone/fetch hoặc `git ls-remote` xác minh remote chứa exact commit.
-- [ ] Incremental project checkpoint có PASS run record tải ngược được.
+- [ ] Git bundle self-contained và archive `output/` tải ngược, hash exact;
+      không chạy incremental checkpoint bind parent snapshot cũ.
 - [ ] `/dev/shm` archive tải ngược và SHA khớp.
 - [ ] old140 archive tải ngược và SHA khớp.
 - [ ] Database-only archive tải ngược, SHA khớp và sample SQLite `quick_check`
       đạt; full271/common204 store hiện diện đúng path.
-- [ ] S3 đã tạo delete marker cho toàn bộ exact key PPOCR6/VietOCR/geometry/
-      DeepSeek/Gemma/PaddleOCR đã kiểm kê; không xóa object dùng chung còn được
-      Gemini/database manifest tham chiếu.
+- [ ] S3 đã xóa vĩnh viễn đúng 38.244 cặp `Key+VersionId` PPOCR6/VietOCR/
+      geometry/DeepSeek/Gemma/PaddleOCR đã kiểm kê; post-delete receipt xác nhận
+      còn 0 target và 11 shared + 8 database object được bảo toàn.
 - [ ] Current Codex session ciphertext tải ngược và SHA khớp.
 - [ ] Passphrase session đã lưu ngoài máy cũ và ngoài S3 archive.
 - [ ] Migration manifest tổng có đầy đủ key/hash/byte/version ID.
