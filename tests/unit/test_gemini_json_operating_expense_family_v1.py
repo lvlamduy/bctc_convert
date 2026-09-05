@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from bctc_ai.evaluation import gemini_json_operating_expense_family_v1 as operating_expense_adapter
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     NOT_OBSERVED,
     READY,
@@ -2694,6 +2695,533 @@ def test_source_row_coverage_fails_closed_on_unmapped_selected_root() -> None:
         "VIOLATION_UNMAPPED_SELECTED_FAMILY_ROOT_ROW",
         "VIOLATION_UNMAPPED_VISIBLE_TERMINAL_TOTAL",
     }
+
+
+def _alignment_tables(pages):
+    return tuple(
+        pages[1][version]["sections"][0]["tables"][0]
+        for version in (VERSION_ID, CONTINUATION_VERSION_ID)
+    )
+
+
+def _alignment_headers(table, current, comparative):
+    for column, surface in zip(table["columns"], (current, comparative), strict=True):
+        column["header_path_exact"] = [surface]
+
+
+def _run_alignment_fixture(pages, compiled):
+    before = copy.deepcopy(pages)
+    adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert pages == before
+    operating_expense_adapter.validate_gemini_json_operating_expense_replay_v1(
+        indexed_query_evidence=adapted, trials=[trial],
+        page_json_by_document=pages, compiled_specs=compiled,
+    )
+    assert pages == before
+    return adapted, trial
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("conflict", ["END_DATE", "RANGE_START", "ROMAN_QUARTER", "PRECISION"])
+def test_explicit_period_conflict_is_unresolved_not_absent(layout, conflict):
+    source_fixture = (
+        _continuation_query_fixture
+        if layout == "COMPLETE_OWNER"
+        else _internal_owner_continuation_query_fixture
+    )
+    _base, pages, compiled = source_fixture()
+    prior, receiver = _alignment_tables(pages)
+    if conflict == "END_DATE":
+        _alignment_headers(prior, "30/06/2026", "30/06/2025")
+        _alignment_headers(receiver, "31/03/2026", "31/03/2025")
+    elif conflict == "RANGE_START":
+        _alignment_headers(prior, "Từ 01/04/2026 đến 30/06/2026", "Từ 01/04/2025 đến 30/06/2025")
+        _alignment_headers(receiver, "Từ 01/01/2026 đến 30/06/2026", "Từ 01/01/2025 đến 30/06/2025")
+    elif conflict == "ROMAN_QUARTER":
+        _alignment_headers(prior, "Quý II/2026", "Quý II/2025")
+        _alignment_headers(receiver, "Quý III/2026", "Quý III/2025")
+    else:
+        _alignment_headers(prior, "Từ 01/01/2026 đến 30/06/2026", "Từ 01/01/2025 đến 30/06/2025")
+        _alignment_headers(receiver, "30/06/2026", "30/06/2025")
+    adapted, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+    if layout == "INTERNAL_OWNER":
+        cluster = adapted["candidate_dispositions"][0]["cluster"]
+        assert cluster["status"] == UNRESOLVED
+        assert cluster["operating_expense_internal_owner_period_rejection_receipts"]
+
+
+def _reverse_alignment_columns_and_values(table, *, keep_headers_blank=False):
+    if not keep_headers_blank:
+        table["columns"].reverse()
+    for row in table["rows"]:
+        row["values_exact"].reverse()
+
+
+def _alignment_root_with_exact_source_ref(trial, pages, expected=(80, 64)):
+    assert trial["status"] == READY
+    root = next(mapping for mapping in trial["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL")
+    assert [cell["coefficient"] for cell in root["values"]] == list(expected)
+    # These controlled fixtures use direct observations, not aggregate-role
+    # sums; check every mapped role so a symmetric root cannot hide child drift.
+    for mapping in trial["mappings"]:
+        for ref in mapping["source_refs"]:
+            locator = ref["locator"]
+            page = pages[1][locator["page_json_version_id"]]
+            _section, table = operating_expense_adapter._source_table(
+                page, section_id=locator["section_id"], table_id=locator["table_id"]
+            )
+            row = table["rows"][ref["row_ordinal"] - 1]
+            source_cells = [row["values_exact"][ordinal - 1] for ordinal in ref["money_column_ordinals"]]
+            assert source_cells == [cell["source_text"] for cell in mapping["values"]]
+    return root
+
+
+@pytest.mark.parametrize(
+    "shape",
+    ["RECEIVER", "SENDER", "BOTH", "REVERSED_SENDER_BLANK_RECEIVER", "RECEIVER_WITH_TEXT_COLUMN"],
+)
+def test_semantic_permutation_preserves_values_and_exact_source_columns(shape):
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    _alignment_headers(prior, "Kỳ này", "Kỳ trước")
+    if shape != "REVERSED_SENDER_BLANK_RECEIVER":
+        _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    if shape in {"SENDER", "BOTH", "REVERSED_SENDER_BLANK_RECEIVER"}:
+        _reverse_alignment_columns_and_values(prior)
+    if shape in {"RECEIVER", "BOTH", "RECEIVER_WITH_TEXT_COLUMN"}:
+        _reverse_alignment_columns_and_values(receiver)
+    if shape == "REVERSED_SENDER_BLANK_RECEIVER":
+        _reverse_alignment_columns_and_values(receiver, keep_headers_blank=True)
+    if shape == "RECEIVER_WITH_TEXT_COLUMN":
+        receiver["columns"].insert(0, {"header_path_exact": ["Chỉ tiêu"], "value_kind": "TEXT"})
+        for row in receiver["rows"]:
+            row["values_exact"].insert(0, None)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+def test_header_reversal_without_values_cannot_be_ignored_for_arithmetic():
+    _base, pages, compiled = _continuation_query_fixture()
+    _prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ trước", "Kỳ này")
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+
+
+def test_blank_source_stays_blank_after_semantic_permutation():
+    _base, pages, compiled = _continuation_query_fixture()
+    _prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    receiver["rows"][-2]["values_exact"][0] = None
+    _reverse_alignment_columns_and_values(receiver)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+    deposit = next(mapping for mapping in trial["mappings"] if mapping["role"] == "DEPOSIT_INSURANCE_EXPENSE")
+    assert deposit["values"][0] == {
+        "coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL",
+    }
+
+
+def test_internal_owner_duplicate_receiver_semantic_lanes_are_unresolved():
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    _prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ này")
+    adapted, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+    assert adapted["candidate_dispositions"][0]["cluster"]["status"] == UNRESOLVED
+
+
+def test_generic_nonowner_remains_not_observed_despite_period_conflict():
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    prior["rows"][3]["label_exact"] = "Thông tin không thuộc chi phí hoạt động"
+    prior["rows"][3]["hierarchy_path_exact"] = [prior["rows"][3]["label_exact"]]
+    _alignment_headers(prior, "30/06/2026", "30/06/2025")
+    _alignment_headers(receiver, "31/03/2026", "31/03/2025")
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == NOT_OBSERVED
+    assert trial["mappings"] == []
+
+
+@pytest.mark.parametrize(
+    ("prior_headers", "receiver_headers"),
+    [
+        (("30/06/2026", "30/06/2025"), ("30/06/2026", "30/06/2025")),
+        (
+            ("Từ 01/01/2026 đến 30/06/2026", "Từ 01/01/2025 đến 30/06/2025"),
+            ("Từ 01/01/2026 đến 30/06/2026", "Từ 01/01/2025 đến 30/06/2025"),
+        ),
+        (("Quý II/2026", "Quý II/2025"), ("Quý 2/2026", "Quý 2/2025")),
+        (("6 tháng năm 2026", "6 tháng năm 2025"), ("6 tháng năm 2026", "6 tháng năm 2025")),
+        (
+            ("Lũy kế quý II năm 2026", "Lũy kế quý II năm 2025"),
+            ("Lũy kế quý 2 năm 2026", "Lũy kế quý 2 năm 2025"),
+        ),
+    ],
+)
+def test_continuation_equivalent_source_period_and_qualifier_axes_map(prior_headers, receiver_headers):
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    _alignment_headers(prior, *prior_headers)
+    _alignment_headers(receiver, *receiver_headers)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize(
+    ("sender", "receiver"),
+    [
+        ("Quý II năm {year}", "Lũy kế quý II năm {year}"),
+        ("3 tháng năm {year}", "6 tháng năm {year}"),
+        ("Quý II năm {year}", "Năm {year}"),
+        ("Quý II năm {year}", "Quý II và quý III năm {year}"),
+        ("Quý II năm {year}", "Quý 5 năm {year}"),
+    ],
+)
+def test_one_lane_conflicting_or_invalid_duration_qualifier_is_a_veto(sender, receiver):
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiving = _alignment_tables(pages)
+    _alignment_headers(prior, sender.format(year=2026), sender.format(year=2025))
+    _alignment_headers(receiving, receiver.format(year=2026), sender.format(year=2025))
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+
+
+@pytest.mark.parametrize("sender_text_position", [0, 1, 2])
+@pytest.mark.parametrize("receiver_text_position", [0, 1, 2])
+def test_reversed_receiver_with_nonmoney_columns_keeps_semantic_source_identity(
+    sender_text_position, receiver_text_position
+):
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    _reverse_alignment_columns_and_values(receiver)
+    for table, position in ((prior, sender_text_position), (receiver, receiver_text_position)):
+        table["columns"].insert(position, {"header_path_exact": ["Chỉ tiêu"], "value_kind": "TEXT"})
+        for row in table["rows"]:
+            row["values_exact"].insert(position, None)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+def test_symmetric_parent_totals_do_not_hide_asymmetric_child_column_order():
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    prior["rows"][0]["values_exact"] = ["10", "10"]
+    prior["rows"][1]["values_exact"] = ["30", "30"]
+    prior["rows"][3]["values_exact"] = ["10", "12"]
+    prior["rows"][4]["values_exact"] = ["20", "20"]
+    prior["rows"][6]["values_exact"] = ["8", "10"]
+    prior["rows"][7]["values_exact"] = ["15", "15"]
+    travel = prior["rows"].pop()
+    travel["hierarchy_path_exact"] = [travel["label_exact"]]
+    receiver["rows"][0]["values_exact"] = ["4", "5"]
+    receiver["rows"][1]["values_exact"] = ["3", "3"]
+    receiver["rows"][-2]["values_exact"] = ["5", "5"]
+    receiver["rows"][-1]["values_exact"] = ["80", "80"]
+    receiver["rows"].insert(0, travel)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    _reverse_alignment_columns_and_values(receiver)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages, expected=(80, 80))
+    mapped_travel = next(mapping for mapping in trial["mappings"] if mapping["role"] == "TRAVEL_EXPENSE")
+    assert [cell["coefficient"] for cell in mapped_travel["values"]] == [4, 3]
+
+
+def test_legacy_blank_receiver_projection_restores_reversed_source_columns(monkeypatch):
+    _base, pages, compiled = _continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    _reverse_alignment_columns_and_values(prior)
+    _reverse_alignment_columns_and_values(receiver, keep_headers_blank=True)
+    # Exercise the independently retained blank-header fallback, rather than
+    # letting the broader complete-owner branch shadow it in this fixture.
+    monkeypatch.setattr(operating_expense_adapter, "_complete_owner_continuation_projection", lambda **_kwargs: None)
+    _adapted, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+    projection = trial["candidates"][0]["closure_receipt"]["operating_expense_adapter_receipt"][
+        "continuation_projection_receipts"
+    ][0]
+    assert "boundary_ordinal" in projection
+    assert projection["period_alignment_receipt"]["receiver_money_column_ordinals"] == [2, 1]
+
+
+@pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
+def test_internal_owner_invalid_period_in_either_fragment_is_typed_unresolved(fragment):
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    table = pages[1][fragment]["sections"][0]["tables"][0]
+    _alignment_headers(table, "Kỳ này", "Kỳ này")
+    indexed, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["reasons"] == ["OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_PERIOD_REJECTED"]
+    receipts = indexed["candidate_dispositions"][0]["cluster"][
+        "operating_expense_internal_owner_period_rejection_receipts"
+    ]
+    assert len(receipts) == 1
+    assert receipts[0]["owner_proof"]["owner_row_ordinal"] == 4
+
+
+@pytest.mark.parametrize(
+    "mutation", ["REMOVE_RECEIPT", "FORGE_NOT_OBSERVED", "DUPLICATE_RECEIPT", "PERIOD_AXIS", "SOURCE_PREFIX"]
+)
+def test_internal_owner_period_veto_rejects_tampered_query_or_source(mutation):
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    prior, receiver = _alignment_tables(pages)
+    _alignment_headers(prior, "Quý II/2026", "Quý II/2025")
+    _alignment_headers(receiver, "Quý III/2026", "Quý III/2025")
+    indexed, _trial = _run_alignment_fixture(pages, compiled)
+    cluster = indexed["candidate_dispositions"][0]["cluster"]
+    field = "operating_expense_internal_owner_period_rejection_receipts"
+    receipt = cluster[field][0]
+    if mutation == "REMOVE_RECEIPT":
+        del cluster[field]
+    elif mutation == "FORGE_NOT_OBSERVED":
+        del cluster[field]
+        cluster["status"] = NOT_OBSERVED
+        cluster["reasons"] = []
+    elif mutation == "DUPLICATE_RECEIPT":
+        cluster[field].append(copy.deepcopy(receipt))
+    elif mutation == "SOURCE_PREFIX":
+        prior["rows"][1]["values_exact"][0] = "2"
+    else:
+        receipt["period_alignment_receipt"]["compatible"] = True
+        material = {key: value for key, value in receipt.items() if key != "receipt_id"}
+        receipt["receipt_id"] = "gjoefav1:internal-owner-period-rejection:" + canonical_json_sha256_v1(material)
+    forged = _reseal_family_query_cluster(indexed, compiled)
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="period-rejection source replay"):
+        build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=forged, page_json_by_document=pages, compiled_specs=compiled,
+        )
+
+
+@pytest.mark.parametrize("mutation", ["ONE_LANE_SUBSET", "DUPLICATE_BEFORE", "DUPLICATE_AFTER", "UNKNOWN_COLUMN"])
+def test_continuation_inverse_column_map_preserves_selected_subset_or_rejects_tamper(mutation):
+    _base, pages, compiled = _continuation_query_fixture()
+    _prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    _reverse_alignment_columns_and_values(receiver)
+    indexed, _trial = _run_alignment_fixture(pages, compiled)
+    regions = indexed["candidate_dispositions"][0]["cluster"]["component_regions"]
+    projected_pages, projected_regions, receipt = operating_expense_adapter._continuation_projection(
+        pages=pages[1], regions=regions, compiled_specs=compiled,
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=projected_regions, page_json_by_version=projected_pages,
+        compiled_specs=compiled, query_receipt=receipt["projected_query_receipt"],
+    )
+    root = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL")
+    candidate["mappings"] = [root]
+    projection = next(item for item in receipt["row_projections"] if item["projected_row_ordinal"] == root["source_refs"][0]["row_ordinal"])
+    if mutation == "ONE_LANE_SUBSET":
+        root["values"] = root["values"][:1]
+        root["source_refs"][0]["money_column_ordinals"] = [1]
+        operating_expense_adapter._restore_continuation_mapping_source_refs(candidate, receipt=receipt)
+        assert root["source_refs"][0]["money_column_ordinals"] == [2]
+    else:
+        if mutation == "DUPLICATE_BEFORE":
+            projection["before_money_column_ordinals"] = [1, 1]
+        elif mutation == "DUPLICATE_AFTER":
+            projection["after_money_column_ordinals"] = [1, 1]
+        else:
+            root["source_refs"][0]["money_column_ordinals"] = [999]
+        with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="inverse source column map drifted"):
+            operating_expense_adapter._restore_continuation_mapping_source_refs(candidate, receipt=receipt)
+
+
+def _calendar_count_fixture(layout):
+    fixture = _continuation_query_fixture if layout == "COMPLETE_OWNER" else _internal_owner_continuation_query_fixture
+    _base, pages, compiled = fixture()
+    return pages, compiled, _alignment_tables(pages)
+
+
+def _calendar_count_headers(table, pattern):
+    _alignment_headers(table, pattern.format(year=2026), pattern.format(year=2025))
+
+
+def _assert_calendar_count_rejection(pages, compiled, layout):
+    indexed, trial = _run_alignment_fixture(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+    if layout == "INTERNAL_OWNER":
+        assert trial["reasons"] == ["OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_PERIOD_REJECTED"]
+        receipt = indexed["candidate_dispositions"][0]["cluster"][
+            "operating_expense_internal_owner_period_rejection_receipts"
+        ][0]
+        assert receipt["period_alignment_receipt"]["compatible"] is False
+    return indexed, trial
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("count", range(1, 13))
+def test_every_equal_explicit_month_count_in_bounded_policy_remains_ready(layout, count):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table in tables:
+        _calendar_count_headers(table, f"{count} tháng đầu năm {{year}}")
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("counts", [(2, 5), (1, 11), (7, 12)])
+def test_unlisted_but_explicit_month_counts_cannot_disappear_into_year(layout, counts):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table, count in zip(tables, counts, strict=True):
+        _calendar_count_headers(table, f"{count} tháng đầu năm {{year}}")
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("fragment", [0, 1])
+@pytest.mark.parametrize("count", ["- 2", "− 2", "-\t2", "-\n2", "-   2"])
+def test_spaced_negative_count_is_observed_in_either_fragment_and_exact_replay(layout, fragment, count):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table in tables:
+        _calendar_count_headers(table, "2 tháng đầu năm {year}")
+    _calendar_count_headers(tables[fragment], f"{count} tháng đầu năm {{year}}")
+    indexed, _trial = _assert_calendar_count_rejection(pages, compiled, layout)
+    if layout == "INTERNAL_OWNER":
+        receipt = indexed["candidate_dispositions"][0]["cluster"][
+            "operating_expense_internal_owner_period_rejection_receipts"
+        ][0]
+        key = "prior_period_qualifiers" if fragment == 0 else "receiver_period_qualifiers"
+        for qualifier in receipt["period_alignment_receipt"][key]:
+            frontier = qualifier["duration_month_frontier"]
+            assert frontier["valid"] is False
+            assert frontier["evidence"][0]["count_token"] == "- 2"
+            assert frontier["evidence"][0]["count"] is None
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("count", ["0", "-2", "−2", "13", "22", "2.5", "2,5", "2/5", "hai muoi"])
+def test_invalid_count_is_not_absent_positive_or_suffix_truncated(layout, count):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table in tables:
+        _calendar_count_headers(table, f"{count} tháng đầu năm {{year}}")
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+@pytest.mark.parametrize(
+    ("numeric", "words"),
+    [(1, "một"), (2, "hai"), (5, "năm"), (7, "bảy"), (11, "mười một"), (12, "mười hai")],
+)
+def test_governed_vietnamese_written_month_count_matches_numeric_count(numeric, words):
+    pages, compiled, (prior, receiver) = _calendar_count_fixture("COMPLETE_OWNER")
+    _calendar_count_headers(prior, f"{numeric} tháng đầu năm {{year}}")
+    _calendar_count_headers(receiver, f"{words} tháng đầu năm {{year}}")
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize(("numeric", "words"), [(1, "one"), (2, "two"), (5, "five"), (10, "ten"), (11, "eleven"), (12, "twelve")])
+def test_governed_english_written_month_count_matches_numeric_count(numeric, words):
+    pages, compiled, (prior, receiver) = _calendar_count_fixture("COMPLETE_OWNER")
+    _calendar_count_headers(prior, f"{numeric} months ended {{year}}")
+    _calendar_count_headers(receiver, f"{words} months ended {{year}}")
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        "31/02/{year}", "29/02/{year}", "00/06/{year}", "32/06/{year}", "30/00/{year}",
+        "31/99/{year}", "ngày 31 tháng 2 năm {year}",
+        "12345/02/{year}", "03/12345/{year}", "ngày 12345 tháng 2 năm {year}",
+        "12345 02 {year}",
+        "Từ 31/02/{year} đến 30/06/{year}", "Từ 01/01/{year} đến 31/04/{year}",
+        "Năm {year}, ngày 03/06/26", "Năm {year}, ngày 3 tháng 6 năm 26",
+    ],
+)
+def test_every_visible_invalid_or_short_year_date_blocks_bare_year_fallback(layout, pattern):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table in tables:
+        _calendar_count_headers(table, pattern)
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize(
+    ("prior_pattern", "receiver_pattern"),
+    [
+        ("03/06/{year}", "ngày 3 tháng 6 năm {year}"),
+        ("09/06/{year}", "ngày 9 tháng 6 năm {year}"),
+        ("13/06/{year}", "06/13/{year}"),
+        ("28/02/{year}", "ngày 28 tháng 2 năm {year}"),
+        ("03 06 {year}", "ngày 3 tháng 6 năm {year}"),
+        (
+            "Từ 01/01/{year} đến 30/06/{year}",
+            "Từ ngày 1 tháng 1 năm {year} đến ngày 30 tháng 6 năm {year}",
+        ),
+        (
+            "2 tháng kết thúc 03/06/{year}",
+            "2 tháng kết thúc ngày 3 tháng 6 năm {year}",
+        ),
+    ],
+)
+def test_calendar_equivalence_has_no_phantom_month_duration(layout, prior_pattern, receiver_pattern):
+    pages, compiled, (prior, receiver) = _calendar_count_fixture(layout)
+    _calendar_count_headers(prior, prior_pattern)
+    _calendar_count_headers(receiver, receiver_pattern)
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+def test_valid_leap_days_are_observed_not_blanket_february_rejection(layout):
+    pages, compiled, (prior, receiver) = _calendar_count_fixture(layout)
+    _alignment_headers(prior, "29/02/2024", "29/02/2020")
+    _alignment_headers(receiver, "ngày 29 tháng 2 năm 2024", "ngày 29 tháng 2 năm 2020")
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+def test_masking_written_date_does_not_mask_real_conflicting_month_count(layout):
+    pages, compiled, (prior, receiver) = _calendar_count_fixture(layout)
+    _calendar_count_headers(prior, "2 tháng kết thúc ngày 3 tháng 6 năm {year}")
+    _calendar_count_headers(receiver, "5 tháng kết thúc ngày 3 tháng 6 năm {year}")
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("fragment", [0, 1])
+@pytest.mark.parametrize("pattern", ["31/02/{year}", "-2 tháng đầu năm {year}"])
+def test_invalid_explicit_calendar_or_count_in_either_fragment_is_typed_veto(layout, fragment, pattern):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    _calendar_count_headers(tables[fragment], pattern)
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+def test_explicit_iso_date_omitted_by_shared_axis_cannot_be_bare_year(layout):
+    pages, compiled, tables = _calendar_count_fixture(layout)
+    for table in tables:
+        _calendar_count_headers(table, "{year}-06-03")
+    _assert_calendar_count_rejection(pages, compiled, layout)
+
+
+def test_unexplained_month_surface_and_huge_count_are_not_missing_qualifiers():
+    for surface in ("tháng 6 năm 2026", "13 months 2026", "9" * 5000 + " tháng năm 2026"):
+        masked, _dates = operating_expense_adapter._continuation_calendar_frontier(surface)
+        frontier = operating_expense_adapter._continuation_duration_month_frontier(masked)
+        assert frontier["valid"] is False
+
+
+@pytest.mark.parametrize("field", ["day", "month", "year"])
+def test_overlong_calendar_field_is_observed_and_rejected_without_integer_conversion(field):
+    values = {"day": "03", "month": "06", "year": "2026"}
+    values[field] = "9" * 5000
+    masked, evidence = operating_expense_adapter._continuation_calendar_frontier(
+        "{day}/{month}/{year}".format(**values)
+    )
+    assert len(evidence) == 1
+    assert evidence[0]["calendar_valid"] is False
+    assert not masked.strip()
 
 
 def test_source_row_coverage_rejects_tampered_mapping_locator() -> None:
