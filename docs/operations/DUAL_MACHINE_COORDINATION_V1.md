@@ -66,7 +66,9 @@ git switch -c codex/f39-income-tax-laptop 8efd618b6c77f0cdbb402a440e7ba3b3549184
 git cherry-pick origin/codex/coordination-2025-current-v1
 ```
 
-Sau đó dùng Python 3.11/3.12; thay `python` bằng đường dẫn Python phù hợp.
+Sau đó dùng Python 3.12 theo yêu cầu mới laptop chuyển tiếp lúc 06:10 UTC;
+thay `python` bằng đường dẫn Python phù hợp. Các test VPS đã chạy với 3.11
+chỉ là diagnostic, không phải acceptance 3.12.
 `--profile PROFILE` là tùy chọn global đặt trước subcommand; có thể bỏ khi AWS
 default đã đúng. Không cần chia sẻ key hoặc passphrase qua hộp thư.
 
@@ -87,7 +89,7 @@ ghi DB: mỗi worker phải tự kiểm tra process và cô lập thư mục run
 Laptop hiện báo Windows native bị vướng symlink privilege, SQLite source identity
 `fstat/stat st_ctime_ns`, binary read CRT. Đây chưa phải bằng chứng DB hỏng.
 Không sửa guard shared để né lỗi. Việc cài WSL/Linux cần quyền/quyết định trên máy
-laptop; dùng Linux filesystem và Python 3.11/3.12 rồi chạy lại toàn bộ gate.
+laptop; dùng Linux filesystem và Python 3.12 rồi chạy lại toàn bộ gate.
 VPS có thể chạy acceptance Linux cho commit laptop khi hai bên phân công rõ;
 kết quả Linux không chứng nhận native Windows.
 
@@ -141,3 +143,39 @@ PUT dùng `If-None-Match: *`; xung đột dừng, không ghi đè. Mỗi object 
 readback exact VersionId. Không xóa event/claim hay thay latest-pointer. Tin có
 timestamp lệch phải đối chiếu `reply_to`/LastModified; không suy quyền chỉ từ thứ
 tự tên file. Branch Git đã push là backup code; tmpfs chưa upload sẽ mất khi reboot.
+
+## Checkpoint thực tế 2026-09-05, 06:14 UTC
+
+Đã liên lạc hai chiều qua events. Laptop gửi OWNERSHIP_ACK lúc 06:10, xác nhận
+không sửa F36/F37. VPS đã publish contract và formal join, readback/hash PASS.
+Laptop tiếp tục gửi `COORDINATION_JOIN_DEFERRED_BY_USER_PREFLIGHT_GATE` lúc
+06:14: chỉ dẫn user bên laptop cấm đổi nhánh trước restore preflight PASS, nên
+chưa thể tạo nhánh F39/cherry-pick helper/join. **Formal handshake vẫn PENDING**.
+Không dùng ACK trước đó để vượt cổng này. Laptop tạm ngưng mutation, không hứa
+poll khi phiên đã trả quyền cho user. Cần user cho phép/thiết lập Linux/WSL
+Python 3.12 trên laptop rồi chạy lại gate; peer không thể cấp quyền thay user.
+
+Commit helper/config/docs/tests đầu tiên đã push:
+`91c11824ef7d4a1b2ddbca0211ee8b6aa26d9d12`, nhánh điều phối và F36.
+29 test điều phối + Ruff PASS với Python 3.11 (diagnostic). Shared/main branch
+vẫn nguyên `8efd618b6c77f0cdbb402a440e7ba3b3549184f1`.
+
+Đã dùng sáu sub-agent cho phần độc lập; chưa sửa file family:
+
+- F36: 72 focused PASS, 2 stale runner tests FAIL. Rà soát thêm tái hiện hai
+  defect: unsupported/conflicting explicit unit bị mất khi nối bảng; thứ tự
+  page-map làm đổi sealed IDs. Có repro 7 FAIL/2 controls PASS, chưa phải fix.
+- F37: 49 focused PASS, SHA source DB full/common khớp. PDF audit vẫn stale,
+  chưa census/replay mới, chưa terminal. Giữ reserved/read-only.
+- F39: tái hiện độc lập đủ sáu blocker, gửi report và script cho laptop; chưa sửa.
+- VPS chưa có Python 3.12. Có uv nhưng overlay khoảng 340 MiB, `/dev/shm` noexec;
+  không cài environment đầy đủ hoặc replay thiếu dung lượng. 3.11 không thay
+  bằng chứng acceptance 3.12.
+
+Sáu file report/repro/review đã upload riêng và tải ngược kiểm SHA tại
+`artifacts/vps/20260905-preflight-v1/` trong prefix điều phối. Receipt checkpoint
+S3 mới bind exact VersionId/SHA của từng file. Không upload lại PDF/corpus DB.
+Tiếp tục: giải quyết quyền/runtime laptop → review helper → formal join/check
+hai bên → F36 sửa bounded trên nhánh riêng, laptop F39 → acceptance/replay/
+audit/integrity/ledger → tích hợp F39 rồi F36 rồi F37. Không đánh dấu release từ
+các diagnostic trên, không sửa frozen engine, không gọi provider.
