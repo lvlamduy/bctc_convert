@@ -1715,7 +1715,7 @@ def _run_with_database(
     source_row_coverage = build_operating_expense_source_row_coverage_receipt_v1(
         indexed_query_evidence=indexed,
         trials=trials,
-        page_json_by_document=pages,
+        page_json_by_document=dict(pages),
         compiled_specs=compiled,
         fail_on_violation=True,
     )

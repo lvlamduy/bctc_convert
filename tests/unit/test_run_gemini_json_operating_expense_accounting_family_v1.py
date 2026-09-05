@@ -12,6 +12,12 @@ from scripts.experiments import (
 )
 
 
+def test_real_sqlite_runner_normalizes_page_map_only_at_coverage_boundary(tmp_path):
+    from test_build_f36_diagnostic_from_corpus_v1 import _run_real_sqlite_subprocess
+
+    _run_real_sqlite_subprocess(tmp_path, check_runner=True)
+
+
 def _sealed(material: dict, prefix: str) -> dict:
     return {**material, "receipt_id": prefix + canonical_json_sha256_v1(material)}
 

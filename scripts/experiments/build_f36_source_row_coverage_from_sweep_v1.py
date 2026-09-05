@@ -17,6 +17,7 @@ import importlib
 import importlib.util
 import json
 import os
+import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
@@ -39,6 +40,7 @@ ACTIVE_CODE_RELATIVE = (
     "scripts/experiments/build_f36_source_row_coverage_from_sweep_v1.py",
     "src/bctc_ai/evaluation/gemini_json_operating_expense_family_v1.py",
 )
+OUTPUT_HEADROOM_BYTES = 128 * 1024**2
 
 
 class CoverageBuilderError(RuntimeError):
@@ -118,6 +120,7 @@ def _paths(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Path]]:
             raise CoverageBuilderError("Output/temp paths must be outside the repository and corpus")
     if os.path.lexists(args.output):
         raise CoverageBuilderError("Refusing to overwrite an existing output or symlink")
+    _assert_output_capacity(args.output, payload_size=0)
     specs = {}
     for name in SPEC_NAMES:
         candidate = getattr(args, name, None)
@@ -143,12 +146,50 @@ def _temporary_directory_root(root: Path):
             os.environ["SQLITE_TMPDIR"] = prior_sqlite_tempdir
 
 
+def _assert_output_capacity(path: Path, *, payload_size: int) -> None:
+    parent = path.parent.resolve()
+    while not parent.exists():
+        parent = parent.parent
+    if not parent.is_dir():
+        raise CoverageBuilderError("Output ancestor is not a directory")
+    if shutil.disk_usage(parent).free < payload_size + OUTPUT_HEADROOM_BYTES:
+        raise CoverageBuilderError("Insufficient output space for payload plus headroom")
+
+
 def _write_new(path: Path, payload: bytes) -> None:
+    """Publish complete bytes exclusively; a failed write never exposes a partial file."""
+
+    if os.path.lexists(path):
+        raise FileExistsError(f"Refusing to overwrite existing output: {path}")
+    _assert_output_capacity(path, payload_size=len(payload))
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("xb") as stream:
-        stream.write(payload)
-        stream.flush()
-        os.fsync(stream.fileno())
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".pending", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    identity = os.fstat(descriptor)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # A sibling inode keeps publication on the same filesystem. link is
+        # exclusive even if another worker creates the final name meanwhile.
+        os.link(temporary, path)
+        if os.name == "posix":
+            directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    finally:
+        try:
+            current = temporary.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            if (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino):
+                temporary.unlink()
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
@@ -178,7 +219,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         receipt = runtime.build_coverage(
             indexed_query_evidence=sweep["indexed_query_evidence"],
             trials=sweep["trials"],
-            page_json_by_document=pages,
+            page_json_by_document=dict(pages),
             compiled_specs=compiled,
             fail_on_violation=True,
         )

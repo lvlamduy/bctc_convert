@@ -1855,6 +1855,231 @@ def test_continuation_explicit_header_units_preserve_period_parser_authority(
     assert pages == before
 
 
+def _roman_quarter_peer_continuation_fixture() -> tuple[
+    dict[int, dict[str, dict[str, Any]]], dict[str, Any]
+]:
+    """A partial employee disclosure ends before the next numbered parent."""
+
+    _base, pages, compiled = _continuation_query_fixture()
+    prior = pages[1][VERSION_ID]["sections"][0]["tables"][0]
+    receiver = pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]
+    prior["rows"] = prior["rows"][:3]
+    prior["rows"][2]["label_exact"] = "Trong đó: Chi lương và phụ cấp"
+    prior["rows"][2]["hierarchy_path_exact"] = [
+        "2. Chi phí nhân viên", "Trong đó: Chi lương và phụ cấp",
+    ]
+    prior["continuation"] = "NONE"
+    receiver["rows"] = [
+        _row("3. Chi về tài sản", "20", "15", kind="GROUP"),
+        _row(
+            "Trong đó: Chi phí khấu hao tài sản cố định", "12", "10",
+            path=["3. Chi về tài sản", "Trong đó: Chi phí khấu hao tài sản cố định"],
+        ),
+        _row("4. Chi cho hoạt động quản lý và công vụ", "15", "12", kind="GROUP"),
+        _row(
+            "Trong đó: Công tác phí", "4", "3",
+            path=["4. Chi cho hoạt động quản lý và công vụ", "Trong đó: Công tác phí"],
+        ),
+        _row("5. Chi nộp phí bảo hiểm tiền gửi của khách hàng", "5", "4"),
+        _row("Cộng", "80", "64", kind="TOTAL"),
+    ]
+    for table in (prior, receiver):
+        table["columns"] = [
+            {"header_path_exact": ["Quý II/2026"], "value_kind": "MONEY"},
+            {"header_path_exact": ["Quý II/2025"], "value_kind": "MONEY"},
+        ]
+    return pages, compiled
+
+
+@pytest.mark.parametrize("quarter", ["I", "II", "III", "IV"])
+@pytest.mark.parametrize("sender_marker", ["NONE", "CONTINUES_ON_NEXT_PAGE"])
+def test_roman_quarter_continuation_maps_printed_root_and_partial_parent(
+    quarter: str, sender_marker: str
+) -> None:
+    pages, compiled = _roman_quarter_peer_continuation_fixture()
+    for version in (VERSION_ID, CONTINUATION_VERSION_ID):
+        table = pages[1][version]["sections"][0]["tables"][0]
+        for column, year in zip(table["columns"], (2026, 2025), strict=True):
+            column["header_path_exact"] = [f"Quý {quarter}/{year}"]
+    pages[1][VERSION_ID]["sections"][0]["tables"][0]["continuation"] = sender_marker
+    before = copy.deepcopy(pages)
+    adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == READY
+    assert pages == before
+    assert [
+        region["physical_page"]
+        for region in adapted["candidate_dispositions"][0]["cluster"]["component_regions"]
+    ] == [1, 2]
+    mappings = {mapping["role"]: mapping for mapping in trial["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["FAMILY_ROOT_TOTAL"]["values"]] == [80, 64]
+    assert [cell["source_text"] for cell in mappings["FAMILY_ROOT_TOTAL"]["values"]] == ["80", "64"]
+    assert [cell["coefficient"] for cell in mappings["EMPLOYEE_EXPENSE"]["values"]] == [30, 25]
+    assert [cell["coefficient"] for cell in mappings["SALARY_ALLOWANCE"]["values"]] == [20, 18]
+    assert "OTHER_EMPLOYEE_EXPENSE" not in mappings  # Never backsolve an undisclosed remainder.
+    assert mappings["ASSET_EXPENSE"]["source_refs"][0]["locator"]["physical_page"] == 2
+    root = mappings["FAMILY_ROOT_TOTAL"]
+    assert all(ref["locator"]["physical_page"] == 2 for ref in root["source_refs"])
+    receipt = trial["candidates"][0]["closure_receipt"]["operating_expense_adapter_receipt"]
+    assert receipt["source_root_authority_veto_receipts"] == []
+    assert len(receipt["continuation_projection_receipts"]) == 1
+    assert validate_source_observation_mapping_contract_v1(trial)["violation_count"] == 0
+    validate_gemini_json_operating_expense_replay_v1(
+        indexed_query_evidence=adapted, trials=[trial],
+        page_json_by_document=pages, compiled_specs=compiled,
+    )
+
+
+@pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
+@pytest.mark.parametrize("surface", ["II", "Kỳ này II", "Quý EUR/2026", "Quý II/2026 eur"])
+def test_roman_quarter_rule_does_not_allow_bare_or_currency_tokens(
+    fragment: str, surface: str
+) -> None:
+    pages, compiled = _roman_quarter_peer_continuation_fixture()
+    table = pages[1][fragment]["sections"][0]["tables"][0]
+    table["columns"][0]["header_path_exact"] = [surface]
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "MISSING_RECEIVER_TABLE", "MISSING_RECEIVER_MARKER", "OUTGOING_RECEIVER",
+        "DUPLICATE_PRINTED_ROOT", "ROOT_MISMATCH", "UNIT_CONFLICT",
+    ],
+)
+def test_incomplete_sender_never_substitutes_derived_root_for_printed_total(
+    mutation: str,
+) -> None:
+    pages, compiled = _roman_quarter_peer_continuation_fixture()
+    receiver_section = pages[1][CONTINUATION_VERSION_ID]["sections"][0]
+    receiver = receiver_section["tables"][0]
+    if mutation == "MISSING_RECEIVER_TABLE":
+        receiver_section["tables"] = []
+    elif mutation == "MISSING_RECEIVER_MARKER":
+        receiver["continuation"] = "NONE"
+    elif mutation == "OUTGOING_RECEIVER":
+        receiver["continuation"] = "BOTH"
+    elif mutation == "DUPLICATE_PRINTED_ROOT":
+        receiver["rows"].append(copy.deepcopy(receiver["rows"][-1]))
+    elif mutation == "ROOT_MISMATCH":
+        receiver["rows"][-1]["values_exact"] = ["100", "99"]
+    else:
+        receiver["unit_exact"] = "VND"
+    before = copy.deepcopy(pages)
+    adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+    assert pages == before
+    validate_gemini_json_operating_expense_replay_v1(
+        indexed_query_evidence=adapted, trials=[trial],
+        page_json_by_document=pages, compiled_specs=compiled,
+    )
+    if mutation != "ROOT_MISMATCH":
+        candidate = trial["candidates"][0]
+        assert "OPERATING_EXPENSE_REQUIRED_PRINTED_ROOT_IS_ONLY_DERIVED" in candidate["reasons"]
+        receipts = candidate["closure_receipt"]["operating_expense_adapter_receipt"][
+            "source_root_authority_veto_receipts"
+        ]
+        assert len(receipts) == 1
+        rejected_root = receipts[0]["rejected_root_mappings"][0]
+        assert [cell["coefficient"] for cell in rejected_root["values"]] == [40, 33]
+        assert all(cell["source_text"] is None for cell in rejected_root["values"])
+        assert candidate["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] is False
+
+
+@pytest.mark.parametrize("policy", ["OPTIONAL", "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT"])
+@pytest.mark.parametrize("marker", ["NONE", "CONTINUES_ON_NEXT_PAGE"])
+def test_source_root_guard_distinguishes_optional_complete_sum_from_open_population(
+    policy: str, marker: str
+) -> None:
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "10", "8"),
+        _row("Chi phí cho nhân viên", "30", "25"),
+        _row("Chi về tài sản", "20", "15"),
+    ]
+    page = _operating_page(rows)
+    page["sections"][0]["tables"][0]["continuation"] = marker
+    compiled = _compiled()
+    compiled["family_root_requirement"] = policy
+    compiled["evaluation"]["family_root_requirement"] = policy
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled,
+    )
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    candidate = evaluate_gemini_json_operating_expense_family_cluster_v1(
+        regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+        selected_page_axis=[], compiled_specs=compiled, query_receipt=receipt,
+    )
+    if policy == "OPTIONAL" and marker == "NONE":
+        assert candidate["status"] == READY
+        root = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL")
+        assert root["state"] == "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+        assert all(cell["source_text"] is None for cell in root["values"])
+    else:
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+        if marker != "NONE":
+            assert "OPERATING_EXPENSE_SOURCE_CONTINUATION_NOT_CLOSED" in candidate["reasons"]
+    validate_gemini_json_operating_expense_candidate_replay_v1(
+        candidate, regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+        selected_page_axis=[], compiled_specs=compiled, query_receipt=receipt,
+    )
+
+
+@pytest.mark.parametrize("mutation", ["DROP_RECEIPT", "FORGE_READY", "SOURCE_RECEIVER_DRIFT"])
+def test_required_printed_root_veto_is_source_bound_and_replayed(mutation: str) -> None:
+    pages, compiled = _roman_quarter_peer_continuation_fixture()
+    receiver = pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]
+    receiver["continuation"] = "NONE"
+    adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    candidate = trial["candidates"][0]
+    assert candidate["status"] == UNRESOLVED
+    cluster = adapted["candidate_dispositions"][0]["cluster"]
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+        cluster["component_regions"]
+    )
+    forged = copy.deepcopy(candidate)
+    adapter = forged["closure_receipt"]["operating_expense_adapter_receipt"]
+    if mutation == "DROP_RECEIPT":
+        adapter["source_root_authority_veto_receipts"] = []
+    elif mutation == "FORGE_READY":
+        forged["status"] = READY
+        forged["reasons"] = []
+        forged["mappings"] = adapter["source_root_authority_veto_receipts"][0]["rejected_root_mappings"]
+        adapter["source_root_authority_veto_receipts"] = []
+    else:
+        receiver["rows"][-1]["values_exact"][0] = "81"
+    material = {key: value for key, value in adapter.items() if key != "adapter_receipt_id"}
+    adapter["adapter_receipt_id"] = "gjoefav1:receipt:" + canonical_json_sha256_v1(material)
+    material = {key: value for key, value in forged.items() if key != "candidate_id"}
+    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(material)
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="candidate replay drifted"):
+        validate_gemini_json_operating_expense_candidate_replay_v1(
+            forged, regions=cluster["component_regions"], page_json_by_version=pages[1],
+            selected_page_axis=adapted["selected_page_axis"], compiled_specs=compiled,
+            query_receipt=receipt,
+        )
+
+
+@pytest.mark.parametrize("marker", ["CONTINUES_ON_NEXT_PAGE", "BOTH"])
+def test_printed_total_does_not_close_an_explicit_outgoing_fragment(marker: str) -> None:
+    page = _operating_page()
+    page["sections"][0]["tables"][0]["continuation"] = marker
+    candidate, _cluster_value, _receipt = _evaluate_adapter(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["OPERATING_EXPENSE_SOURCE_CONTINUATION_NOT_CLOSED"]
+    veto = candidate["closure_receipt"]["operating_expense_adapter_receipt"][
+        "source_root_authority_veto_receipts"
+    ][0]
+    assert veto["open_evaluation_fragments"][0]["continuation"] == marker
+    assert all(cell["source_text"] is not None for cell in veto["rejected_root_mappings"][0]["values"])
+
+
 def test_primary_root_page_map_order_preserves_sealed_query_and_candidate_bytes() -> None:
     base, pages, compiled = _titleless_primary_query_fixture()
     # The hash sort is deliberately opposite to selected-source order.

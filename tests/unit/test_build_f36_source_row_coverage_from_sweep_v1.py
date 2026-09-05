@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import importlib.util
 import json
 import os
 import subprocess
 import sys
 import tempfile
+from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -75,13 +77,15 @@ def fake_runtime(inputs, monkeypatch):
         assert database != inputs.artifact_root / "source.sqlite3"
         assert kwargs == {"selected_ids": ["version:1"], "selected_page_axis": ["selected-page"]}
         calls.append("load-snapshot-pages")
-        return {1: {"version:1": {"source": "page"}}}
+        return defaultdict(dict, {1: {"version:1": {"source": "page"}}})
 
     def compile_specs(*specs):
         assert [item["spec"] for item in specs] == list(builder.SPEC_NAMES)
         return {"compiled": True}
 
     def build_coverage(**kwargs):
+        assert type(kwargs["page_json_by_document"]) is dict
+        assert kwargs["page_json_by_document"] == {1: {"version:1": {"source": "page"}}}
         assert kwargs["fail_on_violation"] is True
         assert kwargs["compiled_specs"] == {"compiled": True}
         assert kwargs["trials"] == ["trial"]
@@ -152,6 +156,87 @@ def test_exclusive_output_cannot_overwrite_late_creator(tmp_path):
     with pytest.raises(FileExistsError):
         builder._write_new(path, b"new")
     assert path.read_bytes() == b"other worker"
+
+
+def test_output_capacity_checks_payload_on_output_filesystem(tmp_path, monkeypatch):
+    path = tmp_path / "not-created" / "coverage.json"
+    calls = []
+
+    def capacity(directory):
+        calls.append(directory)
+        return SimpleNamespace(free=builder.OUTPUT_HEADROOM_BYTES + 2)
+
+    monkeypatch.setattr(builder.shutil, "disk_usage", capacity)
+    with pytest.raises(builder.CoverageBuilderError, match="output space"):
+        builder._write_new(path, b"three")
+    assert calls == [tmp_path]
+    assert not path.parent.exists()
+
+
+def test_output_capacity_fails_before_runtime_or_snapshot(inputs, monkeypatch):
+    monkeypatch.setattr(builder.shutil, "disk_usage", lambda path: SimpleNamespace(free=0))
+    monkeypatch.setattr(builder, "_load_runtime", lambda root: pytest.fail("runtime loaded"))
+    with pytest.raises(builder.CoverageBuilderError, match="output space"):
+        builder.build(inputs)
+    assert not inputs.output.parent.exists()
+
+
+def test_partial_write_enospc_does_not_publish_or_leave_private_temp(tmp_path, monkeypatch):
+    path = tmp_path / "coverage.json"
+    real_fdopen = builder.os.fdopen
+
+    @contextmanager
+    def partial_stream(descriptor, mode):
+        with real_fdopen(descriptor, mode) as stream:
+            def fail_write(payload):
+                stream.write(payload[:3])
+                stream.flush()
+                raise OSError(errno.ENOSPC, "test output filesystem full")
+
+            yield SimpleNamespace(write=fail_write)
+
+    monkeypatch.setattr(builder.os, "fdopen", partial_stream)
+    with pytest.raises(OSError) as caught:
+        builder._write_new(path, b"complete-output")
+    assert caught.value.errno == errno.ENOSPC
+    assert not path.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_racing_creator_keeps_its_output_and_removes_only_private_temp(tmp_path, monkeypatch):
+    path = tmp_path / "coverage.json"
+    real_link = builder.os.link
+
+    def late_creator(temporary, destination):
+        assert temporary.parent == destination.parent
+        assert temporary.read_bytes() == b"complete-output"
+        destination.write_bytes(b"other worker")
+        real_link(temporary, destination)
+
+    monkeypatch.setattr(builder.os, "link", late_creator)
+    with pytest.raises(FileExistsError):
+        builder._write_new(path, b"complete-output")
+    assert path.read_bytes() == b"other worker"
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="directory fsync is POSIX-specific")
+def test_directory_fsync_failure_preserves_complete_published_output(tmp_path, monkeypatch):
+    path = tmp_path / "coverage.json"
+    real_fsync = builder.os.fsync
+    calls = []
+
+    def fail_directory(descriptor):
+        calls.append(descriptor)
+        if len(calls) == 2:
+            raise OSError(errno.EIO, "directory durability failed")
+        real_fsync(descriptor)
+
+    monkeypatch.setattr(builder.os, "fsync", fail_directory)
+    with pytest.raises(OSError, match="durability"):
+        builder._write_new(path, b"complete-output")
+    assert path.read_bytes() == b"complete-output"
+    assert list(tmp_path.iterdir()) == [path]
 
 
 @pytest.mark.parametrize("field,value", [
