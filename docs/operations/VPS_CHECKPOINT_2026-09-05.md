@@ -10,7 +10,7 @@ Các branch WIP/evidence đã push:
 
 | Branch | HEAD | Trạng thái |
 |---|---|---|
-| `codex/vps-handoff-20260905` | `fa36ff924d5c78ead8cb1b307934aaa287febb12` | tài liệu tiếp tục |
+| `codex/vps-handoff-20260905` | `1a5077097d335816b5421ea5762702cce78a10a3` | tài liệu tiếp tục |
 | `codex/f30-service-leaves-vps` | `6a620717e18dbf366d10ae7771be523a8fadb4fe` | WIP/HOLD |
 | `codex/shared-source-ref-unique-vps` | `b6cfdc53a21b36bf03503d02e67f30e810152261` | WIP/HOLD, cần review độc lập |
 | `codex/f18-row-level-strict-subset-vps` | `d063e8ffe6fe45b572ac4947f5342cb503c98728` | prototype chưa review |
@@ -19,7 +19,7 @@ Các branch WIP/evidence đã push:
 | `codex/f37-credit-risk-provision-vps` | `6feb29895c0bee541286b9059d63ebf488b07c60` | terminal HOLD |
 | `codex/cross-family-audit-vps` | `3f4aa28f4b617a7adc2f6edb279a0b9c17309ccf` | audit |
 
-Nhánh checkout chính lúc chốt là `codex/rebuild-bootstrap`, sạch, HEAD `a6fd609` và đã tồn tại trên `origin`.
+Nhánh checkout chính lúc chốt là `codex/rebuild-bootstrap`, sạch, HEAD `e1d430a` và đã tồn tại trên `origin`.
 
 ## S3 evidence
 
