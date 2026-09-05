@@ -554,6 +554,17 @@ def _continuation_unit_frontier_is_safe(
                     surface = surface[: caption.start()].strip()
                 for alias in aliases:
                     surface = re.sub(r"\b" + re.escape(alias) + r"\b", " ", surface)
+                # Roman quarter numbers are period syntax only in this exact
+                # bounded position. Do not admit bare Roman-looking tokens
+                # or arbitrary three-letter currency codes. The unchanged
+                # duration parser still resolves the original source header.
+                surface = re.sub(
+                    r"\b(quy|quarter)\s+(iv|iii|ii|i)\b",
+                    lambda match: match[1] + " " + str(
+                        {"i": 1, "ii": 2, "iii": 3, "iv": 4}[match[2]]
+                    ),
+                    surface,
+                )
                 if any(
                     not token.isdecimal() and token not in _CONTINUATION_PERIOD_HEADER_WORDS
                     for token in surface.split()
@@ -3626,6 +3637,88 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
     )
 
 
+def _source_root_authority_veto(
+    candidate: dict[str, Any],
+    *,
+    source_pages: Mapping[str, dict[str, Any]],
+    source_query_receipt: Mapping[str, Any],
+    evaluation_pages: Mapping[str, dict[str, Any]],
+    evaluation_regions: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """A derived fragment sum cannot satisfy a required printed family root.
+
+    The frozen engine can derive a root from available top-level roles, even
+    when their table is an unfinished sender. Family 36 first tries its exact
+    continuation projection; after that, an outgoing marker is still an open
+    population, and the required source-visible policy cannot be satisfied by
+    the engine's explicitly derived root state. Keep the diagnostic equations
+    and rejected proposal in a raw-source-bound veto receipt, never mappings.
+    Optional-root configurations are not globally forbidden from deriving an
+    otherwise complete root; an explicit open continuation is always a veto.
+    """
+
+    if candidate.get("status") != READY:
+        return []
+    root_mappings = [
+        mapping for mapping in candidate.get("mappings", [])
+        if mapping.get("role") == "FAMILY_ROOT_TOTAL"
+    ]
+    derived_roots = [
+        mapping for mapping in root_mappings
+        if mapping.get("state")
+        == "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+    ]
+    open_fragments = []
+    for region in evaluation_regions:
+        page = evaluation_pages.get(region["page_json_version_id"])
+        if type(page) is not dict:
+            raise _error("operating-expense source-root evaluation page is absent")
+        _section, table = _source_table(
+            page, section_id=region["section_id"], table_id=region["table_id"]
+        )
+        if table.get("continuation") in {"CONTINUES_ON_NEXT_PAGE", "BOTH"}:
+            open_fragments.append({
+                "continuation": table["continuation"],
+                "locator": _region_locator(region),
+                "table_sha256": canonical_json_sha256_v1(table),
+            })
+    reasons = []
+    if derived_roots and compiled_specs.get("family_root_requirement") == (
+        "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT"
+    ):
+        reasons.append("OPERATING_EXPENSE_REQUIRED_PRINTED_ROOT_IS_ONLY_DERIVED")
+    if open_fragments:
+        reasons.append("OPERATING_EXPENSE_SOURCE_CONTINUATION_NOT_CLOSED")
+    if not reasons:
+        return []
+    material = {
+        "family_root_requirement": compiled_specs["family_root_requirement"],
+        "open_evaluation_fragments": open_fragments,
+        "original_query_receipt": canonical_clone_v1(source_query_receipt),
+        "reasons": sorted(reasons),
+        "rejected_root_mappings": canonical_clone_v1(root_mappings),
+        "root_mapping_policy": compiled_specs["schema"]["root_mapping_policy"],
+        "rule": (
+            "EXACT_CONTINUATION_RECOVERY_PRECEDES_SOURCE_ROOT_AUTHORITY_CHECK_"
+            "OPEN_SOURCE_POPULATION_OR_REQUIRED_PRINTED_ROOT_REPLACED_BY_"
+            "DERIVED_COMPONENT_SUM_IS_UNRESOLVED_NO_MAPPINGS"
+        ),
+        "selected_source_page_axis": [
+            {"page_json_version_id": version, "page_json_sha256": canonical_json_sha256_v1(page)}
+            for version, page in source_pages.items()
+        ],
+    }
+    candidate["mappings"] = []
+    candidate["reasons"] = sorted(reasons)
+    candidate["status"] = UNRESOLVED
+    candidate["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] = False
+    return [{
+        **material,
+        "receipt_id": "gjoefav1:source-root-authority-veto:" + canonical_json_sha256_v1(material),
+    }]
+
+
 def _reseal_candidate(
     candidate: dict[str, Any],
     *,
@@ -3633,6 +3726,7 @@ def _reseal_candidate(
     continuation_projection_receipts: Sequence[Mapping[str, Any]],
     nonexhaustive_parent_receipts: Sequence[Mapping[str, Any]],
     root_closure_receipts: Sequence[Mapping[str, Any]],
+    source_root_authority_veto_receipts: Sequence[Mapping[str, Any]],
     source_repair_receipts: Sequence[Mapping[str, Any]],
     unit_receipts: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
@@ -3648,6 +3742,9 @@ def _reseal_candidate(
             list(nonexhaustive_parent_receipts)
         ),
         "root_closure_receipts": canonical_clone_v1(list(root_closure_receipts)),
+        "source_root_authority_veto_receipts": canonical_clone_v1(
+            list(source_root_authority_veto_receipts)
+        ),
         "shared_engine_claim_boundary": SHARED_CLAIM_BOUNDARY,
         "source_repair_receipts": canonical_clone_v1(list(source_repair_receipts)),
         "unit_corroboration_receipts": canonical_clone_v1(list(unit_receipts)),
@@ -3800,6 +3897,14 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
             candidate,
             receipt=continuation_receipts[0],
         )
+    source_root_authority_veto_receipts = _source_root_authority_veto(
+        candidate,
+        source_pages=source_ordered_pages,
+        source_query_receipt=query_receipt,
+        evaluation_pages=evaluation_pages,
+        evaluation_regions=evaluation_regions,
+        compiled_specs=compiled_specs,
+    )
     return _reseal_candidate(
         candidate,
         all_blank_validation_role_omission_receipts=all_blank_receipts,
@@ -3807,6 +3912,7 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         nonexhaustive_parent_receipts=nonexhaustive_parent_receipts,
         root_closure_receipts=root_closure_receipts,
         source_repair_receipts=source_repair_receipts,
+        source_root_authority_veto_receipts=source_root_authority_veto_receipts,
         unit_receipts=unit_receipts,
     )
 
