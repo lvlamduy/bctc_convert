@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from typing import Any
+from unicodedata import category as unicode_category
+from unicodedata import normalize as unicode_normalize
 
 from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
     _document_unit_context_axis,
@@ -70,6 +72,21 @@ _PAGE_VERSION = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _SECTION_ID = re.compile(r"s[1-9][0-9]*\Z")
 _TABLE_ID = re.compile(r"t[1-9][0-9]*\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_UNIT_CAPTION = re.compile(
+    r"\b(?:don vi(?: tinh)?|dvt|units?(?: of measurement)?|currency)\b"
+)
+# This is a veto-only vocabulary, not another period resolver. The shared
+# duration parser must still prove the complete lane axis. Unexplained text
+# must not disappear when a receiver's headers are replaced by its sender's.
+_CONTINUATION_PERIOD_HEADER_WORDS = frozenset(
+    "nam ky quy thang ngay luy ke tu dau den cuoi nay truoc hien tai cung ung voi "
+    "so sanh sau chin ba bon muoi mot hai bay tam da chua kiem toan soat xet "
+    "dieu chinh lai year years period periods quarter quarters month months day "
+    "days from to the for ended ending beginning end current previous prior "
+    "corresponding cumulative accumulated of as at on and restated audited "
+    "unaudited january february march april may june july august september "
+    "october november december".split()
+)
 
 
 class GeminiJsonOperatingExpenseFamilyV1Error(ValueError):
@@ -461,6 +478,97 @@ def _local_explicit_unit(
     }
 
 
+def _continuation_unit_frontier_is_safe(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    """Distinguish absent units from evidence a private merge would discard.
+
+    Only exact declared units, with a bounded caption and Vietnamese currency
+    name expansion, are accepted in an explicit unit field. MONEY headers may
+    retain period/date words and declared units, but no unexplained residue.
+    This guard never assigns a unit or a period: the existing parsers do that.
+    A mixed money/percentage caption remains unresolved, not a scalar alias.
+    """
+
+    def normalized_surface(value: str) -> str:
+        return re.sub(r"\bdong (?:viet nam|vn)\b", "dong", _normalized(value))
+
+    def unsupported_symbol(value: str) -> bool:
+        return any(
+            unicode_category(character) == "Sc" or character in "%‰‱"
+            for character in unicode_normalize("NFKC", value)
+        )
+
+    accepted_aliases = {
+        alias
+        for alias, binding in compiled_specs["unit_binding_by_alias"].items()
+        if binding.get("accepted") is True
+        and binding.get("canonical_unit") in _UNIT_SURFACE
+    }
+    aliases = sorted(compiled_specs["unit_binding_by_alias"], key=lambda value: (-len(value), value))
+    unit_exact = table.get("unit_exact")
+    if unit_exact is not None and type(unit_exact) is not str:
+        return False
+    if type(unit_exact) is str and unit_exact.strip():
+        # Normalization drops punctuation, so check meaningful unit symbols
+        # first. A money/% caption requires typed-column review, not guessing.
+        if unsupported_symbol(unit_exact):
+            return False
+        surface = normalized_surface(unit_exact)
+        caption = _UNIT_CAPTION.match(surface)
+        if caption is not None:
+            surface = surface[caption.end() :].strip()
+        if surface not in accepted_aliases:
+            return False
+    columns = table.get("columns")
+    if type(columns) is not list:
+        return False
+    money_columns = [
+        column
+        for column in columns
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    if not money_columns:
+        return False
+    for column in money_columns:
+        path = column.get("header_path_exact")
+        if type(path) is not list or any(
+            segment is not None and type(segment) is not str for segment in path
+        ):
+            return False
+        for segment in path:
+            if segment is None:
+                continue
+            if unsupported_symbol(segment):
+                return False
+            # Match the shared parser's literal escaped-linebreak handling.
+            segment = segment.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n")
+            for line in segment.splitlines() or [segment]:
+                surface = normalized_surface(line)
+                caption = _UNIT_CAPTION.search(surface)
+                if caption is not None:
+                    if surface[caption.end() :].strip() not in accepted_aliases:
+                        return False
+                    surface = surface[: caption.start()].strip()
+                for alias in aliases:
+                    surface = re.sub(r"\b" + re.escape(alias) + r"\b", " ", surface)
+                if any(
+                    not token.isdecimal() and token not in _CONTINUATION_PERIOD_HEADER_WORDS
+                    for token in surface.split()
+                ):
+                    return False
+    axis = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
+    if axis.get("complete") is True:
+        return axis.get("canonical_unit") in _UNIT_SURFACE
+    return bool(
+        axis.get("canonical_unit") is None
+        and axis.get("evidence") == []
+        and axis.get("undeclared_evidence") == []
+        and axis.get("reasons") == ["MONEY_UNIT_NOT_EXACTLY_RESOLVED"]
+        and not (type(unit_exact) is str and unit_exact.strip())
+    )
+
+
 def _unique_primary_statement_unit_context(
     *,
     pages: Mapping[str, dict[str, Any]],
@@ -563,9 +671,13 @@ def _primary_operating_expense_roots(
         compiled_specs=compiled_specs,
     )
     roots = []
-    for page_json_version_id, page in pages.items():
-        page_axis = axis_by_version.get(page_json_version_id)
-        if page_axis is None or page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+    for page_json_version_id in sorted(
+        axis_by_version,
+        key=lambda version: (axis_by_version[version]["selected_page_ordinal"], version),
+    ):
+        page_axis = axis_by_version[page_json_version_id]
+        page = pages.get(page_json_version_id)
+        if type(page) is not dict or page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
             continue
         for section_ordinal, section in enumerate(page.get("sections", []), start=1):
             if (
@@ -902,6 +1014,11 @@ def _complete_owner_continuation_projection(
     # the projected period headers above.  Unit parsing must use that private
     # header projection too; on the raw table the owner text is deliberately
     # treated as undeclared header evidence by the shared unit parser.
+    if not all(
+        _continuation_unit_frontier_is_safe(table, compiled_specs=compiled_specs)
+        for table in (projected_prior_source, receiver_table)
+    ):
+        return None
     prior_unit = _local_explicit_unit(projected_prior_source, compiled_specs=compiled_specs)
     receiver_unit = _local_explicit_unit(receiver_table, compiled_specs=compiled_specs)
     if (
@@ -1083,7 +1200,7 @@ def _complete_owner_continuation_projection(
     projected_prior_table["columns"] = canonical_clone_v1(projected_prior_source["columns"])
     projected_prior_table["continuation"] = "NONE"
     if prior_unit is None and receiver_unit is not None:
-        projected_prior_table["unit_exact"] = receiver_table.get("unit_exact")
+        projected_prior_table["unit_exact"] = _UNIT_SURFACE[receiver_unit["canonical_unit"]]
     parent_row = prior_rows[active_parent["row_ordinal"] - 1] if active_parent is not None else None
     parent_label = parent_row.get("label_exact") if type(parent_row) is dict else None
     projected_rows = []
@@ -1473,6 +1590,11 @@ def _continuation_projection(
     if stripped is None:
         return None
     stripped_prior_table, header_changes = stripped
+    if not all(
+        _continuation_unit_frontier_is_safe(table, compiled_specs=compiled_specs)
+        for table in (stripped_prior_table, receiver_table)
+    ):
+        return None
     prior_lane_axis = _duration_multitable_lane_axis(
         stripped_prior_table, compiled_specs=compiled_specs
     )
@@ -3326,6 +3448,50 @@ def _reseal_candidate(
     return candidate
 
 
+def _source_ordered_operating_expense_pages(
+    *,
+    pages: Mapping[str, dict[str, Any]],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    regions: Sequence[Mapping[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Give the frozen evaluator source order, never hash/insertion order.
+
+    Its document-unit context enumerates this map. Reordering only a receipt
+    after evaluation would hide different inputs, so order the bound pages
+    before any private projection/evaluation. Direct single-table callers can
+    supply their exact region axis when no selected-page axis is provided.
+    """
+
+    document_ordinal = regions[0]["document_ordinal"]
+    selected = [
+        item for item in selected_page_axis if item.get("document_ordinal") == document_ordinal
+    ]
+    page_ordinals: dict[str, int] = {}
+    for item in selected if selected else regions:
+        version = item.get("page_json_version_id")
+        ordinal = item.get("selected_page_ordinal")
+        if type(version) is not str or type(ordinal) is not int or ordinal <= 0:
+            raise _error("operating-expense selected page order is invalid")
+        if version in page_ordinals and (selected or page_ordinals[version] != ordinal):
+            raise _error("operating-expense selected page order is duplicate or conflicting")
+        page_ordinals[version] = ordinal
+    if (
+        set(pages) != set(page_ordinals)
+        or len(set(page_ordinals.values())) != len(page_ordinals)
+        or sorted(page_ordinals.values()) != list(range(1, len(page_ordinals) + 1))
+    ):
+        raise _error("operating-expense document pages do not bind complete selected source order")
+    if any(
+        page_ordinals.get(region["page_json_version_id"]) != region["selected_page_ordinal"]
+        for region in regions
+    ):
+        raise _error("operating-expense selected page order differs from its query regions")
+    return {
+        version: pages[version]
+        for version in sorted(page_ordinals, key=lambda version: page_ordinals[version])
+    }
+
+
 def evaluate_gemini_json_operating_expense_family_cluster_v1(
     *,
     regions: Any,
@@ -3342,8 +3508,13 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
     if type(query_receipt) is not dict or not same_typed_json_v1(query_receipt, expected):
         raise _error("operating-expense query receipt does not bind exact fragments")
     region_axis = expected["region_axis"]
-    pages, source_repair_receipts = _apply_authenticated_source_repairs(
+    source_ordered_pages = _source_ordered_operating_expense_pages(
         pages=page_json_by_version,
+        selected_page_axis=selected_page_axis,
+        regions=region_axis,
+    )
+    pages, source_repair_receipts = _apply_authenticated_source_repairs(
+        pages=source_ordered_pages,
         regions=region_axis,
         compiled_specs=compiled_specs,
     )
