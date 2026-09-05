@@ -58,12 +58,16 @@ git status --short
 
 Nếu worktree sạch, tạo nhánh F39 từ base đã xác minh nếu chưa có. Nếu đang có
 nhánh F39/chỉnh sửa, giữ nguyên chúng, xem diff và tích hợp riêng bốn file điều
-phối; không reset, không checkout đè file. Chỉ cherry-pick commit điều phối đã
-review (chính xác bốn file; không cherry-pick toàn bộ lịch sử worker khác).
+phối; không reset, không checkout đè file. Chỉ cherry-pick các commit điều phối
+đã review (diff tổng phải đúng bốn file; không lấy lịch sử worker family khác).
+Nhánh điều phối có commit helper đầu tiên và các commit cập nhật tài liệu;
+cherry-pick riêng tip sẽ thiếu helper nếu chưa có commit đầu tiên.
 
 ```text
 git switch -c codex/f39-income-tax-laptop 8efd618b6c77f0cdbb402a440e7ba3b3549184f1
-git cherry-pick origin/codex/coordination-2025-current-v1
+git log --oneline 8efd618b6c77f0cdbb402a440e7ba3b3549184f1..origin/codex/coordination-2025-current-v1
+git diff --stat 8efd618b6c77f0cdbb402a440e7ba3b3549184f1 origin/codex/coordination-2025-current-v1
+git cherry-pick 8efd618b6c77f0cdbb402a440e7ba3b3549184f1..origin/codex/coordination-2025-current-v1
 ```
 
 Sau đó dùng Python 3.12 theo yêu cầu mới laptop chuyển tiếp lúc 06:10 UTC;
