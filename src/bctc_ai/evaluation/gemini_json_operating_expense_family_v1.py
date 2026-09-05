@@ -56,6 +56,8 @@ FAMILY_ID = "OPERATING_EXPENSE"
 ADAPTER_FORMAT_VERSION = "GEMINI_JSON_OPERATING_EXPENSE_FAMILY_ADAPTER_V1"
 SOURCE_REPAIR_FORMAT_VERSION = "GEMINI_JSON_OPERATING_EXPENSE_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1"
 SOURCE_ROW_COVERAGE_FORMAT_VERSION = "OPERATING_EXPENSE_SOURCE_ROW_COVERAGE_V1"
+_INTERNAL_OWNER_UNIT_REJECTION = "OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_UNIT_REJECTED"
+_INTERNAL_OWNER_UNIT_REJECTION_FIELD = "operating_expense_internal_owner_unit_rejection_receipts"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_OPERATING_EXPENSE_"
     "MULTITABLE_HIERARCHICAL_EXACT_SAME_DOCUMENT_PRIMARY_STATEMENT_UNIT_"
@@ -1370,6 +1372,7 @@ def _internal_owner_continuation_projection(
     pages: Mapping[str, dict[str, Any]],
     regions: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    unit_rejections: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], dict[str, Any]] | None:
     """Expose one exact internal owner that begins a split source schedule.
 
@@ -1405,7 +1408,7 @@ def _internal_owner_continuation_projection(
             section_id=prior_region["section_id"],
             table_id=prior_region["table_id"],
         )
-        _receiver_section, receiver_table = _source_table(
+        receiver_section, receiver_table = _source_table(
             receiver_page,
             section_id=receiver_region["section_id"],
             table_id=receiver_region["table_id"],
@@ -1478,6 +1481,116 @@ def _internal_owner_continuation_projection(
         return None
     prepared_prior_region = canonical_clone_v1(prior_region)
     prepared_prior_region["component_roles"] = _classification_roles(prepared_classification)
+    prior_axis_result = _duration_axis_with_optional_owner_prefix_projection(
+        prepared_table, compiled_specs=compiled_specs
+    )
+    receiver_classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        receiver_page, receiver_section, receiver_table, compiled_specs=compiled_specs
+    )
+    receiver_rows = receiver_table.get("rows")
+    receiver_title = receiver_table.get("title_exact")
+    receiver_section_title = receiver_section.get("title_exact")
+    receiver_money_ordinals = _money_column_ordinals(receiver_table)
+    if (
+        unit_rejections is not None
+        and prior_axis_result is not None
+        and len(receiver_money_ordinals) == 2
+        and type(receiver_rows) is list
+        and len(receiver_rows) >= 2
+        and _receiver_continuation_narratives(receiver_section) is not None
+        and (
+            receiver_section_title is None
+            or _generic_financial_note_report_header(receiver_section_title)
+        )
+        and (
+            receiver_title is None
+            or (
+                "tiep theo" in _normalized(receiver_title)
+                and any(
+                    alias in _normalized(receiver_title)
+                    for alias in _parent_aliases(compiled_specs)
+                )
+            )
+        )
+        and receiver_classification.get("typed_control_disposition") is None
+        and receiver_classification.get("total_rows")
+        == [{"row_kind": "TOTAL", "row_ordinal": len(receiver_rows), "source_order": len(receiver_rows)}]
+        and _observed_vector(receiver_rows[-1], receiver_money_ordinals) is not None
+    ):
+        unit_frontiers = []
+        for region, raw_page, raw_table, unit_table in (
+            (prior_region, prior_page, prior_table, prior_axis_result[0]),
+            (receiver_region, receiver_page, receiver_table, receiver_table),
+        ):
+            unit_frontiers.append(
+                {
+                    "locator": _region_locator(region),
+                    "local_unit": _local_explicit_unit(unit_table, compiled_specs=compiled_specs),
+                    "raw_money_headers": [
+                        {
+                            "column_ordinal": ordinal,
+                            "header_path_exact": canonical_clone_v1(
+                                raw_table["columns"][ordinal - 1].get("header_path_exact")
+                            ),
+                        }
+                        for ordinal in _money_column_ordinals(raw_table)
+                    ],
+                    "raw_unit_exact": canonical_clone_v1(raw_table.get("unit_exact")),
+                    "source_page_sha256": canonical_json_sha256_v1(raw_page),
+                    "source_table_sha256": canonical_json_sha256_v1(raw_table),
+                    "unit_axis": _unit_axis(
+                        unit_table, compiled_specs=compiled_specs, document_unit_context=None
+                    ),
+                    "unit_frontier_safe": _continuation_unit_frontier_is_safe(
+                        unit_table, compiled_specs=compiled_specs
+                    ),
+                }
+            )
+        rejected_locators = [
+            item["locator"] for item in unit_frontiers if item["unit_frontier_safe"] is not True
+        ]
+        observed_units = {
+            item["local_unit"]["canonical_unit"]
+            for item in unit_frontiers
+            if type(item["local_unit"]) is dict
+        }
+        if rejected_locators or len(observed_units) > 1:
+            material = {
+                "family_id": FAMILY_ID,
+                "header_path_projections": canonical_clone_v1(prior_axis_result[2]),
+                "original_query_receipt": (
+                    build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+                        [prior_region, receiver_region]
+                    )
+                ),
+                "original_regions": canonical_clone_v1([prior_region, receiver_region]),
+                "owner_proof": {
+                    "declared_roles": sorted(declared_roles),
+                    "owner_row": canonical_clone_v1(owner_row),
+                    "owner_row_ordinal": owner_ordinal,
+                    "prepared_classification_id": prepared_classification["classification_id"],
+                    "required_role_combinations": canonical_clone_v1(
+                        compiled_specs["topology"]["required_role_combinations"]
+                    ),
+                },
+                "reason": _INTERNAL_OWNER_UNIT_REJECTION,
+                "rejected_unit_locators": rejected_locators,
+                "rule": (
+                    "EXACT_VISIBLE_INTERNAL_OWNER_WITH_REQUIRED_ROLES_AND_ADJACENT_"
+                    "RECIPROCAL_RECEIVER_IS_OBSERVED_BUT_INVALID_OR_CONFLICTING_"
+                    "UNIT_FRONTIERS_PREVENT_MAPPING_NO_SOURCE_MUTATION"
+                ),
+                "unit_conflict": len(observed_units) > 1,
+                "unit_frontiers": unit_frontiers,
+            }
+            unit_rejections.append(
+                {
+                    **material,
+                    "receipt_id": "gjoefav1:internal-owner-unit-rejection:"
+                    + canonical_json_sha256_v1(material),
+                }
+            )
+            return None
     projected = _complete_owner_continuation_projection(
         pages=prepared_pages,
         regions=[prepared_prior_region, receiver_region],
@@ -1517,6 +1630,90 @@ def _internal_owner_continuation_projection(
         receipt_material
     )
     return projected_pages, projected_regions, receipt
+
+
+def _internal_owner_unit_rejection_axis(
+    *,
+    document: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Rebuild rejected-owner evidence from selected source, not query claims.
+
+    Scanning raw selected table locators also detects a receipt that was removed
+    and self-resealed as NOT_OBSERVED. A generic title or a currency caption
+    cannot qualify: the internal-owner projector must prove the source owner.
+    """
+
+    selected = sorted(
+        (
+            item
+            for item in selected_page_axis
+            if item.get("document_ordinal") == document["document_ordinal"]
+        ),
+        key=lambda item: item["selected_page_ordinal"],
+    )
+    selected_by_ordinal = {item["selected_page_ordinal"]: item for item in selected}
+    receipts: list[dict[str, Any]] = []
+
+    def region_for(
+        page_axis: Mapping[str, Any], section_id: str, table_id: str, fragment: int
+    ) -> dict[str, Any]:
+        page = pages.get(page_axis["page_json_version_id"])
+        if type(page) is not dict:
+            raise _error("operating-expense unit-rejection selected page is absent")
+        section, table = _source_table(page, section_id=section_id, table_id=table_id)
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(
+            page, section, table, compiled_specs=compiled_specs
+        )
+        return {
+            **{
+                key: document[key]
+                for key in ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
+            },
+            "component_roles": _classification_roles(classification),
+            "fragment_ordinal": fragment,
+            "page_json_version_id": page_axis["page_json_version_id"],
+            "physical_page": page_axis["physical_page"],
+            "section_id": section_id,
+            "selected_page_ordinal": page_axis["selected_page_ordinal"],
+            "table_id": table_id,
+        }
+
+    for prior_axis in selected:
+        receiver_axis = selected_by_ordinal.get(prior_axis["selected_page_ordinal"] + 1)
+        if receiver_axis is None or receiver_axis["physical_page"] != prior_axis["physical_page"] + 1:
+            continue
+        prior_page = pages.get(prior_axis["page_json_version_id"])
+        receiver_page = pages.get(receiver_axis["page_json_version_id"])
+        if type(prior_page) is not dict or type(receiver_page) is not dict:
+            raise _error("operating-expense unit-rejection selected page is absent")
+        try:
+            _receiver_section, receiver_table = _source_table(
+                receiver_page, section_id="s1", table_id="t1"
+            )
+        except GeminiJsonOperatingExpenseFamilyV1Error:
+            continue
+        if receiver_table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE":
+            continue
+        for section_ordinal, section in enumerate(prior_page.get("sections", []), start=1):
+            for table_ordinal, table in enumerate(section.get("tables", []), start=1):
+                section_id, table_id = f"s{section_ordinal}", f"t{table_ordinal}"
+                if table.get("continuation") != "BOTH" or not _is_last_source_table_on_page(
+                    prior_page, section_id=section_id, table_id=table_id
+                ):
+                    continue
+                _internal_owner_continuation_projection(
+                    pages=pages,
+                    regions=[
+                        region_for(prior_axis, section_id, table_id, 1),
+                        region_for(receiver_axis, "s1", "t1", 2),
+                    ],
+                    compiled_specs=compiled_specs,
+                    unit_rejections=receipts,
+                )
+    return receipts
 
 
 def _continuation_projection(
@@ -3289,6 +3486,25 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
     for disposition in base["candidate_dispositions"]:
         cluster = canonical_clone_v1(disposition["cluster"])
         pages = page_json_by_document.get(disposition["document_ordinal"])
+        unit_rejections = (
+            _internal_owner_unit_rejection_axis(
+                document=cluster,
+                selected_page_axis=base["selected_page_axis"],
+                pages=pages,
+                compiled_specs=compiled_specs,
+            )
+            if type(pages) is dict
+            else []
+        )
+        if unit_rejections:
+            cluster[_INTERNAL_OWNER_UNIT_REJECTION_FIELD] = unit_rejections
+            cluster["component_regions"] = []
+            cluster["reasons"] = [_INTERNAL_OWNER_UNIT_REJECTION]
+            cluster["status"] = UNRESOLVED
+            material = {key: item for key, item in cluster.items() if key != "cluster_id"}
+            cluster["cluster_id"] = "gjmthfcv1:cluster:" + canonical_json_sha256_v1(material)
+            clusters.append(cluster)
+            continue
         titleless_recovered = (
             _titleless_primary_corroborated_region_recovery(
                 cluster=cluster,
@@ -3613,6 +3829,33 @@ def build_gemini_json_operating_expense_trials_v1(
     for disposition in evidence["candidate_dispositions"]:
         cluster = disposition["cluster"]
         document_ordinal = disposition["document_ordinal"]
+        source_pages = page_json_by_document.get(document_ordinal)
+        if type(source_pages) is not dict:
+            raise _error("operating-expense unit-rejection replay selected document is absent")
+        expected_unit_rejections = _internal_owner_unit_rejection_axis(
+            document=cluster,
+            selected_page_axis=evidence["selected_page_axis"],
+            pages=source_pages,
+            compiled_specs=compiled_specs,
+        )
+        recorded_unit_rejections = cluster.get(_INTERNAL_OWNER_UNIT_REJECTION_FIELD)
+        if (
+            (
+                expected_unit_rejections
+                and (
+                    not same_typed_json_v1(recorded_unit_rejections, expected_unit_rejections)
+                    or cluster["status"] != UNRESOLVED
+                    or cluster["component_regions"] != []
+                    or cluster["reasons"] != [_INTERNAL_OWNER_UNIT_REJECTION]
+                )
+            )
+            or (not expected_unit_rejections and recorded_unit_rejections is not None)
+            or (
+                not expected_unit_rejections
+                and _INTERNAL_OWNER_UNIT_REJECTION in cluster.get("reasons", [])
+            )
+        ):
+            raise _error("operating-expense internal-owner unit-rejection source replay drifted")
         candidates = []
         mappings = []
         reasons = []
