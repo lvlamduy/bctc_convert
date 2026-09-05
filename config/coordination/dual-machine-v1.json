@@ -1,0 +1,55 @@
+{
+  "protocol_version": 1,
+  "round_id": "20260905-f36-vps-f39-laptop",
+  "base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "scope": "27 banks, reporting years 2025 through present; offline Gemini JSON validation only",
+  "bucket": "test-s3-duylv",
+  "region": "us-east-1",
+  "prefix": "bctc-ai/coordination/2025-current/v1",
+  "migration_manifest_sha256": "2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312",
+  "integration_branch": "codex/27-bank-2025-current",
+  "integrator": "laptop",
+  "reserved_families": ["F37"],
+  "roles": {
+    "vps": {
+      "family": "F36",
+      "branch": "codex/f36-operating-expense-vps",
+      "allowed_paths": [
+        "src/bctc_ai/evaluation/gemini_json_operating_expense_family_v1.py",
+        "scripts/experiments/run_gemini_json_operating_expense_accounting_family_v1.py",
+        "scripts/experiments/build_f36_*.py",
+        "config/families/tm-operating-expense-*.json",
+        "tests/unit/test_gemini_json_operating_expense_family_v1.py",
+        "tests/unit/test_run_gemini_json_operating_expense_accounting_family_v1.py",
+        "tests/unit/test_build_f36_*.py",
+        "docs/experiments/staging/family-36-*.md",
+        "docs/experiments/staging/family-36-*.json"
+      ]
+    },
+    "laptop": {
+      "family": "F39",
+      "branch": "codex/f39-income-tax-laptop",
+      "allowed_paths": [
+        "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+        "scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py",
+        "scripts/experiments/build_f39_*.py",
+        "config/families/tm-income-tax-*.json",
+        "tests/unit/test_gemini_json_income_tax_family_v1.py",
+        "tests/unit/test_run_gemini_json_income_tax_accounting_family_v1.py",
+        "tests/unit/test_build_f39_*.py",
+        "docs/experiments/staging/family-39-*.md",
+        "docs/experiments/staging/family-39-*.json"
+      ]
+    }
+  },
+  "common_allowed_paths": [
+    "config/coordination/dual-machine-v1.json",
+    "scripts/operations/coordinate_family_workers_v1.py",
+    "tests/unit/test_coordinate_family_workers_v1.py",
+    "docs/operations/DUAL_MACHINE_COORDINATION_V1.md"
+  ],
+  "frozen_sha256": {
+    "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+    "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5"
+  }
+}
