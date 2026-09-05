@@ -30,14 +30,17 @@ nếu chúng được ghi trước ngày 2026-09-05. Khi có khác biệt, ưu t
 - Branch có thẩm quyền: `codex/27-bank-2025-current`.
 - Remote Git: `https://github.com/lvlamduy/bctc_convert.git`.
 - HEAD trước commit migration: `d6260a3cfe25370ae32e885d288cacc100460531`.
-- Commit migration cuối cùng:
-  **`{{GIT_COMMIT_AFTER_MIGRATION}}`**.
+- Commit code/test/evidence migration đã push:
+  **`7b2e33d900d6d10fe6e339cd31847b8a86707060`**.
+- Commit tài liệu receipt cuối cùng là tip của branch và được bind trong
+  `migration-manifest-final.json` trên S3; dùng `git ls-remote` để kiểm tip thay
+  vì cố nhúng hash tự tham chiếu vào chính commit chứa tài liệu này.
 - Prefix S3 migration cuối cùng:
   **`s3://test-s3-duylv/bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/`**.
 
-Hai placeholder cuối phải được thay bằng receipt của bước commit/backup sau khi
-tài liệu này được tạo. Không suy đoán giá trị. Một backup chỉ được xem là đạt
-khi đã tải ngược và kiểm SHA-256, không chỉ vì lệnh PUT thành công.
+Một backup chỉ được xem là đạt khi đã tải ngược và kiểm SHA-256, không chỉ vì
+lệnh PUT thành công. Receipt cuối cùng có key cố định
+`bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/manifest/migration-manifest-final.json`.
 
 ## 2. Phạm vi dữ liệu và corpus bất biến
 
@@ -447,20 +450,19 @@ focused tests cho đúng family giúp phát hiện lỗi restore nhanh hơn.
 
 ## 11. Git checkpoint và restore
 
-### Receipt phải điền sau khi push
+### Receipt Git
 
 | Trường | Giá trị |
 | --- | --- |
 | Branch | `codex/27-bank-2025-current` |
-| Commit cuối | `{{GIT_COMMIT_AFTER_MIGRATION}}` |
-| Commit SHA-256/commit object verification | `{{GIT_COMMIT_VERIFICATION_RECEIPT}}` |
+| Commit chứa toàn bộ code/test/evidence | `7b2e33d900d6d10fe6e339cd31847b8a86707060` |
+| SHA-256 của canonical commit object đó | `1602d976774b403d8f718f7bd72b607144424d6e9f13efbe04e465f672bdcb37` |
 | Push remote | `origin` → `https://github.com/lvlamduy/bctc_convert.git` |
-| Git bundle S3 object/key | `{{S3_GIT_BUNDLE_KEY}}` |
-| Git bundle SHA-256 | `{{S3_GIT_BUNDLE_SHA256}}` |
-| Project checkpoint manifest key | `{{S3_PROJECT_CHECKPOINT_MANIFEST_KEY}}` |
-| Project checkpoint manifest SHA-256 | `{{S3_PROJECT_CHECKPOINT_MANIFEST_SHA256}}` |
-| Project checkpoint PASS run-record key | `{{S3_PROJECT_CHECKPOINT_RUN_RECORD_KEY}}` |
-| Project checkpoint PASS run-record SHA-256 | `{{S3_PROJECT_CHECKPOINT_RUN_RECORD_SHA256}}` |
+| Git bundle S3 object/key | `bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/project/bctc-ai-27-bank-final.bundle` |
+| Git bundle SHA-256 | xem `migration-manifest-final.json` cùng prefix |
+| Output Vertex-Flex tự chứa | `bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/project/output-vertex-flex.tar.gz` |
+| Output archive SHA-256 | `e6f3da3b1f62c2ba6fe82c807c5afec1157444dfc98ed39d664eccaf3adca9e9` |
+| Final branch tip sau receipt commit | xem `source_git.final_branch_tip` trong `migration-manifest-final.json` |
 
 Restore ưu tiên từ Git remote:
 
@@ -473,14 +475,22 @@ git rev-parse HEAD
 git status --short
 ```
 
-`git rev-parse HEAD` phải bằng `{{GIT_COMMIT_AFTER_MIGRATION}}` và status phải
-sạch trước khi hydrate artifact. Nếu GitHub không truy cập được, lấy Git bundle
-từ S3 project checkpoint, kiểm SHA-256 trước, rồi clone/fetch từ bundle vào một
-thư mục mới. Không `reset --hard` một checkout có dữ liệu chưa kiểm kê.
+`git rev-parse HEAD` phải bằng `source_git.final_branch_tip` trong manifest S3
+và status phải sạch trước khi hydrate artifact. Commit code nền
+`7b2e33d900d6d10fe6e339cd31847b8a86707060` phải là ancestor. Nếu GitHub không
+truy cập được, lấy Git bundle từ S3, kiểm SHA-256 theo manifest, rồi clone/fetch
+từ bundle vào một thư mục mới. Không `reset --hard` một checkout có dữ liệu
+chưa kiểm kê.
 
-Project snapshot phải được tạo bằng
-`scripts/backup/backup_incremental_project_checkpoint.py --path output` trên
-clean committed worktree và bind đúng parent production sau:
+Không dùng `backup_incremental_project_checkpoint.py --path output` cho lần
+migration này. Snapshot cha lịch sử dưới đây từng chứa các object
+PPOCR/VietOCR/geometry/DeepSeek/Gemma đã được người dùng yêu cầu purge; một
+checkpoint mới bind cha đó sẽ không còn tự chứa và sẽ tái-catalog artifact cũ.
+Thay vào đó migration dùng GitHub + Git bundle trực tiếp + archive `output/`
+Vertex-Flex + hai corpus/archive database tự chứa.
+
+Parent production sau chỉ giữ giá trị lịch sử/forensic, **không còn là restore
+authority đầy đủ sau purge**:
 
 - parent manifest key:
   `bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json`;
@@ -497,23 +507,28 @@ Bucket được phép là private `s3://test-s3-duylv/bctc-ai/`, region
 `us-east-1`; versioning bật, public access bị chặn và server-side encryption là
 AES-256. Không đưa AWS credentials vào Git, manifest hoặc tài liệu này.
 
-### Receipt phải điền sau upload và download-verify
+### Receipt upload và download-verify
 
 | Asset | S3 key | SHA-256 ciphertext/archive | Byte count | Version/verification |
 | --- | --- | --- | ---: | --- |
-| Incremental project checkpoint (`Git + control plane + output/`) | `{{S3_PROJECT_CHECKPOINT_MANIFEST_KEY}}` | `{{S3_PROJECT_CHECKPOINT_MANIFEST_SHA256}}` | `{{PROJECT_CHECKPOINT_BYTES}}` | `{{PROJECT_CHECKPOINT_PASS_RUN_RECORD}}` |
-| `/dev/shm` Gemini/database/family evidence, đã loại stack OCR/model cũ | `{{S3_DEV_SHM_ARCHIVE_KEY}}` | `{{S3_DEV_SHM_ARCHIVE_SHA256}}` | `{{DEV_SHM_ARCHIVE_BYTES}}` | `{{DEV_SHM_REMOTE_REHASH_RECEIPT}}` |
-| Corpus old140 `/tmp/gemini-json-first-corpus-production-v2` | `{{S3_OLD140_ARCHIVE_KEY}}` | `{{S3_OLD140_ARCHIVE_SHA256}}` | `{{OLD140_ARCHIVE_BYTES}}` | `{{OLD140_REMOTE_REHASH_RECEIPT}}` |
-| Database-only inventory/archive (SQLite/SQLite3/DB/DuckDB cùng WAL/SHM) | `{{S3_DATABASE_ARCHIVE_KEY}}` | `{{S3_DATABASE_ARCHIVE_SHA256}}` | `{{DATABASE_ARCHIVE_BYTES}}` | `{{DATABASE_REMOTE_REHASH_RECEIPT}}` |
-| Current Codex session encrypted | `{{S3_CODEX_CURRENT_SESSION_KEY}}` | `{{S3_CODEX_CURRENT_SESSION_CIPHERTEXT_SHA256}}` | `{{CODEX_CURRENT_SESSION_ARCHIVE_BYTES}}` | `{{CODEX_CURRENT_SESSION_REMOTE_REHASH_RECEIPT}}` |
-| Các Codex session/config an toàn khác, nếu tạo | `{{S3_CODEX_OTHER_SESSIONS_KEY}}` | `{{S3_CODEX_OTHER_SESSIONS_CIPHERTEXT_SHA256}}` | `{{CODEX_OTHER_SESSIONS_ARCHIVE_BYTES}}` | `{{CODEX_OTHER_SESSIONS_REMOTE_REHASH_RECEIPT}}` |
-| Migration manifest tổng | `{{S3_MACHINE_MIGRATION_MANIFEST_KEY}}` | `{{S3_MACHINE_MIGRATION_MANIFEST_SHA256}}` | `{{MIGRATION_MANIFEST_BYTES}}` | `{{MIGRATION_MANIFEST_DOWNLOAD_VERIFIED}}` |
+| Git/project `output/` Vertex-Flex | `.../project/output-vertex-flex.tar.gz` | `e6f3da3b1f62c2ba6fe82c807c5afec1157444dfc98ed39d664eccaf3adca9e9` | `112223558` | tải-ngược hash exact; VersionId `FqNPGGslG7LmoxOtn5SuRf7zS9Ti7tH1` |
+| `/dev/shm` Gemini/database/family evidence, đã loại stack OCR/model cũ | `.../artifacts/dev-shm-gemini-only-artifacts-v2.tar.gz` | `f5667816e4c32d474dc3e76ad6058fe1636b8b3632ecb3a6ae09a6a341c5c776` | `5535288695` | tải-ngược hash exact; VersionId `t_EHKoO7IfLoawCnuZG87s8mIZwjFQsJ` |
+| Corpus old140 `/tmp/gemini-json-first-corpus-production-v2` | `.../artifacts/legacy-corpus-production-v2.tar.gz` | `3976577973ea467edf83197679cf3312309909ec3d8292a4e1fbaaffbe009e25` | `2029250577` | tải-ngược hash exact; VersionId `yr3QYiEz7SZKV17LXS.NbVInWerHa5zf` |
+| Inventory 341 database/sidecar | `.../inventory/database-inventory.json` | `8797c10fe2ef79438888547da34adb18079f42aaf6afedaf8127279e71e6e915` | 25.834.647.552 source byte được inventory | tải-ngược hash exact; VersionId `Hkddu0Bv99MVgSANycJbN5xhZNoiav4J` |
+| Integrity receipt bốn DB authority | `.../inventory/critical-database-integrity.json` | `7a4eb99382f660aa43bc11f7350cfd14e8043186d83c816b211d96d3d2df0bc7` | 4 DB | mọi `quick_check=ok`, FK=0; VersionId `qaJr8MTW0rDKZ2bM020nqifIPz3hrHk_` |
+| Current Codex session encrypted | `.../codex/codex-current-session.jsonl.gz.gpg` | `2ea0d53cbcd33fc19b83b90b0f1808cc040c08151305778528c9e6a64d281e8b` | `1982152606` | decrypt lại đúng 5.135.334.922 byte/plain SHA; VersionId `vQLMGDHbkoprARhaiztzpBWkhOWZ4gqy` |
+| Các Codex session/config/state an toàn khác | `.../codex/codex-other-sessions-support.tar.gz.gpg` | `762b6a7d61c0e1bd7a837fb6cd9e00f7b5a7b59afc9181763a3f0db3d253f112` | `4626317224` | decrypt/list 1.041 member; không auth/current; VersionId `FL9_mzbmDhx4oAfggq7bahTvDY3MIcYX` |
+| Receipt purge OCR/model cũ | `.../inventory/s3-obsolete-purge-receipts.tar.gz` | `b36efc6629df68257c3049f719260d6cec03c6db51689edd63655df86794a032` | `9216991` | 38.244 exact versions deleted; VersionId `sY01GIrsdjxWNelSVvQeAvJZDsych.hB` |
+| Migration manifest tổng | `.../manifest/migration-manifest-final.json` | xem companion `.sha256` cùng prefix | xem manifest | download-verify bắt buộc |
+
+Mọi đường dẫn bắt đầu bằng `.../` trong bảng trên dùng prefix đầy đủ
+`s3://test-s3-duylv/bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/`.
 
 Yêu cầu acceptance cho mỗi archive ngoài project tool:
 
 1. ghi exact source root, archive format, byte count và SHA-256;
 2. upload với SSE AES256 vào key mới dưới
-   `{{S3_MACHINE_MIGRATION_PREFIX}}`;
+   `s3://test-s3-duylv/bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/`;
 3. đọc object metadata/version;
 4. stream tải ngược object và tính lại SHA-256;
 5. so khớp exact hash trước khi cho phép xóa máy;
@@ -524,7 +539,12 @@ Các pattern loại khỏi archive `/dev/shm` và khỏi restore là `ppocr`, `v
 `geometry`/`geomety`, `deepseek`, `gemma`, và `paddleocr` (không phân biệt hoa
 thường). Việc xóa S3 chỉ thực hiện sau khi liệt kê exact key và kiểm tra object
 content-addressed không còn được manifest Gemini/database hợp lệ tham chiếu.
-Receipt xóa S3: `{{S3_OBSOLETE_OCR_DELETION_RECEIPT}}`.
+Receipt xóa S3: object `inventory/s3-obsolete-purge-receipts.tar.gz`, SHA-256
+`b36efc6629df68257c3049f719260d6cec03c6db51689edd63655df86794a032`.
+Nó chứng minh 38.244 cặp exact `Key+VersionId` (1.595.439.363 byte) bị xóa
+vĩnh viễn, target còn lại bằng 0, 11 object dùng chung và 8 object database
+không thiếu/không drift. File inventory PaddleOCR còn trên S3 chỉ là receipt,
+không phải model/data runtime.
 
 Trên máy mới, tải archive vào filesystem đủ dung lượng, kiểm ciphertext/archive
 SHA trước khi giải nén. Nếu đủ RAM, khôi phục `/dev/shm` đúng layout cũ để các
@@ -560,13 +580,18 @@ Archive session phải mã hóa client-side (ví dụ GPG symmetric AES-256) tr�
 dán vào chat. Passphrase không được lưu trong Git, S3 cùng archive, shell history
 hoặc tài liệu này. Receipt:
 
-- exact plaintext byte count: `{{CODEX_SESSION_SNAPSHOT_BYTES}}`;
-- plaintext slice SHA-256: `{{CODEX_SESSION_PLAINTEXT_SHA256}}`;
-- ciphertext key: `{{S3_CODEX_CURRENT_SESSION_KEY}}`;
-- ciphertext SHA-256: `{{S3_CODEX_CURRENT_SESSION_CIPHERTEXT_SHA256}}`;
-- cipher/compression: `{{CODEX_SESSION_CIPHER_AND_COMPRESSION}}`;
+- exact plaintext byte count: `5135334922`;
+- plaintext slice SHA-256:
+  `f5be2f5206c20a071da6009c06bdaefe1aa4bc2f05ed12b3844088749cba1905`;
+- ciphertext key:
+  `bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/codex/codex-current-session.jsonl.gz.gpg`;
+- ciphertext SHA-256:
+  `2ea0d53cbcd33fc19b83b90b0f1808cc040c08151305778528c9e6a64d281e8b`;
+- cipher/compression: `gzip -1` rồi GPG symmetric `AES256`, sau đó S3 SSE
+  `AES256`;
 - passphrase location ngoài băng:
-  `{{CODEX_SESSION_PASSPHRASE_LOCATION_OUT_OF_BAND}}`.
+  được giao trực tiếp cho người dùng trong câu trả lời cuối của phiên migration;
+  không nằm trong Git hay S3.
 
 Trên máy mới:
 
