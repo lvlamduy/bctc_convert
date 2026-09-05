@@ -10,7 +10,7 @@ restore hoặc release. Không sửa checkpoint đã niêm phong. Base Git:
 | Worker | Phạm vi được sửa | Nhánh riêng |
 | --- | --- | --- |
 | `vps` | F36 OPERATING_EXPENSE | `codex/f36-operating-expense-vps` |
-| `laptop` | F39 INCOME_TAX; đầu mối tích hợp | `codex/f39-income-tax-laptop` |
+| `laptop` | F39 INCOME_TAX; review/đề xuất tích hợp | `codex/f39-income-tax-laptop` |
 | Chưa giao | F37 CREDIT_RISK_PROVISION_EXPENSE; chỉ đọc/preflight | Không nhận tự động |
 
 Contract: `config/coordination/dual-machine-v1.json`. Canonical SHA-256:
@@ -18,6 +18,13 @@ Contract: `config/coordination/dual-machine-v1.json`. Canonical SHA-256:
 Canonical bytes dùng JSON `sort_keys=True`, `separators=(',', ':')`,
 `ensure_ascii=True`, thêm một LF, encode ASCII; không phụ thuộc CRLF của checkout.
 Round: `20260905-f36-vps-f39-laptop`.
+
+`integration_branch` và `integrator` chỉ mô tả đích/vai trò dự kiến, không cấp
+quyền push. Theo laptop chuyển tiếp chỉ dẫn user mới nhất, không bên nào push
+nhánh chung khi chưa có cho phép rõ ràng mới. Chỉ push nhánh worker đã được phép.
+Receipt đính chính pin F37 không thuộc allowlist vòng này: báo hash đã kiểm tra
+được phép read-only, còn ghi receipt phải chờ preflight và phạm vi bổ sung đã
+review/được phép. Không sửa contract niêm phong để tự mở rộng quyền.
 
 Shared evaluator/generic runner đóng băng theo hai pin trong contract.
 Không mở family mới cho đến khi F36/F37/F39 đóng theo migration.
@@ -63,12 +70,20 @@ phối; không reset, không checkout đè file. Chỉ cherry-pick các commit �
 Nhánh điều phối có commit helper đầu tiên và các commit cập nhật tài liệu;
 cherry-pick riêng tip sẽ thiếu helper nếu chưa có commit đầu tiên.
 
+Các lệnh dưới chỉ dành cho **cài lần đầu** trên nhánh mới từ base:
+
 ```text
 git switch -c codex/f39-income-tax-laptop 8efd618b6c77f0cdbb402a440e7ba3b3549184f1
 git log --oneline 8efd618b6c77f0cdbb402a440e7ba3b3549184f1..origin/codex/coordination-2025-current-v1
 git diff --stat 8efd618b6c77f0cdbb402a440e7ba3b3549184f1 origin/codex/coordination-2025-current-v1
 git cherry-pick 8efd618b6c77f0cdbb402a440e7ba3b3549184f1..origin/codex/coordination-2025-current-v1
 ```
+
+Worker đã cài không chạy lại toàn bộ range. Fetch rồi dùng
+`git cherry -v HEAD origin/codex/coordination-2025-current-v1`, review từng commit
+`+` chưa áp dụng và chỉ cherry-pick đúng SHA còn thiếu, cũ trước mới sau; `-` là
+patch tương đương đã có. Worktree bẩn/conflict phải giữ nguyên và xử lý có review,
+không reset/force/skip tự động. Chỉ dẫn preflight của user luôn đi trước việc cài.
 
 Sau đó dùng Python 3.12 theo yêu cầu mới laptop chuyển tiếp lúc 06:10 UTC;
 thay `python` bằng đường dẫn Python phù hợp. Các test VPS đã chạy với 3.11
@@ -106,14 +121,14 @@ không tự chỉnh contract/helper sau join.
 
 - Đọc `status` và gửi HEARTBEAT khoảng mỗi 10 phút khi đang chạy, và mỗi chuyển
   trạng thái: BLOCKED, CHECKPOINT, READY_FOR_INTEGRATION, RELEASED, INTEGRATED.
-- Git push từng thay đổi nguyên tử đã test, mục tiêu không quá 30–60 phút khi
+- Git push **chỉ nhánh worker được phép**, từng thay đổi nguyên tử đã test, mục tiêu không quá 30–60 phút khi
   có code mới. Không có code mới thì không tạo commit rỗng. Checkpoint WIP phải
   ghi rõ chưa nghiệm thu; không gắn READY khi còn gate chưa PASS.
 - Gửi hash commit, kết quả test, next step và S3 run refs trong message. Không
-  sửa nhánh chung; laptop review/cherry-pick các commit family riêng, chạy gates
-  tích hợp rồi mới cập nhật nhánh chung. INTEGRATED chỉ do laptop gửi từ worker
+  sửa nhánh chung; laptop chỉ review/đề xuất các commit family riêng và gates
+  tích hợp. Cập nhật nhánh chung cần quyền rõ ràng mới từ user. INTEGRATED chỉ do laptop gửi từ worker
   checkout, nêu exact integrated commit; helper không tự merge hoặc chứng minh
-  acceptance. RELEASED/INTEGRATED đóng vòng, không tự giành lại quyền.
+  acceptance hoặc quyền push. RELEASED/INTEGRATED đóng vòng, không tự giành lại quyền.
   Tích hợp trong worktree riêng; giữ checkout worker F39 chỉ chứa F39 và bốn
   file điều phối để lệnh báo INTEGRATED không mang theo thay đổi F36 ngoài phạm vi.
 - Duy trì tối đa 6 sub-agent + root cho phần độc lập. Chia review/test/repro/audit,
@@ -181,5 +196,38 @@ Sáu file report/repro/review đã upload riêng và tải ngược kiểm SHA t
 S3 mới bind exact VersionId/SHA của từng file. Không upload lại PDF/corpus DB.
 Tiếp tục: giải quyết quyền/runtime laptop → review helper → formal join/check
 hai bên → F36 sửa bounded trên nhánh riêng, laptop F39 → acceptance/replay/
-audit/integrity/ledger → tích hợp F39 rồi F36 rồi F37. Không đánh dấu release từ
+audit/integrity/ledger → đề xuất tích hợp F39 rồi F36 rồi F37, sau khi được phép
+và F37 được phân công riêng. Không đánh dấu release từ
 các diagnostic trên, không sửa frozen engine, không gọi provider.
+
+## Bổ sung 06:23 UTC — user yêu cầu tiếp tục chuẩn bị F36 trên VPS
+
+Sau checkpoint tạm ngưng, user trực tiếp yêu cầu tiếp tục thực hiện song song
+và dùng tối đa sub-agent. VPS tiếp tục **chuẩn bị code/test F36, chưa release**
+dựa trên yêu cầu đó và OWNERSHIP_ACK rõ ràng của laptop rằng không sửa F36.
+Đây không phải timeout, tự nhận lease hay thay đổi quyền/runtime của laptop.
+Contract S3 giữ nguyên; formal handshake vẫn PENDING, `check` chính thức và
+READY_FOR_INTEGRATION vẫn yêu cầu cả hai join. Không dùng đường chuẩn bị để
+vượt preflight, nghiệm thu, ghi authority DB, chuyển family hay push nhánh chung.
+
+Gate chuẩn bị do root kiểm tra trước mỗi batch:
+
+1. Yêu cầu user hiện tại cho phép tiếp tục F36 song song; không suy quyền từ S3.
+2. Exact ACK key
+   `events/20260905T061035292182Z-LAPTOP_INTEGRATOR-OWNERSHIP_ACK-6ceb0149ad654ec99933eb9c95429c80.json`,
+   VersionId `MFtrAcG74yCEFK5YUVQxt3577B.Go2zJ`, SHA-256
+   `a6935b1cf1be3849eda826f98fd39aa83099a3b065d7815db85862553a9c006c`;
+   base/branch khớp, `F36.laptop_will_edit=false`. Đọc cả tin mới để phát hiện
+   rút ACK hoặc scope thay đổi; nếu có mâu thuẫn, dừng.
+3. Chạy `check_repo(contract, 'vps', repo)` của helper: branch/base ancestor,
+   frozen hashes, committed/staged/worktree/untracked paths phải đạt. Đây là
+   local scope check, không được gọi/ghi nhãn là formal handshake PASS.
+4. Chỉ file F36 được khai báo; mỗi sub-agent sở hữu file riêng; không provider,
+   không long replay hay authority DB write. Test 3.11 ghi diagnostic-only;
+   acceptance vẫn cần 3.12 và toàn bộ migration gates.
+5. Push checkpoint WIP trên F36, gửi HEARTBEAT kèm commit/test/evidence tới
+   laptop; không giả READY/CHECKPOINT formal khi thiếu join. Nếu laptop offline,
+   không hứa đã nhận tin; chỉ nhận là delivered khi có phản hồi thực tế.
+
+Kết thúc chuẩn bị không đồng nghĩa F36 terminal. Laptop vẫn giữ F39/preflight;
+F37 chỉ được rà soát read-only cho tới khi được phân công rõ ràng.
