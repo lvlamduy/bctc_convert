@@ -683,7 +683,7 @@ def test_corrupted_gemini_money_text_is_unresolved_not_backsolved() -> None:
     assert candidate["mappings"] == []
 
 
-def test_flat_source_population_uses_printed_root_without_synthetic_subgroups() -> None:
+def test_flat_source_population_uses_printed_root_and_declared_complete_parents() -> None:
     rows = [
         _row("Lương và các chi phí liên quan", "30", "25"),
         _row("Chi phí in ấn, tiếp thị và khuyến mại", "5", "4"),
@@ -702,7 +702,7 @@ def test_flat_source_population_uses_printed_root_without_synthetic_subgroups() 
         _row("Chi phí hoạt động khác", "2", "2"),
         _row(None, "87", "69", kind="TOTAL", path=[None]),
     ]
-    candidate, _cluster_value, _receipt = _evaluate(_operating_page(rows))
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
     assert candidate["status"] == READY
     mapping_by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
     assert {
@@ -711,7 +711,15 @@ def test_flat_source_population_uses_printed_root_without_synthetic_subgroups() 
         "DEPRECIATION_EXPENSE",
         "TRAVEL_EXPENSE",
         "OTHER_OPERATING_EXPENSE",
-    }.isdisjoint(mapping_by_role)
+    } <= set(mapping_by_role)
+    assert [value["coefficient"] for value in mapping_by_role["ASSET_EXPENSE"]["values"]] == [
+        25,
+        18,
+    ]
+    assert [value["coefficient"] for value in mapping_by_role["ADMIN_EXPENSE"]["values"]] == [
+        13,
+        11,
+    ]
     assert {
         "FLAT_ASSET_RENT_SOURCE_ONLY",
         "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
@@ -3240,3 +3248,1017 @@ def test_source_row_coverage_rejects_tampered_mapping_locator() -> None:
             page_json_by_document=pages,
             compiled_specs=compiled,
         )
+
+
+# F36 mapping-maximization case axis.  The real cases are immutable transcriptions
+# of the PDF rows cited by the semantic review; the synthetic axis attacks each
+# generic structural rule without routing on a bank, filename, page, or value.
+_F36_MAPPING_MAX_REAL_CASE_IDS = (
+    "R01_TCB212_FLAT_EXACT_PARTITION",
+    "R02_VBB261_OTHER_PARENT_VS_RESIDUAL_LEAF",
+    "R03_SGB157_WRAPPER_FLATTENED_UNIFORM",
+    "R04_STB195_UNIFORM_SIBLING_NOT_SALARY_DESCENDANT",
+    "R05_STB197_TRUE_CONTINUATION_SOURCE_ORIGIN",
+    "R06_STB204_COMPOSITE_AND_PROVISION_NEGATIVES",
+)
+_F36_MAPPING_MAX_SYNTHETIC_CASE_IDS = tuple(f"S{ordinal:02d}" for ordinal in range(1, 19))
+
+
+def _mapping_by_role(candidate: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {mapping["role"]: mapping for mapping in candidate["mappings"]}
+
+
+def _coefficients(mapping: dict[str, Any]) -> list[int | None]:
+    return [value["coefficient"] for value in mapping["values"]]
+
+
+def _mapping_max_flat_rows(*, consulting: bool = True) -> list[dict[str, Any]]:
+    rows = [
+        _row("Lương và các chi phí liên quan", "30", "25"),
+        _row("Chi phí in ấn, tiếp thị và khuyến mại", "5", "4"),
+        _row("Chi phí thuê văn phòng và tài sản", "12", "10"),
+        _row("Khấu hao và hao mòn tài sản cố định", "8", "5"),
+        _row("Chi phí công nghệ thông tin (*)", "4", "3"),
+        _row("Chi phí bảo dưỡng và sửa chữa tài sản", "3", "2"),
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "10", "8"),
+        _row("Chi phí dụng cụ và thiết bị", "2", "1"),
+        _row("Chi phí thông tin liên lạc", "1", "1"),
+        _row("Chi phí điện nước, vệ sinh văn phòng", "1", "1"),
+        _row("Chi phí bảo hiểm cho các khoản tiền gửi khách hàng", "5", "4"),
+        _row("Công tác phí", "1", "1"),
+        _row("Chi phí dự phòng các tài sản Có khác", "2", "1"),
+    ]
+    if consulting:
+        rows.append(_row("Chi phí dịch vụ tư vấn", "1", "1"))
+    rows.extend(
+        [
+            _row("Chi phí hoạt động khác", "2", "2"),
+            _row(None, "87" if consulting else "86", "69" if consulting else "68", kind="TOTAL", path=[None]),
+        ]
+    )
+    return rows
+
+
+def test_f36_mapping_max_case_axis_is_exactly_six_real_and_eighteen_synthetic() -> None:
+    assert len(_F36_MAPPING_MAX_REAL_CASE_IDS) == 6
+    assert len(set(_F36_MAPPING_MAX_REAL_CASE_IDS)) == 6
+    assert len(_F36_MAPPING_MAX_SYNTHETIC_CASE_IDS) == 18
+    assert len(set(_F36_MAPPING_MAX_SYNTHETIC_CASE_IDS)) == 18
+
+
+def test_f36_mapping_max_compiled_leaf_and_parent_axes_are_declarative() -> None:
+    compiled = _adapter_compiled()
+    assert {
+        ("FLAT_ASSET_DEPRECIATION_SOURCE_ONLY", "DEPRECIATION_EXPENSE"),
+        ("FLAT_ADMIN_TRAVEL_SOURCE_ONLY", "TRAVEL_EXPENSE"),
+        ("FLAT_OTHER_OPERATING_SOURCE_ONLY", "OTHER_OPERATING_EXPENSE"),
+        ("EMPLOYEE_UNIFORM_SOURCE_ONLY", "OTHER_EMPLOYEE_EXPENSE"),
+        ("EMPLOYEE_OTHER_ALLOWANCE_SOURCE_ONLY", "EMPLOYEE_BENEFIT"),
+    } <= {
+        (item["source_role"], item["target_role"])
+        for item in compiled["validation_role_leaf_projections"]
+    }
+    assert {
+        (
+            ("FLAT_ASSET_RENT_SOURCE_ONLY", "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY", "FLAT_ASSET_MAINTENANCE_SOURCE_ONLY", "FLAT_ASSET_TOOLS_SOURCE_ONLY"),
+            "ASSET_EXPENSE",
+        ),
+        (
+            ("FLAT_ADMIN_PRINTING_SOURCE_ONLY", "IT_EXPENSE_SOURCE_ONLY", "FLAT_ADMIN_COMMUNICATION_SOURCE_ONLY", "FLAT_ADMIN_UTILITIES_SOURCE_ONLY", "FLAT_ADMIN_TRAVEL_SOURCE_ONLY"),
+            "ADMIN_EXPENSE",
+        ),
+    } <= {
+        (tuple(item["component_roles"]), item["result_role"])
+        for item in compiled["derived_role_equations"]
+    }
+
+
+def test_r01_tcb212_flat_exact_partition_maps_leaves_and_complete_parents() -> None:
+    # Real labels and coefficients from TCB212 physical page 53.  Rows unrelated
+    # to the two parent equations are retained so the printed family total is exact.
+    rows = [
+        _row("Lương và các chi phí liên quan", "2.880.512", "3.382.246"),
+        _row("Chi phí in ấn, tiếp thị và khuyến mại", "546.351", "600.842"),
+        _row("Chi phí thuê văn phòng và tài sản", "213.190", "205.667"),
+        _row("Khấu hao và hao mòn tài sản cố định", "896.589", "707.390"),
+        _row("Chi phí công nghệ thông tin (*)", "634.421", "506.166"),
+        _row("Chi phí bảo dưỡng và sửa chữa tài sản", "197.472", "184.040"),
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "144.121", "101.056"),
+        _row("Chi phí dụng cụ và thiết bị", "31.562", "73.873"),
+        _row("Chi phí thông tin liên lạc", "25.455", "23.567"),
+        _row("Chi phí điện nước, vệ sinh văn phòng", "55.614", "60.174"),
+        _row("Chi phí bảo hiểm cho các khoản tiền gửi khách hàng", "313.933", "250.595"),
+        _row("Công tác phí", "27.618", "16.042"),
+        # Authenticated PDF-visible-dash repair after-images for the two raw
+        # Gemini null cells; this test starts after the independent repair gate.
+        _row("Chi phí dự phòng giảm giá góp vốn, đầu tư dài hạn", "4.634", "-"),
+        _row("Trích lập dự phòng các tài sản Có khác", "-", "599"),
+        _row("Chi phí dịch vụ tư vấn", "92.539", "151.008"),
+        _row("Chi phí hoạt động khác", "471.436", "470.580"),
+        _row(None, "6.535.447", "6.733.845", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["ASSET_EXPENSE"]) == [1_338_813, 1_170_970]
+    assert _coefficients(by_role["DEPRECIATION_EXPENSE"]) == [896_589, 707_390]
+    assert _coefficients(by_role["ADMIN_EXPENSE"]) == [1_381_998, 1_357_799]
+    assert _coefficients(by_role["TRAVEL_EXPENSE"]) == [27_618, 16_042]
+    assert _coefficients(by_role["OTHER_OPERATING_EXPENSE"]) == [471_436, 470_580]
+
+
+def _vbb261_rows() -> list[dict[str, Any]]:
+    employee = "Chi phí cho nhân viên"
+    asset = "Chi về tài sản"
+    other = "Chi phí hoạt động khác"
+    provision = "Chi phí dự phòng (không bao dự phòng rủi ro tín dụng, rủi ro chứng khoán đầu tư)"
+    return [
+        _row(employee, "398.795", "341.126", kind="SUBTOTAL"),
+        _row("- Chi lương và phụ cấp", "317.355", "276.306", path=[employee, "- Chi lương và phụ cấp"]),
+        _row("- Các khoản chi đóng góp theo lương", "36.274", "29.913", path=[employee, "- Các khoản chi đóng góp theo lương"]),
+        _row("- Chi trợ cấp khác", "45.166", "34.907", path=[employee, "- Chi trợ cấp khác"]),
+        _row(asset, "206.402", "208.463", kind="SUBTOTAL"),
+        _row("- Chi phí thuê tài sản", "101.319", "95.812", path=[asset, "- Chi phí thuê tài sản"]),
+        _row("- Khấu hao và hao mòn tài sản cố định", "51.363", "51.139", path=[asset, "- Khấu hao và hao mòn tài sản cố định"]),
+        _row("- Bảo dưỡng và sửa chữa tài sản", "45.280", "54.888", path=[asset, "- Bảo dưỡng và sửa chữa tài sản"]),
+        _row("- Mua sắm công cụ lao động", "7.411", "6.019", path=[asset, "- Mua sắm công cụ lao động"]),
+        _row("- Chi phí bảo hiểm tài sản", "1.029", "605", path=[asset, "- Chi phí bảo hiểm tài sản"]),
+        _row(other, "192.731", "175.463", kind="SUBTOTAL"),
+        _row("- Chi nộp phí bảo hiểm tiền gửi của khách hàng", "67.956", "60.770", path=[other, "- Chi nộp phí bảo hiểm tiền gửi của khách hàng"]),
+        _row("- Chi phí lễ tân, khánh tiết, hội nghị", "18.711", "12.634", path=[other, "- Chi phí lễ tân, khánh tiết, hội nghị"]),
+        _row("- Chi phí quảng cáo, tiếp thị", "15.349", "16.945", path=[other, "- Chi phí quảng cáo, tiếp thị"]),
+        _row("- Chi phí điện nước, vệ sinh cơ quan", "13.544", "13.304", path=[other, "- Chi phí điện nước, vệ sinh cơ quan"]),
+        _row("- Chi phí bưu phí, điện thoại", "10.579", "10.025", path=[other, "- Chi phí bưu phí, điện thoại"]),
+        _row("- Chi phí thuế GTGT không được khấu trừ", "6.191", "6.279", path=[other, "- Chi phí thuế GTGT không được khấu trừ"]),
+        _row("- Công tác phí", "3.494", "3.077", path=[other, "- Công tác phí"]),
+        _row("- Chi vật liệu văn phòng, giấy tờ in ấn", "2.951", "2.786", path=[other, "- Chi vật liệu văn phòng, giấy tờ in ấn"]),
+        _row("- Chi phí xăng dầu", "2.177", "2.377", path=[other, "- Chi phí xăng dầu"]),
+        _row("- Chi phí hoạt động khác", "51.779", "47.266", path=[other, "- Chi phí hoạt động khác"]),
+        _row(provision, "421", "1.309", kind="SUBTOTAL"),
+        _row("- Trích lập dự phòng giảm giá đầu tư dài hạn", "421", "1.309", path=[provision, "- Trích lập dự phòng giảm giá đầu tư dài hạn"]),
+        _row(None, "798.349", "726.361", kind="TOTAL", path=[None]),
+    ]
+
+
+def test_r02_vbb261_broad_other_parent_never_shadows_residual_leaf() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(_vbb261_rows()))
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["EMPLOYEE_BENEFIT"]) == [45_166, 34_907]
+    assert _coefficients(by_role["TRAVEL_EXPENSE"]) == [3_494, 3_077]
+    other = by_role["OTHER_OPERATING_EXPENSE"]
+    assert _coefficients(other) == [51_779, 47_266]
+    assert {ref["row_ordinal"] for ref in other["source_refs"]} == {21}
+    assert 11 not in {ref["row_ordinal"] for ref in other["source_refs"]}
+
+
+def test_r03_sgb157_blank_wrapper_preserves_uniform_employee_leaf() -> None:
+    employee = "2. Chi phí cho nhân viên"
+    rows = [
+        _row("1. Chi nộp thuế và các khoản phí, lệ phí", "1.516", "1.125"),
+        _row(employee, "217.869", "203.505", kind="SUBTOTAL"),
+        _row("Trong đó:", None, None, kind="GROUP", path=["Trong đó:"]),
+        _row("Chi lương và phụ cấp", "160.783", "139.046", path=["Trong đó:", "Chi lương và phụ cấp"]),
+        _row("Các khoản chi đóng góp theo lương", "33.313", "31.222", path=["Trong đó:", "Các khoản chi đóng góp theo lương"]),
+        _row("Đồng phục và các chi phí liên quan", "12.585", "11.774", path=["Trong đó:", "Đồng phục và các chi phí liên quan"]),
+        _row("Chi trợ cấp", "11.188", "21.463", path=["Trong đó:", "Chi trợ cấp"]),
+        _row("3. Chi về tài sản", "10", "8"),
+        _row("4. Chi cho hoạt động quản lý công vụ", "9", "7"),
+        _row("5. Chi nộp phí bảo hiểm tiền gửi của khách hàng", "5", "4"),
+        _row("6. Chi phí hoạt động khác", "2", "1"),
+        _row(None, "219.411", "204.650", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    uniform = _mapping_by_role(candidate)["OTHER_EMPLOYEE_EXPENSE"]
+    assert _coefficients(uniform) == [12_585, 11_774]
+    assert uniform["source_refs"][0]["row_ordinal"] == 6
+    assert all(value["coefficient"] is None for value in candidate["closure_receipt"]["table_receipts"][0]["classification"]["role_hits"][0].get("values", []))
+
+
+def _stb195_rows() -> list[dict[str, Any]]:
+    employee = "2 Chi phí cho nhân viên:"
+    salary = "Trong đó: - Chi lương và phụ cấp"
+    asset = "3 Chi về tài sản :"
+    admin = "4 Chi cho hoạt động quản lý công vụ:"
+    return [
+        _row("1 Chi nộp thuế và các khoản phí, lệ phí", "312,735", "60,599"),
+        _row(employee, "1,976,895", "1,876,087", kind="GROUP"),
+        _row(salary, "1,664,299", "1,728,466", path=[employee, salary]),
+        _row("- Các khoản chi đóng góp theo lương", "97,449", "96,753", path=[employee, salary, "- Các khoản chi đóng góp theo lương"]),
+        _row("- Chi trợ cấp", "192,593", "27,792", path=[employee, salary, "- Chi trợ cấp"]),
+        _row("- Chi trang phục giao dịch", "22,554", "23,076", path=[employee, salary, "- Chi trang phục giao dịch"]),
+        _row(asset, "638,528", "633,921", kind="GROUP"),
+        _row("- Trong đó: khấu hao tài sản cố định", "217,772", "242,598", path=[asset, "- Trong đó: khấu hao tài sản cố định"]),
+        _row(admin, "499,440", "478,991", kind="GROUP"),
+        _row("Trong đó: - Công tác phí", "40,326", "33,588", path=[admin, "Trong đó: - Công tác phí"]),
+        _row("5 Chi nộp phí bảo hiểm, bảo toàn tiền gửi của khách hàng", "348,096", "161,193"),
+        _row("6 (Hoàn nhập)/chi phí dự phòng giảm giá đầu tư dài hạn", "-", None),
+        _row("7 (Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác", "(192)", "208,015"),
+        _row("Tổng", "3,775,502", "3,418,806", kind="TOTAL", path=["Tổng"]),
+    ]
+
+
+def test_r04_stb195_uniform_is_employee_sibling_despite_stale_concatenated_path() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(_stb195_rows()))
+    assert candidate["status"] == READY
+    uniform = _mapping_by_role(candidate)["OTHER_EMPLOYEE_EXPENSE"]
+    assert _coefficients(uniform) == [22_554, 23_076]
+    assert uniform["source_refs"][0]["row_ordinal"] == 6
+
+
+def _stb197_continuation_trial() -> tuple[dict[str, Any], dict[int, dict[str, dict[str, Any]]], dict[str, Any]]:
+    compiled = _adapter_compiled()
+    employee = "Chi phí cho nhân viên:"
+    salary = "Trong đó: - Chi lương và phụ cấp"
+    prior_rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "448,794", "337,406"),
+        _row(employee, "6,179,222", "5,634,192", kind="GROUP"),
+        _row(salary, "5,545,797", "5,110,211", path=[employee, salary]),
+        _row("- Các khoản chi đóng góp theo lương", "283,973", "294,137", path=[employee, salary, "- Các khoản chi đóng góp theo lương"]),
+    ]
+    prior_table = _table(prior_rows, title=OWNER)
+    prior_table["continuation"] = "CONTINUES_ON_NEXT_PAGE"
+    receiver_rows = [
+        _row("- Chi trợ cấp", "258,772", "159,605"),
+        _row("- Chi trang phục giao dịch", "90,680", "70,239"),
+        _row("3 Chi về tài sản :", "2,126,784", "1,940,418", kind="GROUP"),
+        _row("- Trong đó: khấu hao tài sản cố định", "641,342", "716,936", path=["3 Chi về tài sản :", "- Trong đó: khấu hao tài sản cố định"]),
+        _row("4 Chi cho hoạt động quản lý công vụ:", "1,264,205", "1,401,438", kind="GROUP"),
+        _row("Trong đó: - Công tác phí", "122,787", "105,726", path=["4 Chi cho hoạt động quản lý công vụ:", "Trong đó: - Công tác phí"]),
+        _row("- Chi về các hoạt động đoàn thể của TCTD", "-", "-", path=["4 Chi cho hoạt động quản lý công vụ:", "- Chi về các hoạt động đoàn thể của TCTD"]),
+        _row("5 Chi nộp phí bảo hiểm, bảo toàn tiền gửi của khách hàng", "708,298", "489,343"),
+        _row("6 (Hoàn nhập)/chi phí dự phòng giảm giá đầu tư dài hạn", "(38,617)", "10,264"),
+        _row("7 (Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác", "28,519", "643,611"),
+        _row("Tổng", "10,717,205", "10,456,672", kind="TOTAL", path=["Tổng"]),
+    ]
+    receiver_table = _table(receiver_rows)
+    receiver_table["columns"] = [
+        {"header_path_exact": [None], "value_kind": "MONEY"},
+        {"header_path_exact": [None], "value_kind": "MONEY"},
+    ]
+    receiver_table["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
+    prior_page = _page(_section("THUYẾT MINH BÁO CÁO TÀI CHÍNH", prior_table))
+    receiver_page = _page(_section("THUYẾT MINH BÁO CÁO TÀI CHÍNH", receiver_table))
+    records = [
+        _record(prior_page),
+        {**_record(receiver_page), "page_json_version_id": CONTINUATION_VERSION_ID, "physical_page": 2, "selected_page_ordinal": 2},
+    ]
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    selected_document_axis = [{"document_id": DOCUMENT_ID, "document_ordinal": 1, "source_logical_name": "fixture.pdf", "source_sha256": SOURCE_SHA256}]
+    selected_page_axis = [
+        {**selected_document_axis[0], "page_json_version_id": record["page_json_version_id"], "physical_page": record["physical_page"], "selected_page_ordinal": record["selected_page_ordinal"]}
+        for record in records
+    ]
+    base = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=selected_document_axis,
+        selected_page_axis=selected_page_axis,
+        document_clusters=[cluster],
+        query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]),
+    )
+    pages = {1: {VERSION_ID: prior_page, CONTINUATION_VERSION_ID: receiver_page}}
+    indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    trial = build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=indexed,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )[0]
+    return trial, pages, compiled
+
+
+def test_r05_stb197_continuation_mapping_keeps_true_receiver_row_origin() -> None:
+    trial, _pages, _compiled_specs = _stb197_continuation_trial()
+    assert trial["status"] == READY
+    uniform = _mapping_by_role(trial)["OTHER_EMPLOYEE_EXPENSE"]
+    assert _coefficients(uniform) == [90_680, 70_239]
+    assert len(uniform["source_refs"]) == 1
+    ref = uniform["source_refs"][0]
+    assert ref["locator"]["page_json_version_id"] == CONTINUATION_VERSION_ID
+    assert ref["locator"]["physical_page"] == 2
+    assert ref["locator"]["section_id"] == "s1"
+    assert ref["locator"]["table_id"] == "t1"
+    assert ref["row_ordinal"] == 2
+    assert ref["row_id"] == "r2"
+    adapter_receipt = trial["candidates"][0]["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]
+    guard = next(
+        item
+        for receipt in adapter_receipt["mapping_max_parent_guard_receipts"]
+        for item in receipt["guarded_source_axis"]
+        if item["role"] == "EMPLOYEE_UNIFORM_SOURCE_ONLY"
+    )
+    assert guard["locator"]["page_json_version_id"] == CONTINUATION_VERSION_ID
+    assert guard["locator"]["physical_page"] == 2
+    assert guard["locator"]["section_id"] == "s1"
+    assert guard["locator"]["table_id"] == "t1"
+    assert guard["row_ordinal"] == 2
+    assert guard["label_exact"] == "- Chi trang phục giao dịch"
+    assert guard["money_column_ordinals"] == [1, 2]
+    assert guard["values_exact"] == ["90,680", "70,239"]
+    assert adapter_receipt["flat_parent_projection_receipts"] == []
+
+
+def _stb204_rows() -> list[dict[str, Any]]:
+    employee = "2 Chi phí cho nhân viên:"
+    asset = "3 Chi về tài sản :"
+    admin = "4 Chi cho hoạt động quản lý công vụ:"
+    return [
+        _row("1 Chi nộp thuế và các khoản phí, lệ phí", "560,972", "431,066"),
+        _row(employee, "6,985,597", "7,419,161", kind="GROUP"),
+        _row("Trong đó: - Chi lương và phụ cấp", "6,182,606", "6,695,462", path=[employee, "Trong đó: - Chi lương và phụ cấp"]),
+        _row("- Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động", "481,714", "497,781", path=[employee, "- Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động"]),
+        _row("- Chi trợ cấp", "321,276", "225,917", path=[employee, "- Chi trợ cấp"]),
+        _row("- Chi khác cho nhân viên", "-", "-", path=[employee, "- Chi khác cho nhân viên"]),
+        _row(asset, "2,742,993", "2,728,478", kind="GROUP"),
+        _row("- Trong đó khấu hao tài sản cố định", "899,583", "980,725", path=[asset, "- Trong đó khấu hao tài sản cố định"]),
+        _row(admin, "1,886,684", "2,094,104", kind="GROUP"),
+        _row("Trong đó: - Công tác phí", "178,556", "153,911", path=[admin, "Trong đó: - Công tác phí"]),
+        _row("- Chi về các hoạt động đoàn thể của TCTD", "180", "180", path=[admin, "- Chi về các hoạt động đoàn thể của TCTD"]),
+        _row("5 Chi nộp phí bảo hiểm, bảo toàn tiền gửi của khách hàng", "726,043", "661,041"),
+        _row("6 Chi phí dự phòng phải thu(không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)", "29,035", "648,473"),
+        _row("7 Chi phí dự phòng đầu tư (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)", "233", "66"),
+        _row("8 Chi phí dự phòng rủi ro khác", "113,322", "-"),
+        _row("9 Chi phí hoạt động khác", "-", "-"),
+        _row("Tổng", "13,044,879", "13,982,389", kind="TOTAL", path=["Tổng"]),
+    ]
+
+
+def test_r06_stb204_composites_stay_source_only_and_printed_other_dash_maps() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(_stb204_rows()))
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["OTHER_OPERATING_EXPENSE"]) == [0, 0]
+    assert "LONG_TERM_BAD_DEBT_PROVISION" not in by_role
+    assert all(
+        not ({4} & {ref["row_ordinal"] for ref in mapping["source_refs"]})
+        for role, mapping in by_role.items()
+        if role in {"PAYROLL_CONTRIBUTIONS", "OTHER_EMPLOYEE_EXPENSE"}
+    )
+
+
+@pytest.mark.parametrize("consulting", [False, True], ids=["S03_NO_CONSULTING", "S03_WITH_CONSULTING"])
+def test_s03_flat_parent_axes_are_selected_from_complete_role_sets(consulting: bool) -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(
+        _operating_page(_mapping_max_flat_rows(consulting=consulting))
+    )
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["ASSET_EXPENSE"]) == [25, 18]
+    assert _coefficients(by_role["ADMIN_EXPENSE"]) == (
+        [13, 11] if consulting else [12, 10]
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "target_role"),
+    [
+        ("Đồng phục và các chi phí liên quan", "OTHER_EMPLOYEE_EXPENSE"),
+        ("Chi trang phục và phương tiện bảo hộ lao động", "OTHER_EMPLOYEE_EXPENSE"),
+        ("Chi trang phục giao dịch", "OTHER_EMPLOYEE_EXPENSE"),
+        ("Chi trang phục giao dịch và phương tiện bảo hộ lao động", "OTHER_EMPLOYEE_EXPENSE"),
+        ("Chi trợ cấp khác", "EMPLOYEE_BENEFIT"),
+    ],
+)
+def test_s04_narrow_employee_leaf_aliases_project_only_inside_exact_employee_owner(
+    label: str, target_role: str
+) -> None:
+    employee = "Chi phí cho nhân viên"
+    rows = [
+        _row(employee, "100", "90", kind="SUBTOTAL"),
+        _row("Chi lương và phụ cấp", "80", "72", path=[employee, "Chi lương và phụ cấp"]),
+        _row(label, "20", "18", path=[employee, label]),
+        _row("Chi về tài sản", "10", "9"),
+        _row("Chi cho hoạt động quản lý công vụ", "5", "4"),
+        _row(None, "115", "103", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    assert _coefficients(_mapping_by_role(candidate)[target_role]) == [20, 18]
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động",
+        "Chi trang phục, ăn ca, y tế, trợ cấp thôi việc",
+        "Chi trợ cấp và chi khác",
+        "Chi thưởng",
+        "Chi công tác xã hội",
+    ],
+)
+def test_s05_mixed_employee_rows_are_never_split_or_wholly_assigned(label: str) -> None:
+    employee = "Chi phí cho nhân viên"
+    rows = [
+        _row(employee, "100", "90", kind="SUBTOTAL"),
+        _row("Chi lương và phụ cấp", "80", "72", path=[employee, "Chi lương và phụ cấp"]),
+        _row(label, "20", "18", path=[employee, label]),
+        _row("Chi về tài sản", "10", "9"),
+        _row("Chi cho hoạt động quản lý công vụ", "5", "4"),
+        _row(None, "115", "103", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    mapped_refs = {
+        ref["row_ordinal"]
+        for role, mapping in _mapping_by_role(candidate).items()
+        if role in {"PAYROLL_CONTRIBUTIONS", "EMPLOYEE_BENEFIT", "OTHER_EMPLOYEE_EXPENSE"}
+        for ref in mapping["source_refs"]
+    }
+    assert 3 not in mapped_refs
+
+
+def _synthetic_other_parent_leaf_rows() -> list[dict[str, Any]]:
+    parent = "Chi phí hoạt động khác"
+    return [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row("Chi về tài sản", "3", "3"),
+        _row(parent, "100", "80", kind="SUBTOTAL"),
+        _row("Chi nộp phí bảo hiểm tiền gửi của khách hàng", "30", "20", path=[parent, "Chi nộp phí bảo hiểm tiền gửi của khách hàng"]),
+        _row("Công tác phí", "10", "8", path=[parent, "Công tác phí"]),
+        _row("Chi phí hoạt động khác", "60", "52", path=[parent, "Chi phí hoạt động khác"]),
+        _row(None, "106", "86", kind="TOTAL", path=[None]),
+    ]
+
+
+def test_s01_structural_leaf_beats_identically_named_source_parent() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(
+        _operating_page(_synthetic_other_parent_leaf_rows())
+    )
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["TRAVEL_EXPENSE"]) == [10, 8]
+    other = by_role["OTHER_OPERATING_EXPENSE"]
+    assert _coefficients(other) == [60, 52]
+    assert {ref["row_ordinal"] for ref in other["source_refs"]} == {7}
+
+
+def test_s02_flat_exact_leaf_projections_preserve_printed_source_refs() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(
+        _operating_page(_mapping_max_flat_rows(consulting=False))
+    )
+    by_role = _mapping_by_role(candidate)
+    expected = {
+        "DEPRECIATION_EXPENSE": (4, [8, 5]),
+        "TRAVEL_EXPENSE": (12, [1, 1]),
+        "OTHER_OPERATING_EXPENSE": (14, [2, 2]),
+    }
+    for role, (row_ordinal, coefficients) in expected.items():
+        assert _coefficients(by_role[role]) == coefficients
+        assert {ref["row_ordinal"] for ref in by_role[role]["source_refs"]} == {
+            row_ordinal
+        }
+
+
+def test_s06_complete_disjoint_same_target_leaves_aggregate_once() -> None:
+    employee = "Chi phí cho nhân viên"
+    rows = [
+        _row(employee, "100", "90", kind="SUBTOTAL"),
+        _row("Chi lương và phụ cấp", "80", "72", path=[employee, "Chi lương và phụ cấp"]),
+        _row("Đồng phục và các chi phí liên quan", "12", "10", path=[employee, "Đồng phục và các chi phí liên quan"]),
+        _row("Chi trang phục giao dịch", "8", "8", path=[employee, "Chi trang phục giao dịch"]),
+        _row("Chi về tài sản", "10", "9"),
+        _row("Chi cho hoạt động quản lý công vụ", "5", "4"),
+        _row(None, "115", "103", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    other_employee = _mapping_by_role(candidate)["OTHER_EMPLOYEE_EXPENSE"]
+    assert _coefficients(other_employee) == [20, 18]
+    assert {ref["row_ordinal"] for ref in other_employee["source_refs"]} == {3, 4}
+    assert len(
+        {
+            (ref["locator"]["page_json_version_id"], ref["locator"]["table_id"], ref["row_ordinal"])
+            for ref in other_employee["source_refs"]
+        }
+    ) == 2
+
+
+def test_s07_duplicate_or_overlapping_flat_role_axis_fails_closed() -> None:
+    rows = _mapping_max_flat_rows(consulting=False)
+    rows.insert(3, _row("Chi phí thuê văn phòng và tài sản", "1", "1"))
+    rows[-1]["values_exact"] = ["87", "69"]
+    page = _operating_page(rows)
+    compiled = _adapter_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    private, guards, receipts = operating_expense_adapter._mapping_max_private_specs(
+        pages={VERSION_ID: page},
+        regions=cluster["component_regions"],
+        compiled_specs=compiled,
+    )
+    assert private is not compiled
+    assert len(guards) == 1
+    assert [receipt["result_role"] for receipt in receipts] == ["ADMIN_EXPENSE"]
+
+    candidate, _cluster_value, _receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert "ASSET_EXPENSE" not in by_role
+    assert _coefficients(by_role["ADMIN_EXPENSE"]) == [12, 10]
+
+
+@pytest.mark.parametrize(
+    ("retained_axis", "expected_role", "expected_coefficients"),
+    [
+        ("asset", "ASSET_EXPENSE", [25, 18]),
+        ("admin", "ADMIN_EXPENSE", [12, 10]),
+    ],
+)
+def test_mapping_max_complete_parent_axes_are_independent(
+    retained_axis: str,
+    expected_role: str,
+    expected_coefficients: list[int],
+) -> None:
+    rows = _mapping_max_flat_rows(consulting=False)
+    removed_labels = (
+        {
+            "Chi phí in ấn, tiếp thị và khuyến mại",
+            "Chi phí công nghệ thông tin (*)",
+            "Chi phí thông tin liên lạc",
+            "Chi phí điện nước, vệ sinh văn phòng",
+            "Công tác phí",
+        }
+        if retained_axis == "asset"
+        else {
+            "Chi phí thuê văn phòng và tài sản",
+            "Khấu hao và hao mòn tài sản cố định",
+            "Chi phí bảo dưỡng và sửa chữa tài sản",
+            "Chi phí dụng cụ và thiết bị",
+        }
+    )
+    rows = [row for row in rows if row["label_exact"] not in removed_labels]
+    rows[-1]["values_exact"] = (
+        ["74", "58"] if retained_axis == "asset" else ["61", "50"]
+    )
+
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role[expected_role]) == expected_coefficients
+    absent_role = "ADMIN_EXPENSE" if retained_axis == "asset" else "ASSET_EXPENSE"
+    assert absent_role not in by_role
+    flat_receipts = candidate["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]["flat_parent_projection_receipts"]
+    assert [receipt["result_role"] for receipt in flat_receipts] == [expected_role]
+
+
+def test_mapping_max_component_with_visible_descendant_vetoes_flat_parent() -> None:
+    rows = _mapping_max_flat_rows(consulting=False)
+    tools_ordinal = next(
+        ordinal
+        for ordinal, row in enumerate(rows)
+        if row["label_exact"] == "Chi phí dụng cụ và thiết bị"
+    )
+    tools = rows[tools_ordinal]
+    rows.insert(
+        tools_ordinal + 1,
+        _row(
+            "Trong đó: Công cụ công nghệ thông tin",
+            "1",
+            "1",
+            path=[tools["label_exact"], "Trong đó: Công cụ công nghệ thông tin"],
+        ),
+    )
+
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert "ASSET_EXPENSE" not in _mapping_by_role(candidate)
+    flat_receipts = candidate["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]["flat_parent_projection_receipts"]
+    assert all(
+        receipt["result_role"] != "ASSET_EXPENSE"
+        for receipt in flat_receipts
+    )
+
+
+def test_mapping_max_continuation_selector_never_enables_flat_parent_axis() -> None:
+    page = _operating_page(_mapping_max_flat_rows(consulting=False))
+    compiled = _adapter_compiled()
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page)], compiled_specs=compiled
+    )
+    private, guards, receipts = operating_expense_adapter._mapping_max_private_specs(
+        pages={VERSION_ID: page},
+        regions=cluster["component_regions"],
+        compiled_specs=compiled,
+        allow_flat_parent_axes=False,
+    )
+    assert private["derived_role_equations"] == []
+    assert len(guards) == 1
+    assert receipts == []
+
+
+def test_mapping_max_split_table_axis_never_derives_cross_region_parent() -> None:
+    rows = _mapping_max_flat_rows(consulting=False)
+    page = _page(
+        _section(OWNER, _table(rows[:8], title=OWNER)),
+        _section(OWNER, _table(rows[8:], title=OWNER)),
+    )
+    candidate, cluster, _receipt = _evaluate_adapter(page)
+    assert len(cluster["component_regions"]) == 2
+    assert not ({"ASSET_EXPENSE", "ADMIN_EXPENSE"} & _mapping_by_role(candidate).keys())
+    adapter_receipt = candidate["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]
+    assert adapter_receipt["flat_parent_projection_receipts"] == []
+
+
+def test_mapping_max_printed_parent_vetoes_derived_flat_parent() -> None:
+    asset = "Chi về tài sản"
+    rows = _mapping_max_flat_rows(consulting=False)
+    asset_labels = {
+        "Chi phí thuê văn phòng và tài sản",
+        "Khấu hao và hao mòn tài sản cố định",
+        "Chi phí bảo dưỡng và sửa chữa tài sản",
+        "Chi phí dụng cụ và thiết bị",
+    }
+    admin_labels = {
+        "Chi phí in ấn, tiếp thị và khuyến mại",
+        "Chi phí công nghệ thông tin (*)",
+        "Chi phí thông tin liên lạc",
+        "Chi phí điện nước, vệ sinh văn phòng",
+        "Công tác phí",
+    }
+    rows = [row for row in rows if row["label_exact"] not in admin_labels]
+    for row in rows:
+        if row["label_exact"] in asset_labels:
+            row["hierarchy_path_exact"] = [asset, row["label_exact"]]
+    rows.insert(2, _row(asset, "25", "18", kind="SUBTOTAL"))
+    rows[-1]["values_exact"] = ["74", "58"]
+
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["ASSET_EXPENSE"]) == [25, 18]
+    assert by_role["ASSET_EXPENSE"]["source_refs"][0]["row_ordinal"] == 3
+    assert by_role["ASSET_EXPENSE"]["state"] != (
+        "DECLARED_ROLE_DERIVED_FROM_EXACT_VISIBLE_COMPONENT_SUM"
+    )
+    flat_receipts = candidate["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]["flat_parent_projection_receipts"]
+    assert all(
+        receipt["result_role"] != "ASSET_EXPENSE" for receipt in flat_receipts
+    )
+
+
+@pytest.mark.parametrize(
+    "other_label",
+    [
+        "Chi khác cho hoạt động quản lý",
+        "Chi phí hoạt động khác",
+        "Chi khác",
+    ],
+)
+def test_mapping_max_other_leaf_survives_nonexhaustive_printed_admin_parent(
+    other_label: str,
+) -> None:
+    admin = "Chi cho hoạt động quản lý công vụ"
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row("Chi về tài sản", "3", "3"),
+        _row(admin, "100", "90", kind="SUBTOTAL"),
+        _row("Công tác phí", "10", "8", path=[admin, "Công tác phí"]),
+        _row(other_label, "20", "18", path=[admin, other_label]),
+        _row(None, "106", "96", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["ADMIN_EXPENSE"]) == [100, 90]
+    other = by_role["OTHER_OPERATING_EXPENSE"]
+    assert _coefficients(other) == [20, 18]
+    assert {ref["row_ordinal"] for ref in other["source_refs"]} == {6}
+    assert all(
+        mapping["role"] != "ADMIN_EXPENSE"
+        or mapping["state"] != "DECLARED_ROLE_DERIVED_FROM_EXACT_VISIBLE_COMPONENT_SUM"
+        for mapping in candidate["mappings"]
+    )
+
+
+@pytest.mark.parametrize(
+    "other_label",
+    [
+        "Chi khác cho hoạt động quản lý",
+        "Chi phí hoạt động khác",
+        "Chi khác",
+    ],
+)
+def test_mapping_max_broad_other_carrier_with_children_fails_closed(
+    other_label: str,
+) -> None:
+    admin = "Chi cho hoạt động quản lý công vụ"
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row("Chi về tài sản", "3", "3"),
+        _row(admin, "100", "90", kind="SUBTOTAL"),
+        _row(other_label, "60", "50", kind="SUBTOTAL", path=[admin, other_label]),
+        _row("Công tác phí", "10", "8", path=[admin, other_label, "Công tác phí"]),
+        _row(
+            "Chi phí hoạt động khác",
+            "50",
+            "42",
+            path=[admin, other_label, "Chi phí hoạt động khác"],
+        ),
+        _row(None, "106", "96", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "OPERATING_EXPENSE_BROAD_OTHER_CARRIER_IS_NOT_EXACT_RESIDUAL_LEAF" in (
+        candidate["reasons"]
+    )
+
+
+def test_mapping_max_printed_other_subtotal_without_nested_paths_fails_closed() -> None:
+    admin = "Chi cho hoạt động quản lý công vụ"
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row("Chi về tài sản", "3", "3"),
+        _row(admin, "100", "90", kind="SUBTOTAL"),
+        _row(
+            "Chi phí hoạt động khác",
+            "60",
+            "50",
+            kind="SUBTOTAL",
+            path=[admin, "Chi phí hoạt động khác"],
+        ),
+        _row("Công tác phí", "10", "8", path=[admin, "Công tác phí"]),
+        _row(
+            "Chi khác cho hoạt động quản lý",
+            "50",
+            "42",
+            path=[admin, "Chi khác cho hoạt động quản lý"],
+        ),
+        _row(None, "106", "96", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "OPERATING_EXPENSE_BROAD_OTHER_CARRIER_IS_NOT_EXACT_RESIDUAL_LEAF" in (
+        candidate["reasons"]
+    )
+
+
+def test_s08_blank_is_not_zero_and_blocks_incomplete_flat_parent_derivation() -> None:
+    rows = _mapping_max_flat_rows(consulting=False)
+    rows[2]["values_exact"] = ["-", None]
+    rows[-1]["values_exact"] = ["74", "58"]
+    page = _operating_page(rows)
+    before = copy.deepcopy(page)
+    candidate, _cluster_value, _receipt = _evaluate_adapter(page)
+    assert page == before
+    assert candidate["status"] == READY
+    assert "ASSET_EXPENSE" not in _mapping_by_role(candidate)
+    source_only = candidate["closure_receipt"]["source_only_unmapped_rows"]
+    rent = next(
+        item
+        for item in source_only
+        if item["declared_role"] == "FLAT_ASSET_RENT_SOURCE_ONLY"
+    )
+    assert rent["source_ref"]["row_ordinal"] == 3
+    assert page["sections"][0]["tables"][0]["rows"][2]["values_exact"] == [
+        "-",
+        None,
+    ]
+
+
+def test_s09_continuation_requires_reciprocal_adjacent_structural_proof() -> None:
+    base, pages, compiled = _continuation_query_fixture()
+    positive = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    assert "operating_expense_continuation_query_receipt" in positive[
+        "candidate_dispositions"
+    ][0]["cluster"]
+
+    broken_pages = copy.deepcopy(pages)
+    broken_pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0][
+        "continuation"
+    ] = "NONE"
+    broken_base = _rebuild_continuation_query_fixture(broken_pages, compiled)
+    broken = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=broken_base,
+        page_json_by_document=broken_pages,
+        compiled_specs=compiled,
+    )
+    assert "operating_expense_continuation_query_receipt" not in broken[
+        "candidate_dispositions"
+    ][0]["cluster"]
+
+
+def test_s10_reversed_physical_columns_keep_semantic_lane_and_origin() -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    _prior, receiver = _alignment_tables(pages)
+    _alignment_headers(receiver, "Kỳ này", "Kỳ trước")
+    _reverse_alignment_columns_and_values(receiver)
+    _indexed, trial = _run_alignment_fixture(pages, compiled)
+    _alignment_root_with_exact_source_ref(trial, pages)
+    mapping_refs = [
+        ref
+        for mapping in trial["mappings"]
+        for ref in mapping["source_refs"]
+        if ref["locator"]["physical_page"] == 2
+    ]
+    assert mapping_refs
+    assert all(ref["money_column_ordinals"] == [2, 1] for ref in mapping_refs)
+
+
+def test_s11_rnid1218_aggregates_only_explicit_long_term_and_bad_debt_union() -> None:
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row("Chi về tài sản", "3", "3"),
+        _row("Chi cho hoạt động quản lý công vụ", "4", "4"),
+        _row("Trích lập dự phòng giảm giá đầu tư dài hạn", "5", "7"),
+        _row("Trích lập dự phòng nợ phải thu khó đòi", "6", "8"),
+        _row(None, "21", "25", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    provision = _mapping_by_role(candidate)["LONG_TERM_BAD_DEBT_PROVISION"]
+    assert _coefficients(provision) == [11, 15]
+    assert {ref["row_ordinal"] for ref in provision["source_refs"]} == {5, 6}
+
+    negative = _row(
+        "Chi phí dự phòng đầu tư (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+        "5",
+        "7",
+    )
+    table = _table([negative], title=OWNER)
+    page = _page(_section(OWNER, table))
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        page, page["sections"][0], table, compiled_specs=_adapter_compiled()
+    )
+    assert "LONG_TERM_BAD_DEBT_PROVISION" not in {
+        hit["role"] for hit in classification["role_hits"]
+    }
+
+
+def test_s12_printed_parent_wins_and_partial_child_never_backsolves_residual() -> None:
+    asset = "Chi về tài sản"
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "1", "1"),
+        _row("Chi phí cho nhân viên", "2", "2"),
+        _row(asset, "100", "90", kind="SUBTOTAL"),
+        _row("Trong đó: Khấu hao tài sản cố định", "40", "30", path=[asset, "Trong đó: Khấu hao tài sản cố định"]),
+        _row("Chi cho hoạt động quản lý công vụ", "3", "3"),
+        _row(None, "106", "96", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["ASSET_EXPENSE"]) == [100, 90]
+    assert _coefficients(by_role["DEPRECIATION_EXPENSE"]) == [40, 30]
+    assert _coefficients(by_role["FAMILY_ROOT_TOTAL"]) == [106, 96]
+    assert not any(
+        mapping["state"] == "DECLARED_ROLE_DERIVED_FROM_EXACT_VISIBLE_COMPONENT_SUM"
+        and mapping["role"] == "ASSET_EXPENSE"
+        for mapping in candidate["mappings"]
+    )
+
+
+def test_s13_continuation_origin_receipt_rejects_locator_substitution() -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    prior = pages[1]
+    indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=_base,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    regions = indexed["candidate_dispositions"][0]["cluster"]["component_regions"]
+    projected_pages, projected_regions, receipt = operating_expense_adapter._continuation_projection(
+        pages=prior,
+        regions=regions,
+        compiled_specs=compiled,
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=projected_regions,
+        page_json_by_version=projected_pages,
+        compiled_specs=compiled,
+        query_receipt=receipt["projected_query_receipt"],
+    )
+    attacked = copy.deepcopy(receipt)
+    attacked["row_projections"][0]["before_locator"]["page_json_version_id"] = "gfpstorev1:json:" + "9" * 64
+    with pytest.raises(
+        GeminiJsonOperatingExpenseFamilyV1Error,
+        match="source locator drifted",
+    ):
+        operating_expense_adapter._restore_continuation_mapping_source_refs(
+            candidate, receipt=attacked
+        )
+
+
+def test_s14_numbered_neighbor_resets_wrapper_scope_before_asset_other() -> None:
+    employee = "2. Chi phí cho nhân viên"
+    asset = "3. Chi về tài sản"
+    rows = [
+        _row(employee, "100", "90", kind="SUBTOTAL"),
+        _row("Trong đó:", None, None, kind="GROUP", path=["Trong đó:"]),
+        _row("Chi lương và phụ cấp", "80", "72", path=["Trong đó:", "Chi lương và phụ cấp"]),
+        _row("Chi trang phục giao dịch", "20", "18", path=["Trong đó:", "Chi trang phục giao dịch"]),
+        _row(asset, "10", "9", kind="SUBTOTAL"),
+        _row("Chi khác", "10", "9", path=[asset, "Chi khác"]),
+        _row("4. Chi cho hoạt động quản lý công vụ", "5", "4"),
+        _row(None, "115", "103", kind="TOTAL", path=[None]),
+    ]
+    candidate, _cluster_value, _receipt = _evaluate_adapter(_operating_page(rows))
+    by_role = _mapping_by_role(candidate)
+    assert {ref["row_ordinal"] for ref in by_role["OTHER_EMPLOYEE_EXPENSE"]["source_refs"]} == {4}
+    assert "OTHER_OPERATING_EXPENSE" not in by_role
+
+
+def test_s15_mapping_and_receipts_are_deterministic_and_source_tamper_fails() -> None:
+    page = _operating_page(_mapping_max_flat_rows(consulting=True))
+    first, cluster, receipt = _evaluate_adapter(page)
+    second, _cluster_value, _receipt = _evaluate_adapter(copy.deepcopy(page))
+    assert first == second
+    attacked = copy.deepcopy(first)
+    attacked["mappings"][0]["source_refs"][0]["row_ordinal"] = 999
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error):
+        validate_gemini_json_operating_expense_candidate_replay_v1(
+            attacked,
+            regions=cluster["component_regions"],
+            page_json_by_version={VERSION_ID: page},
+            selected_page_axis=[],
+            compiled_specs=_adapter_compiled(),
+            query_receipt=receipt,
+        )
+
+
+def test_s16_schema_less_child_is_coverage_not_a_false_scalar() -> None:
+    asset = "Chi về tài sản"
+    rows = [
+        _row("Chi nộp thuế và các khoản phí, lệ phí", "10", "8"),
+        _row("Chi phí cho nhân viên", "30", "25"),
+        _row(asset, "20", "15", kind="SUBTOTAL"),
+        _row("Chi khấu hao tài sản cố định", "12", "10", path=[asset, "Chi khấu hao tài sản cố định"]),
+        _row("Chi thuê tài sản", "8", "5", path=[asset, "Chi thuê tài sản"]),
+        _row("Chi cho hoạt động quản lý công vụ", "15", "12"),
+        _row("Chi nộp phí bảo hiểm tiền gửi của khách hàng", "5", "4"),
+        _row(None, "80", "64", kind="TOTAL", path=[None]),
+    ]
+    page = _operating_page(rows)
+    indexed, trials, pages, compiled = _source_row_coverage_inputs(page)
+    receipt = build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed,
+        trials=trials,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    rent = next(
+        row
+        for row in receipt["source_row_axis"]
+        if row["label_exact"] == "Chi thuê tài sản"
+    )
+    assert rent["coverage"] == "EQUATION_CONSUMED_DECLARED_SOURCE_ONLY_ROLE_ROW"
+    assert rent["report_norm_id"] is None
+    assert not any(
+        ref["row_ordinal"] == 5
+        for mapping in trials[0]["mappings"]
+        for ref in mapping["source_refs"]
+        if mapping["role"] != "FAMILY_ROOT_TOTAL"
+    )
+
+
+def test_s17_root_partition_counts_parents_not_mapped_details_twice() -> None:
+    candidate, _cluster_value, _receipt = _evaluate_adapter(
+        _operating_page(_mapping_max_flat_rows(consulting=False))
+    )
+    by_role = _mapping_by_role(candidate)
+    root_roles = (
+        "EMPLOYEE_EXPENSE",
+        "ASSET_EXPENSE",
+        "ADMIN_EXPENSE",
+        "TAX_FEES",
+        "DEPOSIT_INSURANCE_EXPENSE",
+        "OTHER_OPERATING_EXPENSE",
+        "OTHER_ASSET_PROVISION",
+    )
+    assert sum(_coefficients(by_role[role])[0] for role in root_roles) == 86
+    assert _coefficients(by_role["FAMILY_ROOT_TOTAL"]) == [86, 68]
+    assert _coefficients(by_role["DEPRECIATION_EXPENSE"]) == [8, 5]
+    assert _coefficients(by_role["TRAVEL_EXPENSE"]) == [1, 1]
+
+
+def test_s18_same_label_in_unrelated_note_never_enters_f36_population() -> None:
+    unrelated = _table([_row("Chi phí hoạt động khác", "999", "888")])
+    page = _page(
+        _section("Giao dịch với các bên liên quan", unrelated),
+        _section(OWNER, _table(_base_rows())),
+    )
+    candidate, cluster, _receipt = _evaluate(page)
+    assert candidate["status"] == READY
+    other = _mapping_by_role(candidate)["OTHER_OPERATING_EXPENSE"]
+    assert _coefficients(other) == [10, 8]
+    assert {ref["locator"]["section_id"] for ref in other["source_refs"]} == {"s2"}
+    assert {region["section_id"] for region in cluster["component_regions"]} == {"s2"}

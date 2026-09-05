@@ -65,6 +65,36 @@ _INTERNAL_OWNER_REJECTION_TYPES = (
     (_INTERNAL_OWNER_UNIT_REJECTION_FIELD, _INTERNAL_OWNER_UNIT_REJECTION, "unit"),
     (_INTERNAL_OWNER_PERIOD_REJECTION_FIELD, _INTERNAL_OWNER_PERIOD_REJECTION, "period"),
 )
+_FLAT_ASSET_PARENT_COMPONENT_ROLES = (
+    "FLAT_ASSET_RENT_SOURCE_ONLY",
+    "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
+    "FLAT_ASSET_MAINTENANCE_SOURCE_ONLY",
+    "FLAT_ASSET_TOOLS_SOURCE_ONLY",
+)
+_FLAT_ADMIN_CORE_COMPONENT_ROLES = (
+    "FLAT_ADMIN_PRINTING_SOURCE_ONLY",
+    "IT_EXPENSE_SOURCE_ONLY",
+    "FLAT_ADMIN_COMMUNICATION_SOURCE_ONLY",
+    "FLAT_ADMIN_UTILITIES_SOURCE_ONLY",
+    "FLAT_ADMIN_TRAVEL_SOURCE_ONLY",
+)
+_FLAT_ADMIN_CONSULTING_ROLE = "FLAT_ADMIN_CONSULTING_SOURCE_ONLY"
+_MAPPING_MAX_LEAF_SOURCE_ROLES = frozenset(
+    {
+        "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
+        "FLAT_ADMIN_TRAVEL_SOURCE_ONLY",
+        "FLAT_OTHER_OPERATING_SOURCE_ONLY",
+        "EMPLOYEE_UNIFORM_SOURCE_ONLY",
+        "EMPLOYEE_OTHER_ALLOWANCE_SOURCE_ONLY",
+    }
+)
+_MAPPING_MAX_ADMIN_DIRECT_OTHER_LABELS = frozenset(
+    {
+        "chi khac cho hoat dong quan ly",
+        "chi phi hoat dong khac",
+        "chi khac",
+    }
+)
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_OPERATING_EXPENSE_"
     "MULTITABLE_HIERARCHICAL_EXACT_SAME_DOCUMENT_PRIMARY_STATEMENT_UNIT_"
@@ -73,7 +103,9 @@ CLAIM_BOUNDARY = (
     "EXACT_ALL_LANES_RAW_NULL_VALIDATION_ROLE_OMISSION_PRIVATE_COMPILED_CLONE_"
     "NO_BLANK_ZERO_NO_NUMERIC_BACKSOLVE_"
     "NO_MAGNITUDE_UNIT_INFERENCE_NO_BANK_FILE_YEAR_PAGE_VALUE_ROUTING_"
-    "PROPOSAL_ONLY_" + SHARED_CLAIM_BOUNDARY
+    "DECLARED_EXACT_SOURCE_EQUATION_LEAF_PROJECTION_COMPLETE_DISJOINT_"
+    "FLAT_PARENT_FORWARD_SUM_IMMUTABLE_ORIGINAL_CONTINUATION_SOURCE_REF_"
+    + SHARED_CLAIM_BOUNDARY
 )
 
 _UNIT_SURFACE = {"MILLION_VND": "Triệu đồng", "VND": "VND"}
@@ -355,6 +387,433 @@ def _source_table(
     if type(section) is not dict or type(table) is not dict:
         raise _error("operating-expense source table is invalid")
     return section, table
+
+
+def _mapping_max_private_specs(
+    *,
+    pages: Mapping[str, dict[str, Any]],
+    regions: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    allow_flat_parent_axes: bool = True,
+) -> tuple[Mapping[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Guard projected leaves and select complete flat parents structurally.
+
+    The shared structural-parent fallback intentionally derives a missing
+    context parent from any visible mapped child.  A newly projected F36 detail
+    must never become a whole employee/asset/admin parent through that fallback.
+    Therefore any selected table containing a mapping-max source role uses a
+    private clone with the fallback disabled.  Existing source-visible parents
+    still win, while declared equations add flat parents only from complete
+    role axes.
+
+    Selection is entirely structural: exact classified roles, one immutable
+    row per role, a direct leaf path, and no competing parent/admin-gap row.
+    Coefficients do not participate, and the source table is never mutated.
+    """
+
+    private_specs = canonical_clone_v1(compiled_specs)
+    declared_by_result = {
+        equation["result_role"]: equation
+        for equation in private_specs["derived_role_equations"]
+    }
+    if (
+        set(declared_by_result) != {"ASSET_EXPENSE", "ADMIN_EXPENSE"}
+        or declared_by_result["ASSET_EXPENSE"]["component_roles"]
+        != list(_FLAT_ASSET_PARENT_COMPONENT_ROLES)
+        or declared_by_result["ADMIN_EXPENSE"]["component_roles"]
+        != list(_FLAT_ADMIN_CORE_COMPONENT_ROLES)
+    ):
+        raise _error("operating-expense mapping-max declared parent axes drifted")
+    # Declarations are inert until the exact source frontier is proven below.
+    # This clone is returned on every rejected/invalid selector exit so shared
+    # evaluation can never execute an unreceipted partial or cross-region sum.
+    private_specs["derived_role_equations"] = []
+
+    classified_regions: list[
+        tuple[Mapping[str, Any], Mapping[str, Any], Mapping[str, Any], Mapping[str, Any]]
+    ] = []
+    guarded_source_axis = []
+    for region in regions:
+        version = region.get("page_json_version_id")
+        page = pages.get(version) if type(version) is str else None
+        if type(page) is not dict:
+            return private_specs, [], []
+        try:
+            section, table = _source_table(
+                page,
+                section_id=region["section_id"],
+                table_id=region["table_id"],
+            )
+        except (KeyError, TypeError, GeminiJsonOperatingExpenseFamilyV1Error):
+            return private_specs, [], []
+        if type(table.get("rows")) is not list:
+            return private_specs, [], []
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(
+            page, section, table, compiled_specs=compiled_specs
+        )
+        classified_regions.append((region, page, table, classification))
+        rows = table["rows"]
+
+        def has_visible_money_descendant(
+            row_ordinal: int, *, source_rows: Sequence[Mapping[str, Any]] = rows
+        ) -> bool:
+            row = source_rows[row_ordinal - 1]
+            path = row.get("hierarchy_path_exact") if type(row) is dict else None
+            return bool(
+                type(path) is list
+                and any(
+                    other_ordinal != row_ordinal
+                    and type(other_row) is dict
+                    and type(other_row.get("hierarchy_path_exact")) is list
+                    and len(other_row["hierarchy_path_exact"]) > len(path)
+                    and other_row["hierarchy_path_exact"][: len(path)] == path
+                    and any(
+                        value is not None
+                        for value in other_row.get("values_exact", [])
+                    )
+                    for other_ordinal, other_row in enumerate(source_rows, start=1)
+                )
+            )
+
+        money_column_ordinals = _money_column_ordinals(table)
+        for hit in classification.get("role_hits", []):
+            if type(hit) is not dict or type(hit.get("role")) is not str:
+                return private_specs, [], []
+            role = hit["role"]
+            ordinal = hit.get("row_ordinal")
+            if type(ordinal) is not int or not 1 <= ordinal <= len(rows):
+                return private_specs, [], []
+            row = rows[ordinal - 1]
+            direct_admin_other = bool(
+                role == "OTHER_OPERATING_EXPENSE"
+                and type(row) is dict
+                and type(row.get("label_exact")) is str
+                and type(row.get("hierarchy_path_exact")) is list
+                and len(row["hierarchy_path_exact"]) > 1
+                and _normalized(row.get("label_exact", ""))
+                in _MAPPING_MAX_ADMIN_DIRECT_OTHER_LABELS
+            )
+            if role not in _MAPPING_MAX_LEAF_SOURCE_ROLES and not direct_admin_other:
+                continue
+            guarded_source_axis.append(
+                {
+                    "direct_admin_other_frontier": direct_admin_other,
+                    "evaluation_page_json_sha256": canonical_json_sha256_v1(page),
+                    "hierarchy_path_exact": canonical_clone_v1(
+                        row.get("hierarchy_path_exact")
+                    ),
+                    "label_exact": row.get("label_exact"),
+                    "locator": canonical_clone_v1(region),
+                    "money_column_ordinals": canonical_clone_v1(
+                        money_column_ordinals
+                    ),
+                    "role": role,
+                    "row_kind": row.get("row_kind"),
+                    "row_ordinal": ordinal,
+                    "values_exact": [
+                        canonical_clone_v1(row["values_exact"][column_ordinal - 1])
+                        for column_ordinal in money_column_ordinals
+                    ],
+                    "visible_money_descendant": has_visible_money_descendant(
+                        ordinal
+                    ),
+                }
+            )
+    if not guarded_source_axis:
+        return private_specs, [], []
+    private_specs["structural_parent_derivation_policy"] = "TRANSPOSED_METRIC_ONLY"
+    guard_material = {
+        "guarded_source_axis": guarded_source_axis,
+        "private_shared_structural_parent_policy": "TRANSPOSED_METRIC_ONLY",
+        "rule": (
+            "ANY_MAPPING_MAX_CLEAR_LEAF_SOURCE_DISALLOWS_GENERIC_PARTIAL_"
+            "CHILD_TO_WHOLE_CONTEXT_PARENT_DERIVATION"
+        ),
+    }
+    guard_receipts = [
+        {
+            **guard_material,
+            "receipt_id": "gjoefav1:mapping-max-parent-guard:"
+            + canonical_json_sha256_v1(guard_material),
+        }
+    ]
+    if not allow_flat_parent_axes:
+        return private_specs, guard_receipts, []
+    if len(classified_regions) != 1:
+        return private_specs, guard_receipts, []
+    region, _page, table, classification = classified_regions[0]
+    if table.get("continuation") != "NONE":
+        return private_specs, guard_receipts, []
+    rows = table["rows"]
+    hits_by_role: dict[str, list[int]] = {}
+    for hit in classification.get("role_hits", []):
+        hits_by_role.setdefault(hit["role"], []).append(hit.get("row_ordinal"))
+
+    def exact_direct_leaf_axis(
+        *, component_roles: Sequence[str], competing_roles: Sequence[str]
+    ) -> list[dict[str, Any]] | None:
+        if any(hits_by_role.get(role) for role in competing_roles) or any(
+            len(hits_by_role.get(role, [])) != 1 for role in component_roles
+        ):
+            return None
+        selected_ordinals = [hits_by_role[role][0] for role in component_roles]
+        if (
+            any(
+                type(ordinal) is not int or not 1 <= ordinal <= len(rows)
+                for ordinal in selected_ordinals
+            )
+            or len(set(selected_ordinals)) != len(selected_ordinals)
+        ):
+            return None
+        for ordinal in selected_ordinals:
+            row = rows[ordinal - 1]
+            path = row.get("hierarchy_path_exact") if type(row) is dict else None
+            if (
+                type(row) is not dict
+                or row.get("row_kind") != "ITEM"
+                or path != [row.get("label_exact")]
+                or has_visible_money_descendant(ordinal)
+            ):
+                return None
+        return [
+            {
+                "hierarchy_path_exact": canonical_clone_v1(
+                    rows[hits_by_role[role][0] - 1]["hierarchy_path_exact"]
+                ),
+                "label_exact": rows[hits_by_role[role][0] - 1].get("label_exact"),
+                "locator": canonical_clone_v1(region),
+                "money_column_ordinals": canonical_clone_v1(money_column_ordinals),
+                "role": role,
+                "row_kind": rows[hits_by_role[role][0] - 1].get("row_kind"),
+                "row_ordinal": hits_by_role[role][0],
+                "values_exact": [
+                    canonical_clone_v1(
+                        rows[hits_by_role[role][0] - 1]["values_exact"][
+                            column_ordinal - 1
+                        ]
+                    )
+                    for column_ordinal in money_column_ordinals
+                ],
+            }
+            for role in component_roles
+        ]
+
+    admin_consulting = hits_by_role.get(_FLAT_ADMIN_CONSULTING_ROLE, [])
+    admin_roles = [
+        *_FLAT_ADMIN_CORE_COMPONENT_ROLES,
+        *(
+            (_FLAT_ADMIN_CONSULTING_ROLE,)
+            if len(admin_consulting) == 1
+            else ()
+        ),
+    ]
+    parent_axes = (
+        (
+            "ASSET_EXPENSE",
+            list(_FLAT_ASSET_PARENT_COMPONENT_ROLES),
+            ["ASSET_EXPENSE", "ASSET_SCHEMA_GAP_SOURCE_ONLY"],
+        ),
+        (
+            "ADMIN_EXPENSE",
+            admin_roles,
+            ["ADMIN_EXPENSE", "ADMIN_SCHEMA_GAP_SOURCE_ONLY"],
+        ),
+    )
+    flat_receipts = []
+    for result_role, component_roles, competing_roles in parent_axes:
+        if result_role == "ADMIN_EXPENSE" and len(admin_consulting) > 1:
+            continue
+        component_axis = exact_direct_leaf_axis(
+            component_roles=component_roles,
+            competing_roles=competing_roles,
+        )
+        if component_axis is None:
+            continue
+        declaration = canonical_clone_v1(declared_by_result[result_role])
+        declaration["component_roles"] = list(component_roles)
+        private_specs["derived_role_equations"].append(declaration)
+        material = {
+            "component_axis": component_axis,
+            "component_roles": list(component_roles),
+            "evaluation_page_json_sha256": canonical_json_sha256_v1(_page),
+            "private_shared_structural_parent_policy": "TRANSPOSED_METRIC_ONLY",
+            "result_role": result_role,
+            "rule": (
+                "ONE_NONCONTINUED_TABLE_EXACT_UNIQUE_DIRECT_LEAF_ROLE_AXIS_"
+                "SELECTS_DECLARED_COMPLETE_DISJOINT_FORWARD_PARENT_SUM_NO_VALUE_"
+                "SELECTION"
+            ),
+        }
+        flat_receipts.append(
+            {
+                **material,
+                "receipt_id": "gjoefav1:flat-parent-axis:"
+                + canonical_json_sha256_v1(material),
+            }
+        )
+    return private_specs, guard_receipts, flat_receipts
+
+
+def _restore_continuation_mapping_max_receipts(
+    *,
+    guard_receipts: Sequence[dict[str, Any]],
+    flat_parent_receipts: Sequence[dict[str, Any]],
+    receipt: Mapping[str, Any],
+    source_pages: Mapping[str, dict[str, Any]],
+) -> None:
+    """Restore every mapping-max receipt cell to its immutable source origin."""
+
+    if flat_parent_receipts:
+        raise _error("operating-expense continuation flat parent axis is forbidden")
+    projections = receipt.get("row_projections")
+    original_regions = receipt.get("original_regions")
+    projected_region = receipt.get("projected_region")
+    if (
+        type(projections) is not list
+        or type(original_regions) is not list
+        or type(projected_region) is not dict
+    ):
+        raise _error("operating-expense continuation mapping-max receipt is invalid")
+    by_projected_ordinal = {
+        item.get("projected_row_ordinal"): item
+        for item in projections
+        if type(item) is dict
+    }
+    if len(by_projected_ordinal) != len(projections):
+        raise _error("operating-expense continuation mapping-max row axis is duplicate")
+
+    for guard_receipt in guard_receipts:
+        guarded_axis = guard_receipt.get("guarded_source_axis")
+        if type(guarded_axis) is not list:
+            raise _error("operating-expense mapping-max guard axis is invalid")
+        for guarded in guarded_axis:
+            projection = by_projected_ordinal.get(
+                guarded.get("row_ordinal") if type(guarded) is dict else None
+            )
+            if type(guarded) is not dict or type(projection) is not dict:
+                raise _error("operating-expense mapping-max guard origin is absent")
+            after_row = projection.get("after_row")
+            before_row = projection.get("before_row")
+            after_money = projection.get("after_money_column_ordinals")
+            before_money = projection.get("before_money_column_ordinals")
+            if (
+                not same_typed_json_v1(guarded.get("locator"), projected_region)
+                or type(after_row) is not dict
+                or type(before_row) is not dict
+                or type(after_money) is not list
+                or type(before_money) is not list
+                or len(after_money) != len(before_money)
+                or guarded.get("label_exact") != after_row.get("label_exact")
+                or guarded.get("hierarchy_path_exact")
+                != after_row.get("hierarchy_path_exact")
+                or guarded.get("row_kind") != after_row.get("row_kind")
+                or guarded.get("money_column_ordinals") != after_money
+                or guarded.get("values_exact")
+                != [after_row["values_exact"][ordinal - 1] for ordinal in after_money]
+            ):
+                raise _error("operating-expense mapping-max projected guard drifted")
+            before_locator = projection.get("before_locator")
+            matches = [
+                region
+                for region in original_regions
+                if type(region) is dict
+                and type(before_locator) is dict
+                and all(
+                    region.get(field) == before_locator.get(field)
+                    for field in (
+                        "page_json_version_id",
+                        "physical_page",
+                        "section_id",
+                        "selected_page_ordinal",
+                        "table_id",
+                    )
+                )
+            ]
+            if len(matches) != 1:
+                raise _error("operating-expense mapping-max source locator drifted")
+            source_page = source_pages.get(matches[0]["page_json_version_id"])
+            if type(source_page) is not dict:
+                raise _error("operating-expense mapping-max source page is absent")
+            guarded["evaluation_page_json_sha256"] = canonical_json_sha256_v1(
+                source_page
+            )
+            guarded["hierarchy_path_exact"] = canonical_clone_v1(
+                before_row.get("hierarchy_path_exact")
+            )
+            guarded["label_exact"] = before_row.get("label_exact")
+            guarded["locator"] = canonical_clone_v1(matches[0])
+            guarded["money_column_ordinals"] = canonical_clone_v1(before_money)
+            guarded["row_kind"] = before_row.get("row_kind")
+            guarded["row_ordinal"] = projection["before_row_ordinal"]
+            guarded["values_exact"] = [
+                canonical_clone_v1(before_row["values_exact"][ordinal - 1])
+                for ordinal in before_money
+            ]
+        material = {
+            key: value for key, value in guard_receipt.items() if key != "receipt_id"
+        }
+        guard_receipt["receipt_id"] = (
+            "gjoefav1:mapping-max-parent-guard:"
+            + canonical_json_sha256_v1(material)
+        )
+
+
+def _mapping_max_broad_other_carrier_veto(
+    candidate: dict[str, Any],
+    *,
+    guard_receipts: Sequence[Mapping[str, Any]],
+) -> None:
+    def source_identity(locator: Any, row_ordinal: Any) -> tuple[Any, ...] | None:
+        if type(locator) is not dict or type(row_ordinal) is not int:
+            return None
+        return (
+            locator.get("page_json_version_id"),
+            locator.get("section_id"),
+            locator.get("table_id"),
+            row_ordinal,
+        )
+
+    exact_result_identities = {
+        identity
+        for equation in candidate.get("closure_receipt", {}).get("equations", [])
+        if type(equation) is dict and equation.get("status") == "EXACT"
+        for source_ref in equation.get("result_source_refs", [])
+        if type(source_ref) is dict
+        and (
+            identity := source_identity(
+                source_ref.get("locator"), source_ref.get("row_ordinal")
+            )
+        )
+        is not None
+    }
+    carriers = [
+        item
+        for receipt in guard_receipts
+        for item in receipt.get("guarded_source_axis", [])
+        if type(item) is dict
+        and item.get("direct_admin_other_frontier") is True
+        and (
+            item.get("visible_money_descendant") is True
+            or item.get("row_kind") != "ITEM"
+            or source_identity(item.get("locator"), item.get("row_ordinal"))
+            in exact_result_identities
+        )
+    ]
+    if not carriers:
+        return
+    candidate["mappings"] = []
+    candidate["reasons"] = sorted(
+        {
+            *candidate.get("reasons", []),
+            "OPERATING_EXPENSE_BROAD_OTHER_CARRIER_IS_NOT_EXACT_RESIDUAL_LEAF",
+        }
+    )
+    candidate["status"] = UNRESOLVED
+    structural_root = candidate.get("closure_receipt", {}).get(
+        "structural_root_receipt"
+    )
+    if type(structural_root) is dict:
+        structural_root["emitted_mapping"] = False
 
 
 def _is_last_source_table_on_page(
@@ -4082,6 +4541,8 @@ def _reseal_candidate(
     *,
     all_blank_validation_role_omission_receipts: Sequence[Mapping[str, Any]],
     continuation_projection_receipts: Sequence[Mapping[str, Any]],
+    flat_parent_projection_receipts: Sequence[Mapping[str, Any]],
+    mapping_max_parent_guard_receipts: Sequence[Mapping[str, Any]],
     nonexhaustive_parent_receipts: Sequence[Mapping[str, Any]],
     root_closure_receipts: Sequence[Mapping[str, Any]],
     source_root_authority_veto_receipts: Sequence[Mapping[str, Any]],
@@ -4095,6 +4556,12 @@ def _reseal_candidate(
         ),
         "continuation_projection_receipts": canonical_clone_v1(
             list(continuation_projection_receipts)
+        ),
+        "flat_parent_projection_receipts": canonical_clone_v1(
+            list(flat_parent_projection_receipts)
+        ),
+        "mapping_max_parent_guard_receipts": canonical_clone_v1(
+            list(mapping_max_parent_guard_receipts)
         ),
         "nonexhaustive_parent_receipts": canonical_clone_v1(
             list(nonexhaustive_parent_receipts)
@@ -4219,10 +4686,20 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         evaluation_pages = pages
         evaluation_regions = region_axis
         evaluation_query_receipt = query_receipt
+    (
+        evaluation_specs,
+        mapping_max_parent_guard_receipts,
+        flat_parent_receipts,
+    ) = _mapping_max_private_specs(
+        pages=evaluation_pages,
+        regions=evaluation_regions,
+        compiled_specs=compiled_specs,
+        allow_flat_parent_axes=continuation is None,
+    )
     candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         regions=evaluation_regions,
         page_json_by_version=evaluation_pages,
-        compiled_specs=compiled_specs,
+        compiled_specs=evaluation_specs,
         query_receipt=evaluation_query_receipt,
     )
     all_blank_receipts: list[dict[str, Any]] = []
@@ -4230,7 +4707,7 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         retried, all_blank_receipts = _all_blank_validation_role_omission_retry(
             pages=evaluation_pages,
             regions=evaluation_regions,
-            compiled_specs=compiled_specs,
+            compiled_specs=evaluation_specs,
             query_receipt=evaluation_query_receipt,
         )
         if retried is not None:
@@ -4246,14 +4723,29 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
             candidate=candidate,
             pages=evaluation_pages,
             regions=evaluation_regions,
-            compiled_specs=compiled_specs,
+            compiled_specs=evaluation_specs,
         )
         if retried is not None:
             candidate = retried
     if continuation is not None:
+        _mapping_max_broad_other_carrier_veto(
+            candidate,
+            guard_receipts=mapping_max_parent_guard_receipts,
+        )
         _restore_continuation_mapping_source_refs(
             candidate,
             receipt=continuation_receipts[0],
+        )
+        _restore_continuation_mapping_max_receipts(
+            guard_receipts=mapping_max_parent_guard_receipts,
+            flat_parent_receipts=flat_parent_receipts,
+            receipt=continuation_receipts[0],
+            source_pages=pages,
+        )
+    else:
+        _mapping_max_broad_other_carrier_veto(
+            candidate,
+            guard_receipts=mapping_max_parent_guard_receipts,
         )
     source_root_authority_veto_receipts = _source_root_authority_veto(
         candidate,
@@ -4261,12 +4753,14 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         source_query_receipt=query_receipt,
         evaluation_pages=evaluation_pages,
         evaluation_regions=evaluation_regions,
-        compiled_specs=compiled_specs,
+        compiled_specs=evaluation_specs,
     )
     return _reseal_candidate(
         candidate,
         all_blank_validation_role_omission_receipts=all_blank_receipts,
         continuation_projection_receipts=continuation_receipts,
+        flat_parent_projection_receipts=flat_parent_receipts,
+        mapping_max_parent_guard_receipts=mapping_max_parent_guard_receipts,
         nonexhaustive_parent_receipts=nonexhaustive_parent_receipts,
         root_closure_receipts=root_closure_receipts,
         source_repair_receipts=source_repair_receipts,

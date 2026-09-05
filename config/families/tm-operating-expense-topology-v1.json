@@ -100,15 +100,10 @@
       "matchers": [
         {
           "aliases": [
-            "Đồng phục và các chi phí liên quan",
             "Chi trang phục, ăn ca, y tế, trợ cấp thôi việc",
-            "Chi trang phục và phương tiện bảo hộ lao động",
-            "Chi trang phục giao dịch",
-            "Chi trang phục giao dịch và phương tiện bảo hộ lao động",
             "Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động",
             "Chi công tác xã hội",
             "Chi thưởng",
-            "Chi trợ cấp khác",
             "Chi trợ cấp và chi khác"
           ],
           "presence_anchor": false,
@@ -117,6 +112,35 @@
       ],
       "presence": "OPTIONAL",
       "role": "EMPLOYEE_SCHEMA_GAP_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đồng phục và các chi phí liên quan",
+            "Chi trang phục và phương tiện bảo hộ lao động",
+            "Chi trang phục giao dịch",
+            "Chi trang phục giao dịch và phương tiện bảo hộ lao động"
+          ],
+          "presence_anchor": false,
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_UNIFORM_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi trợ cấp khác"],
+          "presence_anchor": false,
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_OTHER_ALLOWANCE_SOURCE_ONLY",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
