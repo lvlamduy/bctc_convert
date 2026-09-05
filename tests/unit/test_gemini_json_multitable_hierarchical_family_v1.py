@@ -3960,6 +3960,24 @@ def test_multitable_global_records_preserves_unproven_optional_zero_as_audit_omi
     assert {item["reason"] for item in omissions} == {"UNPROVEN_OPTIONAL_ZERO_PLACEHOLDER_OMITTED"}
 
 
+def test_multitable_global_records_keeps_two_numeric_lanes_but_one_exact_source_identity() -> None:
+    records, partial, reasons, omissions = _multitable_global_records(
+        [_global_record("DETAIL", [19, 17])],
+        proven_roles=set(),
+        compiled_specs={
+            "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+            "validation_only_roles": [],
+        },
+    )
+
+    assert partial == []
+    assert reasons == []
+    assert omissions == []
+    assert [cell["coefficient"] for cell in records["DETAIL"]["cells"]] == [19, 17]
+    assert records["DETAIL"]["state"] == "SOURCE_OBSERVED_ROLE_ROW"
+    assert records["DETAIL"]["source_refs"] == [{"row_id": "r-detail"}]
+
+
 def test_multitable_current_only_recovery_does_not_drop_optional_omission_receipt() -> None:
     records, partial, reasons, omissions = _multitable_global_records(
         [

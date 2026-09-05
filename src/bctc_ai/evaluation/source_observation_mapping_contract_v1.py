@@ -11,6 +11,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from bctc_ai.evaluation.source_reference_identity_v1 import (
+    SourceReferenceIdentityV1Error,
+    stable_unique_source_refs_v1,
+)
+
 __all__ = [
     "SourceObservationMappingContractError",
     "audit_source_observation_mapping_contract_v1",
@@ -146,6 +151,27 @@ def audit_source_observation_mapping_contract_v1(value: Any) -> dict[str, Any]:
         unobserved_lanes = 0
         mapping_cells = _mapping_cells(mapping)
         assert mapping_cells is not None
+        source_refs = mapping.get("source_refs")
+        if (
+            type(source_refs) is list
+            and len(source_refs) > 1
+            and all(type(source_ref) is dict for source_ref in source_refs)
+        ):
+            try:
+                unique_source_refs = stable_unique_source_refs_v1(source_refs)
+            except SourceReferenceIdentityV1Error:
+                # Retain existing negative behavior for malformed source axes;
+                # exact identity is defined only for canonical JSON objects.
+                unique_source_refs = source_refs
+            if len(unique_source_refs) != len(source_refs):
+                violations.append(
+                    _violation(
+                        path=path,
+                        mapping=mapping,
+                        lane=None,
+                        reason="SOURCE_REFS_EXACT_IDENTITY_IS_NOT_UNIQUE",
+                    )
+                )
         for lane, cell in enumerate(mapping_cells):
             cell_count += 1
             coefficient = cell.get("coefficient")

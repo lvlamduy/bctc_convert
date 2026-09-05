@@ -12,6 +12,7 @@ from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import
     UNRESOLVED,
     GeminiJsonOtherLongTermInvestmentsFamilyV1Error,
     _apply_authenticated_source_repair_artifact_v1,
+    _global_records,
     build_gemini_json_indexed_other_long_term_investments_query_evidence_v1,
     build_gemini_json_other_long_term_investments_region_query_receipt_v1,
     coalesce_gemini_json_other_long_term_investments_document_v1,
@@ -193,6 +194,36 @@ def _evaluate(page: dict) -> tuple[dict, dict, dict]:
         query_receipt=receipt,
     )
     return compiled, cluster, candidate
+
+
+def test_global_records_keeps_two_numeric_lanes_but_one_exact_source_identity() -> None:
+    source_ref = {
+        "locator": {
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "table_id": "t1",
+        },
+        "row_id": "r1",
+    }
+    local_record = {
+        "cells": [
+            {"coefficient": 11, "source_text": "11", "state": "RAW_SIGNED_INTEGER"},
+            {"coefficient": 7, "source_text": "7", "state": "RAW_SIGNED_INTEGER"},
+        ],
+        "lane_keys": [("DATE", "2025-12-31"), ("DATE", "2024-12-31")],
+        "role": "OTHER_LONG_TERM",
+        "source_refs": [source_ref],
+        "state": "SOURCE_OBSERVED_ROLE_ROW",
+        "valuation_basis": "GENERIC_AMOUNT",
+    }
+
+    records, partial, reasons, omissions = _global_records([local_record], proven_roles=set())
+
+    assert partial == []
+    assert reasons == []
+    assert omissions == []
+    assert [cell["coefficient"] for cell in records["OTHER_LONG_TERM"]["cells"]] == [11, 7]
+    assert records["OTHER_LONG_TERM"]["state"] == "SOURCE_OBSERVED_ROLE_ROW"
+    assert records["OTHER_LONG_TERM"]["source_refs"] == [source_ref]
 
 
 def test_summary_detail_and_net_close_without_mapping_structural_root_twice() -> None:

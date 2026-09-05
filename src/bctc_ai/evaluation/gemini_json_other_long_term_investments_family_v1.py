@@ -38,6 +38,9 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
     _period_signature,
 )
+from bctc_ai.evaluation.source_reference_identity_v1 import (
+    stable_unique_source_refs_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -2802,6 +2805,7 @@ def _global_records(
             for item in selectable:
                 if item["cell"]["coefficient"] == selected["cell"]["coefficient"]:
                     source_refs.extend(canonical_clone_v1(item["source_refs"]))
+        source_refs = stable_unique_source_refs_v1(source_refs)
         if missing:
             partial.append({"missing_lanes": missing, "role": role})
             continue

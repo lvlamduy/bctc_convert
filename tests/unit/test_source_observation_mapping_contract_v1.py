@@ -120,6 +120,70 @@ def test_contract_accepts_source_ref_bound_cell_projection() -> None:
 
 
 @pytest.mark.parametrize(
+    ("state", "source_text"),
+    [
+        ("SOURCE_OBSERVED_ROLE_ROW", "12"),
+        ("AGGREGATED_EXACT_VISIBLE_CHILDREN", None),
+        ("DERIVED_EXACT_SUM_OF_VISIBLE_CHILDREN", None),
+    ],
+)
+def test_contract_rejects_exact_duplicate_source_identity_surviving_mapping_seal(
+    state: str,
+    source_text: str | None,
+) -> None:
+    source_ref = {
+        "locator": {
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "table_id": "t1",
+        },
+        "row_id": "r1",
+    }
+    mapping = _mapping(
+        [{"coefficient": 12, "source_text": source_text, "state": state}]
+    )
+    mapping["source_refs"] = [source_ref, dict(reversed(list(source_ref.items())))]
+
+    audit = audit_source_observation_mapping_contract_v1(mapping)
+
+    assert audit["status"] == "FAILED"
+    assert audit["violations"][0] == {
+        "lane": None,
+        "path": "/",
+        "reason": "SOURCE_REFS_EXACT_IDENTITY_IS_NOT_UNIQUE",
+        "report_norm_id": 101,
+        "role": "DETAIL",
+    }
+    with pytest.raises(
+        SourceObservationMappingContractError,
+        match="SOURCE_REFS_EXACT_IDENTITY_IS_NOT_UNIQUE",
+    ):
+        validate_source_observation_mapping_contract_v1(mapping)
+
+
+@pytest.mark.parametrize("source_refs", [[], [None], [{"row_id": "r1"}]])
+def test_contract_preserves_existing_fail_closed_result_for_empty_or_malformed_source_refs(
+    source_refs: list,
+) -> None:
+    mapping = _mapping(
+        [
+            {
+                "coefficient": 12,
+                "source_text": None,
+                "state": "SOURCE_VISIBLE_DIRECT_PARTIAL_OPTIONAL_CUSTOMER_VIEW",
+            }
+        ]
+    )
+    mapping["source_refs"] = source_refs
+
+    audit = audit_source_observation_mapping_contract_v1(mapping)
+
+    assert audit["status"] == "FAILED"
+    assert audit["violations"][0]["reason"] == (
+        "NUMERIC_MAPPING_HAS_NO_SOURCE_OR_EXACT_DERIVATION"
+    )
+
+
+@pytest.mark.parametrize(
     "state",
     [
         "BLANK_ZERO_IF_EQUATION_EXACT",

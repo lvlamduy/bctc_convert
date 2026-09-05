@@ -30,6 +30,9 @@ from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
 )
+from bctc_ai.evaluation.source_reference_identity_v1 import (
+    stable_unique_source_refs_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -2772,7 +2775,7 @@ def _corroborate_identical(
     return _record(
         role,
         canonical_clone_v1(selected["cells"]),
-        [ref for record in records for ref in record["source_refs"]],
+        stable_unique_source_refs_v1([ref for record in records for ref in record["source_refs"]]),
         state,
     )
 

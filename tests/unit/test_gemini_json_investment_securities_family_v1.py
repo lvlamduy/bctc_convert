@@ -308,6 +308,81 @@ def test_complete_duplicate_corroborates_compatible_partial_source_lanes() -> No
     assert corroborated["source_refs"] == [{"row_id": "partial"}, {"row_id": "complete"}]
 
 
+def test_identical_record_corroboration_keeps_one_exact_source_identity() -> None:
+    source_ref = {
+        "locator": {
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "table_id": "t1",
+        },
+        "row_id": "r7",
+    }
+    direct = _value_record(
+        "HTM_TOTAL",
+        [
+            {"coefficient": 10, "source_text": "10", "state": "RAW_SIGNED_INTEGER"},
+            {"coefficient": 9, "source_text": "9", "state": "RAW_SIGNED_INTEGER"},
+        ],
+        [source_ref],
+        "SOURCE_OBSERVED_ROW",
+    )
+
+    corroborated = _corroborate_identical("HTM_TOTAL", [direct, copy.deepcopy(direct)])
+
+    assert corroborated is not None
+    assert [cell["coefficient"] for cell in corroborated["cells"]] == [10, 9]
+    assert corroborated["state"] == "CORROBORATED_IDENTICAL_SOURCE_ROWS"
+    assert corroborated["source_refs"] == [source_ref]
+
+
+def test_htm_zero_vamc_frontier_keeps_direct_and_derived_values_with_one_source_ref() -> None:
+    page = _base_page()
+    # The explicit HTM debt parent is absent.  Its two visible children close
+    # the trailing HTM total, while a visible zero VAMC face makes both the
+    # CORE and CORE_PLUS_VAMC_FACE frontiers close against that same row.
+    page["sections"][1]["tables"][0]["rows"].pop(0)
+    page["sections"].append(
+        _section(
+            "Trái phiếu đặc biệt do VAMC phát hành",
+            _table(
+                None,
+                [
+                    _row("Mệnh giá trái phiếu đặc biệt", ["-", "-"]),
+                    _row("Dự phòng trái phiếu đặc biệt", [None, None]),
+                    _row(None, ["-", "-"], kind="TOTAL", hierarchy=[None]),
+                ],
+            ),
+        )
+    )
+
+    _compiled_specs, _cluster, candidate = _evaluate(page)
+
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert set(by_role) >= {"HTM_TOTAL", "HTM_DEBT"}
+    assert [cell["coefficient"] for cell in by_role["HTM_TOTAL"]["values"]] == [10, 9]
+    assert [cell["coefficient"] for cell in by_role["HTM_DEBT"]["values"]] == [10, 9]
+    assert by_role["HTM_TOTAL"]["state"] == "CORROBORATED_IDENTICAL_SOURCE_ROWS"
+    assert by_role["HTM_DEBT"]["state"] == (
+        "DERIVED_EXACT_SINGLE_GROUP_PARENT_FROM_VISIBLE_BRANCH_TOTAL"
+    )
+    assert by_role["HTM_TOTAL"]["unit"] == "MILLION_VND"
+    assert by_role["HTM_DEBT"]["unit"] == "MILLION_VND"
+    assert len(by_role["HTM_TOTAL"]["source_refs"]) == 1
+    assert len(by_role["HTM_DEBT"]["source_refs"]) == 1
+    htm_equations = {
+        equation["equation_kind"]
+        for equation in candidate["closure_receipt"]["equations"]
+        if equation["result_role"] in {"HTM_TOTAL", "HTM_DEBT"}
+    }
+    assert htm_equations == {
+        "EXACT_VISIBLE_GROSS_COMPONENT_TOTAL",
+        "DERIVED_EXACT_SINGLE_GROUP_PARENT_FROM_VISIBLE_BRANCH_TOTAL",
+        "EXACT_VISIBLE_NET_TOTAL_WITH_SOURCE_SIGNED_PROVISION",
+        "EXACT_VISIBLE_NET_TOTAL_WITH_SOURCE_SIGNED_PROVISION:CORE_PLUS_VAMC_FACE",
+    }
+
+
 def test_partial_duplicate_corroboration_requires_one_nonconflicting_complete_row() -> None:
     left = _value_record(
         "VAMC_PROVISION",
