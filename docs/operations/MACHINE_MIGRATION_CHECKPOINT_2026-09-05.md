@@ -520,10 +520,25 @@ AES-256. Không đưa AWS credentials vào Git, manifest hoặc tài liệu này
 | Tail của current Codex session | `.../codex/codex-current-session-tail-5135334922-5136683449.jsonl.gz.gpg` | `302e2d7f68f4a0344d37074b39fea1cd580886590feb2c27b19891bca732f12f` | `474490` | decrypt đúng 1.348.527 byte, nối ngay sau base; VersionId `FOfUnGu22UJfm8l522fmVFjBT.vNrXR3` |
 | Các Codex session/config/state an toàn khác | `.../codex/codex-other-sessions-support.tar.gz.gpg` | `762b6a7d61c0e1bd7a837fb6cd9e00f7b5a7b59afc9181763a3f0db3d253f112` | `4626317224` | decrypt/list 1.041 member; không auth/current; VersionId `FL9_mzbmDhx4oAfggq7bahTvDY3MIcYX` |
 | Receipt purge OCR/model cũ | `.../inventory/s3-obsolete-purge-receipts.tar.gz` | `b36efc6629df68257c3049f719260d6cec03c6db51689edd63655df86794a032` | `9216991` | 38.244 exact versions deleted; VersionId `sY01GIrsdjxWNelSVvQeAvJZDsych.hB` |
+| Coverage PDF nguồn | `.../source/source-pdf-coverage-manifest.json` | `7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35` | `8361` | 1.013 PDF/8.405.358.934 byte, 0 thiếu; VersionId `dsXgarGk3Uh9XPE8JXe_VHk9RuXoIYiQ` |
 | Migration manifest tổng | `.../manifest/migration-manifest-final.json` | xem companion `.sha256` cùng prefix | xem manifest | download-verify bắt buộc |
 
 Mọi đường dẫn bắt đầu bằng `.../` trong bảng trên dùng prefix đầy đủ
 `s3://test-s3-duylv/bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/`.
+
+PDF nguồn không được upload trùng thành một archive 7,55 GB. Gate dedup đã băm
+toàn bộ 1.013 PDF hiện hành: 996 logical path khớp byte với 959 content object
+độc nhất trong snapshot `20260806T050030130746Z-4a469fab2334`; sau purge tất
+cả vẫn hiện diện, không thiếu/không lệch size. Ba PDF VPB mới đã có sẵn dưới
+content-addressed key và được tải ngược/băm lại. Chỉ đúng 14 PDF còn thiếu
+(138.013.340 byte) được PUT mới dưới `.../source/vietstock_bctc/...`; từng file
+đã tải ngược và khớp SHA-256. Danh sách delta ở
+`.../source/source-pdf-delta.tsv`, SHA-256
+`3c2366d2cf87057282a10b9ea00a52a63b7d0e65914bd71a7d146e5f7ccb4e01`,
+VersionId `yMSgXGvtF8Fe7_0jb_ojXZfxOL0BQKBw`. Manifest coverage nêu trên bind
+toàn bộ ba nhóm, logical path, size, SHA và VersionId; dùng nó để hydrate đúng
+1.013 PDF. Ba file acquisition hỗ trợ chưa có trên S3 cũng được PUT riêng;
+compiled `__pycache__` bị loại có chủ đích.
 
 Yêu cầu acceptance cho mỗi archive ngoài project tool:
 
@@ -641,6 +656,8 @@ không dùng chúng làm bản phục hồi được chấp nhận.
       không chạy incremental checkpoint bind parent snapshot cũ.
 - [ ] `/dev/shm` archive tải ngược và SHA khớp.
 - [ ] old140 archive tải ngược và SHA khớp.
+- [ ] Source-PDF coverage manifest đạt 1.013/1.013; restore đủ ba nhóm parent,
+      content-addressed mới và 14-file migration delta, không tải lại OCR/model.
 - [ ] Database-only archive tải ngược, SHA khớp và sample SQLite `quick_check`
       đạt; full271/common204 store hiện diện đúng path.
 - [ ] S3 đã xóa vĩnh viễn đúng 38.244 cặp `Key+VersionId` PPOCR6/VietOCR/
