@@ -5,7 +5,7 @@
       "presence": "OPTIONAL", "role": "INCOME_PARENT", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ thanh toán", "Hoạt động thanh toán", "Thu nhập từ dịch vụ thanh toán", "Thu từ dịch vụ thanh toán", "Thu dịch vụ thanh toán", "Thu từ dịch vụ thanh toán và thẻ", "Dịch vụ thanh toán và tiền mặt", "Dịch vụ quản lý, sử dụng tài khoản và thẻ", "Dịch vụ đối tác liên kết thẻ", "Dịch vụ thẻ", "Dịch vụ chi trả kiều hối", "Thu từ dịch vụ tài khoản", "Thu phí liên quan đến các loại thẻ", "Thu phí liên quan đến hoạt động thẻ"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ dịch vụ thanh toán"], "within_role": "NET_PAYMENT_SOURCE_ONLY"}],
+      "matchers": [{"aliases": ["Dịch vụ thanh toán", "Hoạt động thanh toán", "Thu nhập từ dịch vụ thanh toán", "Thu từ dịch vụ thanh toán", "Thu dịch vụ thanh toán", "Thu từ dịch vụ thanh toán và thẻ", "Dịch vụ thanh toán và tiền mặt", "Dịch vụ quản lý, sử dụng tài khoản và thẻ", "Dịch vụ đối tác liên kết thẻ", "Dịch vụ thẻ", "Thu từ dịch vụ tài khoản", "Thu phí liên quan đến các loại thẻ", "Thu phí liên quan đến hoạt động thẻ"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ dịch vụ thanh toán"], "within_role": "NET_PAYMENT_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_PAYMENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -21,12 +21,24 @@
       "presence": "OPTIONAL", "role": "INCOME_SECURITIES", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch ủy thác và đại lý", "Dịch vụ đại lý", "Dịch vụ ủy thác", "Dịch vụ ủy thác và đại lý", "Dịch vụ ủy thác quản lý quỹ", "Nghiệp vụ ủy thác và đại lý", "Thu từ hoạt động ủy thác và đại lý", "Thu từ dịch vụ đại lý nhận ủy thác", "Thu từ dịch vụ ủy thác và đại lý", "Thu từ nghiệp vụ ủy thác và đại lý"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động ủy thác và đại lý"], "within_role": "NET_TRUST_AGENCY_SOURCE_ONLY"}],
+      "matchers": [{"aliases": ["Dịch vụ quản lý quỹ", "Dịch vụ ủy thác quản lý quỹ"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_FUND_MANAGEMENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Dịch vụ cho thuê và quản lý kho, định giá tài sản", "Thu dịch vụ cho thuê văn phòng", "Thu dịch vụ cho thuê kho và văn phòng", "Thu từ dịch vụ cho thuê tài sản", "Thu từ dịch vụ bảo quản tài sản", "Dịch vụ bảo quản tài sản", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ ké", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_CUSTODY_RENT", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Dịch ủy thác và đại lý", "Dịch vụ đại lý", "Dịch vụ ủy thác", "Dịch vụ ủy thác và đại lý", "Nghiệp vụ ủy thác và đại lý", "Thu từ hoạt động ủy thác và đại lý", "Thu từ dịch vụ đại lý nhận ủy thác", "Thu từ dịch vụ ủy thác và đại lý", "Thu từ nghiệp vụ ủy thác và đại lý"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động ủy thác và đại lý"], "within_role": "NET_TRUST_AGENCY_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_TRUST_AGENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Dịch vụ bảo hiểm", "Dịch vụ đại lý bảo hiểm", "Dịch vụ đại lý bảo hiểm và các phí hỗ trợ liên quan", "Dịch vụ hợp tác bảo hiểm", "Dịch vụ hoa hồng hợp tác bảo hiểm", "Dịch vụ hỗ trợ liên kết bảo hiểm", "Dịch vụ đại lý bảo hiểm và phí liên kết bảo hiểm", "Hoạt động bảo hiểm", "Thu phí đại lý bảo hiểm", "Thu từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ đại lý bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm và đại lý bảo hiểm", "Thu từ dịch vụ đại lý bảo hiểm", "Thu kinh doanh và dịch vụ bảo hiểm", "Thu từ kinh doanh và dịch vụ bảo hiểm", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu phí bảo hiểm gốc"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_INSURANCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu về chi trả kiều hối", "Dịch vụ chi trả kiều hối"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_REMITTANCE", "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Dịch vụ tư vấn", "Thu từ hoạt động tư vấn", "Thu từ dịch vụ tư vấn", "Thu nhập từ dịch vụ tư vấn"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động tư vấn"], "within_role": "NET_CONSULTING_SOURCE_ONLY"}],
@@ -55,10 +67,6 @@
     {
       "matchers": [{"aliases": ["Hoạt động ủy thác, tư vấn và đại lý bảo hiểm", "Nghiệp vụ ủy thác, tư vấn và đại lý bảo hiểm", "Dịch vụ kinh doanh, dịch vụ bảo hiểm và tư vấn"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_COMBINED_INSURANCE_CONSULTING_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Thu dịch vụ cho thuê văn phòng", "Thu dịch vụ cho thuê kho và văn phòng", "Thu từ dịch vụ cho thuê tài sản", "Thu từ dịch vụ bảo quản tài sản", "Dịch vụ bảo quản tài sản", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ ké", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két"], "within_role": "INCOME_PARENT"}],
-      "presence": "OPTIONAL", "role": "INCOME_CUSTODY_RENT_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Dịch vụ mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng"], "within_role": "INCOME_PARENT"}],

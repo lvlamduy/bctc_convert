@@ -494,6 +494,229 @@ def test_service_activity_2025_source_aliases_map_only_inside_declared_parent(
     assert expense_role in mapped_roles
 
 
+def test_service_activity_fund_management_is_separate_from_trust_agency() -> None:
+    income_parent = "Thu nhập từ hoạt động dịch vụ"
+    expense_parent = "Chi phí hoạt động dịch vụ"
+    rows = [
+        _row(income_parent, ["100", "80"], kind="TOTAL"),
+        _row("Thu từ dịch vụ thanh toán", ["50", "40"], parent=income_parent),
+        _row("Dịch vụ ủy thác và đại lý", ["20", "15"], parent=income_parent),
+        _row("Dịch vụ ủy thác quản lý quỹ", ["10", "5"], parent=income_parent),
+        _row("Thu nhập khác", ["20", "20"], parent=income_parent),
+        _row(expense_parent, ["30", "20"], kind="TOTAL"),
+        _row("Chi về dịch vụ thanh toán", ["10", "5"], parent=expense_parent),
+        _row("Chi phí khác", ["20", "15"], parent=expense_parent),
+        _row("Lãi thuần từ hoạt động dịch vụ", ["70", "60"], kind="TOTAL"),
+    ]
+    _cluster, candidate = _evaluate(primary_rows=_primary_rows(), detail_rows=rows)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert by_role["INCOME_TRUST_AGENCY"]["report_norm_id"] == 1163
+    assert [
+        value["coefficient"] for value in by_role["INCOME_TRUST_AGENCY"]["values"]
+    ] == [20, 15]
+    assert by_role["INCOME_FUND_MANAGEMENT"]["report_norm_id"] == 1161
+    assert [
+        value["coefficient"] for value in by_role["INCOME_FUND_MANAGEMENT"]["values"]
+    ] == [10, 5]
+    assert [value["coefficient"] for value in by_role["INCOME_PARENT"]["values"]] == [
+        100,
+        80,
+    ]
+    assert {
+        (ref["label_exact"], ref["locator"]["physical_page"], ref["row_ordinal"])
+        for ref in by_role["INCOME_FUND_MANAGEMENT"]["source_refs"]
+    } == {("Dịch vụ ủy thác quản lý quỹ", 2, 4)}
+
+
+def test_service_activity_remittance_is_separate_from_payment() -> None:
+    income_parent = "Thu nhập từ hoạt động dịch vụ"
+    expense_parent = "Chi phí hoạt động dịch vụ"
+    rows = [
+        _row(income_parent, ["100", "80"], kind="TOTAL"),
+        _row("Dịch vụ thanh toán", ["50", "40"], parent=income_parent),
+        _row("Dịch vụ chi trả kiều hối", ["10", "5"], parent=income_parent),
+        _row("Dịch vụ khác", ["40", "35"], parent=income_parent),
+        _row(expense_parent, ["30", "20"], kind="TOTAL"),
+        _row("Chi về dịch vụ thanh toán", ["10", "5"], parent=expense_parent),
+        _row("Chi phí khác", ["20", "15"], parent=expense_parent),
+        _row("Lãi thuần từ hoạt động dịch vụ", ["70", "60"], kind="TOTAL"),
+    ]
+    _cluster, candidate = _evaluate(primary_rows=_primary_rows(), detail_rows=rows)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert by_role["INCOME_PAYMENT"]["report_norm_id"] == 1158
+    assert [value["coefficient"] for value in by_role["INCOME_PAYMENT"]["values"]] == [
+        50,
+        40,
+    ]
+    assert by_role["INCOME_REMITTANCE"]["report_norm_id"] == 1165
+    assert [
+        value["coefficient"] for value in by_role["INCOME_REMITTANCE"]["values"]
+    ] == [10, 5]
+    assert [value["coefficient"] for value in by_role["INCOME_PARENT"]["values"]] == [
+        100,
+        80,
+    ]
+
+
+def test_service_activity_custody_and_rent_aggregate_without_absorbing_valuation() -> None:
+    income_parent = "Thu nhập từ hoạt động dịch vụ"
+    expense_parent = "Chi phí hoạt động dịch vụ"
+    rows = [
+        _row(income_parent, ["100", "80"], kind="TOTAL"),
+        _row("Thu từ dịch vụ thanh toán", ["50", "40"], parent=income_parent),
+        _row("Thu từ dịch vụ cho thuê tài sản", ["20", "15"], parent=income_parent),
+        _row("Thu từ dịch vụ bảo quản tài sản", ["10", "8"], parent=income_parent),
+        _row("Thu dịch vụ thẩm định tài sản", ["10", "7"], parent=income_parent),
+        _row("Thu nhập khác", ["10", "10"], parent=income_parent),
+        _row(expense_parent, ["30", "20"], kind="TOTAL"),
+        _row("Chi về dịch vụ thanh toán", ["10", "5"], parent=expense_parent),
+        _row("Chi phí khác", ["20", "15"], parent=expense_parent),
+        _row("Lãi thuần từ hoạt động dịch vụ", ["70", "60"], kind="TOTAL"),
+    ]
+    _cluster, candidate = _evaluate(primary_rows=_primary_rows(), detail_rows=rows)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    custody = by_role["INCOME_CUSTODY_RENT"]
+    valuation = by_role["INCOME_DEBT_VALUATION"]
+    assert custody["report_norm_id"] == 1162
+    assert [value["coefficient"] for value in custody["values"]] == [30, 23]
+    assert {
+        (ref["label_exact"], ref["locator"]["physical_page"], ref["row_ordinal"])
+        for ref in custody["source_refs"]
+    } == {
+        ("Thu từ dịch vụ cho thuê tài sản", 2, 3),
+        ("Thu từ dịch vụ bảo quản tài sản", 2, 4),
+    }
+    assert valuation["report_norm_id"] == 6022
+    assert [value["coefficient"] for value in valuation["values"]] == [10, 7]
+    assert {ref["label_exact"] for ref in valuation["source_refs"]} == {
+        "Thu dịch vụ thẩm định tài sản"
+    }
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Dịch vụ cho thuê và quản lý kho, định giá tài sản",
+        "Thu dịch vụ cho thuê văn phòng",
+        "Thu dịch vụ cho thuê kho và văn phòng",
+        "Thu từ dịch vụ cho thuê tài sản",
+        "Dịch vụ bảo quản tài sản",
+        "Thu từ dịch vụ bảo quản tài sản",
+        "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ",
+        "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ ké",
+        "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két",
+        "- Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê\ntủ két",
+    ],
+)
+def test_service_activity_exact_custody_rent_aliases_map_only_in_income_parent(
+    label: str,
+) -> None:
+    rows = _detail_rows()
+    rows[2] = _row(label, ["40", "30"], parent="Thu nhập từ hoạt động dịch vụ")
+    _cluster, candidate = _evaluate(primary_rows=_primary_rows(), detail_rows=rows)
+
+    assert candidate["status"] == READY
+    mapping = next(
+        item for item in candidate["mappings"] if item["role"] == "INCOME_CUSTODY_RENT"
+    )
+    assert mapping["report_norm_id"] == 1162
+    assert [value["coefficient"] for value in mapping["values"]] == [40, 30]
+
+
+@pytest.mark.parametrize(
+    ("label", "role", "report_norm_id"),
+    [
+        ("Dịch vụ quản lý quỹ", "INCOME_FUND_MANAGEMENT", 1161),
+        ("Dịch vụ ủy thác quản lý quỹ", "INCOME_FUND_MANAGEMENT", 1161),
+        ("Thu về chi trả kiều hối", "INCOME_REMITTANCE", 1165),
+        ("Dịch vụ chi trả kiều hối", "INCOME_REMITTANCE", 1165),
+    ],
+)
+def test_service_activity_exact_new_schema_leaf_aliases(
+    label: str, role: str, report_norm_id: int
+) -> None:
+    rows = _detail_rows()
+    rows[2] = _row(label, ["40", "30"], parent="Thu nhập từ hoạt động dịch vụ")
+    _cluster, candidate = _evaluate(primary_rows=_primary_rows(), detail_rows=rows)
+
+    assert candidate["status"] == READY
+    mapping = next(item for item in candidate["mappings"] if item["role"] == role)
+    assert mapping["report_norm_id"] == report_norm_id
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Dịch vụ ủy thác và quản lý quỹ",
+        "Thu từ dịch vụ cho thuê",
+        "Thu từ hoạt động kiều hối",
+    ],
+)
+def test_service_activity_broad_new_leaf_labels_fail_closed(label: str) -> None:
+    rows = _detail_rows()
+    rows.insert(3, _row(label, ["1", "1"], parent="Thu nhập từ hoạt động dịch vụ"))
+    rows[0]["values_exact"] = ["101", "81"]
+    rows[-1]["values_exact"] = ["71", "61"]
+    primary_rows = _primary_rows(net=("71", "61"))
+    primary_rows[0]["values_exact"] = ["101", "81"]
+    _cluster, candidate = _evaluate(primary_rows=primary_rows, detail_rows=rows)
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+def test_service_activity_income_remittance_alias_under_expense_parent_fails_closed() -> None:
+    rows = _detail_rows()
+    rows.insert(
+        6,
+        _row(
+            "Dịch vụ chi trả kiều hối",
+            ["1", "1"],
+            parent="Chi phí hoạt động dịch vụ",
+        ),
+    )
+    rows[3]["values_exact"] = ["31", "21"]
+    rows[-1]["values_exact"] = ["69", "59"]
+    _cluster, candidate = _evaluate(
+        primary_rows=_primary_rows(expense=("31", "21"), net=("69", "59")),
+        detail_rows=rows,
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "UNMAPPED_DIRECT_FAMILY_SOURCE_MONEY_ROW" in candidate["reasons"]
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Dịch vụ ủy thác quản lý quỹ",
+        "Dịch vụ chi trả kiều hối",
+        "Dịch vụ bảo quản tài sản",
+    ],
+)
+def test_service_activity_new_leaf_alias_outside_owner_graph_is_not_observed(
+    label: str,
+) -> None:
+    table = _table([_row(label, ["40", "30"])])
+    table["title_exact"] = "Thông tin dịch vụ khác"
+    page = _page(table)
+    page["sections"][0]["title_exact"] = "Thông tin dịch vụ khác"
+
+    cluster = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[_record(page, ordinal=1)], compiled_specs=_compiled()
+    )
+    assert cluster["status"].startswith("NOT_OBSERVED")
+    assert cluster["component_regions"] == []
+
+
 @pytest.mark.parametrize(
     ("label", "role"),
     [
@@ -504,11 +727,6 @@ def test_service_activity_2025_source_aliases_map_only_inside_declared_parent(
         (
             "Dịch vụ kinh doanh, dịch vụ bảo hiểm và tư vấn",
             "INCOME_COMBINED_INSURANCE_CONSULTING_SOURCE_ONLY",
-        ),
-        ("Dịch vụ bảo quản tài sản", "INCOME_CUSTODY_RENT_SOURCE_ONLY"),
-        (
-            "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ ké",
-            "INCOME_CUSTODY_RENT_SOURCE_ONLY",
         ),
         (
             "Dịch vụ mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng",
@@ -890,7 +1108,7 @@ def test_service_activity_legacy_two_parent_path_is_byte_and_semantic_stable() -
     legacy_evaluation = _json("tm-service-activity-evaluation-v1.json")
     legacy_evaluation.pop("root_component_role_combinations", None)
     assert canonical_json_sha256_v1(legacy_evaluation) == (
-        "520deb2de5636a3fb5b36472b99b92add552f1cbbd2dd8c4fed4515c1a0de352"
+        "7f3fa32e7eb92a9c77b2a997bdb499ddc0dd21fbf5ce4333144dad687e6f125a"
     )
     compiled = _legacy_compiled_without_root_alternatives()
     _cluster, candidate = _evaluate_pages(
@@ -902,7 +1120,7 @@ def test_service_activity_legacy_two_parent_path_is_byte_and_semantic_stable() -
     )
     assert candidate["status"] == READY
     assert canonical_json_sha256_v1(candidate) == (
-        "7a0d8977f5a6ba915f6c44d20a90adbdc56868df055d0788b9f92e81d627c5a5"
+        "61b910cc661eb73d91d0b2cebaf0c632b27d3b1190f9bed44458633510d0a42c"
     )
     signed = [
         receipt
