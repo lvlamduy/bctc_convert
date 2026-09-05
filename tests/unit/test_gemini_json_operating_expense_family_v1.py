@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    NOT_OBSERVED,
     READY,
     UNRESOLVED,
     GeminiJsonMultitableHierarchicalFamilyV1Error,
@@ -27,6 +28,7 @@ from bctc_ai.evaluation.gemini_json_operating_expense_family_v1 import (
     compile_gemini_json_operating_expense_family_specs_v1,
     evaluate_gemini_json_operating_expense_family_cluster_v1,
     validate_gemini_json_operating_expense_candidate_replay_v1,
+    validate_gemini_json_operating_expense_replay_v1,
 )
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
@@ -1751,13 +1753,19 @@ def test_continuation_invalid_explicit_unit_never_becomes_missing(
     before = copy.deepcopy(pages)
     adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
     assert pages == before
-    assert trial["status"] != READY
+    assert trial["status"] == UNRESOLVED
     assert trial["mappings"] == []
     assert "operating_expense_continuation_query_receipt" not in (
         adapted["candidate_dispositions"][0]["cluster"]
     )
-    if layout == "COMPLETE_OWNER":
-        assert trial["status"] == UNRESOLVED
+    if layout == "INTERNAL_OWNER":
+        receipts = adapted["candidate_dispositions"][0]["cluster"][
+            "operating_expense_internal_owner_unit_rejection_receipts"
+        ]
+        assert len(receipts) == 1
+        assert receipts[0]["owner_proof"]["owner_row_ordinal"] == 4
+        assert [item["locator"]["physical_page"] for item in receipts[0]["unit_frontiers"]] == [1, 2]
+        assert trial["reasons"] == ["OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_UNIT_REJECTED"]
 
 
 @pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
@@ -1966,6 +1974,128 @@ def test_valid_unit_never_repairs_an_unsupported_period_axis() -> None:
     _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
     assert trial["status"] == UNRESOLVED
     assert trial["mappings"] == []
+
+
+def _internal_owner_invalid_unit_query() -> tuple[
+    dict[str, Any], dict[int, dict[str, dict[str, Any]]], dict[str, Any], dict[str, Any]
+]:
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]["unit_exact"] = "USD"
+    indexed, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    return indexed, pages, compiled, trial
+
+
+def _reseal_family_query_cluster(
+    indexed: dict[str, Any], compiled: dict[str, Any]
+) -> dict[str, Any]:
+    clusters = []
+    for item in indexed["candidate_dispositions"]:
+        cluster = copy.deepcopy(item["cluster"])
+        material = {key: value for key, value in cluster.items() if key != "cluster_id"}
+        cluster["cluster_id"] = "gjmthfcv1:cluster:" + canonical_json_sha256_v1(material)
+        clusters.append(cluster)
+    return build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=indexed["selected_document_axis"],
+        selected_page_axis=indexed["selected_page_axis"],
+        document_clusters=clusters,
+        query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]),
+    )
+
+
+def test_internal_owner_unit_rejection_replays_exact_source_and_reverse_page_order() -> None:
+    indexed, pages, compiled, trial = _internal_owner_invalid_unit_query()
+    before = copy.deepcopy(pages)
+    assert trial["status"] == UNRESOLVED
+    assert trial["candidates"] == []
+    assert trial["mappings"] == []
+    assert validate_gemini_json_operating_expense_replay_v1(
+        indexed_query_evidence=indexed,
+        trials=[trial],
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    ) == [trial]
+    reversed_pages = {1: dict(reversed(list(pages[1].items())))}
+    replayed_indexed, replayed_trial = _adapt_continuation_pages_for_unit_test(
+        reversed_pages, compiled
+    )
+    assert (indexed, trial) == (replayed_indexed, replayed_trial)
+    assert pages == before
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["UNIT_RECEIPT", "PAGE_VERSION", "OWNER_ROW", "REMOVE_RECEIPT", "FORGE_NOT_OBSERVED"],
+)
+def test_internal_owner_unit_rejection_rejects_self_resealed_query_tamper(mutation: str) -> None:
+    indexed, pages, compiled, _trial = _internal_owner_invalid_unit_query()
+    cluster = indexed["candidate_dispositions"][0]["cluster"]
+    field = "operating_expense_internal_owner_unit_rejection_receipts"
+    receipt = cluster[field][0]
+    if mutation == "REMOVE_RECEIPT":
+        del cluster[field]
+    elif mutation == "FORGE_NOT_OBSERVED":
+        del cluster[field]
+        cluster["status"] = NOT_OBSERVED
+        cluster["reasons"] = []
+    else:
+        if mutation == "UNIT_RECEIPT":
+            receipt["unit_frontiers"][1]["raw_unit_exact"] = "VND"
+        elif mutation == "PAGE_VERSION":
+            receipt["original_regions"][1]["page_json_version_id"] = PRIMARY_VERSION_ID
+        else:
+            receipt["owner_proof"]["owner_row"]["label_exact"] = "Đơn vị tính: USD"
+        receipt_material = {key: value for key, value in receipt.items() if key != "receipt_id"}
+        receipt["receipt_id"] = "gjoefav1:internal-owner-unit-rejection:" + canonical_json_sha256_v1(
+            receipt_material
+        )
+    forged = _reseal_family_query_cluster(indexed, compiled)
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="unit-rejection source replay"):
+        build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=forged,
+            page_json_by_document=pages,
+            compiled_specs=compiled,
+        )
+
+
+@pytest.mark.parametrize("mutation", ["STILL_INVALID_UNIT", "OWNER_REMOVED", "SOURCE_VALUE"])
+def test_internal_owner_unit_rejection_rejects_source_drift(mutation: str) -> None:
+    indexed, pages, compiled, trial = _internal_owner_invalid_unit_query()
+    prior = pages[1][VERSION_ID]["sections"][0]["tables"][0]
+    receiver = pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]
+    if mutation == "STILL_INVALID_UNIT":
+        receiver["unit_exact"] = "EUR"
+    elif mutation == "OWNER_REMOVED":
+        prior["rows"][3]["label_exact"] = "Các khoản khác"
+        prior["rows"][3]["hierarchy_path_exact"] = ["Các khoản khác"]
+    else:
+        receiver["rows"][0]["values_exact"][0] = "6"
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="unit-rejection source replay"):
+        validate_gemini_json_operating_expense_replay_v1(
+            indexed_query_evidence=indexed,
+            trials=[trial],
+            page_json_by_document=pages,
+            compiled_specs=compiled,
+        )
+
+
+@pytest.mark.parametrize("title", ["Các khoản khác", "Đơn vị tính: USD", "Chi phí hoạt động dịch vụ"])
+def test_invalid_unit_without_exact_internal_owner_preserves_not_observed(title: str) -> None:
+    _base, pages, compiled = _internal_owner_continuation_query_fixture()
+    prior = pages[1][VERSION_ID]["sections"][0]["tables"][0]
+    owner = prior["rows"][3]
+    old_owner = owner["label_exact"]
+    owner["label_exact"] = title
+    for row in prior["rows"]:
+        row["hierarchy_path_exact"] = [
+            title if item == old_owner else item for item in row["hierarchy_path_exact"]
+        ]
+    pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]["unit_exact"] = "USD"
+    indexed, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == NOT_OBSERVED
+    assert trial["mappings"] == []
+    assert "operating_expense_internal_owner_unit_rejection_receipts" not in (
+        indexed["candidate_dispositions"][0]["cluster"]
+    )
 
 
 def test_pdf_visible_dash_repair_is_cell_local_source_bound_and_replays() -> None:
