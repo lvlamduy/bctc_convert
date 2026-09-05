@@ -95,6 +95,16 @@ _MAPPING_MAX_ADMIN_DIRECT_OTHER_LABELS = frozenset(
         "chi khac",
     }
 )
+_EXACT_SOURCE_REF_DEDUPLICATION_STATES = frozenset(
+    {
+        "PARTIAL_SOURCE_OBSERVATION",
+        "SOURCE_OBSERVED_ROLE_ROW",
+        "SOURCE_VALIDATION_ROLE_LEAF_PROJECTED_TO_DECLARED_RESIDUAL_AFTER_EXACT_SOURCE_TOTAL",
+        "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_OPERATING_EXPENSE_DIRECT_FRONTIER",
+        "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_OPERATING_EXPENSE_DISPLAY_ROUNDING_INTERVAL",
+        "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_WITH_OPERATING_EXPENSE_OBSERVED_LANE_CONTROL",
+    }
+)
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_OPERATING_EXPENSE_"
     "MULTITABLE_HIERARCHICAL_EXACT_SAME_DOCUMENT_PRIMARY_STATEMENT_UNIT_"
@@ -364,6 +374,8 @@ def compile_gemini_json_operating_expense_family_specs_v1(
         != "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS"
         or compiled.get("source_total_blank_lane_control_policy")
         != "OBSERVED_LANES_EXACT_REMAINDER_BLANK"
+        or compiled.get("source_reference_identity_policy")
+        != "EXACT_UNIQUE_SOURCE_IDENTITIES"
     ):
         raise _error("operating-expense compiled family frontier is invalid")
     compiled["operating_expense_source_repairs"] = (
@@ -3169,6 +3181,84 @@ def _source_ref_key(source_ref: Mapping[str, Any]) -> tuple[Any, ...] | None:
     )
 
 
+def _deduplicate_exact_mapping_source_refs(
+    candidate: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Enforce exact unique mapping provenance after adapter-local retries.
+
+    A family-local retry can rebuild mappings after the shared evaluator's
+    configured exact-source-identity deduplication boundary. Remove only exact
+    typed-JSON duplicates; distinct rows or column frontiers remain untouched,
+    and no value or additive operand changes.
+    """
+
+    mappings = candidate.get("mappings")
+    if type(mappings) is not list:
+        return []
+    receipts = []
+    for mapping in mappings:
+        source_refs = mapping.get("source_refs") if type(mapping) is dict else None
+        if type(source_refs) is not list:
+            continue
+        unique: list[dict[str, Any]] = []
+        duplicate_sha256 = []
+        for source_ref in source_refs:
+            if any(same_typed_json_v1(source_ref, retained) for retained in unique):
+                duplicate_sha256.append(canonical_json_sha256_v1(source_ref))
+                continue
+            unique.append(canonical_clone_v1(source_ref))
+        if not duplicate_sha256:
+            continue
+        if mapping.get("state") not in _EXACT_SOURCE_REF_DEDUPLICATION_STATES:
+            raise _error(
+                "operating-expense duplicate source provenance is unsafe for mapping state"
+            )
+        prior_mapping_id = mapping.get("item_mapping_id")
+        prior_row_id = mapping.get("row_id")
+        mapping["source_refs"] = unique
+        if len(unique) == 1:
+            result_row_id = unique[0].get("row_id")
+            if type(result_row_id) is not str:
+                raise _error("operating-expense unique source reference has no row identity")
+        else:
+            role = mapping.get("role")
+            if type(role) is not str:
+                raise _error("operating-expense corroborated mapping role is invalid")
+            result_row_id = "corroborated:" + role
+        mapping["row_id"] = result_row_id
+        mapping_material = {
+            key: value for key, value in mapping.items() if key != "item_mapping_id"
+        }
+        mapping["item_mapping_id"] = (
+            "gjmthfmv1:item:" + canonical_json_sha256_v1(mapping_material)
+        )
+        receipt_material = {
+            "after_source_ref_count": len(unique),
+            "before_source_ref_count": len(source_refs),
+            "duplicate_source_ref_sha256": sorted(duplicate_sha256),
+            "prior_mapping_row_id": prior_row_id,
+            "prior_item_mapping_id": prior_mapping_id,
+            "report_norm_id": mapping.get("report_norm_id"),
+            "result_item_mapping_id": mapping["item_mapping_id"],
+            "result_mapping_row_id": result_row_id,
+            "role": mapping.get("role"),
+            "state": mapping.get("state"),
+            "rule": (
+                "REMOVE_ONLY_EXACT_TYPED_JSON_DUPLICATE_RECORD_PROVENANCE_TO_"
+                "ENFORCE_CONFIGURED_UNIQUE_SOURCE_IDENTITY_AND_ROW_CARDINALITY_"
+                "NO_VALUE_OR_OPERAND_CHANGE"
+            ),
+        }
+        receipts.append(
+            {
+                **receipt_material,
+                "receipt_id": "gjoefav1:source-ref-deduplication:"
+                + canonical_json_sha256_v1(receipt_material),
+            }
+        )
+    return receipts
+
+
 def _accepted_operating_expense_root_equation(
     *,
     components: Sequence[Mapping[str, Any]],
@@ -4549,6 +4639,7 @@ def _reseal_candidate(
     source_repair_receipts: Sequence[Mapping[str, Any]],
     unit_receipts: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    source_ref_deduplication_receipts = _deduplicate_exact_mapping_source_refs(candidate)
     material = {
         "adapter_format_version": ADAPTER_FORMAT_VERSION,
         "all_blank_validation_role_omission_receipts": canonical_clone_v1(
@@ -4574,6 +4665,10 @@ def _reseal_candidate(
         "source_repair_receipts": canonical_clone_v1(list(source_repair_receipts)),
         "unit_corroboration_receipts": canonical_clone_v1(list(unit_receipts)),
     }
+    if source_ref_deduplication_receipts:
+        material["source_ref_deduplication_receipts"] = canonical_clone_v1(
+            source_ref_deduplication_receipts
+        )
     candidate["claim_boundary"] = CLAIM_BOUNDARY
     candidate["closure_receipt"]["operating_expense_adapter_receipt"] = {
         **material,

@@ -375,6 +375,7 @@ def test_operating_expense_config_maps_declared_schema_and_keeps_source_gaps_loc
     assert (
         compiled["source_total_blank_lane_control_policy"] == "OBSERVED_LANES_EXACT_REMAINDER_BLANK"
     )
+    assert compiled["source_reference_identity_policy"] == "EXACT_UNIQUE_SOURCE_IDENTITIES"
     assert (
         compiled["continuation_period_axis_policy"]
         == "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS"
@@ -386,6 +387,60 @@ def test_operating_expense_config_maps_declared_schema_and_keeps_source_gaps_loc
     assert {
         item["canonical_unit"] for item in compiled["unit_bindings"] if item["accepted"] is True
     } == {"MILLION_VND", "VND"}
+
+
+def test_operating_expense_compile_rejects_preserved_duplicate_source_identity_policy() -> None:
+    evaluation = _json("tm-operating-expense-evaluation-v1.json")
+    evaluation["source_reference_identity_policy"] = "PRESERVE_SOURCE_PRESENTATIONS"
+    with pytest.raises(
+        GeminiJsonOperatingExpenseFamilyV1Error,
+        match="compiled family frontier is invalid",
+    ):
+        compile_gemini_json_operating_expense_family_specs_v1(
+            _json("tm-operating-expense-topology-v1.json"),
+            evaluation,
+            _json("tm-operating-expense-schema-binding-v1.json"),
+        )
+
+
+def test_source_ref_backstop_rejects_duplicate_arithmetic_operand_state() -> None:
+    source_ref = {
+        "hierarchy_path_exact": ["Chi phí cho nhân viên"],
+        "label_exact": "Chi phí cho nhân viên",
+        "locator": {
+            "page_json_version_id": VERSION_ID,
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        "money_column_ordinals": [1, 2],
+        "row_id": "r2",
+        "row_kind": "GROUP",
+        "row_ordinal": 2,
+    }
+    candidate = {
+        "mappings": [
+            {
+                "item_mapping_id": "gjmthfmv1:item:" + "1" * 64,
+                "report_norm_id": 1207,
+                "role": "EMPLOYEE_EXPENSE",
+                "row_id": "corroborated:EMPLOYEE_EXPENSE",
+                "source_refs": [copy.deepcopy(source_ref), copy.deepcopy(source_ref)],
+                "state": "SOURCE_SAME_ROLE_ROWS_AGGREGATED_AFTER_TABLE_CLOSURE",
+                "unit": "MILLION_VND",
+                "values": [
+                    {"coefficient": 2, "source_text": None, "state": "DERIVED"},
+                    {"coefficient": 2, "source_text": None, "state": "DERIVED"},
+                ],
+            }
+        ]
+    }
+    before = copy.deepcopy(candidate)
+    with pytest.raises(
+        GeminiJsonOperatingExpenseFamilyV1Error,
+        match="duplicate source provenance is unsafe",
+    ):
+        operating_expense_adapter._deduplicate_exact_mapping_source_refs(candidate)
+    assert candidate == before
 
 
 def test_complete_operating_expense_hierarchy_maps_and_replays() -> None:
@@ -616,6 +671,26 @@ def test_operating_expense_rounding_interval_is_scaled_complete_and_bounded(
             mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"
         )
         assert [value["coefficient"] for value in root["values"]] == [-457, -379]
+        for mapping in candidate["mappings"]:
+            source_refs = mapping["source_refs"]
+            assert len(source_refs) == len(
+                {canonical_json_sha256_v1(source_ref) for source_ref in source_refs}
+            )
+            assert mapping["row_id"] == (
+                source_refs[0]["row_id"]
+                if len(source_refs) == 1
+                else "corroborated:" + mapping["role"]
+            )
+        deduplications = adapter["source_ref_deduplication_receipts"]
+        assert deduplications
+        assert all(
+            receipt["before_source_ref_count"] > receipt["after_source_ref_count"]
+            for receipt in deduplications
+        )
+        assert all(
+            receipt["result_mapping_row_id"] != receipt["prior_mapping_row_id"]
+            for receipt in deduplications
+        )
         assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
     else:
         assert candidate["mappings"] == []
@@ -643,6 +718,17 @@ def test_all_blank_validation_only_role_is_omitted_from_exact_root_frontier() ->
     assert "GENERIC_PROVISION_SOURCE_ONLY" not in {
         mapping["role"] for mapping in candidate["mappings"]
     }
+    for mapping in candidate["mappings"]:
+        source_refs = mapping["source_refs"]
+        assert len(source_refs) == len(
+            {canonical_json_sha256_v1(source_ref) for source_ref in source_refs}
+        )
+        assert mapping["row_id"] == (
+            source_refs[0]["row_id"]
+            if len(source_refs) == 1
+            else "corroborated:" + mapping["role"]
+        )
+    assert "source_ref_deduplication_receipts" not in adapter
     assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
     validate_gemini_json_operating_expense_candidate_replay_v1(
         candidate,
