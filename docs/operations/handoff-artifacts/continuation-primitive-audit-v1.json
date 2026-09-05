@@ -1,0 +1,234 @@
+{
+  "format_version": "BCTC_CONTINUATION_PRIMITIVE_AUDIT_V1",
+  "scope": "read_only_cross_family_page_continuation_audit",
+  "mutation_policy": {
+    "repository": false,
+    "database": false,
+    "s3": false,
+    "provider_calls": false,
+    "ocr_or_geometry": false
+  },
+  "authority": {
+    "corpus_document_count": 271,
+    "corpus_selected_page_count": 14945,
+    "manifest": {
+      "path": "/dev/shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-manifest-indexes/8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a.json",
+      "sha256": "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219"
+    },
+    "sqlite_store": {
+      "path": "/dev/shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-freeze-inputs/store-ea9dec62fc52705298fc590f64302c031bc298fb204297afb3186b10585e18d7.sqlite3",
+      "sha256": "ea9dec62fc52705298fc590f64302c031bc298fb204297afb3186b10585e18d7"
+    },
+    "code_baseline": {
+      "cross_family_commit": "3f4aa28f4b617a7adc2f6edb279a0b9c17309ccf",
+      "f36_commit": "9a01a391dc097283ba436ef01e76ce56d42f4a5b",
+      "shared_engine_sha256": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+      "f36_adapter_sha256": "6a7dcfba94b01d021dbcab7ea6be0d8f7a2ca6411194b104158b949b981cf363"
+    },
+    "terminal_artifacts": {
+      "F16": {"sha256": "fc169f778ed5fdfc87638e14de2bc469b9dc8b03c2709eb87fb29f7a3283881e", "metrics": "271R/0N/0U;3299M"},
+      "F22": {"sha256": "57cb2d35de68cf366427adfec1358a230304a374191b9bf49d3359c47ea24a41", "metrics": "271R/0N/0U;1547M"},
+      "F28": {"sha256": "410543ade3548f22dd97d81d18041cf1b192d7ac973edcb321c80cc7816a76bd", "metrics": "271R/0N/0U;1775M"},
+      "F29": {"sha256": "6e046e54e6ca2d7f2f85cd7f3b00ba48a11026266011cf45171708934c1d6650", "metrics": "271R/0N/0U;1402M"},
+      "F30": {"sha256": "7fc304d66a286dde79a1eca140abef13af7b02bf040de228e5f85cbd9f153f93", "metrics": "202R/68N/1U;2150M"},
+      "F31": {"sha256": "612c74f64f908f7f8617b0d0efea9ab68c57c57462aff863ca2c1ed7ab9c607a", "metrics": "271R/0N/0U;1446M"},
+      "F38": {"sha256": "9b5d4626fd1d30ad3209176a6013d78b050d51fd5825f4304ed801745f116d96", "metrics": "270R/0N/1U;1186M"},
+      "F36": {"sha256": "feba95830ee3c9d87a627a8419180c48e4078142eca9cb8ec02fa7bb6b662f1f", "metrics": "250R/0N/21U;2975M"}
+    }
+  },
+  "terminal_continuation_census": {
+    "document_count": 35,
+    "edge_count": 35,
+    "all_selected_page_adjacent": true,
+    "all_physical_page_adjacent": true,
+    "sender_last_money_table": {"pass": 34, "not_applicable_owner_only": 1, "fail": 0},
+    "receiver_first_money_table": {"pass": 35, "fail": 0},
+    "families": {
+      "F16": {
+        "count": 8,
+        "strategy": "reciprocal markers plus trailing parent lineage; one exact single-blank-lane projection",
+        "documents": [
+          {"ordinal":246,"pages":[34,35],"variant":"reciprocal_repeated_axis"},
+          {"ordinal":248,"pages":[32,33],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":250,"pages":[34,35],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":252,"pages":[32,33],"variant":"single_blank_lane_to_two_lane_receiver"},
+          {"ordinal":253,"pages":[34,35],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":254,"pages":[35,36],"variant":"reciprocal_repeated_axis"},
+          {"ordinal":255,"pages":[34,35],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":257,"pages":[17,18],"variant":"reciprocal_blank_receiver_axis"}
+        ]
+      },
+      "F22": {
+        "count": 15,
+        "strategy": "14 receiver-only explicit edges with exact repeated period/unit; one reciprocal blank-axis edge",
+        "documents": [
+          {"ordinal":23,"pages":[28,29],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":28,"pages":[28,29],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":31,"pages":[28,29],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":32,"pages":[28,29],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":34,"pages":[28,29],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":36,"pages":[30,31],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":78,"pages":[36,37],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":79,"pages":[36,37],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":80,"pages":[36,37],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":81,"pages":[36,37],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":84,"pages":[37,38],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":85,"pages":[37,38],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":86,"pages":[37,38],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":87,"pages":[36,37],"variant":"receiver_only_explicit_axis"},
+          {"ordinal":257,"pages":[18,19],"variant":"reciprocal_blank_receiver_axis"}
+        ]
+      },
+      "F28": {
+        "count": 2,
+        "strategy": "shared reciprocal blank-axis edge plus family-local receiver-only edge",
+        "documents": [
+          {"ordinal":202,"pages":[35,36],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":259,"pages":[19,20],"variant":"receiver_only_blank_receiver_axis"}
+        ]
+      },
+      "F29": {
+        "count": 1,
+        "strategy": "shared reciprocal blank-axis edge with root-component union",
+        "documents": [{"ordinal":248,"pages":[39,40],"variant":"reciprocal_blank_receiver_axis"}]
+      },
+      "F30": {
+        "count": 3,
+        "strategy": "shared reciprocal edges, exact receiver-prefix parent scope, and one owner-only heading page",
+        "documents": [
+          {"ordinal":58,"pages":[38,39],"variant":"reciprocal_repeated_axis"},
+          {"ordinal":247,"pages":[41,42],"variant":"reciprocal_repeated_axis_leading_scope"},
+          {"ordinal":254,"pages":[42,43],"variant":"owner_only_heading_to_complete_receiver"}
+        ]
+      },
+      "F31": {
+        "count": 3,
+        "strategy": "two terminal-Cong receiver-prefix projections with inverse source restoration; one shared blank-axis edge",
+        "documents": [
+          {"ordinal":67,"pages":[33,34],"variant":"terminal_cong_receiver_prefix_then_same_table_reset"},
+          {"ordinal":68,"pages":[33,34],"variant":"terminal_cong_receiver_prefix"},
+          {"ordinal":255,"pages":[42,43],"variant":"reciprocal_blank_receiver_axis"}
+        ]
+      },
+      "F38": {
+        "count": 3,
+        "strategy": "two shared blank-axis edges and one PDF-authenticated root-only receiver",
+        "documents": [
+          {"ordinal":244,"pages":[41,42],"variant":"pdf_authenticated_root_only_receiver"},
+          {"ordinal":250,"pages":[43,44],"variant":"reciprocal_blank_receiver_axis"},
+          {"ordinal":251,"pages":[43,44],"variant":"reciprocal_blank_receiver_axis"}
+        ]
+      }
+    }
+  },
+  "f36_reconciliation": {
+    "positive_family_local_projection_count": 25,
+    "positive_projection_ordinals": [38,41,42,43,49,50,62,63,66,67,68,147,148,150,160,196,197,198,205,246,247,252,254,256,259],
+    "positive_generic_shared_receipt_ordinals": [43,149,158,159,197,206,246,247,252],
+    "observed_layout_change": {"ordinal":205,"sender_money_ordinals":[1,2],"receiver_money_ordinals":[2,3],"kind":"blank_receiver_physical_shift"},
+    "unresolved_count": 21,
+    "unresolved": [
+      {"ordinal":37,"sha256":"8bc46f6f22161d2ab044e667a442e1741e1c64c0f198d2206632425773cb528c","pages":[29,30],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":46,"sha256":"53acf3efe316ea4596f59deace2f1413cdf01d7700a367b9bd2f7432f0e89f0e","pages":[29,30],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":47,"sha256":"ba97a5cd0137ff365b5f51aa591377e975d574b1a94ca2fc66284edda47492f9","pages":[29,30],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":48,"sha256":"aa3b65b6450cc40354783122a7fa3ff0fb842017c8d72ca78c27a670524c4558","pages":[29,30],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":51,"sha256":"37bf57d50f02bd80898ef6a5f1902aba7e5ac692a5bc929efb26ed7daad1fca1","pages":[29,30],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":52,"sha256":"30bb8394f9fb62750250700d4dd7ef0e8e60a4e938f4561458ccdbf7964b7ff9","pages":[30,31],"category":"EIB_RECEIVER_OUTSIDE_OWNER_FENCE","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":57,"sha256":"523cc89343c44d44d6bd59f3a309f88fb52877e285b8a0e286653d310fbcdfba","pages":[29],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":60,"sha256":"bc2b4ee54e8f722322d72cb2ffd375ac61e8fe446ee12cd2865934b9fe8e15ae","pages":[29],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":92,"sha256":"1d98957325e51258eeb3b41ce7de8d43abd0c5db8080b3167dc794cfc60a89a2","pages":[62],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":93,"sha256":"67303850e6099f72e1cbe081e4f0ab639688524b6392d1fd057e7048ce559286","pages":[60],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":97,"sha256":"26287394959f22c6f32c6831eda1e3862c8a73bc917e773d5b2f0ea9ef00afe2","pages":[63],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":102,"sha256":"3771e24b44971bbb7fecbb13020cac924e8056ed31686a232bd24bc6724a044d","pages":[34],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":149,"sha256":"58d64a28be66720be6457488fbeac87b2e4e641574abbd87d0a7ac52df191733","pages":[34,35],"category":"CONTINUATION_ACCEPTED_ROOT_TOTAL_UNBOUND","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":157,"sha256":"57bc956a4b2358d4a8f79998e88f00f7c0987c2a3b3e5b03e03d813763ee4ead","pages":[39],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":158,"sha256":"cbff3d2bd30c6487a3be7f0942e65a19ec52f0711838eb89cf332cba517f2f3b","pages":[39,40],"category":"CONTINUATION_ACCEPTED_ROOT_TOTAL_UNBOUND","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":159,"sha256":"077a51aaa61b25250172040eaecb7b09c8ca691c7e92359b44a18e9d55d0f55f","pages":[34,35],"category":"CONTINUATION_ACCEPTED_ROOT_TOTAL_UNBOUND","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":206,"sha256":"9e916ce8d3a835a930b9be1bf395bb3b8e6641a5d4cf847d1e1c5fed546dd6f2","pages":[30,31],"category":"CONTINUATION_ACCEPTED_ROOT_TOTAL_UNBOUND","reasons":["DERIVED_ROOT","CONTINUATION_NOT_CLOSED"]},
+      {"ordinal":237,"sha256":"f892f6f03dc80c78def1605df5b3cc36e3de5421f115ccf79f8055ede1f7a436","pages":[47],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":238,"sha256":"d6481fddd606aa38e8dda6f6614e81e38d6e0882d6c7512a3d5f601ae718e450","pages":[47],"category":"SELF_CONTAINED_TERMINAL_ROOT_BINDING","reasons":["DERIVED_ROOT"]},
+      {"ordinal":243,"sha256":"067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e","pages":[42],"category":"FAIL_CLOSED_LOCAL_UNIT_AND_ROOT","reasons":["LOCAL_AXIS_UNUSABLE","ROOT_NOT_PROVEN"]},
+      {"ordinal":253,"sha256":"db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f","pages":[44],"category":"FAIL_CLOSED_ROOT_AND_UNDECLARED_TOP_LEVEL_ROW","reasons":["ROOT_NOT_PROVEN","UNDECLARED_TOP_LEVEL_SOURCE_ONLY_ROW"]}
+    ],
+    "interpretation": {
+      "continuation_reach_not_new_mappings": [37,46,47,48,51,52,149,158,159,206],
+      "separate_root_binding_reach_not_continuation": [57,60,92,93,97,102,157,237,238],
+      "remain_fail_closed": [243,253]
+    }
+  },
+  "source_reference_reconciliation": {
+    "row_identity_fields": ["row_id","row_ordinal","label_exact","hierarchy_path_exact","row_kind"],
+    "original_identity_mismatch_count": 0,
+    "scope": "F22,F28,F29,F30,F31 terminal cases and F36 25 positive projection documents",
+    "exact_duplicate_source_refs": {
+      "F16": {"duplicate":6,"total":135},
+      "F22": {"duplicate":122,"total":244},
+      "F28": {"duplicate":26,"total":52},
+      "F29": {"duplicate":5,"total":11},
+      "F30": {"duplicate":34,"total":68},
+      "F31": {"duplicate":26,"total":53},
+      "F38": {"duplicate":0,"total":9},
+      "F36_positive_projection_docs": {"duplicate":0,"total":299}
+    },
+    "notes": [
+      "F31 and F36 inverse-restoration paths preserve original row and column locators.",
+      "F28 ordinal 259 has empty structural_group_normalization and receiver_hierarchy_normalizations, so current terminal refs are original; its optional future normalization path lacks a centralized inverse restorer.",
+      "Duplicate cleanup belongs to the in-progress shared-provenance repair and precedes any shared continuation implementation."
+    ]
+  },
+  "shared_primitive_recommendation": {
+    "decision": "IMPLEMENT_AFTER_SHARED_PROVENANCE_REPAIR_IN_SHADOW_MODE",
+    "suggested_module": "src/bctc_ai/evaluation/origin_bound_continuation_v1.py",
+    "required_receipt_fields": [
+      "origin_id","chain_id","predecessor_receipt_id","sender_original_snapshot_sha256","receiver_original_snapshot_sha256",
+      "sender_locator","receiver_locator","selected_and_physical_adjacency","owner_and_reset_fence",
+      "sender_last_relevant_money_table","receiver_first_relevant_money_table","marker_policy",
+      "period_lane_bijection","unit_evidence","row_frontier","row_lineage","original_source_ref_inverse_map"
+    ],
+    "fail_closed_vetoes": [
+      "intervening_unrelated_money_table","owner_or_section_reset","same_label_different_owner","conflicting_explicit_unit",
+      "conflicting_or_non_bijective_period_axis","ambiguous_predecessor_or_receiver","fork_or_cycle","chain_budget_exceeded",
+      "unrestored_or_duplicate_source_ref","tampered_snapshot_or_receipt","value_or_arithmetic_used_for_admission"
+    ],
+    "rollout": ["F22","F28","F29","F30","F31","F38","F36","F16_after_parity"]
+  },
+  "representative_pdf_sha256": {
+    "F16_ordinal252": "30768f3095999e9d8ca315fd93a49ea25cfc151897e7cda89929be8fb71c1956",
+    "F22_ordinal23": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+    "F28_ordinal202": "7260dccced5ae737046bf19a297a2416194ad7335b518226e631d26aa9646656",
+    "F29_ordinal248": "fc653f4dd792a56ea076938379d7dd25d415471622418b8b9a48af6d000cd852",
+    "F30_ordinal58": "5786c86044524f7c6da81d52e4e023dcefa97ce860837a121912707602c7c256",
+    "F31_ordinal255": "00dc1e49a068bacbfaf36d4d337916adc0e3737c28f5bf0cf93828b20774f967",
+    "F38_ordinal244": "3221863e1973770c69cc5e5615db8333499a0158c15a4df7f40f49419dee7693",
+    "F36_ordinal57": "523cc89343c44d44d6bd59f3a309f88fb52877e285b8a0e286653d310fbcdfba",
+    "F36_ordinal92": "1d98957325e51258eeb3b41ce7de8d43abd0c5db8080b3167dc794cfc60a89a2",
+    "F36_ordinal149": "58d64a28be66720be6457488fbeac87b2e4e641574abbd87d0a7ac52df191733",
+    "F36_ordinal206": "9e916ce8d3a835a930b9be1bf395bb3b8e6641a5d4cf847d1e1c5fed546dd6f2",
+    "F36_ordinal243": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+    "F36_ordinal253": "db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f"
+  },
+  "representative_render_sha256": {
+    "F16_252_p32": "5389a532d38bf2eb2a78dd1661c48994f152145663528ae3484873052540720b",
+    "F16_252_p33": "47e9aab4328a8d037a9fd0f61802ecc3c089ff7084e07e284a639c2c61165411",
+    "F22_23_p28": "80cb9ed7100677588a5f9c9ee88a743480b2a6615cb5dc341a2e9a505fb85403",
+    "F22_23_p29": "53074465085091b9d420c6675feebe3ef4b727deccfd3627888b8ed881808a91",
+    "F28_202_p35": "938b1b21f9e1c30b265a3a3384a02d2ab24d3f743c33ca3a56f7b5ed6d3cf0e8",
+    "F28_202_p36": "762338bf24df060a3656e2d33c3162dee7d80d792e380e18869c36c276535e7f",
+    "F29_248_p39": "c50680f3c03748e0842d25cbd4160c113ca8728d04dfc11e07342e818e2a9abf",
+    "F29_248_p40": "af7ec8ba0e1729cbe263e7cd93c79abb267fb2389dc5e8ae3985f9086abb91c5",
+    "F30_58_p38": "3b91b23b28c8582c2dd9fbd80399aee1c7760902415edb78d64da1dc96736cf2",
+    "F30_58_p39": "015a8ab59b3307c6ef393e8cd6fc5a6f6ec6c82d59b1da757f7010129ebfe02f",
+    "F31_255_p42": "b984b247e61fcb0eb72eee807f2e61a6cda0ec78d8f4fcc2cf6cc2e13441b22e",
+    "F31_255_p43": "0baccaefbc8e1e5d67e073df6603901608963e13586744b49689e3e39aff78ad",
+    "F38_244_p41": "a63e687f8d30f8a609e06fe09ebeec4c53ece4478b15f90845482c143c2b4736",
+    "F38_244_p42": "fc4153c94892b8d0a99ab42bc08b17d62c0122d4d5e608f6e10a1d9acd20709b",
+    "F36_57_p29": "745fa193982f3a70cc67f7b4aa6f9fa86233073ebdfe46a3d4e41ff72db838a8",
+    "F36_92_p62": "998483a17536c2ab88e535d21c991b3e9e44048a088c6550cb29a21fb21115b4",
+    "F36_149_p34": "746ee0a2f40fc0868d1f579f32411f4b6926ead37635fbeb4c5b59c82ea5b664",
+    "F36_149_p35": "75bc754e64a80cf393438f6c37f9c9cb7c0d3719a9f6af9d1e323b4ced7d1a8f",
+    "F36_206_p30": "477f4206b909cece68a7dd585dc9769125795ff835a43ee81c054adfe8495fc1",
+    "F36_206_p31": "27953098da506ae146bd348fa016f7ac374a48143e8bac2e6e46c1e0398a043e",
+    "F36_243_p42": "4d7d837970f52a68a25bb4529fe05170e98ded0e7853978911063a46456b6054",
+    "F36_253_p44": "cb24c5fa848c050e09408072c8f697157088182380b7ef77794b79c6ad731bab"
+  }
+}
